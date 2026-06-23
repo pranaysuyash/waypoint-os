@@ -130,6 +130,7 @@ Archive/design_refs/
 
 # Local runtime state (dev server/tool/local runtime artifacts)
 .runtime/
+.runtime/local/
 
 # Responsive audit output
 Docs/responsive-audit/

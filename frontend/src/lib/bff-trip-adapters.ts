@@ -297,18 +297,16 @@ function partySizeValue(spineTrip: unknown): unknown {
   );
 }
 
-function budgetValue(spineTrip: unknown): number {
-  return asNumber(
-    firstPresent(
-      getNestedValue(spineTrip, "extracted.facts.budget.value", undefined),
-      getNestedValue(spineTrip, "extracted.trip_metadata.budget.value", undefined),
-      getNestedValue(spineTrip, "extracted.budget.value", undefined),
-      getNestedValue(spineTrip, "extracted.budget", undefined),
-      getNestedValue(spineTrip, "budget", undefined),
-      0
-    ),
-    0
+function budgetValue(spineTrip: unknown): number | undefined {
+  const candidate = firstPresent(
+    getNestedValue(spineTrip, "extracted.facts.budget.value", undefined),
+    getNestedValue(spineTrip, "extracted.trip_metadata.budget.value", undefined),
+    getNestedValue(spineTrip, "extracted.budget.value", undefined),
+    getNestedValue(spineTrip, "extracted.budget", undefined),
+    getNestedValue(spineTrip, "budget", undefined)
   );
+  const parsed = asNumber(candidate, Number.NaN);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function dateWindowValue(spineTrip: unknown): unknown {
@@ -637,7 +635,7 @@ export function transformSpineTripToInboxTrip(
     const sb = source.budget;
     if (typeof sb === "number") return sb;
     if (typeof sb === "string") return asNumber(sb, 0);
-    return budgetValue(source);
+    return budgetValue(source) ?? 0;
   })();
 
   let importance = 50;

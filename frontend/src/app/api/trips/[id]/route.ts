@@ -1,6 +1,39 @@
 import { NextRequest } from "next/server";
-import { bffFetchOptions, bffJson, validateOrigin, isAuthStatus } from "@/lib/bff-auth";
+import {
+  bffFetchOptions,
+  bffJson,
+  validateOrigin,
+  isAuthStatus,
+  mergeCookieHeader,
+  refreshAuthCookies,
+} from "@/lib/bff-auth";
 import { transformSpineTripToTrip } from "@/lib/bff-trip-adapters";
+
+async function fetchWithAuthRetry(
+  request: NextRequest,
+  url: string,
+  fetchOptions: RequestInit
+): Promise<{ response: Response; refreshedCookies: string[] }> {
+  let response = await fetch(url, fetchOptions);
+  let refreshedCookies: string[] = [];
+
+  if (!response.ok && response.status === 401) {
+    refreshedCookies = await refreshAuthCookies(request);
+    if (refreshedCookies.length > 0) {
+      const mergedCookieHeader = mergeCookieHeader(request.headers.get("cookie"), refreshedCookies);
+      const retryHeaders = new Headers(fetchOptions.headers);
+      if (mergedCookieHeader) {
+        retryHeaders.set("cookie", mergedCookieHeader);
+      }
+      response = await fetch(url, {
+        ...fetchOptions,
+        headers: retryHeaders,
+      });
+    }
+  }
+
+  return { response, refreshedCookies };
+}
 
 export async function GET(
   request: NextRequest,
@@ -13,14 +46,18 @@ export async function GET(
     // Forward request to spine_api
     const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
 
-    const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
+    const { response, refreshedCookies } = await fetchWithAuthRetry(
+      request,
+      spineApiUrl,
+      { ...bffFetchOptions(request, "GET"), cache: "no-store" }
+    );
 
     if (!response.ok) {
       if (response.status === 404) {
-        return bffJson({ error: "Trip not found" }, 404);
+        return bffJson({ error: "Trip not found" }, 404, refreshedCookies);
       }
       if (isAuthStatus(response.status)) {
-        return bffJson({ error: "Not authenticated" }, response.status);
+        return bffJson({ error: "Not authenticated" }, response.status, refreshedCookies);
       }
       throw new Error(`Spine API returned ${response.status}`);
     }
@@ -28,7 +65,7 @@ export async function GET(
     const spineApiData = await response.json();
     const transformedTrip = transformSpineTripToTrip(spineApiData);
     
-    return bffJson(transformedTrip);
+    return bffJson(transformedTrip, 200, refreshedCookies);
   } catch (error) {
     console.error("Error fetching trip from spine_api:", error);
     return bffJson({ error: "Failed to fetch trip" }, 500);
@@ -91,7 +128,8 @@ export async function PATCH(
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
 
-    const response = await fetch(
+    const { response, refreshedCookies } = await fetchWithAuthRetry(
+      request,
       spineApiUrl,
       { ...bffFetchOptions(
         request,
@@ -104,7 +142,7 @@ export async function PATCH(
 
     if (!response.ok) {
       if (isAuthStatus(response.status)) {
-        return bffJson({ error: "Not authenticated" }, response.status);
+        return bffJson({ error: "Not authenticated" }, response.status, refreshedCookies);
       }
       const errorData = await response.json().catch(() => ({}));
       const detail = errorData.detail;
@@ -121,14 +159,15 @@ export async function PATCH(
           details: detailFailures,
           error: detail || errorData.error || null,
         },
-        response.status
+        response.status,
+        refreshedCookies
       );
     }
 
     const spineApiData = await response.json();
     const transformedTrip = transformSpineTripToTrip(spineApiData);
     
-    return bffJson(transformedTrip);
+    return bffJson(transformedTrip, 200, refreshedCookies);
   } catch (error) {
     console.error("Error patching trip via proxy:", error);
     return bffJson({ error: "Failed to update trip" }, 500);

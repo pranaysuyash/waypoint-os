@@ -104,6 +104,25 @@ describe("BFF trip adapters", () => {
     expect(trip.packet).toEqual(spineTrip.extracted);
   });
 
+  it("keeps missing budget as a missing display value instead of fabricating zero", () => {
+    const tripWithoutBudget = transformSpineTripToTrip(
+      {
+        ...spineTrip,
+        extracted: {
+          ...spineTrip.extracted,
+          facts: {
+            ...spineTrip.extracted.facts,
+            budget: undefined,
+          },
+        },
+        budget: null,
+      },
+      now
+    );
+
+    expect(tripWithoutBudget.budget).toBe("Budget missing");
+  });
+
   it("maps backend response envelopes and preserves workspace state semantics", () => {
     const trips = transformSpineTripsResponseToTrips({ items: [spineTrip] }, now);
 

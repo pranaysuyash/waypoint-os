@@ -156,8 +156,8 @@ def _is_process_dead(pid: int) -> bool:
         return out.startswith("Z")  # Z = zombie/defunct
     except _subprocess.CalledProcessError:
         return True
-    except Exception:
-        return False  # conservative: assume alive if we can't check
+    except OSError:
+        return False
 
 
 @contextmanager
@@ -340,9 +340,8 @@ class FileTripStore:
                     trips.append(trip)
                 if len(trips) >= limit:
                     break
-            except Exception:
+            except (OSError, ValueError):
                 continue
-        
         return trips
 
     @staticmethod
@@ -511,7 +510,7 @@ class FileTripStore:
             try:
                 with open(filepath) as f:
                     trip = json.load(f)
-            except Exception:
+            except (OSError, ValueError):
                 continue
 
             if trip.get("agency_id") != agency_id:
@@ -1641,7 +1640,7 @@ def _build_processed_trip(
         )
         try:
             strategy = build_session_strategy(decision_proxy, None)
-        except Exception as exc:
+        except (ValueError, TypeError, KeyError) as exc:
             logger.warning("Failed to synthesize trip strategy for %s: %s", spine_output.get("run_id"), exc)
             strategy = None
 
@@ -1678,7 +1677,7 @@ def _build_processed_trip(
     try:
         analytics = process_trip_analytics(trip)
         trip["analytics"] = analytics.model_dump()
-    except Exception as e:
+    except (ValueError, TypeError, KeyError) as e:
         logger.warning(f"Analytics calculation failed: {e}")
         trip["analytics"] = None
 
@@ -2001,7 +2000,7 @@ class PublicCheckerArtifactStore:
 
         try:
             raw_bytes = base64.b64decode(content_base64)
-        except Exception as exc:
+        except (ValueError, TypeError) as exc:
             logger.warning("Failed to decode consented upload for trip %s: %s", safe_trip_id, exc)
             return None
 

@@ -196,7 +196,7 @@ class RecoveryAgent:
 
         try:
             active_trips = self._trip_repo.list_active()
-        except Exception:
+        except (OSError, ValueError, TypeError):
             logger.exception("RecoveryAgent: failed to list active trips")
             return []
 
@@ -281,7 +281,7 @@ class RecoveryAgent:
                 if str(tid) == trip_id:
                     return t if isinstance(t, dict) else {"id": tid}
             return None
-        except Exception:
+        except (OSError, ValueError, TypeError):
             logger.exception("Failed to look up trip record for %s", trip_id)
             return None
 
@@ -336,7 +336,7 @@ class RecoveryAgent:
                     f"escalated after {trip.requeue_attempts} requeue attempts"
                 ),
             )
-        except Exception as exc:
+        except (OSError, ValueError, TypeError) as exc:
             logger.exception("RecoveryAgent: escalate failed for trip %s", trip.trip_id)
             return RecoveryResult(
                 trip_id=trip.trip_id,

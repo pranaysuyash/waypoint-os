@@ -75,7 +75,7 @@ class Normalizer:
         ],
         "value_vague": [
             r"\b(?:big|large|huge)\s+family\b",
-            r"\bsome(?:where)?\s+(?:with|for|place)",
+            r"\bsome(?:where)?\s+(?:with|for|like|place)",
             r"\bmaybe\b",
             r"\bthinking\s+about\b",
             r"\bkinda\b",

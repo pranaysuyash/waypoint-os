@@ -308,7 +308,7 @@ class RunLedger:
 
                 if len(runs) >= limit:
                     break
-            except Exception:
+            except (OSError, ValueError):
                 continue
 
         return runs
@@ -355,7 +355,7 @@ class RunLedger:
                         timed_out.append(run_id)
                     except (ValueError, FileNotFoundError):
                         pass
-            except Exception:
+            except (OSError, ValueError):
                 continue
 
         return timed_out

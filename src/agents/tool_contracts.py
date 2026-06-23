@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +197,7 @@ def validate_tool_input(tool_name: str, data: dict[str, Any]) -> dict[str, Any]:
     try:
         validated = schema_cls.model_validate(data)
         return validated.model_dump(exclude_none=True)
-    except Exception:
+    except (ValidationError, ValueError, TypeError):
         return data
 
 
@@ -217,7 +217,7 @@ def validate_tool_output(tool_name: str, data: dict[str, Any]) -> dict[str, Any]
         validated = schema_cls.model_validate(data)
         # Re-build dict, stripping None values and extra provider fields
         return sanitize_tool_data(validated.model_dump(exclude_none=True))
-    except Exception:
+    except (ValidationError, ValueError, TypeError):
         return data
 
 

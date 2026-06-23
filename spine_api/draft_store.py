@@ -276,7 +276,7 @@ class FileDraftStore:
             return None
         try:
             return Draft.model_validate(data)
-        except Exception as exc:
+        except (ValueError, TypeError) as exc:
             logger.error("Invalid draft data for %s: %s", draft_id, exc)
             return None
 

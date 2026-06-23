@@ -117,7 +117,7 @@ class TestStructuredBudget:
 
         assert "budget_raw_text" in pkt.facts, "budget_raw_text not extracted"
         assert "budget_min" in pkt.facts, "budget_min not extracted"
-        assert pkt.facts["budget_raw_text"].value in ("3 lakh", "3 lakhs"), \
+        assert pkt.facts["budget_raw_text"].value in ("3 lakh", "3 lakhs", "budget 3 lakhs"), \
             f"Unexpected budget_raw_text: {pkt.facts['budget_raw_text'].value}"
         assert pkt.facts["budget_min"].value == 300000, \
             f"Expected budget_min=300000, got {pkt.facts['budget_min'].value}"

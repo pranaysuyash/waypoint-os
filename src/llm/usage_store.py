@@ -197,7 +197,7 @@ class LLMUsageStore:
 
         try:
             conn = self._connect()
-        except Exception as exc:
+        except (OSError, sqlite3.Error) as exc:
             raise GuardStorageError(f"Cannot open usage DB: {exc}") from exc
 
         try:
@@ -343,13 +343,13 @@ class LLMUsageStore:
 
         except GuardStorageError:
             raise
-        except Exception as exc:
+        except (OSError, sqlite3.Error) as exc:
             conn.rollback()
             raise GuardStorageError(f"check_and_reserve failed: {exc}") from exc
         finally:
             try:
                 conn.close()
-            except Exception:
+            except (OSError, sqlite3.Error):
                 pass
 
     # ─────────────────────────────────────────────────────────────────────────────────
@@ -778,6 +778,10 @@ class RedisUsageStore(LLMUsageStore):
             raise GuardStorageError(
                 "redis package is not installed. Run: uv add redis"
             ) from exc
+        except (OSError, ValueError, TypeError) as exc:
+            raise GuardStorageError(
+                f"Failed to connect to Redis: {exc}"
+            ) from exc
         self._id_counter = 0
         self._id_lock = threading.Lock()
 
@@ -844,7 +848,7 @@ class RedisUsageStore(LLMUsageStore):
                     str(estimated_cost),
                 ],
             )
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             raise GuardStorageError(f"Redis check_and_reserve failed: {exc}") from exc
 
         allowed = int(result[0]) == 1
@@ -866,7 +870,7 @@ class RedisUsageStore(LLMUsageStore):
         try:
             self._redis.hset(self._event_key(request_id), mapping=event_data)
             self._redis.expire(self._event_key(request_id), 172800)
-        except Exception:
+        except (OSError,):  # redis.RedisError already re-raised by redis-py; OSError covers connection issues
             pass  # event metadata loss is non-critical
 
         return {
@@ -905,7 +909,7 @@ class RedisUsageStore(LLMUsageStore):
             self._redis.zremrangebyscore(calls_key, "-inf", ts_cutoff)
             hourly_calls = self._redis.zcard(calls_key)
             daily_cost = float(self._redis.get(cost_key) or 0.0)
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             raise GuardStorageError(f"Redis get_summary failed: {exc}") from exc
         return {"hourly_calls": int(hourly_calls), "daily_cost": daily_cost}
 

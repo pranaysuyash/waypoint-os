@@ -112,7 +112,7 @@ if otel_endpoint:
             )
         )
         trace.set_tracer_provider(provider)
-    except Exception as e:
+    except (ValueError, TypeError, OSError) as e:
         import logging
         logging.getLogger("spine_api.otel").warning(f"OTel init failed (non-fatal): {e}")
 # --- End OTel ---
@@ -1041,7 +1041,7 @@ async def lifespan(app: FastAPI):
                         "Settings > Alert Destinations.",
                         alert_agency_id,
                     )
-            except Exception:
+            except (OSError, ValueError, KeyError):
                 # Settings store unavailable — fall back to default env-based guard
                 default_guard = get_usage_guard()
                 default_guard.set_alert_service(alert_service_from_env())
@@ -1050,7 +1050,7 @@ async def lifespan(app: FastAPI):
             # Test mode: default guard with env-var alert service
             default_guard = get_usage_guard()
             default_guard.set_alert_service(alert_service_from_env())
-    except Exception as exc:
+    except (OSError, ValueError, KeyError) as exc:
         logger.warning("Failed to configure usage guard: %s", exc)
 
     # Note: We no longer auto-seed at startup.
@@ -1199,7 +1199,7 @@ def _seed_scenario(agency_id: Optional[str] = None):
             loaded += 1
         
         logger.info("SEED_SCENARIO: loaded %d trips from %s (agency_id=%s)", loaded, seed_name, agency_id)
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error("SEED_SCENARIO: failed to load fixture: %s", e)
 
 
@@ -1280,7 +1280,7 @@ def _seed_scenario_for_agency(agency_id: str, seed_name: Optional[str] = None) -
         
         logger.info("SEED_SCENARIO: loaded %d trips for agency %s", loaded, agency_id)
         return loaded
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error("SEED_SCENARIO: failed to load fixture: %s", e)
         return 0
 
@@ -1403,7 +1403,7 @@ def load_fixture_expectations(scenario_id: Optional[str]) -> Optional[dict[str, 
             fid = fixture.get("scenario_id", "")
             if _scenario_ids_match(fid, scenario_id):
                 return fixture.get("expected")
-        except Exception:
+        except (ValueError, KeyError, TypeError):
             continue
 
     return None
@@ -1622,7 +1622,7 @@ async def list_trips(
             try:
                 seed_count = await _ts(_seed_scenario_for_agency, agency_id)
                 logger.info("Auto-seeded %d mock trips for test agency %s", seed_count, agency_id)
-            except Exception as e:
+            except (OSError, ValueError, KeyError) as e:
                 logger.warning("Failed to auto-seed for test agency: %s", e)
     
     trips = await _ts(TripStore.list_trips, status=status, limit=limit, agency_id=agency_id)
@@ -1688,7 +1688,7 @@ def get_trip_suitability(
                             "reason": flag.get("reason", ""),
                             "created_at": trip.get("created_at"),
                         })
-    except Exception as e:
+    except (ValueError, TypeError, KeyError) as e:
         logger.warning(f"Error extracting suitability flags for trip {trip_id}: {e}")
     
     return SuitabilityFlagsResponse(
@@ -2450,7 +2450,7 @@ def _safe_collection_plain_token(blob: Optional[dict]) -> Optional[str]:
     try:
         from spine_api.services.private_fields import decrypt_field
         token = decrypt_field(blob)
-    except Exception:
+    except (ValueError, TypeError, OSError):
         return None
     if not isinstance(token, str):
         return None

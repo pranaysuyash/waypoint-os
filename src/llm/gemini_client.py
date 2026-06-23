@@ -95,7 +95,7 @@ class GeminiClient(BaseLLMClient):
 
         try:
             self._client = genai.Client(api_key=self.api_key)
-        except Exception as e:
+        except (ValueError, TypeError, OSError) as e:
             raise LLMUnavailableError(f"Failed to initialize Gemini client: {e}")
 
     def is_available(self) -> bool:
@@ -105,7 +105,7 @@ class GeminiClient(BaseLLMClient):
             return False
         try:
             return hasattr(self, "_client") and self._client is not None
-        except Exception:
+        except AttributeError:
             return False
 
     def ping(self) -> bool:
@@ -118,7 +118,7 @@ class GeminiClient(BaseLLMClient):
                 contents="ping",
             )
             return True
-        except Exception:
+        except (OSError, ValueError, TypeError):
             return False
 
     def decide(
@@ -181,7 +181,7 @@ class GeminiClient(BaseLLMClient):
 
         except (LLMUnavailableError, LLMResponseError):
             raise
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError) as e:
             raise LLMUnavailableError(f"Gemini API call failed: {e}")
 
     def _build_prompt(self, prompt: str, schema: Dict[str, Any]) -> str:
@@ -206,7 +206,7 @@ Respond ONLY with the JSON object, no additional text."""
                 contents=text,
             )
             return response.total_tokens
-        except Exception:
+        except (OSError, ValueError, TypeError):
             return super().count_tokens(text)
 
 
@@ -230,5 +230,5 @@ def create_gemini_client(
             temperature=temperature,
             max_tokens=max_tokens,
         )
-    except Exception as e:
+    except (ValueError, TypeError, OSError) as e:
         raise LLMUnavailableError(f"Failed to create Gemini client: {e}")

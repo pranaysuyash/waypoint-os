@@ -111,7 +111,7 @@ class WebhookChannel:
                         logger.info("alert_webhook.delivered url=%s status=%d", url, resp.status)
                     else:
                         logger.warning("alert_webhook.failed url=%s status=%d", url, resp.status)
-            except Exception as exc:
+            except (OSError, ValueError) as exc:
                 logger.warning("alert_webhook.error url=%s error=%s", url, exc)
 
         return any_ok
@@ -172,7 +172,7 @@ class EmailChannel:
 
             logger.info("alert_email.delivered recipients=%s", self.recipients)
             return True
-        except Exception as exc:
+        except (OSError, smtplib.SMTPException, ValueError) as exc:
             logger.warning("alert_email.error recipients=%s error=%s", self.recipients, exc)
             return False
 

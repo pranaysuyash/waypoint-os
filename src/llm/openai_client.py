@@ -96,7 +96,7 @@ class OpenAIClient(BaseLLMClient):
                 api_key=self.api_key,
                 base_url=base_url,
             )
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             raise LLMUnavailableError(f"Failed to initialize OpenAI client: {e}")
 
     def is_available(self) -> bool:
@@ -108,7 +108,7 @@ class OpenAIClient(BaseLLMClient):
         try:
             # Quick availability check
             return hasattr(self, "_client") and self._client is not None
-        except Exception:
+        except AttributeError:
             return False
 
     def ping(self) -> bool:
@@ -118,7 +118,7 @@ class OpenAIClient(BaseLLMClient):
         try:
             self._client.models.list(limit=1)
             return True
-        except Exception:
+        except (OSError, ValueError):
             return False
 
     def decide(
@@ -180,9 +180,9 @@ class OpenAIClient(BaseLLMClient):
 
             return decision
 
-        except Exception as e:
-            if isinstance(e, (LLMUnavailableError, LLMResponseError)):
-                raise
+        except (LLMUnavailableError, LLMResponseError):
+            raise
+        except (OSError, ValueError, TypeError, KeyError) as e:
             raise LLMUnavailableError(f"OpenAI API call failed: {e}")
 
     def _build_prompt(self, prompt: str, schema: Dict[str, Any]) -> str:
@@ -258,5 +258,5 @@ def create_openai_client(
             temperature=temperature,
             max_tokens=max_tokens,
         )
-    except Exception as e:
+    except (ValueError, TypeError) as e:
         raise LLMUnavailableError(f"Failed to create OpenAI client: {e}")

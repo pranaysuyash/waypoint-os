@@ -444,7 +444,7 @@ def get_guard_for_agency(agency_id: str) -> LLMUsageGuard:
             from src.intake.config.agency_settings import AgencySettingsStore
             settings = AgencySettingsStore.load(agency_id)
             guard = LLMUsageGuard.from_settings(settings, settings.alert_destinations)
-        except Exception as exc:
+        except (OSError, ValueError, KeyError) as exc:
             logger.warning(
                 "get_guard_for_agency: failed to load settings for agency=%s, "
                 "falling back to env defaults: %s",
@@ -478,7 +478,7 @@ def reload_guard_for_agency(agency_id: str) -> LLMUsageGuard:
         # Carry forward the existing store so usage counters survive a reload.
         if existing_store is not None:
             guard.store = existing_store
-    except Exception as exc:
+    except (OSError, ValueError, KeyError) as exc:
         logger.warning(
             "reload_guard_for_agency: failed to rebuild guard for agency=%s, "
             "falling back to env defaults: %s",

@@ -15,8 +15,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { parse as parseSetCookie } from "set-cookie-parser";
 
 const PROXY_TIMEOUT_MS = 10_000;
+const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
 export type CookieScope = "access_only" | "access_and_refresh";
 
@@ -86,11 +88,83 @@ export function noStoreHeaders(): HeadersInit {
   return { "Cache-Control": "no-store" };
 }
 
-export function bffJson(payload: unknown, status: number = 200): NextResponse {
-  return NextResponse.json(payload, {
+export function bffJson(
+  payload: unknown,
+  status: number = 200,
+  rawSetCookieHeaders: string[] = []
+): NextResponse {
+  const response = NextResponse.json(payload, {
     status,
     headers: noStoreHeaders(),
   });
+  if (rawSetCookieHeaders.length > 0) {
+    applySetCookieHeaders(response, rawSetCookieHeaders);
+  }
+  return response;
+}
+
+export function applySetCookieHeaders(response: NextResponse, rawSetCookieHeaders: string[]): void {
+  const cookies = parseSetCookie(rawSetCookieHeaders);
+  for (const c of cookies) {
+    response.cookies.set(c.name, c.value, {
+      httpOnly: c.httpOnly ?? undefined,
+      secure: c.secure ?? undefined,
+      sameSite: c.sameSite
+        ? (c.sameSite.toLowerCase() as "lax" | "strict" | "none")
+        : undefined,
+      path: c.path ?? undefined,
+      expires: c.expires ?? undefined,
+      maxAge: c.maxAge ?? undefined,
+    });
+  }
+}
+
+export function mergeCookieHeader(
+  existingCookieHeader: string | null,
+  rawSetCookieHeaders: string[]
+): string | undefined {
+  const jar = new Map<string, string>();
+
+  const seed = (existingCookieHeader ?? "").split(";");
+  for (const part of seed) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const idx = trimmed.indexOf("=");
+    if (idx <= 0) continue;
+    jar.set(trimmed.slice(0, idx).trim(), trimmed.slice(idx + 1).trim());
+  }
+
+  for (const cookie of parseSetCookie(rawSetCookieHeaders)) {
+    jar.set(cookie.name, cookie.value);
+  }
+
+  if (jar.size === 0) return undefined;
+  return Array.from(jar.entries())
+    .map(([name, value]) => `${name}=${value}`)
+    .join("; ");
+}
+
+export async function refreshAuthCookies(request: NextRequest): Promise<string[]> {
+  const response = await fetch(`${SPINE_API_URL}/api/auth/refresh`, {
+    method: "POST",
+    headers: forwardAuthHeaders(request),
+    cache: "no-store",
+    signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const headersAny = response.headers as Headers & {
+    getSetCookie?: () => string[];
+  };
+  if (typeof headersAny.getSetCookie === "function") {
+    return headersAny.getSetCookie();
+  }
+
+  const single = response.headers.get("set-cookie");
+  return single ? [single] : [];
 }
 
 export function validateOrigin(request: NextRequest): NextResponse | null {

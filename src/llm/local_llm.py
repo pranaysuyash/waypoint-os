@@ -146,7 +146,7 @@ class LocalLLMClient(BaseLLMClient):
             self._loaded = True
             print(f"Model loaded successfully")
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             raise LLMUnavailableError(f"Failed to load local model: {e}")
 
     def is_available(self) -> bool:
@@ -157,7 +157,7 @@ class LocalLLMClient(BaseLLMClient):
             # Try to load the model
             self._load_model()
             return self._loaded
-        except Exception:
+        except (OSError, ValueError, TypeError):
             return False
 
     def decide(
@@ -225,9 +225,9 @@ class LocalLLMClient(BaseLLMClient):
 
             return decision
 
-        except Exception as e:
-            if isinstance(e, (LLMUnavailableError, LLMResponseError)):
-                raise
+        except (LLMUnavailableError, LLMResponseError):
+            raise
+        except (OSError, ValueError, TypeError, KeyError) as e:
             raise LLMUnavailableError(f"Local LLM inference failed: {e}")
 
     def _build_prompt(self, prompt: str, schema: Dict[str, Any]) -> str:
@@ -302,7 +302,7 @@ Respond ONLY with the JSON object, no additional text.
         try:
             tokens = self._tokenizer.encode(text, add_special_tokens=False)
             return len(tokens)
-        except Exception:
+        except (ValueError, TypeError):
             return super().count_tokens(text)
 
     def unload(self) -> None:
@@ -363,5 +363,5 @@ def create_local_llm_client(
             max_tokens=max_tokens,
             device=device,
         )
-    except Exception as e:
+    except (OSError, ValueError, TypeError) as e:
         raise LLMUnavailableError(f"Failed to create local LLM client: {e}")

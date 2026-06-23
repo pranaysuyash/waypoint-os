@@ -134,6 +134,8 @@ _YEAR_RE = re.compile(r"\b(20\d{2})\b")
 _FROM_STARTING_DEPARTING_RE = re.compile(r'\b(from|starting|departing)\s+$', re.IGNORECASE)
 _SE_RU_SIDE_RE = re.compile(r'^\s+(se|ru|side)\b', re.IGNORECASE)
 _MAYBE_RE = re.compile(r"\bmaybe\s+(\w+)", re.IGNORECASE)
+_MAYBE_SOMEWHERE_LIKE_RE = re.compile(r"\bmaybe\s+somewhere\s+like\s+(\w+(?:\s+\w+)*)", re.IGNORECASE)
+_SOMEWHERE_LIKE_RE = re.compile(r"\bsomewhere\s+like\s+(\w+(?:\s+\w+)*)", re.IGNORECASE)
 _THIS_WEEKEND_RE = re.compile(
     r"\bthis\s+(weekend|friday|saturday|sunday|monday|tuesday|wednesday|thursday)\b",
     re.IGNORECASE,
@@ -537,6 +539,20 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
             if valid:
                 return valid, "semi_open", or_match.group(0)
 
+    # Check for "maybe somewhere like X" pattern (semi-open) — before general regex
+    maybe_like_match = _MAYBE_SOMEWHERE_LIKE_RE.search(text_lower)
+    if maybe_like_match:
+        dest = maybe_like_match.group(1).title()
+        if is_known_destination(dest):
+            return [dest], "semi_open", maybe_like_match.group(0)
+
+    # Check for "somewhere like X" pattern (semi-open) — before general regex
+    somewhere_like_match = _SOMEWHERE_LIKE_RE.search(text_lower)
+    if somewhere_like_match:
+        dest = somewhere_like_match.group(1).title()
+        if is_known_destination(dest):
+            return [dest], "semi_open", somewhere_like_match.group(0)
+
     # Check for "maybe" pattern (semi-open) — before general regex
     maybe_match = _MAYBE_RE.search(text_lower)
     if maybe_match:
@@ -797,7 +813,7 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
     )
     trailing_budget_match = re.search(
         r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
-        r"(?P<amount>\d[\d,]*(?:\.\d+)?)\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?"
+        r"(?P<amount>\d[\d]*(?:,\d{3})*(?:\.\d+)?)\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?"
         r"\s*\bbudget\b",
         text_lower,
     )

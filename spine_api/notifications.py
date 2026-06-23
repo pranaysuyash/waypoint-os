@@ -321,7 +321,7 @@ def _load_comm_settings(agency_id: Optional[str] = None) -> Optional[Any]:
         from src.intake.config.agency_settings import AgencySettingsStore
         settings = AgencySettingsStore.load(agency_id)
         return getattr(settings, "comm", None)
-    except Exception:
+    except (OSError, ValueError, KeyError):
         logger.debug("Failed to load CommSettings for agency %s", agency_id)
         return None
 
@@ -351,7 +351,7 @@ def _is_within_operating_hours(
             tz_name = getattr(support, "timezone", "UTC") or "UTC"
             start_str = getattr(support, "support_hours_start", "09:00") or "09:00"
             end_str = getattr(support, "support_hours_end", "21:00") or "21:00"
-    except Exception:
+    except (OSError, ValueError, KeyError):
         logger.debug("Failed to load SupportSettings for agency %s — using UTC defaults", agency_id)
 
     # Resolve timezone via zoneinfo (stdlib 3.9+), fall back to UTC
