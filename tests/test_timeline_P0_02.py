@@ -9,10 +9,8 @@ This module validates:
 5. Stage filtering via REST endpoint
 """
 
-import json
 import pytest
-from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from datetime import datetime
 
 try:
     from spine_api.persistence import AuditStore
@@ -23,7 +21,6 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).parent.parent / "spine_api"))
     from persistence import AuditStore
 
-from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
 
 

@@ -12,9 +12,7 @@ Test coverage for GET /trips/{trip_id}/activities/provenance endpoint:
 """
 
 import pytest
-from fastapi.testclient import TestClient
 from spine_api.persistence import TripStore, TEST_AGENCY_ID
-from datetime import datetime, timezone
 
 
 @pytest.fixture
@@ -31,8 +29,6 @@ def test_trip_id():
     trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     # Cleanup
-    import os
-    from pathlib import Path
     from spine_api.persistence import TRIPS_DIR
     trip_file = TRIPS_DIR / f"{trip_id}.json"
     if trip_file.exists():
@@ -52,8 +48,6 @@ def test_trip_empty():
     trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     # Cleanup
-    import os
-    from pathlib import Path
     from spine_api.persistence import TRIPS_DIR
     trip_file = TRIPS_DIR / f"{trip_id}.json"
     if trip_file.exists():
@@ -182,7 +176,6 @@ def test_get_activities_provenance_whitespace_handling(session_client):
     
     finally:
         # Cleanup
-        from pathlib import Path
         from spine_api.persistence import TRIPS_DIR
         trip_file = TRIPS_DIR / f"{trip_id}.json"
         if trip_file.exists():
@@ -214,7 +207,6 @@ def test_get_activities_provenance_single_activity(session_client):
     
     finally:
         # Cleanup
-        from pathlib import Path
         from spine_api.persistence import TRIPS_DIR
         trip_file = TRIPS_DIR / f"{trip_id}.json"
         if trip_file.exists():

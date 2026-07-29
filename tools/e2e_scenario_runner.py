@@ -18,7 +18,7 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -213,7 +213,7 @@ EXISTING_SCENARIOS: list[Scenario] = [
     Scenario(
         "S08",
         "Last-Minute Booker",
-        f"Need urgent trip in 4 days from Bangalore to Goa for 2 adults, budget 50K.",
+        "Need urgent trip in 4 days from Bangalore to Goa for 2 adults, budget 50K.",
     ),
     Scenario(
         "S09",

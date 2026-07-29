@@ -8,16 +8,13 @@ Run:
     pytest tests/test_validation_split.py -v
 """
 
-import pytest
 from src.intake.validation import (
     validate_packet,
     INTAKE_MINIMUM,
     QUOTE_READY,
     DISCOVERY_MVB,
-    PacketValidationReport,
-    ValidationIssue,
 )
-from src.intake.gates import NB01CompletionGate, GateVerdict, GateResult
+from src.intake.gates import NB01CompletionGate, GateVerdict
 from src.intake.packet_models import CanonicalPacket, Slot, AuthorityLevel
 
 

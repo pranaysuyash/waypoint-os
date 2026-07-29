@@ -5,8 +5,7 @@ Tests rate limiting, budget checking, warn/block modes,
 threshold warnings, and usage recording.
 """
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from src.llm.usage_guard import (
     LLMUsageGuard,
@@ -799,7 +798,6 @@ class TestGuardConcurrency:
 
     def test_blocked_call_not_finalized(self):
         """Blocked calls do not get finalized."""
-        import threading
         store = InMemoryUsageStore()
         guard = LLMUsageGuard(
             max_calls_per_hour=1,

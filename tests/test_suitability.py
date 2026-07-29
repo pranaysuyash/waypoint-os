@@ -8,9 +8,7 @@ confidence calculation, and catalog functionality.
 import pytest
 from src.suitability.models import (
     ActivityDefinition,
-    ActivitySuitability,
     ParticipantRef,
-    StructuredRisk,
     SuitabilityContext,
 )
 from src.suitability.scoring import evaluate_activity

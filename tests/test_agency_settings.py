@@ -1,8 +1,7 @@
 import os
 import sqlite3
 import json
-import pytest
-from src.intake.config.agency_settings import AgencySettings, AgencySettingsStore
+from src.intake.config.agency_settings import AgencySettingsStore
 import src.intake.config.agency_settings as mod_agency_settings
 
 def test_defaults():

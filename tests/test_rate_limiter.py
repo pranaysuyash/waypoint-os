@@ -13,10 +13,8 @@ This tests BEHAVIOR, not implementation internals that slowapi doesn't expose.
 """
 
 import os
-import importlib
 
 import pytest
-from fastapi.testclient import TestClient
 from slowapi.errors import RateLimitExceeded
 from limits import parse as parse_limit
 from slowapi.wrappers import Limit
@@ -127,7 +125,6 @@ class TestRateLimitExceededHandler:
 
         from fastapi import FastAPI
         from starlette.requests import Request
-        from starlette.responses import Response
         from starlette.testclient import TestClient as StarletteTestClient
 
         test_app = FastAPI()
@@ -161,7 +158,7 @@ class TestRateLimitExceededHandler:
             cost=1,
             override_defaults=True,
         )
-        exc = RateLimitExceeded(limit=limit)
+        RateLimitExceeded(limit=limit)
 
         from fastapi import FastAPI
         from starlette.testclient import TestClient as StarletteTestClient
@@ -216,8 +213,8 @@ class TestRateLimitRegistry:
         )
         assert key in limiter._route_limits, f"No static limits for {key}"
         limits = limiter._route_limits[key]
-        assert any("5" in str(l.limit) for l in limits), (
-            f"Expected 5/minute limit for signup, got: {[str(l.limit) for l in limits]}"
+        assert any("5" in str(lim.limit) for lim in limits), (
+            f"Expected 5/minute limit for signup, got: {[str(lim.limit) for lim in limits]}"
         )
 
     def test_login_registered_with_rate_limit(self):
@@ -240,14 +237,14 @@ class TestRateLimitRegistry:
         limiter = self._limiter()
         key = f"{self._KEY}.post_logout"
         assert key not in limiter._Limiter__marked_for_limiting, (
-            f"post_logout should NOT have a rate limit, but found in registry"
+            "post_logout should NOT have a rate limit, but found in registry"
         )
 
     def test_me_not_rate_limited(self):
         limiter = self._limiter()
         key = f"{self._KEY}.get_me"
         assert key not in limiter._Limiter__marked_for_limiting, (
-            f"get_me should NOT have a rate limit, but found in registry"
+            "get_me should NOT have a rate limit, but found in registry"
         )
 
 

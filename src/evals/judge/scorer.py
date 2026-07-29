@@ -11,7 +11,7 @@ import json as _json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from src.llm.base import BaseLLMClient, LLMError
 
@@ -261,38 +261,38 @@ def _build_dimension_prompt(
     """Build an LLM prompt for scoring a single rubric dimension."""
     output_json = _json.dumps(agent_output, indent=2, default=str)
     lines = [
-        f"You are a quality evaluator for a travel agency AI agent system.",
-        f"",
+        "You are a quality evaluator for a travel agency AI agent system.",
+        "",
         f"Agent: {agent_name}",
     ]
     if agent_description:
         lines.append(f"Agent purpose: {agent_description}")
     lines.extend([
-        f"",
+        "",
         f"Scoring dimension: {dimension.name}",
         f"Description: {dimension.description}",
         f"Scoring guidance: {dimension.scoring_guidance}",
         f"Weight: {dimension.weight}",
-        f"",
-        f"Agent output to evaluate:",
-        f"```json",
+        "",
+        "Agent output to evaluate:",
+        "```json",
         output_json,
-        f"```",
+        "```",
     ])
     if expected:
         expected_json = _json.dumps(expected, indent=2, default=str)
         lines.extend([
-            f"",
-            f"Expected/reference output:",
-            f"```json",
+            "",
+            "Expected/reference output:",
+            "```json",
             expected_json,
-            f"```",
+            "```",
         ])
     lines.extend([
-        f"",
-        f"Score this dimension from 0 to 10 based on the scoring guidance.",
-        f"Provide a brief reasoning for the score.",
-        f"Respond with a JSON object containing 'score' (number) and 'reasoning' (string).",
+        "",
+        "Score this dimension from 0 to 10 based on the scoring guidance.",
+        "Provide a brief reasoning for the score.",
+        "Respond with a JSON object containing 'score' (number) and 'reasoning' (string).",
     ])
     return "\n".join(lines)
 

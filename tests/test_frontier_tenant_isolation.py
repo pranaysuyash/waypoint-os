@@ -23,7 +23,6 @@ import inspect
 import sys
 from pathlib import Path
 
-import pytest
 
 # Path setup — must happen before any spine_api import
 spine_api_dir = Path(__file__).parent.parent / "spine_api"

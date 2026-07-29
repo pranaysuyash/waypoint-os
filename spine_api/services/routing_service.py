@@ -25,7 +25,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spine_api.models.routing import TripRoutingState, ROUTING_STATUSES
+from spine_api.models.routing import TripRoutingState
 
 
 class RoutingError(ValueError):

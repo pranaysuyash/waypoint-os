@@ -97,6 +97,46 @@ describe('PacketTab', () => {
     expect(screen.getByText(/Prompt: Which city will the travelers depart from\?/)).toBeInTheDocument();
   });
 
+  it('offers a direct trip-details repair path when a trip exists', () => {
+    mockStore.mockReturnValue({
+      result_packet: {
+        facts: {},
+        derived_signals: {},
+        unknowns: [
+          { field_name: 'origin_city', reason: 'missing', notes: null },
+        ],
+        ambiguities: [],
+        contradictions: [],
+      },
+      result_validation: null,
+      debug_raw_json: false,
+      setDebugRawJson: vi.fn(),
+    });
+
+    render(
+      <PacketTab
+        trip={{
+          id: 'trip-workbench-cta',
+          destination: 'Bali',
+          type: 'family leisure',
+          state: 'green',
+          age: '1h',
+          createdAt: '2026-05-27T00:00:00Z',
+          updatedAt: '2026-05-27T00:00:00Z',
+          origin: '',
+          budget: '₹4L',
+          dateWindow: 'Jul 2026',
+          party: 4,
+        } as Trip}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: /open trip details/i })).toHaveAttribute(
+      'href',
+      '/trips/trip-workbench-cta/intake',
+    );
+  });
+
   it('shows group logistics when rooming and procurement details are captured', () => {
     mockStore.mockReturnValue({
       result_packet: {

@@ -12,11 +12,8 @@ Validates that:
 5. Operators can trace decisions from Intake to Approval
 """
 
-import json
 import pytest
 from datetime import datetime
-from typing import Dict, List, Any
-from fastapi.testclient import TestClient
 from pathlib import Path
 import sys
 
@@ -24,7 +21,6 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine_api"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from server import app
 from spine_api.persistence import AuditStore
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
@@ -194,7 +190,7 @@ class TestTimelineLifecycleFull:
                 timestamps == sorted_timestamps
             ), f"Events not in chronological order: {timestamps}"
 
-        print(f"✓ Test passed: Timeline events are in chronological order")
+        print("✓ Test passed: Timeline events are in chronological order")
 
     def test_timeline_schema_validates_frontend_parsing(self, session_client):
         """
@@ -267,7 +263,7 @@ class TestTimelineLifecycleFull:
             assert "trip_id" in data
             assert "events" in data
 
-        print(f"✓ Test passed: Endpoint returns valid JSON for all cases")
+        print("✓ Test passed: Endpoint returns valid JSON for all cases")
 
     def test_timeline_stage_filter_parameter(self, session_client):
         """Verify that stage filter parameter works correctly."""
@@ -307,7 +303,7 @@ class TestTimelineLifecycleFull:
                 all_events
             ), "Filtered events should be subset of all events"
 
-        print(f"✓ Test passed: Stage filter works correctly")
+        print("✓ Test passed: Stage filter works correctly")
 
     def test_timeline_response_structure_matches_pydantic_model(self, session_client):
         """
@@ -392,7 +388,7 @@ class TestTimelineLifecycleFull:
             if "post_state" in event:
                 assert isinstance(event["post_state"], (dict, type(None)))
 
-        print(f"✓ Test passed: Response structure matches Pydantic model")
+        print("✓ Test passed: Response structure matches Pydantic model")
 
     def test_timeline_empty_trip_handling(self, session_client):
         """Verify timeline endpoint handles trips with no events gracefully."""
@@ -405,7 +401,7 @@ class TestTimelineLifecycleFull:
         assert data["trip_id"] == nonexistent_trip_id
         assert data["events"] == [], "Should return empty events list, not null"
 
-        print(f"✓ Test passed: Empty trip returns correct structure")
+        print("✓ Test passed: Empty trip returns correct structure")
 
 
 class TestTimelineEventContent:
@@ -466,7 +462,7 @@ class TestTimelineEventContent:
             except ValueError:
                 pytest.fail(f"Invalid timestamp: {event['timestamp']}")
 
-        print(f"✓ Test passed: Events have meaningful content")
+        print("✓ Test passed: Events have meaningful content")
 
 
 if __name__ == "__main__":

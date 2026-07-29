@@ -7,11 +7,10 @@ Does NOT speculate. Only transforms known patterns.
 from __future__ import annotations
 
 import re
-from dataclasses import asdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from .packet_models import Ambiguity, EvidenceRef
+from .packet_models import Ambiguity
 
 
 # =============================================================================

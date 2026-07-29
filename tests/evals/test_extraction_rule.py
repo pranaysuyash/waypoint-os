@@ -3,17 +3,11 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
-import pytest
 
 from src.evals.audit.rules.extraction import (
-    AggregateMetrics,
-    ExtractionEvalReport,
     ExtractionFixture,
-    FieldComparison,
-    FieldMetrics,
     compare_fixture,
     load_golden_dataset,
     run_extraction_eval,
@@ -224,7 +218,7 @@ class TestAggregateComparisons:
             "passport_expiry": "01/01/2030",
             "nationality": "AMERICAN",
         }
-        comp = compare_fixture(fixture, actual)
+        compare_fixture(fixture, actual)
         agg = run_extraction_eval([fixture], saved_results={"test_001": actual})
         assert agg.overall.overall_precision == 1.0
         assert agg.overall.overall_recall == 1.0

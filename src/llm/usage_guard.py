@@ -44,11 +44,11 @@ import os
 import threading
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Callable, Optional
 
 from .usage_store import LLMUsageStore, GuardStorageError, InMemoryUsageStore, RedisUsageStore
-from .alert_service import AlertDeliveryService, AlertEventType, alert_service_from_env
+from .alert_service import AlertDeliveryService
 
 logger = logging.getLogger(__name__)
 

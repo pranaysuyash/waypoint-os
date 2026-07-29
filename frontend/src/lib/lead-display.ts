@@ -79,13 +79,13 @@ export function formatBudgetDisplay(value?: string | null): string {
   if (/^\D*0(\.0+)?\D*$/.test(trimmed)) return 'Budget missing';
 
   const rangeMatch = trimmed.match(
-    /^(?:budget\s*[:\-]?\s*)?(?:(?<currency>USD|INR|EUR|GBP|AED|NGN|ZAR|SGD|THB|AUD|CAD|JPY|KES|GHS|R|\$|₹|€|£|₦)\s*)?(?<low>\d[\d,]*(?:\.\d+)?)\s*(?<lowUnit>L|K|M|MN|MILLION|MILLIONS|LAC|LAKH|LAKHS|CRORE|CRORES|CR|BN|B|BILLION|BILLIONS|THOUSAND)?\s*(?:-|–|—|\bto\b)\s*(?<high>\d[\d,]*(?:\.\d+)?)(?<highUnit>L|K|M|MN|MILLION|MILLIONS|LAC|LAKH|LAKHS|CRORE|CRORES|CR|BN|B|BILLION|BILLIONS|THOUSAND)?$/i
+    /^(?:budget\s*[:\-]?\s*)?(?:([A-Z$₹€£₦R]+)\s*)?(\d[\d,]*(?:\.\d+)?)\s*([A-Z]+)?\s*(?:-|–|—|\bto\b)\s*(\d[\d,]*(?:\.\d+)?)([A-Z]+)?$/i
   );
-  if (rangeMatch?.groups) {
-    const unit = (rangeMatch.groups.lowUnit ?? rangeMatch.groups.highUnit ?? '').toLowerCase();
-    const currencyToken = rangeMatch.groups.currency;
-    const low = Number(rangeMatch.groups.low.replace(/,/g, ''));
-    const high = Number(rangeMatch.groups.high.replace(/,/g, ''));
+  if (rangeMatch) {
+    const [, currencyToken, lowStr, lowUnitStr, highStr, highUnitStr] = rangeMatch;
+    const unit = (lowUnitStr ?? highUnitStr ?? '').toLowerCase();
+    const low = Number(lowStr.replace(/,/g, ''));
+    const high = Number(highStr.replace(/,/g, ''));
     if (!Number.isNaN(low) && !Number.isNaN(high)) {
       const currency = (() => {
         const token = (currencyToken ?? '').trim().toUpperCase();

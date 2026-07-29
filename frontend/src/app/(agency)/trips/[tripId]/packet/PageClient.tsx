@@ -7,7 +7,7 @@ export default function PacketPage() {
   const { tripId, trip } = useTripContext();
   
   return (
-    <div className='p-6'>
+    <div className='p-4 sm:p-6'>
       <PacketPanel tripId={tripId || ''} trip={trip} />
     </div>
   );

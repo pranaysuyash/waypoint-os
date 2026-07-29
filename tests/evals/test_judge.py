@@ -1,13 +1,10 @@
 """Tests for the LLM-as-judge module."""
 
-from unittest.mock import MagicMock
 
 from src.evals.judge import (
     AgentRubric,
     RubricDimension,
     build_default_rubrics,
-    DimensionScore,
-    JudgeScore,
     judge_agent_output,
     build_judge_report,
 )

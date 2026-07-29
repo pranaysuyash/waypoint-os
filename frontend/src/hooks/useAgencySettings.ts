@@ -120,7 +120,7 @@ function asAgencySettings(value: unknown): AgencySettings | null {
     return null;
   }
 
-  return value as AgencySettingsType;
+  return value as unknown as AgencySettingsType;
 }
 
 function asAgencyAutonomy(value: unknown): AgencyAutonomyType | null {
@@ -142,7 +142,7 @@ function asAgencyAutonomy(value: unknown): AgencyAutonomyType | null {
   }
 
   return {
-    approval_gates: value.approval_gates as Record<string, string>,
+    approval_gates: value.approval_gates as unknown as Record<string, "review" | "auto" | "block">,
     mode_overrides: value.mode_overrides as Record<string, Record<string, string>>,
     auto_proceed_with_warnings: value.auto_proceed_with_warnings,
     learn_from_overrides: value.learn_from_overrides,
@@ -242,7 +242,7 @@ function asAgencySeasonal(value: unknown): AgencySeasonalType | null {
     return null;
   }
 
-  return value as AgencySeasonalType;
+  return value as unknown as AgencySeasonalType;
 }
 
 function upsertAgencySettings(

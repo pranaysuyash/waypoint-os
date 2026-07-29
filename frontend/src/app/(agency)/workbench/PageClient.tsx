@@ -343,9 +343,9 @@ function WorkbenchContent() {
       if (!visibleTabs.some((t) => t.id === tab)) return;
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tab);
-      replace(`?${params.toString()}`, { scroll: false });
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [searchParams, replace, visibleTabs],
+    [pathname, searchParams, replace, visibleTabs],
   );
 
   // Auto-switch away from packet tab if trip/results disappear
@@ -1258,6 +1258,11 @@ function WorkbenchContent() {
             tabs={visibleTabs}
             activeTab={effectiveTab}
             onTabChange={handleTabChange}
+            getTabHref={(tab) => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set('tab', tab);
+              return `${pathname}?${params.toString()}`;
+            }}
             ariaLabel='Trip workspace sections'
           />
         </div>

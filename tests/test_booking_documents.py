@@ -11,7 +11,6 @@ import hashlib
 import os
 import pytest
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch
 
@@ -265,7 +264,6 @@ class TestDocumentService:
 
     @pytest.mark.asyncio
     async def test_upload_creates_document(self, tmp_path):
-        from spine_api.services.document_storage import LocalDocumentStorage
         from spine_api.services.document_service import upload_document
 
         # Create mock db

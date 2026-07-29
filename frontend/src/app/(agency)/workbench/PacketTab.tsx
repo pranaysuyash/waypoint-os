@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
 import { validationLabelFor } from "@/types/spine";
@@ -385,6 +386,14 @@ export default function PacketTab({ trip }: PacketTabProps) {
                 <p className="text-ui-xs text-[#8b949e]">
                   Open the details above to see which traveler prompts are still needed.
                 </p>
+                {trip?.id ? (
+                  <Link
+                    href={`/trips/${trip.id}/intake`}
+                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-xs font-medium text-text-primary transition-colors hover:bg-elevated"
+                  >
+                    Open trip details
+                  </Link>
+                ) : null}
               </div>
             )}
           </div>

@@ -6,7 +6,6 @@ TimelineEvent format that the frontend can consume.
 """
 
 import pytest
-from datetime import datetime, timezone
 from pathlib import Path
 import sys
 
@@ -14,7 +13,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine_api"))
 
-from analytics.logger import TimelineEventMapper, TimelineEvent
+from analytics.logger import TimelineEventMapper
 
 
 class TestTimelineEventMapperBasics:

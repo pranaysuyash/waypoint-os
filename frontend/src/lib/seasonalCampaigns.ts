@@ -67,7 +67,7 @@ export function campaignFormFromPlan(plan: SeasonalCampaign): CampaignFormState 
     target_budget_min: plan.target_budget_min == null ? '' : String(plan.target_budget_min),
     target_budget_max: plan.target_budget_max == null ? '' : String(plan.target_budget_max),
     notes: plan.notes ?? '',
-    blocklist: plan.blocklist.join('\n'),
+    blocklist: (plan.blocklist ?? []).join('\n'),
     channel_mix: defaultChannelMix(plan.channel_mix),
   };
 }
@@ -172,22 +172,22 @@ export function toUpdateCampaignPayload(
 
   const startMonthValue = parseNumericValueForFormUpdate(form.campaign_window_start_month);
   if (!isSameMonthField(form.campaign_window_start_month, original.campaign_window_start_month)) {
-    payload.campaign_window_start_month = startMonthValue;
+    (payload as Record<string, unknown>).campaign_window_start_month = startMonthValue;
   }
 
   const endMonthValue = parseNumericValueForFormUpdate(form.campaign_window_end_month);
   if (!isSameMonthField(form.campaign_window_end_month, original.campaign_window_end_month)) {
-    payload.campaign_window_end_month = endMonthValue;
+    (payload as Record<string, unknown>).campaign_window_end_month = endMonthValue;
   }
 
   const minBudgetValue = parseNumericValueForFormUpdate(form.target_budget_min);
-  if (parseFormString(form.target_budget_min) !== parseFormString(original.target_budget_min)) {
-    payload.target_budget_min = minBudgetValue;
+  if (parseFormString(form.target_budget_min) !== String(original.target_budget_min ?? '')) {
+    (payload as Record<string, unknown>).target_budget_min = minBudgetValue;
   }
 
   const maxBudgetValue = parseNumericValueForFormUpdate(form.target_budget_max);
-  if (parseFormString(form.target_budget_max) !== parseFormString(original.target_budget_max)) {
-    payload.target_budget_max = maxBudgetValue;
+  if (parseFormString(form.target_budget_max) !== String(original.target_budget_max ?? '')) {
+    (payload as Record<string, unknown>).target_budget_max = maxBudgetValue;
   }
 
   const notesValue = parseFormString(form.notes);

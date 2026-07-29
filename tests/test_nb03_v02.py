@@ -34,7 +34,6 @@ from intake.decision import (
 from intake.strategy import (
     SessionStrategy,
     PromptBundle,
-    QuestionWithIntent,
     build_session_strategy,
     build_traveler_safe_bundle,
     build_internal_bundle,
@@ -43,14 +42,11 @@ from intake.strategy import (
     get_tonal_guardrails,
     sort_questions_by_priority,
     get_mode_specific_goal,
-    get_mode_specific_opening,
     get_branch_conversational_approach,
 )
 from intake.safety import (
-    SanitizedPacketView,
     sanitize_for_traveler,
     check_no_leakage,
-    validate_traveler_safe_output,
     has_blocking_ambiguities,
     is_field_traveler_safe,
     is_field_internal_only,
@@ -131,7 +127,7 @@ class TestAskFollowupConstraintFirst:
         )
 
         decision = run_gap_and_decision(pkt)
-        strategy = build_session_strategy(decision, pkt)
+        build_session_strategy(decision, pkt)
 
         # Should have destination and dates questions
         assert decision.decision_state == "ASK_FOLLOWUP"
@@ -994,7 +990,6 @@ class TestSeparatedBuilderPaths:
 
     def test_internal_builder_has_packet_access(self):
         """Prove internal builder function receives and uses raw packet."""
-        from intake.strategy import build_internal_bundle
 
         pkt = make_minimal_packet()
         pkt.hypotheses["test"] = Slot(
@@ -1054,18 +1049,17 @@ class TestLeakageEnforcement:
         with patch('intake.strategy.enforce_no_leakage') as mock_check:
             mock_check.return_value = []  # No leaks for this test
 
-            bundle = build_traveler_safe_bundle(strategy, decision)
+            build_traveler_safe_bundle(strategy, decision)
 
             # Verify leakage enforcement was called
             assert mock_check.called, "enforce_no_leakage must be called in production path"
 
     def test_leakage_detected_prevents_traveler_output(self):
         """Prove that detected leakage blocks or flags the output."""
-        from intake.strategy import build_traveler_safe_bundle
 
         pkt = make_minimal_packet()
         decision = run_gap_and_decision(pkt)
-        strategy = build_session_strategy(decision, pkt)
+        build_session_strategy(decision, pkt)
 
         # Manually create a bundle with leakage to test the check
         from intake.strategy import PromptBundle
@@ -1126,7 +1120,6 @@ class StrengthenedBranchRootCauseTests:
 
     def test_branch_root_cause_produces_different_framing(self):
         """Prove different root causes produce different conversational approaches."""
-        from intake.strategy import get_branch_conversational_approach
 
         # Budget branch
         budget_branch = [{

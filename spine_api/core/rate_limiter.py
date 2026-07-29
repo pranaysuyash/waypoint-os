@@ -11,9 +11,9 @@ import os
 import logging
 
 from slowapi import Limiter
+from slowapi.middleware import SlowAPIMiddleware  # noqa: F401 — re-exported for server.py
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 

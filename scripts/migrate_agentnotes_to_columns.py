@@ -14,7 +14,6 @@ Tagged note format expected in agentNotes:
 """
 
 import json
-import os
 import re
 import sys
 from pathlib import Path

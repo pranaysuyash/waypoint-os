@@ -35,18 +35,14 @@ from intake.decision import (
 )
 from intake.strategy import (
     build_session_strategy,
-    SessionStrategy,
     PromptBundle,
 )
 from intake.plan_candidate import (
     build_plan_candidate,
     PlanCandidate,
-    TravelerSnapshot,
     TRAVELER_SAFE_FACT_FIELDS,
     _TRAVELER_STATUS_MAP,
     _TRAVELER_SUMMARY_MAP,
-    _INTERNAL_ONLY_RISK_TERMS,
-    _INTERNAL_ONLY_RISK_CATEGORIES,
 )
 from intake.constants import DECISION_STATES
 

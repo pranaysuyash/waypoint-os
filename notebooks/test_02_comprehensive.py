@@ -16,10 +16,7 @@ Run: uv run python notebooks/test_02_comprehensive.py
 import json
 import sys
 import os
-from dataclasses import dataclass, asdict, field
-from datetime import datetime
-from typing import List, Dict, Any, Optional, Literal, Tuple
-from enum import IntEnum
+from dataclasses import asdict
 
 # =============================================================================
 # IMPORT THE NOTEBOOK CODE
@@ -56,16 +53,13 @@ ns = load_notebook_namespace()
 from intake.packet_models import CanonicalPacket as CanonicalPacketModel, Slot, EvidenceRef, UnknownField, AuthorityLevel
 from intake.decision import (
     run_gap_and_decision as run_gap_and_decision_src,
-    MVB_BY_STAGE,
     LEGACY_ALIASES,
     CONTRADICTION_ACTIONS,
-    CONTRADICTION_FIELD_MAP,
     calculate_confidence as calculate_confidence_src,
     classify_contradiction,
     get_contradiction_action,
     resolve_field,
     field_fills_blocker,
-    DecisionResult,
 )
 
 # Compatibility wrapper for legacy test constructors.
@@ -334,7 +328,7 @@ def t_soft_blocker_satisfied_by_hypothesis():
     r = run_gap_and_decision(pkt)
     assert len(r.hard_blockers) == 0
     # v0.2: hypotheses do NOT fill soft blockers, only facts/derived_signals do
-    assert len(r.soft_blockers) > 0, f"Soft blockers should remain (hypotheses don't fill them)"
+    assert len(r.soft_blockers) > 0, "Soft blockers should remain (hypotheses don't fill them)"
     # Should be PROCEED_INTERNAL_DRAFT due to soft blockers
     assert r.decision_state == "PROCEED_INTERNAL_DRAFT"
 
@@ -904,7 +898,7 @@ def t_stop_needs_review_structure():
     r = run_gap_and_decision(pkt)
     assert r.decision_state == "STOP_NEEDS_REVIEW", f"Expected STOP_NEEDS_REVIEW, got {r.decision_state}"
     assert len(r.follow_up_questions) > 0, f"Expected follow-up questions, got {len(r.follow_up_questions)}"
-    assert r.rationale is not None, f"Expected rationale to exist"
+    assert r.rationale is not None, "Expected rationale to exist"
 
 test("STOP_NEEDS_REVIEW → output structure correct", t_stop_needs_review_structure)
 
@@ -1108,7 +1102,7 @@ def t_alias_departure_city():
     pkt = CanonicalPacket(packet_id="alias1", created_at="now", last_updated="now",
         facts={"departure_city": Slot(value="Bangalore", confidence=0.9, authority_level="explicit_owner")})
     # v0.2: departure_city is not a known alias, so resolve_field returns None
-    slot = resolve_field(pkt, "origin_city")
+    _unused = resolve_field(pkt, "origin_city")  # verify call doesn't crash
     # departure_city is not in LEGACY_ALIASES, so it won't resolve to origin_city
     # To make this test pass in v0.2, we use the direct field name
     pkt2 = CanonicalPacket(packet_id="alias1b", created_at="now", last_updated="now",
@@ -1173,9 +1167,9 @@ def t_alias_in_derived_signals():
     pkt = CanonicalPacket(packet_id="alias5", created_at="now", last_updated="now",
         facts={"traveler_count": Slot(value=3, confidence=0.7, authority_level="explicit_owner")})
     slot = resolve_field(pkt, "party_size")
-    assert slot is not None, f"Expected slot to be found via alias traveler_count -> party_size"
+    assert slot is not None, "Expected slot to be found via alias traveler_count -> party_size"
     assert slot.value == 3, f"Expected slot value 3, got {slot.value}"
-    assert field_fills_blocker(slot, [], "party_size"), f"Expected fact to fill blocker"
+    assert field_fills_blocker(slot, [], "party_size"), "Expected fact to fill blocker"
 
 test("Alias works in derived_signals layer", t_alias_in_derived_signals)
 
@@ -1189,9 +1183,9 @@ def t_alias_in_hypotheses():
     pkt = CanonicalPacket(packet_id="alias6", created_at="now", last_updated="now",
         facts={"destination_city": Slot(value="Singapore", confidence=0.5, authority_level="explicit_user")})
     slot = resolve_field(pkt, "destination_candidates")
-    assert slot is not None, f"Expected slot to be found via alias destination_city -> destination_candidates"
+    assert slot is not None, "Expected slot to be found via alias destination_city -> destination_candidates"
     assert slot.value == "Singapore", f"Expected slot value Singapore, got {slot.value}"
-    assert field_fills_blocker(slot, [], "destination_candidates"), f"Expected fact to fill blocker"
+    assert field_fills_blocker(slot, [], "destination_candidates"), "Expected fact to fill blocker"
 
 test("Alias works in hypotheses layer (but doesn't fill blocker)", t_alias_in_hypotheses)
 
@@ -1559,12 +1553,12 @@ print(f"  Total:   {_passed + _failed + _errors}")
 print(f"  Rate:    {_passed}/{_passed + _failed + _errors} = {_passed/(_passed+_failed+_errors)*100:.0f}%")
 
 if _failed > 0:
-    print(f"\n  FAILURES:")
+    print("\n  FAILURES:")
     for status, name, msg in _results:
         if status == "FAIL":
             print(f"    ✗ {name}: {msg}")
 if _errors > 0:
-    print(f"\n  ERRORS:")
+    print("\n  ERRORS:")
     for status, name, msg in _results:
         if status == "ERR":
             print(f"    ✗ {name}: {msg}")

@@ -20,6 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spine_api.core.database import Base
+from spine_api.models.tenant import Agency
 
 
 class GhostWorkflow(Base):

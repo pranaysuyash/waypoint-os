@@ -1,5 +1,5 @@
 # =============================================================================
-# Dockerfile — spine-api
+# Dockerfile — spine_api (Python module) / spine-api (service name)
 # =============================================================================
 # Multi-stage build for the FastAPI spine service.
 #
@@ -54,7 +54,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy source code
 COPY src/ ./src/
-COPY spine-api/ ./spine-api/
+COPY spine_api/ ./spine_api/
 COPY data/ ./data/
 COPY pyproject.toml uv.lock ./
 
@@ -76,4 +76,4 @@ ENV PYTHONUNBUFFERED=1 \
     SPINE_API_RELOAD=0 \
     TRAVELER_SAFE_STRICT=0
 
-ENTRYPOINT ["uvicorn", "spine-api.server:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+ENTRYPOINT ["uvicorn", "spine_api.server:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

@@ -4,15 +4,12 @@ tests.test_llm_clients — Unit tests for LLM client implementations.
 Tests for Gemini, OpenAI, and Local LLM clients.
 """
 
-import json
 import os
 import pytest
 
 from src.llm.base import (
     BaseLLMClient,
-    LLMError,
     LLMUnavailableError,
-    LLMResponseError,
 )
 from src.llm.gemini_client import GeminiClient, create_gemini_client
 from src.llm.openai_client import OpenAIClient, create_openai_client

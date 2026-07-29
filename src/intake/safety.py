@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Set
+from contextvars import ContextVar
+from typing import Any, Dict, List, Optional
 
 from .packet_models import (
     CanonicalPacket,
@@ -222,22 +222,26 @@ def _sanitize_slot(slot: Slot, new_value: Any = None) -> Slot:
 # SECTION 3: LEAKAGE DETECTION
 # =============================================================================
 
+class StrictLeakageViolation(ValueError):
+    """Raised when strict traveler-safe leakage enforcement blocks output."""
+
+
 # Strict leakage enforcement: when True, build_traveler_safe_bundle raises on leakage.
-# Set via environment variable TRAVELER_SAFE_STRICT=1 or by calling set_strict_mode(True).
-_STRICT_MODE: Optional[bool] = None
+# The default can come from TRAVELER_SAFE_STRICT, but request-scoped code should
+# pass an explicit override instead of mutating shared process state.
+_STRICT_MODE: ContextVar[Optional[bool]] = ContextVar("traveler_safe_strict_mode", default=None)
 
 
 def set_strict_mode(enabled: bool) -> None:
-    """Enable or disable strict leakage enforcement (raises on leakage)."""
-    global _STRICT_MODE
-    _STRICT_MODE = enabled
+    """Enable or disable strict leakage enforcement for the current execution context."""
+    _STRICT_MODE.set(enabled)
 
 
 def _is_strict_mode() -> bool:
     """Check if strict leakage enforcement is active."""
-    global _STRICT_MODE
-    if _STRICT_MODE is not None:
-        return _STRICT_MODE
+    current = _STRICT_MODE.get()
+    if current is not None:
+        return current
     return os.environ.get("TRAVELER_SAFE_STRICT", "").strip() in ("1", "true", "yes")
 
 
@@ -311,13 +315,13 @@ def enforce_no_leakage(bundle_or_dict: Any, strict: Optional[bool] = None) -> Li
         List of leakage messages (empty if no leakage detected)
 
     Raises:
-        ValueError: If strict mode is active and leakage is detected
+        StrictLeakageViolation: If strict mode is active and leakage is detected
     """
     leaks = check_no_leakage(bundle_or_dict)
 
     use_strict = strict if strict is not None else _is_strict_mode()
     if use_strict and leaks:
-        raise ValueError(
+        raise StrictLeakageViolation(
             f"Traveler-safe leakage detected (strict mode): {'; '.join(leaks)}"
         )
 

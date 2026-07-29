@@ -33,7 +33,7 @@ def main() -> None:
     exempted = set(RLS_EXCLUDED_AGENCY_TABLES.keys())
 
     unprotected = all_tables - protected - exempted
-    extra_protected = protected - all_tables - {"trip_routing_states"}
+    _unused_extra_protected = protected - all_tables - {"trip_routing_states"}
     extra_exempted = exempted - all_tables
 
     errors = []

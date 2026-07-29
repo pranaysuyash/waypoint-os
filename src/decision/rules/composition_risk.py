@@ -6,7 +6,7 @@ Assesses risks related to diverse party composition (age groups, sizes).
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 
 from src.intake.packet_models import CanonicalPacket
 
@@ -117,7 +117,7 @@ def rule_composition_risk(packet: CanonicalPacket) -> Optional[Dict[str, Any]]:
 
     # Elderly-specific concerns
     if elderly > 1:
-        concerns.append(f"Multiple elderly travelers may need medical access coordination")
+        concerns.append("Multiple elderly travelers may need medical access coordination")
         recommendations.append("Verify medical facilities at destination")
 
     # Teen-specific considerations

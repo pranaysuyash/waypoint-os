@@ -1,8 +1,6 @@
 """Tests for llm.alert_service — P4-05 Alert Delivery."""
 
-import json
 import smtplib
-import pytest
 from unittest.mock import patch, MagicMock
 from src.llm.alert_service import (
     AlertDeliveryService,
@@ -12,7 +10,7 @@ from src.llm.alert_service import (
     EmailChannel,
     alert_service_from_env,
 )
-from src.llm.usage_guard import LLMUsageGuard, LLMUsageDecision
+from src.llm.usage_guard import LLMUsageGuard
 
 
 class TestAlertPayload:
@@ -109,7 +107,7 @@ class TestEmailChannel:
     def test_tls_login_when_credentials(self):
         with patch("smtplib.SMTP") as mock_smtp:
             server = MagicMock()
-            ctx = MagicMock()
+            MagicMock()
             mock_smtp.return_value.__enter__ = MagicMock(return_value=server)
             mock_smtp.return_value.__exit__ = MagicMock(return_value=False)
 

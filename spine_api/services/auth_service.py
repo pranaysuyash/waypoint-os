@@ -13,7 +13,6 @@ import hashlib
 import logging
 import os
 import secrets
-import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -45,7 +44,7 @@ async def _ensure_user_membership(db: AsyncSession, user: User) -> Membership:
     result = await db.execute(
         select(Membership)
         .where(Membership.user_id == user.id)
-        .where(Membership.is_primary == True)
+        .where(Membership.is_primary)
     )
     membership = result.scalar_one_or_none()
     if membership:

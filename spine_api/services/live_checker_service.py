@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable, Optional
 
 from src.evals.audit.public_authority import resolve_public_authority
 
@@ -154,3 +154,32 @@ def apply_live_checker_adjustments(
     packet_payload["public_checker_live_checks"] = live_checker
     packet_payload["score"] = adjusted_score
     return packet_payload, validation_payload, decision_payload
+
+
+def finalize_result_with_live_checker(
+    *,
+    result: Any,
+    raw_text: str,
+    build_live_checker_signals_fn: Callable[[dict[str, Any], str], Any],
+    to_dict: Callable[[Any], Any],
+    on_adjusted: Optional[Callable[[dict[str, Any], dict[str, Any], dict[str, Any]], None]] = None,
+) -> None:
+    """Apply live-check adjustments to a SpineResult in one canonical step."""
+    packet_payload = to_dict(result.packet) if hasattr(result, "packet") else {}
+    live_checker = build_live_checker_signals_fn(packet_payload or {}, raw_text)
+    if not live_checker:
+        return
+
+    validation_payload = to_dict(result.validation) if hasattr(result, "validation") else {}
+    decision_payload = to_dict(result.decision) if hasattr(result, "decision") else {}
+    packet_payload, validation_payload, decision_payload = apply_live_checker_adjustments(
+        packet_payload=packet_payload,
+        validation_payload=validation_payload,
+        decision_payload=decision_payload,
+        live_checker=live_checker,
+    )
+    result.validation = validation_payload
+    result.decision = decision_payload
+    result.packet = packet_payload
+    if on_adjusted is not None:
+        on_adjusted(packet_payload, validation_payload, decision_payload)

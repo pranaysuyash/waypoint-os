@@ -2,7 +2,7 @@
 
 import hashlib
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -13,9 +13,7 @@ from spine_api.models.tenant import (
     BookingTask,
     TASK_STATUSES,
     TASK_TYPES,
-    TASK_SOURCES,
     TASK_PRIORITIES,
-    BLOCKER_CODES,
     VALID_TRANSITIONS,
     TASK_TITLE_TEMPLATES,
 )
@@ -656,7 +654,6 @@ async def _reconcile_active_tasks(
                 task_id=task.id, old_status="blocked", new_status="ready"
             ))
         elif not current_blocked and should_be_blocked:
-            old_s = task.status
             task.status = "blocked"
             task.blocker_code = new_blocker
             task.blocker_refs = candidate.get("blocker_refs")

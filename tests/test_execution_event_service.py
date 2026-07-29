@@ -4,8 +4,6 @@ import pytest
 
 from spine_api.services.execution_event_service import (
     _validate_metadata,
-    emit_event,
-    get_timeline,
     TimelineEvent,
     TimelineResult,
 )

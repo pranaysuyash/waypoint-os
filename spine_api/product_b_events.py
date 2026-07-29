@@ -5,7 +5,7 @@ import math
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional
 from uuid import uuid4
 
 from spine_api.persistence import file_lock

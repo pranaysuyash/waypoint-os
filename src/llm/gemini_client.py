@@ -24,7 +24,7 @@ try:
 except ImportError:
     GENAI_AVAILABLE = False
 
-from .base import BaseLLMClient, LLMError, LLMUnavailableError, LLMResponseError
+from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError
 
 
 # Gemini pricing in INR (approximate)

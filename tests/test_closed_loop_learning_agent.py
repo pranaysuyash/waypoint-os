@@ -2,24 +2,19 @@
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
-from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.agents.closed_loop_learning import (
     FixCandidate,
-    ShadowTestResult,
     build_fix_candidate,
     run_shadow_test,
     ClosedLoopLearningAgent,
-    PROCEED_CONFIDENCE_THRESHOLD,
     MAX_REGRESSIONS_BEFORE_REJECT,
 )
-from src.agents.runtime import WorkItem, WorkStatus, AgentExecutionResult
+from src.agents.runtime import AgentSupervisor, WorkItem, WorkStatus
 from src.evals.agentic_feedback import AgenticEvalWorkItem
 
 

@@ -5,8 +5,6 @@ All tests require a running PostgreSQL instance (@pytest.mark.require_postgres).
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import text
@@ -469,8 +467,6 @@ class TestFactorySqlQueueMode:
         assert config.recovery_requeue_mode == "sql_queue"
 
     def test_sql_queue_port_created_by_factory(self, monkeypatch):
-        from src.agents.requeue import SQLSpineJobQueueRequeuePort
-        from src.agents.recovery_agent import RecoveryAgent
         from spine_api.services.agent_runtime_factory import AgentRuntimeConfig, build_agent_runtime_from_config
 
         config = AgentRuntimeConfig(recovery_requeue_mode="sql_queue")

@@ -11,8 +11,6 @@ Covers:
 - Empty non-fixture trip is allowed (no PII)
 """
 
-import os
-import json
 import pytest
 
 from spine_api.persistence import TEST_AGENCY_ID
@@ -26,7 +24,6 @@ from src.security.privacy_guard import (
     _has_phone,
     _has_medical_indicator,
     _has_freeform_user_input,
-    _data_privacy_mode,
 )
 
 
@@ -125,7 +122,7 @@ class TestRealUserDataBlocked:
             },
             "source": "spine_api",
         }
-        with pytest.raises(PrivacyGuardError) as exc:
+        with pytest.raises(PrivacyGuardError):
             check_trip_data(trip)
 
     def test_email_in_extracted_facts(self):
@@ -140,7 +137,7 @@ class TestRealUserDataBlocked:
             },
             "source": "spine_api",
         }
-        with pytest.raises(PrivacyGuardError) as exc:
+        with pytest.raises(PrivacyGuardError):
             check_trip_data(trip)
 
     def test_phone_in_raw_note(self):
@@ -148,7 +145,7 @@ class TestRealUserDataBlocked:
             "raw_note": "Call me at +91 98765 43210",
             "source": "spine_api",
         }
-        with pytest.raises(PrivacyGuardError) as exc:
+        with pytest.raises(PrivacyGuardError):
             check_trip_data(trip)
 
     def test_phone_in_freeform(self):
@@ -158,7 +155,7 @@ class TestRealUserDataBlocked:
             },
             "source": "spine_api",
         }
-        with pytest.raises(PrivacyGuardError) as exc:
+        with pytest.raises(PrivacyGuardError):
             check_trip_data(trip)
 
     def test_freeform_notes_field(self):
@@ -166,7 +163,7 @@ class TestRealUserDataBlocked:
             "notes": "This is a long freeform note from the user about their special needs and preferences for the trip",
             "source": "spine_api",
         }
-        with pytest.raises(PrivacyGuardError) as exc:
+        with pytest.raises(PrivacyGuardError):
             check_trip_data(trip)
 
     def test_medical_keyword_in_raw_note(self):
@@ -174,7 +171,7 @@ class TestRealUserDataBlocked:
             "raw_note": "My father is diabetic and needs wheelchair access",
             "source": "spine_api",
         }
-        with pytest.raises(PrivacyGuardError) as exc:
+        with pytest.raises(PrivacyGuardError):
             check_trip_data(trip)
 
     def test_medical_keyword_in_freeform_text(self):
@@ -184,7 +181,7 @@ class TestRealUserDataBlocked:
             },
             "source": "spine_api",
         }
-        with pytest.raises(PrivacyGuardError) as exc:
+        with pytest.raises(PrivacyGuardError):
             check_trip_data(trip)
 
     def test_long_freeform_user_note(self):
@@ -194,7 +191,7 @@ class TestRealUserDataBlocked:
             },
             "source": "spine_api",
         }
-        with pytest.raises(PrivacyGuardError) as exc:
+        with pytest.raises(PrivacyGuardError):
             check_trip_data(trip)
 
 

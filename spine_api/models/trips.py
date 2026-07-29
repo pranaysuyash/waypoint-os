@@ -2,14 +2,19 @@
 Trip data models for Waypoint OS.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import String, ForeignKey, DateTime, JSON, Index, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spine_api.core.database import Base
+
+if TYPE_CHECKING:
+    from spine_api.models.tenant import Agency, User
 
 
 class Trip(Base):

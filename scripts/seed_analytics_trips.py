@@ -1,5 +1,4 @@
 import sys
-import os
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
@@ -9,7 +8,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 from spine_api.persistence import TripStore, save_processed_trip
-from src.analytics.engine import process_trip_analytics
 
 
 def seed_trips(num_trips: int = 15):

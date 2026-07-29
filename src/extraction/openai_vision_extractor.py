@@ -1,7 +1,8 @@
 """OpenAI Vision-based document extractor. Wraps OpenAIVisionClient with extraction schemas."""
 
 import logging
-from typing import Optional
+
+from spine_api.services.extraction_service import ExtractionResult
 
 from src.extraction.schemas import get_schema, build_json_schema
 from src.extraction.vision_client import OpenAIVisionClient, VisionExtractionResult

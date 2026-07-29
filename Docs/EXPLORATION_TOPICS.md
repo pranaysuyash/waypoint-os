@@ -2,7 +2,7 @@
 
 **Purpose**: Living document tracking research areas for the Travel Agency AI Copilot  
 **Status**: Active - Continuously updated as project evolves  
-**Last Updated**: 2026-05-19
+**Last Updated**: 2026-06-25 (added topics 22-33)
 
 ---
 
@@ -29,26 +29,35 @@
 ## Topic Categories
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    EXPLORATION TOPICS MASTER MAP                            │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  INFRASTRUCTURE & CONNECTIVITY          AI/ML STRATEGY                      │
-│  ├── Integration Architecture  [🔴]     ├── LLM Strategy & Costs         [ ] │
-│  ├── Data Strategy & Persistence [🔴]   ├── Prompt Engineering          [ ] │
-│  └── Security & Compliance       [ ]    └── Evaluation Framework        [ ] │
-│                                                                             │
-│  PRODUCT & USER EXPERIENCE              BUSINESS & GROWTH                   │
-│  ├── Real-World Validation       [ ]    ├── Pricing & Monetization      [ ] │
-│  ├── Competitive Landscape       [ ]    ├── Go-to-Market Strategy       [ ] │
-│  └── Future Roadmap              [ ]    └── Partnership Opportunities   [ ] │
-│                                                                             │
-│  PIPELINE EVOLUTION                                                         │
-│  ├── Notebook 04: Response Generation                                       │
-│  ├── Notebook 05: Multi-Turn Conversations                                  │
-│  └── Advanced: Learning & Optimization                                      │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      EXPLORATION TOPICS MASTER MAP                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  INFRASTRUCTURE & CONNECTIVITY              AI/ML STRATEGY                      │
+│  ├── Architecture Topology        [🟡]      ├── LLM Strategy & Costs         [ ]│
+│  ├── Integration Architecture    [🔴]      ├── Prompt Engineering          [ ]│
+│  ├── Data Strategy & Persistence [🔴]      ├── Evaluation Framework        [ ]│
+│  ├── Security & Compliance       [ ]       ├── KDD / Suitability Mining   [ ]│
+│  ├── Deployment & Operations     [🔴]      ├── Process Mining / Ideation   [ ]│
+│  └── Compliance & Regulatory     [🟡]      └── Testing & QA Strategy       [🟡]│
+│                                                                                 │
+│  PRODUCT & USER EXPERIENCE                  BUSINESS & GROWTH                   │
+│  ├── Real-World Validation       [ ]       ├── Pricing & Monetization      [ ]│
+│  ├── Competitive Landscape       [ ]       ├── Go-to-Market Strategy       [ ]│
+│  ├── Future Roadmap              [ ]       ├── Partnership Opportunities   [ ]│
+│  ├── Onboarding & Agency Setup   [🔴]      ├── Financial Operations        [🟡]│
+│  ├── Traveler-Facing Surfaces    [🟡]      ├── Supplier Management         [🟡]│
+│  ├── Mobile Experience           [🟡]      └── API & Third-Party Ext.     [🟢]│
+│  ├── Crisis Management           [🟡]                                           │
+│  ├── Reporting & Analytics       [🟡]                                           │
+│  └── Knowledge Management        [🟡]                                           │
+│                                                                                 │
+│  PIPELINE EVOLUTION                                                             │
+│  ├── Notebook 04: Response Generation                                           │
+│  ├── Notebook 05: Multi-Turn Conversations                                      │
+│  └── Advanced: Learning & Optimization                                          │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 
 Legend:
 [🔴] = High Priority (Blocking next phase)
@@ -85,6 +94,22 @@ Legend:
 **Overview**: How the AI pipeline connects to real-world systems. The core AI is getting solid, but it needs to actually *do* things.
 
 **Current Sequencing Note (2026-05-19)**: Provider-specific work should not start with WhatsApp/SMS/Telegram/Gmail implementation or continuity automation. First audit and design the integration enablement foundation: supported provider catalog, per-agency integration state, credential references, capability model, health/status, audit trail, and runtime adapter boundaries.
+
+**Live Replay Note (2026-06-23)**: If a browser replay shows a repaired trip field on intake but the packet page falls back to stale data after reload, verify the backend process config first. A missing `TRIPSTORE_BACKEND=sql` on the running backend can make the live app look saved while the persistence layer is actually still on the file-store fallback.
+
+**Live Replay Note (2026-06-24)**: Manual trip edits should now survive both reloads and re-extraction by writing a structured overlay into `raw_input.submission.structured_json` and resolving canonical fields from that operator-authored overlay before older extracted facts.
+
+**Live Replay Note (2026-06-24, follow-up)**: The repaired origin path is only useful if the operator can reach the trip workspace cleanly. The workbench packet view now needs to point people toward the trip details repair surface when a field is missing, and the fresh replay should be run from the healthy `3102` dev server rather than the stale `3101` instance that was returning a workbench 500.
+
+**Live Replay Note (2026-06-25)**: The system-installed Chrome CDP browser skill is now part of the live toolchain. Its `nav.cjs` helper needed a small verb fix (`PUT` for `/json/new`) before it could launch a new tab reliably. With that fixed, the original Chrome profile successfully logged in with `newuser@test.com`, processed the Bali family intake, surfaced the missing origin follow-up, and unlocked the trip again after saving `Mumbai`.
+
+**Live Replay Note (2026-06-25, strategy wording)**: The options stage was still rendering a stale `Partial intake — awaiting enrichment.` session goal after the trip had already been repaired. The preview layer now treats that wording as stale for ready trips, so the screen can present the correct options-first language instead of dragging the operator back into intake.
+
+**Live Replay Note (2026-06-26, shared strategy guard)**: The workbench strategy tab had a separate path that could still prefer a persisted stale strategy even after the trip page was fixed. The stale-strategy logic is now shared, so both operator surfaces agree on the ready-to-plan wording instead of splitting on cached draft state.
+
+**Live Replay Note (2026-06-26, browser/runtime collision and tab navigation)**: A fresh live replay on the agent workspace found that `8000` was occupied by another repo's backend process, so the first login attempt was proxying to the wrong service. The repo now runs cleanly on `8001` with the frontend on `3103`. During the same run, the workbench tabs were found to be dead clicks in the live browser until they were changed to link-backed navigation, after which the Risk Review tab switched correctly and the intake workbench became usable again.
+
+**Live Replay Note (2026-06-26, post-submit durability)**: The updated intake replay progressed further once the missing travel dates were supplied, and the packet view appeared in-session after `/api/spine/run`. But a fresh reload of the same draft still fell back to the empty intake shell instead of restoring the processed packet, which means the post-submit state is still not durably rehydrated from backend state.
 
 **Key Questions**:
 - Is there an integration enablement layer today, or only provider-specific aspirations?
@@ -830,18 +855,29 @@ The trip intake page for the saved trip now also shows a red `Critical Issue` ca
 
 1. **Integration Architecture** - WhatsApp Business API research
 2. **Data Strategy** - Database schema design
+3. **Deployment & Operations** (#25) - Production infrastructure, CI/CD, monitoring
+4. **Onboarding & Agency Setup** (#22) - Agency first-mile experience
 
 These are **blocking** for moving from notebooks to real implementation.
 
 ### Start Next (Medium Priority 🟡)
 
-3. **LLM Strategy & Costs** - Before scaling
-4. **Real-World Validation** - Beta user recruitment
-5. **Pricing & Monetization** - Business model validation
+5. **Traveler-Facing Surfaces** (#26) - Complete the value chain
+6. **Crisis Management** (#29) - Duty of care for corporate credibility
+7. **Financial Operations** (#30) - Agency financial workflow
+8. **Compliance & Regulatory** (#33) - Required before multi-market launch
+9. **Mobile Experience** (#27) - Agents need to work from anywhere
+10. **Testing & QA Strategy** (#24) - Golden datasets, eval gates
+11. **Knowledge Management** (#23) - Enable agency scale
+12. **Reporting & Analytics** (#28) - Owner decision-making tool
+14. **LLM Strategy & Costs** - Before scaling
+15. **Real-World Validation** - Beta user recruitment
+16. **Pricing & Monetization** - Business model validation
+17. **Supplier Management** (#31) - Supply chain management
 
 ### Start Later (Low Priority 🟢)
 
-6-15. Everything else - Can be figured out as we go
+18-33. Everything else - Can be figured out as we go
 
 ---
 
@@ -902,6 +938,423 @@ These are **blocking** for moving from notebooks to real implementation.
 
 ---
 
+## AGENCY OPERATIONS & SCALE
+
+### 22. Onboarding & Agency Setup 🔴
+**Status**: ✅ Synthesis complete — Research consolidated from 7 prior documents + codebase audit
+
+**Overview**: The critical "first mile" — how does a new agency go from signup to productive use? Setting up their profile, connecting WhatsApp/email/SMS channels, importing existing data (Excel spreadsheets, past trips, supplier lists), inviting team members, and configuring preferences. This is the make-or-break adoption flow that determines whether agencies actually stick with the product after the first session.
+
+**Key Questions**:
+- What is the minimum viable setup flow before the app becomes useful?
+- How do agencies import existing data? (Excel, CSV, past emails, WhatsApp exports)
+- How do we handle the setup wizard vs power-user fast-track?
+- How do agencies invite team members and configure roles/permissions?
+- What channel connections should be established first? (WhatsApp, email, phone)
+- How do we guide the agency through their first real inquiry capture?
+- What happens when setup is interrupted? (resumable wizard state)
+
+**Research Areas**:
+- Agency setup flow design (wizard vs progressive disclosure)
+- Data import tooling (Excel, CSV, email parsers)
+- Channel connection UX (WhatsApp Business API onboarding, email integration)
+- Team invitation and role-based access control
+- First-use experience: guided first inquiry, sample data, empty-state design
+- Agency configuration persistence and migration
+- Onboarding metrics: time-to-first-inquiry, completion rate, drop-off points
+
+**Deliverable**: Onboarding flow design with wireframes, data import strategy, channel connection UX, success metrics
+
+**Detailed Research**: [research/DATA_CAPTURE_UI_UX_AUDIT_2026-04-27.md](research/DATA_CAPTURE_UI_UX_AUDIT_2026-04-27.md), [research/INTAKE_LOW_CLICK_CAPTURE_STRATEGY_2026-05-04.md](research/INTAKE_LOW_CLICK_CAPTURE_STRATEGY_2026-05-04.md), [research/INQUIRY_TRIP_FLOW_UNIFICATION_FIRST_PRINCIPLES_ANALYSIS_2026-05-04.md](research/INQUIRY_TRIP_FLOW_UNIFICATION_FIRST_PRINCIPLES_ANALYSIS_2026-05-04.md)
+
+**Related Topics**: Real-World Validation (#7), Mobile Experience (#27), Knowledge Management (#23)
+
+---
+
+### 23. Knowledge Management & Training 🟡
+**Status**: ✅ Synthesis complete — Research synthesized from 6 existing documents
+
+**Overview**: In agencies with 2+ agents, how does knowledge flow between team members? How do trip templates get created and reused? How does a new agent learn an agency's preferred suppliers, pricing approach, and customer service style? The system should encode and propagate agency-specific knowledge, not just process individual trips.
+
+**Key Questions**:
+- How do trip templates get created, shared, and reused across agents?
+- How does an agency's "way of doing things" get encoded into the system?
+- How does a junior agent learn from a senior agent's past itineraries and decisions?
+- What knowledge should be shared agency-wide vs kept agent-private?
+- How do we capture tribal knowledge before it leaves with a departing agent?
+- How does the system train new agents on agency-specific workflows?
+
+**Research Areas**:
+- Template creation and sharing workflows
+- Cross-agent knowledge capture from override patterns
+- Agency-specific playbook creation and maintenance
+- Agent training acceleration via AI-assisted guidance
+- Knowledge decay and freshness signals
+- Successful itinerary repository with search and similarity matching
+- Override mining → continuous improvement loop
+- Crisis simulation sandbox for junior training
+- Real-time coaching and compliance nudges
+
+**Synthesis Complete — Key Findings from 6 prior docs**:
+1. **Institutional Memory** (INSTITUTIONAL_MEMORY_LAYER_SYNTHESIS) — 8 memory layers proposed with additive data model (template genome, supplier intelligence graph, pricing memory, customer genome, playbook engine, content block library, team coverage graph, post-trip learning loop)
+2. **Knowledge Bounty** (AGENCY_WORKFORCE_GAMIFICATION_AND_LEARNING) — Senior agents codify tribal knowledge into system rules; high-margin leads routed by verified skill score
+3. **Override Mining** (KDD exploration) — Every operator override is a labeled correction signal; clustering reveals systematic AI failure modes
+4. **Training Mode** (UX journeys + P2 scenario) — Junior agents learn from guided workflows, compliance nudges, and "Shadow Owner" decision capture
+5. **Owner Pain Point** (Simulated interview) — 12-month ramp, ₹2-3L training cost per hire, ₹15-25K/month willingness to pay for training features
+6. **Learning Layer Pattern** (Priority scoring learning layer) — Additive, bounded, explainable learned adjustments on top of deterministic rules
+
+**Recommended sequencing**:
+- Phase 1 (now): Override mining foundation — add `decision_delta` field, ship KDD v0
+- Phase 2 (next): Template + supplier memory models — highest quick-win for productivity
+- Phase 3 (later): Training mode + real-time coaching — directly addresses P2 training problem
+- Phase 4 (future): Playbook engine + crisis simulations
+- Phase 5 (ongoing): Post-trip learning loop
+
+**Deliverable**: Knowledge management architecture, template system design, training workflow
+
+**Detailed Research**:
+- [exploration/KNOWLEDGE_MANAGEMENT_TRAINING_SYNTHESIS_2026-06-26.md](exploration/KNOWLEDGE_MANAGEMENT_TRAINING_SYNTHESIS_2026-06-26.md) — Full synthesis
+- [context/INSTITUTIONAL_MEMORY_LAYER_SYNTHESIS_2026-04-14.md](context/INSTITUTIONAL_MEMORY_LAYER_SYNTHESIS_2026-04-14.md) — Institutional memory architecture
+- [product_features/AGENCY_WORKFORCE_GAMIFICATION_AND_LEARNING.md](product_features/AGENCY_WORKFORCE_GAMIFICATION_AND_LEARNING.md) — Gamification and training features
+- [exploration/KDD_KNOWLEDGE_DISCOVERY_EXPLORATION_2026-05-18.md](exploration/KDD_KNOWLEDGE_DISCOVERY_EXPLORATION_2026-05-18.md) — Override mining → learning loop
+- [research/AGENCY_INTERNAL_DATA.md](research/AGENCY_INTERNAL_DATA.md) — 7 categories of internal data
+- [SIMULATED_USER_INTERVIEW_AGENCY_OWNER_2026-04-28.md](SIMULATED_USER_INTERVIEW_AGENCY_OWNER_2026-04-28.md) — Owner pain points on training
+
+**Related Topics**: Onboarding (#22), Agency Internal Data (#16), Supplier Management (#31), KDD (#6b), Priority Scoring (#20), Testing & QA (#24)
+
+---
+
+## PRODUCT QUALITY & RELIABILITY
+
+### 24. Testing & Quality Strategy 🟡
+**Status**: ✅ Completed — See Docs/research/TESTING_QA_STRATEGY.md
+
+**Overview**: The codebase has 60+ test files, an eval framework (D6), and a sophisticated 4-phase quality framework (Fix → Review → Audit → Handoff). But there's no coordinated strategy for how testing scales with the product. As the AI pipeline grows, we need a systematic approach to test coverage, golden datasets, regression prevention, and quality gates for AI-driven behavior.
+
+**Key Questions**:
+- How do we scale from 60+ test files to comprehensive CI/CD gating?
+- What's the testing pyramid for an AI-heavy app? (unit → contract → eval → integration → e2e)
+- How do we systematically test extraction accuracy across providers (OpenAI, Gemini)?
+- How do we prevent regression across prompt changes, schema changes, and model updates?
+- What's the golden dataset maintenance strategy for extraction and decision testing?
+- How do we measure and track test quality, not just quantity?
+
+**Research Areas**:
+- AI testing pyramid: field-level accuracy → agent scan precision → pipeline orchestration → e2e scenarios
+- Golden dataset creation and versioning (extraction fixtures, decision outcomes)
+- Regression detection for prompt changes, schema changes, model upgrades
+- Automated quality gates in CI/CD pipeline
+- LLM-as-judge evaluation for agent output quality
+- Coverage metrics for AI behavior paths
+- Balancing deterministic unit tests with probabilistic eval tests
+- D6 audit framework extension to cover all pipeline stages
+
+**Deliverable**: Testing strategy document, golden dataset blueprint, CI quality gate design
+
+**Detailed Research**: [research/AGENTIC_EVAL_CANONICAL_ROADMAP_2026-06-20.md](research/AGENTIC_EVAL_CANONICAL_ROADMAP_2026-06-20.md), [research/AGENTIC_FLOW_EVAL_AUDIT_2026-06-18.md](research/AGENTIC_FLOW_EVAL_AUDIT_2026-06-18.md)
+
+**Related Topics**: Evaluation Framework (#6/#18), Deployment & Operations (#25), D6 Audit Framework
+
+---
+
+### 25. Deployment & Operations 🔴
+**Status**: New — Critical gap, research needed
+
+**Overview**: The comprehensive architecture review (`COMPREHENSIVE_REVIEW_V2.md`) identified critical deployment gaps: the Dockerfile is broken, there is no CI pipeline, deployment targets are inconsistent across four platforms, and there is no monitoring or structured logging. This is the single biggest operational risk for moving to production with real agencies.
+
+**Key Questions**:
+- What is the single canonical deployment target? (Fly.io, Render, Docker, or something else?)
+- How do we fix the broken Dockerfile and docker-compose setup?
+- What CI/CD pipeline do we need? (GitHub Actions, pre-commit hooks, test gates)
+- What monitoring and error tracking should be in place before beta users?
+- How do we handle database migrations in deployment? (currently none)
+- What's the backup and disaster recovery strategy?
+- How do we manage environment configuration? (env vars, secrets, feature flags)
+
+**Research Areas**:
+- Deployment target evaluation and selection (Fly.io vs Render vs VPS vs cloud)
+- CI/CD pipeline design (test → lint → typecheck → build → deploy)
+- Docker/Dockerfile cleanup and multi-stage build optimization
+- Database migration automation (Alembic, Flyway, or custom)
+- Monitoring stack: structured logging, error tracking (Sentry), uptime monitoring, APM
+- Secrets management and configuration across environments
+- Backup strategy for PostgreSQL and file stores
+- Rollback and recovery playbooks
+- Feature flag infrastructure for gradual rollout
+
+**Deliverable**: Production deployment architecture, CI/CD pipeline, monitoring setup, runbooks
+
+**Detailed Research**: [research/DR_SPEC_GRACEFUL_DEGRADATION.md](research/DR_SPEC_GRACEFUL_DEGRADATION.md), [research/DR_SPEC_SYSTEM_SHADOWING.md](research/DR_SPEC_SYSTEM_SHADOWING.md)
+
+**Related Topics**: Testing & QA Strategy (#24), Security & Compliance (#3), Data Strategy (#2)
+
+---
+
+## PRODUCT & USER EXPERIENCE (continued)
+
+### 26. Traveler-Facing Surfaces 🟡
+**Status**: New — Research needed
+
+**Overview**: The entire product currently focuses on the agency operator. But travelers are the other half of the value chain. Do they receive booking confirmations? Can they view their trip itinerary online? Make payments? Leave feedback? How does the system communicate with travelers before, during, and after their trip?
+
+**Key Questions**:
+- Do travelers get a self-service portal to view their trip details and documents?
+- How are booking confirmations, invoices, and itinerary documents delivered?
+- What's the traveler feedback loop? (satisfaction surveys, trip reviews)
+- Should travelers be able to request changes mid-trip? (self-service vs agent-mediated)
+- How do we handle traveler-facing content vs internal agency content safely?
+- What communication channels should travelers use? (WhatsApp, email, SMS, portal)
+- How does the system handle emergency communication with travelers?
+
+**Research Areas**:
+- Traveler portal design (itinerary view, document access, payment history)
+- Document delivery: booking confirmations, e-tickets, invoices, visa docs
+- Payment collection from travelers (payment links, installments, reminders)
+- Feedback and review collection mechanisms
+- Self-service change requests (with agent approval flow)
+- Multi-channel traveler communications (WhatsApp, email, SMS)
+- Post-trip engagement and retention
+
+**Deliverable**: Traveler experience design, portal wireframes, communication strategy
+
+**Detailed Research**: [research/TRAVELER_PROPOSAL_BOUNDARY_CONTRACT_2026-05-11.md](research/TRAVELER_PROPOSAL_BOUNDARY_CONTRACT_2026-05-11.md), [research/CON_SPEC_TRIP_NARRATIVE.md](research/CON_SPEC_TRIP_NARRATIVE.md)
+
+**Related Topics**: Real-World Validation (#7), Crisis Management (#29), Integration Architecture (#1)
+
+---
+
+### 27. Mobile Experience (Operator) 🟡
+**Status**: New — Research drafted, needs investigation
+
+**Overview**: Travel agents are not desk-bound — they do site visits, airport pickups, client meetings, and work from home. A mobile-optimized experience for quick capture, status checks, and follow-up management is essential for field productivity. PWA feasibility and mobile intake backlog research already exists.
+
+**Key Questions**:
+- PWA vs native app for mobile operator workflows?
+- What is the minimum viable mobile surface? (quick capture, status checks, follow-ups)
+- How do we handle offline-first draft capture when connectivity is spotty?
+- What role does voice memo intake play on mobile?
+- How do push notifications work for SLA breaches, follow-ups, and approvals?
+- Quick-capture mode vs full workspace mode — how do we separate the two?
+- How do we handle call recording and transcription on mobile?
+
+**Research Areas**:
+- PWA manifest and service worker implementation
+- Offline-first draft capture with sync and conflict resolution
+- Voice memo upload and transcription workflow
+- Push notification strategy for agency operators
+- Mobile-first intake UX: large text input, minimal taps, one-click process
+- Role-based mobile surfaces (owner quick view vs agent capture mode)
+- Phone integration: tap-to-call, contact linking, call log import
+- Cross-device state sync (mobile capture → desktop workspace)
+
+**Deliverable**: Mobile strategy document, PWA implementation plan, mobile UX design
+
+**Detailed Research**: [research/MOBILE_INTAKE_EXPLORATION_BACKLOG_2026-05-04.md](research/MOBILE_INTAKE_EXPLORATION_BACKLOG_2026-05-04.md), [research/PWA_PHONE_CAPTURE_FEASIBILITY_2026-05-04.md](research/PWA_PHONE_CAPTURE_FEASIBILITY_2026-05-04.md)
+
+**Related Topics**: Onboarding (#22), Traveler-Facing Surfaces (#26), Integration Architecture (#1)
+
+---
+
+### 28. Reporting & Analytics for Agency Owners 🟡
+**Status**: New — Research needed
+
+**Overview**: The current analytics (insights page, inbox statistics, priority scoring) focus on operational triage. Agency owners also need business intelligence: revenue reports, agent performance dashboards, conversion funnel analytics, booking trends, customer acquisition costs, and margin analysis. This is the decision-making layer for running the agency as a business.
+
+**Key Questions**:
+- What does an agency owner need to see on a daily vs weekly vs monthly basis?
+- How do we track conversion rates: inquiry → quote → booking → payment?
+- How do we measure agent performance? (throughput, quality scores, SLA compliance)
+- What revenue and margin reporting is needed per trip, per agent, per period?
+- How do we surface booking trends, seasonality patterns, and growth metrics?
+- What customer analytics matter? (retention, lifetime value, repeat booking rate)
+- How do we present complex data without overwhelming small agency owners?
+
+**Research Areas**:
+- Owner dashboard design: revenue, pipeline, team, trends
+- Conversion funnel analysis: stage-by-stage drop-off and velocity
+- Agent performance metrics: trips handled, SLA compliance, quality scores, revenue
+- Revenue and margin reporting: per trip, per agent, per period, per supplier
+- Trend analysis: YoY growth, seasonality, destination popularity
+- Customer analytics: retention rate, lifetime value, referral sources
+- Data export and reporting for owner meetings and accounting
+- Visualization approach: sparklines, trend arrows, micro-charts
+
+**Deliverable**: Owner analytics dashboard design with metric definitions, data model, visualization approach
+
+**Detailed Research**: [research/DESIGN_2D_PRIORITY_MODEL_2026-05-08.md](research/DESIGN_2D_PRIORITY_MODEL_2026-05-08.md), [research/UI_RESEARCH_ROLE_AWARE_DENSITY.md](research/UI_RESEARCH_ROLE_AWARE_DENSITY.md)
+
+**Related Topics**: Priority Scoring (#20), Real-World Validation (#7), Financial Operations (#30), Knowledge Management (#23)
+
+---
+
+### 29. Crisis Management & Traveler Safety 🟡
+**Status**: New — Research needed
+
+**Overview**: The current system handles pre-trip planning well. But what happens during the trip? Flight cancellations, natural disasters, political unrest, medical emergencies, lost passports. Corporate travel clients require duty-of-care compliance. This topic covers active-travel monitoring, crisis communication, and emergency response.
+
+**Key Questions**:
+- How do we monitor active trips for disruptions? (flight status, weather, local events)
+- How do we automate rebooking on flight cancellations or delays?
+- How does the system communicate with travelers during an emergency?
+- What duty-of-care requirements exist for corporate travel clients?
+- How do we handle medical emergencies and insurance coordination?
+- What is the escalation path when automated recovery is insufficient?
+- How do we track traveler location without violating privacy?
+
+**Research Areas**:
+- Real-time trip monitoring: flight status APIs, weather alerts, security feeds
+- Automated disruption recovery: rebooking, re-routing, hotel rebooking
+- Crisis communication: multi-channel alerts (WhatsApp, SMS, email, phone)
+- Traveler safety status tracking and check-in workflow
+- Duty-of-care compliance for corporate travel programs
+- Medical emergency handling: insurance verification, hospital coordination
+- Privacy-preserving location tracking and data retention
+- Incident response playbooks and escalation triggers
+- Extraction logistics for high-risk scenarios
+
+**Deliverable**: Crisis management architecture, communication protocols, incident response playbooks
+
+**Detailed Research**: [research/OPS_SPEC_DUTY_OF_CARE.md](research/OPS_SPEC_DUTY_OF_CARE.md), [research/OPS_SPEC_CRISIS_COMMUNICATIONS.md](research/OPS_SPEC_CRISIS_COMMUNICATIONS.md), [research/COMM_SPEC_MASS_NOTIFICATION.md](research/COMM_SPEC_MASS_NOTIFICATION.md)
+
+**Related Topics**: Integration Architecture (#1), Traveler-Facing Surfaces (#26), Security & Compliance (#3)
+
+---
+
+## BUSINESS & GROWTH (continued)
+
+### 30. Financial Operations 🟡
+**Status**: New — Research needed
+
+**Overview**: Beyond platform pricing, agencies need a full financial workflow: invoicing travelers, collecting payments (in installments or full), tracking commissions from suppliers, paying suppliers, reconciling expenses, and understanding per-trip profitability. The research directory has 30+ FIN_SPEC documents — this topic consolidates that thinking.
+
+**Key Questions**:
+- How do agencies invoice travelers and collect payments? (links, installments, reminders)
+- How do we track commissions from multiple suppliers on a single trip?
+- How do agencies manage supplier payments and reconciliation?
+- What does per-trip profitability look like? (revenue - supplier costs - agency effort)
+- How do we handle multi-currency financial operations?
+- What expense tracking is needed during trip planning?
+- How do we integrate with accounting software? (QuickBooks, Zoho Books, Tally)
+
+**Research Areas**:
+- Invoicing: generation, delivery, payment links, installment plans
+- Payment collection: credit card, bank transfer, UPI, payment gateway integration
+- Commission tracking: per-supplier rates, auto-calculation, reconciliation
+- Supplier payment management: scheduling, approval, multi-currency
+- Expense tracking and trip cost aggregation
+- Profit margin computation per trip, per agent, per period
+- Accounting software integration (QuickBooks, Xero, Zoho, Tally)
+- Multi-currency handling: conversion, settlement, reporting
+- Financial audit trail and reconciliation reporting
+
+**Deliverable**: Financial operations architecture, payment flow design, accounting integration plan
+
+**Detailed Research**: [research/FIN_SPEC_RECONCILIATION_LOOP.md](research/FIN_SPEC_RECONCILIATION_LOOP.md), [research/FIN_SPEC_COMMISSION_TRACKING.md](research/FIN_SPEC_COMMISSION_TRACKING.md), [research/FIN_SPEC_CROSS_BORDER_TAX.md](research/FIN_SPEC_CROSS_BORDER_TAX.md) *(30+ FIN_SPEC docs in research/ folder)*
+
+**Related Topics**: Pricing & Monetization (#10), Supplier Management (#31), Integration Architecture (#1), Reporting (#28)
+
+---
+
+### 31. Supplier Management 🟡
+**Status**: New — Research needed
+
+**Overview**: Agencies maintain complex relationships with hotels, airlines, tour operators, guides, and transport providers. This includes rate negotiations, preferred supplier lists, performance tracking, commission agreements, and contact management. Effective supplier management is a key differentiator between a generic CRM and a travel-specific platform.
+
+**Key Questions**:
+- How do agencies manage their preferred supplier networks?
+- How do we track negotiated rates, expiry dates, and commission structures?
+- How do agencies score supplier performance? (reliability, quality, margin, feedback)
+- How does supplier preference influence itinerary generation?
+- How do we handle supplier contract and commission agreement storage?
+- How do agencies discover and onboard new suppliers?
+- What happens when a supplier goes out of business or becomes unreliable?
+
+**Research Areas**:
+- Supplier database: contacts, rates, contracts, commissions, performance scores
+- Rate negotiation tracking, expiry management, and renewal reminders
+- Supplier performance scoring: on-time delivery, customer feedback, margin contribution
+- Dynamic supplier selection in itinerary generation based on trip fit and margin
+- Supplier contract storage (PDF, agreement terms, expiry dates)
+- Supplier communication history and relationship timeline
+- Market intelligence: supplier health monitoring, news alerts, financial stability
+- Preferred vs standard vs blacklisted supplier categorization
+
+**Deliverable**: Supplier management system design, performance scoring model, integration strategy
+
+**Detailed Research**: [research/OPS_SPEC_SUPPLIER_INTELLIGENCE.md](research/OPS_SPEC_SUPPLIER_INTELLIGENCE.md), [research/SUPPLY_SPEC_VENDOR_RELIABILITY.md](research/SUPPLY_SPEC_VENDOR_RELIABILITY.md), [research/FIN_SPEC_VENDOR_NEGOTIATION.md](research/FIN_SPEC_VENDOR_NEGOTIATION.md)
+
+**Related Topics**: Financial Operations (#30), Integration Architecture (#1), Agency Internal Data (#16), Partnership Opportunities (#12)
+
+---
+
+### 32. API & Third-Party Extensibility 🟢
+**Status**: New — Research needed
+
+**Overview**: As the platform matures, other tools may want to integrate with Waypoint OS. A public REST API, webhook system for real-time events, and plugin architecture could enable an ecosystem of partners and extensions. This is both a growth lever and a technical architecture consideration.
+
+**Key Questions**:
+- What API surface should we expose to third-party developers?
+- How do we design a webhook system for integration events?
+- What would a plugin/extension architecture look like?
+- Do we need an integration marketplace?
+- How do we handle API authentication, rate limiting, and developer onboarding?
+- What's the support burden of a public API? (docs, SDKs, changelogs)
+- Which integrations should be first-party vs third-party?
+
+**Research Areas**:
+- Public REST API design: endpoints, versioning, documentation (OpenAPI/Swagger)
+- Webhook event system: event types, delivery guarantees, retry, signing
+- Developer portal and API key management
+- Rate limiting, usage tracking, and API billing considerations
+- SDK generation for popular languages (Python, JavaScript, Node)
+- Plugin/extension architecture patterns
+- Integration marketplace design and listing process
+- API changelog and migration guides
+
+**Deliverable**: API extensibility strategy, webhook architecture, developer portal design
+
+**Detailed Research**: [research/INTEGRATION_SPEC_PROTOCOL_ADAPTER.md](research/INTEGRATION_SPEC_PROTOCOL_ADAPTER.md), [research/CORP_SPEC_WHITE_LABEL_ORCHESTRATOR.md](research/CORP_SPEC_WHITE_LABEL_ORCHESTRATOR.md)
+
+**Related Topics**: Integration Architecture (#1), Partnership Opportunities (#12), White-Label (future)
+
+---
+
+## COMPLIANCE & REGULATORY FRAMEWORK
+
+### 33. Compliance & Regulatory Framework 🟡
+**Status**: New — Research needed
+
+**Overview**: The existing Security & Compliance topic (#3) focuses on data security (encryption, PII, auth). But travel has domain-specific regulations that vary by market: the EU Package Travel Directive, UK ATOL bonding, consumer protection laws, visa compliance, insurance requirements, and cross-border tax rules. These are distinct from data security and require specialized research.
+
+**Key Questions**:
+- Which regulatory frameworks apply by market? (EU, UK, India, Africa, Middle East)
+- What are the requirements of the EU Package Travel Directive? (financial protection, bonding, insolvency coverage)
+- How do we handle ATOL bonding requirements for UK-market agencies?
+- What visa and passport requirement management is needed?
+- How do we handle travel insurance recommendation and compliance?
+- What cross-border tax and VAT rules apply when an agency in one country sells travel to another?
+- What consumer protection laws govern cancellations, refunds, and changes?
+
+**Research Areas**:
+- EU Package Travel Directive (PTD): financial protection, pre-contractual info, liability
+- UK ATOL bonding and CAA regulations
+- India travel agency regulations (TAAI, IATA requirements)
+- African market regulatory landscape (per country variations)
+- Visa and passport requirement databases and integration
+- Travel insurance: mandatory coverage by destination, recommendation engine
+- Cross-border tax: VAT on travel services, withholding tax, GST
+- Consumer protection: cancellation rights, refund policies, force majeure
+- Accessibility compliance for traveler-facing surfaces (WCAG, ADA)
+- Data residency requirements for travel data in different markets
+
+**Deliverable**: Regulatory compliance matrix by market, compliance feature requirements, risk assessment
+
+**Detailed Research**: [research/REG_SPEC_SOVEREIGN_COMPLIANCE.md](research/REG_SPEC_SOVEREIGN_COMPLIANCE.md), [research/REG_SPEC_TRAVEL_LIABILITY.md](research/REG_SPEC_TRAVEL_LIABILITY.md), [research/REG_SPEC_PASSENGER_RIGHTS.md](research/REG_SPEC_PASSENGER_RIGHTS.md), [research/LEGAL_SPEC_REGULATORY_REPORTING.md](research/LEGAL_SPEC_REGULATORY_REPORTING.md)
+
+**Related Topics**: Security & Compliance (#3), Financial Operations (#30), Integration Architecture (#1), Data Strategy (#2)
+
+---
+
 - [x] Notebook 01 implementation review
 - [x] Notebook 02 implementation review
 - [x] 30 persona-based scenarios documented
@@ -912,10 +1365,11 @@ These are **blocking** for moving from notebooks to real implementation.
 
 ## Next Actions
 
-1. **Create research/ folder** for detailed docs
-2. **Start Integration Architecture** (WhatsApp API research)
-3. **Start Data Strategy** (database schema)
-4. **Update this doc** as research progresses
+1. **Create research/ folder** for detailed docs *(DONE)*
+2. **Start Integration Architecture** (WhatsApp API research) *(IN PROGRESS)*
+3. **Start Data Strategy** (database schema) *(IN PROGRESS)*
+4. **Explore new topics** — begin with Onboarding & Agency Setup (#22) and Deployment & Operations (#25)
+5. **Update this doc** as research progresses
 
 ---
 

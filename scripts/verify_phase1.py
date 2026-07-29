@@ -99,7 +99,7 @@ async def verify():
             assert result["agency"]["name"]
             assert result["agency"]["slug"]
             assert result["membership"]["role"]
-            assert result["membership"]["is_primary"] == True
+            assert result["membership"]["is_primary"]
             print("✅ Criterion 5: Me payload structure correct")
             passed += 1
         except Exception as e:

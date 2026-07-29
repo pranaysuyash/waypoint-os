@@ -15,6 +15,80 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - waypoint-net
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: waypoint-migrations
+    entrypoint: [""]  # Clear Dockerfile ENTRYPOINT (uvicorn) — this service only runs migrations, not the server
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://waypoint:waypoint_dev_password@postgres:5432/waypoint_os"
+      TRIPSTORE_BACKEND: "sql"
+      JWT_SECRET: "dev-jwt-secret-change-in-production"
+      PUBLIC_CHECKER_AGENCY_ID: "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >-
+      sh -c "uv run alembic upgrade head &&
+             uv run python scripts/bootstrap_public_checker_agency.py"
+    networks:
+      - waypoint-net
+
+  spine-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: waypoint-spine-api
+    ports:
+      - "8000:8000"
+    environment:
+      SPINE_API_HOST: "0.0.0.0"
+      SPINE_API_PORT: "8000"
+      SPINE_API_CORS: "http://localhost:3000,http://frontend:3000"
+      SPINE_API_WORKERS: "2"
+      SPINE_API_RELOAD: "0"
+      DATABASE_URL: "postgresql+asyncpg://waypoint:waypoint_dev_password@postgres:5432/waypoint_os"
+      TRIPSTORE_BACKEND: "sql"
+      JWT_SECRET: "dev-jwt-secret-change-in-production"
+      PUBLIC_CHECKER_AGENCY_ID: "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+      TRAVELER_SAFE_STRICT: "0"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    networks:
+      - waypoint-net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: waypoint-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      SPINE_API_URL: "http://spine-api:8000"
+      NODE_ENV: "production"
+    depends_on:
+      spine-api:
+        condition: service_started
+    networks:
+      - waypoint-net
+    restart: unless-stopped
+
+networks:
+  waypoint-net:
+    driver: bridge
 
 volumes:
   postgres_data:

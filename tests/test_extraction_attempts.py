@@ -11,7 +11,6 @@ Integration tests using the API. Covers:
 import os
 from unittest.mock import AsyncMock, patch
 
-import pytest
 
 from spine_api.persistence import TEST_AGENCY_ID
 from spine_api.services.extraction_service import ExtractionResult

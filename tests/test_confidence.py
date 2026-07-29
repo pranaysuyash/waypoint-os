@@ -9,10 +9,8 @@ Covers:
 - Edge cases: empty input, unknown fields, blended scores
 """
 
-import math
 from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestFieldValidators:

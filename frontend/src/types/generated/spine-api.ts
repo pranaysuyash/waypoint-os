@@ -704,6 +704,25 @@ export interface TripListResponse {
  * verify fact-sync side effects can still inspect raw extracted data.
  * Frontend consumers should use the resolved canonical fields above.
  */
+export interface TripPatchRequest {
+  status?: string | null;
+  follow_up_due_date?: string | null;
+  origin?: string | null;
+  destination?: string | null;
+  budget?: number | string | null;
+  party?: number | null;
+  date_window?: string | null;
+  trip_purpose?: string | null;
+  trip_priorities?: string | null;
+  date_flexibility?: string | null;
+  pace_preference?: string | null;
+  date_year_confidence?: string | null;
+  lead_source?: string | null;
+  activity_provenance?: string | null;
+  contact_name?: string | null;
+  customer_message?: string | null;
+  agent_notes?: string | null;
+}
 export interface TripResponse {
   id: string;
   status: string;
@@ -716,6 +735,8 @@ export interface TripResponse {
   tripType?: string | null;
   tripPurpose?: string | null;
   customerName?: string | null;
+  customerMessage?: string | null;
+  agentNotes?: string | null;
   follow_up_due_date?: string | null;
   extracted?: {
     [k: string]: unknown;

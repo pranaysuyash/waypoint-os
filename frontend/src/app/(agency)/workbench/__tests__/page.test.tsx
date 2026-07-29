@@ -7,6 +7,11 @@ import WorkbenchPage, { extractCompletedTripIdFromDraft } from '../page';
 const mockReplace = vi.fn();
 const mockExecuteSpineRun = vi.fn();
 const mockCreateDraft = vi.hoisted(() => vi.fn());
+let mockTabsProps: {
+  tabs: readonly { readonly id: string; readonly label: string; count?: number }[];
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
+} | null = null;
 let mockWorkbenchStore: Record<string, unknown>;
 let mockAuthState = {
   isLoading: false,
@@ -44,7 +49,14 @@ vi.mock('./PipelineFlow', () => ({
 }));
 
 vi.mock('@/components/ui/tabs', () => ({
-  Tabs: () => <div data-testid='tabs' />,
+  Tabs: (props: {
+    tabs: readonly { readonly id: string; readonly label: string; count?: number }[];
+    activeTab: string;
+    onTabChange: (tabId: string) => void;
+  }) => {
+    mockTabsProps = props;
+    return <div data-testid='tabs' />;
+  },
 }));
 
 vi.mock('@/hooks/useTrips', () => ({
@@ -144,6 +156,7 @@ import { useSearchParams } from 'next/navigation';
 describe('WorkbenchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTabsProps = null;
     mockCreateDraft.mockReset();
     mockAuthState = {
       isLoading: false,
@@ -227,6 +240,17 @@ describe('WorkbenchPage', () => {
       owner_note: 'Keep margin >=18%',
       draft_id: 'draft_test_first_submit',
     }));
+  });
+
+  it('updates the full workbench pathname when a tab changes', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+
+    render(<WorkbenchPage />);
+
+    expect(mockTabsProps).not.toBeNull();
+    mockTabsProps?.onTabChange('safety');
+
+    expect(mockReplace).toHaveBeenCalledWith('/workbench?tab=safety', { scroll: false });
   });
 
   it('preserves an existing draft id for fast-capture entry instead of resetting to draft=new', () => {

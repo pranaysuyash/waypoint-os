@@ -10,9 +10,7 @@ Verifies that:
 """
 
 import os
-import importlib
 
-import pytest
 
 from src.decision import cache_schema
 

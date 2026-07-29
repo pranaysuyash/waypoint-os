@@ -6,8 +6,7 @@ Covers:
 - P2-5: BUDGET_FEASIBILITY_TABLE canonical import
 """
 
-import pytest
-from intake.strategy import PromptBundle, build_traveler_safe_bundle
+from intake.strategy import PromptBundle
 from src.intake.decision import BUDGET_FEASIBILITY_TABLE, _build_suitability_profile
 from src.decision.rules import BUDGET_FEASIBILITY_TABLE as RULES_TABLE
 

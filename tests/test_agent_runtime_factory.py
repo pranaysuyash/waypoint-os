@@ -173,8 +173,6 @@ class TestBuildAgentRuntimeFromConfig:
 
     def test_health_config_dict_format(self, monkeypatch):
         from spine_api.services.agent_runtime_factory import (
-            AgentRuntimeConfig,
-            build_agent_runtime_from_config,
             build_agent_runtime_config,
         )
 

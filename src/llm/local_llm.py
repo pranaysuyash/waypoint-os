@@ -33,7 +33,7 @@ try:
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
-from .base import BaseLLMClient, LLMError, LLMUnavailableError, LLMResponseError
+from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError
 
 
 # Default model configuration
@@ -144,7 +144,7 @@ class LocalLLMClient(BaseLLMClient):
             self._model.eval()
 
             self._loaded = True
-            print(f"Model loaded successfully")
+            print("Model loaded successfully")
 
         except (OSError, ValueError, TypeError) as e:
             raise LLMUnavailableError(f"Failed to load local model: {e}")

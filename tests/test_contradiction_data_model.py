@@ -14,8 +14,6 @@ import pytest
 from intake.packet_models import (
     CanonicalPacket,
     ContradictionValue,
-    Slot,
-    AuthorityLevel,
 )
 
 

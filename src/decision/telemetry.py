@@ -6,14 +6,12 @@ Tracks decision metrics, cache performance, and LLM usage for production monitor
 
 from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from collections import defaultdict
 import threading
 
-from .cache_schema import CacheStats
 
 
 @dataclass(slots=True)
@@ -230,35 +228,35 @@ class DecisionTelemetry:
             String in Prometheus exposition format
         """
         lines = [
-            f"# HELP hybrid_decision_total Total number of decisions",
-            f"# TYPE hybrid_decision_total counter",
+            "# HELP hybrid_decision_total Total number of decisions",
+            "# TYPE hybrid_decision_total counter",
             f"hybrid_decision_total {snapshot.total_decisions}",
             "",
-            f"# HELP hybrid_decision_cache_hit_rate Cache hit rate (0-1)",
-            f"# TYPE hybrid_decision_cache_hit_rate gauge",
+            "# HELP hybrid_decision_cache_hit_rate Cache hit rate (0-1)",
+            "# TYPE hybrid_decision_cache_hit_rate gauge",
             f"hybrid_decision_cache_hit_rate {snapshot.cache_hit_rate:.4f}",
             "",
-            f"# HELP hybrid_decision_rule_hit_rate Rule hit rate (0-1)",
-            f"# TYPE hybrid_decision_rule_hit_rate gauge",
+            "# HELP hybrid_decision_rule_hit_rate Rule hit rate (0-1)",
+            "# TYPE hybrid_decision_rule_hit_rate gauge",
             f"hybrid_decision_rule_hit_rate {snapshot.rule_hit_rate:.4f}",
             "",
-            f"# HELP hybrid_decision_llm_call_rate LLM call rate (0-1)",
-            f"# TYPE hybrid_decision_llm_call_rate gauge",
+            "# HELP hybrid_decision_llm_call_rate LLM call rate (0-1)",
+            "# TYPE hybrid_decision_llm_call_rate gauge",
             f"hybrid_decision_llm_call_rate {snapshot.llm_call_rate:.4f}",
             "",
-            f"# HELP hybrid_decision_latency_ms Decision latency in milliseconds",
-            f"# TYPE hybrid_decision_latency_ms gauge",
+            "# HELP hybrid_decision_latency_ms Decision latency in milliseconds",
+            "# TYPE hybrid_decision_latency_ms gauge",
             f"hybrid_decision_latency_ms {{quantile=\"0.5\"}} {snapshot.p50_latency_ms:.2f}",
             f"hybrid_decision_latency_ms {{quantile=\"0.95\"}} {snapshot.p95_latency_ms:.2f}",
             f"hybrid_decision_latency_ms {{quantile=\"0.99\"}} {snapshot.p99_latency_ms:.2f}",
             f"hybrid_decision_latency_ms {{quantile=\"avg\"}} {snapshot.avg_latency_ms:.2f}",
             "",
-            f"# HELP hybrid_decision_cost_inr_total Total cost in INR",
-            f"# TYPE hybrid_decision_cost_inr_total counter",
+            "# HELP hybrid_decision_cost_inr_total Total cost in INR",
+            "# TYPE hybrid_decision_cost_inr_total counter",
             f"hybrid_decision_cost_inr_total {snapshot.total_cost_inr:.2f}",
             "",
-            f"# HELP hybrid_decision_error_rate Error rate (0-1)",
-            f"# TYPE hybrid_decision_error_rate gauge",
+            "# HELP hybrid_decision_error_rate Error rate (0-1)",
+            "# TYPE hybrid_decision_error_rate gauge",
             f"hybrid_decision_error_rate {snapshot.error_rate:.4f}",
         ]
 

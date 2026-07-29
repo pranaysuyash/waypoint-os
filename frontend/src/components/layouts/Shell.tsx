@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useHotkey } from '@/hooks/useHotkey';
 import { useTrip } from '@/hooks/useTrips';
 import { useRuntimeVersion } from '@/hooks/useRuntimeVersion';
 import {
@@ -153,6 +154,12 @@ function getPageLabel(pathname: string, isLeadReviewRoute: boolean): string {
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { push: routerPush } = useRouter();
+
+  useHotkey('n', true, useCallback(() => {
+    routerPush('/workbench?draft=new&tab=intake');
+  }, [routerPush]));
+
   const shellTripId = parseTripIdFromPathname(pathname);
   const { data: shellTrip, isLoading: isShellTripLoading } = useTrip(shellTripId);
   const { detailsLabel } = useRuntimeVersion();

@@ -11,12 +11,10 @@ ChatGPT review requirements:
 - compute_readiness must never mutate packet.stage
 """
 
-import pytest
 
 from intake.packet_models import CanonicalPacket, Slot
 from intake.readiness import (
     compute_readiness,
-    ReadinessResult,
     TierDetail,
     TIER_ORDER,
     TIER_FIELDS,

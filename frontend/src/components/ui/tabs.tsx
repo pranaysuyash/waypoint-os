@@ -1,13 +1,15 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type MouseEvent } from 'react';
+import Link from 'next/link';
 
 interface TabsProps {
   tabs: readonly { readonly id: string; readonly label: string; count?: number }[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
   ariaLabel?: string;
+  getTabHref?: (tabId: string) => string;
 }
 
 const TAB_ID_PREFIX = 'wt-tab';
@@ -21,7 +23,7 @@ export function getTabPanelId(tabId: string): string {
   return `${PANEL_ID_PREFIX}-${tabId}`;
 }
 
-export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation' }: TabsProps) {
+export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation', getTabHref }: TabsProps) {
   const getTabLabel = useCallback(
     (tabId: string) => tabs.find(t => t.id === tabId)?.label || tabId,
     [tabs],
@@ -80,27 +82,31 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation
       <div className='flex overflow-x-auto'>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
+          const href = getTabHref?.(tab.id);
+          const sharedProps = {
+            role: 'tab' as const,
+            'aria-selected': isActive,
+            'aria-controls': getTabPanelId(tab.id),
+            tabIndex: isActive ? 0 : -1,
+            id: getTabButtonId(tab.id),
+            className: cn(
+              'relative px-4 py-2.5 text-sm font-medium transition-colors outline-none shrink-0',
+              isActive && 'text-text-primary bg-[var(--bg-elevated)]',
+              !isActive && 'text-text-muted',
+            ),
+            onMouseEnter: (e: MouseEvent<HTMLElement>) => {
+              if (!isActive) e.currentTarget.style.color = 'var(--text-primary)';
+            },
+            onMouseLeave: (e: MouseEvent<HTMLElement>) => {
+              if (!isActive) e.currentTarget.style.color = 'var(--text-muted)';
+            },
+          };
           return (
-            <button
-              type='button'
+            <Link
               key={tab.id}
-              role='tab'
-              aria-selected={isActive}
-              aria-controls={getTabPanelId(tab.id)}
-              tabIndex={isActive ? 0 : -1}
-              id={getTabButtonId(tab.id)}
+              href={href ?? '#'}
               onClick={() => onTabChange(tab.id)}
-              className={cn(
-                'relative px-4 py-2.5 text-sm font-medium transition-colors outline-none shrink-0',
-                isActive && 'text-text-primary bg-[var(--bg-elevated)]',
-                !isActive && 'text-text-muted',
-              )}
-              onMouseEnter={(e) => {
-                if (!isActive) e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) e.currentTarget.style.color = 'var(--text-muted)';
-              }}
+              {...sharedProps}
             >
               <div className='flex items-center gap-2'>
                 {tab.label}
@@ -122,7 +128,7 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation
                   style={{ background: 'var(--accent-blue)' }}
                 />
               )}
-            </button>
+            </Link>
           );
         })}
       </div>

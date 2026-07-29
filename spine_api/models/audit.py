@@ -23,7 +23,7 @@ from enum import StrEnum
 from typing import Optional
 
 from sqlalchemy import String, DateTime, Index, Text, JSON
-from sqlalchemy.orm import Mapped, mapped_column, column_property
+from sqlalchemy.orm import Mapped, mapped_column
 
 from spine_api.core.database import Base, engine as _engine
 

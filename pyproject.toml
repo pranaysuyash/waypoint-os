@@ -28,6 +28,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-grpc>=1.41.1",
     "opentelemetry-instrumentation-fastapi>=0.62b1",
     "slowapi>=0.1.9",
+    "openai>=2.32.0",
 ]
 
 [dependency-groups]
@@ -58,6 +59,27 @@ llm = [
     "torch>=2.0.0",
     "sentencepiece>=0.1.99",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_llm_clients.py" = ["F401"]
+"tools/verify_frontier_models.py" = ["F401"]
+"notebooks/*.py" = ["E402"]
+"scripts/*.py" = ["E402"]
+"seed_test_user.py" = ["E402"]
+"spine_api/contract.py" = ["E402"]
+"spine_api/persistence.py" = ["E402"]
+"spine_api/routers/settings.py" = ["E402"]
+"spine_api/server.py" = ["E402"]
+"spine_api/watchdog.py" = ["E402"]
+"src/evals/audit/rules/extraction.py" = ["E402"]
+"src/evals/audit/rules/pipeline.py" = ["E402"]
+"src/intake/decision.py" = ["E402"]
+"src/intake/extractors.py" = ["E402"]
+"src/intake/orchestration.py" = ["E402"]
+"tests/test_integrity.py" = ["E402"]
+"tests/test_spine_pipeline_unit.py" = ["E402"]
+"tests/test_state_contract_parity.py" = ["E402"]
+"tools/eval_runner.py" = ["E402"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

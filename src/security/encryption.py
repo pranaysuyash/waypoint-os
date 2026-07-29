@@ -22,6 +22,11 @@ def _get_fernet() -> Fernet:
     if not key_raw:
         if os.getenv("DATA_PRIVACY_MODE") == "production":
             raise ValueError("ENCRYPTION_KEY must be set in production mode")
+        logger.warning(
+            "ENCRYPTION_KEY not set — using static dev key. "
+            "This is INSECURE for any environment with real data. "
+            "Set ENCRYPTION_KEY in production, staging, and shared dev environments."
+        )
         key_raw = 'v-k_y8Y5C8h7_5x6pQWzD9T-4G_MvR_Wf-1h-K_N-P8='
     else:
         key_raw = key_raw.encode() if isinstance(key_raw, str) else key_raw

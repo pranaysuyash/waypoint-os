@@ -11,32 +11,24 @@ Run: uv run python -m pytest tests/test_api_contract_v02.py -v
 import os
 import sys
 import inspect
-from typing import get_type_hints
 
 # Ensure src/ is on the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import pytest
 from dataclasses import is_dataclass, fields
 
 from src.intake.packet_models import (
     Ambiguity,
     AuthorityLevel,
     CanonicalPacket,
-    EvidenceRef,
     Slot,
-    SourceEnvelope,
-    SubGroup,
-    UnknownField,
 )
 from src.intake.decision import (
     DecisionResult,
     LEGACY_ALIASES,
     MVB_BY_STAGE,
-    classify_contradiction,
     field_fills_blocker,
     generate_question,
-    get_contradiction_action,
     run_gap_and_decision,
 )
 

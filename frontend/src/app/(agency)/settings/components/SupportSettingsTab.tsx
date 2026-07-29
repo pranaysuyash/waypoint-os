@@ -150,7 +150,7 @@ export function SupportSettingsTab() {
     description,
     children,
   }: {
-    icon: React.FC<{ className?: string }>;
+    icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
     title: string;
     description: string;
     children: React.ReactNode;

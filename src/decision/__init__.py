@@ -29,8 +29,8 @@ from .hybrid_engine import (
 
 # Production readiness
 try:
-    from .telemetry import DecisionTelemetry, TelemetrySnapshot, get_telemetry
-    from .health import (
+    from .telemetry import DecisionTelemetry, TelemetrySnapshot, get_telemetry  # noqa: F401
+    from .health import (  # noqa: F401
         CircuitState,
         CircuitBreaker,
         HealthStatus,

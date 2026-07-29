@@ -24,7 +24,6 @@ import base64
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any
-import pytest
 import uuid
 
 from spine_api.persistence import TEST_AGENCY_ID

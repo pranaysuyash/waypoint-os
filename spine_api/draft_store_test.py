@@ -6,7 +6,7 @@ Run with: cd /Users/pranay/Projects/travel_agency_agent && uv run python spine_a
 import sys
 sys.path.insert(0, "/Users/pranay/Projects/travel_agency_agent")
 
-from spine_api.draft_store import DraftStore, FileDraftStore, Draft
+from spine_api.draft_store import DraftStore, FileDraftStore
 
 
 def test_create_and_get():
@@ -28,7 +28,7 @@ def test_create_and_get():
     assert fetched is not None
     assert fetched.id == draft.id
     assert fetched.customer_message == "Flight cancelled, need rebook"
-    print(f"  Fetched draft OK")
+    print("  Fetched draft OK")
     return draft.id
 
 
@@ -61,12 +61,12 @@ def test_discard_and_restore(draft_id: str):
     discarded = DraftStore.discard(draft_id, "user_001")
     assert discarded is not None
     assert discarded.status == "discarded"
-    print(f"  Discarded draft")
+    print("  Discarded draft")
 
     restored = DraftStore.restore(draft_id)
     assert restored is not None
     assert restored.status == "open"
-    print(f"  Restored draft")
+    print("  Restored draft")
 
 
 def test_promote(draft_id: str):
@@ -75,7 +75,7 @@ def test_promote(draft_id: str):
     assert promoted is not None
     assert promoted.status == "promoted"
     assert promoted.promoted_trip_id == "trip_abc123"
-    print(f"  Promoted draft to trip_abc123")
+    print("  Promoted draft to trip_abc123")
 
 
 def test_update_run_state(draft_id: str) -> str:

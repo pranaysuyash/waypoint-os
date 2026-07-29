@@ -11,12 +11,10 @@ Verifies:
 - Alembic migration is present and valid
 """
 
-import os
 import uuid
 from datetime import datetime, timezone
 
 import pytest
-from sqlalchemy import select, and_, desc
 
 from spine_api.models.audit import AuditLog, AuditAction
 from spine_api.core.audit import AuditContext, _extract_client_ip

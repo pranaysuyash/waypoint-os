@@ -21,7 +21,6 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import pytest
 
 from src.suitability import integration as integ
 from src.suitability.integration import (

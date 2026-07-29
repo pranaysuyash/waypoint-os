@@ -9,9 +9,6 @@ import json
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +137,7 @@ def send_operator_email(
         return False
     
     subject = subject or f"⏰ You have {len(overdue_followups)} overdue follow-up(s)"
-    body = format_operator_email_body(overdue_followups)
+    format_operator_email_body(overdue_followups)
     
     # Log the notification (mock implementation)
     logger.info(
@@ -430,7 +427,7 @@ def send_traveler_notification(
     if send_via_email or traveler_email:
         message = format_traveler_email_body(traveler_name, agent_name, due_date_str)
         logger.info(
-            f"Email notification to traveler",
+            "Email notification to traveler",
             extra={
                 "email": traveler_email,
                 "traveler": traveler_name,

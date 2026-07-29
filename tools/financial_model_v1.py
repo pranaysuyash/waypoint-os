@@ -70,8 +70,8 @@ def run():
     # Breakeven
     be = MONTHLY_FIXED / (Y1_ARPU - VAR_COST)
     print(f"  Breakeven: {be:.1f} customers")
-    print(f"  Cash needed: ~₹66,000 (~$795)")
-    print(f"  Profitable from: Month 6")
+    print("  Cash needed: ~₹66,000 (~$795)")
+    print("  Profitable from: Month 6")
 
 if __name__ == "__main__":
     run()

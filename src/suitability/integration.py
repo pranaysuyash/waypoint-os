@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from .models import ParticipantRef, SuitabilityContext
+from .models import ActivityDefinition, ParticipantRef, SuitabilityContext
 from .scoring import evaluate_activity, FIELD_CONFIDENCE_PARTIAL
 from .catalog import get_activity, STATIC_ACTIVITIES
 

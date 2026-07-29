@@ -11,10 +11,6 @@ Covers:
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -488,7 +484,7 @@ class TestRunGapAndDecisionIntegration:
     @patch("src.decision.override_learning._get_override_store")
     def test_override_applied_in_pipeline(self, mock_store_factory):
         """Verify override adjustments are applied during run_gap_and_decision."""
-        from src.intake.packet_models import CanonicalPacket, Slot, AuthorityLevel, Ambiguity
+        from src.intake.packet_models import CanonicalPacket, Slot, AuthorityLevel
         from src.intake.decision import run_gap_and_decision
 
         mock_store = MagicMock()
@@ -556,7 +552,6 @@ class TestRunGapAndDecisionIntegration:
 
     def test_safety_flags_cannot_be_suppressed_in_pipeline(self):
         """Verify safety invariant flags survive override adjustments."""
-        from src.intake.packet_models import CanonicalPacket, Slot, AuthorityLevel
         from src.decision.override_learning import apply_override_adjustments, SAFETY_INVARIANT_FLAGS
 
         # All safety flags should be in the set

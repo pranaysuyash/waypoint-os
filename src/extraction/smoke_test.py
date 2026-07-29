@@ -6,11 +6,10 @@ No accuracy measurement, no realistic document generation.
 Requires EXTRACTION_SMOKE_TEST=1 to run. Blocked when APP_ENV=production.
 """
 
-import io
 import logging
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 

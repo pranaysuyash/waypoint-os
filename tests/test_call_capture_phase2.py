@@ -38,7 +38,7 @@ class TestPhase2StructuredFields:
     AGENCY_ID = TEST_AGENCY_ID
 
     def _seed_patchable_trip(self) -> str:
-        from spine_api.persistence import TripStore, TEST_AGENCY_ID
+        from spine_api.persistence import TripStore
 
         trip_id = f"trip_p2_{uuid4().hex[:28]}"
         TripStore.save_trip(
@@ -366,7 +366,7 @@ class TestPrioritiesFlexibilityPatchSync:
     AGENCY_ID = TEST_AGENCY_ID
 
     def _seed_trip(self) -> str:
-        from spine_api.persistence import TripStore, TEST_AGENCY_ID
+        from spine_api.persistence import TripStore
         trip_id = "trip_patch_priorities_flex"
         TripStore.save_trip(
             {
@@ -429,7 +429,7 @@ class TestPrioritiesFlexibilityPatchSync:
 
     def test_patch_clears_validation_warnings(self, session_client):
         """PATCH clears stale validation warnings for synced fields."""
-        from spine_api.persistence import TripStore, TEST_AGENCY_ID
+        from spine_api.persistence import TripStore
         trip_id = "trip_patch_clear_warnings"
         TripStore.save_trip(
             {

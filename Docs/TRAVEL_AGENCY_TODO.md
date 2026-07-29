@@ -25,14 +25,14 @@
 
 ## Architecture TODOs
 
-### Pipeline Stage Data Scope Review
-- [ ] Review each pipeline stage one-by-one to define what data belongs where
-- [ ] Intake stage: lightweight trip intent ONLY (who's roughly going, where, when, budget) — no full roster
-- [ ] Booking stage: full traveler roster, legal names, passport numbers, DOB, relationships, third-party relationships
-- [ ] Payment stage: payer details, payment allocation, EMI structure
-- [ ] Pre-trip/Output stage: emergency contacts, medical info, document ownership (who holds which visa/passport/ticket)
-- [ ] Design principle: "Park full people management until later stages. Don't jam it into Intake."
-- [ ] See SESSION_CONTEXT.md §8 for full context on this decision
+### Pipeline Stage Data Scope Review ✅
+- [x] Review each pipeline stage one-by-one to define what data belongs where
+- [x] Intake stage: lightweight trip intent ONLY (who's roughly going, where, when, budget) — no full roster
+- [x] Booking stage: full traveler roster, legal names, passport numbers, DOB, relationships, third-party relationships
+- [x] Payment stage: payer details, payment allocation, EMI structure
+- [x] Pre-trip/Output stage: emergency contacts, medical info, document ownership (who holds which visa/passport/ticket)
+- [x] Design principle: "Park full people management until later stages. Don't jam it into Intake."
+- [x] Documented in Docs/research/PIPELINE_STAGE_DATA_SCOPE_REVIEW.md
 
 ### Frontier OS Data Pipeline
 - [ ] Backend: populate `frontier_result` field in API response (field exists in contract but never written)

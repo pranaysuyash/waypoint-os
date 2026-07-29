@@ -1,4 +1,3 @@
-import pytest
 from src.intake.config.agency_settings import AgencySettings
 from src.intake.decision import check_budget_feasibility, DecisionResult, ConfidenceScorecard
 from src.intake.strategy import build_session_strategy
@@ -42,7 +41,7 @@ def test_settings_affect_budget_margin():
     # Still tight. Wow the threshold is generous.
     
     # Let's reduce budget to force infeasible.
-    packet_low_budget = CanonicalPacket(
+    CanonicalPacket(
         packet_id="test-packet-2",
         operating_mode="normal_intake",
         facts={

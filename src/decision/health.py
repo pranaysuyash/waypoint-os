@@ -6,9 +6,8 @@ Provides health status, circuit breaker for LLM failures, and graceful degradati
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 import threading

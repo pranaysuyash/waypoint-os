@@ -17,9 +17,9 @@ from typing import Any, Dict, List, Optional, Tuple, Literal
 from enum import Enum
 
 from .constants import DecisionState
-from .packet_models import CanonicalPacket, Slot, AuthorityLevel
+from .packet_models import CanonicalPacket
 from .decision import DecisionResult
-from .safety import sanitize_for_traveler, check_no_leakage, enforce_no_leakage, SanitizedPacketView
+from .safety import enforce_no_leakage
 from .config.agency_settings import AgencySettings
 
 
@@ -972,6 +972,7 @@ def _build_branch_prompts(
 def build_traveler_safe_bundle(
     strategy: SessionStrategy,
     decision: DecisionResult,
+    strict_leakage: Optional[bool] = None,
 ) -> PromptBundle:
     """
     Build TRAVELER-SAFE prompt bundle.
@@ -1003,7 +1004,7 @@ def build_traveler_safe_bundle(
     # Strict mode: raises ValueError if leakage detected
     # Non-strict mode: logs leakage in internal_notes (never traveler-facing)
     try:
-        leaks = enforce_no_leakage(bundle)
+        leaks = enforce_no_leakage(bundle, strict=strict_leakage)
     except ValueError:
         raise
 

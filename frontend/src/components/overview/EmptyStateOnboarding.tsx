@@ -1,21 +1,26 @@
 'use client';
 
+import { useState, useCallback } from 'react';
+import Link from 'next/link';
+import { CheckCircle2, ArrowRight, Users, Send, Inbox } from 'lucide-react';
+
 /**
  * EmptyStateOnboarding - first-run guide shown on /overview when the workspace
  * has no trips AND no inbox leads. Three sequential steps lead the owner from
  * a fresh workspace to the first trip in planning.
  *
+ * Persists completed steps in localStorage so progress survives page reloads.
+ *
  * Shown when: planningTripsTotal === 0 && leadInboxTotal === 0 && !isLoading
  * Hidden when: any trip or lead exists (planning has started - not first-run).
- *
- * Step 1 links to /settings?tab=people (WorkspaceCodePanel from Task 1) so the
- * owner can immediately copy and share an invite link.
  */
 
-import Link from 'next/link';
-import { ArrowRight, Users, Send, Inbox, CheckCircle2 } from 'lucide-react';
+const CHECKLIST_KEY = 'waypoint:onboarding-checklist:v2';
+
+// ── Step definitions ─────────────────────────────────────────────────────
 
 interface OnboardingStep {
+  key: string;
   icon: React.FC<{ className?: string; style?: React.CSSProperties }>;
   label: string;
   description: string;
@@ -24,18 +29,21 @@ interface OnboardingStep {
 
 const STEPS: OnboardingStep[] = [
   {
+    key: 'invite_team',
     icon: Users,
     label: 'Invite your team',
     description: 'Share an invitation link so agents can join your workspace.',
     href: '/settings?tab=people',
   },
   {
+    key: 'first_inquiry',
     icon: Send,
     label: 'Add your first inquiry',
     description: "Paste a customer note and Waypoint organizes the details and flags what's missing.",
     href: '/workbench?draft=new&tab=intake',
   },
   {
+    key: 'review_inbox',
     icon: Inbox,
     label: 'Review in Lead Inbox',
     description: 'Once processed, the trip appears in your inbox ready for planning.',
@@ -43,7 +51,48 @@ const STEPS: OnboardingStep[] = [
   },
 ];
 
+// ── localStorage helpers ─────────────────────────────────────────────────
+
+function loadCompletedSteps(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(CHECKLIST_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return new Set(parsed);
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCompletedSteps(steps: Set<string>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CHECKLIST_KEY, JSON.stringify(Array.from(steps)));
+  } catch {
+    // localStorage unavailable (private browsing, quota exceeded)
+  }
+}
+
+// ── Component ────────────────────────────────────────────────────────────
+
 export function EmptyStateOnboarding() {
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(loadCompletedSteps);
+
+  const markCompleted = useCallback((key: string) => {
+    setCompletedSteps((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      // Save synchronously so completion persists even if navigation happens immediately
+      saveCompletedSteps(next);
+      return next;
+    });
+  }, []);
+
+  const allCompleted = STEPS.every((step) => completedSteps.has(step.key));
+
   return (
     <div className="flex flex-col items-center py-10 px-4">
       <div
@@ -57,44 +106,59 @@ export function EmptyStateOnboarding() {
         className="text-[15px] font-semibold mb-1 text-center"
         style={{ color: 'var(--text-primary)' }}
       >
-        Welcome to Waypoint
+        {allCompleted ? 'All set — you\'re ready to go' : 'Welcome to Waypoint'}
       </h2>
       <p
         className="text-[13px] text-center max-w-[340px] leading-relaxed mb-8"
         style={{ color: 'var(--text-secondary)' }}
       >
-        Your workspace is ready. Here&apos;s how to get started.
+        {allCompleted
+          ? 'Every onboarding step is complete. Start processing inquiries and building trip plans.'
+          : 'Your workspace is ready. Here\'s how to get started.'}
       </p>
 
       <ol className="w-full max-w-[420px] space-y-2">
-        {STEPS.map((step, idx) => {
+        {STEPS.map((step) => {
           const Icon = step.icon;
+          const isCompleted = completedSteps.has(step.key);
+
           return (
-            <li key={step.label}>
+            <li key={step.key}>
               <Link
                 href={step.href}
+                onClick={() => markCompleted(step.key)}
                 className="flex items-center gap-4 p-4 rounded-xl border transition-colors group"
-                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
+                style={{
+                  background: 'var(--bg-surface)',
+                  borderColor: isCompleted ? 'var(--accent-green)' : 'var(--border-default)',
+                }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget as HTMLAnchorElement;
                   Object.assign(el.style, { borderColor: 'var(--border-hover)', background: 'var(--bg-elevated)' });
                 }}
                 onMouseLeave={(e) => {
                   const el = e.currentTarget as HTMLAnchorElement;
-                  Object.assign(el.style, { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' });
+                  Object.assign(el.style, { borderColor: isCompleted ? 'var(--accent-green)' : 'var(--border-default)', background: 'var(--bg-surface)' });
                 }}
+                aria-current={isCompleted ? 'step' : undefined}
               >
+                {/* Step number badge */}
                 <div
                   className="size-7 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold"
                   style={{
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border-default)',
-                    color: 'var(--text-tertiary)',
+                    background: isCompleted ? 'rgba(63,185,80,0.15)' : 'var(--bg-elevated)',
+                    border: `1px solid ${isCompleted ? 'var(--accent-green)' : 'var(--border-default)'}`,
+                    color: isCompleted ? 'var(--accent-green)' : 'var(--text-tertiary)',
                   }}
                 >
-                  {idx + 1}
+                  {isCompleted ? (
+                    <CheckCircle2 className="size-4" />
+                  ) : (
+                    STEPS.findIndex((s) => s.key === step.key) + 1
+                  )}
                 </div>
 
+                {/* Icon */}
                 <div
                   className="size-8 rounded-lg flex items-center justify-center shrink-0"
                   style={{
@@ -105,6 +169,7 @@ export function EmptyStateOnboarding() {
                   <Icon className="size-4" style={{ color: 'var(--accent-blue)' }} />
                 </div>
 
+                {/* Text */}
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-medium" style={{ color: 'var(--text-primary)' }}>
                     {step.label}
@@ -125,7 +190,9 @@ export function EmptyStateOnboarding() {
       </ol>
 
       <p className="mt-6 text-[12px] text-center" style={{ color: 'var(--text-tertiary)' }}>
-        This guide disappears once your first trip is in planning.
+        {allCompleted
+          ? 'This guide stays until your first trip enters planning.'
+          : 'This guide disappears once your first trip is in planning.'}
       </p>
     </div>
   );

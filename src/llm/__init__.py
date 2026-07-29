@@ -139,7 +139,7 @@ def get_default_client() -> BaseLLMClient:
 
     try:
         return create_llm_client(provider=provider)
-    except LLMUnavailableError as e:
+    except LLMUnavailableError:
         # Try fallback providers
         fallbacks = {
             "gemini": ["openai", "local"],

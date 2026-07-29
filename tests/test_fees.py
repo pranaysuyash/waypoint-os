@@ -3,7 +3,6 @@ Unit tests for fee calculation module.
 
 Tests risk-adjusted fee calculation based on suitability risks.
 """
-import pytest
 from src.fees.calculation import FeeCalculator, calculate_trip_fees
 
 

@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.models.tenant import BookingDocument
 from spine_api.services import execution_event_service
-from spine_api.services.document_storage import DocumentStorageBackend, get_document_storage
+from spine_api.services.document_storage import get_document_storage
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ async def validate_file_upload(file: UploadFile) -> tuple[bytes, str]:
 
     Returns (data, detected_mime).
     """
-    ext = sanitize_extension(file.filename)
+    sanitize_extension(file.filename)
 
     # Stream read with per-chunk size check
     chunks = []

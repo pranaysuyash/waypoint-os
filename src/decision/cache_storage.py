@@ -8,10 +8,9 @@ Each decision type has its own JSON file for efficient lookups.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from .cache_schema import CachedDecision, CacheStats
 
@@ -110,7 +109,7 @@ class DecisionCacheStorage:
                         with open(cache_file, "w") as f:
                             json.dump(cache_data, f, indent=2)
 
-            except (json.JSONDecodeError, IOError, KeyError) as e:
+            except (json.JSONDecodeError, IOError, KeyError):
                 # Corrupt cache file - treat as miss
                 pass
 

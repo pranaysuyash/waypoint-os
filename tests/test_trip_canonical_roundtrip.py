@@ -120,6 +120,32 @@ class TestOriginRoundtrip:
         facts = (result.get("extracted") or {}).get("facts", {})
         assert facts.get("origin_city", {}).get("authority_level") == "explicit_user"
 
+    def test_manual_structured_overlay_wins_over_stale_extracted_origin(self):
+        trip = {
+            "id": "trip_overlay",
+            "status": "assigned",
+            "raw_input": {
+                "submission": {
+                    "structured_json": {
+                        "origin": "Mumbai",
+                    }
+                }
+            },
+            "extracted": {
+                "facts": {
+                    "origin_city": {
+                        "value": "TBD",
+                        "confidence": 0.2,
+                        "authority_level": "ai_guess",
+                    }
+                }
+            },
+        }
+
+        result = TripResponse.from_dict(trip)
+
+        assert result.origin == "Mumbai"
+
 
 class TestDestinationRoundtrip:
     def test_patch_destination_appears_in_patch_response(self, session_client, canonical_trip_id):
@@ -237,6 +263,141 @@ class TestTripPurposeRoundtrip:
 
 
 # ---------------------------------------------------------------------------
+# Phase 2 structured intake field roundtrips
+# ---------------------------------------------------------------------------
+
+
+class TestPartyCompositionRoundtrip:
+    def test_patch_party_composition_appears_in_patch_response(self, session_client, canonical_trip_id):
+        result = _patch_trip(session_client, canonical_trip_id, {"party_composition": "2 adults, 1 child"})
+        assert result["party_composition"] == "2 adults, 1 child"
+
+    def test_patch_party_composition_persists_to_get(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"party_composition": "3 adults, 2 children"})
+        result = _get_trip(session_client, canonical_trip_id)
+        assert result["party_composition"] == "3 adults, 2 children"
+
+    def test_patch_party_composition_dual_write_visible_in_extracted(self, session_client, canonical_trip_id):
+        """_sync_manual_trip_fields must write party_composition into extracted.facts."""
+        _patch_trip(session_client, canonical_trip_id, {"party_composition": "1 adult, 1 infant"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("party_composition", {}).get("value") == "1 adult, 1 infant", (
+            "PATCH must dual-write party_composition into extracted.facts.party_composition.value"
+        )
+
+    def test_patch_party_composition_authority_is_explicit_user(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"party_composition": "4 adults"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("party_composition", {}).get("authority_level") == "explicit_user"
+
+
+class TestPacePreferenceRoundtrip:
+    def test_patch_pace_preference_appears_in_patch_response(self, session_client, canonical_trip_id):
+        result = _patch_trip(session_client, canonical_trip_id, {"pace_preference": "relaxed"})
+        assert result["pace_preference"] == "relaxed"
+
+    def test_patch_pace_preference_persists_to_get(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"pace_preference": "moderate"})
+        result = _get_trip(session_client, canonical_trip_id)
+        assert result["pace_preference"] == "moderate"
+
+    def test_patch_pace_preference_dual_write_visible_in_extracted(self, session_client, canonical_trip_id):
+        """_sync_manual_trip_fields must write pace_preference into extracted.facts."""
+        _patch_trip(session_client, canonical_trip_id, {"pace_preference": "fast"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("pace_preference", {}).get("value") == "fast", (
+            "PATCH must dual-write pace_preference into extracted.facts.pace_preference.value"
+        )
+
+    def test_patch_pace_preference_authority_is_explicit_user(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"pace_preference": "leisurely"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("pace_preference", {}).get("authority_level") == "explicit_user"
+
+
+class TestDateYearConfidenceRoundtrip:
+    def test_patch_date_year_confidence_appears_in_patch_response(self, session_client, canonical_trip_id):
+        result = _patch_trip(session_client, canonical_trip_id, {"date_year_confidence": "high"})
+        assert result["date_year_confidence"] == "high"
+
+    def test_patch_date_year_confidence_persists_to_get(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"date_year_confidence": "medium"})
+        result = _get_trip(session_client, canonical_trip_id)
+        assert result["date_year_confidence"] == "medium"
+
+    def test_patch_date_year_confidence_dual_write_visible_in_extracted(self, session_client, canonical_trip_id):
+        """_sync_manual_trip_fields must write date_year_confidence into extracted.facts."""
+        _patch_trip(session_client, canonical_trip_id, {"date_year_confidence": "low"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("date_year_confidence", {}).get("value") == "low", (
+            "PATCH must dual-write date_year_confidence into extracted.facts.date_year_confidence.value"
+        )
+
+    def test_patch_date_year_confidence_authority_is_explicit_user(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"date_year_confidence": "tentative"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("date_year_confidence", {}).get("authority_level") == "explicit_user"
+
+
+class TestLeadSourceRoundtrip:
+    def test_patch_lead_source_appears_in_patch_response(self, session_client, canonical_trip_id):
+        result = _patch_trip(session_client, canonical_trip_id, {"lead_source": "referral"})
+        assert result["lead_source"] == "referral"
+
+    def test_patch_lead_source_persists_to_get(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"lead_source": "google_ads"})
+        result = _get_trip(session_client, canonical_trip_id)
+        assert result["lead_source"] == "google_ads"
+
+    def test_patch_lead_source_dual_write_visible_in_extracted(self, session_client, canonical_trip_id):
+        """_sync_manual_trip_fields must write lead_source into extracted.facts."""
+        _patch_trip(session_client, canonical_trip_id, {"lead_source": "instagram"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("lead_source", {}).get("value") == "instagram", (
+            "PATCH must dual-write lead_source into extracted.facts.lead_source.value"
+        )
+
+    def test_patch_lead_source_authority_is_explicit_user(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"lead_source": "direct_call"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("lead_source", {}).get("authority_level") == "explicit_user"
+
+
+class TestActivityProvenanceRoundtrip:
+    def test_patch_activity_provenance_appears_in_patch_response(self, session_client, canonical_trip_id):
+        result = _patch_trip(session_client, canonical_trip_id, {"activity_provenance": "direct_call"})
+        assert result["activity_provenance"] == "direct_call"
+
+    def test_patch_activity_provenance_persists_to_get(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"activity_provenance": "whatsapp"})
+        result = _get_trip(session_client, canonical_trip_id)
+        assert result["activity_provenance"] == "whatsapp"
+
+    def test_patch_activity_provenance_dual_write_visible_in_extracted(self, session_client, canonical_trip_id):
+        """_sync_manual_trip_fields must write activity_provenance into extracted.facts."""
+        _patch_trip(session_client, canonical_trip_id, {"activity_provenance": "email"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("activity_provenance", {}).get("value") == "email", (
+            "PATCH must dual-write activity_provenance into extracted.facts.activity_provenance.value"
+        )
+
+    def test_patch_activity_provenance_authority_is_explicit_user(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"activity_provenance": "website_form"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("activity_provenance", {}).get("authority_level") == "explicit_user"
+
+
+# ---------------------------------------------------------------------------
 # Cross-field preservation
 # ---------------------------------------------------------------------------
 
@@ -301,7 +462,12 @@ class TestTripResponseShape:
         """GET /trips/{id} must return all TripResponse canonical fields."""
         result = _get_trip(session_client, canonical_trip_id)
         required = {"id", "status"}
-        optional_canonical = {"origin", "destination", "dateWindow", "party", "budget", "tripType", "tripPurpose", "customerName"}
+        optional_canonical = {
+            "origin", "destination", "dateWindow", "party", "budget",
+            "tripType", "tripPurpose", "customerName",
+            "party_composition", "pace_preference", "date_year_confidence",
+            "lead_source", "activity_provenance",
+        }
         assert required <= set(result), f"Missing required fields: {required - set(result)}"
         # All optional canonical fields present in schema (may be null)
         for field in optional_canonical:

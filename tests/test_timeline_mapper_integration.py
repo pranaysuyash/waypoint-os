@@ -11,7 +11,6 @@ correctly transform from raw audit events to presentation-ready timeline format.
 import json
 import pytest
 from datetime import datetime, timezone
-from typing import Any, Dict, List
 from pathlib import Path
 
 # Import the mapper from src

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Apply all remaining async pipeline changes to spine_api/server.py"""
-import sys
 
 path = "spine_api/server.py"
 

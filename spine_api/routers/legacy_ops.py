@@ -42,6 +42,85 @@ AssignmentStore = persistence.AssignmentStore
 OverrideStore = persistence.OverrideStore
 TripStore = persistence.TripStore
 
+
+def _capture_decision_delta(trip: dict, request: OverrideRequest) -> dict:
+    """Capture a structured snapshot of the AI decision state + trip context
+    at the time an override is created.
+
+    This is the core data enrichment for KDD v0 override mining. Every override
+    event carries this delta, which the mining pipeline uses to extract features
+    and surface digest clusters.
+
+    Returns a dict with:
+        ai_decision: snapshot of the AI's decision state before the override
+        operator_decision: what the operator did
+        trip_context: key trip features at the time of override
+    """
+    decision_data = trip.get("decision", {}) or {}
+    confidence_payload = decision_data.get("confidence", {}) or {}
+    flags = decision_data.get("suitability_flags", []) or []
+
+    # AI decision snapshot
+    ai_decision = {
+        "decision_state": decision_data.get("decision_state"),
+        "operating_mode": decision_data.get("operating_mode"),
+        "confidence": confidence_payload.get("overall"),
+        "flag_count": len(flags),
+        "severe_flags": [
+            f.get("flag") for f in flags
+            if f.get("severity") in ("high", "critical")
+        ],
+    }
+
+    # Operator decision (from the request)
+    operator_decision = {
+        "action": request.action,
+        "reason": request.reason,
+        "overridden_by": request.overridden_by,
+        "scope": request.scope,
+        "original_severity": request.original_severity,
+        "new_severity": request.new_severity,
+    }
+
+    # Trip context snapshot
+    extracted = trip.get("extracted", {}) or {}
+    facts = extracted.get("facts", {}) or {}
+    trip_context = {
+        "stage": trip.get("stage"),
+        "source": trip.get("source"),
+        "status": trip.get("status"),
+        "destination": _get_fact_value(facts, "resolved_destination")
+            or _get_fact_value(facts, "destination_candidates"),
+        "party_size": _get_fact_value(facts, "party_size"),
+        "trip_purpose": _get_fact_value(facts, "trip_purpose"),
+        "duration_days": _get_fact_value(facts, "duration_days"),
+        "pace_preference": _get_fact_value(facts, "pace_preference") or trip.get("pace_preference"),
+        "lead_source": _get_fact_value(facts, "lead_source") or trip.get("lead_source"),
+    }
+
+    return {
+        "ai_decision": ai_decision,
+        "operator_decision": operator_decision,
+        "trip_context": trip_context,
+    }
+
+
+def _get_fact_value(facts: dict, key: str):
+    """Extract a value from extracted.facts, handling nested {value: ...} wrappers."""
+    if not facts:
+        return None
+    val = facts.get(key)
+    if val is None:
+        return None
+    if isinstance(val, dict) and "value" in val:
+        val = val["value"]
+    if isinstance(val, list) and val:
+        if isinstance(val[0], dict) and "value" in val[0]:
+            return val[0]["value"]
+        return str(val[0])
+    return val
+
+
 router = APIRouter()
 
 
@@ -193,6 +272,9 @@ def create_override(
                 detail=f"Stale override: flag '{request.flag}' severity is '{actual_severity}', not '{request.original_severity}'",
             )
 
+    # ── decision_delta: snapshot of AI decision state + trip context ─────────
+    decision_delta = _capture_decision_delta(trip, request)
+
     override_data = {
         "flag": request.flag,
         "decision_type": request.decision_type or request.flag,
@@ -203,6 +285,7 @@ def create_override(
         "scope": request.scope,
         "original_severity": request.original_severity or (flag_info.get("severity") if flag_info else None),
         "rescinded": False,
+        "decision_delta": decision_delta,
     }
     override_id = OverrideStore.save_override(trip_id, override_data)
 
@@ -256,6 +339,7 @@ def create_override(
         "reason": request.reason,
         "rollout_mode": rollout_mode,
         "mutations_applied": mutations_applied,
+        "decision_delta": decision_delta,
     })
 
     return OverrideResponse(

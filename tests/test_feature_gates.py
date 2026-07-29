@@ -10,7 +10,6 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from src.intake.config.agency_settings import (
@@ -521,7 +520,7 @@ class TestTierOverridesAiAgentSettings:
             mock_neg.analyze_and_trigger.return_value = []
             from src.intake.frontier_orchestrator import run_frontier_orchestration
 
-            result = run_frontier_orchestration(packet, decision, agency_settings=settings)
+            run_frontier_orchestration(packet, decision, agency_settings=settings)
             # Negotiation IS called because pro tier allows it
             mock_neg.analyze_and_trigger.assert_called_once()
 

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import spine_api.services.pipeline_execution_service as svc
+from src.intake.safety import StrictLeakageViolation
 
 
 def test_pipeline_execution_service_source_has_no_server_import() -> None:
@@ -21,8 +22,6 @@ def test_pipeline_execution_service_source_has_no_server_import() -> None:
 
 
 def test_execute_spine_pipeline_uses_injected_run_and_persistence() -> None:
-    calls: list[bool] = []
-
     class FakeRunLedger:
         @staticmethod
         def set_state(run_id, state):
@@ -43,9 +42,6 @@ def test_execute_spine_pipeline_uses_injected_run_and_persistence() -> None:
     emit_blocked = MagicMock()
     emit_stage_entered = MagicMock()
     emit_stage_completed = MagicMock()
-
-    def fake_set_strict_mode(value: bool) -> None:
-        calls.append(value)
 
     logger = MagicMock()
 
@@ -78,7 +74,6 @@ def test_execute_spine_pipeline_uses_injected_run_and_persistence() -> None:
         run_state_running="running",
         draft_store=SimpleNamespace(update_run_state=MagicMock()),
         agency_settings_store=SimpleNamespace(load=MagicMock(return_value={})),
-        set_strict_mode_fn=fake_set_strict_mode,
         build_live_checker_signals_fn=lambda _packet, _raw: None,
         emit_run_started_fn=emit_started,
         emit_run_completed_fn=emit_completed,
@@ -92,9 +87,6 @@ def test_execute_spine_pipeline_uses_injected_run_and_persistence() -> None:
     emit_failed.assert_called_once()
     emit_blocked.assert_not_called()
     emit_completed.assert_not_called()
-
-    # strict mode always reset in finally
-    assert calls and calls[-1] is False
 
 
 def _base_request() -> dict:
@@ -119,7 +111,6 @@ def _successful_result() -> SimpleNamespace:
 
 
 def _execute_for_boundary_test(*, run_ledger, run_spine_once_fn=None):
-    calls: list[bool] = []
     logger = MagicMock()
     emit_started = MagicMock()
     emit_completed = MagicMock()
@@ -146,7 +137,6 @@ def _execute_for_boundary_test(*, run_ledger, run_spine_once_fn=None):
         run_state_running="running",
         draft_store=SimpleNamespace(update_run_state=MagicMock()),
         agency_settings_store=SimpleNamespace(load=MagicMock(return_value={})),
-        set_strict_mode_fn=lambda value: calls.append(value),
         build_live_checker_signals_fn=lambda _packet, _raw: None,
         emit_run_started_fn=emit_started,
         emit_run_completed_fn=emit_completed,
@@ -157,7 +147,6 @@ def _execute_for_boundary_test(*, run_ledger, run_spine_once_fn=None):
     )
 
     return SimpleNamespace(
-        strict_mode_calls=calls,
         logger=logger,
         emit_completed=emit_completed,
         emit_failed=emit_failed,
@@ -199,7 +188,49 @@ def test_execute_spine_pipeline_isolates_result_checkpoint_ledger_failure() -> N
         "run-1",
         result.logger.error.call_args_list[0][0][2],
     )
-    assert result.strict_mode_calls[-1] is False
+    assert result.logger.error.call_count >= 1
+
+
+def test_execute_spine_pipeline_completes_without_packet() -> None:
+    class Ledger:
+        @staticmethod
+        def set_state(run_id, state):
+            _ = (run_id, state)
+
+        @staticmethod
+        def get_all_steps(run_id):
+            _ = run_id
+            return {}
+
+        @staticmethod
+        def save_step(run_id, step, payload):
+            _ = (run_id, step, payload)
+
+        @staticmethod
+        def update_meta(run_id, **kwargs):
+            _ = (run_id, kwargs)
+
+        @staticmethod
+        def get_meta(run_id):
+            _ = run_id
+            return {"draft_id": None}
+
+        @staticmethod
+        def complete(run_id, total_ms):
+            _ = (run_id, total_ms)
+
+    result = _execute_for_boundary_test(
+        run_ledger=Ledger,
+        run_spine_once_fn=lambda **_kwargs: SimpleNamespace(
+            validation=SimpleNamespace(is_valid=True),
+            decision=SimpleNamespace(),
+            strategy=SimpleNamespace(),
+            leakage_result={"leaks": [], "is_safe": True},
+        ),
+    )
+
+    result.emit_completed.assert_called_once()
+    result.save_processed_trip.assert_called_once()
 
 
 def test_execute_spine_pipeline_persists_traveler_bundle_public_projection() -> None:
@@ -305,7 +336,6 @@ def test_execute_spine_pipeline_isolates_complete_ledger_failure() -> None:
         "run-1",
         result.logger.error.call_args_list[-1][0][2],
     )
-    assert result.strict_mode_calls[-1] is False
 
 
 def test_execute_spine_pipeline_isolates_block_ledger_failure() -> None:
@@ -321,7 +351,7 @@ def test_execute_spine_pipeline_isolates_block_ledger_failure() -> None:
 
     result = _execute_for_boundary_test(
         run_ledger=FailingBlockLedger,
-        run_spine_once_fn=lambda **_kwargs: (_ for _ in ()).throw(ValueError("strict leakage")),
+        run_spine_once_fn=lambda **_kwargs: (_ for _ in ()).throw(StrictLeakageViolation("strict leakage")),
     )
 
     result.emit_blocked.assert_not_called()
@@ -330,7 +360,6 @@ def test_execute_spine_pipeline_isolates_block_ledger_failure() -> None:
         "run-1",
         result.logger.error.call_args_list[-1][0][2],
     )
-    assert result.strict_mode_calls[-1] is False
 
 
 def test_execute_spine_pipeline_isolates_fail_ledger_failure() -> None:
@@ -355,4 +384,3 @@ def test_execute_spine_pipeline_isolates_fail_ledger_failure() -> None:
         "run-1",
         result.logger.error.call_args_list[-1][0][2],
     )
-    assert result.strict_mode_calls[-1] is False

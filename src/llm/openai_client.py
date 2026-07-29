@@ -21,7 +21,7 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
 
-from .base import BaseLLMClient, LLMError, LLMUnavailableError, LLMResponseError
+from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError
 
 
 # OpenAI pricing in INR (approximate, as of 2024)

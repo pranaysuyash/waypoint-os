@@ -4,7 +4,6 @@ tests.test_decision_cache — Unit tests for decision cache module.
 Tests cache schema, storage, and key generation.
 """
 
-import json
 import pytest
 import tempfile
 from pathlib import Path
@@ -233,7 +232,7 @@ class TestDecisionCacheStorage:
         )
 
         # Clear type (cleanup all for a type)
-        count = storage.clear_type("test_type")
+        storage.clear_type("test_type")
 
         # Old decision should be removed
         assert storage.get("old_key", "test_type") is None

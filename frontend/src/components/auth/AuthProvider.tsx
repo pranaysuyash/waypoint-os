@@ -17,6 +17,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AUTH_UNAUTHORIZED_EVENT, ApiException, api } from "@/lib/api-client";
 import { formatAuthRedirectLabel } from "@/lib/auth-redirect";
 import { Modal } from '@/components/ui/modal';
+import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { useAuthStore } from "@/stores/auth";
 import type { AuthSession } from "@/types/auth-session";
 
@@ -186,5 +187,10 @@ export function AuthProvider(
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <WelcomeModal isAuthenticated={isAuthenticated} />
+    </>
+  );
 }

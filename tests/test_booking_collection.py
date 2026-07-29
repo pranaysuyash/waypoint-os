@@ -11,9 +11,8 @@ import hashlib
 import os
 import pytest
 from unittest.mock import MagicMock
-from datetime import datetime, timedelta, timezone
 
-from intake.readiness import compute_readiness, _check_booking_ready
+from intake.readiness import _check_booking_ready
 from spine_api.persistence import TEST_AGENCY_ID
 
 
@@ -773,7 +772,6 @@ class TestPrivacyBoundaries:
 class TestAuditPrivacy:
     def test_accept_audit_has_no_pii(self, session_client, created_trip_id, tmp_path):
         """After accept, audit event must contain metadata only — no PII."""
-        from spine_api.persistence import TripStore
 
         gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
         token = _extract_token_from_url(gen.json()["collection_url"])

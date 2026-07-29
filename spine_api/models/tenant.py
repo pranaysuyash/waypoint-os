@@ -8,9 +8,11 @@ Entities:
 - WorkspaceCode: Invitation code for agents to join an agency
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import TYPE_CHECKING, Optional, List
 
 from sqlalchemy import (
     String,
@@ -28,6 +30,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spine_api.core.database import Base
+
+if TYPE_CHECKING:
+    from spine_api.models.trips import Trip
 
 
 class Agency(Base):

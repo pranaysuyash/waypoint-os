@@ -6,12 +6,10 @@ All tests are synchronous and do not require PostgreSQL.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
-import pytest
 
-from src.agents.recovery_agent import RecoveryAgent, RecoveryResult
+from src.agents.recovery_agent import RecoveryAgent
 from src.agents.requeue import (
     DisabledSpineRequeuePort,
     InlineSpineRequeuePort,

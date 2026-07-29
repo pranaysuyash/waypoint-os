@@ -7,10 +7,9 @@ Cached decisions are persisted to disk and reused when the same inputs occur.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Dict, Optional

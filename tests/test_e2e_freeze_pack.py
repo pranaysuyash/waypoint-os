@@ -21,16 +21,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import pytest
 
 from intake.packet_models import (
-    Ambiguity,
-    AuthorityLevel,
-    CanonicalPacket,
-    EvidenceRef,
-    OwnerConstraint,
-    Slot,
     SourceEnvelope,
 )
 from intake.extractors import ExtractionPipeline
-from intake.decision import run_gap_and_decision, check_budget_feasibility
+from intake.decision import run_gap_and_decision
 from intake.strategy import (
     build_session_strategy,
     build_traveler_safe_bundle,
@@ -40,7 +34,6 @@ from intake.safety import (
     check_no_leakage,
     enforce_no_leakage,
     sanitize_for_traveler,
-    has_blocking_ambiguities,
 )
 from intake.validation import validate_packet
 

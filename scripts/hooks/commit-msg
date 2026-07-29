@@ -1,4 +1,146 @@
 #!/usr/bin/env bash
+
+# >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
+# Commit-message gate (motto §0.4.2 multi-pass review + §0.5 evidence tiers).
+# Receives the commit message file path as $1. Blocks AI co-author trailers and
+# requires review/evidence/risk trailers aligned to the currently attested motto.
+if [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
+  _msg_file="${1:-}"
+  _msg="$(cat "$_msg_file" 2>/dev/null || true)"
+  _motto_file="motto_v3.md"
+  _attestation_file=".git/projects_agent_motto_attestation.env"
+  _current_sha=""
+  if [ -f "$_motto_file" ]; then
+    if command -v shasum >/dev/null 2>&1; then
+      _current_sha="$(shasum -a 256 "$_motto_file" | awk '{print $1}')"
+    elif command -v sha256sum >/dev/null 2>&1; then
+      _current_sha="$(sha256sum "$_motto_file" | awk '{print $1}')"
+    fi
+  fi
+  if [ -f "$_attestation_file" ]; then
+    # shellcheck disable=SC1090
+    . "$_attestation_file"
+  fi
+  if printf '%s' "$_msg" | grep -qiE '^co-authored-by:[[:space:]]*(claude|anthropic|chatgpt|openai|codex|copilot|qwen|gemini|amp)'; then
+    echo "commit-msg: AI co-author trailers are forbidden by motto §20. Remove the trailer before committing." >&2
+    exit 1
+  fi
+  if ! printf '%s' "$_msg" | grep -qiE '^motto-reviewed:[[:space:]]*full'; then
+    cat >&2 <<'EOF'
+commit-msg: motto attestation required (motto §0.4.2 + §0.5).
+Add trailers to the commit message, e.g.:
+
+  Motto-Reviewed: full
+  Motto-SHA256: <current motto digest>
+  Evidence-Tier: 3
+  Risk-Class: low
+
+High-risk changes (payments/auth/activation/webhooks/background-jobs/
+data-mutation) must state Risk-Class: high and Evidence-Tier: 3 or higher.
+EOF
+    exit 1
+  fi
+  if [ -n "$_current_sha" ] && ! printf '%s' "$_msg" | grep -qiE "^motto-sha256:[[:space:]]*${_current_sha}$"; then
+    echo "commit-msg: commit must include 'Motto-SHA256: $_current_sha' for the current full motto_v3.md." >&2
+    exit 1
+  fi
+  # High-risk path detection from staged files + stricter trailer requirement.
+  _staged_any="$(git diff --cached --name-only 2>/dev/null || true)"
+  if printf '%s\n' "$_staged_any" | grep -qiE '(payment|settlement|activation|auth|webhook|worker|trigger)s?/|payout|refund|migrations?/|db/|routes?/|middleware/|security|pii|privacy|retention|billing|invoice|reconciliation'; then
+    _ok=1
+    printf '%s' "$_msg" | grep -qiE '^risk-class:[[:space:]]*high' || _ok=0
+    printf '%s' "$_msg" | grep -qiE '^evidence-tier:[[:space:]]*([3-9]|10)' || _ok=0
+    if [ "$_ok" != "1" ]; then
+      echo "commit-msg: high-risk path detected; commit must include 'Risk-Class: high' and 'Evidence-Tier: 3' (or higher)." >&2
+      exit 1
+    fi
+  fi
+  # >>> SECTION-LEVEL ATTESTATION GATE >>>
+  _motto_commitgate=".git/projects_agent_motto_commitgate.env"
+  _commitgate_script="/Users/pranay/Projects/workspace_memory/scripts/attest_motto_commit.py"
+  if [ -x "$_commitgate_script" ]; then
+    _verify_flags="--verify"
+    _high_risk_paths='(payment|settlement|activation|auth|webhook|worker|trigger)s?/|payout|refund|migrations?/|db/|routes?/|middleware/|security|pii|privacy|retention|billing|invoice|reconciliation'
+    if printf '%s
+' "$_staged_any" | grep -qiE "$_high_risk_paths"; then
+      _verify_flags="--verify --high-risk"
+    fi
+    if ! python3 "$_commitgate_script" --repo "$(pwd)" $_verify_flags; then
+      cat >&2 <<'EOF'
+
+commit-msg: motto_v3 attestation FAILED (hardened v3 — coverage-complete).
+
+The agent must perform a FULL motto_v3 audit — every section, no exceptions.
+The v3 gate is COVERAGE-COMPLETE: all sections of motto_v3 are required for
+every commit, regardless of risk class. (v2 wrongly omitted load-bearing rules
+like §9 Artifact Handling and §14 Validation Rules from a "standard" subset,
+letting agents pass while blind-committing tool artifacts.)
+
+Three things are required:
+
+  (1) Review EVERY section of motto_v3 (all 42, including §9 Artifact Handling,
+      §14 Validation Rules, §3 Git Safety, §8 Group-by-Group, etc.) and record
+      diff-aware evidence (>=20 chars) for each. Bare flag flips are rejected.
+
+  (2) Record the INTEGRATED full-motto audit (SECTION_00_INTEGRATED, >=120 chars)
+      describing CROSS-SECTION findings against the actual staged diff. This is
+      the synthesis that turns the per-section checks into a real audit. It must
+      be set AFTER at least one other section is reviewed.
+
+  (3) DIFF-AWARE EVIDENCE (every per-section --evidence): the text must tie to
+      the actual change surface by doing ONE of:
+        - naming a file in the change surface (e.g. "verified partner_auth.py"),
+        - stating explicit non-applicability with a reason for this diff
+          (tokens: "N/A: ...", "docs-only", "no code path in diff", etc.) —
+          this is the honest escape for docs-only commits or sections that
+          genuinely don't apply to the diff,
+        - referencing an inspected path (anything containing "/").
+      Generic boilerplate ("reviewed and compliant", "all good") with no file,
+      no N/A-with-reason, and no path is REJECTED. The integrated section is
+      exempt (it is about the diff by construction).
+
+  CRITICAL — §9 Artifact Handling is now required: before `git add -A`, the
+  agent MUST classify every artifact (tool outputs, logs, caches, screenshots,
+  package files, JSON) and either (a) gitignore + git rm --cached it, or
+  (b) justify tracking it. Blind `git add -A` of tool output is a §9 violation
+  the gate now catches.
+
+Steps:
+  1. Initialize a blank attestation:
+       python3 /Users/pranay/Projects/workspace_memory/scripts/attest_motto_commit.py --repo "$(pwd)" --init [--high-risk]
+
+  2. After reviewing each section, mark it with evidence:
+       python3 /Users/pranay/Projects/workspace_memory/scripts/attest_motto_commit.py --repo "$(pwd)"          --set SECTION_9_ARTIFACT_HANDLING          --evidence "Classified all artifacts: .playwright-mcp/*.log are tool outputs (gitignored + git rm --cached), tsconfig.node.tsbuildinfo is build cache (git rm --cached, *.tsbuildinfo rule already exists), favicon.svg is a source asset (referenced in index.html, tracked)."
+
+  3. AFTER at least one section is reviewed, record the integrated audit:
+       python3 /Users/pranay/Projects/workspace_memory/scripts/attest_motto_commit.py --repo "$(pwd)"          --set SECTION_00_INTEGRATED          --evidence "Cross-section: diff touches auth middleware (§0.6 high-risk) AND docs (§0.3). §0.6 requires Tier 3 but only unit tests run, so commit is scoped to Stage 0 dead-code removal only; no auth behavior changed. §20 verified hooks block trailers. §9: all artifacts classified, no blind add -A. §0.13: did not fix unrelated E44 (out of blast radius). Residual: Stage 1 secret work deferred."
+
+  4. View current status:
+       python3 /Users/pranay/Projects/workspace_memory/scripts/attest_motto_commit.py --repo "$(pwd)" --list
+
+  5. Render the reviewable artifact (auto-done on verify pass):
+       python3 /Users/pranay/Projects/workspace_memory/scripts/attest_motto_commit.py --repo "$(pwd)" --render
+
+Minimum review time: 60s standard, 120s high-risk (from --init to --verify).
+The --high-risk flag controls ONLY the review time, not which sections apply —
+all 42 sections are always required.
+
+Required sections: ALL 42 (§full-integrated, §0, §0.1-§0.16, §1-§22).
+
+The attestation expires after 12 hours. Re-run --init in a new session.
+EOF
+      exit 1
+    fi
+    # On successful verify, render the review doc and stage it.
+    python3 "$_commitgate_script" --repo "$(pwd)" --render >/dev/null 2>&1 || true
+    if [ -f "Docs/reviews/motto_review.md" ]; then
+      git add "Docs/reviews/motto_review.md" >/dev/null 2>&1 || true
+    fi
+  fi
+  # <<< SECTION-LEVEL ATTESTATION GATE <<<
+fi
+# <<< PROJECTS_AGENT_PRECOMMIT_END <<<
+
 # Enforce motto_v2.md Section 20: no AI agent co-author trailers.
 # This is a hard enforcement rule, not a style preference.
 

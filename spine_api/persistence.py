@@ -25,7 +25,7 @@ import threading
 from contextlib import asynccontextmanager, contextmanager
 import re
 
-from sqlalchemy import select, delete, text as sa_text
+from sqlalchemy import select, text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from spine_api.core.database import DATABASE_URL
@@ -141,7 +141,8 @@ def _validate_trip_id(trip_id: str) -> str:
 
 def _is_process_dead(pid: int) -> bool:
     """True if the process does not exist or is a zombie (defunct)."""
-    import os as _os, subprocess as _subprocess
+    import os as _os
+    import subprocess as _subprocess
     try:
         _os.kill(pid, 0)
     except OSError:
@@ -173,7 +174,8 @@ def file_lock(filepath: Path, timeout_seconds: float = 30.0):
     """
     lock_dir = filepath.with_suffix(filepath.suffix + ".lockdir")
     pid_file = lock_dir / "pid"
-    import time as _time, os as _os
+    import time as _time
+    import os as _os
 
     deadline = _time.monotonic() + timeout_seconds
     delay = 0.01
@@ -1179,24 +1181,34 @@ class SQLTripStore:
             check_trip_data(updates)
 
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
+        now = datetime.now(timezone.utc)
+
+        set_clauses: list[str] = []
+        params: dict[str, object] = {"trip_id": trip_id, "agency_id": agency_id, "new_updated_at": now}
+
+        for key, value in updates.items():
+            if not hasattr(Trip, key):
+                continue
+            if key in _encrypted_fields:
+                value = SQLTripStore._encrypt_field_for_storage(key, value)
+            elif key == "follow_up_due_date":
+                value = SQLTripStore._parse_datetime(value)
+            if isinstance(value, (dict, list)):
+                value = json.dumps(value, default=str)
+            set_clauses.append(f"{key} = :set_{key}")
+            params[f"set_{key}"] = value
+
+        set_clauses.append("updated_at = :new_updated_at")
+
+        sql = f"UPDATE trips SET {', '.join(set_clauses)} WHERE id = :trip_id AND agency_id = :agency_id RETURNING *"
+
         async with SQLTripStore._rls_session_for_agency(agency_id) as session:
-            from sqlalchemy import select
-            result = await session.execute(
-                select(Trip).where(Trip.id == trip_id, Trip.agency_id == agency_id)
-            )
-            trip_obj = result.scalar_one_or_none()
-            if not trip_obj:
-                return None
-            for key, value in updates.items():
-                if key in _encrypted_fields:
-                    value = SQLTripStore._encrypt_field_for_storage(key, value)
-                elif key == "follow_up_due_date":
-                    value = SQLTripStore._parse_datetime(value)
-                if hasattr(trip_obj, key):
-                    setattr(trip_obj, key, value)
-            trip_obj.updated_at = datetime.now(timezone.utc)
+            result = await session.execute(sa_text(sql), params)
             await session.commit()
-            return SQLTripStore._to_dict(trip_obj)
+            row = result.fetchone()
+            if not row:
+                return None
+            return SQLTripStore._row_to_dict(row)
 
     @staticmethod
     async def delete_trip_for_agency(trip_id: str, agency_id: str) -> bool:
@@ -2653,6 +2665,77 @@ class ConfigStore:
             store[agency_id] = filtered
             ConfigStore._write_json_map(ConfigStore.SEASONAL_CAMPAIGNS_FILE, store)
             return True
+
+
+# =============================================================================
+# KDD Override Cluster Store
+# =============================================================================
+
+KDD_DIR = DATA_DIR / "kdd"
+KDD_CLUSTERS_DIR = KDD_DIR / "clusters"
+KDD_CLUSTERS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+class KDDOverrideClusterStore:
+    """File-based storage for KDD override clusters and feature vectors.
+
+    Each cluster is stored as a JSON file keyed by cluster_id.
+    Feature vectors are stored per-trip in a subdirectory.
+    """
+
+    @staticmethod
+    def save_cluster(cluster: dict) -> str:
+        """Persist a KDD cluster and return its cluster_id."""
+        cluster_id = cluster.get("cluster_id") or f"kdd_cluster_{uuid4().hex[:12]}"
+        cluster["cluster_id"] = cluster_id
+        cluster["persisted_at"] = datetime.now(timezone.utc).isoformat()
+
+        filepath = KDD_CLUSTERS_DIR / f"{cluster_id}.json"
+        with file_lock(filepath):
+            with open(filepath, "w") as f:
+                json.dump(_make_json_serializable(cluster), f, indent=2)
+        return cluster_id
+
+    @staticmethod
+    def get_cluster(cluster_id: str) -> Optional[dict]:
+        """Retrieve a single cluster by ID."""
+        filepath = KDD_CLUSTERS_DIR / f"{cluster_id}.json"
+        if not filepath.exists():
+            return None
+        with open(filepath) as f:
+            return json.load(f)
+
+    @staticmethod
+    def list_clusters(limit: int = 50) -> list:
+        """List all clusters, most recently persisted first."""
+        clusters = []
+        for filepath in sorted(KDD_CLUSTERS_DIR.glob("kdd_cluster_*.json"), reverse=True):
+            try:
+                with open(filepath) as f:
+                    clusters.append(json.load(f))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if len(clusters) >= limit:
+                break
+        return clusters
+
+    @staticmethod
+    def delete_cluster(cluster_id: str) -> bool:
+        """Delete a cluster by ID."""
+        filepath = KDD_CLUSTERS_DIR / f"{cluster_id}.json"
+        if not filepath.exists():
+            return False
+        filepath.unlink()
+        return True
+
+    @staticmethod
+    def list_clusters_with_override_count(min_overrides: int = 1) -> list:
+        """List clusters that have at least `min_overrides` overrides."""
+        clusters = KDDOverrideClusterStore.list_clusters()
+        return [
+            c for c in clusters
+            if len(c.get("override_ids", [])) >= min_overrides
+        ]
 
 
 # Convenience functions

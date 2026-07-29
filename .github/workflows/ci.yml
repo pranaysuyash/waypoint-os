@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Documentation quality (existing, preserved)
+  # ──────────────────────────────────────────────
+  docs-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@v17
+        with:
+          globs: |
+            **/*.md
+      - name: Link check
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --exclude-mail
+            --glob
+            --exclude "^http://127\\\\.0\\\\.0\\\\.1"
+            --exclude "^http://localhost"
+            --exclude "^/Users/"
+            "**/*.md"
+
+  # ──────────────────────────────────────────────
+  # Backend lint (ruff)
+  # ──────────────────────────────────────────────
+  backend-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+      - name: Install dependencies
+        run: uv sync
+      - name: Ruff check
+        run: uv run ruff check src/ spine_api/ tests/ --output-format=github
+
+      - name: F401 unused import gate
+        run: bash scripts/check_f401.sh
+
+
+  # ──────────────────────────────────────────────
+  # Backend tests (with PostgreSQL service)
+  # ──────────────────────────────────────────────
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: waypoint
+          POSTGRES_PASSWORD: waypoint_dev_password
+          POSTGRES_DB: waypoint_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+      - name: Install dependencies
+        run: uv sync
+      - name: Run database migrations
+        run: uv run alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os
+      - name: Bootstrap public checker agency
+        run: uv run python scripts/bootstrap_public_checker_agency.py
+        env:
+          DATABASE_URL: postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os
+          TRIPSTORE_BACKEND: sql
+          JWT_SECRET: test-jwt-secret-for-ci-only-32bytes!
+          PUBLIC_CHECKER_AGENCY_ID: d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b
+      - name: Run all tests (with PostgreSQL)
+        run: >-
+          uv run pytest -q tests/
+          --ignore=tests/test_vision_extraction.py               # needs openai API key (optional dep)
+          --ignore=tests/test_extraction_fallback.py             # needs openai API key (optional dep)
+        env:
+          DATABASE_URL: postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os
+          TRIPSTORE_BACKEND: sql
+          JWT_SECRET: test-jwt-secret-for-ci-only-32bytes!
+          PUBLIC_CHECKER_AGENCY_ID: d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b
+      - name: D6 gate snapshot guard
+        run: uv run python scripts/verify_d6_gate_snapshot.py
+        env:
+          DATABASE_URL: postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os
+          TRIPSTORE_BACKEND: sql
+          JWT_SECRET: test-jwt-secret-for-ci-only-32bytes!
+          PUBLIC_CHECKER_AGENCY_ID: d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b
+
+  # ──────────────────────────────────────────────
+  # Frontend quality (typecheck + lint + tests)
+  # ──────────────────────────────────────────────
+  frontend-quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: TypeScript typecheck
+        run: npx tsc -p tsconfig.json --noEmit
+      - name: ESLint
+        run: npm run lint
+      - name: Route-map guard tests
+        run: npm test -- --run src/lib/__tests__/route-map.test.ts

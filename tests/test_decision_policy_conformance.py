@@ -10,7 +10,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from intake.decision import DECISION_STATES, run_gap_and_decision
+from intake.constants import DECISION_STATES
+from intake.decision import run_gap_and_decision
 from intake.packet_models import (
     Ambiguity,
     AuthorityLevel,

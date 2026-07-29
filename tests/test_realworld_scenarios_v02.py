@@ -12,24 +12,17 @@ Run: uv run python -m pytest tests/test_realworld_scenarios_v02.py -v
 
 import sys
 import os
-from dataclasses import dataclass, asdict
-from datetime import datetime
-from typing import List, Dict, Any, Optional
 
 # Ensure src/ is on the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import pytest
 
 from intake.packet_models import (
-    AuthorityLevel,
     CanonicalPacket,
     EvidenceRef,
     Slot,
-    UnknownField,
 )
 from intake.decision import (
-    DecisionResult,
     run_gap_and_decision,
 )
 

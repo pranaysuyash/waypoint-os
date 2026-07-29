@@ -6,20 +6,22 @@ Architecture:
                                                            (persistent process,
                                                             modules pre-loaded)
 
-Canonical response contract (always returned, never raises):
-    {
-        ok: bool,
-        run_id: str,
-        packet: object | null,
-        validation: object | null,
-        decision: object | null,
-        strategy: object | null,
-        traveler_bundle: object | null,   # null on strict leakage failure
-        internal_bundle: object | null,
-        safety: { strict_leakage, leakage_passed, leakage_errors },
-        assertions: [{ type, passed, message, field }] | null,  # populated when scenario_id provided
-        meta: { stage, operating_mode, fixture_id, execution_ms }
-    }
+POST /run contract:
+    Returns RunAcceptedResponse(run_id, state="queued") immediately.
+    Poll GET /runs/{run_id} for the terminal artifact contract:
+        {
+            ok: bool,
+            run_id: str,
+            packet: object | null,
+            validation: object | null,
+            decision: object | null,
+            strategy: object | null,
+            traveler_bundle: object | null,   # null on strict leakage failure
+            internal_bundle: object | null,
+            safety: { strict_leakage, leakage_passed, leakage_errors },
+            assertions: [{ type, passed, message, field }] | null,
+            meta: { stage, operating_mode, fixture_id, execution_ms }
+        }
 
 On non-leakage errors: raises HTTPException (500)
 
@@ -29,7 +31,7 @@ Environment variables:
     SPINE_API_WORKERS    — number of uvicorn workers (default: 1)
     SPINE_API_CORS       — comma-separated allowed CORS origins
     SPINE_API_RELOAD     — set to 0 to disable dev reload
-    TRAVELER_SAFE_STRICT — set to 1 to enable strict leakage globally
+    TRAVELER_SAFE_STRICT — legacy compatibility env var; request-scoped strictness is read from SpineRunRequest.strict_leakage
 """
 
 from __future__ import annotations
@@ -37,12 +39,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import multiprocessing
 import os
 import re
 import sys
 import threading
-import time
 import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -60,7 +60,7 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, UploadFile, Form, File
+from fastapi import Depends, FastAPI, HTTPException, Query, UploadFile, Form, File
 from starlette.requests import Request
 from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -123,8 +123,8 @@ from spine_api.core.env import load_project_env
 
 load_project_env()
 
-from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency, _auth_or_skip, require_permission
-from spine_api.core.database import engine, get_db
+from spine_api.core.auth import get_current_user, get_current_agency, _auth_or_skip
+from spine_api.core.database import engine
 from spine_api.core.rls import inspect_rls_runtime_posture, get_rls_db, rls_session
 from spine_api.models.tenant import Agency, User
 from spine_api.core.logging_filter import install_sensitive_data_filter
@@ -134,36 +134,14 @@ from spine_api.version import APP_VERSION
 from slowapi.errors import RateLimitExceeded
 
 from spine_api.contract import (
-    SafetyResult,
-    AssertionResult,
-    AutonomyOutcome,
-    RunMeta,
     SpineRunRequest,
-    SpineRunResponse,
     RunAcceptedResponse,
     RunStatusResponse,
-    OverrideRequest,
-    OverrideResponse,
-    TimelineEvent,
-    TimelineResponse,
-    ReviewActionRequest,
-    SuitabilityAcknowledgeRequest,
-    SnoozeRequest,
-    InviteTeamMemberRequest,
-    TeamMember,
-    ExplicitReassessRequest,
-    IntegrityIssuesResponse,
-    UnifiedStateResponse,
-    DashboardStatsResponse,
     SuitabilityFlagsResponse,
+    TripPatchRequest,
     TripResponse,
 )
 from src.intake.normalizer import Normalizer
-from spine_api.services.live_checker_service import (
-    apply_live_checker_adjustments,
-    build_consented_submission,
-    collect_raw_text_sources,
-)
 from spine_api.services.public_checker_service import run_public_checker_submission
 from spine_api.services.pipeline_execution_service import execute_spine_pipeline
 from spine_api.services import trip_lifecycle_service
@@ -172,7 +150,6 @@ from spine_api.product_b_events import ProductBEventStore  # noqa: F401  # Legac
 
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
-from src.intake.safety import set_strict_mode
 from src.public_checker.live_checks import build_live_checker_signals
 
 # OTel tracer for pipeline spans
@@ -291,7 +268,7 @@ except (ImportError, ValueError):
         watchdog = _watchdog_mod.watchdog
 
 # Wave A: run lifecycle modules
-from spine_api.run_state import RunState, assert_can_transition, terminal_state_for_run_result
+from spine_api.run_state import RunState
 from spine_api.run_events import (
     emit_run_started,
     emit_run_completed,
@@ -304,9 +281,6 @@ from spine_api.run_ledger import RunLedger
 from spine_api.draft_store import DraftStore
 from src.intake.config.agency_settings import AgencySettingsStore
 from src.analytics.policy_rules import ready_gate_failures
-from src.agents.recovery_agent import RecoveryAgent
-from src.agents.runtime import AgentSupervisor, build_default_registry
-from spine_api.services.agent_work_coordinator import SQLWorkCoordinator
 from spine_api.services.agent_runtime_adapters import TripStoreAdapter, AuditStoreAdapter
 from spine_api.services.agent_runtime_factory import build_agent_runtime
 
@@ -373,6 +347,7 @@ try:
     from spine_api.routers import trip_observability as trip_observability_router
     from spine_api.routers import trip_lifecycle as trip_lifecycle_router
     from spine_api.routers import extraction as extraction_router
+    from spine_api.routers import kdd as kdd_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -511,6 +486,14 @@ except (ImportError, ValueError):
     _trip_lifecycle_spec.loader.exec_module(_trip_lifecycle_mod)
     trip_lifecycle_router = _trip_lifecycle_mod
 
+    _kdd_spec = importlib.util.spec_from_file_location(
+        "routers.kdd",
+        _base / "routers" / "kdd.py",
+    )
+    _kdd_mod = importlib.util.module_from_spec(_kdd_spec)
+    _kdd_spec.loader.exec_module(_kdd_mod)
+    kdd_router = _kdd_mod
+
 
 def _register_router_module_aliases() -> None:
     """Keep legacy `routers.*` imports pointed at canonical router modules."""
@@ -556,9 +539,6 @@ CORS_ORIGINS = [
     ).split(",")
     if o.strip()
 ]
-
-if os.environ.get("TRAVELER_SAFE_STRICT", "").strip() in ("1", "true", "yes"):
-    set_strict_mode(True)
 
 # =============================================================================
 # Lifespan handler
@@ -658,7 +638,7 @@ async def _ensure_users_have_memberships() -> None:
             await _apply_startup_db_timeouts(conn)
             # Guard: ensure both tables exist (fresh migrations or partial deploy)
             for table_name in ("users", "memberships", "agencies"):
-                exists_result = await conn.execute(text(f"""
+                exists_result = await conn.execute(text("""
                     SELECT EXISTS (
                         SELECT 1 FROM information_schema.tables
                         WHERE table_schema = 'public' AND table_name = :table_name
@@ -1024,7 +1004,7 @@ async def lifespan(app: FastAPI):
     # budget caps, and alert destinations.
     try:
         from src.llm.usage_guard import get_usage_guard, get_guard_for_agency
-        from src.llm.alert_service import alert_service_from_settings, alert_service_from_env
+        from src.llm.alert_service import alert_service_from_env
 
         if not os.environ.get("RUNNING_TESTS"):
             alert_agency_id = os.environ.get("LLM_ALERT_AGENCY_ID", "waypoint-hq")
@@ -1133,6 +1113,7 @@ app.include_router(trip_actions_router.router, dependencies=[Depends(_auth_or_sk
 app.include_router(trip_observability_router.router)
 app.include_router(trip_lifecycle_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(extraction_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(kdd_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -1518,7 +1499,6 @@ def _execute_spine_pipeline(
         run_state_running=RunState.RUNNING,
         draft_store=DraftStore,
         agency_settings_store=AgencySettingsStore,
-        set_strict_mode_fn=set_strict_mode,
         build_live_checker_signals_fn=build_live_checker_signals,
         emit_run_started_fn=emit_run_started,
         emit_run_completed_fn=emit_run_completed,
@@ -1686,11 +1666,26 @@ def get_trip_suitability(
             # Extract suitability_flags from decision_output
             flags_from_decision = decision_output.get("suitability_flags", [])
             if flags_from_decision:
-                for flag in flags_from_decision:
+                for index, flag in enumerate(flags_from_decision):
                     if isinstance(flag, dict):
+                        stable_flag_id = uuid.uuid5(
+                            uuid.NAMESPACE_URL,
+                            json.dumps(
+                                {
+                                    "trip_id": trip_id,
+                                    "index": index,
+                                    "flag_type": flag.get("flag_type", "unknown"),
+                                    "severity": flag.get("severity", "low"),
+                                    "reason": flag.get("reason", ""),
+                                    "confidence": flag.get("confidence", 0),
+                                },
+                                sort_keys=True,
+                                separators=(",", ":"),
+                            ),
+                        )
                         # Convert flag to the expected format with id, name, confidence, tier
                         suitability_flags.append({
-                            "id": str(uuid.uuid4()),
+                            "id": str(stable_flag_id),
                             "trip_id": trip_id,
                             "name": flag.get("flag_type", "unknown"),
                             "confidence": int(flag.get("confidence", 0) * 100),  # Convert 0-1 to 0-100
@@ -1710,7 +1705,7 @@ def get_trip_suitability(
 @app.patch("/trips/{trip_id}", response_model=TripResponse)
 def patch_trip(
     trip_id: str,
-    updates: Dict[str, Any],
+    updates: TripPatchRequest,
     agency: Agency = Depends(get_current_agency),
     user: User = Depends(get_current_user),
 ):
@@ -1725,20 +1720,10 @@ def patch_trip(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    if "stage" in updates:
-        raise HTTPException(
-            status_code=400,
-            detail="Use PATCH /trips/{trip_id}/stage to change stage",
-        )
-
-    if "booking_data" in updates:
-        raise HTTPException(
-            status_code=400,
-            detail="Use PATCH /trips/{trip_id}/booking-data to update booking data",
-        )
+    updates_dict = updates.model_dump(exclude_unset=True)
 
     old_status = trip.get("status")
-    new_status = updates.get("status")
+    new_status = updates_dict.get("status")
 
     # Enforce ready gate when marking trip as completed/ready.
     if new_status == "completed":
@@ -1791,25 +1776,50 @@ def patch_trip(
         synced_updates = dict(incoming_updates)
         extracted = _clone_json(current_trip.get("extracted"), {}) or {}
         facts = extracted.setdefault("facts", {})
+        raw_input = _clone_json(current_trip.get("raw_input"), {}) or {}
+        submission = raw_input.setdefault("submission", {})
+        structured_json = _clone_json(submission.get("structured_json"), {}) or {}
         validation = _clone_json(current_trip.get("validation"), {}) or {}
         warnings = validation.get("warnings")
         warning_list = warnings if isinstance(warnings, list) else []
 
         fields_to_clear: set[str] = set()
+        structured_overlay: Dict[str, Any] = {}
+
+        def _set_structured_overlay(field_name: str, value: Any) -> None:
+            if value is None:
+                structured_overlay.pop(field_name, None)
+                return
+            if isinstance(value, str):
+                normalized_value = value.strip()
+                if not normalized_value:
+                    structured_overlay.pop(field_name, None)
+                    return
+                structured_overlay[field_name] = normalized_value
+                return
+            structured_overlay[field_name] = value
 
         if "origin" in incoming_updates:
-            origin_value = _trimmed_string(incoming_updates.get("origin"))
-            if origin_value:
+            origin_raw = incoming_updates.get("origin")
+            origin_value = _trimmed_string(origin_raw)
+            if origin_value is not None:
                 facts["origin_city"] = {
                     "value": origin_value,
                     "confidence": 1.0,
                     "authority_level": "explicit_user",
                 }
-                fields_to_clear.add("origin_city")
+                _set_structured_overlay("origin", origin_value)
+                _set_structured_overlay("origin_city", origin_value)
+            else:
+                facts.pop("origin_city", None)
+                structured_overlay.pop("origin", None)
+                structured_overlay.pop("origin_city", None)
+            fields_to_clear.add("origin_city")
 
         if "budget" in incoming_updates:
-            budget_text = _trimmed_string(incoming_updates.get("budget"))
-            if budget_text:
+            budget_raw = incoming_updates.get("budget")
+            budget_text = _trimmed_string(budget_raw)
+            if budget_text is not None:
                 facts["budget_raw_text"] = {
                     "value": budget_text,
                     "confidence": 1.0,
@@ -1822,6 +1832,7 @@ def patch_trip(
                         "confidence": 1.0,
                         "authority_level": "explicit_user",
                     }
+                    _set_structured_overlay("budget", parsed_budget)
                 else:
                     # Store raw text so extracted.facts.budget is always populated after PATCH.
                     # Downstream resolution via resolve_trip_field() will read this value;
@@ -1831,47 +1842,150 @@ def patch_trip(
                         "confidence": 0.5,
                         "authority_level": "explicit_user_raw",
                     }
-                fields_to_clear.add("budget_raw_text")
+                    _set_structured_overlay("budget", budget_text)
+            else:
+                facts.pop("budget_raw_text", None)
+                facts.pop("budget", None)
+                structured_overlay.pop("budget", None)
+            fields_to_clear.add("budget_raw_text")
+            fields_to_clear.add("budget")
 
         if "trip_priorities" in incoming_updates:
-            priorities_value = _trimmed_string(incoming_updates.get("trip_priorities"))
-            if priorities_value:
+            priorities_raw = incoming_updates.get("trip_priorities")
+            priorities_value = _trimmed_string(priorities_raw)
+            if priorities_value is not None:
                 facts["trip_priorities"] = {
                     "value": priorities_value,
                     "confidence": 1.0,
                     "authority_level": "explicit_user",
                 }
-                fields_to_clear.add("trip_priorities")
+                _set_structured_overlay("trip_priorities", priorities_value)
+            else:
+                facts.pop("trip_priorities", None)
+                structured_overlay.pop("trip_priorities", None)
+            fields_to_clear.add("trip_priorities")
 
-        if "tripPurpose" in incoming_updates:
-            purpose_value = _trimmed_string(incoming_updates.get("tripPurpose"))
-            if purpose_value:
+        if "trip_purpose" in incoming_updates:
+            purpose_raw = incoming_updates.get("trip_purpose")
+            purpose_value = _trimmed_string(purpose_raw)
+            if purpose_value is not None:
                 facts["trip_purpose"] = {
                     "value": purpose_value,
                     "confidence": 1.0,
                     "authority_level": "explicit_user",
                 }
-                fields_to_clear.add("trip_purpose")
+                _set_structured_overlay("trip_purpose", purpose_value)
+            else:
+                facts.pop("trip_purpose", None)
+                structured_overlay.pop("trip_purpose", None)
+            fields_to_clear.add("trip_purpose")
 
         if "date_flexibility" in incoming_updates:
-            flexibility_value = _trimmed_string(incoming_updates.get("date_flexibility"))
-            if flexibility_value:
+            flexibility_raw = incoming_updates.get("date_flexibility")
+            flexibility_value = _trimmed_string(flexibility_raw)
+            if flexibility_value is not None:
                 facts["date_flexibility"] = {
                     "value": flexibility_value,
                     "confidence": 1.0,
                     "authority_level": "explicit_user",
                 }
-                fields_to_clear.add("date_flexibility")
+                _set_structured_overlay("date_flexibility", flexibility_value)
+            else:
+                facts.pop("date_flexibility", None)
+                structured_overlay.pop("date_flexibility", None)
+            fields_to_clear.add("date_flexibility")
 
-        if "dateWindow" in incoming_updates:
-            dw_value = _trimmed_string(incoming_updates.get("dateWindow"))
-            if dw_value:
+        if "date_window" in incoming_updates:
+            date_window_raw = incoming_updates.get("date_window")
+            dw_value = _trimmed_string(date_window_raw)
+            if dw_value is not None:
                 facts["date_window"] = {
                     "value": dw_value,
                     "confidence": 1.0,
                     "authority_level": "explicit_user",
                 }
-                fields_to_clear.add("date_window")
+                _set_structured_overlay("date_window", dw_value)
+                _set_structured_overlay("dateWindow", dw_value)
+            else:
+                facts.pop("date_window", None)
+                structured_overlay.pop("date_window", None)
+                structured_overlay.pop("dateWindow", None)
+            fields_to_clear.add("date_window")
+
+        if "party_composition" in incoming_updates:
+            value_raw = incoming_updates.get("party_composition")
+            value = _trimmed_string(value_raw)
+            if value is not None:
+                facts["party_composition"] = {
+                    "value": value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                _set_structured_overlay("party_composition", value)
+            else:
+                facts.pop("party_composition", None)
+                structured_overlay.pop("party_composition", None)
+            fields_to_clear.add("party_composition")
+
+        if "pace_preference" in incoming_updates:
+            value_raw = incoming_updates.get("pace_preference")
+            value = _trimmed_string(value_raw)
+            if value is not None:
+                facts["pace_preference"] = {
+                    "value": value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                _set_structured_overlay("pace_preference", value)
+            else:
+                facts.pop("pace_preference", None)
+                structured_overlay.pop("pace_preference", None)
+            fields_to_clear.add("pace_preference")
+
+        if "date_year_confidence" in incoming_updates:
+            value_raw = incoming_updates.get("date_year_confidence")
+            value = _trimmed_string(value_raw)
+            if value is not None:
+                facts["date_year_confidence"] = {
+                    "value": value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                _set_structured_overlay("date_year_confidence", value)
+            else:
+                facts.pop("date_year_confidence", None)
+                structured_overlay.pop("date_year_confidence", None)
+            fields_to_clear.add("date_year_confidence")
+
+        if "lead_source" in incoming_updates:
+            value_raw = incoming_updates.get("lead_source")
+            value = _trimmed_string(value_raw)
+            if value is not None:
+                facts["lead_source"] = {
+                    "value": value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                _set_structured_overlay("lead_source", value)
+            else:
+                facts.pop("lead_source", None)
+                structured_overlay.pop("lead_source", None)
+            fields_to_clear.add("lead_source")
+
+        if "activity_provenance" in incoming_updates:
+            value_raw = incoming_updates.get("activity_provenance")
+            value = _trimmed_string(value_raw)
+            if value is not None:
+                facts["activity_provenance"] = {
+                    "value": value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                _set_structured_overlay("activity_provenance", value)
+            else:
+                facts.pop("activity_provenance", None)
+                structured_overlay.pop("activity_provenance", None)
+            fields_to_clear.add("activity_provenance")
 
         if "party" in incoming_updates:
             party_value = incoming_updates.get("party")
@@ -1883,19 +1997,51 @@ def patch_trip(
                         "confidence": 1.0,
                         "authority_level": "explicit_user",
                     }
-                    fields_to_clear.add("party_size")
+                    _set_structured_overlay("party", party_number)
+                    _set_structured_overlay("party_size", party_number)
                 except (ValueError, TypeError):
-                    pass
+                    facts.pop("party_size", None)
+            else:
+                facts.pop("party_size", None)
+                structured_overlay.pop("party", None)
+                structured_overlay.pop("party_size", None)
+            fields_to_clear.add("party_size")
 
         if "destination" in incoming_updates:
-            dest_value = _trimmed_string(incoming_updates.get("destination"))
-            if dest_value:
+            dest_raw = incoming_updates.get("destination")
+            dest_value = _trimmed_string(dest_raw)
+            if dest_value is not None:
                 facts["destination_candidates"] = {
                     "value": [dest_value],
                     "confidence": 1.0,
                     "authority_level": "explicit_user",
                 }
-                fields_to_clear.add("destination_candidates")
+                _set_structured_overlay("destination", dest_value)
+                _set_structured_overlay("destination_candidates", [dest_value])
+            else:
+                facts.pop("destination_candidates", None)
+                structured_overlay.pop("destination", None)
+                structured_overlay.pop("destination_candidates", None)
+            fields_to_clear.add("destination_candidates")
+
+        if "customer_message" in incoming_updates:
+            customer_message_raw = incoming_updates.get("customer_message")
+            customer_message_value = _trimmed_string(customer_message_raw)
+            submission["raw_note"] = customer_message_value
+
+        if "agent_notes" in incoming_updates:
+            agent_notes_raw = incoming_updates.get("agent_notes")
+            agent_notes_value = _trimmed_string(agent_notes_raw)
+            submission["owner_note"] = agent_notes_value
+
+        if "contact_name" in incoming_updates:
+            contact_name_raw = incoming_updates.get("contact_name")
+            contact_name_value = _trimmed_string(contact_name_raw)
+            if contact_name_value is not None:
+                raw_input["customer_name"] = contact_name_value
+            else:
+                raw_input.pop("customer_name", None)
+            synced_updates["raw_input"] = raw_input
 
         if fields_to_clear:
             validation["warnings"] = [
@@ -1906,9 +2052,21 @@ def patch_trip(
             synced_updates["extracted"] = extracted
             synced_updates["validation"] = validation
 
+        if structured_overlay:
+            merged_structured_json = dict(structured_json)
+            merged_structured_json.update(structured_overlay)
+            submission["structured_json"] = merged_structured_json
+            synced_updates["raw_input"] = raw_input
+        elif "structured_json" in submission:
+            submission.pop("structured_json", None)
+            synced_updates["raw_input"] = raw_input
+
+        if "customer_message" in incoming_updates or "agent_notes" in incoming_updates:
+            synced_updates["raw_input"] = raw_input
+
         return synced_updates
 
-    updates = _sync_manual_trip_fields(trip, updates)
+    updates = _sync_manual_trip_fields(trip, updates_dict)
 
     edited_fields = set(updates.keys())
 
@@ -2535,7 +2693,6 @@ async def _ts(fn, *args, **kwargs):
     Offloads to a thread where _run_async_blocking creates a fresh asyncio loop
     for asyncpg, avoiding deadlocks with TestClient's anyio loop.
     """
-    import asyncio
     return await asyncio.to_thread(fn, *args, **kwargs)
 
 
@@ -3148,7 +3305,7 @@ async def extract_document(
     db: AsyncSession = Depends(get_rls_db),
 ):
     """Run OCR extraction on a document. Allowed for pending_review or accepted documents."""
-    from spine_api.services.extraction_service import run_extraction, get_extractor, ExtractionValidationError
+    from spine_api.services.extraction_service import run_extraction, ExtractionValidationError
     from spine_api.services.document_service import get_document_by_id
     from spine_api.services.document_storage import get_document_storage
 

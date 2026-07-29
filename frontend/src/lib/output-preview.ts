@@ -1,5 +1,5 @@
 import type { Trip } from "@/lib/api-client";
-import type { DecisionOutput, PromptBundle, StrategyOutput } from "@/types/spine";
+import type { DecisionOutput, PromptBundle, StrategyOutput, FollowUpQuestion } from "@/types/spine";
 import { buildTripStrategyPreview } from "@/lib/strategy-preview";
 
 interface OutputPreviewResult {
@@ -54,12 +54,12 @@ function normalizeFollowUpQuestions(
     .slice()
     .filter((question) => Boolean(question && typeof question === "object"))
     .map((question, index) => {
-      const record = question as Record<string, unknown>;
+      const q = question as Partial<FollowUpQuestion>;
       return {
-        field_name: typeof record.field_name === "string" ? record.field_name : `follow_up_${index + 1}`,
-        question: typeof record.question === "string" ? record.question : "",
-        priority: typeof record.priority === "string" ? record.priority : "normal",
-        suggested_values: Array.isArray(record.suggested_values) ? record.suggested_values : [],
+        field_name: typeof q.field_name === "string" ? q.field_name : `follow_up_${index + 1}`,
+        question: typeof q.question === "string" ? q.question : "",
+        priority: typeof q.priority === "string" ? q.priority : "normal",
+        suggested_values: Array.isArray(q.suggested_values) ? q.suggested_values : [],
       };
     })
     .filter((question) => question.question.length > 0);
@@ -100,9 +100,10 @@ function buildTravelerMessage(
       }
     }
   } else if (decision?.decision_state === "PROCEED_TRAVELER_SAFE") {
-    if (decision.operating_mode === "audit") {
+    const decisionRecord = decision as unknown as Record<string, unknown>;
+    if (decisionRecord.operating_mode === "audit") {
       messageParts.push("Here’s my review comparing your plan with current market options.");
-    } else if (decision.operating_mode === "coordinator_group") {
+    } else if (decisionRecord.operating_mode === "coordinator_group") {
       messageParts.push("Options organized by group follow, plus a group summary.");
     }
   } else if (decision?.decision_state === "BRANCH_OPTIONS") {
@@ -123,12 +124,11 @@ function buildInternalMessage(
 
   if (decision?.decision_state === "ASK_FOLLOWUP" && (decision.follow_up_questions ?? []).length > 0) {
     for (const question of sortQuestionsByPriority(decision.follow_up_questions).slice(0, 5)) {
-      const field = cleanText((question as Record<string, unknown>).field_name) || "unknown_field";
-      const questionText = cleanText((question as Record<string, unknown>).question) || "";
-      const priority = cleanText((question as Record<string, unknown>).priority) || "normal";
-      const suggested = Array.isArray((question as Record<string, unknown>).suggested_values)
-        ? (question as Record<string, unknown>).suggested_values as unknown[]
-        : [];
+      const q = question as Partial<FollowUpQuestion>;
+      const field = cleanText(q.field_name) || "unknown_field";
+      const questionText = cleanText(q.question) || "";
+      const priority = cleanText(q.priority) || "normal";
+      const suggested = Array.isArray(q.suggested_values) ? q.suggested_values : [];
       if (questionText) {
         if (suggested.length > 0) {
           parts.push(`[${priority.toUpperCase()}] ${field}: ${questionText} (Suggested: ${suggested.map((value) => String(value)).join(", ")})`);

@@ -21,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional
 
-from .packet_models import CanonicalPacket, Slot
+from .packet_models import CanonicalPacket
 from .validation import INTAKE_MINIMUM, QUOTE_READY
 
 

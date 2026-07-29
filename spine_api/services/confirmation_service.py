@@ -18,7 +18,6 @@ from spine_api.models.tenant import (
     BookingConfirmation,
     BookingTask,
     CONFIRMATION_TYPES,
-    CONFIRMATION_STATUSES,
     CONFIRMATION_VALID_TRANSITIONS,
     ALLOWED_EVIDENCE_REF_TYPES,
     NOTES_MAX_LENGTH,

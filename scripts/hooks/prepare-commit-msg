@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
+# Motto attestation gate. This runs in prepare-commit-msg so `git commit --no-verify`
+# still hits it. The goal is to block commits until the repo has a fresh
+# attestation for the current full motto_v3.md content.
+if [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
+  _motto_file="motto_v3.md"
+  _attestation_file=".git/projects_agent_motto_attestation.env"
+  _attestation_tool="/Users/pranay/Projects/workspace_memory/scripts/attest_motto.py"
+  _max_age_secs="${PROJECTS_AGENT_MOTTO_ATTEST_MAX_AGE_SECS:-43200}"
+
+  _sha256_file() {
+    if command -v shasum >/dev/null 2>&1; then
+      shasum -a 256 "$1" | awk '{print $1}'
+    elif command -v sha256sum >/dev/null 2>&1; then
+      sha256sum "$1" | awk '{print $1}'
+    else
+      python3 - "$1" <<'PY'
+import hashlib
+import pathlib
+import sys
+print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())
+PY
+    fi
+  }
+
+  if [ ! -f "$_motto_file" ]; then
+    echo "prepare-commit-msg: expected $_motto_file is missing; rerun /Users/pranay/Projects/agent-start and restore the project motto before committing." >&2
+    exit 1
+  fi
+
+  _current_sha="$(_sha256_file "$_motto_file")"
+  _need_attestation="1"
+  if [ -f "$_attestation_file" ]; then
+    # shellcheck disable=SC1090
+    . "$_attestation_file"
+    _attested_epoch="${PROJECTS_AGENT_MOTTO_ATTESTED_EPOCH:-0}"
+    case "$_attested_epoch" in ''|*[!0-9]*) _attested_epoch=0 ;; esac
+    _now="$(date +%s)"
+    _age="$((_now - _attested_epoch))"
+    if [ "${PROJECTS_AGENT_MOTTO_SHA256:-}" = "$_current_sha" ] && [ "$_age" -le "$_max_age_secs" ]; then
+      _need_attestation="0"
+    fi
+  fi
+
+  if [ "$_need_attestation" = "1" ]; then
+    cat >&2 <<EOF
+prepare-commit-msg: commit blocked until the current full motto is freshly attested.
+
+Read and follow:
+  $(pwd)/$_motto_file
+
+Then refresh the attestation:
+  python3 "$_attestation_tool" --repo "$(pwd)"
+
+This gate is installed in prepare-commit-msg so \`git commit --no-verify\` does not skip it.
+EOF
+    exit 1
+  fi
+fi
+# <<< PROJECTS_AGENT_PRECOMMIT_END <<<
+
+exit 0

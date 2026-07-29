@@ -12,10 +12,6 @@ Run: uv run python notebooks/test_scenarios_realworld.py
 import json
 import sys
 import os
-from dataclasses import dataclass, asdict, field
-from datetime import datetime
-from typing import List, Dict, Any, Optional
-from enum import IntEnum
 
 # Ensure notebook cell imports can resolve project modules before exec.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
@@ -36,7 +32,7 @@ def load_notebook_namespace():
 
 ns = load_notebook_namespace()
 
-from intake.packet_models import CanonicalPacket as CanonicalPacketModel, Slot, EvidenceRef, UnknownField
+from intake.packet_models import CanonicalPacket as CanonicalPacketModel, Slot, EvidenceRef
 from intake.decision import (
     run_gap_and_decision as run_gap_and_decision_src,
     calculate_confidence as calculate_confidence_src,
@@ -514,7 +510,7 @@ def t_elderly_pilgrimage():
     # v0.2: May return PROCEED_TRAVELER_SAFE or PROCEED_INTERNAL_DRAFT
     assert r.decision_state in ("PROCEED_TRAVELER_SAFE", "PROCEED_INTERNAL_DRAFT")
 
-    return f"Proceeds (MVB satisfied) — medical info captured in preferences, NB03 should flag risk"
+    return "Proceeds (MVB satisfied) — medical info captured in preferences, NB03 should flag risk"
 
 test("Elderly Pilgrimage → PROCEED_TRAVELER_SAFE (medical in preferences)", t_elderly_pilgrimage)
 
@@ -590,7 +586,7 @@ def t_stage_progression():
         f"Shortlist should require resolved_destination. Blockers: {r.hard_blockers}"
     assert r.decision_state == "ASK_FOLLOWUP"
 
-    return f"Asks for selected_destinations — can't shortlist without narrowing"
+    return "Asks for selected_destinations — can't shortlist without narrowing"
 
 test("Stage Progression → shortlist asks for selected_destinations", t_stage_progression)
 
@@ -670,7 +666,7 @@ def t_budget_stretch():
     # v0.2: May return PROCEED_TRAVELER_SAFE or PROCEED_INTERNAL_DRAFT
     assert r.decision_state in ("PROCEED_TRAVELER_SAFE", "PROCEED_INTERNAL_DRAFT")
 
-    return f"Proceeds — stretch info captured in budget value string but not structurally parsed"
+    return "Proceeds — stretch info captured in budget value string but not structurally parsed"
 
 test("Budget Stretch → proceeds but stretch not structurally recognized", t_budget_stretch)
 
@@ -811,7 +807,7 @@ if _passed > 0:
     rate = _passed / (_passed + _failed + _errors) * 100
     print(f"  Rate:    {_passed}/{_passed + _failed + _errors} = {rate:.0f}%")
 
-print(f"\n  SCENARIO INSIGHTS:")
+print("\n  SCENARIO INSIGHTS:")
 for status, name, detail in _details:
     icon = "✓" if status == "PASS" else "✗"
     print(f"    {icon} {name}")
@@ -822,7 +818,7 @@ for status, name, detail in _details:
         elif "reveals gap" in name.lower():
             print(f"      → GAP: {detail}")
 
-print(f"\n  GAPS FOUND IN NB02:")
+print("\n  GAPS FOUND IN NB02:")
 gaps_found = 0
 for status, name, detail in _details:
     if detail and ("gap" in detail.lower() or "Gap:" in detail):

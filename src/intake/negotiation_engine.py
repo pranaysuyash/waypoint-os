@@ -7,9 +7,8 @@ with suppliers and manages the lifecycle of these 'haggles'.
 
 from __future__ import annotations
 import logging
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass, field
-from datetime import datetime
+from typing import Any, Dict, List
+from dataclasses import dataclass
 
 from .packet_models import CanonicalPacket
 from .decision import DecisionResult

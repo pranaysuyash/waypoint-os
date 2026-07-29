@@ -108,7 +108,7 @@ class TestServiceFallback:
     def test_primary_succeeds_one_attempt(self):
         """Primary model succeeds → one attempt row, extraction pending_review."""
         from spine_api.services.extraction_service import (
-            ExtractionResult, _get_model_chain, _resolve_provider_name,
+            _get_model_chain, _resolve_provider_name,
         )
         from src.extraction.model_chain import ModelChain
 
@@ -125,7 +125,6 @@ class TestServiceFallback:
 
     def test_primary_timeout_secondary_success(self):
         """Primary fails with retriable → secondary succeeds → two entries."""
-        from src.extraction.vision_client import ExtractionProviderError
         from src.extraction.model_chain import RETRIABLE_ERRORS
 
         assert "api_timeout" in RETRIABLE_ERRORS

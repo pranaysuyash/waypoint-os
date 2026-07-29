@@ -14,18 +14,18 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
   const resultPacket = useWorkbenchStore((s) => s.result_packet) as { packet_id?: string } | null;
 
   // Derive from store, with null-safe defaults
-  const frontier = resultFrontier ?? {};
+  const frontier: any = resultFrontier ?? {};
   const ghostActive = frontier.ghost_triggered ?? false;
   const sentiment = frontier.sentiment_score ?? 0.5;
   const isAnxious = frontier.anxiety_alert ?? false;
-  const intelHits = frontier.intelligence_hits ?? [];
+  const intelHits: Array<Record<string, unknown>> = (frontier.intelligence_hits ?? []);
   const requiresAudit = frontier.requires_manual_audit ?? false;
   const mitigationApplied = frontier.mitigation_applied ?? false;
   const negotiationActive = frontier.negotiation_active ?? false;
   const activePacketId = packetId ?? resultPacket?.packet_id ?? '-';
 
   const hasRealData = resultFrontier !== null && resultFrontier !== undefined;
-  const specialtyKnowledge = frontier.specialty_knowledge ?? [];
+  const specialtyKnowledge: Array<Record<string, unknown>> = (frontier.specialty_knowledge ?? []);
 
   return (
     <div className="bento-grid animate-fade-in">
@@ -76,8 +76,8 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
       <div className="bento-item col-span-1 md:col-span-2">
         <h3 className="text-ui-xs font-mono text-tertiary mb-2 uppercase tracking-widest">Federated Intelligence Pool</h3>
         <div className="space-y-3">
-          {intelHits.length > 0 ? intelHits.map((hit) => (
-            <div key={`hit-${hit.type || hit.severity}-${(hit.message || '').slice(0, 20)}`} className="flex gap-3 items-start p-2 bg-lg-glass-bg rounded-lg border border-lg-glass-border">
+          {intelHits.length > 0 ? intelHits.map((hit: Record<string, unknown>) => (
+            <div key={`hit-${String(hit.type) || String(hit.severity)}-${(String(hit.message || '')).slice(0, 20)}`} className="flex gap-3 items-start p-2 bg-lg-glass-bg rounded-lg border border-lg-glass-border">
               <div className={`p-1 rounded ${
                 hit.severity === 'critical' ? 'bg-accent-red/20' :
                 hit.severity === 'high' ? 'bg-accent-amber/20' :
@@ -92,8 +92,8 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
                 </svg>
               </div>
               <div>
-                <p className="text-ui-sm font-medium">{hit.message || hit.type || 'Intelligence alert'}</p>
-                <p className="text-ui-xs text-muted">{hit.source ? `Source: ${hit.source}` : 'Source: Federated Intelligence'}</p>
+                <p className="text-ui-sm font-medium">{String(hit.message || hit.type || 'Intelligence alert')}</p>
+                <p className="text-ui-xs text-muted">{hit.source ? `Source: ${String(hit.source)}` : 'Source: Federated Intelligence'}</p>
               </div>
             </div>
           )) : (
@@ -109,22 +109,22 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
         <h3 className="text-ui-xs font-mono text-tertiary mb-2 uppercase tracking-widest">Specialty Intelligence</h3>
         <div className="space-y-3">
           {specialtyKnowledge.length > 0 ? (
-            specialtyKnowledge.map((knowledge, index) => (
+            specialtyKnowledge.map((knowledge: Record<string, unknown>, index: number) => (
               <div
                 key={`specialty-${knowledge.niche || index}`}
                 className="p-2 bg-lg-glass-bg rounded-lg border border-lg-glass-border"
               >
-                <p className="text-ui-sm font-medium">{knowledge.niche || 'Specialty domain'}</p>
+                <p className="text-ui-sm font-medium">{String(knowledge.niche || 'Specialty domain')}</p>
                 {!!knowledge.urgency && (
-                  <p className="text-ui-xs text-muted">Urgency: {knowledge.urgency}</p>
+                  <p className="text-ui-xs text-muted">Urgency: {String(knowledge.urgency)}</p>
                 )}
                 {!!knowledge.safety_notes && (
-                  <p className="text-ui-xs text-accent-blue mt-1">Safety: {knowledge.safety_notes}</p>
+                  <p className="text-ui-xs text-accent-blue mt-1">Safety: {String(knowledge.safety_notes)}</p>
                 )}
-                {!!knowledge.checklists?.length && (
+                {Array.isArray(knowledge.checklists) && knowledge.checklists.length > 0 && (
                   <ul className="text-ui-xs text-secondary mt-1 list-disc pl-4">
-                    {knowledge.checklists.map((item, itemIndex) => (
-                      <li key={`${knowledge.niche ?? "specialty"}-${itemIndex}`}>{item}</li>
+                    {(knowledge.checklists as unknown as string[]).map((item: string, itemIndex: number) => (
+                      <li key={`${String(knowledge.niche ?? "specialty")}-${itemIndex}`}>{item}</li>
                     ))}
                   </ul>
                 )}

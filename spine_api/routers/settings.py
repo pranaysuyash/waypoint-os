@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException
 
 from src.llm.usage_guard import get_guard_for_agency, reload_guard_for_agency
-from src.llm.alert_service import alert_service_from_settings
 
 from spine_api.contract import (
     ApprovalThresholdConfig,

@@ -2,18 +2,13 @@
 Tests for Phase 5: Follow-up Notifications (Operator & Traveler)
 """
 
-import pytest
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from unittest.mock import patch, MagicMock, call
-import json
+from unittest.mock import patch
 
 from spine_api.notifications import (
-    check_overdue_followups,
     format_operator_email_body,
     send_operator_email,
     send_daily_operator_reminders,
-    check_upcoming_followups,
     format_traveler_sms_body,
     format_traveler_email_body,
     send_traveler_notification,

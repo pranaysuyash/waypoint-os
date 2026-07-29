@@ -10,7 +10,8 @@ from typing import Optional, Protocol, Union
 from src.extraction.exceptions import ExtractionValidationError
 import asyncio
 
-from src.extraction.model_chain import RETRIABLE_ERRORS, MAX_PROVIDER_RETRIES, retry_backoff_delay
+from src.extraction.model_chain import ModelChain, RETRIABLE_ERRORS, MAX_PROVIDER_RETRIES, retry_backoff_delay
+from spine_api.models.tenant import DocumentExtraction
 from spine_api.services import execution_event_service
 from spine_api.services.private_fields import encrypt_blob, decrypt_blob
 
@@ -627,7 +628,6 @@ async def apply_extraction(db, document, extraction, fields_to_apply: list[str],
                            review_trigger_reason: str = "manual_apply",
                            review_outcome: str = "applied") -> dict:
     """Apply selected extraction fields to booking_data. Returns {applied, conflicts, extraction}."""
-    from spine_api.models.tenant import DocumentExtraction
 
     if extraction.status != "pending_review":
         raise ValueError(f"Cannot apply extraction with status {extraction.status}")
@@ -680,12 +680,12 @@ async def apply_extraction(db, document, extraction, fields_to_apply: list[str],
     # Check for conflicts
     conflicts = []
     target = travelers[target_idx]
-    for field in fields_to_apply:
-        extracted_val = extracted_fields.get(field)
-        existing_val = target.get(field)
+    for fld in fields_to_apply:
+        extracted_val = extracted_fields.get(fld)
+        existing_val = target.get(fld)
         if existing_val and str(existing_val).strip() and str(existing_val) != str(extracted_val):
             conflicts.append({
-                "field_name": field,
+                "field_name": fld,
                 "existing_value": _mask_value(str(existing_val)),
                 "extracted_value": _mask_value(str(extracted_val)),
             })
@@ -694,10 +694,10 @@ async def apply_extraction(db, document, extraction, fields_to_apply: list[str],
         return {"applied": False, "conflicts": conflicts, "extraction": extraction}
 
     # Apply fields
-    for field in fields_to_apply:
-        val = extracted_fields.get(field)
+    for fld in fields_to_apply:
+        val = extracted_fields.get(fld)
         if val is not None:
-            target[field] = val
+            target[fld] = val
     travelers[target_idx] = target
     booking_data["travelers"] = travelers
 

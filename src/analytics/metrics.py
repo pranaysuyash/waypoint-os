@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, List
 from datetime import datetime, timezone
 import random
 
@@ -52,7 +52,7 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
     )
 
     rate = (converted / total * 100) if total > 0 else 0
-    margin = sum((_trip_analytics(t).get("margin_pct", 0) for t in trips))
+    sum((_trip_analytics(t).get("margin_pct", 0) for t in trips))
 
     if total == 0:
         pipeline_velocity = PipelineVelocity(
@@ -264,7 +264,7 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
     Total Pipeline Value = Σ(budget for non-booked active trips)
     Near Close Revenue = Σ(budget for output/safety stages)
     """
-    now = datetime.now(timezone.utc)
+    datetime.now(timezone.utc)
 
     booked_revenue = 0.0
     projected_revenue = 0.0

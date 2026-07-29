@@ -17,7 +17,6 @@ Do not create aliases — all frontend imports must use this single path.
 """
 
 import sys
-import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

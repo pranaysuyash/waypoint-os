@@ -19,7 +19,7 @@ from sqlalchemy import select, text
 
 from spine_api.core.database import get_db
 from spine_api.core.security import decode_token_safe
-from spine_api.models.tenant import User, Membership
+from spine_api.models.tenant import User, Membership, Agency
 from spine_api.core.rls import set_rls_agency
 
 # Security scheme for Swagger docs
@@ -129,7 +129,7 @@ async def get_current_membership(
     result = await db.execute(
         select(Membership)
         .where(Membership.user_id == user.id)
-        .where(Membership.is_primary == True)
+        .where(Membership.is_primary)
     )
     membership = result.scalar_one_or_none()
 
@@ -164,7 +164,6 @@ async def get_current_agency(
     db: AsyncSession = Depends(get_db),
 ) -> "Agency":
     """Return the current agency object for the authenticated user."""
-    from spine_api.models.tenant import Agency
 
     result = await db.execute(select(Agency).where(Agency.id == agency_id))
     agency = result.scalar_one_or_none()

@@ -146,8 +146,6 @@ class TestTelemetryEmission:
 
     def test_telemetry_file_created(self, tmp_path, monkeypatch):
         """Ambiguity synthesis emits telemetry to JSONL file."""
-        import os
-        from pathlib import Path
         
         # Mock telemetry directory
         mock_telemetry_dir = tmp_path / "telemetry"
@@ -168,7 +166,6 @@ class TestTelemetryEmission:
         _synthesize_destination_ambiguity(pkt, ambiguities)
         
         # Check telemetry was written
-        import glob
         telemetry_files = list(mock_telemetry_dir.glob("*.jsonl"))
         assert len(telemetry_files) > 0, "Telemetry file should be created"
         
@@ -182,8 +179,6 @@ class TestTelemetryEmission:
 
     def test_no_telemetry_when_already_has_ambiguity(self, tmp_path, monkeypatch):
         """No telemetry when ambiguity already exists."""
-        import os
-        from pathlib import Path
         
         mock_telemetry_dir = tmp_path / "telemetry"
         monkeypatch.setenv("SPINE_TELEMETRY_DIR", str(mock_telemetry_dir))
@@ -206,7 +201,6 @@ class TestTelemetryEmission:
         _synthesize_destination_ambiguity(pkt, ambiguities)
         
         # Should NOT create telemetry (no synthesis needed)
-        import glob
         telemetry_files = list(mock_telemetry_dir.glob("*.jsonl"))
         assert len(telemetry_files) == 0, "No telemetry when ambiguity already exists"
 

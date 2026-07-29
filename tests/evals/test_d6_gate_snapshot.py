@@ -328,7 +328,7 @@ def test_pipeline_manifest_category_evaluated_with_accuracy():
     """Pipeline category should receive overall_accuracy from pipeline_health."""
     snapshot = build_gate_snapshot()
     pipeline_cat = snapshot["categories"]["pipeline"]
-    ph = snapshot["pipeline_health"]
+    snapshot["pipeline_health"]
     # Self-consistent baseline: expected outputs as actuals → 100% accuracy
     # Pipeline category is gating, and accuracy meets the 0.80 threshold
     assert pipeline_cat["status"] == "gating"

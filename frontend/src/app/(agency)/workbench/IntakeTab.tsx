@@ -13,7 +13,7 @@ import {
   Plane,
   Lightbulb,
 } from 'lucide-react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useId } from 'react';
 import type { Trip } from '@/lib/api-client';
 import { useWorkbenchStore } from '@/stores/workbench';
@@ -48,6 +48,7 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
   const { replace } = useRouter();
+  const pathname = usePathname();
   const { input_raw_note, input_owner_note, setInputRawNote, setInputOwnerNote } = useWorkbenchStore();
   const id1 = useId();
   const id2 = useId();
@@ -60,7 +61,7 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
   const updateUrlParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set(key, value);
-    replace(`?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const origin = trip?.origin || '-';

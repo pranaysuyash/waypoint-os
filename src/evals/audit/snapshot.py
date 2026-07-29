@@ -17,7 +17,7 @@ from .fixtures import AuditFixture, load_fixtures
 from .gates import evaluate_report_against_manifest
 from .manifest import load_manifest
 from .rules.activity import run_activity_fixture
-from .rules.extraction import ExtractionFixture, load_golden_dataset, run_extraction_eval
+from .rules.extraction import load_golden_dataset, run_extraction_eval
 from .rules.pipeline import load_pipeline_fixtures, run_pipeline_eval
 from .runner import run_eval_suite
 

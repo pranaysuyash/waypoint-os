@@ -1,5 +1,5 @@
 {
-  "route_count": 174,
+  "route_count": 178,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1036,6 +1036,38 @@
     {
       "path": "/inbox/stats",
       "name": "get_inbox_stats",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/kdd/clusters",
+      "name": "list_clusters",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/kdd/clusters/{cluster_id}",
+      "name": "delete_cluster",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/kdd/clusters/{cluster_id}",
+      "name": "get_cluster",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/kdd/digest",
+      "name": "get_kdd_digest",
       "methods": [
         "GET"
       ],

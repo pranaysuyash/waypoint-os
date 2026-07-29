@@ -175,17 +175,17 @@ def run():
     print(f" {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print("=" * 72)
 
-    print(f"\n📋 COSTS")
+    print("\n📋 COSTS")
     print(f"   Fixed: ₹{FIXED:,}/mo | Variable: ₹{VAR}/cust/mo | One-time: ₹{ONE_TIME:,}")
 
-    print(f"\n📊 PLG GROWTH MODES")
+    print("\n📊 PLG GROWTH MODES")
     for key, g in GROWTH_MODES.items():
         print(f"   {g['label']:>30}: {g['monthly_new_base']} base/mo"
               f" | viral: {g['viral_coefficient']:.0%}"
               f" | self-serve: {g['self_serve_pct']:.0%}"
-              + (f" | partners: yes" if "partner_batch_size" in g else ""))
+              + (" | partners: yes" if "partner_batch_size" in g else ""))
 
-    print(f"\n📈 GROWTH COMPARISON (at Pricing Scenario C: ₹4,500 ARPU, 3% churn)")
+    print("\n📈 GROWTH COMPARISON (at Pricing Scenario C: ₹4,500 ARPU, 3% churn)")
     print(f"{'Growth Mode':>30} {'Y1 Cust':>8} {'Y3 Cust':>8} {'Y3 MRR':>10} {'Y3 ARR':>12} {'ARR($)':>9} {'36mo Rev':>14}")
     print("-" * 95)
 
@@ -199,7 +199,7 @@ def run():
               f" ₹{y3_mrr:>8,} ₹{y3_arr:>10,} ${y3_arr/USD_RATE:>7,}"
               f" ₹{r['total_revenue_36mo']:>11,}")
 
-    print(f"\n💲 PRICING SCENARIO COMPARISON (at Full PLG growth)")
+    print("\n💲 PRICING SCENARIO COMPARISON (at Full PLG growth)")
     print(f"{'Pricing':>32} {'Y3 Cust':>8} {'Y3 MRR':>10} {'Y3 ARR':>12} {'ARR($)':>9} {'LTV':>10}")
     print("-" * 86)
 
@@ -212,7 +212,7 @@ def run():
               f" ₹{r['final_mrr']:>8,} ₹{r['final_arr']:>10,} ${r['final_arr']/USD_RATE:>7,}"
               f" {effective_churn*100:>5.1f}% ₹{ltv:>8,}")
 
-    print(f"\n🔍 YEAR-BY-YEAR (Full PLG / Pricing C)")
+    print("\n🔍 YEAR-BY-YEAR (Full PLG / Pricing C)")
     r = simulate("full-plg", "C: Base + seats + 1 add-on")
     print(f"{'Year':>6} {'New Cust':>10} {'Total Cust':>12} {'MRR':>10} {'ARR':>12}")
     print("-" * 52)
@@ -227,7 +227,7 @@ def run():
 
     total_rev = r["total_revenue_36mo"]
     total_cost = FIXED * 36 + sum(r["customers"][m] * VAR for m in range(36)) + ONE_TIME
-    print(f"\n💰 PROFITABILITY")
+    print("\n💰 PROFITABILITY")
     print(f"   36mo Revenue: ₹{total_rev:>12,} (${total_rev/USD_RATE:>9,})")
     print(f"   36mo Cost:    ₹{total_cost:>12,} (${total_cost/USD_RATE:>9,})")
     print(f"   36mo Profit:  ₹{total_rev - total_cost:>12,} (${(total_rev - total_cost)/USD_RATE:>9,})")

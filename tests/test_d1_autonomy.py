@@ -7,11 +7,9 @@ Run: uv run pytest tests/test_d1_autonomy.py -v
 import os
 import sys
 import json
-import warnings
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import pytest
 
 from intake.config.agency_settings import (
     AgencyAutonomyPolicy,
@@ -108,7 +106,6 @@ class TestAgencySettingsBackwardCompat:
         assert settings.autonomy.approval_gates["STOP_NEEDS_REVIEW"] == "block"
 
     def test_legacy_json_loads(self, tmp_path, monkeypatch):
-        mod = AgencySettingsStore
         monkeypatch.setattr(
             sys.modules["intake.config.agency_settings"], "_DATA_ROOT", str(tmp_path)
         )

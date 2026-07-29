@@ -33,7 +33,7 @@ class TestDateOfBirthEdgeCases:
 
     def test_boundary_age_exactly_0(self):
         """Date that's today (age ~0) should return implausible."""
-        from src.extraction.confidence import compute_field_confidences, _validate_date_field
+        from src.extraction.confidence import _validate_date_field
         today = datetime.now().strftime("%Y-%m-%d")
         score = _validate_date_field(today)
         # Age < 0 effectively → implausible

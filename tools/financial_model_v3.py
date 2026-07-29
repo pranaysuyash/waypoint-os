@@ -73,7 +73,7 @@ def run():
     print(f" {datetime.now().strftime('%Y-%m-%d %H:%M')} | USD = ₹{USD_RATE}")
     print("=" * 68)
 
-    print(f"\n📋 COSTS")
+    print("\n📋 COSTS")
     print(f"   Fixed/mo: ₹{FIXED_MONTHLY:,} (hosting ₹{FIXED_COSTS['hosting']:,}"
           f" + LLM base ₹{FIXED_COSTS['llm_base']:,}"
           f" + tools ₹{FIXED_COSTS['tools']:,})")
@@ -86,7 +86,7 @@ def run():
     print(f"                          {FIXED_MONTHLY//4000} (at ₹4K ARPU)")
     print(f"                          {FIXED_MONTHLY//6000} (at ₹6K ARPU)")
 
-    print(f"\n📊 SCENARIO COMPARISON (at 50 customers — about 1 year in)")
+    print("\n📊 SCENARIO COMPARISON (at 50 customers — about 1 year in)")
     print(f"{'Name':>32} {'ARPU':>7} {'Churn':>7} {'MRR':>9} {'ARR':>11} {'ARR($)':>9} {'LTV':>10} {'CAC':>8} {'LTV/CAC':>7}")
     print("-" * 102)
 
@@ -105,8 +105,8 @@ def run():
               f" ₹{mrr:>7,} ₹{arr:>9,} ${arr/USD_RATE:>7,}"
               f" ₹{ltv:>8,} ₹{cac:>6,} {ratio:>5.1f}x")
 
-    print(f"\n🔍 WHAT-IF: WHAT HAPPENS AT DIFFERENT CUSTOMER COUNTS?")
-    print(f"(Using Scenario B: ₹3,000 ARPU, 4% churn)")
+    print("\n🔍 WHAT-IF: WHAT HAPPENS AT DIFFERENT CUSTOMER COUNTS?")
+    print("(Using Scenario B: ₹3,000 ARPU, 4% churn)")
     print(f"{'Customers':>10} {'MRR':>9} {'ARR':>11} {'ARR($)':>9} {'Monthly Cost':>13} {'Net/mo':>9} {'Cumulative':>12}")
     print("-" * 75)
 
@@ -126,7 +126,7 @@ def run():
         print(f"{count:>10} ₹{mrr:>7,} ₹{mrr*12:>9,} ${mrr*12/USD_RATE:>7,}"
               f" ₹{cost:>11,} ₹{net:>7,} ₹{cum:>10,}")
 
-    print(f"\n📉 CHURN SENSITIVITY (at ₹3,000 ARPU)")
+    print("\n📉 CHURN SENSITIVITY (at ₹3,000 ARPU)")
     print(f"{'Monthly Churn':>14} {'Annual Loss':>13} {'Customer LTV':>13} {'What it means':>30}")
     print("-" * 72)
     for c in [1, 2, 3, 4, 5, 7, 10]:
@@ -136,22 +136,26 @@ def run():
         note = "Good" if c <= 2 else "OK" if c <= 4 else "Fix this" if c <= 7 else "Critical"
         print(f"{c:>6}%/mo {annual_loss:>10.1f}% ₹{ltv:>10,} {note:>30}")
 
-    print(f"\n📐 FORMULAS (so you can calculate your own)")
-    print(f"   ARPU = Average Revenue Per User = total monthly revenue ÷ customers")
-    print(f"   MRR  = Monthly Recurring Revenue = customers × ARPU")
-    print(f"   ARR  = Annual Recurring Revenue = MRR × 12")
-    print(f"   Churn = % of customers who leave each month")
-    print(f"   LTV  = Lifetime Value = (ARPU - variable costs) ÷ churn rate")
-    print(f"   CAC  = Customer Acquisition Cost = total sales spend ÷ customers gained")
-    print(f"   LTV/CAC = how many times your investment comes back. > 3x is healthy.")
-    print(f"   Payback = months to recover CAC = CAC ÷ (ARPU - variable costs)")
+    print("\n📐 FORMULAS (so you can calculate your own)")
+    print("   ARPU = Average Revenue Per User = total monthly revenue ÷ customers")
+    print("   MRR  = Monthly Recurring Revenue = customers × ARPU")
+    print("   ARR  = Annual Recurring Revenue = MRR × 12")
+    print("   Churn = % of customers who leave each month")
+    print("   LTV  = Lifetime Value = (ARPU - variable costs) ÷ churn rate")
+    print("   CAC  = Customer Acquisition Cost = total sales spend ÷ customers gained")
+    print("   LTV/CAC = how many times your investment comes back. > 3x is healthy.")
+    print("   Payback = months to recover CAC = CAC ÷ (ARPU - variable costs)")
 
 def _estimate_cac(churn):
     """Rough CAC by channel quality — lower churn channels cost more to acquire."""
-    if churn <= 0.02: return 8000    # Referral/host agency — high trust, low churn, higher CAC
-    if churn <= 0.03: return 4000    # LinkedIn/content
-    if churn <= 0.04: return 2000    # Facebook/WhatsApp organic
-    if churn <= 0.05: return 1500    # Low-effort channels
+    if churn <= 0.02:
+        return 8000    # Referral/host agency — high trust, low churn, higher CAC
+    if churn <= 0.03:
+        return 4000    # LinkedIn/content
+    if churn <= 0.04:
+        return 2000    # Facebook/WhatsApp organic
+    if churn <= 0.05:
+        return 1500    # Low-effort channels
     return 1000                       # High-churn channels (cheap but not sticky)
 
 if __name__ == "__main__":

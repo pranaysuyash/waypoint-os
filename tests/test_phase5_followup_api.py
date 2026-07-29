@@ -2,12 +2,8 @@
 Tests for Phase 5: Follow-up Workflow & Reminders API endpoints
 """
 
-import json
 import pytest
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 
 # Mock the Agency dependency
 class MockAgency:
@@ -238,11 +234,6 @@ class TestSnoozeFollowup:
 
     def test_snooze_fails_if_no_followup_scheduled(self):
         """Snooze fails if trip has no follow-up scheduled."""
-        trip = {
-            "id": "trip_no_followup",
-            "agency_id": "agency_test",
-            "traveler_name": "Bob",
-        }
         # Should return 400
         pass
 
@@ -284,10 +275,5 @@ class TestRescheduleFollowup:
 
     def test_reschedule_fails_if_no_followup_scheduled(self):
         """Reschedule fails if trip has no follow-up scheduled."""
-        trip = {
-            "id": "trip_no_followup",
-            "agency_id": "agency_test",
-            "traveler_name": "Bob",
-        }
         # Should return 400
         pass

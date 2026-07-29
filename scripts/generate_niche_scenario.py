@@ -1,6 +1,4 @@
 import json
-import random
-from datetime import datetime, timedelta
 import os
 
 def generate_academic_scenario():

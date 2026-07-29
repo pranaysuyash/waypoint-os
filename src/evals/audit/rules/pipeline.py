@@ -22,7 +22,7 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +105,7 @@ def load_pipeline_fixtures(path: Path | str) -> list[PipelineFixture]:
 # Per-field comparison (uses shared utilities)
 # ---------------------------------------------------------------------------
 
-from src.evals.audit.comparison import normalise as _normalise, values_match as _values_match
+from src.evals.audit.comparison import values_match as _values_match
 
 
 @dataclass(slots=True)

@@ -14,8 +14,7 @@ Usage:
 import json
 import sys
 import os
-from dataclasses import dataclass, asdict
-from datetime import datetime
+from dataclasses import dataclass
 from typing import List, Dict, Any
 
 # Project root
@@ -24,8 +23,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Add src to path
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 
-from intake.packet_models import CanonicalPacket, Slot, EvidenceRef, UnknownField
-from intake.decision import run_gap_and_decision, DecisionResult, LEGACY_ALIASES
+from intake.packet_models import CanonicalPacket, Slot, UnknownField
+from intake.decision import run_gap_and_decision, LEGACY_ALIASES
 
 # Add fixtures path
 sys.path.insert(0, PROJECT_ROOT)

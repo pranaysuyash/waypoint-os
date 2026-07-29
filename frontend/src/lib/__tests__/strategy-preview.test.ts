@@ -106,6 +106,34 @@ describe("buildTripStrategyPreview", () => {
     expect(preview?.suggested_opening).toContain("options plan for Singapore");
   });
 
+  it("falls back to a derived preview when a persisted partial-intake strategy conflicts with a ready trip", () => {
+    const trip = makeTrip({
+      validation: {
+        readiness: {
+          highest_ready_tier: "proposal_ready",
+        },
+      } as never,
+      strategy: {
+        session_goal: "Partial intake — awaiting enrichment.",
+        priority_sequence: ["Collect missing traveler details"],
+        tonal_guardrails: ["Keep the intake short"],
+        risk_flags: ["Origin missing"],
+        suggested_opening: "We’re still waiting on a few details.",
+        exit_criteria: ["Ask for the missing field"],
+        next_action: "ASK_FOLLOWUP",
+        assumptions: [],
+        suggested_tone: "professional",
+      },
+    });
+
+    const preview = buildTripStrategyPreview(trip);
+
+    expect(preview).not.toEqual(trip.strategy);
+    expect(preview?.session_goal).toContain("Bali");
+    expect(preview?.session_goal).not.toContain("partial intake");
+    expect(preview?.suggested_opening).toContain("options plan");
+  });
+
   it("synthesizes a preview from trip context when strategy is absent", () => {
     const preview = buildTripStrategyPreview(makeTrip());
 

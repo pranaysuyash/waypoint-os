@@ -11,11 +11,9 @@ Verifies:
 - Migration adds jurisdiction column
 """
 
-import pytest
 
 from src.security.jurisdiction_policy import (
     Jurisdiction,
-    JurisdictionPolicy,
     get_jurisdiction_policy,
     should_block_pii,
     requires_erasure_capability,

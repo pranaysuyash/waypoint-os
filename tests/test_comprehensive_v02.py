@@ -14,39 +14,20 @@ Run: uv run python -m pytest tests/test_comprehensive_v02.py -v
 
 import sys
 import os
-from dataclasses import dataclass, asdict
-from datetime import datetime
-from typing import List, Dict, Any, Optional
 
 # Ensure src/ is on the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import pytest
 
 from intake.packet_models import (
-    Ambiguity,
     AuthorityLevel,
     CanonicalPacket,
     EvidenceRef,
     Slot,
-    SourceEnvelope,
-    SubGroup,
-    UnknownField,
 )
 from intake.decision import (
-    AmbiguityRef,
-    DecisionResult,
-    classify_ambiguity_severity,
-    check_budget_feasibility,
-    classify_contradiction,
-    field_fills_blocker,
-    generate_question,
-    get_contradiction_action,
-    get_numeric_budget,
     run_gap_and_decision,
-    MVB_BY_STAGE,
     LEGACY_ALIASES,
-    CONTRADICTION_FIELD_MAP,
 )
 
 
@@ -721,7 +702,7 @@ class TestLegacyAliases:
             authority_level=AuthorityLevel.EXPLICIT_USER,
         )
 
-        r = run_gap_and_decision(pkt)
+        run_gap_and_decision(pkt)
 
         # Legacy aliases should be resolved
         # Note: This tests that resolve_field() handles aliases correctly

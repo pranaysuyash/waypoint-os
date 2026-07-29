@@ -8,7 +8,6 @@ counts and conversion rates.
 
 import pytest
 from src.analytics.metrics import compute_team_metrics
-from src.analytics.models import TeamMemberMetrics
 
 
 class FakeTeamStore:

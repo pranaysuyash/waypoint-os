@@ -7,8 +7,6 @@ Tests that suitability flags are properly integrated into the intake orchestrati
 
 import pytest
 from datetime import datetime
-from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Literal
 
 from src.intake.packet_models import (
     CanonicalPacket,
@@ -18,7 +16,6 @@ from src.intake.packet_models import (
     AuthorityLevel,
 )
 from src.suitability.integration import assess_activity_suitability
-from src.suitability.models import ParticipantRef, ActivityDefinition
 
 
 @pytest.fixture
@@ -170,7 +167,6 @@ class TestSuitabilityOrchestration:
     def test_critical_flags_set_decision_state(self, packet_elderly_with_intense_activity):
         """Test that critical flags set decision_state to STOP_NEEDS_REVIEW."""
         from src.intake.orchestration import run_spine_once
-        from src.intake.packet_models import SourceEnvelope
         
         # Create a simple envelope with elderly traveler
         envelope = SourceEnvelope(

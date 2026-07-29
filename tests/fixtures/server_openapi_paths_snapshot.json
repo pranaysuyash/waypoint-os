@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 147,
+  "openapi_path_count": 150,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -109,6 +109,9 @@
     "/inbox/assign",
     "/inbox/bulk",
     "/inbox/stats",
+    "/kdd/clusters",
+    "/kdd/clusters/{cluster_id}",
+    "/kdd/digest",
     "/overrides/{override_id}",
     "/payments",
     "/run",

@@ -8,7 +8,6 @@ import tempfile
 import time
 
 from src.extraction.vision_client import (
-    ERROR_CODES,
     ExtractionProviderError,
     VisionExtractionResult,
     _parse_and_validate_response,
@@ -121,7 +120,7 @@ class GeminiVisionClient:
 
     async def _extract_image(self, image_data: bytes, mime_type: str, json_schema: dict, prompt: str, types) -> object:
         """Extract from image using inline base64."""
-        b64_data = base64.b64encode(image_data).decode("utf-8")
+        base64.b64encode(image_data).decode("utf-8")
 
         config = types.GenerateContentConfig(
             system_instruction="You are a document data extraction assistant. Extract only the requested fields accurately.",

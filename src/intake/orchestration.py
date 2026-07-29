@@ -11,10 +11,10 @@ Contract: Docs/pre_build_corrections_2026-04-15.md (Correction 1)
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field, is_dataclass, asdict
+from dataclasses import dataclass, is_dataclass, asdict
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 def _obj_to_dict(obj: Any) -> Any:
@@ -50,7 +50,6 @@ from .plan_candidate import PlanCandidate, build_plan_candidate
 from .safety import (
     sanitize_for_traveler,
     check_no_leakage,
-    enforce_no_leakage,
     SanitizedPacketView,
 )
 from .config.agency_settings import AgencySettings, tier_allows_feature, AgencyTier
@@ -60,7 +59,6 @@ from src.fees.calculation import calculate_trip_fees
 from src.suitability.integration import assess_activity_suitability
 from .frontier_orchestrator import run_frontier_orchestration, FrontierOrchestrationResult
 from .readiness import compute_readiness
-import json
 
 
 # =============================================================================
@@ -188,6 +186,8 @@ def run_spine_once(
     fixture_expectations: Optional[Dict[str, Any]] = None,
     agency_settings: Optional[AgencySettings] = None,
     stage_callback: Optional[callable] = None,
+    strict_leakage: Optional[bool] = None,
+    result_finalizer: Optional[Callable[["SpineResult"], None]] = None,
 ) -> SpineResult:
     """
     Single spine entrypoint: envelopes → complete result bundle.
@@ -322,7 +322,10 @@ def run_spine_once(
                 pre_state=_snapshot_packet_state(packet),
                 post_state={"stage": "packet", "state": "escalated"},
             )
-        return _create_empty_spine_result(packet, validation, decision, run_timestamp, nb01_result.reasons)
+        result = _create_empty_spine_result(packet, validation, decision, run_timestamp, nb01_result.reasons)
+        if result_finalizer is not None:
+            result_finalizer(result)
+        return result
 
     if nb01_result.verdict == GateVerdict.DEGRADE:
         # Intake minimum is met but quote-ready fields are incomplete.
@@ -359,7 +362,10 @@ def run_spine_once(
                 pre_state=_snapshot_packet_state(packet),
                 post_state={"stage": "packet", "state": "degraded"},
             )
-        return _create_partial_intake_result(packet, validation, empty_decision, run_timestamp)
+        result = _create_partial_intake_result(packet, validation, empty_decision, run_timestamp)
+        if result_finalizer is not None:
+            result_finalizer(result)
+        return result
 
     if stage_callback:
         _emit_stage_event("validation", "completed", _obj_to_dict(validation))
@@ -533,7 +539,11 @@ def run_spine_once(
             # --- Phase 6: Traveler-Safe Bundle ---
             # If decision state dropped to INTERNAL_DRAFT or STOP, traveler bundle should be empty/minimal
             # Traveler bundle does NOT receive raw PlanCandidate — safety boundary preserved
-            traveler_bundle = build_traveler_safe_bundle(strategy, decision)
+            traveler_bundle = build_traveler_safe_bundle(
+                strategy,
+                decision,
+                strict_leakage=strict_leakage,
+            )
 
         # Callback for bundles
         if stage_callback:
@@ -606,7 +616,7 @@ def run_spine_once(
             expectations=fixture_expectations,
         )
 
-    return SpineResult(
+    result = SpineResult(
         packet=packet,
         validation=validation,
         decision=decision,
@@ -622,6 +632,11 @@ def run_spine_once(
         frontier_result=frontier_result,
         run_timestamp=run_timestamp,
     )
+
+    if result_finalizer is not None:
+        result_finalizer(result)
+
+    return result
 
 
 def _human_block_reason(reasons: list) -> str:

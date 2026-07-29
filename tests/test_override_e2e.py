@@ -11,7 +11,6 @@ Tests the complete override flow:
 7. Timeline shows override event
 """
 
-import pytest
 
 
 def test_e2e_override_critical_flag_workflow():

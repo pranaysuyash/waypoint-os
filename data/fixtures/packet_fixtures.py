@@ -18,9 +18,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
 from intake.packet_models import (
-    CanonicalPacket, Slot, EvidenceRef, UnknownField, AuthorityLevel,
+    CanonicalPacket, Slot, EvidenceRef,
 )
-from intake.decision import LEGACY_ALIASES
 
 
 def S(value, conf=0.9, auth="explicit_user", evidence=None):

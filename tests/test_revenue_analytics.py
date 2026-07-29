@@ -1,7 +1,5 @@
-import pytest
 from datetime import datetime, timezone, timedelta
-from src.analytics.metrics import compute_revenue_metrics, STAGE_CONVERSION_PROBABILITIES
-from src.analytics.models import RevenueMetrics
+from src.analytics.metrics import compute_revenue_metrics
 
 def test_compute_revenue_metrics_empty():
     metrics = compute_revenue_metrics([])

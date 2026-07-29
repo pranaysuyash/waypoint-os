@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.core.rls import get_rls_db
-from spine_api.core.auth import get_current_agency_id, get_current_membership, require_permission
+from spine_api.core.auth import get_current_agency_id, require_permission
 from spine_api.services.workspace_service import get_workspace, update_workspace, generate_workspace_code
 
 logger = logging.getLogger("spine_api.workspace")

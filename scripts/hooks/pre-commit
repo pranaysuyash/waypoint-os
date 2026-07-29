@@ -1,4 +1,163 @@
 #!/usr/bin/env bash
+
+# >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
+if [ -x /Users/pranay/Projects/agent-start ] && [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
+  _motto_file="motto_v3.md"
+  if [ ! -f "$_motto_file" ]; then
+    echo "pre-commit: expected $_motto_file is missing; rerun /Users/pranay/Projects/agent-start and restore the project motto before committing." >&2
+    exit 1
+  fi
+  echo "pre-commit: refreshing project context and running objective checks against the staged blast radius." >&2
+  _cmd_timeout="${PROJECTS_AGENT_PRECOMMIT_TIMEOUT_SECS:-60}"
+  _run_agent_start() {
+    if command -v timeout >/dev/null 2>&1; then
+      timeout "$_cmd_timeout" /Users/pranay/Projects/agent-start --skip-index --quiet >/dev/null 2>&1
+    elif command -v gtimeout >/dev/null 2>&1; then
+      gtimeout "$_cmd_timeout" /Users/pranay/Projects/agent-start --skip-index --quiet >/dev/null 2>&1
+    else
+      /Users/pranay/Projects/agent-start --skip-index --quiet >/dev/null 2>&1 &
+      _agent_pid=$!
+      (
+        sleep "$_cmd_timeout"
+        kill -TERM "$_agent_pid" >/dev/null 2>&1 || true
+        sleep 1
+        kill -KILL "$_agent_pid" >/dev/null 2>&1 || true
+      ) &
+      _killer_pid=$!
+      wait "$_agent_pid" >/dev/null 2>&1
+      _rc=$?
+      kill "$_killer_pid" >/dev/null 2>&1 || true
+      wait "$_killer_pid" >/dev/null 2>&1 || true
+      return "$_rc"
+    fi
+  }
+  _ctx="Docs/context/agent-start/SESSION_CONTEXT.md"
+  if [ ! -f "$_ctx" ]; then
+    _ctx=".agent/SESSION_CONTEXT.md"
+  fi
+  _refresh_secs="${PROJECTS_AGENT_PRECOMMIT_REFRESH_SECS:-21600}"
+  _need_refresh="1"
+  if [ -f "$_ctx" ]; then
+    _mtime="$(stat -f %m "$_ctx" 2>/dev/null || stat -c %Y "$_ctx" 2>/dev/null || echo 0)"
+    case "$_mtime" in ''|*[!0-9]*) _mtime=0 ;; esac
+    _now="$(date +%s)"
+    _age="$((_now - _mtime))"
+    if [ "$_age" -le "$_refresh_secs" ]; then
+      _need_refresh="0"
+    fi
+  fi
+  if [ "$_need_refresh" = "1" ] && ! _run_agent_start; then
+    echo "pre-commit: agent-start refresh failed; rerun /Users/pranay/Projects/agent-start --skip-index and fix the issue before committing." >&2
+    exit 1
+  fi
+  for _stage_path in Docs/context/agent-start .agent; do
+    if [ -e "$_stage_path" ]; then
+      git add -A "$_stage_path" >/dev/null 2>&1 || true
+    fi
+  done
+fi
+  # ------------------------------------------------------------------
+  # ENFORCED OBJECTIVE CHECKS — run by the hook, not trusted to the agent.
+  # Scoped to staged files (the diff's blast radius). Each check is skipped
+  # (not failed) when the toolchain is absent, so this stays portable across
+  # the 139 managed repos. Failures here abort the commit.
+  # ------------------------------------------------------------------
+  _staged_py="$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -E '\.py$' || true)"
+  _staged_ts="$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -E '\.(ts|tsx|js|jsx)$' || true)"
+  _staged_any="$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || true)"
+  _staged_all="$(git diff --cached --name-only 2>/dev/null || true)"
+  _diff_name_status="$(git diff --cached --name-status 2>/dev/null || true)"
+
+  _high_risk="0"
+  if printf '%s\n' "$_staged_all" | grep -qiE '(payment|settlement|activation|auth|webhook|worker|trigger)s?/|payout|refund|migrations?/|db/|routes?/|middleware/|security|pii|privacy|retention|billing|invoice|reconciliation'; then
+    _high_risk="1"
+  fi
+
+  # 1) Block AI co-author trailers introduced into staged file content.
+  if git diff --cached --unified=0 2>/dev/null | grep -qiE '^\+[[:space:]]*co-authored-by:[[:space:]]*(claude|anthropic|chatgpt|openai|codex|copilot|qwen|gemini|amp)'; then
+    echo "pre-commit: AI co-author trailer found in staged content (motto §20 forbids this). Remove it." >&2
+    exit 1
+  fi
+
+  # 2) Require documentation/tracking for high-risk staged changes. This is a
+  #    durable artifact check, not a self-attestation. It catches "code changed
+  #    auth/payments/webhooks but no docs/worklog changed" before commit.
+  if [ "$_high_risk" = "1" ]; then
+    if ! printf '%s\n' "$_staged_all" | grep -qiE '^(Docs|docs|README|CHANGELOG|.*WORKLOG|.*tracking|.*decisions|.*exploration)/|^(Docs|docs)/|CLAUDE\.md|AGENTS\.md|motto_v3\.md'; then
+      cat >&2 <<'EOF'
+pre-commit: high-risk staged changes detected, but no durable docs/tracking artifact is staged.
+For auth/payments/webhooks/background jobs/db/data/privacy/billing changes, update a repo-local
+decision, exploration, tracking, worklog, README, or changelog artifact before committing.
+EOF
+      exit 1
+    fi
+  fi
+
+  # 3) Python projects: ruff + mypy on staged files (only if configured).
+  #    Each tool is probed with --version first; if it cannot spawn (not
+  #    installed in this env) the check is SKIPPED with a note rather than
+  #    blocking the commit — a missing toolchain is not a code failure, and
+  #    hard-failing here would block every commit in repos that haven't run
+  #    `uv sync`. Only a tool that runs and reports problems blocks.
+  if [ -n "$_staged_py" ]; then
+    if [ -f pyproject.toml ] && grep -qiE 'tool\.ruff|\[tool\.ruff' pyproject.toml; then
+      if command -v uv >/dev/null 2>&1 && uv run ruff --version >/dev/null 2>&1; then
+        if ! uv run ruff check $(printf '%s\n' "$_staged_py" | tr '\n' ' ') >/tmp/_pc_ruff.log 2>&1; then
+          echo "pre-commit: ruff check FAILED on staged Python files." >&2
+          cat /tmp/_pc_ruff.log >&2
+          rm -f /tmp/_pc_ruff.log
+          echo "  Fix the issues and retry." >&2
+          exit 1
+        fi
+        rm -f /tmp/_pc_ruff.log
+      else
+        echo "pre-commit: ruff not runnable in this env; skipping ruff gate (run 'uv sync' to enable)." >&2
+      fi
+    fi
+    if [ -f pyproject.toml ] && grep -qiE 'tool\.mypy|\[tool\.mypy' pyproject.toml; then
+      if command -v uv >/dev/null 2>&1 && uv run mypy --version >/dev/null 2>&1; then
+        _mypy_target="src"
+        [ -d "$_mypy_target" ] || _mypy_target="$(printf '%s\n' "$_staged_py" | head -1)"
+        if ! uv run mypy "$_mypy_target" >/tmp/_pc_mypy.log 2>&1; then
+          echo "pre-commit: mypy FAILED." >&2
+          cat /tmp/_pc_mypy.log >&2
+          rm -f /tmp/_pc_mypy.log
+          echo "  Fix the issues and retry." >&2
+          exit 1
+        fi
+        rm -f /tmp/_pc_mypy.log
+      else
+        echo "pre-commit: mypy not runnable in this env; skipping mypy gate (run 'uv sync' to enable)." >&2
+      fi
+    fi
+  fi
+
+  # 4) TypeScript projects: tsc --noEmit if a tsconfig + tsc are present.
+  #    Same probe-first pattern: a missing local tsc skips rather than blocks.
+  if [ -n "$_staged_ts" ] && [ -f tsconfig.json ]; then
+    if command -v npx >/dev/null 2>&1 && npx --no-install tsc --version >/dev/null 2>&1; then
+      if ! npx --no-install tsc --noEmit >/tmp/_pc_tsc.log 2>&1; then
+        echo "pre-commit: tsc --noEmit FAILED." >&2
+        cat /tmp/_pc_tsc.log >&2
+        rm -f /tmp/_pc_tsc.log
+        echo "  Fix the issues and retry." >&2
+        exit 1
+      fi
+      rm -f /tmp/_pc_tsc.log
+    else
+      echo "pre-commit: tsc not installed locally; skipping tsc gate (run 'npm i -D typescript' to enable)." >&2
+    fi
+  fi
+
+  # 5) Basic dangerous diff check: do not allow route duplication patterns in
+  #    staged added files. Repo-specific architecture still owns deeper review,
+  #    but this catches the most common global anti-pattern early.
+  if printf '%s\n' "$_diff_name_status" | grep -qiE '^A[[:space:]].*(route-v[0-9]|routes?.*[-_]v[0-9]|v2.*route)'; then
+    echo "pre-commit: possible duplicate/versioned route file added. Extend the canonical route instead." >&2
+    exit 1
+  fi
+# <<< PROJECTS_AGENT_PRECOMMIT_END <<<
+
 set -euo pipefail
 
 # -----------------------------------------------------------------------
@@ -380,6 +539,42 @@ if [ "$_has_code_changes" = "1" ]; then
         echo "  (warning only — commit will proceed)" >&2
         echo "" >&2
       fi
+    fi
+  fi
+fi
+
+# ------------------------------------------------------------------
+# 10) F401 unused import gate — prevent new unused imports from landing
+#
+# Uses an allowlist-based approach so the team can fix ~50 pre-existing
+# violations incrementally while blocking any NEW ones from being added.
+# The script only runs when Python files are staged, and probes for
+# uv/ruff first (skips gracefully if unavailable).
+# ------------------------------------------------------------------
+if command -v bash >/dev/null 2>&1 && [ -f "scripts/check_f401.sh" ]; then
+  if [ -n "$_staged_py" ]; then
+    if command -v uv >/dev/null 2>&1 && uv run ruff --version >/dev/null 2>&1; then
+      echo "pre-commit: running F401 unused import gate ..." >&2
+      if ! bash scripts/check_f401.sh >/tmp/_pc_f401.log 2>&1; then
+        echo "" >&2
+        echo "pre-commit: BLOCKED — F401 unused import gate FAILED." >&2
+        echo "" >&2
+        cat /tmp/_pc_f401.log >&2
+        rm -f /tmp/_pc_f401.log
+        echo "" >&2
+        echo "  NEW unused import(s) detected. To fix:" >&2
+        echo "    1. Remove the unused import from the staged file(s)" >&2
+        echo "    2. Stage the fix: git add <file>" >&2
+        echo "    3. Retry: git commit" >&2
+        echo "" >&2
+        echo "  To update the allowlist after fixing pre-existing violations:" >&2
+        echo "    bash scripts/check_f401.sh --update-allowlist" >&2
+        echo "" >&2
+        exit 1
+      fi
+      rm -f /tmp/_pc_f401.log
+    else
+      echo "pre-commit: ruff not runnable; skipping F401 gate (run 'uv sync' to enable)." >&2
     fi
   fi
 fi

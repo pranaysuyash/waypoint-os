@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 from src.agents.recovery_agent import RecoveryAgent
 from src.agents.requeue import build_requeue_port

@@ -10,7 +10,6 @@ Tests verify:
 Run: uv run python -m pytest tests/test_api_trips_post.py -v
 """
 
-import json
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 import pytest
@@ -99,6 +98,49 @@ class TestTripFollowUpDueDate:
         data = response.json()
         assert data["trip_priorities"] == "Kid-friendly hotel, direct flights, beach access"
         assert data["date_flexibility"] == "moderate"
+
+    def test_patch_trip_persists_notes_and_contact_name(self, session_client, patchable_trip_id):
+        """PATCH /trips/{trip_id} stores workbench notes and derived customer name."""
+        trip_id = patchable_trip_id
+
+        patch_response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={
+                "customerMessage": "Need family-friendly options",
+                "agentNotes": "Priority lead from the spring campaign",
+                "contactName": "Ada Lovelace",
+            },
+        )
+
+        assert patch_response.status_code == 200
+        patched_trip = patch_response.json()
+        assert patched_trip["customerMessage"] == "Need family-friendly options"
+        assert patched_trip["agentNotes"] == "Priority lead from the spring campaign"
+        assert patched_trip["customerName"] == "Ada Lovelace"
+
+        get_response = session_client.get(f"/trips/{trip_id}")
+        assert get_response.status_code == 200
+        retrieved_trip = get_response.json()
+        assert retrieved_trip["customerMessage"] == "Need family-friendly options"
+        assert retrieved_trip["agentNotes"] == "Priority lead from the spring campaign"
+        assert retrieved_trip["customerName"] == "Ada Lovelace"
+
+    def test_patch_trip_rejects_unknown_fields(self, session_client, patchable_trip_id):
+        """PATCH /trips/{trip_id} rejects fields outside the canonical request model."""
+        trip_id = patchable_trip_id
+
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"unsupportedField": "nope"},
+        )
+
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert any(
+            item.get("type") == "extra_forbidden" or item.get("msg") == "Extra inputs are not permitted"
+            for item in detail
+            if isinstance(item, dict)
+        )
 
     def test_get_trip_includes_follow_up_due_date_field(self, session_client):
         """GET /trips returns items, and trips should have follow_up_due_date field (can be null)."""

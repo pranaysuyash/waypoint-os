@@ -244,7 +244,7 @@ export function SeasonalTab({ draft, onChange }: SeasonalTabProps) {
                   min={0}
                   step={0.01}
                   value={typeof weight === 'number' ? weight : 0}
-                  onChange={(e) => updateChannel(channel, Number(e.target.value))}
+                  onChange={(e) => updateChannel(String(channel), Number(e.target.value))}
                   className="w-full bg-[#161b22] border border-[#30363d] rounded-lg px-2 py-1.5 text-ui-sm text-[#e6edf3]"
                 />
                 <WandSparkles className="size-3.5 text-[#8b949e]" />

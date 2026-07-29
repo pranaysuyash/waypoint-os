@@ -85,7 +85,6 @@ class TestStagePersistence:
     """Verify stage field persists through save/load cycle."""
 
     def test_default_stage_is_discovery(self):
-        from spine_api.models.trips import Trip
         from spine_api.models.trips import Trip as TripModel
         stage_col = TripModel.__table__.c.stage
         assert stage_col.default.arg == "discovery"
@@ -330,8 +329,13 @@ class TestStageTransitionEndpoint:
             f"/trips/{trip_id}",
             json={"stage": "booking"},
         )
-        assert resp.status_code == 400, f"Expected 400, got {resp.status_code}: {resp.text}"
-        assert "stage" in resp.json().get("detail", "").lower()
+        assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+        detail = resp.json().get("detail", [])
+        if isinstance(detail, list):
+            joined = " ".join(str(d).lower() for d in detail)
+        else:
+            joined = str(detail).lower()
+        assert "stage" in joined or "extra_forbidden" in joined
 
         # Verify stage was NOT changed
         trip_resp = session_client.get(f"/trips/{trip_id}")

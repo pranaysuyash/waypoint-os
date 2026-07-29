@@ -30,7 +30,7 @@ function MetricRow({
 }: {
   label: string;
   value: string | number;
-  icon: React.FC<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   sub?: string;
 }) {
   return (

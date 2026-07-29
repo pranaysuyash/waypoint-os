@@ -218,6 +218,24 @@ Workaround:
 What worked:
 
 - The seasonal campaign page now supports a real create/simulate/preflight/dry-run loop in the live browser.
+
+## Scenario 14: Repaired intake trip, backend persistence truth check
+
+What worked:
+
+- The intake page can be repaired in the live browser by opening the origin editor and saving the departure city.
+- The packet and trip panels now prefer repaired trip fields over stale packet unknowns in the UI layer.
+- The backend patch route accepts `origin` updates and returns the repaired trip shape on a live request.
+
+What felt weak:
+
+- A fresh GET from the live app still showed `origin: TBD` until the backend was restarted with the intended persistence config.
+- The first backend process on `:8000` had `TRIPSTORE_BACKEND` unset, so it defaulted to the file store and made the live browser simulation lie about durability.
+
+Workaround:
+
+- Always verify the backend process config before trusting a browser replay on saved trip data.
+- Keep the packet/trip overlays in the UI so repaired fields still read correctly while the backend store is being fixed or reloaded.
 - A small Indian agency plan for `Monsoon Kerala Small Agency` produced distinct outputs for baseline, aggressive, and conservative scenarios after the backend fix.
 - The global `Global Holiday Portfolio` plan also carried the same flow cleanly, which makes the planner usable for both budget-sensitive regional work and larger multi-market campaigns.
 - The live card keeps the forecast readable with leads, bookings, margin, confidence, and notes all on the same screen.

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import Receive, Scope, Send
 
 from spine_api import persistence
 from spine_api.core.middleware import PUBLIC_CHECKER_MAX_BYTES, RequestBodySizeMiddleware

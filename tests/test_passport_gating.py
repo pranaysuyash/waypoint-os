@@ -13,7 +13,6 @@ import pytest
 
 from intake.extractors import (
     ExtractionPipeline,
-    _extract_passport_visa,
     _extract_passport_visa_gated,
     VISA_PASSPORT_CONCERN_TERMS,
 )

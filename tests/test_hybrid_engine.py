@@ -4,11 +4,10 @@ tests.test_hybrid_engine — Unit tests for hybrid decision engine.
 Tests for HybridDecisionEngine orchestration, metrics, and decision flow.
 """
 
-import json
 import pytest
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 from src.decision.hybrid_engine import (
     HybridDecisionEngine,
@@ -435,7 +434,7 @@ class TestLLMUsageGuardIntegration:
     def test_guard_allows_call_proceeds_normally(self, mock_storage, monkeypatch):
         """Allowed LLM call proceeds through hybrid engine."""
         from src.decision.hybrid_engine import HybridDecisionEngine
-        from src.llm.usage_guard import LLMUsageGuard, reset_usage_guard
+        from src.llm.usage_guard import reset_usage_guard
 
         reset_usage_guard()
         monkeypatch.setenv("LLM_GUARD_ENABLED", "1")

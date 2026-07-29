@@ -17,6 +17,9 @@ import {
   CheckCircle,
   AlertTriangle,
   Phone,
+  Zap,
+  List,
+  Info,
 } from 'lucide-react';
 import type { Trip } from '@/lib/api-client';
 import { updateTrip, ApiException } from '@/lib/api-client';
@@ -71,6 +74,19 @@ const modes: { value: OperatingMode; label: string }[] = [
 ];
 
 const VALID_MODES = new Set<OperatingMode>(modes.map(m => m.value));
+
+const PACE_OPTIONS = [
+  { value: 'relaxed', label: 'Relaxed' },
+  { value: 'moderate', label: 'Moderate' },
+  { value: 'fast', label: 'Fast' },
+  { value: 'mixed', label: 'Mixed' },
+];
+
+const DATE_CONFIDENCE_OPTIONS = [
+  { value: 'certain', label: 'Certain' },
+  { value: 'approximate', label: 'Approximate' },
+  { value: 'flexible', label: 'Flexible' },
+];
 
 const SPINE_PROGRESS_STAGES = [
   { afterSeconds: 0, label: 'Reading notes', detail: 'Parsing the customer message and internal notes.' },
@@ -461,6 +477,11 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     origin: trip?.origin || '',
     budget: trip?.budget || '',
     budgetCurrency: budgetCurrency,
+    party_composition: trip?.partyComposition || '',
+    pace_preference: trip?.pacePreference || '',
+    date_year_confidence: trip?.dateYearConfidence || '',
+    lead_source: trip?.leadSource || '',
+    activity_provenance: trip?.activityProvenance || '',
   });
 
   // Parse existing budget to get currency and amount
@@ -676,7 +697,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     setSaveNextDetailId(null);
 
     // Prepare update data with editable fields
-    const updateData: Partial<Trip> = {
+    const updateData: Record<string, unknown> = {
       customerMessage: store.input_raw_note,
       agentNotes: store.input_owner_note,
     };
@@ -688,14 +709,21 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     if (editingField) {
       if (editValues.destination) updateData.destination = editValues.destination;
       if (editValues.type) updateData.type = editValues.type;
+      if (editValues.origin) updateData.origin = editValues.origin;
+      if (editValues.tripPurpose) updateData.tripPurpose = editValues.tripPurpose;
       if (editValues.party) updateData.party = parseInt(editValues.party, 10) || undefined;
       if (editValues.dateWindow) updateData.dateWindow = editValues.dateWindow;
       if (budgetAmount) {
         updateData.budget = `${formatMoney(parseFloat(budgetAmount), budgetCurrency)}`;
       }
+      if (editValues.party_composition.trim()) updateData.party_composition = editValues.party_composition.trim();
+      if (editValues.pace_preference.trim()) updateData.pace_preference = editValues.pace_preference.trim();
+      if (editValues.date_year_confidence.trim()) updateData.date_year_confidence = editValues.date_year_confidence.trim();
+      if (editValues.lead_source.trim()) updateData.lead_source = editValues.lead_source.trim();
+      if (editValues.activity_provenance.trim()) updateData.activity_provenance = editValues.activity_provenance.trim();
     }
 
-    const result = await saveTrip(tripId, updateData);
+    const result = await saveTrip(tripId, updateData as Partial<Trip>);
     if (result) {
       replaceTrip(result);
       const missingAfterSave = getPlanningMissingDetails(result);
@@ -791,6 +819,11 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         origin: trip.origin || '',
         budget: trip.budget || '',
         budgetCurrency: budgetCurrency,
+        party_composition: trip.partyComposition || '',
+        pace_preference: trip.pacePreference || '',
+        date_year_confidence: trip.dateYearConfidence || '',
+        lead_source: trip.leadSource || '',
+        activity_provenance: trip.activityProvenance || '',
       });
     }
   }, [trip, budgetCurrency]);
@@ -799,7 +832,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     if (!tripId) return;
     setSaveError(null);
 
-    const updateData: Partial<Trip> = {};
+    const updateData: Record<string, unknown> = {};
     let previousValue: string | number | null = null;
     let newValue: string | number | null = null;
 
@@ -839,9 +872,34 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         newValue = budgetAmount ? `${CURRENCY_CONFIG[budgetCurrency].symbol}${budgetAmount}` : null;
         updateData.budget = newValue ?? undefined;
         break;
+      case 'party_composition':
+        previousValue = trip?.partyComposition || null;
+        newValue = editValues.party_composition.trim();
+        updateData.party_composition = newValue || undefined;
+        break;
+      case 'pace_preference':
+        previousValue = trip?.pacePreference || null;
+        newValue = editValues.pace_preference.trim();
+        updateData.pace_preference = newValue || undefined;
+        break;
+      case 'date_year_confidence':
+        previousValue = trip?.dateYearConfidence || null;
+        newValue = editValues.date_year_confidence.trim();
+        updateData.date_year_confidence = newValue || undefined;
+        break;
+      case 'lead_source':
+        previousValue = trip?.leadSource || null;
+        newValue = editValues.lead_source.trim();
+        updateData.lead_source = newValue || undefined;
+        break;
+      case 'activity_provenance':
+        previousValue = trip?.activityProvenance || null;
+        newValue = editValues.activity_provenance.trim();
+        updateData.activity_provenance = newValue || undefined;
+        break;
     }
 
-    const result = await saveTrip(tripId, updateData);
+    const result = await saveTrip(tripId, updateData as Partial<Trip>);
     if (result) {
       replaceTrip(result);
       // Log the change to audit trail
@@ -1455,6 +1513,72 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                   {formatInquiryReference(tripId)}
                 </p>
               </div>
+            </div>
+            <div className='grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-10 gap-3 mt-3 pt-3 border-t border-[var(--border-default)]'>
+              <EditableField
+                label='Party Composition'
+                value={editValues.party_composition}
+                displayValue={trip?.partyComposition || '-'}
+                field='party_composition'
+                icon={Users}
+                isEditing={editingField === 'party_composition'}
+                onStartEdit={startEditing}
+                onSaveEdit={saveFieldEdit}
+                onCancelEdit={cancelEditing}
+                onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
+              />
+              <EditableField
+                label='Pace'
+                value={editValues.pace_preference}
+                displayValue={trip?.pacePreference || '-'}
+                field='pace_preference'
+                icon={Zap}
+                type='select'
+                options={PACE_OPTIONS}
+                isEditing={editingField === 'pace_preference'}
+                onStartEdit={startEditing}
+                onSaveEdit={saveFieldEdit}
+                onCancelEdit={cancelEditing}
+                onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
+              />
+              <EditableField
+                label='Date Confidence'
+                value={editValues.date_year_confidence}
+                displayValue={trip?.dateYearConfidence || '-'}
+                field='date_year_confidence'
+                icon={Calendar}
+                type='select'
+                options={DATE_CONFIDENCE_OPTIONS}
+                isEditing={editingField === 'date_year_confidence'}
+                onStartEdit={startEditing}
+                onSaveEdit={saveFieldEdit}
+                onCancelEdit={cancelEditing}
+                onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
+              />
+              <EditableField
+                label='Lead Source'
+                value={editValues.lead_source}
+                displayValue={trip?.leadSource || '-'}
+                field='lead_source'
+                icon={Info}
+                isEditing={editingField === 'lead_source'}
+                onStartEdit={startEditing}
+                onSaveEdit={saveFieldEdit}
+                onCancelEdit={cancelEditing}
+                onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
+              />
+              <EditableField
+                label='Activity Interests'
+                value={editValues.activity_provenance}
+                displayValue={trip?.activityProvenance || '-'}
+                field='activity_provenance'
+                icon={List}
+                isEditing={editingField === 'activity_provenance'}
+                onStartEdit={startEditing}
+                onSaveEdit={saveFieldEdit}
+                onCancelEdit={cancelEditing}
+                onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
+              />
             </div>
             <div className={`grid grid-cols-1 gap-3 ${summaryCardCount >= 4 ? 'lg:grid-cols-4' : summaryCardCount === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
               <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>

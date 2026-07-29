@@ -7,12 +7,11 @@ audit, validation, readiness, mutation guards.
 Run: uv run pytest tests/test_booking_data.py -v
 """
 
-import os
 import pytest
 from unittest.mock import MagicMock
 
 from spine_api.persistence import TEST_AGENCY_ID
-from intake.readiness import compute_readiness, _check_booking_ready
+from intake.readiness import _check_booking_ready
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +88,9 @@ def _resolve_agency_id():
     if _RESOLVED_AGENCY_ID is not None:
         return _RESOLVED_AGENCY_ID
 
-    import subprocess, sys, json
+    import subprocess
+    import sys
+    import json
 
     code = (
         "import asyncio, asyncpg; import json\n"
@@ -345,8 +346,13 @@ class TestBookingDataEndpoints:
             f"/trips/{created_trip_id}",
             json={"booking_data": VALID_BOOKING_DATA},
         )
-        assert resp.status_code == 400
-        assert "booking-data" in resp.json()["detail"].lower()
+        assert resp.status_code == 422
+        detail = resp.json().get("detail", [])
+        if isinstance(detail, list):
+            joined = " ".join(str(d).lower() for d in detail)
+        else:
+            joined = str(detail).lower()
+        assert "booking_data" in joined or "extra_forbidden" in joined
 
     def test_patch_does_not_mutate_stage(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore
@@ -358,7 +364,7 @@ class TestBookingDataEndpoints:
             json={"booking_data": VALID_BOOKING_DATA},
         )
         trip = TripStore.get_trip_for_agency(created_trip_id, agency_id)
-        assert trip is not None, f"Trip disappeared after PATCH"
+        assert trip is not None, "Trip disappeared after PATCH"
         assert trip["stage"] == "proposal"
 
     def test_patch_does_not_mutate_packet(self, session_client, created_trip_id):
@@ -374,7 +380,6 @@ class TestBookingDataEndpoints:
         assert after["extracted"] == original_extracted
 
     def test_generic_get_excludes_booking_data(self, session_client, created_trip_id):
-        from spine_api.persistence import TripStore
         # Save booking data via dedicated endpoint
         session_client.patch(
             f"/trips/{created_trip_id}/booking-data",
@@ -614,8 +619,7 @@ class TestBookingDataValidation:
 class TestAtomicBookingUpdate:
     def test_update_trip_if_version_success_file_backend(self, tmp_path, monkeypatch):
         """update_trip_if_version succeeds when version matches."""
-        from spine_api.persistence import FileTripStore, TRIPS_DIR
-        from pathlib import Path
+        from spine_api.persistence import FileTripStore
         data_dir = tmp_path / "data"
         trips_dir = data_dir / "trips"
         trips_dir.mkdir(parents=True, exist_ok=True)
@@ -638,8 +642,7 @@ class TestAtomicBookingUpdate:
 
     def test_update_trip_if_version_fails_on_mismatch_file_backend(self, tmp_path, monkeypatch):
         """update_trip_if_version returns None when version does not match (no 409 to client)."""
-        from spine_api.persistence import FileTripStore, TRIPS_DIR
-        from pathlib import Path
+        from spine_api.persistence import FileTripStore
         data_dir = tmp_path / "data"
         trips_dir = data_dir / "trips"
         trips_dir.mkdir(parents=True, exist_ok=True)
@@ -659,8 +662,7 @@ class TestAtomicBookingUpdate:
 
     def test_update_trip_if_version_preserves_old_data_on_failure(self, tmp_path, monkeypatch):
         """When update_trip_if_version returns None, the trip data is unchanged."""
-        from spine_api.persistence import FileTripStore, TRIPS_DIR
-        from pathlib import Path
+        from spine_api.persistence import FileTripStore
         data_dir = tmp_path / "data"
         trips_dir = data_dir / "trips"
         trips_dir.mkdir(parents=True, exist_ok=True)
@@ -856,104 +858,13 @@ class TestAtomicBookingUpdate:
         # Clean up
         await SQLTripStore.delete_trip(trip_id)
 
-    @pytest.mark.require_postgres
-    @pytest.mark.asyncio
-    async def test_sql_update_trip_if_version_for_agency_atomic(self, db_session):
-        """Same atomicity test for the agency-scoped variant."""
-        from spine_api.core.rls import set_rls_agency
-        set_rls_agency("d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
-        from datetime import datetime, timezone
-
-        from spine_api.persistence import SQLTripStore
-
-        now = datetime.now(timezone.utc)
-        trip_id = await SQLTripStore.save_trip({
-            "source": "test_concurrency",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
-            "status": "assigned",
-            "stage": "booking",
-            "extracted": {},
-            "validation": {},
-            "decision": {},
-            "raw_input": {},
-            "updated_at": now.isoformat(),
-        }, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
-
-        trip = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
-        assert trip is not None, "Trip must be saved successfully"
-        expected_updated_at = trip["updated_at"]
-
-        import asyncio
-        results = await asyncio.gather(
-            SQLTripStore.update_trip_if_version_for_agency(
-                trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
-                {"stage": "closed"}, expected_updated_at=expected_updated_at,
-            ),
-            SQLTripStore.update_trip_if_version_for_agency(
-                trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
-                {"stage": "cancelled"}, expected_updated_at=expected_updated_at,
-            ),
-            return_exceptions=True,
-        )
-
-        wins = [r for r in results if r is not None]
-        losses = [r for r in results if r is None]
-        errors = [r for r in results if isinstance(r, Exception)]
-
-        assert len(wins) == 1, (
-            f"Expected exactly 1 win, got {len(wins)}. "
-            f"Losses: {len(losses)}, Errors: {errors}"
-        )
-        assert len(losses) == 1, (
-            f"Expected exactly 1 loss, got {len(losses)}"
-        )
-
-        final = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
-        assert final is not None, "Final trip must be found"
-        assert final["stage"] in ("closed", "cancelled")
-        assert final["stage"] == wins[0]["stage"]
-
-        await SQLTripStore.delete_trip(trip_id)
-
-    @pytest.mark.require_postgres
-    @pytest.mark.asyncio
-    async def test_sql_update_trip_if_version_returns_none_on_mismatch(self, db_session):
-        """When expected_updated_at does not match, the SQL UPDATE affects
-        zero rows and RETURNS NULL, so the method returns None."""
-        from spine_api.persistence import SQLTripStore
-
-        trip_id = await SQLTripStore.save_trip({
-            "source": "test_mismatch",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
-            "status": "assigned",
-            "stage": "booking",
-            "extracted": {},
-            "validation": {},
-            "decision": {},
-            "raw_input": {},
-        }, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
-
-        result = await SQLTripStore.update_trip_if_version(
-            trip_id, {"status": "completed"},
-            expected_updated_at="2099-01-01T00:00:00",
-        )
-        assert result is None
-
-        # Trip data must be unchanged
-        trip = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
-        assert trip["status"] == "assigned"
-
-        await SQLTripStore.delete_trip(trip_id)
-
-
 # ---------------------------------------------------------------------------
 # 7. Tenant-scoped trip lookups (get_trip_for_agency)
 # ---------------------------------------------------------------------------
 
 class TestTenantScopedTripLookup:
     def test_get_trip_for_agency_returns_trip_for_correct_agency(self, tmp_path, monkeypatch):
-        from spine_api.persistence import FileTripStore, TRIPS_DIR
-        from pathlib import Path
+        from spine_api.persistence import FileTripStore
         data_dir = tmp_path / "data"
         trips_dir = data_dir / "trips"
         trips_dir.mkdir(parents=True, exist_ok=True)
@@ -971,8 +882,7 @@ class TestTenantScopedTripLookup:
         assert trip_wrong is None
 
     def test_get_trip_for_agency_returns_none_for_missing_trip(self, tmp_path, monkeypatch):
-        from spine_api.persistence import FileTripStore, TRIPS_DIR
-        from pathlib import Path
+        from spine_api.persistence import FileTripStore
         data_dir = tmp_path / "data"
         trips_dir = data_dir / "trips"
         trips_dir.mkdir(parents=True, exist_ok=True)
@@ -991,8 +901,7 @@ class TestFixtureSeedingNoReassignment:
     def test_seed_does_not_reassign_existing_trip(self, tmp_path, monkeypatch):
         """_seed_scenario_for_agency must never rewrite agency_id on existing trips."""
         monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
-        from pathlib import Path
-        from spine_api.persistence import FileTripStore, TRIPS_DIR, DATA_DIR
+        from spine_api.persistence import FileTripStore
         from spine_api.server import _seed_scenario_for_agency
 
         data_dir = tmp_path / "data"

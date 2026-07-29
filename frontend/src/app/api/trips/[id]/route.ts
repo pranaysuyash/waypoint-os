@@ -82,7 +82,6 @@ const PATCHABLE_FIELDS = new Set([
   "dateWindow",
   "origin",
   "destination",
-  "type",
   "state",
   "status",
   "follow_up_due_date",
@@ -124,6 +123,10 @@ export async function PATCH(
       delete updates.state;
     }
 
+    const allowedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([key]) => PATCHABLE_FIELDS.has(key))
+    );
+
     // Forward request to spine_api
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
@@ -136,7 +139,7 @@ export async function PATCH(
         "PATCH",
         "access_only",
         { "Content-Type": "application/json" },
-        updates
+        allowedUpdates
       ), cache: "no-store" }
     );
 

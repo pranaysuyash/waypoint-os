@@ -31,7 +31,7 @@ from spine_api.core.database import get_db
 from spine_api.core.auth import get_current_user, get_current_membership
 from spine_api.core.rate_limiter import limiter
 from spine_api.core.audit import audit_logger, AuditContext, AuditAction
-from spine_api.models.tenant import User, Membership, PasswordResetToken
+from spine_api.models.tenant import User, Membership
 from spine_api.services.auth_service import (
     signup as signup_service,
     login as login_service,

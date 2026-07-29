@@ -2,6 +2,8 @@
 
 import logging
 
+from spine_api.services.extraction_service import ExtractionResult
+
 from src.extraction.schemas import get_schema, build_json_schema
 from src.extraction.gemini_vision_client import GeminiVisionClient
 from src.extraction.vision_client import VisionExtractionResult

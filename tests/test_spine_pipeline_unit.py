@@ -20,7 +20,9 @@ is needed.
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, PropertyMock, patch, ANY
+from unittest.mock import MagicMock, patch, ANY
+
+from src.intake.safety import StrictLeakageViolation
 
 # ---------------------------------------------------------------------------
 # Mock SpineResult — controllable fake of the dataclass from orchestration.py
@@ -77,7 +79,6 @@ def pipeline_mocks():
         patch("spine_api.server.AssignmentStore") as mock_assign,
         patch("spine_api.server.AgencySettingsStore") as mock_settings,
         patch("spine_api.server.save_processed_trip", return_value="trip-saved-001"),
-        patch("spine_api.server.set_strict_mode") as mock_strict,
         patch("spine_api.server.build_live_checker_signals", return_value=None),
         patch("spine_api.server._close_inherited_lock_fds"),
         patch("spine_api.server._otel_tracer") as mock_tracer,
@@ -106,7 +107,6 @@ def pipeline_mocks():
             "trip": mock_trip,
             "assign": mock_assign,
             "settings": mock_settings,
-            "strict": mock_strict,
             "run": mock_run,
             "tracer": mock_tracer,
         }
@@ -267,11 +267,11 @@ class TestValidationInvalid:
 # =========================================================================
 
 class TestStrictLeakageViolation:
-    """Strict leakage mode raises ValueError → blocked."""
+    """Strict leakage mode raises StrictLeakageViolation → blocked."""
 
-    def test_value_error_blocks_run(self, pipeline_mocks) -> None:
+    def test_strict_leakage_violation_blocks_run(self, pipeline_mocks) -> None:
         mock_run = pipeline_mocks["run"]
-        mock_run.side_effect = ValueError("PII detected in traveler bundle")
+        mock_run.side_effect = StrictLeakageViolation("PII detected in traveler bundle")
 
         _run_pipeline()
 
@@ -338,13 +338,11 @@ class TestRetentionConsent:
 # =========================================================================
 
 class TestStrictLeakageMode:
-    """When strict_leakage=True, set_strict_mode(True) is called."""
+    """When strict_leakage=True, the request-scoped flag reaches run_spine_once."""
 
     def test_strict_mode_enabled_for_strict_request(
         self, pipeline_mocks
     ) -> None:
-        from spine_api.server import set_strict_mode
-
         mock_run = pipeline_mocks["run"]
         mock_run.return_value = MockSpineResult()
 
@@ -353,17 +351,15 @@ class TestStrictLeakageMode:
             "strict_leakage": True,
         })
 
-        set_strict_mode.assert_any_call(True)
+        assert mock_run.call_args.kwargs["strict_leakage"] is True
 
-    def test_strict_mode_reset_in_finally(self, pipeline_mocks) -> None:
-        from spine_api.server import set_strict_mode
-
+    def test_strict_mode_defaults_to_false(self, pipeline_mocks) -> None:
         mock_run = pipeline_mocks["run"]
         mock_run.return_value = MockSpineResult()
 
         _run_pipeline()
 
-        set_strict_mode.assert_any_call(False)
+        assert mock_run.call_args.kwargs["strict_leakage"] is False
 
 
 # =========================================================================

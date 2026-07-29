@@ -16,7 +16,7 @@ import re
 import uuid
 from datetime import datetime
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Month name → number mapping (module-level, created once)
 _MONTH_MAP = {
@@ -36,7 +36,6 @@ from .packet_models import (
     Slot,
     SourceEnvelope,
     SubGroup,
-    UnknownField,
 )
 from .normalizer import Normalizer
 from .geography import is_known_city, is_known_destination, get_city_country
@@ -810,9 +809,6 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
 
     currency_token_pattern = (
         r"(usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|₹|\$|€|£|₦|R)"
-    )
-    amount_unit_pattern = (
-        r"(\d[\d,]*(?:\.\d+)?)\s*(l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?"
     )
     trailing_budget_match = re.search(
         r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"

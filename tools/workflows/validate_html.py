@@ -14,14 +14,14 @@ if not match:
 json_str = match.group(1)
 try:
     data = json.loads(json_str)
-    print(f"✓ JSON is valid")
+    print("✓ JSON is valid")
     print(f"  Packages: {len(data['packages'])}")
     for pkg_id, pkg in data['packages'].items():
         print(f"    - {pkg['label']}: {len(pkg.get('components', []))} components")
     print(f"  Workflows: {len(data['workflows'])}")
     for wf in data['workflows']:
         print(f"    - {wf['label']}: {len(wf['steps'])} steps, {len(wf['edges'])} edges")
-    print(f"\n✓ All data structure looks good")
+    print("\n✓ All data structure looks good")
 except json.JSONDecodeError as e:
     print(f"✗ JSON parse error: {e}")
     exit(1)

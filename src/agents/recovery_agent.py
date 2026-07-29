@@ -28,15 +28,13 @@ from __future__ import annotations
 import logging
 import os
 import threading
-import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 from src.agents.events import AgentEvent, AgentEventType
 from src.agents.requeue import (
     DisabledSpineRequeuePort,
-    RequeueResult,
     SpineRequeuePort,
     build_requeue_port,
 )

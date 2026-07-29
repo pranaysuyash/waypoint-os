@@ -11,13 +11,12 @@ from fastapi import HTTPException
 from spine_api.contract import RunStatusResponse, SpineRunRequest
 from spine_api.product_b_events import ProductBEventStore
 from spine_api.services.live_checker_service import (
-    apply_live_checker_adjustments,
     build_consented_submission,
     collect_raw_text_sources,
+    finalize_result_with_live_checker,
 )
 from src.intake.config.agency_settings import AgencySettingsStore
 from src.intake.orchestration import run_spine_once
-from src.intake.safety import set_strict_mode
 from src.public_checker.live_checks import build_live_checker_signals
 
 _DECISION_BASELINE_CATEGORY_COST = ("price", "budget", "cost", "fare", "expensive")
@@ -62,9 +61,6 @@ def run_public_checker_submission(
     )
     run_id = str(uuid.uuid4())
     steps_completed: list[str] = []
-
-    if request.strict_leakage:
-        set_strict_mode(True)
 
     source_payload: dict[str, Any] = {}
     if isinstance(request.structured_json, dict):
@@ -116,6 +112,20 @@ def run_public_checker_submission(
         stage_started_at: dict[str, float] = {}
         current_stage: Optional[str] = None
 
+        def _finalize_result(result: Any) -> None:
+            raw_text = collect_raw_text_sources(
+                raw_note=request.raw_note,
+                owner_note=request.owner_note,
+                itinerary_text=request.itinerary_text,
+                structured_json=request.structured_json,
+            )
+            finalize_result_with_live_checker(
+                result=result,
+                raw_text=raw_text,
+                build_live_checker_signals_fn=build_live_checker_signals,
+                to_dict=to_dict,
+            )
+
         def _stage_checkpoint(stage_name: str, data: Any) -> None:
             nonlocal current_stage
             event = "completed"
@@ -143,29 +153,14 @@ def run_public_checker_submission(
             fixture_expectations=fixture_expectations,
             agency_settings=agency_settings,
             stage_callback=_stage_checkpoint,
+            strict_leakage=request.strict_leakage,
+            result_finalizer=_finalize_result,
         )
 
         execution_ms = (time.perf_counter() - t0) * 1000
-
-        raw_text = collect_raw_text_sources(
-            raw_note=request.raw_note,
-            owner_note=request.owner_note,
-            itinerary_text=request.itinerary_text,
-            structured_json=request.structured_json,
-        )
-
         packet_payload = to_dict(result.packet) if hasattr(result, "packet") else {}
-        live_checker = build_live_checker_signals(packet_payload or {}, raw_text)
         validation_payload = to_dict(result.validation) if hasattr(result, "validation") else {}
         decision_payload = to_dict(result.decision) if hasattr(result, "decision") else {}
-
-        if live_checker:
-            packet_payload, validation_payload, decision_payload = apply_live_checker_adjustments(
-                packet_payload=packet_payload,
-                validation_payload=validation_payload,
-                decision_payload=decision_payload,
-                live_checker=live_checker,
-            )
 
         result_state = "completed"
         error_type: Optional[str] = None
@@ -282,5 +277,3 @@ def run_public_checker_submission(
     except Exception as exc:
         logger.exception("Public checker submission failed")
         raise HTTPException(status_code=500, detail="Public checker submission failed") from exc
-    finally:
-        set_strict_mode(False)

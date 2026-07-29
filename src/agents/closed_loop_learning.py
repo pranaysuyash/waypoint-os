@@ -19,16 +19,14 @@ Architecture:
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable, Optional
 
 from src.agents.runtime import (
     AgentDefinition,
     AgentExecutionResult,
-    ProductAgent,
     RetryPolicy,
     TripRepository,
     WorkItem,
@@ -140,8 +138,8 @@ def run_shadow_test(
     for event in sample_events:
         metadata = event.get("event_metadata", {})
         event_failure_layer = metadata.get("failure_layer", "unknown")
-        event_review_outcome = metadata.get("review_outcome")
-        event_fallback_result = metadata.get("fallback_result")
+        metadata.get("review_outcome")
+        metadata.get("fallback_result")
 
         # Simulate: does this fix address the event's failure?
         if event_failure_layer == candidate.next_fix_layer:
@@ -291,7 +289,7 @@ class ClosedLoopLearningAgent:
     def scan(self, trip_repo: TripRepository) -> Iterable[WorkItem]:
         """Scan for trips with repeated eval failure signals."""
         now = self._now_provider()
-        window_start = now - timedelta(hours=self.window_hours)
+        now - timedelta(hours=self.window_hours)
         seen_signatures: set[str] = set()
 
         for trip in trip_repo.list_active():

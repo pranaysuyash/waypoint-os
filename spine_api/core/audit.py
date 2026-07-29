@@ -142,7 +142,7 @@ def audit_logger():
                     m_result = await db.execute(
                         select(Membership)
                         .where(Membership.user_id == user_id)
-                        .where(Membership.is_primary == True)
+                        .where(Membership.is_primary)
                     )
                     membership_obj = m_result.scalar_one_or_none()
                     if not membership_obj:

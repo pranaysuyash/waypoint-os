@@ -427,7 +427,7 @@ def learn_from_operator_override(
     flag_name = override_data.get("flag", "")
     decision_type = override_data.get("decision_type") or flag_name
     scope = override_data.get("scope", "this_trip")
-    action = override_data.get("action", "")
+    override_data.get("action", "")
 
     # --- Step 1: Context Extraction ---
     context_signature = _extract_trip_context_signature(trip_id, decision_type)

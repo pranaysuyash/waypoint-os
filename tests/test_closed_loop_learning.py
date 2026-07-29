@@ -13,20 +13,15 @@ Covers:
 from __future__ import annotations
 
 import json
-import os
 import tempfile
 from pathlib import Path
-from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.decision.override_learning import (
-    GRADUATION_THRESHOLD,
     ROLLOUT_MODE_DISABLED,
-    ROLLOUT_MODE_GRADUATED,
     ROLLOUT_MODE_NONE,
-    ROLLOUT_MODE_PATTERN_ENRICHED,
     _check_and_graduate,
     _extract_trip_context_signature,
     _enrich_pattern_with_context,

@@ -4,9 +4,7 @@ Tests for the timeline REST endpoint (GET /api/trips/{trip_id}/timeline).
 Validates the FastAPI endpoint returns the correct JSONL events as JSON.
 """
 
-import json
 import pytest
-from fastapi.testclient import TestClient
 
 # We need to import and set up the FastAPI app
 import sys
@@ -14,7 +12,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine_api"))
 
-from server import app
 
 
 def test_timeline_endpoint_empty_when_no_file(session_client):

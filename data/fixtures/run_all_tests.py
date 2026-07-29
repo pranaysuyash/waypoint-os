@@ -60,8 +60,8 @@ def run_test_suite():
             exp = expected_results.get(scenario_name, {})
             
             # Basic validation
-            assert packet.packet_id, f"Missing packet_id"
-            assert packet.stage, f"Missing stage"
+            assert packet.packet_id, "Missing packet_id"
+            assert packet.stage, "Missing stage"
             
             # Check expected properties
             checks = []
@@ -80,9 +80,6 @@ def run_test_suite():
             if exp.get("has_contradictions"):
                 assert len(packet.contradictions) > 0, "Expected contradictions but none found"
                 checks.append(f"Contradictions: {len(packet.contradictions)}")
-            
-            # Validate packet structure
-            total_slots = len(packet.facts) + len(packet.derived_signals) + len(packet.hypotheses)
             
             # All checks passed
             results["passed"].append({

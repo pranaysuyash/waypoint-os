@@ -152,7 +152,7 @@ def compare_fixture(
     tp = sum(1 for c in comparisons if c.expected is not None and c.actual is not None and c.is_match)
     fp = sum(1 for c in comparisons if c.expected is None and c.actual is not None)
     fn = sum(1 for c in comparisons if c.expected is not None and c.actual is None)
-    mismatch = sum(1 for c in comparisons if c.expected is not None and c.actual is not None and not c.is_match)
+    sum(1 for c in comparisons if c.expected is not None and c.actual is not None and not c.is_match)
 
     extracted_count = tp + fp
     expected_count = tp + fn

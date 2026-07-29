@@ -4,10 +4,9 @@ End-to-end test for Unit-1 call-capture feature.
 Tests the complete workflow: UI navigation, form submission, data persistence.
 """
 
-import json
 import sys
 from datetime import datetime, timedelta
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import sync_playwright
 
 def test_call_capture_workflow():
     """Test the complete call-capture workflow end-to-end."""
@@ -154,7 +153,7 @@ def test_call_capture_workflow():
         try:
             # Find and click the Save button
             save_button = page.locator("button:has-text('Save')").first
-            print(f"✓ Found Save button, clicking...")
+            print("✓ Found Save button, clicking...")
             save_button.click()
             
             # Wait for the API call and response

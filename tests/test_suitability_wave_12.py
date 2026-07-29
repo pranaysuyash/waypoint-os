@@ -3,7 +3,6 @@ Wave 12: Suitability Engine Foundation — Regression Tests.
 Verifies Tier 1 Hardening and Tier 2 Itinerary Coherence.
 """
 
-import pytest
 from src.suitability.models import (
     ActivityDefinition,
     ParticipantRef,

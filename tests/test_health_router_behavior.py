@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 
 from spine_api.routers import health
 from spine_api.version import APP_VERSION

@@ -10,7 +10,6 @@ import os
 # Ensure src/ is on the path (consistent with other test files)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import pytest
 import uuid
 
 

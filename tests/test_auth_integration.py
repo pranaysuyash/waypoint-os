@@ -293,7 +293,6 @@ class TestTokenClaimIntegrity:
         The test verifies that the endpoint does not accept an agency_id in the body.
         """
         from spine_api.routers.workspace import GenerateCodeRequest
-        import pydantic
 
         # GenerateCodeRequest must NOT have an agency_id field
         fields = GenerateCodeRequest.model_fields

@@ -9,20 +9,18 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime
 from functools import lru_cache
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 from .packet_models import (
-    Ambiguity,
     CanonicalPacket,
     LifecycleInfo,
     Slot,
     AuthorityLevel,
 )
-from .constants import DecisionState, DECISION_STATES, assert_valid_decision_state
+from .constants import DecisionState, assert_valid_decision_state
 from src.intake.config.agency_settings import AgencySettings
 from src.intake.telemetry import emit_ambiguity_synthesis
 
@@ -1229,7 +1227,7 @@ def generate_risk_flags(
     # --- CRITICAL DOCUMENT RISKS: Always check (not in hybrid engine) ---
     passport = packet.facts.get("passport_status")
     visa = packet.facts.get("visa_status")
-    date_end = packet.facts.get("date_end")
+    packet.facts.get("date_end")
     urgency = packet.derived_signals.get("urgency")
     if stage == "booking":
         if passport and isinstance(passport.value, dict):
@@ -1311,7 +1309,7 @@ def generate_risk_flags(
             )
 
     if has_internal_data or has_blocking_ambiguities or has_internal_owner:
-        internal = packet.derived_signals.get("internal_data_present")
+        packet.derived_signals.get("internal_data_present")
         reasons = []
         if packet.hypotheses:
             reasons.append(f"{len(packet.hypotheses)} hypotheses")

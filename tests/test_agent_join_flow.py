@@ -11,7 +11,6 @@ These use mock AsyncSession objects to avoid requiring a live database.
 
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -158,7 +157,6 @@ class TestJoinWithCode:
         # db.refresh sets attrs on the SQLAlchemy objects created inside the function.
         # We intercept db.add to grab the User and Membership objects, then set ids.
         added_objects: list = []
-        original_add = db.add
         def capture_add(obj):
             added_objects.append(obj)
         db.add = capture_add
@@ -259,7 +257,7 @@ class TestJoinWithCode:
              patch("spine_api.services.auth_service.create_refresh_token", return_value="r"), \
              patch("spine_api.services.auth_service.hash_password", return_value="h"):
 
-            result = await join_with_code(
+            await join_with_code(
                 db=db,
                 code="WP-test123",
                 email="noname@agency.com",

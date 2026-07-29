@@ -1,5 +1,4 @@
 import sys
-import os
 import random
 from datetime import datetime, timezone
 from pathlib import Path

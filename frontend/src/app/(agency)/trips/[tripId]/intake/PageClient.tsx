@@ -7,7 +7,7 @@ export default function IntakePage() {
   const { tripId, trip } = useTripContext();
   
   return (
-    <div className='p-6'>
+    <div className='p-4 sm:p-6'>
       <IntakePanel tripId={tripId || ''} trip={trip} />
     </div>
   );

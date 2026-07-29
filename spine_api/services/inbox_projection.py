@@ -173,6 +173,10 @@ def _compute_sla_status(days: int) -> str:
 
 def _destination_value(source: Dict[str, Any]) -> str:
     candidates = [
+        _get_nested(source, "raw_input.submission.structured_json.destination", None),
+        _get_nested(source, "raw_input.submission.structured_json.destination_candidates.0", None),
+        _get_nested(source, "raw_input.submission.destination", None),
+        _get_nested(source, "raw_input.submission.destination_candidates.0", None),
         _get_nested(source, "extracted.facts.destination_candidates.value.0", None),
         _get_nested(source, "extracted.facts.destination_candidates", None),
         _get_nested(source, "extracted.trip_metadata.destination.value.0", None),
@@ -211,6 +215,10 @@ def _trip_type_value(source: Dict[str, Any]) -> str:
 
 def _trip_purpose_value(source: Dict[str, Any]) -> str:
     candidates = [
+        _get_nested(source, "raw_input.submission.structured_json.trip_purpose", None),
+        _get_nested(source, "raw_input.submission.structured_json.tripPurpose", None),
+        _get_nested(source, "raw_input.submission.trip_purpose", None),
+        _get_nested(source, "raw_input.submission.tripPurpose", None),
         _get_nested(source, "trip_purpose", None),
         _get_nested(source, "tripPurpose", None),
         _get_nested(source, "extracted.facts.trip_purpose.value.0", None),
@@ -230,6 +238,10 @@ def _trip_purpose_value(source: Dict[str, Any]) -> str:
 
 def _party_size_value(source: Dict[str, Any]) -> int:
     candidates = [
+        _get_nested(source, "raw_input.submission.structured_json.party", None),
+        _get_nested(source, "raw_input.submission.structured_json.party_size", None),
+        _get_nested(source, "raw_input.submission.party", None),
+        _get_nested(source, "raw_input.submission.party_size", None),
         _get_nested(source, "extracted.facts.party_profile.value", None),
         _get_nested(source, "extracted.facts.party_size.value", None),
         _get_nested(source, "extracted.trip_metadata.party_profile.size", None),
@@ -247,6 +259,8 @@ def _party_size_value(source: Dict[str, Any]) -> int:
 
 def _budget_value(source: Dict[str, Any]) -> int:
     candidates = [
+        _get_nested(source, "raw_input.submission.structured_json.budget", None),
+        _get_nested(source, "raw_input.submission.budget", None),
         _get_nested(source, "extracted.facts.budget.value", None),
         _get_nested(source, "extracted.trip_metadata.budget.value", None),
         _get_nested(source, "extracted.budget.value", None),
@@ -263,6 +277,10 @@ def _budget_value(source: Dict[str, Any]) -> int:
 
 def _date_window_value(source: Dict[str, Any]) -> str:
     candidates = [
+        _get_nested(source, "raw_input.submission.structured_json.date_window", None),
+        _get_nested(source, "raw_input.submission.structured_json.dateWindow", None),
+        _get_nested(source, "raw_input.submission.date_window", None),
+        _get_nested(source, "raw_input.submission.dateWindow", None),
         _get_nested(source, "extracted.facts.date_window.value", None),
         _get_nested(source, "extracted.trip_metadata.date_window.value", None),
         _get_nested(source, "extracted.date_window.value", None),
@@ -276,9 +294,13 @@ def _date_window_value(source: Dict[str, Any]) -> str:
 
 
 def _origin_value(source: Dict[str, Any]) -> str:
-    # Primary: extracted.facts.origin_city (written by _sync_manual_trip_fields since Phase 2).
-    # Legacy fallbacks kept for pre-fix trips; removable after archive/reprocessing window.
+    # Primary: structured submission overlay and extracted.facts.origin_city.
+    # The structured overlay survives re-extraction and keeps manual edits durable.
     candidates = [
+        _get_nested(source, "raw_input.submission.structured_json.origin", None),
+        _get_nested(source, "raw_input.submission.structured_json.origin_city", None),
+        _get_nested(source, "raw_input.submission.origin", None),
+        _get_nested(source, "raw_input.submission.origin_city", None),
         _get_nested(source, "extracted.facts.origin_city.value", None),
         _get_nested(source, "extracted.trip_metadata.origin_city.value", None),
         _get_nested(source, "extracted.origin_city.value", None),
@@ -321,7 +343,6 @@ def resolve_trip_field(source: Dict[str, Any], field: str) -> Any:
 def _derive_customer_name(source: Dict[str, Any], trip_id: str) -> str:
     """Best-effort customer name from nested blobs."""
     candidates = [
-        _get_nested(source, "raw_input.fixture_id", None),
         _get_nested(source, "raw_input.customer_name", None),
         _get_nested(source, "extracted.facts.customer_name.value.0", None),
         _get_nested(source, "extracted.customer_name.value.0", None),
@@ -330,6 +351,7 @@ def _derive_customer_name(source: Dict[str, Any], trip_id: str) -> str:
         source.get("customerName"),
         source.get("contact_name"),
         source.get("contactName"),
+        _get_nested(source, "raw_input.fixture_id", None),
     ]
     for cand in candidates:
         if isinstance(cand, str) and cand.strip():
@@ -350,7 +372,7 @@ def _extract_flags(source: Dict[str, Any]) -> List[str]:
     """Derive inbox flags from raw trip structure."""
     flags = set()
     validation = _as_record(source.get("validation"))
-    analytics = _as_record(source.get("analytics"))
+    _as_record(source.get("analytics"))
     decision = _as_record(source.get("decision"))
 
     # Incomplete flag: validation failed

@@ -1,7 +1,6 @@
 import json
 import os
 from datetime import datetime, timezone, timedelta
-import random
 
 # Ensure data directories exist
 DATA_DIR = "/Users/pranay/Projects/travel_agency_agent/data/fixtures"

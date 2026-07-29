@@ -13,7 +13,6 @@ and must survive refactoring of either side. A standalone test file makes
 regressions visible immediately.
 """
 
-import pytest
 
 # ---------------------------------------------------------------------------
 # Backend imports

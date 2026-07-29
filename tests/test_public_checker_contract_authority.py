@@ -17,6 +17,21 @@ def _fake_result(decision_payload: dict, validation_payload: dict | None = None)
     )
 
 
+def _make_live_checker_mock(**signals):
+    """
+    Build a mock run_spine_once that calls the result_finalizer, so
+    build_live_checker_signals is actually invoked and the decision
+    payload gets hard_blockers/advisory_hard_blockers set.
+    """
+    def _mock(**kwargs):
+        result = _fake_result({"decision_state": "ASK_FOLLOWUP"})
+        finalizer = kwargs.get("result_finalizer")
+        if finalizer:
+            finalizer(result)
+        return result
+    return _mock
+
+
 def test_public_checker_contract_keeps_advisory_weather_out_of_canonical_blockers(session_client, monkeypatch):
     import server
     import spine_api.services.public_checker_service as public_checker_service
@@ -32,7 +47,7 @@ def test_public_checker_contract_keeps_advisory_weather_out_of_canonical_blocker
         return "trip_test_1"
 
     monkeypatch.setattr(server, "save_processed_trip", _save_trip)
-    monkeypatch.setattr(public_checker_service, "run_spine_once", lambda **kwargs: _fake_result({"decision_state": "ASK_FOLLOWUP"}))
+    monkeypatch.setattr(public_checker_service, "run_spine_once", _make_live_checker_mock())
     monkeypatch.setattr(
         public_checker_service,
         "build_live_checker_signals",
@@ -94,7 +109,7 @@ def test_public_checker_contract_promotes_weather_when_snapshot_marks_authoritat
         return "trip_test_2"
 
     monkeypatch.setattr(server, "save_processed_trip", _save_trip)
-    monkeypatch.setattr(public_checker_service, "run_spine_once", lambda **kwargs: _fake_result({"decision_state": "ASK_FOLLOWUP"}))
+    monkeypatch.setattr(public_checker_service, "run_spine_once", _make_live_checker_mock())
     monkeypatch.setattr(
         public_checker_service,
         "build_live_checker_signals",

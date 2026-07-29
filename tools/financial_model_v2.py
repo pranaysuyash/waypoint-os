@@ -46,7 +46,7 @@ def py(nc, arpu, ch, start):
 
 def run():
     print("=" * 62)
-    print(f" WAYPOINT OS v2 — Corrected Assumptions")
+    print(" WAYPOINT OS v2 — Corrected Assumptions")
     print(f" {datetime.now().strftime('%Y-%m-%d %H:%M')} | USD = ₹{USD}")
     print("=" * 62)
 
@@ -65,7 +65,7 @@ def run():
     print(f"{'2':>4} {y2e:>7} {y2r:>11,} {y2r//12*12:>11,} {y2r//12*12/USD:>7,.0f}")
     print(f"{'3':>4} {y3e:>7} {y3r:>11,} {y3r//12*12:>11,} {y3r//12*12/USD:>7,.0f}")
 
-    print(f"\nTier Economics:")
+    print("\nTier Economics:")
     print(f"{'Tier':>8} {'ARPU':>7} {'LTV':>10} {'CAC':>8} {'LTV/CAC':>8}")
     for t in TIERS:
         gp = t[1] - VAR

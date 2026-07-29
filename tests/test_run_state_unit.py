@@ -11,9 +11,6 @@ These tests are CI-safe and run in any environment with Python + pytest.
 
 from __future__ import annotations
 
-import json
-import sys
-from pathlib import Path
 
 import pytest
 
@@ -174,7 +171,6 @@ class TestLedgerTransitionGuards:
         return RunLedger.create(run_id, trip_id=None, stage="discovery", operating_mode="normal")
 
     def test_create_initial_state_is_queued(self):
-        from run_ledger import RunLedger
         meta = self._create()
         assert meta["state"] == "queued"
 
@@ -247,7 +243,7 @@ class TestLedgerTransitionGuards:
         self._create()
         # Attempt to manipulate state by reading and writing directly (simulating a bypass)
         # Then verify the guard catches it on the *next* ledger call
-        meta_path = RunLedger.get_meta("test-run-001")  # returns a copy
+        RunLedger.get_meta("test-run-001")  # returns a copy
         # Even if caller tries to transition QUEUED → COMPLETED directly via set_state, it raises
         with pytest.raises(ValueError):
             RunLedger.set_state("test-run-001", RunState.COMPLETED)

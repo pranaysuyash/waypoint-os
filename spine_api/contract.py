@@ -17,7 +17,7 @@ Analytics domain models live in src/analytics/models.py and are re-exported here
 from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from src.intake.constants import DecisionState
 
@@ -694,6 +694,56 @@ class SuitabilityFlagsResponse(BaseModel):
 # Trip list + inbox response envelopes
 # =============================================================================
 
+
+class TripPatchRequest(BaseModel):
+    """Canonical mutable fields accepted by PATCH /trips/{trip_id}."""
+
+    status: Optional[str] = None
+    follow_up_due_date: Optional[str] = Field(default=None, max_length=50)
+    origin: Optional[str] = Field(default=None, max_length=200)
+    destination: Optional[str] = Field(default=None, max_length=200)
+    budget: Optional[Union[float, str]] = None
+    party: Optional[int] = None
+    date_window: Optional[str] = Field(default=None, validation_alias=AliasChoices("dateWindow"))
+    trip_purpose: Optional[str] = Field(default=None, validation_alias=AliasChoices("tripPurpose"), max_length=1000)
+    trip_priorities: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("tripPriorities", "trip_priorities"),
+        max_length=1000,
+    )
+    date_flexibility: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("dateFlexibility", "date_flexibility"),
+        max_length=500,
+    )
+    pace_preference: Optional[str] = Field(default=None, max_length=100)
+    date_year_confidence: Optional[str] = Field(default=None, max_length=50)
+    lead_source: Optional[str] = Field(default=None, max_length=200)
+    activity_provenance: Optional[str] = Field(default=None, max_length=500)
+    contact_name: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("contactName"),
+        max_length=255,
+    )
+    customer_message: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("customerMessage"),
+        max_length=100_000,
+    )
+    agent_notes: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("agentNotes"),
+        max_length=50_000,
+    )
+
+    party_composition: Optional[str] = Field(default=None, max_length=500)
+    pace_preference: Optional[str] = Field(default=None, max_length=100)
+    date_year_confidence: Optional[str] = Field(default=None, max_length=50)
+    lead_source: Optional[str] = Field(default=None, max_length=200)
+    activity_provenance: Optional[str] = Field(default=None, max_length=500)
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
 # =============================================================================
 # Trip Response — canonical API contract for GET /trips/{id} and PATCH /trips/{id}
 # =============================================================================
@@ -720,6 +770,8 @@ class TripResponse(BaseModel):
     tripType: Optional[str] = None
     tripPurpose: Optional[str] = None
     customerName: Optional[str] = None
+    customerMessage: Optional[str] = None
+    agentNotes: Optional[str] = None
     follow_up_due_date: Optional[str] = None
     extracted: Optional[Dict[str, Any]] = None
     validation: Optional[Dict[str, Any]] = None
@@ -792,16 +844,42 @@ class TripResponse(BaseModel):
             tripType=resolve_trip_field(trip, "trip_type") or None,
             tripPurpose=_clean_text_value(resolve_trip_field(trip, "trip_purpose")),
             customerName=_derive_customer_name(trip, trip_id) or None,
+            customerMessage=_clean_text_value(
+                _get_nested(trip, "raw_input.submission.raw_note", None)
+                or trip.get("customerMessage")
+                or trip.get("customer_message")
+            ),
+            agentNotes=_clean_text_value(
+                _get_nested(trip, "raw_input.submission.owner_note", None)
+                or trip.get("agentNotes")
+                or trip.get("agent_notes")
+            ),
             follow_up_due_date=trip.get("follow_up_due_date") or None,
             extracted=trip.get("extracted") or None,
             validation=trip.get("validation") or None,
             strategy=trip.get("strategy") or None,
-            # Phase 2 structured fields — read directly from storage dict.
-            party_composition=trip.get("party_composition") or None,
-            pace_preference=trip.get("pace_preference") or None,
-            date_year_confidence=trip.get("date_year_confidence") or None,
-            lead_source=trip.get("lead_source") or None,
-            activity_provenance=trip.get("activity_provenance") or None,
+            # Phase 2 structured fields — read directly from storage dict, with
+            # extracted.facts fallback for pipeline-sourced values.
+            party_composition=_clean_text_value(
+                trip.get("party_composition")
+                or _get_nested(trip, "extracted.facts.party_composition.value", None)
+            ),
+            pace_preference=_clean_text_value(
+                trip.get("pace_preference")
+                or _get_nested(trip, "extracted.facts.pace_preference.value", None)
+            ),
+            date_year_confidence=_clean_text_value(
+                trip.get("date_year_confidence")
+                or _get_nested(trip, "extracted.facts.date_year_confidence.value", None)
+            ),
+            lead_source=_clean_text_value(
+                trip.get("lead_source")
+                or _get_nested(trip, "extracted.facts.lead_source.value", None)
+            ),
+            activity_provenance=_clean_text_value(
+                trip.get("activity_provenance")
+                or _get_nested(trip, "extracted.facts.activity_provenance.value", None)
+            ),
             trip_priorities=_clean_text_value(
                 trip.get("trip_priorities")
                 or _get_nested(trip, "extracted.facts.trip_priorities.value", None)
@@ -926,6 +1004,7 @@ __all__ = [
     "ReviewActionRequest",
     "SuitabilityAcknowledgeRequest",
     "SnoozeRequest",
+    "TripPatchRequest",
     "InviteTeamMemberRequest",
     "PipelineStageConfig",
     "ApprovalThresholdConfig",

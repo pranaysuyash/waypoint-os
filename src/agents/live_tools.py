@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from string import Formatter
 from typing import Any, Protocol
 
-from src.agents.tool_contracts import ToolFreshnessPolicy, ToolResult, validate_tool_input, validate_tool_output, sanitize_tool_data
+from src.agents.tool_contracts import ToolFreshnessPolicy, ToolResult, validate_tool_output
 
 
 class WeatherTool(Protocol):

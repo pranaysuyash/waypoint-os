@@ -2,14 +2,10 @@ import { useWorkbenchStore } from "@/stores/workbench";
 import type { StrategyOutput, PromptBundle } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import styles from "@/components/workbench/workbench.module.css";
-import { buildTripStrategyPreview } from "@/lib/strategy-preview";
+import { buildTripStrategyPreview, shouldUsePersistedTripStrategy } from "@/lib/strategy-preview";
 
 interface StrategyTabProps {
   trip?: Trip | null;
-}
-
-function isGenericInternalDraftStrategy(strategy: StrategyOutput | null | undefined): boolean {
-  return strategy?.session_goal?.trim() === "Generate internal trip draft with documented assumptions for agent review.";
 }
 
 export default function StrategyTab({ trip }: StrategyTabProps) {
@@ -18,7 +14,7 @@ export default function StrategyTab({ trip }: StrategyTabProps) {
   const tripStrategy = (trip?.strategy as StrategyOutput | null) || null;
   const activeStrategy =
     result_strategy ||
-    (tripStrategy && !isGenericInternalDraftStrategy(tripStrategy) ? tripStrategy : null) ||
+    (tripStrategy && trip && shouldUsePersistedTripStrategy(tripStrategy, trip) ? tripStrategy : null) ||
     buildTripStrategyPreview(trip);
   const activeInternalBundle = result_internal_bundle || (trip?.internal_bundle as PromptBundle | null);
   const activeTravelerBundle = result_traveler_bundle || (trip?.traveler_bundle as PromptBundle | null);

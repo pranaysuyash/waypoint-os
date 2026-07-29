@@ -18,7 +18,7 @@ import time
 from datetime import datetime
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from src.intake.packet_models import CanonicalPacket
 from .cache_schema import CachedDecision, CacheStats, CACHE_MIN_SUCCESS_RATE

@@ -2,7 +2,7 @@
 whatsapp_formatter.py — Formats traveler-safe PromptBundles for WhatsApp.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 import re
 
 # =============================================================================

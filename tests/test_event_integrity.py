@@ -6,7 +6,7 @@ and that event_type/category pairing rejects unknown types.
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from sqlalchemy.exc import SQLAlchemyError
 

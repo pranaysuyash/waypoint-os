@@ -82,4 +82,45 @@ describe("StrategyTab", () => {
     expect(screen.getAllByText(/priorities or must-haves/i).length).toBeGreaterThan(0);
     expect(screen.queryAllByText(/Trip priorities \/ must-haves/i)).toHaveLength(0);
   });
+
+  it("falls back to the live preview when the stored strategy is stale partial intake wording", () => {
+    mockUseWorkbenchStore.mockReturnValue({
+      result_strategy: null,
+      result_internal_bundle: null,
+      result_traveler_bundle: null,
+      debug_raw_json: false,
+      setDebugRawJson: vi.fn(),
+    });
+
+    render(
+      <StrategyTab
+        trip={makeTrip({
+          validation: {
+            readiness: {
+              highest_ready_tier: "proposal_ready",
+            },
+          } as never,
+          strategy: {
+            session_goal: "Partial intake — awaiting enrichment.",
+            priority_sequence: ["Collect missing traveler details"],
+            tonal_guardrails: ["Keep the intake short"],
+            risk_flags: ["Origin missing"],
+            suggested_opening: "We’re still waiting on a few details.",
+            exit_criteria: ["Ask for the missing field"],
+            next_action: "ASK_FOLLOWUP",
+            assumptions: [],
+            suggested_tone: "professional",
+          } as never,
+        })}
+      />
+    );
+
+    expect(
+      screen.getByText(/Prepare a clear options plan for Singapore for the business trip while keeping \$42,000 aligned\./i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/partial intake/i)).toBeNull();
+    expect(
+      screen.getByText(/Here’s the options plan for Singapore with the business requirements in view\./i),
+    ).toBeInTheDocument();
+  });
 });

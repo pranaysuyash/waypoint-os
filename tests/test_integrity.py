@@ -10,12 +10,11 @@ Verifies:
 """
 
 import sys
-import os
 import pytest
 import json
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from fastapi.routing import APIRoute
 
 # Ensure spine_api is importable

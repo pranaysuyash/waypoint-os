@@ -1,4 +1,3 @@
-import pytest
 import json
 from src.analytics.review import process_review_action, trip_to_review
 from spine_api import persistence

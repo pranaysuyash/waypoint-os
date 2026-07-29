@@ -10,12 +10,8 @@ Tests GET /trips/{trip_id}/suitability endpoint with:
 - Multiple flags with different severity levels
 """
 
-import json
 from datetime import datetime
 import pytest
-import sys
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
 from spine_api.persistence import TripStore, TEST_AGENCY_ID
@@ -192,7 +188,46 @@ class TestGetTripSuitabilityEndpoint:
         assert flags[1]["confidence"] == 60
         assert flags[2]["name"] == "child_safety_concern"
         assert flags[2]["confidence"] == 50
-    
+
+    def test_get_suitability_flag_ids_are_stable_across_reads(self, session_client):
+        """Test that suitability flag IDs do not change between GET requests."""
+        trip_id = f"trip_{uuid4().hex[:12]}"
+        agency_id = TEST_AGENCY_ID
+
+        trip_data = make_trip_data(
+            trip_id,
+            agency_id,
+            status="in_progress",
+            decision={
+                "suitability_flags": [
+                    {
+                        "flag_type": "elderly_mobility_risk",
+                        "severity": "critical",
+                        "reason": "Elderly traveler",
+                        "confidence": 0.85,
+                    },
+                    {
+                        "flag_type": "visa_processing_risk",
+                        "severity": "high",
+                        "reason": "Multiple nationalities",
+                        "confidence": 0.60,
+                    },
+                ]
+            },
+        )
+        TripStore.save_trip(trip_data)
+
+        first_response = session_client.get(f"/trips/{trip_id}/suitability")
+        second_response = session_client.get(f"/trips/{trip_id}/suitability")
+
+        assert first_response.status_code == 200
+        assert second_response.status_code == 200
+
+        first_ids = [flag["id"] for flag in first_response.json()["suitability_flags"]]
+        second_ids = [flag["id"] for flag in second_response.json()["suitability_flags"]]
+
+        assert first_ids == second_ids
+
     def test_get_suitability_tier_classification(self, session_client):
         """Test that tier is correctly set from severity."""
         trip_id = f"trip_{uuid4().hex[:12]}"
@@ -303,5 +338,4 @@ class TestGetTripSuitabilityEndpoint:
         data = response.json()
         flag = data["suitability_flags"][0]
         assert datetime.fromisoformat(flag["created_at"]) == datetime.fromisoformat(created_at)
-
 

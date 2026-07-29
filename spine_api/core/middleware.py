@@ -10,7 +10,6 @@ Provides:
 
 import logging
 import os
-from typing import Awaitable, Callable
 
 from fastapi import HTTPException, Request, status
 from sqlalchemy import select

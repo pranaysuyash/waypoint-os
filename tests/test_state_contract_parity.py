@@ -19,7 +19,6 @@ Also verifies:
 import json
 import sys
 import pytest
-from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock
@@ -39,7 +38,6 @@ from spine_api.persistence import (
     _build_processed_trip,
     _safe_filename,
 )
-from src.security.encryption import encrypt, decrypt
 
 
 # ---------------------------------------------------------------------------
@@ -981,7 +979,6 @@ class TestAssignmentStoreSafety:
         # Should not raise UnboundLocalError
         AssignmentStore.unassign_trip("nonexistent_trip_id", "tester")
         # Cleanup: remove any created files
-        import os
         for f in AssignmentStore.ASSIGNMENTS_FILE.parent.glob("*"):
             try:
                 f.unlink()

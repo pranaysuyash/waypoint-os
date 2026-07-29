@@ -22,7 +22,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "spine_api"))
 # Must set env before importing persistence
 os.environ.setdefault("TRIPSTORE_BACKEND", "sql")
 
-from spine_api.persistence import TripStore, TEST_AGENCY_ID
+from spine_api.persistence import TripStore
 
 FIXTURE_PATH = PROJECT_ROOT / "data" / "fixtures" / "scenario_alpha.json"
 
@@ -233,7 +233,7 @@ async def main():
     print("=== Owner User Bootstrap ===")
     print(f"  Email    : {TEST_USER_EMAIL}")
     print(f"  Password : {TEST_USER_PASSWORD}")
-    print(f"  Role     : owner (all permissions)")
+    print("  Role     : owner (all permissions)")
     print()
 
     user_info = await ensure_test_user()
@@ -243,7 +243,7 @@ async def main():
     print("=== Agent User Bootstrap ===")
     print(f"  Email    : {AGENT_USER_EMAIL}")
     print(f"  Password : {AGENT_USER_PASSWORD}")
-    print(f"  Role     : junior_agent (limited permissions)")
+    print("  Role     : junior_agent (limited permissions)")
     print()
 
     await ensure_agent_user(agency_id)

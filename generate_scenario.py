@@ -64,4 +64,4 @@ for i in range(29, 31):
 with open("/Users/pranay/Projects/travel_agency_agent/data/fixtures/scenario_alpha.json", "w") as f:
     json.dump(trips, f, indent=2)
 
-print(f"Generated 30 trips in scenario_alpha.json")
+print("Generated 30 trips in scenario_alpha.json")

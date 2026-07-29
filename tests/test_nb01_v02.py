@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest
 from intake.packet_models import (
-    Ambiguity,
     AuthorityLevel,
     CanonicalPacket,
     EvidenceRef,
@@ -25,11 +24,9 @@ from intake.packet_models import (
     SourceEnvelope,
     SubGroup,
 )
-from intake.normalizer import Normalizer
 from intake.extractors import ExtractionPipeline
 from intake.validation import (
     DERIVED_ONLY_FIELDS,
-    LEGACY_FIELD_NAMES,
     validate_packet,
 )
 

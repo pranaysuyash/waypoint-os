@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from spine_api.contract import IntegrityIssue
-from spine_api.persistence import TripStore
 
 from src.services.dashboard_aggregator import DashboardAggregator
 

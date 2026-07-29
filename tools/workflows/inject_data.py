@@ -36,7 +36,6 @@ def main():
     new_line = f"const DATA = {json_str};"
 
     # Replace
-    old_line = lines[data_line_idx]
     lines[data_line_idx] = new_line
     html = '\n'.join(lines)
 

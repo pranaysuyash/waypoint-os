@@ -5,7 +5,6 @@ intake.checker_agent — Redundancy service for high-stakes autonomic decisions.
 from __future__ import annotations
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
 
 from .packet_models import CanonicalPacket
 from .decision import DecisionResult

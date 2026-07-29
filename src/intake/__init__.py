@@ -12,6 +12,69 @@ Core modules:
 - geography: City database from GeoNames (CC-BY 4.0) + world-cities.json (ODbL-1.0)
 """
 
+__all__ = [
+    # packet_models
+    "Ambiguity",
+    "AuthorityLevel",
+    "CanonicalPacket",
+    "EvidenceRef",
+    "ExtractionMode",
+    "LifecycleInfo",
+    "OwnerConstraint",
+    "Slot",
+    "SourceEnvelope",
+    "SubGroup",
+    "UnknownField",
+    "higher_authority",
+    # normalizer
+    "Normalizer",
+    # extractors
+    "ExtractionPipeline",
+    # validation
+    "PacketValidationReport",
+    "validate_packet",
+    # decision
+    "AmbiguityRef",
+    "check_budget_feasibility",
+    "classify_ambiguity_severity",
+    "DecisionResult",
+    "run_gap_and_decision",
+    # strategy
+    "build_internal_bundle",
+    "build_session_strategy",
+    "build_session_strategy_and_bundle",
+    "build_traveler_safe_bundle",
+    "determine_tone",
+    "get_branch_conversational_approach",
+    "get_mode_specific_goal",
+    "get_mode_specific_opening",
+    "get_tonal_guardrails",
+    "PromptBundle",
+    "QuestionWithIntent",
+    "SessionStrategy",
+    "sort_questions_by_priority",
+    # safety
+    "audit_packet_internal_data",
+    "check_no_leakage",
+    "has_blocking_ambiguities",
+    "is_field_internal_only",
+    "is_field_traveler_safe",
+    "SanitizedPacketView",
+    "sanitize_for_traveler",
+    "sanitize_text_output",
+    "validate_traveler_safe_output",
+    # orchestration
+    "SpineResult",
+    "run_spine_once",
+    # geography
+    "clear_cache",
+    "get_attribution_notice",
+    "get_dataset_info",
+    "is_known_city",
+    "is_known_city_normalized",
+    "record_seen_city",
+]
+
 from .packet_models import (
     Ambiguity,
     AuthorityLevel,

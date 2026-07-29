@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from src.analytics.models import AnalyticsPayload
 from src.analytics.policy_rules import apply_owner_escalation_policy, compute_send_policy
 

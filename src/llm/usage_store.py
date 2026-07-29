@@ -27,7 +27,6 @@ import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Optional
-from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 

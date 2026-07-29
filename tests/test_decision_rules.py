@@ -4,7 +4,6 @@ tests.test_decision_rules — Unit tests for decision rules.
 Tests for individual rule functions in the hybrid engine.
 """
 
-import pytest
 from src.intake.packet_models import CanonicalPacket, Slot
 from src.decision.rules import (
     rule_elderly_mobility_risk,

@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
 
 from .constants import DecisionState
-from .packet_models import CanonicalPacket, Slot
+from .packet_models import CanonicalPacket
 
 
 def _safe_get_fact(packet: CanonicalPacket, field_name: str) -> Any:

@@ -11,34 +11,23 @@ Run: uv run python -m pytest tests/test_p1_backend_regressions.py -v
 
 import sys
 import os
-from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import pytest
 
 from intake.packet_models import (
-    Ambiguity,
     AuthorityLevel,
     CanonicalPacket,
-    EvidenceRef,
     Slot,
     SourceEnvelope,
-    SubGroup,
 )
 from intake.extractors import ExtractionPipeline
 from intake.decision import (
-    AmbiguityRef,
     DecisionResult,
     classify_ambiguity_severity,
-    check_budget_feasibility,
-    field_fills_blocker,
-    generate_question,
-    get_numeric_budget,
     run_gap_and_decision,
     apply_urgency,
     apply_operating_mode,
-    MVB_BY_STAGE,
     _synthesize_destination_ambiguity,
     ConfidenceScorecard,
 )
@@ -116,7 +105,7 @@ class TestDestinationAmbiguityTightening:
         blocking = [a for a in result.ambiguities if a.severity == "blocking"
                      and a.field_name == "destination_candidates"]
         assert len(blocking) > 0, \
-            f"Expected blocking destination ambiguity for 'vs' separator"
+            "Expected blocking destination ambiguity for 'vs' separator"
 
     def test_comma_separated_destinations_ambiguity(self):
         """
@@ -144,7 +133,7 @@ class TestDestinationAmbiguityTightening:
         blocking = [a for a in result.ambiguities if a.severity == "blocking"
                      and a.field_name == "destination_candidates"]
         assert len(blocking) > 0, \
-            f"Expected blocking destination ambiguity for comma-separated destinations"
+            "Expected blocking destination ambiguity for comma-separated destinations"
         assert result.decision_state != "PROCEED_TRAVELER_SAFE", \
             f"Should not proceed with unresolved multi-destination, got {result.decision_state}"
 
@@ -160,7 +149,7 @@ class TestDestinationAmbiguityTightening:
 
     def test_blocking_at_shortlist_escalates(self):
         """Destination ambiguity that's advisory at discovery becomes blocking at shortlist."""
-        sev_discovery = classify_ambiguity_severity(
+        classify_ambiguity_severity(
             "destination_candidates", "value_vague", stage="discovery"
         )
         sev_shortlist = classify_ambiguity_severity(

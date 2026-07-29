@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Temporary analysis script for code quality review."""
-import ast, os, re, sys
+import ast
+import os
+import re
 
 BASE = "/Users/pranay/Projects/travel_agency_agent"
 
@@ -56,7 +58,7 @@ for path in get_files():
                 if c > 10:
                     rel = os.path.relpath(path, BASE)
                     print(f"  {rel}:{node.lineno} | complexity={c} | {node.name}")
-    except:
+    except Exception:
         pass
 
 # 2. Long parameter lists
@@ -71,12 +73,16 @@ for path in get_files():
                 args = node.args
                 params.extend([a.arg for a in args.args])
                 params.extend([a.arg for a in args.kwonlyargs])
-                if args.vararg: params.append('*' + args.vararg.arg)
-                if args.kwarg: params.append('**' + args.kwarg.arg)
+                if args.vararg:
+                    params.append('*' + args.vararg.arg)
+                if args.kwarg:
+                    params.append('**' + args.kwarg.arg)
                 if len(params) > 5:
                     rel = os.path.relpath(path, BASE)
                     print(f"  {rel}:{node.lineno} | params={len(params)} | {node.name}({', '.join(params)})")
-    except:
+            else:
+                pass
+    except Exception:
         pass
 
 # 3. God classes
@@ -91,7 +97,7 @@ for path in get_files():
                 if len(methods) > 15:
                     rel = os.path.relpath(path, BASE)
                     print(f"  {rel}:{node.lineno} | {node.name} has {len(methods)} methods: {methods}")
-    except:
+    except Exception:
         pass
 
 # 4. Deep nesting
@@ -106,7 +112,7 @@ for path in get_files():
                 if depth > 4:
                     rel = os.path.relpath(path, BASE)
                     print(f"  {rel}:{node.lineno} | nesting={depth} | {node.name}")
-    except:
+    except Exception:
         pass
 
 # 5. Magic numbers (hardcoded numeric literals in function bodies)
@@ -125,7 +131,7 @@ for path in get_files():
                             rel = os.path.relpath(path, BASE)
                             # Filter out common patterns
                             print(f"  {rel}:{child.lineno} | value={val}")
-    except:
+    except Exception:
         pass
 
 # 6. Empty except handlers
@@ -150,7 +156,7 @@ for path in get_files():
                         for stmt in node.body:
                             if isinstance(stmt, ast.Pass):
                                 print(f"  {rel}:{node.lineno} | except Exception: pass (silently swallowed)")
-    except:
+    except Exception:
         pass
 
 # 7. Naming convention issues (camelCase function names)
@@ -168,7 +174,7 @@ for path in get_files():
                 if re.search(r'[a-z][A-Z]', node.name) and not node.name.startswith('__'):
                     rel = os.path.relpath(path, BASE)
                     print(f"  {rel}:{node.lineno} | camelCase function: {node.name} -> should be snake_case")
-    except:
+    except Exception:
         pass
 
 # 8. print() usage instead of logging
@@ -182,5 +188,5 @@ for path in get_files():
             stripped = line.strip()
             if 'print(' in stripped and not stripped.startswith('#'):
                 print(f"  {rel}:{i} | {stripped[:100]}")
-    except:
+    except Exception:
         pass

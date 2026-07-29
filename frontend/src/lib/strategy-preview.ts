@@ -57,15 +57,32 @@ function isStaleInternalDraftStrategy(strategy: NonNullable<Trip["strategy"]> | 
   return goal.includes("internal") || goal.includes("draft") || opening.includes("internal draft");
 }
 
+function isStalePartialIntakeStrategy(strategy: NonNullable<Trip["strategy"]> | null | undefined, trip: Trip): boolean {
+  if (!strategy) return false;
+  if (!isReadyToBuildOptions(trip)) return false;
+
+  const goal = strategy.session_goal?.toLowerCase() ?? "";
+  const opening = strategy.suggested_opening?.toLowerCase() ?? "";
+  return goal.includes("partial intake") || goal.includes("awaiting enrichment") || opening.includes("awaiting enrichment");
+}
+
+export function shouldUsePersistedTripStrategy(
+  strategy: NonNullable<Trip["strategy"]> | null | undefined,
+  trip: Trip,
+): boolean {
+  if (!strategy) return false;
+  return (
+    !isGenericStoredStrategy(strategy) &&
+    !isStaleEscalationStrategy(strategy, trip) &&
+    !isStaleInternalDraftStrategy(strategy, trip) &&
+    !isStalePartialIntakeStrategy(strategy, trip)
+  );
+}
+
 export function buildTripStrategyPreview(trip?: Trip | null): StrategyOutput | null {
   if (!trip) return null;
 
-  if (
-    trip.strategy &&
-    !isGenericStoredStrategy(trip.strategy) &&
-    !isStaleEscalationStrategy(trip.strategy, trip) &&
-    !isStaleInternalDraftStrategy(trip.strategy, trip)
-  ) {
+  if (shouldUsePersistedTripStrategy(trip.strategy, trip)) {
     return trip.strategy as StrategyOutput;
   }
 
