@@ -15,11 +15,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# Hardcode project root - adjust if project structure changes
-PROJECT_ROOT = Path("/Users/pranay/Projects/travel_agency_agent")
+# Resolve project root from this file's location (alembic/ lives at repo root).
+# Must stay environment-agnostic — a hardcoded absolute path breaks CI and containers.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from spine_api.models import Base
+from spine_api.models import Base  # noqa: E402
 
 # This is the Alembic Config object
 config = context.config

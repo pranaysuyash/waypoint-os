@@ -761,7 +761,9 @@ export default function AuditPage() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchAudit();
+    void (async () => {
+      await fetchAudit();
+    })();
 
     let timer: ReturnType<typeof setInterval> | null = null;
     if (autoRefreshEnabled) {

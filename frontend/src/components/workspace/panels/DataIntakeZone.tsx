@@ -84,7 +84,9 @@ export default function DataIntakeZone({
   }, [tripId, onTravelersChange, onPaymentTrackingChange]);
 
   useEffect(() => {
-    fetchBookingData();
+    void (async () => {
+      await fetchBookingData();
+    })();
   }, [fetchBookingData]);
 
   // react-doctor-disable-next-line react-doctor/no-cascading-set-state — independent state updates for unrelated UI concerns

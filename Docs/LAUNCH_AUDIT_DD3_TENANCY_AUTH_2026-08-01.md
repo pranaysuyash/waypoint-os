@@ -40,6 +40,7 @@ Full classification of all 48 `TripStore.get_trip(` call sites: **31 router/serv
 **The architectural problem**: the guard is a manually-repeated convention, and every miss is a silent cross-tenant hole. T1–T4 are the four misses. `TripStore.get_trip_for_agency` exists but is used in only one router.
 
 **Recommendation (first-principles, additive)**: make scoping the default, not the convention —
+
 1. Fix T1–T4 directly (add `Depends(get_current_agency)` + `get_trip_for_agency`, or for public-checker: scope artifact reads to a traveler-safe projection + restrict DELETE to the owning agency with permission + audit event).
 2. Migrate all router call sites to `get_trip_for_agency` (storage-layer enforcement).
 3. Add a contract-surface test per fixed route asserting cross-agency access → 404 (the tests exist as a pattern: `test_frontier_tenant_isolation.py`).

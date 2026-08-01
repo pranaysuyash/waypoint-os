@@ -189,7 +189,9 @@ export default function ExecutionTimelinePanel({ tripId }: ExecutionTimelinePane
   }, [tripId, activeCategory, activeActor]);
 
   useEffect(() => {
-    fetchTimeline();
+    void (async () => {
+      await fetchTimeline();
+    })();
   }, [fetchTimeline]);
 
   const groupedEvents = useMemo(() => {

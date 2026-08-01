@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { ChangeHistoryPanel } from '../ChangeHistoryPanel';
 import { useAuthStore } from '@/stores/auth';

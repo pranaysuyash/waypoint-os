@@ -71,6 +71,7 @@ fi
 _generate_report() {
     uv run ruff check --select F401 --output-format=concise $F401_TARGETS 2>/dev/null \
       | grep -v '^Found ' \
+      | grep -v '^All checks passed' \
       || true
 }
 

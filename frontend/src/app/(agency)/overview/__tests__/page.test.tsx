@@ -288,9 +288,9 @@ describe('OverviewPage', () => {
       origin: 'Mumbai',
       budget: '₹3L',
       status: 'in_progress',
-      rawInput: {},
-      decision: null,
-      validation: null,
+      rawInput: { fixture_id: 'trip_dup_fixture' },
+      decision: baseSummary.recentTrips[0].decision,
+      validation: baseSummary.recentTrips[0].validation,
     } as const;
 
     mockUseOverviewSummary.mockReturnValue({

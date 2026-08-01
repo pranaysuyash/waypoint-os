@@ -56,3 +56,15 @@ The repo's most important recent artifacts exist only locally: the applied-at-DB
 ## Status
 
 W1–W6 verified; reconciliation plan proposed. **This completes DD-1 → DD-8.** Master synthesis follows in `LAUNCH_AUDIT_SYNTHESIS_2026-08-01.md`.
+
+---
+
+## Update Log (per motto_v4 §0.12.1)
+
+### 2026-08-01 — W3 erratum + W5 resolved (record committed and pushed)
+
+- **Erratum to W3**: the ACTIVE hooks are `scripts/hooks/*` (`core.hooksPath=scripts/hooks`), not `.git/hooks/*` — the `.git/hooks` copies cited in W3 are inert legacy files. The real defect was narrower: `scripts/hooks/pre-commit` had a current v4 managed block followed by a legacy v3 enforcement tail (line 181+, `_motto_file="motto_v3.md"` at :218) that would hard-fail any commit once `motto_v3.md` was deleted.
+- **Fix executed** (with operator's explicit git approval): legacy v3 tail removed (`scripts/hooks/pre-commit` now ends at the managed-block END marker + `exit 0`); `commit-msg` and `prepare-commit-msg` verified already-v4. Attestation refreshed via `attest_motto.py` (motto_v4 SHA `7f092402…`) and full 53-section commit-gate attestation via `attest_motto_commit.py`.
+- **W5 resolved**: commit `5a544ba` ("Sync the record…", 303 files, +27,284/−1,977) committed and pushed `a3f1bc5..5a544ba` to `origin/master`, including: the DB-head migration `0cd0399e2c3c`, all 16 Jul-29 ADRs, both Jul-29 planning docs, INDEX/EXPLORATION updates, the previously-unpushed `d13f38b` (ci.yml + guard disable), and uncommitted `deploy.yml`. Junk excluded via `.gitignore` (`.tmp-*.png`, `data/trips/tc_roundtrip_*.json`) rather than committed; no deletions beyond the retired `motto_v3.md`.
+- **First-ever CI run triggered** on push (workflow "CI", run 30704511392). Outcome to be recorded in `Docs/LAUNCH_STATUS.md` when created (DD-8 plan item).
+- Process insight: the gate itself caught this commit's risk class — commit-msg demanded `Risk-Class: high` + `Evidence-Tier: 3` (hooks/workflows/migration in diff). The hardened gate works as designed once the v3/v4 conflict was removed.

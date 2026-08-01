@@ -192,7 +192,7 @@ describe('AuditPage', () => {
 
       if (method === 'POST' && url.includes('/legacy_ops/audit/routing-alert-1/triage')) {
         const requestBody = JSON.parse(
-          typeof init.body === 'string' ? init.body : '{}'
+          typeof init?.body === 'string' ? init.body : '{}'
         );
         return {
           ok: true,
@@ -303,7 +303,7 @@ describe('AuditPage', () => {
       const method = init?.method ?? 'GET';
 
       if (method === 'POST' && url.includes('/legacy_ops/audit/routing-health/batch-triage')) {
-        const body = JSON.parse(typeof init.body === 'string' ? init.body : '[]');
+        const body = JSON.parse(typeof init?.body === 'string' ? init.body : '[]');
         return {
           ok: true,
           json: async () => ({
@@ -543,7 +543,7 @@ describe('AuditPage', () => {
             headers: {
               get: () => 'text/csv',
             },
-          } as Response;
+          } as unknown as Response;
         }
         return {
           ok: true,

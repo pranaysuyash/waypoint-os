@@ -46,8 +46,8 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
     tripPurpose: "business",
     status: "new",
     rawInput: { fixture_id: "trip_test_fixture" },
-    decision: null,
-    validation: null,
+    decision: undefined,
+    validation: undefined,
     strategy: {
       session_goal: "Generate internal trip draft with documented assumptions for agent review.",
       priority_sequence: ["Generate internal draft with documented assumptions"],

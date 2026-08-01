@@ -36,7 +36,7 @@ export interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: { id: "user_demo", email: "demo@waypoint.os", name: "Senior Planner" },
   agency: { id: "default_agency", name: "Waypoint Agency", slug: "waypoint" },
-  membership: { role: "owner" },
+  membership: { role: "owner", isPrimary: true },
   isAuthenticated: true,
   isLoading: false,
   error: null,

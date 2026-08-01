@@ -16,6 +16,7 @@
 ## D1 — The product has never been deployed (confidence: high, Tier 2)
 
 Cumulative evidence:
+
 - `fly.toml:12` `[build] image = "ghcr.io/your-org/spine-api:latest"` — a literal placeholder; `fly deploy` would pull a nonexistent image and never build the local Dockerfile.
 - `flyctl` is installed but **not authenticated** (`fly apps list` → "no access token") — no Fly app exists under this operator.
 - `deploy.yml` health check URL carries the comment `# Adjust to match production URL` — never adjusted.
@@ -41,6 +42,7 @@ Per AGENTS.md anti-duplication doctrine: **one canonical deploy path**. Recommen
 ## D4 — The safety-critical env vars are missing from every prod config (baseline B9/H6, CONFIRMED)
 
 Not present in `fly.toml [env]`, `render.yaml envVars`, or Dockerfile ENV:
+
 - `TRIPSTORE_BACKEND=sql` — without it: file store on an **ephemeral container filesystem** → all trips lost on every deploy/restart. This is the 2026-05-03 incident as a guaranteed production recurrence. Code hard-fails if unset only when `ENVIRONMENT=production|staging` (`server.py:204-208`) — but `ENVIRONMENT` is also unset, so the guard never fires.
 - `ENVIRONMENT=production` — gates: ENCRYPTION_KEY enforcement, auth-bypass blocking, cookie `Secure` flag, reset-token exposure, rate-limiter posture.
 - `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `DATA_PRIVACY_MODE=production`, LLM keys — none declared even as `sync: false` placeholders, so there is no secrets checklist.
@@ -68,6 +70,7 @@ OTel only activates with `SPINE_OTEL_EXPORTER_OTLP_GRPC_ENDPOINT`/`OTEL_EXPORTER
 ## Canonical launch deploy plan (recommendation)
 
 Commit-sized steps, in dependency order:
+
 1. **Commit the applied migration** `0cd0399e2c3c` (operator git approval). Everything else depends on schema truth being in git.
 2. **Dockerfile + .dockerignore fix** (D3).
 3. **fly.toml fix**: remove `[build] image` placeholder (let it build the Dockerfile), add env vars (D4), attach Fly Postgres, set secrets.

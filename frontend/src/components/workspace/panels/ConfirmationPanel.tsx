@@ -82,7 +82,9 @@ export default function ConfirmationPanel({ tripId }: ConfirmationPanelProps) {
   }, [tripId]);
 
   useEffect(() => {
-    fetchList();
+    void (async () => {
+      await fetchList();
+    })();
   }, [fetchList]);
 
   const handleCreate = useCallback(async () => {

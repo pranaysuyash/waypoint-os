@@ -21,7 +21,7 @@ export function useHotkey(
   handler: HotkeyHandler,
   enabled: boolean = true,
 ): void {
-  const stableHandler = useCallback(handler, [handler]);
+  const stableHandler = useCallback((event: KeyboardEvent) => handler(event), [handler]);
 
   useEffect(() => {
     if (!enabled) return;

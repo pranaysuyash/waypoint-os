@@ -37,24 +37,28 @@ Waypoint OS built a strong core fast, then let the **claims** (docs, reviews, fe
 
 ## 4. Remediation program (commit-ordered, dependency-aware)
 
-**Phase A — Restore the record & the gate (nothing works without this)**
+### Phase A — Restore the record & the gate (nothing works without this)
+
 1. Commit + push: migration `0cd0399e2c3c`, ADR batch, Jul-29 docs, `d13f38b` (ci.yml), deploy.yml. *(operator git approval)*
 2. Startup config-assertion module (fail-closed in production; refuse boot with `SPINE_API_DISABLE_AUTH`).
 3. CI fixes: full frontend vitest, uvicorn for integration tests, re-enabled contract guard with fixed lint glob, deploy gated on CI.
 
-**Phase B — Close the holes (trust blockers)**
-4. DD-3: scope public-checker/timeline/bulk-action to agency (+ audit events, soft-delete decision); migrate routers to `get_trip_for_agency` + lint rule.
-5. DD-1: public router for proposal tokens (expiry, rate limit, real frontend URL); delete demo fallbacks; fix stage-advance path + route-map; fix or remove SSE route; decide waitlist vs signup.
-6. DD-4: LLM egress policy module (field allowlist, untrusted-content delimiters); webhook signature hardening bundled with the endpoint opening; encryption fail-closed.
+### Phase B — Close the holes (trust blockers)
 
-**Phase C — Honesty of surfaces**
-7. DD-5: gate simulated features off at all tiers; `simulated: true` contract marker; hide settings toggles; stop auto-rebook audit fabrication. Strip trust-scorecard fabrications; register remaining claims in the launch-claim registry.
-8. DD-7: fix `age_group`; isolate test DB; debris cleanup; single lockfile.
-9. DD-8: rewrite Jul-29 status table honestly; motto v4 cutover; TODO/CHANGELOG refresh; create single `Docs/LAUNCH_STATUS.md`.
+1. DD-3: scope public-checker/timeline/bulk-action to agency (+ audit events, soft-delete decision); migrate routers to `get_trip_for_agency` + lint rule.
+2. DD-1: public router for proposal tokens (expiry, rate limit, real frontend URL); delete demo fallbacks; fix stage-advance path + route-map; fix or remove SSE route; decide waitlist vs signup.
+3. DD-4: LLM egress policy module (field allowlist, untrusted-content delimiters); webhook signature hardening bundled with the endpoint opening; encryption fail-closed.
 
-**Phase D — Ship path**
-10. DD-2: Dockerfile + fly.toml fixes, secrets, Postgres, delete render.yaml, frontend deploy (Vercel recommended), error tracking + uptime.
-11. DD-6: Stripe foundation (M4.1–4.3 can start any time); pricing after discovery; design partners at $0 first.
+### Phase C — Honesty of surfaces
+
+1. DD-5: gate simulated features off at all tiers; `simulated: true` contract marker; hide settings toggles; stop auto-rebook audit fabrication. Strip trust-scorecard fabrications; register remaining claims in the launch-claim registry.
+2. DD-7: fix `age_group`; isolate test DB; debris cleanup; single lockfile.
+3. DD-8: rewrite Jul-29 status table honestly; motto v4 cutover; TODO/CHANGELOG refresh; create single `Docs/LAUNCH_STATUS.md`.
+
+### Phase D — Ship path
+
+1. DD-2: Dockerfile + fly.toml fixes, secrets, Postgres, delete render.yaml, frontend deploy (Vercel recommended), error tracking + uptime.
+2. DD-6: Stripe foundation (M4.1–4.3 can start any time); pricing after discovery; design partners at $0 first.
 
 **Parallel (non-code)**: customer discovery — 7–10 agency calls incl. pricing questions. It selects the first real frontier feature (DD-5) and validates pricing (DD-6).
 

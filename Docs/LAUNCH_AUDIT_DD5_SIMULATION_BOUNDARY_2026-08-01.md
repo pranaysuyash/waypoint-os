@@ -35,6 +35,7 @@ The audit trail is the product's trust backbone — the 2026-07-29 ADR_RULE_015 
 The long-term product shape wants these real — boutique agencies *will* pay for negotiation and disruption handling. So "cut the code" is wrong; "ship as-is" is dishonest. The boundary must be made explicit, then each feature finished in discovery-driven order.
 
 **KEEP the code, GATE the surfaces (launch posture, ~2-3 commits):**
+
 1. Change tier defaults: `enable_frontier_orchestration`, `enable_auto_negotiation`, `enable_checker_agent` → **False at every tier** until the feature is real (`config/agency_settings.py:361-395`; the `starter` tier already does this — extend it).
 2. Gate the routers: `/api/v1/concierge/*`, `/api/v1/yield/*` return `501 not_available_in_beta` unless an explicit `ENABLE_SIMULATED_FEATURES=1` dev flag is set.
 3. Contract-level honesty: any response field that can carry simulated content gets `"simulated": true` (baseline Theme 1 fix) — so future mistakes are machine-detectable, and the UI can badge it.

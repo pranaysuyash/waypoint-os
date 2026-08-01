@@ -92,8 +92,6 @@ const FilterDropdown = memo(function FilterDropdown({
   onClose,
   menuId,
 }: FilterDropdownProps) {
-  if (!group.multi) return null;
-
   const isSelected = (val: string) => selected?.includes(val) ?? false;
   const listboxRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -183,6 +181,8 @@ const FilterDropdown = memo(function FilterDropdown({
         break;
     }
   }, [activeIndex, close, group.options, group.key, moveActive, onToggle]);
+
+  if (!group.multi) return null;
 
   return (
     <div

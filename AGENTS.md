@@ -205,13 +205,25 @@ This prevents the system from managing malloc logging entirely, eliminating the 
 
 **Rule**: Before showing work to the user for feedback, **always start the servers first**:
 1. **Backend**: `cd spine_api && uv run uvicorn spine_api.server:app --port 8000`
-2. **Frontend**: `cd frontend && npm run dev` (Next.js on :3000)
+2. **Frontend**: `cd frontend && npm run dev -- -p 3005` (Next.js on :3005 to avoid Grafana :3000 collision)
 
 **Why**: User needs to see live preview immediately when giving feedback. Don't make them wait or ask them to start servers.
 
 **Verification**: After starting servers, verify:
-- `curl -s http://localhost:8000/health` returns OK
-- `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000` returns 200
+- `curl -s http://localhost:8000/health` returns OK (returns 200)
+- `curl -s http://localhost:8000/metrics` returns OK (returns 200)
+- `curl -s -o /dev/null -w "%{http_code}" http://localhost:3005` returns 200
+
+## Strict Visual E2E Verification Standard
+
+- **Always Start Servers**: Before capturing UI screenshots, start both backend (`spine_api` on `:8000`) and frontend (`frontend` on `:3005`).
+- **Pre-Hydrate Auth**: Ensure client session state is pre-hydrated (`isAuthenticated: true`) so protected routes (`/workbench`) render full UI content instead of loading/session notices.
+- **Inspect Before Presenting**: Never attach or claim screenshots are "proof" without viewing them first via `view_file` to confirm clean, non-blank, fully rendered UI content.
+
+## Commit Gate & Code Quality Standard
+
+- **Linter Zero-Warning Policy**: Run `uv run ruff check --fix .` before staging changes to ensure zero lint errors hit the pre-commit gate.
+- **Motto Attestation Protocol**: Execute section attestations (`attest_motto_commit.py`) with real evidence strings, ensuring `SECTION_00_INTEGRATED` is recorded last, and respect the required review duration without attempting to bypass or skip gates.
 
 ## Naming Conventions (Critical — Prevent Future Symlinks)
 

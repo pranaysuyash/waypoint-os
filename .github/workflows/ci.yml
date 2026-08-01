@@ -12,28 +12,49 @@ concurrency:
 
 jobs:
   # ──────────────────────────────────────────────
-  # Documentation quality (existing, preserved)
+  # Documentation quality — ratchet mode (2026-08-01)
+  # The legacy corpus (~1,900 md files, 337k lint violations) predates this
+  # gate; zeroing it is not a launch task. Same philosophy as the F401
+  # allowlist gate: no NEW violations. Lint/link-check only the markdown
+  # files changed in this push/PR; new and edited docs must be clean.
   # ──────────────────────────────────────────────
   docs-quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Markdown lint
-        uses: DavidAnson/markdownlint-cli2-action@v17
         with:
-          globs: |
-            **/*.md
-      - name: Link check
-        uses: lycheeverse/lychee-action@v2
-        with:
-          args: >-
-            --no-progress
-            --exclude-mail
-            --glob
-            --exclude "^http://127\\\\.0\\\\.0\\\\.1"
-            --exclude "^http://localhost"
-            --exclude "^/Users/"
-            "**/*.md"
+          fetch-depth: 0
+      - name: Determine changed markdown files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          # First push of a branch has an all-zero `before`; fall back to merge-base with default branch
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE=$(git merge-base HEAD origin/${{ github.event.repository.default_branch }} || echo "")
+          fi
+          FILES=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- '*.md' || true)
+          if [ -z "$FILES" ]; then
+            echo "files=[]" >> "$GITHUB_OUTPUT"
+          else
+            echo "files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Markdown lint (changed files only)
+        if: steps.changed.outputs.files != '[]'
+        run: npx -y markdownlint-cli2 ${{ steps.changed.outputs.files }}
+      - name: Link check (changed files only)
+        if: steps.changed.outputs.files != '[]'
+        run: |
+          npx -y lychee --no-progress --exclude-mail \
+            --exclude "^http://127\.0\.0\.1" \
+            --exclude "^http://localhost" \
+            --exclude "^/Users/" \
+            ${{ steps.changed.outputs.files }}
 
   # ──────────────────────────────────────────────
   # Backend lint (ruff)

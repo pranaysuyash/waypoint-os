@@ -76,7 +76,9 @@ export default function BookingExecutionPanel({ tripId, stage }: BookingExecutio
   }, [tripId]);
 
   useEffect(() => {
-    fetchTasks();
+    void (async () => {
+      await fetchTasks();
+    })();
   }, [fetchTasks]);
 
   const canGenerate = stage ? GENERATE_ALLOWED_STAGES.has(stage) : false;

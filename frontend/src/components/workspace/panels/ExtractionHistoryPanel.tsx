@@ -73,7 +73,9 @@ export function ExtractionHistoryPanel({
   }, [tripId, documentId]);
 
   useEffect(() => {
-    fetchAttempts();
+    void (async () => {
+      await fetchAttempts();
+    })();
   }, [fetchAttempts]);
 
   const handleRetry = async () => {

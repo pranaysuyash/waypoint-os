@@ -202,7 +202,9 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   }, [tripId, selectedStage]);
 
   useEffect(() => {
-    fetchAll();
+    void (async () => {
+      await fetchAll();
+    })();
   }, [fetchAll]);
 
   const events = timeline?.events ?? [];

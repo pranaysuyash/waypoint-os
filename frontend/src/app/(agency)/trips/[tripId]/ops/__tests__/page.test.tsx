@@ -87,7 +87,7 @@ describe('Trip Workspace Ops page', () => {
       destination: 'Maldives',
       dateWindow: 'Aug 2026',
       budget: '₹7,500',
-      party: '2 pax',
+      party: 2,
     } as Trip;
 
     render(

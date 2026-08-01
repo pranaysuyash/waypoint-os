@@ -17,8 +17,8 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
     budget: "1200000",
     status: "new",
     rawInput: { fixture_id: "trip_test_fixture" },
-    decision: null,
-    validation: null,
+    decision: undefined,
+    validation: undefined,
     tripPriorities: "slow pace, vegetarian food",
     ...overrides,
   };

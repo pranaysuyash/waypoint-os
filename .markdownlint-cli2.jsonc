@@ -1,0 +1,11 @@
+{
+  // Project markdown style — ratchet gate for changed docs (see ci.yml docs-quality).
+  // MD013 (80-char line length) and MD060 (table column style) are disabled:
+  // this repo's docs use wide tables and long URLs/code refs; enforcing 80-char
+  // lines would mangle tables and adds no information. Structural hygiene
+  // rules (headings, blanks, fences, lists) remain enforced on changed files.
+  "config": {
+    "MD013": false,
+    "MD060": false
+  }
+}

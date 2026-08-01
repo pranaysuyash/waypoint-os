@@ -63,7 +63,9 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
   }, [tripId, onDocumentsChange]);
 
   useEffect(() => {
-    fetchDocuments();
+    void (async () => {
+      await fetchDocuments();
+    })();
   }, [fetchDocuments]);
 
   const handleDocUpload = useCallback(async () => {

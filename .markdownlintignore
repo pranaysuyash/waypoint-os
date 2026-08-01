@@ -1,0 +1,24 @@
+# Tool/skill stores and generated dirs — not project documentation
+.agents/
+.agent/
+.claude/
+.clawpatch/
+.commandcode/
+.deepseek/
+.gstack/
+.kiro/
+.qwen/
+.runtime/
+node_modules/
+frontend/node_modules/
+.venv/
+.playwright-mcp/
+.playwright-profile*/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+Archive/
+notebooks/
+scratch/
+tmp/
+output/
