@@ -103,7 +103,7 @@ export function PublicFooter() {
         <Link href='/'>For agencies</Link>
         <Link href='/itinerary-checker'>Itinerary Checker</Link>
         <Link href='/login'>Sign in</Link>
-        <Link href='/signup'>Book a demo</Link>
+        <Link href='/signup'>Create workspace</Link>
       </div>
     </footer>
   );

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getTripRoute,
+  getTripRepairRoute,
   getPostRunTripRoute,
   getWorkbenchTripHref,
   getWorkbenchTripId,
@@ -49,6 +50,17 @@ describe('getTripRoute', () => {
   it('falls back to /trips for falsy tripId', () => {
     expect(getTripRoute(null, 'ops')).toBe('/trips');
     expect(getTripRoute(undefined, 'ops')).toBe('/trips');
+  });
+});
+
+describe('getTripRepairRoute', () => {
+  it('points blocked or missing-detail repairs to the trip workspace intake surface', () => {
+    expect(getTripRepairRoute('trip_abc')).toBe('/trips/trip_abc/intake');
+  });
+
+  it('falls back through the canonical trip route guard for missing ids', () => {
+    expect(getTripRepairRoute(null)).toBe('/trips');
+    expect(getTripRepairRoute(undefined)).toBe('/trips');
   });
 });
 

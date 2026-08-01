@@ -350,6 +350,34 @@ describe("BFF trip adapters", () => {
     });
   });
 
+  it("normalizes backend safety leak payloads into the frontend safety contract", () => {
+    const tripWithSafety = transformSpineTripToTrip(
+      {
+        ...spineTrip,
+        safety: {
+          strict_leakage: true,
+          is_safe: false,
+          leaks: [
+            "Leakage detected: 'decision_state' in user_message (excerpt: decision state warning)",
+            "Leakage detected: 'confidence_score' in system_context (excerpt: confidence score warning)",
+          ],
+          traveler_bundle_leaks: ["Leakage detected: 'decision_state' in user_message (excerpt: decision state warning)"],
+          sanitized_view_leaks: ["Leakage detected: 'confidence_score' in system_context (excerpt: confidence score warning)"],
+        },
+      },
+      now
+    );
+
+    expect(tripWithSafety.safety).toMatchObject({
+      strict_leakage: true,
+      leakage_passed: false,
+      leakage_errors: [
+        "Leakage detected: 'decision_state' in user_message (excerpt: decision state warning)",
+        "Leakage detected: 'confidence_score' in system_context (excerpt: confidence score warning)",
+      ],
+    });
+  });
+
   it("preserves frontier_result on trip transform without reshaping payload", () => {
     const tripWithFrontier = transformSpineTripToTrip(
       {

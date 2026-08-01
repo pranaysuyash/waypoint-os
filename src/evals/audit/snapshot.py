@@ -10,6 +10,7 @@ from typing import Any
 
 from src.evals.agentic_feedback import (
     DEFAULT_ROUTING_HEALTH_THRESHOLDS,
+    build_routing_metrics,
     check_routing_health,
 )
 
@@ -327,7 +328,8 @@ def build_gate_snapshot(
     report = run_eval_suite(fixtures, rule_runner=_rule_dispatch)
 
     # --- routing health gate ---
-    routing_health = check_routing_health({})
+    routing_metrics = build_routing_metrics([])
+    routing_health = check_routing_health(routing_metrics)
 
     # --- extraction accuracy gate ---
     extraction_eval_report = _run_extraction_baseline(
@@ -384,6 +386,8 @@ def build_gate_snapshot(
             "status": routing_health.status,
             "blocks_ci": routing_health.status == "critical",
             "thresholds": dict(DEFAULT_ROUTING_HEALTH_THRESHOLDS),
+            "alerts": [asdict(a) for a in routing_health.alerts],
+            "metrics_snapshot": routing_health.metrics_snapshot,
             "checked_at": routing_health.checked_at.isoformat(),
         },
         "extraction_health": extraction_eval_report,
@@ -422,6 +426,8 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
             "status": routing_health.get("status"),
             "blocks_ci": routing_health.get("blocks_ci"),
             "thresholds": routing_health.get("thresholds"),
+            "alerts": routing_health.get("alerts"),
+            "metrics_snapshot": routing_health.get("metrics_snapshot"),
         }
     extraction_health = snapshot.get("extraction_health")
     stable_extraction: dict[str, Any] | None = None

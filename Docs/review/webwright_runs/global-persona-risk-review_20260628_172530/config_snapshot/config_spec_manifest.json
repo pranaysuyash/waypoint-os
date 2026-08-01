@@ -1,0 +1,16 @@
+[
+  {
+    "index": 0,
+    "spec": "base.yaml",
+    "kind": "file",
+    "resolved_path": "/Users/pranay/Projects/external-skills/Webwright/src/webwright/config/base.yaml",
+    "saved_copy": "/Users/pranay/Projects/travel_agency_agent/Docs/review/webwright_runs/global-persona-risk-review_20260628_172530/config_snapshot/00_base.yaml"
+  },
+  {
+    "index": 1,
+    "spec": "model_openai.yaml",
+    "kind": "file",
+    "resolved_path": "/Users/pranay/Projects/external-skills/Webwright/src/webwright/config/model_openai.yaml",
+    "saved_copy": "/Users/pranay/Projects/travel_agency_agent/Docs/review/webwright_runs/global-persona-risk-review_20260628_172530/config_snapshot/01_model_openai.yaml"
+  }
+]

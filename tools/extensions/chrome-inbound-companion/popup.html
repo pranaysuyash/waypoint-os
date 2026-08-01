@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waypoint OS - Ingestion Companion</title>
+  <style>
+    :root {
+      --bg-primary: #0F172A;
+      --bg-card: #1E293B;
+      --accent: #38BDF8;
+      --accent-hover: #0284C7;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --success: #34D399;
+      --warning: #FBBF24;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      width: 360px;
+      background: var(--bg-primary);
+      color: var(--text-main);
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--accent);
+    }
+
+    .badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    textarea, input, select {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-main);
+      padding: 8px 10px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus, input:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    textarea {
+      height: 90px;
+      resize: vertical;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      width: 100%;
+      background: var(--accent);
+      color: #0F172A;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status-panel {
+      margin-top: 14px;
+      padding: 12px;
+      background: var(--bg-card);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      display: none;
+    }
+
+    .status-panel.active {
+      display: block;
+    }
+
+    .state-tag {
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--success);
+      margin-bottom: 6px;
+    }
+
+    .prompt-box {
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 8px;
+      border-radius: 4px;
+      border-left: 3px solid var(--accent);
+      color: var(--text-muted);
+      word-break: break-word;
+    }
+    .pii-banner {
+      display: none;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
+    .pii-banner.pii-hidden { display: none; }
+
+    .pii-banner.pii-amber {
+      display: block;
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      color: #fbbf24;
+    }
+
+    .pii-banner.pii-red {
+      display: block;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #ef4444;
+    }
+
+    .pii-banner .pii-banner-text {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .pii-detail {
+      white-space: pre-line;
+      font-size: 10px;
+      opacity: 0.8;
+    }
+
+    .pii-override-btn {
+      display: none;
+      margin-top: 6px;
+      background: none;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 4px;
+      color: #ef4444;
+      font-size: 10px;
+      padding: 3px 8px;
+      cursor: pointer;
+    }
+
+    .pii-override-btn:hover { background: rgba(239, 68, 68, 0.1); }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .offline-badge {
+      display: none;
+      font-size: 10px;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .settings-link {
+      font-size: 10px;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-decoration: none;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .settings-link:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <span>Waypoint OS</span>
+      <span class="badge">Inbound Sync</span>
+    </div>
+    <button class="settings-link" id="settingsLink" title="Open settings">⚙ Settings</button>
+  </div>
+
+  <div class="form-group">
+    <label for="channel">Source Channel</label>
+    <select id="channel">
+      <option value="chrome_extension">Chrome Extension (Selected Text)</option>
+      <option value="whatsapp_web">WhatsApp Web</option>
+      <option value="email">Gmail / Email</option>
+      <option value="manual_paste">Manual Paste</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="rawText">Raw Inquiry Text</label>
+    <textarea id="rawText" placeholder="Paste or select WhatsApp message, email body, or client notes..."></textarea>
+  </div>
+
+  <div class="row">
+    <div class="form-group" style="flex: 1;">
+      <label for="customerName">Customer Name</label>
+      <input type="text" id="customerName" placeholder="e.g. John Doe">
+    </div>
+    <div class="form-group" style="flex: 1;">
+      <label for="customerContact">Contact Info</label>
+      <input type="text" id="customerContact" placeholder="Phone or Email">
+    </div>
+  </div>
+
+  <div class="pii-banner pii-hidden" id="piiBanner">
+    <div class="pii-banner-text">🔍 PII detected — review before sending</div>
+    <div class="pii-detail" id="piiDetail"></div>
+    <button class="pii-override-btn" id="overridePiiBtn">Send anyway</button>
+  </div>
+
+  <button class="btn" id="parseBtn">Ingest &amp; Sync to Waypoint OS</button>
+
+  <div class="footer">
+    <span class="offline-badge" id="offlineBadge">0 pending</span>
+  </div>
+
+  <div class="status-panel" id="statusPanel">
+    <div class="state-tag" id="stateTag">✓ READY FOR STRATEGY</div>
+    <div style="font-size: 11px; margin-bottom: 6px;" id="tripIdText">Trip ID: trip_123</div>
+    <label>Suggested Follow-Up Prompt</label>
+    <div class="prompt-box" id="promptText">...</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

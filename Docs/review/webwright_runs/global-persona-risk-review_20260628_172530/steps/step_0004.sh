@@ -1,0 +1,1 @@
+cd /Users/pranay/Projects/travel_agency_agent/Docs/review/webwright_runs/global-persona-risk-review_20260628_172530 && (echo '---PORTS---' && lsof -nP -iTCP -sTCP:LISTEN | sed -n '1,120p' && echo '---CONFIG SNAPSHOT SEARCH---' && grep -RniE '3100|localhost|port' config_snapshot logs .tmp 2>/dev/null | sed -n '1,220p')

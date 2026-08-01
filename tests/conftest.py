@@ -285,7 +285,7 @@ def reset_global_singletons():
 # ---------------------------------------------------------------------------
 
 
-import pytest_asyncio
+import pytest_asyncio  # noqa: E402
 
 
 @pytest_asyncio.fixture

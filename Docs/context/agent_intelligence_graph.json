@@ -21,6 +21,7 @@
       "agent_governance"
     ],
     "Docs/EXPLORATION_FRONTIER.md": [
+      "feedback_learning",
       "agent_governance"
     ],
     "Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md": [
@@ -140,6 +141,12 @@
       "relation": "supports",
       "source": "doc:Docs/CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md",
       "target": "concept:graph",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/EXPLORATION_FRONTIER.md",
+      "target": "concept:feedback",
       "weight": 1
     },
     {

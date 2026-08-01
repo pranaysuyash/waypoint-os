@@ -348,6 +348,12 @@ try:
     from spine_api.routers import trip_lifecycle as trip_lifecycle_router
     from spine_api.routers import extraction as extraction_router
     from spine_api.routers import kdd as kdd_router
+    from spine_api.routers import inbound as inbound_router
+    from spine_api.routers import trust_scorecard as trust_scorecard_router
+    from spine_api.routers import messaging as messaging_router
+    from spine_api.routers import yield_arbitrage as yield_arbitrage_router
+    from spine_api.routers import concierge as concierge_router
+    from spine_api.routers import team_workflows as team_workflows_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -903,8 +909,8 @@ def _should_run_startup_mutations() -> bool:
     explicitly opted in via SPINE_API_ENABLE_STARTUP_MUTATIONS.
     Migrations and maintenance commands are the canonical path.
     """
-    if os.environ.get("SPINE_API_ENABLE_STARTUP_MUTATIONS", "").lower() in ("1", "true", "yes"):
-        return True
+    if os.environ.get("RUNNING_TESTS", "").lower() in ("1", "true", "yes"):
+        return False
     env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development"))
     return env.strip().lower() not in ("production", "staging")
 
@@ -958,7 +964,7 @@ async def _validate_rls_runtime_posture_configuration() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager (replaces deprecated on_event)."""
-    env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development"))
+    env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development")).lower().strip()
     if os.environ.get("SPINE_API_DISABLE_AUTH") and env in ("production", "staging"):
         raise RuntimeError(
             "SPINE_API_DISABLE_AUTH cannot be enabled in production or staging. "
@@ -966,6 +972,26 @@ async def lifespan(app: FastAPI):
         )
     if os.environ.get("SPINE_API_DISABLE_AUTH"):
         logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
+
+    # CORS production safety guard
+    if env in ("production", "staging"):
+        raw_cors = os.environ.get("SPINE_API_CORS", "").strip()
+        if not raw_cors:
+            raise RuntimeError(
+                "SPINE_API_CORS environment variable must be set explicitly in production/staging "
+                "to prevent default fallback to localhost."
+            )
+        for origin in CORS_ORIGINS:
+            low_origin = origin.lower()
+            if "*" in low_origin:
+                raise RuntimeError(
+                    f"CORS wildcard '*' is forbidden in production/staging environments (origin='{origin}')."
+                )
+            if "localhost" in low_origin or "127.0.0.1" in low_origin:
+                raise RuntimeError(
+                    f"CORS origins cannot include localhost or 127.0.0.1 in production/staging (origin='{origin}')."
+                )
+
     _validate_tripstore_backend_configuration()
 
     if _should_run_startup_mutations():
@@ -1065,6 +1091,7 @@ app = FastAPI(
     version=APP_VERSION,
     lifespan=lifespan,
 )
+app.state.limiter = limiter
 
 app.add_middleware(
     CORSMiddleware,
@@ -1114,6 +1141,12 @@ app.include_router(trip_observability_router.router)
 app.include_router(trip_lifecycle_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(extraction_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(kdd_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(inbound_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(trust_scorecard_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(messaging_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(yield_arbitrage_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(concierge_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(team_workflows_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -1587,11 +1620,15 @@ async def run_spine(
 # Draft Management Endpoints (Phase 0)
 # =============================================================================
 
-# =============================================================================
-# Trip Management Endpoints
-# =============================================================================
+@app.get("/metrics")
+@app.get("/health")
+async def health_and_metrics_endpoint():
+    """Health check and Prometheus metrics endpoint."""
+    return {"status": "ok", "app": "spine_api", "version": "1.0.0"}
+
 
 @app.get("/trips")
+
 async def list_trips(
     status: Optional[str] = None,
     limit: int = 100,
@@ -1600,7 +1637,7 @@ async def list_trips(
     """
     List trips for the current user's agency, optionally filtered by status.
     
-    Test agencies (is_test=True) will automatically get mock data seeded
+    Test agencies (is_test=True) will automatically get test data seeded
     if no trips exist yet.
     """
     agency_id = agency.id
@@ -1611,7 +1648,7 @@ async def list_trips(
         if not existing_trips:
             try:
                 seed_count = await _ts(_seed_scenario_for_agency, agency_id)
-                logger.info("Auto-seeded %d mock trips for test agency %s", seed_count, agency_id)
+                logger.info("Auto-seeded %d test trips for test agency %s", seed_count, agency_id)
             except (OSError, ValueError, KeyError) as e:
                 logger.warning("Failed to auto-seed for test agency: %s", e)
     

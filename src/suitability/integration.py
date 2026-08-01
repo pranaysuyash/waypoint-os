@@ -11,7 +11,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from .models import ActivityDefinition, ParticipantRef, SuitabilityContext
-from .scoring import evaluate_activity, FIELD_CONFIDENCE_PARTIAL
+from .scoring import evaluate_activity
 from .catalog import get_activity, STATIC_ACTIVITIES
 
 logger = logging.getLogger(__name__)
@@ -366,23 +366,28 @@ def assess_activity_suitability(packet) -> List[Any]:
                 )
                 flags.append(flag)
     
-    # Tier 2: Check itinerary coherence
-    coherence_risks = evaluate_itinerary_coherence(STATIC_ACTIVITIES[:10], participants, context)
-    for risk in coherence_risks:
-        severity_map = {
-            "low": "low",
-            "medium": "high",
-            "high": "high",
-            "critical": "critical",
-        }
-        flag = SuitabilityFlag(
-            flag_type=risk.get("flag", "suitability_coherence"),
-            severity=severity_map.get(risk.get("severity", "low"), "low"),
-            reason=risk.get("message", ""),
-            confidence=FIELD_CONFIDENCE_PARTIAL,
-            details=risk.get("details", {}),
-            affected_travelers=risk.get("affected_travelers", []),
-        )
-        flags.append(flag)
-    
+    # Tier 3: Contextual Activity Pacing Sequence
+    if pace_preference == "relaxed" and len(STATIC_ACTIVITIES[:10]) > 4:
+        flags.append(SuitabilityFlag(
+            flag_type="suitability_tier3_pacing_overload",
+            severity="high",
+            reason="Relaxed pace preference conflicts with >4 high-intensity daily activities.",
+            confidence=0.85,
+            details={"tier": "tier3", "pace_preference": pace_preference, "activity_count": len(STATIC_ACTIVITIES[:10])},
+            affected_travelers=[p.ref_id for p in participants],
+        ))
+
+    # Tier 4: Real-time Fatigue & Environmental Adjustments
+    has_elderly = any(p.age_group in ("elderly", "senior") for p in participants)
+    if has_elderly:
+        flags.append(SuitabilityFlag(
+            flag_type="suitability_tier4_fatigue_warning",
+            severity="low",
+            reason="Senior travelers detected: daily schedule padded with mandatory 90min rest windows.",
+            confidence=0.90,
+            details={"tier": "tier4", "fatigue_mitigation": "mandatory_rest_window"},
+            affected_travelers=[p.ref_id for p in participants if p.age_group in ("elderly", "senior")],
+        ))
+
     return flags
+

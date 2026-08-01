@@ -1,5 +1,9 @@
 # Institutional Memory Additive Data Model — Backward Compatibility Review
 
+## Status Note
+
+As of 2026-06-30, this review remains active. The additive packet design is judged safe in principle, but the schema/serialization gate described below is still the thing that keeps it from being fully closed.
+
 **Date**: 2026-06-26
 **Review of**: Adding `template_id`, `supplier_bookings`, `customer_profile_ref`, `playbook_events` to `CanonicalPacket`
 **Status**: ✅ Safe with constraints (3 blocking issues identified)

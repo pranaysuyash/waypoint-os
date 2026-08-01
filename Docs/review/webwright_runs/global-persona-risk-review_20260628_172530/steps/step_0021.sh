@@ -1,0 +1,1 @@
+cd /Users/pranay/Projects/travel_agency_agent/Docs/review/webwright_runs/global-persona-risk-review_20260628_172530 && ls -la && echo '--- plan.md ---' && sed -n '1,240p' plan.md && echo '--- self_reflect_config.json ---' && sed -n '1,260p' self_reflect_config.json && echo '--- screenshots ---' && ls -la screenshots

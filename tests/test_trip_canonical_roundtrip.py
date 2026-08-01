@@ -466,7 +466,8 @@ class TestTripResponseShape:
             "origin", "destination", "dateWindow", "party", "budget",
             "tripType", "tripPurpose", "customerName",
             "party_composition", "pace_preference", "date_year_confidence",
-            "lead_source", "activity_provenance",
+            "activity_interests",
+            "lead_source", "activity_provenance", "frontier_result",
         }
         assert required <= set(result), f"Missing required fields: {required - set(result)}"
         # All optional canonical fields present in schema (may be null)
@@ -489,9 +490,47 @@ class TestTripResponseShape:
             "status": "assigned",
             "trip_priorities": ["budget conscious", "relaxed pace"],
             "date_flexibility": ["plus or minus 2 days"],
+            "activity_interests": ["sightseeing", "business offsite"],
         }
 
         result = TripResponse.from_dict(trip)
 
         assert result.trip_priorities == "budget conscious, relaxed pace"
         assert result.date_flexibility == "plus or minus 2 days"
+        assert result.activity_interests == "sightseeing, business offsite"
+
+    def test_from_dict_preserves_frontier_result(self):
+        trip = {
+            "id": "trip_frontier",
+            "status": "assigned",
+            "frontier_result": {
+                "ghost_triggered": True,
+                "sentiment_score": 0.84,
+                "anxiety_alert": False,
+            },
+        }
+
+        result = TripResponse.from_dict(trip)
+
+        assert result.frontier_result is not None
+        assert result.frontier_result.ghost_triggered is True
+        assert result.frontier_result.sentiment_score == 0.84
+
+    def test_from_dict_preserves_safety_payload(self):
+        trip = {
+            "id": "trip_safety",
+            "status": "assigned",
+            "safety": {
+                "leaks": ["decision_state", "confidence_score"],
+                "traveler_bundle_leaks": ["decision_state"],
+                "sanitized_view_leaks": ["confidence_score"],
+                "leakage_errors": ["decision_state", "confidence_score"],
+                "leakage_passed": False,
+                "strict_leakage": True,
+                "is_safe": False,
+            },
+        }
+
+        result = TripResponse.from_dict(trip)
+
+        assert result.safety == trip["safety"]

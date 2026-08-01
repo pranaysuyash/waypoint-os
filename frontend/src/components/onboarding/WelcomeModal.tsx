@@ -9,10 +9,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { X, Compass, Inbox, MessageSquare, Settings } from 'lucide-react';
-import { Modal } from '@/components/ui/modal';
+import { usePathname, useRouter } from 'next/navigation';
+import { Compass, Inbox, MessageSquare, Settings, Sparkles, X } from 'lucide-react';
 
 const WELCOME_SEEN_KEY = 'waypoint:welcome-seen:v1';
 
@@ -24,7 +22,9 @@ export interface WelcomeModalProps {
 export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hasSeenWelcome, setHasSeenWelcome] = useState(true);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
   const { push } = useRouter();
+  const pathname = usePathname();
 
   // Check localStorage on mount and when auth state changes
   useEffect(() => {
@@ -47,6 +47,13 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
     setIsOpen(true);
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    const updateViewport = () => setIsCompactViewport(window.innerWidth < 640);
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
+
   const dismiss = useCallback(() => {
     try {
       localStorage.setItem(WELCOME_SEEN_KEY, '1');
@@ -63,36 +70,106 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   }, [dismiss, push]);
 
   // Don't render anything if already seen
-  if (hasSeenWelcome) return null;
+  if (hasSeenWelcome || pathname.startsWith('/workbench')) return null;
 
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={dismiss}
-      title="Welcome to Waypoint"
-      size="md"
-      closeOnOverlay={false}
+  const preferCompactCard = isCompactViewport;
+
+  return preferCompactCard ? (
+    <div
+      className="fixed inset-x-2 bottom-2 z-40 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-sm"
+      style={{
+        background: 'rgba(13,17,23,0.94)',
+        borderColor: 'rgba(48,54,61,0.95)',
+      }}
+      aria-label="Welcome to Waypoint"
     >
-      <div className="space-y-6">
-        <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          Your workspace is ready. Here are the key areas to get started.
-        </p>
+      <div className="flex items-start gap-3 p-3 border-b" style={{ borderColor: 'rgba(48,54,61,0.85)' }}>
+        <div className="size-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(88,166,255,0.12)', border: '1px solid rgba(88,166,255,0.18)' }}
+        >
+          <Sparkles className="size-4" style={{ color: 'var(--accent-blue)' }} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[14px] font-semibold text-[#e6edf3] truncate">Welcome to Waypoint</h2>
+          <p className="mt-0.5 text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            Your workspace is ready. These shortcuts won&apos;t block the app.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="rounded-lg p-1.5 transition-colors hover:bg-[#161b22]"
+          aria-label="Close welcome card"
+        >
+          <X className="size-4 text-[#8b949e]" />
+        </button>
+      </div>
 
-        {/* Quick links */}
-        <div className="space-y-2">
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => handleNavigate('/workbench?draft=new&tab=intake')}
+          className="flex-1 rounded-lg border px-3 py-2 text-left text-[12px] transition-colors"
+          style={{
+            background: 'var(--bg-surface)',
+            borderColor: 'var(--border-default)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          Open intake
+        </button>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors"
+          style={{
+            background: 'var(--accent-blue)',
+            color: '#fff',
+          }}
+        >
+          Get started
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div
+      className="fixed bottom-4 right-4 z-40 w-[min(92vw,28rem)] rounded-2xl border shadow-2xl backdrop-blur-sm"
+      style={{
+        background: 'rgba(13,17,23,0.94)',
+        borderColor: 'rgba(48,54,61,0.95)',
+      }}
+      aria-label="Welcome to Waypoint"
+    >
+        <div className="flex items-start gap-3 p-4 border-b" style={{ borderColor: 'rgba(48,54,61,0.85)' }}>
+          <div className="size-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(88,166,255,0.12)', border: '1px solid rgba(88,166,255,0.18)' }}
+          >
+            <Sparkles className="size-5" style={{ color: 'var(--accent-blue)' }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[15px] font-semibold text-[#e6edf3] truncate">Welcome to Waypoint</h2>
+            <p className="mt-1 text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Your workspace is ready. These shortcuts won&apos;t block the rest of the app.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="rounded-lg p-2 transition-colors hover:bg-[#161b22]"
+            aria-label="Close welcome card"
+          >
+            <X className="size-4 text-[#8b949e]" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-2">
           <button
             type="button"
             onClick={() => handleNavigate('/workbench?draft=new&tab=intake')}
-            className="w-full flex items-center gap-4 p-3.5 rounded-xl border transition-colors text-left"
+            className="w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left"
             style={{
               background: 'var(--bg-surface)',
               borderColor: 'var(--border-default)',
-            }}
-            onMouseEnter={(e) => {
-              Object.assign(e.currentTarget.style, { borderColor: 'var(--accent-blue)', background: 'var(--bg-elevated)' });
-            }}
-            onMouseLeave={(e) => {
-              Object.assign(e.currentTarget.style, { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' });
             }}
           >
             <div className="size-9 rounded-lg flex items-center justify-center shrink-0"
@@ -113,16 +190,10 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
           <button
             type="button"
             onClick={() => handleNavigate('/inbox')}
-            className="w-full flex items-center gap-4 p-3.5 rounded-xl border transition-colors text-left"
+            className="w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left"
             style={{
               background: 'var(--bg-surface)',
               borderColor: 'var(--border-default)',
-            }}
-            onMouseEnter={(e) => {
-              Object.assign(e.currentTarget.style, { borderColor: 'var(--accent-blue)', background: 'var(--bg-elevated)' });
-            }}
-            onMouseLeave={(e) => {
-              Object.assign(e.currentTarget.style, { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' });
             }}
           >
             <div className="size-9 rounded-lg flex items-center justify-center shrink-0"
@@ -143,16 +214,10 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
           <button
             type="button"
             onClick={() => handleNavigate('/settings')}
-            className="w-full flex items-center gap-4 p-3.5 rounded-xl border transition-colors text-left"
+            className="w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left"
             style={{
               background: 'var(--bg-surface)',
               borderColor: 'var(--border-default)',
-            }}
-            onMouseEnter={(e) => {
-              Object.assign(e.currentTarget.style, { borderColor: 'var(--accent-blue)', background: 'var(--bg-elevated)' });
-            }}
-            onMouseLeave={(e) => {
-              Object.assign(e.currentTarget.style, { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' });
             }}
           >
             <div className="size-9 rounded-lg flex items-center justify-center shrink-0"
@@ -169,50 +234,41 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
               </div>
             </div>
           </button>
-        </div>
 
-        {/* Tips */}
-        <div className="rounded-xl border p-4" style={{ borderColor: 'rgba(88,166,255,0.20)', background: 'rgba(88,166,255,0.04)' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <Compass className="size-4" style={{ color: 'var(--accent-blue)' }} />
-            <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-blue)' }}>
-              Pro tip
-            </span>
+          <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(88,166,255,0.20)', background: 'rgba(88,166,255,0.04)' }}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Compass className="size-4" style={{ color: 'var(--accent-blue)' }} />
+              <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-blue)' }}>
+                Pro tip
+              </span>
+            </div>
+            <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Press{' '}
+              <kbd className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+                {typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl'}
+              </kbd>
+              {' + '}
+              <kbd className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+                N
+              </kbd>
+              {' '}anywhere to start a new inquiry quickly.
+            </p>
           </div>
-          <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            Press{' '}
-            <kbd className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
-              {typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl'}
-            </kbd>
-            {' + '}
-            <kbd className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
-              N
-            </kbd>
-            {' '}anywhere to start a new inquiry quickly.
-          </p>
-        </div>
 
-        {/* Footer */}
-        <div className="flex justify-end pt-2">
-          <button
-            type="button"
-            onClick={dismiss}
-            className="px-5 py-2 rounded-lg text-[13px] font-semibold transition-colors"
-            style={{
-              background: 'var(--accent-blue)',
-              color: '#fff',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.opacity = '0.9';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.opacity = '1';
-            }}
-          >
-            Get started
-          </button>
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={dismiss}
+              className="px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors"
+              style={{
+                background: 'var(--accent-blue)',
+                color: '#fff',
+              }}
+            >
+              Get started
+            </button>
+          </div>
         </div>
-      </div>
-    </Modal>
+    </div>
   );
 }

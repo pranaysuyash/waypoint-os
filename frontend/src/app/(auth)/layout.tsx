@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './auth.css';
 
 export const metadata: Metadata = {
-  title: 'Waypoint OS - Sign In',
-  description: 'Sign in to your Waypoint workspace',
+  title: 'Waypoint OS - Access',
+  description: 'Sign in to your Waypoint workspace or create a new one.',
 };
 
 export default function AuthLayout({

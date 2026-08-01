@@ -1,5 +1,9 @@
 # Deployment & Operations Exploration (#25)
 
+## Status Note
+
+As of 2026-06-30, this exploration remains active. The synthesis is useful as a planning base, but the P0/P1 production gaps documented below are still open and should not be treated as archive material.
+
 **Status**: 🔴 High Priority — blocking production release  
 **Topic ID**: 25  
 **Parent**: [EXPLORATION_TOPICS.md](../EXPLORATION_TOPICS.md)  

@@ -694,15 +694,7 @@ export interface TripListResponse {
   total: number;
 }
 /**
- * Canonical response shape for individual trip endpoints.
- *
- * Uses resolve_trip_field() as the single source of truth for field resolution —
- * no ad-hoc path hunting here. Any field not in this model is invisible to the
- * frontend; add fields here and regenerate TypeScript types via openapi-typescript.
- *
- * `extracted` is passed through opaquely so backend integration tests that
- * verify fact-sync side effects can still inspect raw extracted data.
- * Frontend consumers should use the resolved canonical fields above.
+ * Canonical mutable fields accepted by PATCH /trips/{trip_id}.
  */
 export interface TripPatchRequest {
   status?: string | null;
@@ -722,7 +714,19 @@ export interface TripPatchRequest {
   contact_name?: string | null;
   customer_message?: string | null;
   agent_notes?: string | null;
+  party_composition?: string | null;
 }
+/**
+ * Canonical response shape for individual trip endpoints.
+ *
+ * Uses resolve_trip_field() as the single source of truth for field resolution —
+ * no ad-hoc path hunting here. Any field not in this model is invisible to the
+ * frontend; add fields here and regenerate TypeScript types via openapi-typescript.
+ *
+ * `extracted` is passed through opaquely so backend integration tests that
+ * verify fact-sync side effects can still inspect raw extracted data.
+ * Frontend consumers should use the resolved canonical fields above.
+ */
 export interface TripResponse {
   id: string;
   status: string;
@@ -747,11 +751,16 @@ export interface TripResponse {
   strategy?: {
     [k: string]: unknown;
   } | null;
+  frontier_result?: FrontierOrchestrationResult | null;
+  safety?: {
+    [k: string]: unknown;
+  } | null;
   party_composition?: string | null;
   pace_preference?: string | null;
   date_year_confidence?: string | null;
   lead_source?: string | null;
   activity_provenance?: string | null;
+  activity_interests?: string | null;
   trip_priorities?: string | null;
   date_flexibility?: string | null;
 }

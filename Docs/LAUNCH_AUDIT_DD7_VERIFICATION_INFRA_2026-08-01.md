@@ -1,0 +1,68 @@
+# DD-7: Verification Infrastructure — Deep-Dive
+
+**Date**: 2026-08-01 · **Parent**: `Docs/LAUNCH_AUDIT_BASELINE_2026-08-01.md` (H11)
+**Evidence tier**: Tier 2 — both test suites executed in full this session; CI history inspected via `gh`.
+
+---
+
+## V0 — Headline: there is no working CI, and the suite is not green
+
+- **Remote reality**: `origin/master` has exactly one workflow, `run-contract-guard.yml` — which **failed on every run of its life** (last 12+ runs all red, 2026-06-21 → 2026-06-23), then was disabled (renamed `.disabled`) in a local commit. Its failure cause: a **markdown-lint glob misconfiguration** (88,982 errors — it linted `.agents/skills/`, all of `Docs/`, everything), not contract failures.
+- **Local reality**: the good-looking `ci.yml` (ruff + backend pytest on Postgres 16 + D6 snapshot + frontend tsc/eslint) is committed in the unpushed `d13f38b "guard-test"` commit (local master is 1 ahead of origin) and **has never run anywhere**. `deploy.yml` is uncommitted (DD-2).
+- Net: nothing currently gates anything. The last green-gate signal this repo ever had is unknown.
+
+## V1 — Backend suite reality (executed this session: 95s)
+
+**2,864 passed / 144 failed / 10 skipped** (3,018 collected). Failure classification:
+
+| Class | Tests | Verdict |
+|---|---|---|
+| `AttributeError: 'ParticipantRef' object has no attribute 'age_group'` at `src/suitability/integration.py:381` | 14 (`test_feature_gates.py`) | **Real production bug** — suitability integration references a nonexistent field. Suitability paths hit this at runtime. |
+| FK violations `booking_collection_tokens_trip_id_fkey`, `booking_documents_trip_id_fkey` | ~81 (`test_booking_collection.py` 32, `test_document_extractions.py` 27, `test_booking_documents.py` 22) | **Test-environment coupling** — tests run against the persistent dev DB (`waypoint_os`, via ambient `DATABASE_URL`) and violate FK constraints; almost certainly pass on CI's fresh Postgres. Two problems: (a) local runs pollute the shared dev DB (a contributor to the 18,734-trip accumulation in `KNOWN_TEST_DATA_ACCUMULATION.md`), (b) pass/fail depends on which DB you point at — non-deterministic suite. |
+| `KeyError: 'trip_id'` in `test_trust_scorecard_router.py:40,72` | 2 (+ `test_team_workflows_router.py` 2, `test_yield_arbitrage_router.py` 1, `test_concierge_router.py` 2, `test_messaging_router.py` 1) | **Test/contract drift on the 2026-07-29 "verified" features** — the tests that DO exist for the Jul-29 priorities fail. Directly falsifies the review doc's "PASSED / Tier-3 verified" claims (DD-8). |
+| Vision extraction (needs OpenAI key) | 5 | Environmental; CI correctly ignores these 2 files. |
+| Timeline/payments/orchestration/misc | ~15 | Mixed; needs triage (likely env-coupled like class 2). |
+
+**Also**: integration-marked tests skip unless a live server is on :8000 (`tests/conftest.py:159`) — `ci.yml`'s backend job never starts uvicorn, so **integration tests never run in CI even when ci.yml exists**.
+
+## V2 — Frontend suite reality (executed this session: 122s)
+
+**1,205 passed / 18 failed** (160 files). CI runs **only** `route-map.test.ts` — the 18 failures (6 files, e.g. `DecisionPanel.readiness.test.tsx` — readiness-display regressions on a core operator panel) are invisible to CI. The contract-surface test suite that guards the documented 2026-04-29 crash class never runs in CI either.
+
+## V3 — Zero end-to-end automation
+
+No Playwright config, no specs. The critical path (signup → intake → packet → decision → proposal link → traveler view) has never been automatically exercised end-to-end. DD-1/DD-3 findings (broken proposal links, IDORs, dead stage button) are exactly what a golden-path suite catches. **Proposal** (Playwright, ~1 initial commit): five specs — (1) signup/login, (2) intake→decision golden path, (3) proposal link lifecycle incl. expired/unknown token → 404, (4) cross-agency access → 404/401 (DD-3 regression guard), (5) stage advance (DD-1 F4 regression guard). Run against a docker-compose test stack in CI.
+
+## V4 — The recurring root fix: startup config assertion (cross-links DD-1 F0, DD-2 D4, DD-4 L4)
+
+Four deep-dives independently hit the same root: safety posture depends on env vars (`TRIPSTORE_BACKEND`, `ENVIRONMENT`, `DATA_PRIVACY_MODE`, `ENCRYPTION_KEY`, `SPINE_API_DISABLE_AUTH`, `JWT_SECRET`) that silently default to unsafe. **One module** — e.g. `spine_api/core/startup_assertions.py` run at lifespan start: in `production`/`staging`, fail-closed on any missing/unsafe value, and refuse boot if `SPINE_API_DISABLE_AUTH` is set. ~1 commit, kills four bug classes.
+
+## V5 — Smaller items
+
+- **No mypy** (not installed, no config; `.mypy_cache` is stale residue). Backend has zero static type checking. Recommend introducing at `warn`-level on `spine_api/core` + `contract.py` first, ratchet later.
+- **Ruff scope gap**: CI checks `src/ spine_api/ tests/`; 16 errors live outside (root scripts, `alembic/env.py`, notebooks — incl. 2 broken notebook cells with `confidence.overall` used as a kwarg, i.e. notebooks are rotting unexecuted).
+- **Silent-skip classes**: LLM tests skip without keys; RLS tests skip without Postgres — fine, but CI should log skip counts as a visible metric, not bury them.
+- **Root test debris** (ships in repo, bakes into local Docker builds): `test_audit.db`, `test_audit_str.db`, `test_booking.db`, `test_op.txt`, `e2e_test_callcapture.py`, `capture_proofs.js`, `page_inspect.png`, `test_error_click.png`, `test_initial_state.png`, `workbench-fullpage.png`, `.tmp-workbench-signed-in.png` (staged!), 16 `.playwright-profile*/` dirs, `frontend/instrumentation.ts.bak`, dual lockfiles (`pnpm-lock.yaml` + `package-lock.json` — CI uses npm, packageManager field says pnpm 11.8.0).
+
+## Recommended fix order (commit-sized)
+
+1. Push `d13f38b` + commit `deploy.yml` (operator git approval) — nothing else matters until a gate exists.
+2. Fix the real bug: `suitability/integration.py:381` `age_group` (verify against `ParticipantRef` model; the 14 failing tests are the reproduction).
+3. Isolate test DB: conftest forces a dedicated `waypoint_os_test` database (never the dev DB); re-run — expect the ~81 FK failures to resolve to green or expose real bugs.
+4. Widen CI frontend to full vitest; fix or quarantine-with-issue the 18 failures.
+5. Re-enable contract guard with a **fixed lint glob** (repo markdown only, exclude `.agents/`, `.playwright-*`, node_modules).
+6. Start uvicorn in the CI backend job so integration tests execute.
+7. Startup assertion module (V4).
+8. Golden-path Playwright (V3) — can start as local-only, promote to CI after stable.
+9. Debris cleanup + single lockfile decision (pnpm vs npm — CI already picked npm; align `packageManager`).
+
+## "Anything else?" (motto §0.1.1)
+
+- The disabled-guard history is a process lesson (motto §0.3.1 process insight): a gate that fails for the wrong reason (lint glob) got disabled instead of fixed, and the repo then spent 5 weeks with zero gates while 14 ADRs of new features landed. **Never disable a red gate without replacing it in the same commit.**
+- The 18 frontend failures vs "1-file CI" and the 144 backend failures vs "8/8 verified" review doc are the same phenomenon at two layers: **claimed verification diverged from executed verification.** The only durable fix is gates that run everything, every push — which is why V0 item 1 is first.
+- Positive: the suites are fast (95s + 122s), the CI file design is good (real Postgres, migrations, snapshot guard), and 2,864 + 1,205 passing tests show a real testing culture. The infrastructure is 90% there — it was just never switched on.
+- Not verified: whether the ~81 FK failures and ~15 misc failures pass on a fresh DB (item 3 will establish this); whether `gh` secrets (`FLY_API_TOKEN`) exist for DD-2.
+
+## Status
+
+V0–V5 verified with executed evidence. Fix order proposed; items 1–2 are immediate. Next: DD-8 (doc truth reconciliation).

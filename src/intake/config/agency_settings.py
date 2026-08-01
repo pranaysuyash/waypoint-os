@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 logger = logging.getLogger(__name__)
 
-from ..constants import DECISION_STATES_FROZENSET
+from ..constants import DECISION_STATES_FROZENSET  # noqa: E402
 
 # =============================================================================
 # DATA ROOT — where the SQLite DB lives

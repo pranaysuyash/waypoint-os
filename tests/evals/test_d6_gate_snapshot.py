@@ -26,8 +26,11 @@ def test_build_gate_snapshot_includes_routing_health_gate():
     assert rh["status"] == "healthy"
     assert rh["blocks_ci"] is False
     assert isinstance(rh["thresholds"], dict)
+    assert rh["alerts"] == []
     assert rh["thresholds"]["fallback_trigger_rate_warning"] == 0.3
     assert rh["thresholds"]["latency_p95_ms_critical"] == 30_000
+    assert rh["metrics_snapshot"]["fallback_trigger_rate"] == 0.0
+    assert rh["metrics_snapshot"]["review_trigger_rate"] == 0.0
     assert "checked_at" in rh
 
 
@@ -39,6 +42,8 @@ def test_stable_snapshot_view_strips_volatile_timestamp_from_routing_health():
     assert "status" in rh
     assert "blocks_ci" in rh
     assert "thresholds" in rh
+    assert "alerts" in rh
+    assert "metrics_snapshot" in rh
     # Volatile timestamp must not be present
     assert "checked_at" not in rh
 

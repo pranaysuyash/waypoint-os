@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Suspense, useState, useCallback, useEffect, useRef, useReducer } from 'react';
@@ -19,8 +20,11 @@ import { InlineLoading } from '@/components/ui/loading';
 import { useTrip } from '@/hooks/useTrips';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
+import { useSSEStream } from '@/hooks/useSSEStream';
+
 import { useUpdateTrip } from '@/hooks/useTrips';
 import { getWorkbenchBlockCopy, formatWorkbenchBlockReasonList } from '@/lib/workbench-blocking-copy';
+import { normalizeSafetyResult } from '@/lib/bff-trip-adapters';
 import type {
   SpineRunRequest,
   SpineStage,
@@ -31,12 +35,11 @@ import type {
   ValidationReport,
 } from '@/types/spine';
 import type {
-  SafetyResult,
   FeeCalculationResult,
 } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
 import { submitTripReviewAction, createDraft, getDraft, patchDraft, discardDraft, promoteDraft } from '@/lib/api-client';
-import { getTripRoute, getPostRunTripRoute, getWorkbenchTripId } from '@/lib/routes';
+import { getTripRoute, getPostRunTripRoute, getWorkbenchTripId, getTripRepairRoute } from '@/lib/routes';
 import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { RunProgressPanel } from './RunProgressPanel';
@@ -172,7 +175,7 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     store.setResultStrategy(trip.strategy ?? null);
     store.setResultInternalBundle(trip.internal_bundle ?? null);
     store.setResultTravelerBundle(trip.traveler_bundle ?? null);
-    store.setResultSafety((trip.safety as SafetyResult) ?? null);
+    store.setResultSafety(normalizeSafetyResult(trip.safety));
     store.setResultFees(trip.fees ?? null);
     store.setResultFrontier(trip.frontier_result ?? null);
     store.setInputRawNote(trip.customerMessage ?? '');
@@ -203,17 +206,19 @@ function WorkbenchContent() {
   const draftParam = getSearchParam('draft');
   const stageParam = getSearchParam('stage');
   const scenarioParam = getSearchParam('scenario');
+  const [completedTripId, setCompletedTripId] = useState<string | null>(null);
 
   // The ?stage= URL param drives Spine execution (not the pipeline UI)
   const spineStage = toSpineStage(stageParam) ?? 'discovery';
   const currentMode = toOperatingMode(getSearchParam('mode')) ?? 'normal_intake';
   const currentScenario = scenarioParam || '';
 
+  const resolvedTripId = tripId ?? completedTripId;
   const {
     data: trip,
     isLoading: tripLoading,
     error: tripError,
-  } = useTrip(tripId);
+  } = useTrip(resolvedTripId);
   useHydrateStoreFromTrip(trip);
   const store = useWorkbenchStore();
 
@@ -234,8 +239,32 @@ function WorkbenchContent() {
     state: spineRunState,
   } = useSpineRun();
 
+  // SSE / adaptive-polling live state subscription.
+  // Connects when a run starts; merges live events into spineRunState so
+  // RunProgressPanel reflects real-time progress without a page reload.
+  // Falls back to polling when SSE is not available (NEXT_PUBLIC_SSE_ENABLED != 'true').
+  const {
+    connect: connectSSE,
+    disconnect: disconnectSSE,
+    isConnected: isSSEConnected,
+    connectionMode: sseConnectionMode,
+  } = useSSEStream();
+
+  // Subscribe when a new run begins; disconnect on unmount or run change.
+  useEffect(() => {
+    if (!spineRunId) {
+      disconnectSSE();
+      return;
+    }
+    connectSSE(spineRunId);
+    return () => { disconnectSSE(); };
+  }, [spineRunId, connectSSE, disconnectSSE]);
+
+
   const runFrontier = spineRunState?.frontier_result;
   const showFrontier = Boolean(trip?.frontier_result) || Boolean(store.result_frontier) || Boolean(runFrontier);
+  const tripRepairHref = trip?.id ? getTripRepairRoute(trip.id) : null;
+  const blockCopy = getWorkbenchBlockCopy({ validation: store.result_validation });
 
   const visibleTabs = workspaceTabs.filter((tab) => {
     if (tab.id === 'packet') return showPacket;
@@ -314,6 +343,20 @@ function WorkbenchContent() {
       });
   }, [draftParam, clearDraft, hydrateFromDraft]);
 
+  useEffect(() => {
+    if (!completedTripId || tripId) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('trip', completedTripId);
+    if (!params.get('tab') || params.get('tab') === 'intake') {
+      params.set('tab', 'packet');
+    }
+    const nextUrl = `${pathname}?${params.toString()}`;
+    const currentUrl = `${pathname}?${searchParams.toString()}`;
+    if (nextUrl !== currentUrl) {
+      replace(nextUrl, { scroll: false });
+    }
+  }, [completedTripId, tripId, pathname, replace, searchParams]);
+
   // Invalidation logic: clear results if config changes
   const prevConfigRef = useRef({
     stage: spineStage,
@@ -359,7 +402,6 @@ function WorkbenchContent() {
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
   const inFlightRef = useRef(false);
-  const [completedTripId, setCompletedTripId] = useState<string | null>(null);
   const activePanel = getSearchParam('panel');
   const settingsOpen = activePanel === 'settings';
   const setPanelOpen = useCallback(
@@ -840,9 +882,9 @@ function WorkbenchContent() {
   ]);
 
   const handleSave = useCallback(async () => {
-    if (!tripId) return;
+    if (!resolvedTripId) return;
     setSaveError(null);
-    const result = await saveTrip(tripId, {
+    const result = await saveTrip(resolvedTripId, {
       customerMessage: store.input_raw_note,
       agentNotes: store.input_owner_note,
     });
@@ -853,7 +895,7 @@ function WorkbenchContent() {
       setSaveError('Failed to save. Check connection and try again.');
       setTimeout(() => setSaveError(null), 8000);
     }
-  }, [tripId, saveTrip, store.input_raw_note, store.input_owner_note]);
+  }, [resolvedTripId, saveTrip, store.input_raw_note, store.input_owner_note]);
 
   const handleReset = useCallback(() => {
     store.resetAll();
@@ -920,38 +962,26 @@ function WorkbenchContent() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  {(() => {
-                    const blockCopy = getWorkbenchBlockCopy({ validation: store.result_validation });
-                    return (
-                      <>
-                        <h3 className="text-ui-sm font-semibold text-[#f85149]">
-                          {blockCopy.title}
-                        </h3>
-                        <p className="text-ui-xs text-[#ffa198] mt-0.5">
-                          {blockCopy.summary}
-                          {blockCopy.details.length > 1 ? (
-                            <span className='block mt-1 space-y-0.5'>
-                              {blockCopy.details.slice(1).map((reason) => (
-                                <span key={reason} className='block'>
-                                  • {reason}
-                                </span>
-                              ))}
+                  <>
+                    <h3 className="text-ui-sm font-semibold text-[#f85149]">
+                      {blockCopy.title}
+                    </h3>
+                    <p className="text-ui-xs text-[#ffa198] mt-0.5">
+                      {blockCopy.summary}
+                      {blockCopy.details.length > 1 ? (
+                        <span className='block mt-1 space-y-0.5'>
+                          {blockCopy.details.slice(1).map((reason) => (
+                            <span key={reason} className='block'>
+                              • {reason}
                             </span>
-                          ) : null}
-                          <span className='block mt-1'>
-                            Add the missing details and then return to this trip. Check the{' '}
-                            <button
-                              onClick={() => handleTabChange('packet')}
-                              className='text-[#58a6ff] underline hover:no-underline font-medium inline'
-                            >
-                              Trip Details
-                            </button>{' '}
-                            tab for specifics.
-                          </span>
-                        </p>
-                      </>
-                    );
-                  })()}
+                          ))}
+                        </span>
+                      ) : null}
+                      <span className='block mt-1'>
+                        Open the Trip Details repair surface to fix the missing fields, then process the trip again.
+                      </span>
+                    </p>
+                  </>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
@@ -960,12 +990,14 @@ function WorkbenchContent() {
                   >
                     Review Missing Fields
                   </button>
-                  <button
-                    onClick={() => handleTabChange('intake')}
-                    className="px-3 py-1.5 bg-[#161b22] border border-[#30363d] text-[#e6edf3] text-ui-xs font-medium rounded-md hover:bg-[#21262d] transition-colors"
-                  >
-                    Fix in Intake
-                  </button>
+                  {tripRepairHref && (
+                    <Link
+                      href={tripRepairHref}
+                      className="px-3 py-1.5 bg-[#161b22] border border-[#30363d] text-[#e6edf3] text-ui-xs font-medium rounded-md hover:bg-[#21262d] transition-colors"
+                    >
+                      {blockCopy.actionLabel}
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -973,13 +1005,13 @@ function WorkbenchContent() {
         </div>
       )}
 
-      <div className='p-6'>
-        <header className='flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6'>
-          <div>
+      <div className='p-4 sm:p-6'>
+        <header className='mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between'>
+          <div className='min-w-0 flex-1'>
             <h1 className='text-ui-2xl font-semibold text-[#e6edf3] mb-1'>
               {trip ? trip.destination : (store.draft_name || 'New Inquiry')}
             </h1>
-            <p className='text-ui-base text-[#a8b3c1] flex items-center gap-3'>
+            <p className='flex flex-wrap items-center gap-x-3 gap-y-1 text-ui-base text-[#a8b3c1]'>
               {trip
                 ? `${trip.id} · ${trip.type} · ${trip.age}`
                 : 'Capture a customer request and send it into the workflow.'}
@@ -990,7 +1022,7 @@ function WorkbenchContent() {
                 </>
               )}
             </p>
-            <div className='flex items-center gap-2 mt-1.5'>
+            <div className='mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1'>
               {store.draft_id && (
                 <span
                   className='inline-flex items-center px-2 py-0.5 rounded text-ui-xs font-medium'
@@ -1045,14 +1077,14 @@ function WorkbenchContent() {
             )}
           </div>
           <form
-            className='flex items-center gap-3 flex-wrap'
+            className='flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center xl:w-auto xl:justify-end'
             onSubmit={(e) => {
               e.preventDefault();
               void handleProcessTrip();
             }}
           >
             {runError && (
-              <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-ui-sm text-[#f85149]'>
+              <div className='flex w-full items-center gap-2 rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 px-3 py-2 text-ui-sm text-[#f85149] sm:max-w-[32rem] xl:w-auto'>
                 <AlertTriangle className='size-4' />
                 {spineRunState?.validation && (
                   spineRunState.validation.is_valid === false ||
@@ -1080,19 +1112,19 @@ function WorkbenchContent() {
               </div>
             )}
             {runSuccess && (
-              <div className='flex items-center gap-2 px-3 py-2 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-ui-sm text-[#3fb950]'>
+              <div className='flex w-full items-center gap-2 rounded-lg border border-[#3fb950]/30 bg-[#3fb950]/10 px-3 py-2 text-ui-sm text-[#3fb950] sm:w-auto'>
                 <CheckCircle className='size-4' />
                 Processed successfully
               </div>
             )}
             {saveSuccess && (
-              <div className='flex items-center gap-2 px-3 py-2 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-ui-sm text-[#3fb950]'>
+              <div className='flex w-full items-center gap-2 rounded-lg border border-[#3fb950]/30 bg-[#3fb950]/10 px-3 py-2 text-ui-sm text-[#3fb950] sm:w-auto'>
                 <CheckCircle className='size-4' />
                 Saved
               </div>
             )}
             {saveError && (
-              <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-ui-sm text-[#f85149]'>
+              <div className='flex w-full items-center gap-2 rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 px-3 py-2 text-ui-sm text-[#f85149] sm:max-w-[24rem] xl:w-auto'>
                 <AlertTriangle className='size-4' />
                 <span className='max-w-xs truncate'>{saveError}</span>
               </div>
@@ -1104,7 +1136,7 @@ function WorkbenchContent() {
                 isSpineRunning ||
                 (!store.input_raw_note && !store.input_owner_note)
               }
-              className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              className='flex w-full items-center justify-center gap-2 rounded-lg bg-[#58a6ff] px-4 py-2 font-medium text-[#0d1117] transition-colors hover:bg-[#6eb5ff] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
               aria-label={isRunning ? 'Processing inquiry' : 'Process inquiry'}
             >
               {isRunning ? (
@@ -1144,7 +1176,7 @@ function WorkbenchContent() {
                         validationStatus: spineRunState?.validation?.status,
                       }));
                     }}
-                    className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] transition-colors'
+                    className='flex w-full items-center justify-center gap-2 rounded-lg bg-[#58a6ff] px-4 py-2 font-medium text-[#0d1117] transition-colors hover:bg-[#6eb5ff] sm:w-auto sm:justify-start'
                   >
                     <CheckCircle className='size-4' />
                     Promote Draft
@@ -1178,7 +1210,7 @@ function WorkbenchContent() {
               type='button'
               onClick={handleSaveDraft}
               disabled={store.save_state === 'saving' || store.draft_status === 'promoted'}
-              className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              className='flex w-full items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
               aria-label='Save draft'
             >
               {store.save_state === 'saving' ? (
@@ -1196,14 +1228,14 @@ function WorkbenchContent() {
                 </>
               )}
             </button>
-            {tripId && (
+            {resolvedTripId && (
               <button
                 type='button'
                 onClick={handleSave}
                 disabled={isSaving}
-                className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-                aria-label='Save trip changes'
-              >
+              className='flex w-full items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
+              aria-label='Save trip changes'
+            >
                 {isSaving ? (
                   <>
                     <div
@@ -1215,7 +1247,8 @@ function WorkbenchContent() {
                 ) : (
                   <>
                     <Save className='size-4' aria-hidden='true' />
-                    Save Trip Changes
+                    <span className='sm:hidden'>Save Trip</span>
+                    <span className='hidden sm:inline'>Save Trip Changes</span>
                   </>
                 )}
               </button>
@@ -1223,7 +1256,7 @@ function WorkbenchContent() {
             <button
               type='button'
               onClick={() => setIsResetDialogOpen(true)}
-              className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] transition-colors'
+              className='flex w-full items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] sm:w-auto sm:justify-start'
               aria-label='Reset pipeline'
             >
               <RotateCcw className='size-4' aria-hidden='true' />
@@ -1232,7 +1265,7 @@ function WorkbenchContent() {
             <button
               type='button'
               onClick={() => setPanelOpen('settings', true)}
-              className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] transition-colors'
+              className='flex w-full items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] sm:w-auto sm:justify-start'
               aria-label='Open settings'
             >
               <Settings className='size-4' aria-hidden='true' />

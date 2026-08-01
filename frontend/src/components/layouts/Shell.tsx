@@ -177,15 +177,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
     (isTripIntakeRoute && isShellTripLoading);
 
   return (
-    <div className='flex h-screen overflow-hidden' style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)' }}>
+    <div className='flex min-h-dvh flex-col overflow-x-clip md:h-dvh md:flex-row md:overflow-hidden' style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)' }}>
       <LiveRegion />
       <a href='#main-content' className='sr-only-focusable'>Skip to main content</a>
 
       {/* Sidebar - distinct surface, visible edge */}
       <aside
-        className='flex flex-col w-[72px] md:w-[220px] shrink-0'
+        className='flex w-full shrink-0 flex-col border-b md:w-[220px] md:border-b-0 md:border-r'
         style={{
-          borderRight: '1px solid var(--border-default)',
+          borderColor: 'var(--border-default)',
           background: 'var(--bg-surface)',
         }}
         aria-label='Main navigation'
@@ -242,13 +242,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <nav className='flex-1 overflow-y-auto py-3 px-2 space-y-4' aria-label='Primary navigation'>
+        <nav className='overflow-x-auto px-2 py-2 md:flex-1 md:overflow-x-hidden md:overflow-y-auto md:py-3' aria-label='Primary navigation'>
+          <div className='flex gap-4 md:block md:space-y-4'>
           {NAV_SECTIONS.map((section) => (
-            <div key={section.label}>
+            <div key={section.label} className='min-w-max md:min-w-0'>
               <div className='hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider' style={{ color: 'var(--text-muted)' }}>
                 {section.label}
               </div>
-              <ul className='space-y-0.5' role='list'>
+              <ul className='flex gap-1 md:block md:space-y-0.5' role='list'>
                 {section.items.map((item) => {
                   const Icon = ICON_MAP[item.icon] ?? Activity;
                   // Active check: ignore query params for href matching
@@ -319,6 +320,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </ul>
             </div>
           ))}
+          </div>
         </nav>
 
         <SidebarTripContext trip={shellTrip} />
@@ -344,7 +346,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main column */}
-      <div className='flex flex-col flex-1 min-w-0 overflow-hidden'>
+      <div className='flex min-w-0 flex-1 flex-col overflow-visible md:overflow-hidden'>
         {/* Integrity Warning */}
         {!isConsistent && (
           <div
@@ -387,7 +389,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main id='main-content' className='flex-1 overflow-y-auto pb-0' tabIndex={-1}>
+        <main id='main-content' className='flex-1 overflow-visible pb-0 md:overflow-y-auto' tabIndex={-1}>
           {children}
         </main>
       </div>

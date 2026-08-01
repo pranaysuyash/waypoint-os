@@ -1,4 +1,35 @@
 - **[⭐ BASELINE AUDIT INDEX (2026-05-02)](BASELINE_AUDIT_INDEX_2026-05-02.md) — Entry point for the May 2 architectural and feature baseline. Contains quick reference numbers and links to all baseline docs.**
+- **[⭐ Month 6 Product Audit & Simulation (2026-07-28)](MONTH6_PRODUCT_AUDIT_AND_SIMULATION_2026-07-28.md) — Diagnostic failure analysis, ICP vs user flow evaluation, cohort retention funnel, and 3-phase turnaround plan.**
+- **[⭐ First-Principles Strategy (2026-07-28)](FIRST_PRINCIPLES_TURNAROUND_PRIORITY_2026-07-28.md) — First-principles analysis of what to build first (Native Ingestion & State Trust Engine) and why.**
+- **[⭐ First-Principles Doctrine (motto_v4) (2026-07-28)](FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md) — Canonical declaration of what first-principles means for Waypoint OS under motto_v4.**
+- **[⭐ Priority #1 Implementation & Verification (2026-07-28)](PRIORITY_1_NATIVE_INGESTION_AND_OPTIMISTIC_SYNC_IMPLEMENTATION_2026-07-28.md) — Multi-channel inbound parse API, optimistic field sync engine, Chrome Extension companion.**
+- **[⭐ Priority #2 Implementation & Verification (2026-07-28)](PRIORITY_2_AUTOMATED_CLIENT_FOLLOWUP_PROMPT_ENGINE_2026-07-28.md) — Automated client follow-up prompt engine, channel/tone calibration, 1-click copy generator.**
+- **[⭐ Priority #3 Implementation & Verification (2026-07-28)](PRIORITY_3_VISUAL_TRUST_SCORECARD_ENGINE_2026-07-28.md) — Visual "Why This Option" Trust Scorecard engine, transparency badges, risk mitigation highlights.**
+- **[⭐ Priority #4 Implementation & Verification (2026-07-28)](PRIORITY_4_OMNICHANNEL_MESSAGING_HOOKS_2026-07-28.md) — Omnichannel WhatsApp Cloud API & SendGrid dispatch hooks & status webhooks.**
+- **[⭐ Priority #5 Implementation & Verification (2026-07-28)](PRIORITY_5_INTERACTIVE_PROPOSAL_LINK_GENERATOR_2026-07-28.md) — 1-click interactive client proposal web link generator.**
+- **[⭐ Priority #6 Implementation & Verification (2026-07-28)](PRIORITY_6_YIELD_ARBITRAGE_DASHBOARD_2026-07-28.md) — Agent yield & commission arbitrage dashboard.**
+- **[⭐ Priority #7 Implementation & Verification (2026-07-28)](PRIORITY_7_AUTONOMIC_GHOST_CONCIERGE_2026-07-28.md) — Autonomic disruption monitoring & auto-rebooking concierge engine.**
+- **[⭐ Priority #8 Implementation & Verification (2026-07-28)](PRIORITY_8_AGENCY_TEAM_WORKFLOWS_2026-07-28.md) — Agency team assignment & review signoff workflows engine.**
+- **[⭐ Process & Issue Review Audit (2026-07-29)](travel_agency_process_issue_review_2026-07-29.md) — Session audit, Motto_v4 compliance, and documentation inventory.**
+- **[⭐ Actionable Implementation Roadmap (2026-07-29)](ACTIONABLE_POINTS_SUMMARY_2026-07-29.md) — Concrete engineering, product, and governance action items.**
+- **[⭐ 4-Layer Hybrid Extraction & Local PII Evaluation (2026-07-29)](HYBRID_EXTRACTION_AND_PII_STACK_EVALUATION_2026-07-29.md) — Evaluation of Regex + SpaCy + MaziyarPanahi ONNX PII + Gemma mobile SLMs and progressive pre-caching.**
+- **[ADR: NB03 Leakage Guard False-Positive Fix (2026-07-29)](ADR_NB03_LEAKAGE_FALSE_POSITIVE_FIX_2026-07-29.md) — 3-gate context-aware matching for FORBIDDEN_TRAVELER_CONCEPTS and allowed travel phrases.**
+- **[ADR: Chrome Extension Auth, Offline Queue & PII Pre-Scrubber (2026-07-29)](ADR_CHROME_EXTENSION_AUTH_AND_OFFLINE_2026-07-29.md) — Configurable backend URL, JWT auth, IndexedDB queue drain, and WebWorker PII scrubber.**
+- **[ADR: Frontend SSE Subscription & Real-Time State (2026-07-29)](ADR_FRONTEND_SSE_REAL_TIME_STATE_2026-07-29.md) — EventSource subscription, Next.js BFF proxy with auth header injection, and adaptive polling.**
+- **[ADR: SpaCy Layer 2 NLP Guard (2026-07-29)](ADR_PII_GUARD_SPACY_LAYER2_2026-07-29.md) — Lazy-loaded SpaCy PERSON entity detector, fail-open architecture, and local NLP model matrix.**
+- **[ADR: Interactive Client Proposal Web Link & 1-Click Acceptance (2026-07-29)](ADR_INTERACTIVE_PROPOSAL_WEB_LINK_2026-07-29.md) — Dynamic traveler web surface (/proposals/[proposalId]), price lock countdown, and 1-click booking acceptance.**
+- **[ADR: Omnichannel Webhook Security & Signature Verification (2026-07-29)](ADR_OMNICHANNEL_WEBHOOK_SECURITY_2026-07-29.md) — Meta/WhatsApp GET challenge verification and HMAC SHA-256 signature security.**
+- **[ADR: Supplier Yield Arbitrage & Margin Optimization (2026-07-29)](ADR_SUPPLIER_YIELD_ARBITRAGE_2026-07-29.md) — Wholesale rate comparison, net margin ranking, and 1-click supplier swap on agency workbench.**
+- **[ADR: Autonomic Ghost Concierge Disruption Monitoring (2026-07-29)](ADR_AUTONOMIC_GHOST_CONCIERGE_2026-07-29.md) — Active flight/hotel disruption watcher, severity categorization, and protected auto-rebooking.**
+- **[ADR: Agency Team Workflows & High-Value Signoff Gates (2026-07-29)](ADR_HIGH_VALUE_SIGNOFF_GATE_2026-07-29.md) — Mandatory senior planner signoff gate for quotes >= $10,000.**
+- **[ADR: RAG Grounding & Citation Provenance Engine (2026-07-29)](ADR_RAG_GROUNDING_AND_CITATION_PROVENANCE_2026-07-29.md) — Hallucination prevention, groundedness confidence scoring, and citation footers.**
+- **[ADR: Progressive Background Model Pre-Caching & Offline Sync (2026-07-29)](ADR_PROGRESSIVE_MODEL_PRECACHING_AND_OFFLINE_SYNC_2026-07-29.md) — ServiceWorker model pre-caching into IndexedDB and draft_pending_sync state machine.**
+- **[ADR: Tier 3/4 Suitability Engine & Lead Lifecycle Retention (2026-07-29)](ADR_SUITABILITY_TIER3_TIER4_AND_LEAD_LIFECYCLE_2026-07-29.md) — Pacing overload rules, senior fatigue rest windows, and lead retention interventions.**
+- **[ADR: Rule 0.15 Decoupling Linter & Cryptographic Audit Chain Hashing (2026-07-29)](ADR_RULE_015_DECOUPLING_AND_AUDIT_CHAIN_HASHING_2026-07-29.md) — Decoupling linter check and SHA-256 tamper-evident audit log hashing.**
+- **[ADR: AI Workforce Governance Registry (2026-07-29)](ADR_AI_WORKFORCE_GOVERNANCE_REGISTRY_2026-07-29.md) — Canonical agent role registration, tier scoping, and action validation.**
+
+
+
   - [Architecture Audit: Codebase Component Ratings](BASELINE_AUDIT_CODEBASE_2026-05-02.md) — Per-component ratings for all 13 core pipeline modules. Specific issues, severity, fix actions.
   - [Independent Architectural Assessment](BASELINE_INDEPENDENT_ASSESSMENT_2026-05-02.md) — First-principles analysis: missing primitives, design smells, vision vs code gaps.
   - [Feature Completeness Audit](BASELINE_FEATURE_COMPLETENESS_AUDIT_2026-05-02.md) — 20 feature areas vs vision. **Overall score: 24.5%**. Build sequence.

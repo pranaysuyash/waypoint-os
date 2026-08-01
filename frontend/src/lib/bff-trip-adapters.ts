@@ -1,5 +1,5 @@
 import type { AgentOperationsMetadata, Trip } from "@/lib/api-client";
-import type { FeeCalculationResult, StrategyOutput, PromptBundle } from "@/types/spine";
+import type { FeeCalculationResult, SafetyResult, StrategyOutput, PromptBundle } from "@/types/spine";
 import type { InboxTrip, TripPriority } from "@/types/governance";
 
 type JsonRecord = Record<string, unknown>;
@@ -156,6 +156,19 @@ function asUnknownArray(value: unknown): unknown[] | undefined {
   return Array.isArray(value) ? value : undefined;
 }
 
+function uniqueStrings(values: unknown[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const cleaned = value.trim();
+    if (!cleaned || seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    out.push(cleaned);
+  }
+  return out;
+}
+
 function optionalRecord(value: unknown): Record<string, unknown> | undefined {
   return isRecord(value) ? value : undefined;
 }
@@ -209,6 +222,28 @@ function extractAgentOperations(trip: JsonRecord): AgentOperationsMetadata | und
   return Object.values(agentOperations).some((value) => value !== undefined)
     ? agentOperations
     : undefined;
+}
+
+export function normalizeSafetyResult(value: unknown): SafetyResult | null {
+  if (!isRecord(value)) return null;
+
+  const leakageErrors = uniqueStrings([
+    ...(Array.isArray(value.leakage_errors) ? value.leakage_errors : []),
+    ...(Array.isArray(value.leaks) ? value.leaks : []),
+    ...(Array.isArray(value.traveler_bundle_leaks) ? value.traveler_bundle_leaks : []),
+    ...(Array.isArray(value.sanitized_view_leaks) ? value.sanitized_view_leaks : []),
+  ]);
+  const leakagePassed =
+    typeof value.leakage_passed === "boolean"
+      ? value.leakage_passed
+      : leakageErrors.length === 0;
+
+  return {
+    ...value,
+    strict_leakage: typeof value.strict_leakage === "boolean" ? value.strict_leakage : false,
+    leakage_passed: leakagePassed,
+    leakage_errors: leakageErrors,
+  } as SafetyResult;
 }
 
 function calculateAge(isoDateString: string, now: Date = new Date()): string {
@@ -547,7 +582,7 @@ export function transformSpineTripToTrip(
     strategy: (trip.strategy as StrategyOutput | undefined) ?? undefined,
     traveler_bundle: (trip.traveler_bundle as PromptBundle | undefined) ?? undefined,
     internal_bundle: (trip.internal_bundle as PromptBundle | undefined) ?? undefined,
-    safety: trip.safety || {},
+    safety: normalizeSafetyResult(trip.safety) || {},
     fees: (trip.fees as FeeCalculationResult | undefined) ?? undefined,
     frontier_result: trip.frontier_result ?? undefined,
     agentOperations: extractAgentOperations(trip),
@@ -561,6 +596,13 @@ export function transformSpineTripToTrip(
       firstPresent(
         getNestedValue(spineTrip, "trip_priorities", undefined),
         getNestedValue(spineTrip, "extracted.facts.trip_priorities.value", undefined)
+      ),
+      ""
+    ) || undefined,
+    activityInterests: asString(
+      firstPresent(
+        getNestedValue(spineTrip, "activity_interests", undefined),
+        getNestedValue(spineTrip, "extracted.facts.activity_interests.value", undefined)
       ),
       ""
     ) || undefined,

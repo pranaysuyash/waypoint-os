@@ -17,12 +17,22 @@ Scope:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
+from io import StringIO
+import csv
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 
 from spine_api.contract import (
+    RoutingHealthAlertTriageRequest,
+    RoutingHealthTriageBatchItem,
+    RoutingHealthTriageBatchResponse,
+    RoutingHealthTriageBatchResponseItem,
+    RoutingHealthPagingSuppressionRequest,
+    RoutingHealthPagingSuppressionResponse,
+    RoutingHealthAlertTriageResponse,
     OverrideRequest,
     OverrideResponse,
     SnoozeRequest,
@@ -119,6 +129,84 @@ def _get_fact_value(facts: dict, key: str):
             return val[0]["value"]
         return str(val[0])
     return val
+
+
+def _agency_trip_ids_for_current_scope(agency_id: str) -> set[str]:
+    agency_trips = TripStore.list_trips(agency_id=agency_id, limit=10000)
+    return {t["id"] for t in agency_trips if t.get("id")}
+
+
+def _find_audit_event(event_id: str, event_type: str, agency: Agency) -> Optional[dict]:
+    event_id = str(event_id or "").strip()
+    if not event_id:
+        return None
+
+    candidate_events = AuditStore.get_events(limit=10000)
+    agency_trip_ids = _agency_trip_ids_for_current_scope(agency.id)
+
+    for event in candidate_events:
+        if not isinstance(event, dict):
+            continue
+        if event.get("id") != event_id:
+            continue
+        if event.get("type") != event_type:
+            continue
+
+        details = event.get("details") or {}
+        if not isinstance(details, dict):
+            return event
+
+        trip_id = details.get("trip_id")
+        event_agency_id = details.get("agency_id")
+
+        if trip_id and trip_id not in agency_trip_ids and event_agency_id != agency.id:
+            continue
+
+        return event
+
+    return None
+
+
+def _routing_health_trip_ids(agency: Agency) -> set[str]:
+    return _agency_trip_ids_for_current_scope(agency.id)
+
+
+def _build_routing_health_triage_event(
+    event: dict,
+    action: str,
+    note: str,
+    agency_id: str,
+) -> dict:
+    details = event.get("details") or {}
+    return AuditStore.log_event(
+        "routing_health_alert_triage",
+        agency_id,
+        {
+            "target_event_id": event.get("id"),
+            "target_event_type": event.get("type"),
+            "trip_id": details.get("trip_id"),
+            "status": details.get("status"),
+            "workflow": details.get("workflow"),
+            "note": note,
+            "action": action,
+        },
+    )
+
+
+def _is_routing_health_event(event: dict, agency_trip_ids: set[str], agency_id: str) -> bool:
+    if not isinstance(event, dict):
+        return False
+    if event.get("type") not in {"routing_health_alert", "routing_health_paging_alert"}:
+        return False
+
+    details = event.get("details")
+    if not isinstance(details, dict):
+        return False
+
+    trip_id = details.get("trip_id")
+    if trip_id and trip_id not in agency_trip_ids and details.get("agency_id") != agency_id:
+        return False
+    return True
 
 
 router = APIRouter()
@@ -224,7 +312,14 @@ def list_assignments(
 
 @router.get("/audit")
 def get_audit_events(
-    limit: int = 100,
+    limit: int = Query(default=100, ge=1, le=500),
+    event_type: Optional[str] = Query(default=None, description="Filter by event type"),
+    trip_id: Optional[str] = Query(default=None, max_length=64, description="Filter by trip id in event details"),
+    trip_status: Optional[str] = Query(
+        default=None,
+        max_length=32,
+        description="Filter by routing_health_alert status in event details",
+    ),
     agency: Agency = Depends(get_current_agency),
 ):
     """Get recent audit events for the current agency."""
@@ -237,7 +332,259 @@ def get_audit_events(
         if e.get("details", {}).get("trip_id") in agency_trip_ids
         or e.get("details", {}).get("agency_id") == agency.id
     ]
+
+    if event_type:
+        filtered = [event for event in filtered if event.get("type") == event_type]
+
+    if trip_id:
+        filtered = [event for event in filtered if event.get("details", {}).get("trip_id") == trip_id]
+
+    if trip_status:
+        filtered = [
+            event
+            for event in filtered
+            if event.get("details", {}).get("status") == trip_status
+        ]
+
     return {"items": filtered, "total": len(filtered)}
+
+
+@router.post("/audit/{event_id}/triage", response_model=RoutingHealthAlertTriageResponse)
+def triage_routing_health_alert(
+    event_id: str,
+    request: RoutingHealthAlertTriageRequest,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Create a triage action entry for a routing health alert."""
+    event = _find_audit_event(event_id=event_id, event_type="routing_health_alert", agency=agency)
+    if not event:
+        raise HTTPException(status_code=404, detail="Routing health alert not found")
+
+    details = event.get("details") or {}
+    if not isinstance(details, dict):
+        details = {}
+
+    note = (request.note or "").strip()
+    if request.action == "escalate" and not note:
+        raise HTTPException(status_code=400, detail="note is required when escalating")
+
+    triage_event = AuditStore.log_event(
+        "routing_health_alert_triage",
+        agency.id,
+        {
+            "target_event_id": event_id,
+            "target_event_type": event.get("type"),
+            "trip_id": details.get("trip_id"),
+            "status": details.get("status"),
+            "workflow": details.get("workflow"),
+            "note": note,
+            "action": request.action,
+        },
+    )
+
+    return RoutingHealthAlertTriageResponse(
+        success=True,
+        event_id=event_id,
+        target_event_id=event_id,
+        action=request.action,
+        triage_event=triage_event,
+    )
+
+
+@router.post("/audit/routing-health/batch-triage", response_model=RoutingHealthTriageBatchResponse)
+def batch_triage_routing_health_alerts(
+    requests: list[RoutingHealthTriageBatchItem],
+    agency: Agency = Depends(get_current_agency),
+):
+    """Apply triage actions to multiple routing health alerts in one request."""
+    if not requests:
+        raise HTTPException(status_code=400, detail="items cannot be empty")
+
+    if len(requests) > 200:
+        raise HTTPException(status_code=400, detail="items limit is 200")
+
+    results: list[RoutingHealthTriageBatchResponseItem] = []
+
+    for request in requests:
+        event = _find_audit_event(
+            event_id=request.event_id,
+            event_type="routing_health_alert",
+            agency=agency,
+        )
+        if not event:
+            results.append(
+                RoutingHealthTriageBatchResponseItem(
+                    event_id=request.event_id,
+                    success=False,
+                    action=request.action,
+                    note=request.note,
+                    error="Routing health alert not found",
+                )
+            )
+            continue
+
+        note = (request.note or "").strip()
+        if request.action == "escalate" and not note:
+            results.append(
+                RoutingHealthTriageBatchResponseItem(
+                    event_id=request.event_id,
+                    success=False,
+                    action=request.action,
+                    note=request.note,
+                    error="note is required when escalating",
+                )
+            )
+            continue
+
+        triage_event = _build_routing_health_triage_event(event, request.action, note, agency.id)
+        results.append(
+            RoutingHealthTriageBatchResponseItem(
+                event_id=request.event_id,
+                success=True,
+                action=request.action,
+                note=note,
+                triage_event=triage_event,
+            )
+        )
+
+    succeeded = sum(1 for item in results if item.success)
+    failed = len(results) - succeeded
+
+    return RoutingHealthTriageBatchResponse(
+        success=failed == 0,
+        requested=len(requests),
+        succeeded=succeeded,
+        failed=failed,
+        results=results,
+    )
+
+
+@router.post(
+    "/audit/{event_id}/suppress-routing-health-paging",
+    response_model=RoutingHealthPagingSuppressionResponse,
+)
+def suppress_routing_health_paging_alert(
+    event_id: str,
+    request: RoutingHealthPagingSuppressionRequest,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Create auditable suppression evidence for sustained paging alerts."""
+    event = _find_audit_event(
+        event_id=event_id,
+        event_type="routing_health_paging_alert",
+        agency=agency,
+    )
+    if not event:
+        raise HTTPException(status_code=404, detail="Routing health paging alert not found")
+
+    details = event.get("details") or {}
+    suppress_minutes = request.suppress_for_minutes
+    suppress_until = None
+    if suppress_minutes:
+        suppress_until = (
+            datetime.now(timezone.utc).astimezone(timezone.utc)
+            + timedelta(minutes=suppress_minutes)
+        ).isoformat()
+
+    suppression_event = AuditStore.log_event(
+        "routing_health_paging_alert_suppressed",
+        agency.id,
+        {
+            "target_event_id": event_id,
+            "target_event_type": event.get("type"),
+            "trip_id": details.get("trip_id"),
+            "status": details.get("status"),
+            "occurrence_index": details.get("occurrence_index"),
+            "suppress_for_minutes": suppress_minutes,
+            "suppress_until": suppress_until,
+            "note": (request.note or "").strip(),
+        },
+    )
+
+    return RoutingHealthPagingSuppressionResponse(
+        success=True,
+        event_id=event_id,
+        suppression_event=suppression_event,
+    )
+
+
+@router.get("/audit/routing-health/export")
+def export_routing_health_evidence(
+    format: str = Query(default="json", min_length=1),
+    trip_status: Optional[str] = Query(default=None, max_length=32),
+    include_paging: bool = Query(default=False),
+    limit: int = Query(default=200, ge=1, le=5000),
+    agency: Agency = Depends(get_current_agency),
+):
+    """Export routing-health evidence payload for operator runbooks."""
+    events = AuditStore.get_events(limit=10000)
+    agency_trip_ids = _agency_trip_ids_for_current_scope(agency.id)
+
+    included_event_types = {"routing_health_alert"}
+    if include_paging:
+        included_event_types.add("routing_health_paging_alert")
+
+    evidence = [
+        event for event in events
+        if _is_routing_health_event(event, agency_trip_ids=agency_trip_ids, agency_id=agency.id)
+        and event.get("type") in included_event_types
+    ]
+
+    if trip_status:
+        evidence = [
+            event for event in evidence
+            if event.get("details", {}).get("status") == trip_status
+        ]
+
+    evidence = evidence[:limit]
+
+    if format == "csv":
+        headers = [
+            "id",
+            "type",
+            "trip_id",
+            "timestamp",
+            "status",
+            "workflow",
+            "metric",
+            "min_occurrences",
+            "window_minutes",
+            "occurrence_index",
+            "sustained_window_seconds",
+            "paging_cooldown_seconds",
+            "user_id",
+        ]
+        csv_buffer = StringIO()
+        writer = csv.DictWriter(csv_buffer, fieldnames=headers)
+        writer.writeheader()
+        for event in evidence:
+            details = event.get("details") or {}
+            writer.writerow({
+                "id": event.get("id"),
+                "type": event.get("type"),
+                "trip_id": details.get("trip_id"),
+                "timestamp": event.get("timestamp"),
+                "status": details.get("status"),
+                "workflow": details.get("workflow"),
+                "metric": details.get("metric"),
+                "min_occurrences": details.get("min_occurrences"),
+                "window_minutes": details.get("window_minutes"),
+                "occurrence_index": details.get("occurrence_index"),
+                "sustained_window_seconds": details.get("sustained_window_seconds"),
+                "paging_cooldown_seconds": details.get("paging_cooldown_seconds"),
+                "user_id": event.get("user_id"),
+            })
+        return Response(
+            content=csv_buffer.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=routing-health-evidence.csv"},
+        )
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "total": len(evidence),
+        "items": evidence,
+    }
 
 
 @router.post("/trips/{trip_id}/override", response_model=OverrideResponse)

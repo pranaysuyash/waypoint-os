@@ -17,7 +17,8 @@ import { isDebugJsonAllowed } from "@/lib/privacy-controls";
 // TYPES
 // ============================================================================
 
-export type DraftStatus = 'open' | 'processing' | 'blocked' | 'failed' | 'promoted' | 'merged' | 'discarded';
+export type DraftStatus = 'open' | 'processing' | 'blocked' | 'failed' | 'promoted' | 'merged' | 'discarded' | 'draft_pending_sync';
+
 export type SaveState = 'clean' | 'dirty' | 'saving' | 'saved' | 'conflict' | 'error';
 
 interface WorkbenchInputState {

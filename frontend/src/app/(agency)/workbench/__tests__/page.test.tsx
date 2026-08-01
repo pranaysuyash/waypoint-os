@@ -1,18 +1,40 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import WorkbenchPage, { extractCompletedTripIdFromDraft } from '../page';
+import { normalizeSafetyResult } from '@/lib/bff-trip-adapters';
 
 const mockReplace = vi.fn();
 const mockExecuteSpineRun = vi.fn();
 const mockCreateDraft = vi.hoisted(() => vi.fn());
+const mockGetDraft = vi.hoisted(() => vi.fn().mockResolvedValue({
+  draft_id: 'draft_test_123',
+  draft_name: 'Draft Test',
+  draft_status: 'open',
+  draft_version: 1,
+  draft_last_saved_at: null,
+  customer_message: '',
+  agent_notes: '',
+  structured_json: null,
+  itinerary_text: null,
+  stage: 'discovery',
+  operating_mode: 'normal_intake',
+  scenario_id: null,
+  strict_leakage: false,
+}));
+const mockUseTrip = vi.fn((id: string | null) => ({
+  data: id && mockTripData && mockTripData.id === id ? mockTripData : null,
+  isLoading: false,
+  error: null,
+}));
 let mockTabsProps: {
   tabs: readonly { readonly id: string; readonly label: string; count?: number }[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
 } | null = null;
 let mockWorkbenchStore: Record<string, unknown>;
+let mockTripData: { id: string; stage: string; frontier_result?: Record<string, unknown> | null; safety?: Record<string, unknown> | null } | null = null;
 let mockAuthState = {
   isLoading: false,
   isAuthenticated: true,
@@ -60,11 +82,7 @@ vi.mock('@/components/ui/tabs', () => ({
 }));
 
 vi.mock('@/hooks/useTrips', () => ({
-  useTrip: () => ({
-    data: null,
-    isLoading: false,
-    error: null,
-  }),
+  useTrip: (id: string | null) => mockUseTrip(id),
   useUpdateTrip: () => ({
     mutate: vi.fn(),
     isSaving: false,
@@ -131,21 +149,7 @@ mockWorkbenchStore = {
 vi.mock('@/lib/api-client', () => ({
   submitTripReviewAction: vi.fn(),
   createDraft: mockCreateDraft,
-  getDraft: vi.fn().mockResolvedValue({
-    draft_id: 'draft_test_123',
-    draft_name: 'Draft Test',
-    draft_status: 'open',
-    draft_version: 1,
-    draft_last_saved_at: null,
-    customer_message: '',
-    agent_notes: '',
-    structured_json: null,
-    itinerary_text: null,
-    stage: 'discovery',
-    operating_mode: 'normal_intake',
-    scenario_id: null,
-    strict_leakage: false,
-  }),
+  getDraft: mockGetDraft,
   patchDraft: vi.fn(),
   discardDraft: vi.fn(),
   promoteDraft: vi.fn(),
@@ -158,6 +162,24 @@ describe('WorkbenchPage', () => {
     vi.clearAllMocks();
     mockTabsProps = null;
     mockCreateDraft.mockReset();
+    mockGetDraft.mockReset();
+    mockGetDraft.mockResolvedValue({
+      draft_id: 'draft_test_123',
+      draft_name: 'Draft Test',
+      draft_status: 'open',
+      draft_version: 1,
+      draft_last_saved_at: null,
+      customer_message: '',
+      agent_notes: '',
+      structured_json: null,
+      itinerary_text: null,
+      stage: 'discovery',
+      operating_mode: 'normal_intake',
+      scenario_id: null,
+      strict_leakage: false,
+    });
+    mockUseTrip.mockClear();
+    mockTripData = null;
     mockAuthState = {
       isLoading: false,
       isAuthenticated: true,
@@ -185,6 +207,23 @@ describe('WorkbenchPage', () => {
     render(<WorkbenchPage />);
 
     expect(screen.getByText(/process inquiry/i)).toBeInTheDocument();
+  });
+
+  it('keeps the Frontier tab visible when the trip payload includes frontier_result', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('trip=trip_frontier_123&tab=frontier') as never);
+    mockTripData = {
+      id: 'trip_frontier_123',
+      stage: 'booking',
+      frontier_result: {
+        ghost_triggered: true,
+        sentiment_score: 0.83,
+      },
+    };
+
+    render(<WorkbenchPage />);
+
+    expect(mockTabsProps?.tabs.map((tab) => tab.id)).toContain('frontier');
+    expect(mockTabsProps?.activeTab).toBe('frontier');
   });
 
   it('submits the workbench intake when process inquiry is used', async () => {
@@ -253,6 +292,28 @@ describe('WorkbenchPage', () => {
     expect(mockReplace).toHaveBeenCalledWith('/workbench?tab=safety', { scroll: false });
   });
 
+  it('routes blocked trips from the workbench banner to the trip repair surface', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('trip=trip_bali_blocked&tab=packet') as never);
+    mockTripData = { id: 'trip_bali_blocked', stage: 'discovery' };
+    mockWorkbenchStore = {
+      ...mockWorkbenchStore,
+      result_validation: {
+        is_valid: false,
+        status: 'BLOCKED',
+        gate: 'NB01',
+        stage: 'intake_completion',
+        reasons: ['MVB_MISSING'],
+      },
+    };
+
+    render(<WorkbenchPage />);
+
+    expect(screen.getByRole('link', { name: /open trip details/i })).toHaveAttribute(
+      'href',
+      '/trips/trip_bali_blocked/intake',
+    );
+  });
+
   it('preserves an existing draft id for fast-capture entry instead of resetting to draft=new', () => {
     vi.mocked(useSearchParams).mockReturnValue(
       new URLSearchParams('draft=draft_test_123&entry=new&capture_mode=call') as never,
@@ -303,5 +364,63 @@ describe('WorkbenchPage', () => {
         run_snapshots: [{ snapshot: { trip_id: 'trip_snapshot' } }],
       }),
     ).toBe('trip_promoted');
+  });
+
+  it('rehydrates a completed draft back to the trip-backed workbench route', async () => {
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams('draft=draft_test_456&tab=intake&capture_mode=call&entry=new') as never,
+    );
+    mockTripData = { id: 'trip_completed_456', stage: 'discovery' };
+    vi.mocked(mockCreateDraft).mockResolvedValue({
+      draft_id: 'draft_test_456',
+      name: 'Draft Test',
+      status: 'open',
+      created_at: '2026-06-22T00:00:00.000Z',
+    });
+    mockGetDraft.mockResolvedValue({
+      draft_id: 'draft_test_456',
+      draft_name: 'Draft Test',
+      draft_status: 'open',
+      draft_version: 1,
+      draft_last_saved_at: null,
+      customer_message: '',
+      agent_notes: '',
+      structured_json: null,
+      itinerary_text: null,
+      stage: 'discovery',
+      operating_mode: 'normal_intake',
+      scenario_id: null,
+      strict_leakage: false,
+      run_snapshots: [{ snapshot: { trip_id: 'trip_completed_456' } }],
+    });
+
+    render(<WorkbenchPage />);
+
+    await waitFor(() => {
+      expect(mockUseTrip).toHaveBeenCalledWith('trip_completed_456');
+      expect(mockReplace).toHaveBeenCalledWith(
+        '/workbench?draft=draft_test_456&tab=packet&capture_mode=call&entry=new&trip=trip_completed_456',
+        { scroll: false },
+      );
+    });
+  });
+
+  it('normalizes raw safety leaks from the hydrated trip into the workbench store', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('trip=trip_safety_123&tab=safety') as never);
+    mockTripData = {
+      id: 'trip_safety_123',
+      stage: 'proposal',
+      safety: {
+        leaks: ['internal_budget'],
+        traveler_bundle_leaks: ['MVB'],
+        sanitized_view_leaks: ['ops-only'],
+      } as never,
+    };
+
+    render(<WorkbenchPage />);
+
+    expect((mockWorkbenchStore as { setResultSafety: ReturnType<typeof vi.fn> }).setResultSafety).toHaveBeenCalledWith(
+      normalizeSafetyResult(mockTripData.safety),
+    );
   });
 });

@@ -17,6 +17,7 @@ Auth model:
 """
 
 import logging
+from dataclasses import asdict
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -27,6 +28,9 @@ from spine_api.core.rls import get_rls_db
 from spine_api.core.auth import get_current_agency_id, require_permission, get_current_membership
 from spine_api.models.tenant import EVENT_CATEGORIES, Membership
 from spine_api.services import confirmation_service, execution_event_service, agentic_eval_service
+from src.evals.agentic_feedback import check_routing_health
+from src.evals.audit.public_authority import resolve_routing_health_authority
+from src.analytics.logger import TripEventLogger
 
 logger = logging.getLogger("spine_api.confirmations")
 
@@ -322,9 +326,41 @@ async def get_agentic_eval(
         min_occurrences=min_occurrences,
         window_minutes=window_minutes,
     )
+
+    routing_metrics = summary.get("routing_metrics")
+    if not isinstance(routing_metrics, dict):
+        routing_metrics = {}
+
+    routing_health_authority = resolve_routing_health_authority()
+    routing_health_report = check_routing_health(
+        routing_metrics,
+        thresholds=routing_health_authority.thresholds or None,
+    )
+    routing_health = {
+        **routing_health_report.summary(),
+        "metrics_snapshot": routing_health_report.metrics_snapshot,
+        "authority": asdict(routing_health_authority),
+    }
+
+    if routing_health["status"] in {"warning", "critical"}:
+        try:
+            TripEventLogger.log_routing_health_alert(
+                trip_id=trip_id,
+                routing_health=routing_health,
+                authority=routing_health["authority"],
+                workflow=workflow,
+                workflow_unit_id=workflow_unit_id,
+                min_occurrences=min_occurrences,
+                window_minutes=window_minutes,
+                metrics_snapshot=routing_health["metrics_snapshot"],
+            )
+        except Exception:
+            logger.exception("Failed to log routing health alert for trip=%s", trip_id)
+
     return {
         "ok": True,
         "trip_id": trip_id,
         "workflow": workflow,
         "summary": summary,
+        "routing_health": routing_health,
     }

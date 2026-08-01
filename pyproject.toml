@@ -29,6 +29,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.62b1",
     "slowapi>=0.1.9",
     "openai>=2.32.0",
+    "playwright>=1.60.0",
 ]
 
 [dependency-groups]
@@ -58,6 +59,25 @@ llm = [
     "transformers>=4.30.0",
     "torch>=2.0.0",
     "sentencepiece>=0.1.99",
+]
+
+# =============================================================================
+# Privacy / NLP Dependencies (Optional - Install as Needed)
+# =============================================================================
+# Layer 2 NLP PII guard: SpaCy NER for person names, org references, and
+# location entities that regex patterns cannot catch in freeform WhatsApp text.
+#
+# To install:
+#   uv add --group privacy spacy
+#   python -m spacy download en_core_web_sm
+#   # OR use the setup script:
+#   bash scripts/setup_nlp_models.sh
+#
+# When NOT installed: privacy_guard.py falls back to regex-only mode (Layer 1).
+# Set NLP_PII_GUARD_ENABLED=0 to disable even if installed (e.g. in unit tests).
+# =============================================================================
+privacy = [
+    "spacy>=3.7.0",
 ]
 
 [tool.ruff.lint.per-file-ignores]

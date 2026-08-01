@@ -94,7 +94,7 @@ export function getWorkbenchBlockCopy(args: {
     title,
     summary,
     details: hasReasons ? reasons : [],
-    actionLabel: needsDetails ? 'Review Missing Fields' : 'Open Trip Details',
+    actionLabel: 'Open Trip Details',
   };
 }
 

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from spine_api.core.auth import get_current_agency
 from spine_api.models.tenant import Agency
@@ -245,3 +246,61 @@ def reschedule_followup(
     )
 
     return updated
+
+
+class GenerateFollowUpRequest(BaseModel):
+    pass
+
+@router.post("/followups/generate")
+def generate_followup_prompt(
+    body: dict,
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Priority #2: Automated Client Re-engagement Copy Generator.
+
+    Generates personalized re-engagement copy for stale leads or pending proposals.
+    Calibrated by channel (WhatsApp vs Email) and tone (friendly, urgent, professional).
+    """
+    trip_id = body.get("trip_id")
+    channel = body.get("channel", "whatsapp")
+    tone = body.get("tone", "friendly")
+
+    if not trip_id:
+        raise HTTPException(status_code=400, detail="trip_id is required")
+
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        # Demo fallback
+        trip = {
+            "id": trip_id,
+            "destination": body.get("destination", "Goa"),
+            "traveler_name": body.get("traveler_name", "Valued Guest"),
+        }
+
+    traveler_name = trip.get("traveler_name", "there")
+    destination = trip.get("destination") or trip.get("packet", {}).get("destination", "your destination")
+
+    if channel == "whatsapp":
+        if tone == "urgent":
+            copy = f"Hi {traveler_name}! ⏰ Quick update on your {destination} itinerary — hotel rates lock in 24 hours. Would you like me to hold your dates today?"
+        else:
+            copy = f"Hi {traveler_name}! 🌴 Hope you're having a great week. I've prepared your custom {destination} travel proposal with guaranteed rates. Let me know if you'd like to review!"
+    else: # email
+        copy = (
+            f"Dear {traveler_name},\n\n"
+            f"Following up on your upcoming trip to {destination}. We have finalized your custom itinerary "
+            f"including exclusive resort perks and flexible cancellation options.\n\n"
+            f"You can view and confirm your itinerary online at your convenience.\n\n"
+            f"Warm regards,\nYour Waypoint OS Concierge Team"
+        )
+
+    return {
+        "ok": True,
+        "trip_id": trip_id,
+        "channel": channel,
+        "tone": tone,
+        "generated_copy": copy,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+

@@ -13,7 +13,7 @@ import {
   getPlanningStatusTone,
   getRequiredPlanningFields,
 } from '@/lib/planning-status';
-import { getTripRoute } from '@/lib/routes';
+import { getTripRepairRoute, getTripRoute } from '@/lib/routes';
 
 type PlanningStateKey = 'green' | 'amber' | 'red' | 'blue';
 
@@ -128,7 +128,7 @@ function getPlanningListAction(trip?: Trip | null): { label: string; href: strin
   const href = getTripRoute(trip?.id, 'intake');
 
   if (getPlanningBriefStatus(trip) === 'missing_required_details') {
-    return { label: 'Open missing details', href };
+    return { label: 'Open Trip Details', href: getTripRepairRoute(trip?.id) };
   }
 
   if (trip?.status === 'ready_to_quote' || trip?.status === 'ready_to_book') {

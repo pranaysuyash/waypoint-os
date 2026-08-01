@@ -79,6 +79,17 @@ _DESTINATION_HINT_VERBS = frozenset({
     "honeymoon", "getaway", "weekend",
 })
 
+_LEADING_ORIGIN_HINTS = frozenset({
+    "family", "families", "couple", "couples", "group", "groups",
+    "traveler", "travelers", "traveller", "travellers",
+    "client", "clients", "customer", "customers", "agency",
+    "request", "quote", "lead", "leads", "office", "market", "branch",
+    "trip", "travel", "planning", "planned", "looking", "want", "wants",
+    "need", "needs", "going", "visit", "holiday", "vacation",
+    "corporate", "leisure", "honeymoon", "wedding",
+    "to", "for", "from",
+})
+
 _NON_DESTINATION_PLACEHOLDERS = frozenset({
     "beach",
     "hotel",
@@ -424,6 +435,15 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
     if match_idx < 0:
         return False
 
+    leading_origin = _extract_leading_origin_city(text)
+    if leading_origin:
+        normalized_dest, _ = Normalizer.normalize_city(dest_match)
+        if leading_origin.lower() == normalized_dest.lower():
+            return True
+
+    if leading_origin == dest_match:
+        return True
+
     # English preposition before: "from Bangalore"
     context_before = lowered[max(0, match_idx - 10):match_idx]
     if _FROM_STARTING_DEPARTING_RE.search(context_before):
@@ -459,6 +479,41 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
         return True
 
     return False
+
+
+def _extract_leading_origin_city(text: str) -> Optional[str]:
+    """Check whether a note starts with a likely origin city.
+
+    This catches agency-style notes like "Cape Town family of 4 wants Mauritius"
+    where the first city is the departure/origin city and the actual destination
+    appears later in the same sentence.
+    """
+    stripped = text.lstrip()
+    if not stripped:
+        return None
+
+    tokens = re.findall(r"[A-Za-z][A-Za-z'.-]*", stripped)
+    if len(tokens) < 2:
+        return None
+
+    for prefix_size in range(min(3, len(tokens)), 0, -1):
+        prefix = " ".join(tokens[:prefix_size]).strip()
+        city, _ = Normalizer.normalize_city(prefix)
+        if not is_known_city(city):
+            continue
+
+        remainder = tokens[prefix_size:prefix_size + 8]
+        if not remainder:
+            continue
+
+        remainder_lower = " ".join(remainder).lower()
+        if any(hint in remainder_lower.split() for hint in _LEADING_ORIGIN_HINTS):
+            return city
+
+        if _DESTINATION_RE.search(" ".join(remainder)):
+            return city
+
+    return None
 
 
 def _is_valid_destination_candidate(span: str, context: str) -> bool:
@@ -1243,6 +1298,19 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
         elif hints_found >= 1:
             results["trip_purpose"] = "leisure"
 
+    # Activity / experience interests.
+    activity_interests: List[str] = []
+    _ACTIVITY_SIGNAL_PATTERNS = {
+        "sightseeing": r"\b(partial\s+sightseeing|sightseeing|city\s+tour|guided\s+tour|local\s+tour)\b",
+        "beach time": r"\b(beach\s+time|beach\s+day|by\s+the\s+beach|seaside)\b",
+        "business offsite": r"\b(corporate\s+offsite|offsite|team\s+offsite|procurement|approval[-\s]?ready)\b",
+    }
+    for label, pattern in _ACTIVITY_SIGNAL_PATTERNS.items():
+        if re.search(pattern, text_lower):
+            activity_interests.append(label)
+    if activity_interests:
+        results["activity_interests"] = activity_interests
+
     # Trip style
     style_patterns = {
         "luxury resort": r"\b(5[\s-]*star|luxury\s+resort|luxury)\b",
@@ -1300,7 +1368,9 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
 
     _PRIORITY_SIGNALS = {
         "kid-friendly": r"\b(kid[-\s]?friendly|family[-\s]?friendly|child[-\s]?friendly|toddler[-\s]?friendly)\b",
-        "luxury experience": r"\b(luxury\s+(?:experience|stay|resort|hotel)|premium\s+(?:experience|stay))\b",
+        "premium hotel": r"\b(luxury\s+(?:experience|stay|resort|hotel)|premium\s+(?:experience|stay|hotel|resort)|upscale\s+(?:hotel|resort|stay))\b",
+        "mid-range hotel": r"\b(mid[-\s]?range\s+(?:hotel|resort|stay|property)|midmarket\s+(?:hotel|resort|stay)|mid\s+range\s+(?:hotel|resort|stay))\b",
+        "budget hotel": r"\b(budget\s+(?:hotel|resort|stay|property)|economy\s+(?:hotel|resort|stay))\b",
         "budget conscious": r"\b(budget[-\s]?(?:conscious|friendly|travel)|cheapest?\s+(?:option|flight|stay))\b",
         "beach access": r"\b(beach[-\s]?(?:front|side|access|resort)|sea[-\s]?facing|ocean[-\s]?view)\b",
         "direct flights": r"\b(direct\s+flights?|non[-\s]?stop|no\s+layover)\b",
@@ -1311,6 +1381,11 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
         "cultural experience": r"\b(cultural\s+(?:experience|tour|visit)|heritage|temple\s+visit|pilgrimage)\b",
         "honeymoon special": r"\b(honeymoon\s+(?:special|package|suite)|romantic\s+(?:dinner|getaway|setup))\b",
         "accessibility needs": r"\b(accessible|wheelchair[-\s]?(?:friendly|accessible)|senior[-\s]?friendly|elderly)\b",
+        "airport transfers": r"\b(airport\s+transfers?|airport\s+picks?|airport\s+pickup(?:s)?|airport\s+drop(?:s)?|transfers?\s+from\s+airport)\b",
+        "meeting room": r"\b(meeting\s+room(?:s)?|conference\s+room(?:s)?|board\s+room(?:s)?)\b",
+        "rooming lists": r"\b(rooming\s+list(?:s)?|room\s+list(?:s)?|rooming\s+separation|separate\s+rooming\s+lists?)\b",
+        "fast quote": r"\b(fast\s+quote|quick\s+quote|quote\s+quickly|speedy\s+quote|approval[-\s]?ready\s+summary)\b",
+        "hotel blocks": r"\b(hotel\s+block(?:s)?|room\s+block(?:s)?|mid[-\s]?to[-\s]?upscale\s+hotel\s+blocks?|upscale\s+hotel\s+blocks?)\b",
     }
     for label, pattern in _PRIORITY_SIGNALS.items():
         if re.search(pattern, text_lower):
@@ -1873,6 +1948,14 @@ class ExtractionPipeline:
 
         # Bounded extraction: limit to ~3 words after "from/starting/departing"
         # to prevent conversational spillover into unrelated sentence parts.
+        if not packet.facts.get("origin_city"):
+            leading_origin = _extract_leading_origin_city(text)
+            if leading_origin:
+                packet.set_fact("origin_city", self._make_slot(
+                    leading_origin, 0.88, AuthorityLevel.EXPLICIT_USER,
+                    leading_origin, eid, extraction_mode=ExtractionMode.DIRECT_EXTRACT,
+                ))
+
         if not packet.facts.get("origin_city"):
             airport_match = re.search(r"\b(from|starting|departing)\s+([A-Z]{3})\b", text)
             if airport_match:

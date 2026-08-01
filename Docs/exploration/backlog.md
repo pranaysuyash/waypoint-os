@@ -1,6 +1,6 @@
 # Exploration Backlog
 
-**Last Updated:** 2026-05-19
+**Last Updated:** 2026-07-02
 
 A living document of areas to explore, ideas to investigate, and potential improvements. Add items freely — this is a brainstorming space, not a commitment queue.
 
@@ -121,6 +121,37 @@ A living document of areas to explore, ideas to investigate, and potential impro
 - [x] 2026-06-01: Seasonal campaign route + contract surface audited for duplicate removal risk.
   - Outcome: no canonical duplicate path found; removal candidates restricted to dead local UI state only.
   - Follow-up: contract parity check between TS client and Pydantic seasonal models is now in place.
+- [x] 2026-07-01: Surface routing-health envelope on trip agentic eval endpoint.
+  - Deliverable: `/api/trips/{trip_id}/agentic-eval` now returns `routing_health` including alert summary from `check_routing_health()` and D6 public authority metadata from `resolve_routing_health_authority()`.
+  - Follow-up: connect `routing_health` changes to operator alerting and CI gating runbook.
+- [x] 2026-07-01: Add endpoint-level contract tests/docs that enumerate `routing_health` semantics and owner expectations for operators.
+  - Deliverable: `tests/evals/test_agentic_eval_endpoint.py` validates alert contract (status, alert_count, per-alert schema) for warning/critical paths.
+  - Deliverable: new operator contract doc `Docs/research/AGENTIC_EVAL_ROUTING_HEALTH_OPERATOR_CONTRACT_2026-07-01.md`.
+- [x] 2026-07-01: Connect `routing_health` warning/critical changes to operator alerting and CI runbook.
+  - Deliverable: `GET /api/trips/{trip_id}/agentic-eval` now publishes warning/critical status into `routing_health_alert` `AuditStore` events via `TripEventLogger`.
+  - Deliverable: operator follow-up path documented in `Docs/operations/MULTI_AGENT_BACKEND_OPERATIONS_RUNBOOK_2026-05-04.md`.
+- [x] 2026-07-01: Add operator filtering to routing health alert audit discovery.
+  - Deliverable: `/legacy_ops/audit` now supports query filters for `event_type`, `trip_id`, and `trip_status`.
+  - Outcome: routing health operators can query directly for `event_type=routing_health_alert` without manual client-side filtering.
+- [x] 2026-07-01: Add dedicated operator panel surfacing `routing_health` paging and triage signals.
+  - Deliverable: `/(agency)/audit` now renders trip audit, `routing_health_alert`, and `routing_health_paging_alert` surfaces with contextual metadata.
+- [x] 2026-07-01: `routing_health_alert` dedupe + escalation policy
+  - Delivered: added centralized alert dedupe in `TripEventLogger.log_routing_health_alert` keyed by stable alert fingerprint with a configurable dedupe window.
+  - Delivered: added scheduled paging guard when sustained warning/critical signals persist for the same trip context.
+  - Current behavior: emits `routing_health_paging_alert` when threshold is crossed, with cooldown suppression to avoid duplicate paging noise.
+- [x] 2026-07-02: Operator triage workflow for routing-health alerts
+  - Add acknowledgement/closure/escalate workflow and escalation notes for `routing_health_alert` rows in `/(agency)/audit`.
+  - Tie operator action to an auditable action log (`routing_health_alert_triage`) so follow-up work is traceable.
+- [x] Routing-health evidence export
+  - Added on-demand evidence export (`/legacy_ops/audit/routing-health/export`) with JSON and CSV formats.
+  - Added operator UI export actions (`/audit` page) and backend contract-backed route response shape.
+- [x] 2026-07-02: Real-time alerting UX
+  - Added live operator refresh controls on `/(agency)/audit`:
+    - 15-second automatic polling (toggleable pause/enable)
+    - manual refresh button
+    - visible status and last-refresh timestamp
+    - auto-refresh wired to `/legacy_ops/audit` paging/routing-health endpoints
+  - Updated operator tests for new controls and refresh behavior.
 - [ ] spine_api performance optimization
 - [ ] Additional health check endpoints
 - [ ] Rate limiting and request queuing

@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback } from "react";
+import Link from "next/link";
 import { useWorkbenchStore } from "@/stores/workbench";
 import { acknowledgeSuitabilityFlags } from "@/lib/api-client";
 import { SuitabilitySignal } from "@/components/workspace/panels/SuitabilitySignal";
 import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, FollowUpQuestion, Rationale, SuitabilityFlagData } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import { DECISION_STATE_LABELS, titleCase, labelOrTitle } from "@/lib/label-maps";
+import { getTripRepairRoute } from "@/lib/routes";
 import styles from "@/components/workbench/workbench.module.css";
 
 /**
@@ -92,6 +94,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
   const { result_decision, result_fees, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag } = useWorkbenchStore();
 
   const tripId = trip?.id;
+  const tripRepairHref = tripId ? getTripRepairRoute(tripId) : null;
 
   const handleAcknowledge = useCallback(async (flagType: string) => {
     acknowledgeFlag(flagType);
@@ -109,7 +112,19 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
   if (!activeDecision) {
     return (
       <div className={styles.emptyState}>
-        <p>No quote status data. Process a trip from the &ldquo;New Inquiry&rdquo; section first.</p>
+        <p>
+          {tripRepairHref
+            ? 'No quote status data yet. Open Trip Details to continue repairing the trip.'
+            : 'No quote status data yet.'}
+        </p>
+        {tripRepairHref && (
+          <Link
+            href={tripRepairHref}
+            className="mt-3 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+          >
+            Open Trip Details
+          </Link>
+        )}
       </div>
     );
   }

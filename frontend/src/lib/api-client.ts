@@ -339,7 +339,7 @@ export interface Trip {
   budget?: string;
   status?: string;
   stage?: string;
-  // Pipeline result fields (returned by mock API, not yet in real API)
+  // Pipeline result fields (returned by the backend API)
   packet?: unknown;
   validation?: ValidationReport;
   decision?: DecisionOutput;
@@ -351,7 +351,7 @@ export interface Trip {
   frontier_result?: FrontierOrchestrationResult | null;
   agentOperations?: AgentOperationsMetadata;
   rawInput?: unknown;
-  // Input fields (returned by mock API)
+  // Input fields (returned by the backend API)
   customerMessage?: string;
   agentNotes?: string;
   followUpDueDate?: string;
@@ -360,6 +360,7 @@ export interface Trip {
   dateYearConfidence?: string;
   leadSource?: string;
   activityProvenance?: string;
+  activityInterests?: string;
   tripPriorities?: string;
   dateFlexibility?: string;
   // Contact / customer profile

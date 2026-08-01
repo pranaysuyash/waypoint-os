@@ -15,6 +15,7 @@ import base64
 import json
 import os
 import asyncio
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -36,25 +37,19 @@ logger = logging.getLogger(__name__)
 
 TEST_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
 
-_tripstore_session_makers: dict[int, async_sessionmaker[AsyncSession]] = {}
+import weakref
+
+_tripstore_session_makers = weakref.WeakKeyDictionary()
+_tripstore_engines = weakref.WeakKeyDictionary()
 _tripstore_session_makers_lock = threading.Lock()
 
 
-def _create_tripstore_session_maker() -> async_sessionmaker[AsyncSession]:
-    engine = create_async_engine(
-        DATABASE_URL,
-        echo=False,
-        future=True,
-        pool_size=10,
-        max_overflow=5,
-        pool_pre_ping=True,
-    )
-    return async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autoflush=False,
-    )
+async def _dispose_engine_safely(engine) -> None:
+    """Dispose of the database engine asynchronously to clean up connections."""
+    try:
+        await engine.dispose()
+    except Exception as e:
+        logger.warning("Failed to dispose engine: %s", e)
 
 
 def tripstore_session_maker() -> AsyncSession:
@@ -64,13 +59,51 @@ def tripstore_session_maker() -> AsyncSession:
     Runtime agents call the async TripStore through a synchronous bridge loop,
     while FastAPI endpoints use the app loop. Keeping one engine/sessionmaker per
     loop prevents cross-loop pool and event mutex reuse.
+
+    Uses a WeakKeyDictionary to automatically remove entry references when event
+    loops are garbage-collected, and actively disposes of closed loops' engines
+    on each check to prevent Postgres connection pool leaks.
     """
-    loop_id = id(asyncio.get_running_loop())
+    loop = asyncio.get_running_loop()
+    closed_loops = []
+
     with _tripstore_session_makers_lock:
-        maker = _tripstore_session_makers.get(loop_id)
+        # Identify closed loops and collect their engines for disposal
+        for lp, eng in list(_tripstore_engines.items()):
+            if lp.is_closed():
+                closed_loops.append((lp, eng))
+
+        for lp, eng in closed_loops:
+            _tripstore_session_makers.pop(lp, None)
+            _tripstore_engines.pop(lp, None)
+
+        maker = _tripstore_session_makers.get(loop)
         if maker is None:
-            maker = _create_tripstore_session_maker()
-            _tripstore_session_makers[loop_id] = maker
+            engine = create_async_engine(
+                DATABASE_URL,
+                echo=False,
+                future=True,
+                pool_size=10,
+                max_overflow=5,
+                pool_pre_ping=True,
+            )
+            maker = async_sessionmaker(
+                engine,
+                class_=AsyncSession,
+                expire_on_commit=False,
+                autoflush=False,
+            )
+            _tripstore_session_makers[loop] = maker
+            _tripstore_engines[loop] = engine
+
+    # Asynchronously dispose of engines for closed loops
+    if closed_loops:
+        for _, eng in closed_loops:
+            try:
+                asyncio.create_task(_dispose_engine_safely(eng))
+            except Exception:
+                pass
+
     return maker()
 
 # Data directories
@@ -1902,19 +1935,36 @@ class AuditStore:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def log_event(event_type: str, user_id: str, details: dict):
-        """Log an audit event — append-only, crash-safe per event."""
-        event = {
-            "id": f"evt_{uuid4().hex[:12]}",
-            "type": event_type,
-            "user_id": user_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "details": details,
-        }
+    def log_event(event_type: str, user_id: str, details: dict) -> dict:
+        """Log an audit event — append-only, crash-safe per event with SHA-256 chain hashing."""
         with AuditStore._lock:
+            AuditStore._migrate_if_needed()
+            
+            # Retrieve last event to link chain hash
+            events = AuditStore._read_events()
+            last_event = events[-1] if events else None
+            previous_hash = last_event.get("current_hash", "GENESIS_BLOCK_HASH") if last_event else "GENESIS_BLOCK_HASH"
+
+            event_id = f"evt_{uuid4().hex[:12]}"
+            timestamp = datetime.now(timezone.utc).isoformat()
+            
+            # Compute current block SHA-256 hash
+            hash_payload = f"{event_id}:{event_type}:{user_id}:{previous_hash}:{timestamp}:{json.dumps(details, sort_keys=True)}"
+            current_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+
+            event = {
+                "id": event_id,
+                "event_type": event_type,
+                "user_id": user_id,
+                "timestamp": timestamp,
+                "details": details,
+                "previous_hash": previous_hash,
+                "current_hash": current_hash,
+            }
             AuditStore._append_event(event)
             AuditStore._write_count += 1
-        AuditStore._trim_if_needed()
+            AuditStore._trim_if_needed()
+            return event
 
     @staticmethod
     def get_events(limit: int = 100) -> list:

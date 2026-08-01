@@ -98,7 +98,7 @@ describe('WorkspacesPage', () => {
     expect(screen.getByText('Confirm missing customer details.')).toBeInTheDocument();
     expect(screen.getByText('Budget range')).toBeInTheDocument();
     expect(screen.getByText('Origin city')).toBeInTheDocument();
-    const missingDetailLinks = screen.getAllByRole('link', { name: /Continue planning|Open missing details/i });
+    const missingDetailLinks = screen.getAllByRole('link', { name: /Continue planning|Open Trip Details/i });
     expect(missingDetailLinks).toHaveLength(2);
     missingDetailLinks.forEach((link) => {
       expect(link).toHaveAttribute('href', '/trips/trip_4b9e0d894872/intake');

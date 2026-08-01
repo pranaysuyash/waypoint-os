@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { getTripRepairRoute } from "@/lib/routes";
 
 interface PlanningStageGateProps {
   tripId: string;
@@ -19,10 +20,10 @@ export function PlanningStageGate({ tripId, reason }: PlanningStageGateProps) {
         </h2>
         <p className="mt-2 text-ui-sm text-[var(--text-secondary)]">{reason}</p>
         <Link
-          href={`/trips/${tripId}/intake`}
+          href={getTripRepairRoute(tripId)}
           className="mt-5 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-elevated)]"
         >
-          Go to missing details
+          Open Trip Details
         </Link>
       </div>
     </div>

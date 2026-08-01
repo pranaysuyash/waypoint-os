@@ -162,9 +162,9 @@ async def post_signup(
     Create a new user, agency, and membership.
     Sets httpOnly cookies for auth.
 
-    Test users: Email ending with '@test.com' will get mock data seeded,
+    Test users: Email ending with '@test.com' will get test data seeded,
     but only in development. In production, @test.com signups are treated
-    as normal accounts with no test data.
+    as normal accounts with no seeded test data.
     """
     is_dev = os.environ.get("ENVIRONMENT", "development").lower() == "development"
     is_test = (

@@ -21,7 +21,7 @@ _src_dir = str(Path(__file__).resolve().parent.parent / "src")
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
-from src.intake.specialty_knowledge import (
+from src.intake.specialty_knowledge import (  # noqa: E402
     SpecialtyKnowledgeService,
     SpecialtyKnowledgeEntry,
     KNOWLEDGE_BASE,

@@ -5,6 +5,7 @@ import { validationLabelFor } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
 import { getTravelerPromptForUnknownField } from "@/lib/traveler-prompts";
+import { getTripRepairRoute } from "@/lib/routes";
 import { AlertTriangle, CheckCircle, XCircle, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
@@ -33,11 +34,24 @@ export default function PacketTab({ trip }: PacketTabProps) {
 
   const activePacket = result_packet || trip?.packet;
   const activeValidation = result_validation || (trip?.validation as ValidationReport | null);
+  const tripRepairHref = trip?.id ? getTripRepairRoute(trip.id) : null;
 
   if (!activePacket) {
     return (
-      <div className="text-center py-10 text-[#8b949e]">
-        <p>No booking request data. Process a trip from the &ldquo;New Inquiry&rdquo; section first.</p>
+      <div className="rounded-xl border border-[rgba(210,153,34,0.25)] bg-[rgba(210,153,34,0.05)] p-4 text-center text-[#8b949e]">
+        <p>
+          {tripRepairHref
+            ? 'No booking request data yet. Open Trip Details to repair the missing fields.'
+            : 'No booking request data yet.'}
+        </p>
+        {tripRepairHref && (
+          <Link
+            href={tripRepairHref}
+            className="mt-3 inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]"
+          >
+            Open Trip Details
+          </Link>
+        )}
       </div>
     );
   }
@@ -144,7 +158,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
                   </p>
                 )}
                 <p className="text-ui-xs text-[#a8b3c1]">
-                  Go back to the <span className="text-[#58a6ff] font-medium">New Inquiry</span> tab, add the missing details, and try again.
+                  Open the <span className="text-[#58a6ff] font-medium">Trip Details</span> repair surface, add the missing fields, and try again.
                 </p>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -157,6 +171,14 @@ export default function PacketTab({ trip }: PacketTabProps) {
                     {showValidationDetails ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                     {showValidationDetails ? 'Hide details' : 'View details'}
                   </button>
+                )}
+                {tripRepairHref && (
+                  <Link
+                    href={tripRepairHref}
+                    className="inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-1.5 text-ui-xs font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]"
+                  >
+                    Open Trip Details
+                  </Link>
                 )}
               </div>
               {showValidationDetails && (

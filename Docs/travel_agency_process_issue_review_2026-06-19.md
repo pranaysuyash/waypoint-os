@@ -1,5 +1,9 @@
 # Travel Agency Main App Issue Review
 
+## Status Note
+
+As of 2026-06-30, this review is still active as a living product/replay log. The core blockers documented here have been fixed, but the remaining UX clarity notes and operator-facing follow-ups are still useful as open guidance rather than archive material.
+
 Date: 2026-06-19
 Mode: Live authenticated app simulation (browser + server truth)
 Files in scope:

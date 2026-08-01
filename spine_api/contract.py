@@ -284,6 +284,66 @@ class ReviewActionRequest(BaseModel):
     review_workflow_unit_id: Optional[str] = None
 
 
+class RoutingHealthAlertTriageRequest(BaseModel):
+    """Operator triage action for routing health alerts.
+
+    Notes are optional and can be used to record analyst context.
+    """
+
+    action: Literal["acknowledge", "close", "escalate"]
+    note: Optional[str] = None
+
+
+class RoutingHealthAlertTriageResponse(BaseModel):
+    success: bool
+    event_id: str
+    target_event_id: str
+    action: Literal["acknowledge", "close", "escalate"]
+    triage_event: Dict[str, Any]
+
+
+class RoutingHealthTriageBatchItem(BaseModel):
+    event_id: str
+    action: Literal["acknowledge", "close", "escalate"]
+    note: Optional[str] = None
+
+
+class RoutingHealthTriageBatchResponseItem(BaseModel):
+    event_id: str
+    success: bool
+    action: Optional[Literal["acknowledge", "close", "escalate"]] = None
+    note: Optional[str] = None
+    triage_event: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+class RoutingHealthTriageBatchResponse(BaseModel):
+    success: bool
+    requested: int
+    succeeded: int
+    failed: int
+    results: List[RoutingHealthTriageBatchResponseItem]
+
+
+class RoutingHealthPagingSuppressionRequest(BaseModel):
+    """Log a paging alert suppression action for a single operator context."""
+
+    note: Optional[str] = None
+    suppress_for_minutes: Optional[int] = Field(default=None, ge=1, le=43200)
+
+
+class RoutingHealthPagingSuppressionResponse(BaseModel):
+    success: bool
+    event_id: str
+    suppression_event: Dict[str, Any]
+
+
+class RoutingHealthEvidenceExportResponse(BaseModel):
+    generated_at: str
+    total: int
+    items: List[Dict[str, Any]]
+
+
 class SuitabilityAcknowledgeRequest(BaseModel):
     acknowledged_flags: List[str]
 
@@ -776,6 +836,8 @@ class TripResponse(BaseModel):
     extracted: Optional[Dict[str, Any]] = None
     validation: Optional[Dict[str, Any]] = None
     strategy: Optional[Dict[str, Any]] = None
+    frontier_result: Optional[FrontierOrchestrationResult] = None
+    safety: Optional[Dict[str, Any]] = None
     # Phase 2 structured intake fields — stored as DB columns, returned verbatim.
     # These are set by direct PATCH or extracted from call/intake pipeline.
     party_composition: Optional[str] = None
@@ -783,6 +845,7 @@ class TripResponse(BaseModel):
     date_year_confidence: Optional[str] = None
     lead_source: Optional[str] = None
     activity_provenance: Optional[str] = None
+    activity_interests: Optional[str] = None
     trip_priorities: Optional[str] = None
     date_flexibility: Optional[str] = None
 
@@ -858,6 +921,8 @@ class TripResponse(BaseModel):
             extracted=trip.get("extracted") or None,
             validation=trip.get("validation") or None,
             strategy=trip.get("strategy") or None,
+            frontier_result=trip.get("frontier_result") or None,
+            safety=trip.get("safety") or None,
             # Phase 2 structured fields — read directly from storage dict, with
             # extracted.facts fallback for pipeline-sourced values.
             party_composition=_clean_text_value(
@@ -879,6 +944,10 @@ class TripResponse(BaseModel):
             activity_provenance=_clean_text_value(
                 trip.get("activity_provenance")
                 or _get_nested(trip, "extracted.facts.activity_provenance.value", None)
+            ),
+            activity_interests=_clean_text_value(
+                trip.get("activity_interests")
+                or _get_nested(trip, "extracted.facts.activity_interests.value", None)
             ),
             trip_priorities=_clean_text_value(
                 trip.get("trip_priorities")
@@ -970,6 +1039,186 @@ class AssignInboxResponse(BaseModel):
 
 
 # =============================================================================
+# Multi-channel Inbound & Optimistic State Sync Models
+# =============================================================================
+
+class InboundInquiryRequest(BaseModel):
+    channel: Literal["whatsapp_web", "email", "voice_note", "manual_paste", "chrome_extension"] = "chrome_extension"
+    raw_text: str = Field(..., min_length=3, description="Unstructured inbound chat or email text")
+    customer_name: Optional[str] = None
+    customer_contact: Optional[str] = None
+    agent_notes: Optional[str] = None
+    strict_leakage: bool = False
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class InboundInquiryResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    channel: str
+    decision_state: str
+    packet: Dict[str, Any]
+    missing_fields: List[str] = Field(default_factory=list)
+    draft_followup_prompt: Optional[str] = None
+    traveler_bundle: Optional[Dict[str, Any]] = None
+    internal_bundle: Optional[Dict[str, Any]] = None
+    safety: SafetyResult = Field(default_factory=SafetyResult)
+    created_at: str
+
+
+class OptimisticSyncRequest(BaseModel):
+    trip_id: str
+    field_updates: Dict[str, Any] = Field(..., description="Field-level updates (budget, dates, party, preferences)")
+    actor_id: Optional[str] = None
+    client_timestamp: Optional[str] = None
+
+
+class OptimisticSyncResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    previous_state: str
+    new_state: str
+    packet: Dict[str, Any]
+    reconciled_fields: List[str]
+    missing_fields: List[str] = Field(default_factory=list)
+    synced_at: str
+
+
+class FollowUpPromptResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    customer_name: Optional[str] = None
+    channel: str = "whatsapp"
+    tone: str = "friendly"
+    missing_fields: List[str] = Field(default_factory=list)
+    formatted_message: str
+    quick_replies: List[str] = Field(default_factory=list)
+    generated_at: str
+
+
+class TrustScorecardResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    overall_trust_score: float = Field(..., ge=0.0, le=100.0, description="Overall trust and suitability confidence rating 0-100")
+    suitability_match_pct: float = Field(..., ge=0.0, le=100.0)
+    safety_score: float = Field(..., ge=0.0, le=100.0)
+    budget_fit_status: str = "PERFECT_MATCH"
+    highlights: List[str] = Field(default_factory=list)
+    risk_mitigations: List[str] = Field(default_factory=list)
+    transparency_badges: List[Dict[str, str]] = Field(default_factory=list)
+    generated_at: str
+
+
+class OutboundMessageRequest(BaseModel):
+    trip_id: str
+    recipient: str = Field(..., description="Recipient phone number (E.164) or email address")
+    channel: str = Field(..., description="whatsapp | email | sms")
+    content: str = Field(..., description="Formatted message body")
+    template_id: Optional[str] = None
+
+
+class OutboundMessageResponse(BaseModel):
+    ok: bool = True
+    message_id: str
+    trip_id: str
+    channel: str
+    status: str = "QUEUED"
+    provider: str = "mock_provider"
+    dispatched_at: str
+
+
+class ProposalLinkRequest(BaseModel):
+    trip_id: str
+    expiry_days: int = 7
+    allow_customization: bool = True
+
+
+class ProposalLinkResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    proposal_token: str
+    web_url: str
+    expires_at: str
+    interactive_capabilities: List[str] = Field(default_factory=list)
+    generated_at: str
+
+
+class SupplierOption(BaseModel):
+    supplier_name: str
+    supplier_type: str
+    base_cost: float
+    commission_pct: float
+    net_margin: float
+    bonus_override_eligible: bool = False
+    suitability_score: float
+
+
+class YieldArbitrageResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    supplier_options: List[SupplierOption] = Field(default_factory=list)
+    optimal_supplier: str
+    potential_margin_gain: float
+    generated_at: str
+
+
+class ConciergeMonitorResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    trip_status: str = "IN_PROGRESS"
+    disruption_detected: bool = False
+    disruption_type: Optional[str] = None
+    recommended_action: Optional[str] = None
+    last_checked_at: str
+
+
+class AutoRebookRequest(BaseModel):
+    trip_id: str
+    disruption_event_id: str
+    auto_approve: bool = True
+
+
+class AutoRebookResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    rebooked_segment: str
+    new_confirmation_code: str
+    additional_cost: float = 0.0
+    status: str = "REBOOKED"
+    executed_at: str
+
+
+class TeamAssignmentRequest(BaseModel):
+    trip_id: str
+    assignee_id: str
+    assignee_role: str = "primary_agent"
+    notes: Optional[str] = None
+
+
+class TeamAssignmentResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    assigned_to: str
+    role: str
+    assigned_at: str
+
+
+class ReviewSignoffRequest(BaseModel):
+    trip_id: str
+    reviewer_id: str
+    decision: str = "APPROVED"
+    feedback_notes: Optional[str] = None
+
+
+class ReviewSignoffResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    reviewer_id: str
+    decision: str
+    signoff_at: str
+
+
+# =============================================================================
 # Re-export analytics models (canonical source: src/analytics/models.py)
 # =============================================================================
 
@@ -1002,6 +1251,14 @@ __all__ = [
     "TimelineEvent",
     "TimelineResponse",
     "ReviewActionRequest",
+    "RoutingHealthAlertTriageRequest",
+    "RoutingHealthTriageBatchItem",
+    "RoutingHealthTriageBatchResponse",
+    "RoutingHealthTriageBatchResponseItem",
+    "RoutingHealthPagingSuppressionRequest",
+    "RoutingHealthPagingSuppressionResponse",
+    "RoutingHealthEvidenceExportResponse",
+    "RoutingHealthAlertTriageResponse",
     "SuitabilityAcknowledgeRequest",
     "SnoozeRequest",
     "TripPatchRequest",
@@ -1051,4 +1308,8 @@ __all__ = [
     "AnalyticsPayload",
     "OperationalAlert",
     "FrontierOrchestrationResult",
+    "InboundInquiryRequest",
+    "InboundInquiryResponse",
+    "OptimisticSyncRequest",
+    "OptimisticSyncResponse",
 ]

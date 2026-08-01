@@ -83,6 +83,54 @@
 4. If ingestion broken:
    - treat as observability incident; do not claim recovery health until restored.
 
+### D) Routing health warning/critical observed
+1. Pull operator-relevant alert evidence:
+   - `GET /legacy_ops/audit?limit=200&event_type=routing_health_alert` (requires owner/operator auth)
+2. Filter returned items for:
+   - `item.type == "routing_health_alert"`
+   - `item.details.trip_id == <trip_id>`
+   - `item.details.status in ["warning", "critical"]`
+   - optional narrow-by-trip: `GET /legacy_ops/audit?limit=200&event_type=routing_health_alert&trip_id=<trip_id>`
+   - optional narrow-by-severity: `GET /legacy_ops/audit?limit=200&event_type=routing_health_alert&trip_status=<warning|critical>`
+3. Confirm payload has evidence fields:
+   - `checked_at`
+   - `alerts`
+   - `metrics_snapshot`
+   - `authority` (`blocks_ci`, `source`, `thresholds`)
+4. Record operator action for tracked alerts (required for auditability):
+   - `POST /legacy_ops/audit/<event_id>/triage`
+   - body: `{ "action": "acknowledge|close|escalate", "note": "optional" }`
+   - response: `routing_health_alert_triage` event containing `target_event_id`, `action`, and `note`.
+   - escalate action includes operator note before posting.
+4. For `critical`:
+   - route as immediate handling and check `authority.blocks_ci` for CI ownership.
+5. For repeated warning without closure:
+   - within the configured backend dedupe window, duplicate events for the same normalized alert state are suppressed by logger logic.
+   - this prevents repeated operator noise from polling-only calls.
+6. For sustained warning/critical repetition:
+   - logger emits `routing_health_paging_alert` when the same trip context crosses sustained thresholds.
+   - event payload contains `occurrence_index`, `sustained_window_seconds`, and `paging_cooldown_seconds`.
+   - if paging was emitted within cooldown, duplicates are suppressed.
+7. If repeated warning persists outside the sustained paging policy:
+   - file a triage note and tag the recurring window.
+8. If trip status continues to oscillate across requests:
+   - avoid clearing incident state until trip review outcomes close the loop.
+9. For operator visibility:
+   - check `/(agency)/audit` for consolidated operator views:
+     - trip audit stream,
+     - routing health alerts,
+     - and routing health paging alerts (trip-level sustained recurrence).
+
+### E) Routing health paging controls
+1. Env knobs:
+   - `ROUTING_HEALTH_ALERT_SUSTAINED_WARNING_THRESHOLD` (default `3`)
+   - `ROUTING_HEALTH_ALERT_SUSTAINED_WINDOW_SECONDS` (default `3600`)
+   - `ROUTING_HEALTH_ALERT_PAGING_COOLDOWN_SECONDS` (default `3600`)
+   - `ROUTING_HEALTH_ALERT_DEDUPE_WINDOW_SECONDS` (existing; warning/critical duplicate suppression)
+2. Runbook queries:
+   - `GET /legacy_ops/audit?event_type=routing_health_paging_alert`
+   - optional narrow-by-trip: `GET /legacy_ops/audit?event_type=routing_health_paging_alert&trip_id=<trip_id>`
+
 ## Public Checker SQL Startup Preflight (Required)
 
 If `TRIPSTORE_BACKEND=sql`, startup now assumes the configured `PUBLIC_CHECKER_AGENCY_ID` exists in `agencies.id`.
@@ -113,4 +161,3 @@ Expected behavior:
 1. Recovery runner currently depends on in-process callback wiring.
 2. Multi-worker ownership semantics for recovery loop require explicit deployment constraints.
 3. Frontier subsystem remains mostly heuristic and best-effort, not independently supervised workers.
-

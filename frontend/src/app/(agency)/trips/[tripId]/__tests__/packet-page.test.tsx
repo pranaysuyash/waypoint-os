@@ -66,7 +66,7 @@ describe("packet page", () => {
     expect(screen.getByText("Origin city")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Add budget" }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByRole("link", { name: "Add origin" }).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("link", { name: "Go to missing details" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Open Trip Details" })).toHaveAttribute(
       "href",
       "/trips/trip_4b9e0d894872/intake",
     );

@@ -1,0 +1,58 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      # First-principles post-deploy verification check
+      - name: Verify Deployment Health
+        run: |
+          echo "Starting post-deploy health check..."
+          DEPLOYED_URL="https://spine-api.fly.dev/health" # Adjust to match production URL
+          MAX_ATTEMPTS=6
+          ATTEMPT=1
+          SUCCESS=false
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Attempt $ATTEMPT: Checking health at $DEPLOYED_URL..."
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOYED_URL" || echo "000")
+            
+            if [ "$STATUS_CODE" = "200" ]; then
+              echo "Health check passed with HTTP 200!"
+              SUCCESS=true
+              break
+            fi
+            
+            echo "Health check returned status code $STATUS_CODE. Waiting 10s before retry..."
+            sleep 10
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          if [ "$SUCCESS" = "false" ]; then
+            echo "Error: Deployment health check failed after $MAX_ATTEMPTS attempts."
+            echo "Initiating automated deployment rollback..."
+            flyctl rollback -a spine-api
+            exit 1
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

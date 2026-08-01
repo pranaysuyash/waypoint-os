@@ -3,7 +3,14 @@ security.privacy_guard — PII guardrails for dogfood mode.
 
 Purpose:
 Block real user PII from being stored in plaintext JSON in dogfood mode.
-This is a lightweight guard, not an ML-based detector or encryption layer.
+
+Layer 1 (always active): Regex-based heuristics for emails, India phone numbers,
+Aadhaar-pattern numbers, medical keywords, and freeform field detection.
+
+Layer 2 (optional, enabled by default): SpaCy NER for PERSON, ORG, GPE entities.
+Detects names like "Priya Sharma" and contact references in freeform WhatsApp text
+that regex patterns cannot catch. Requires `spacy` + `en_core_web_sm` to be installed
+(via `bash scripts/setup_nlp_models.sh`). Fails-open gracefully if not available.
 
 When DATA_PRIVACY_MODE=dogfood (default):
   - Any trip data that looks like real user input is blocked
@@ -14,14 +21,18 @@ When DATA_PRIVACY_MODE=beta or production:
   - Guard is relaxed (still logs warnings, but allows persistence)
   - Encryption/PostgreSQL is expected to be in place before real users
 
-Environment variable:
-  DATA_PRIVACY_MODE — dogfood | beta | production
-  Default: dogfood
+Environment variables:
+  DATA_PRIVACY_MODE — dogfood | beta | production (default: dogfood)
+  NLP_PII_GUARD_ENABLED — 1|true|yes or 0|false|no (default: 1)
+    Set to 0 to disable SpaCy NLP layer (e.g. in unit tests without the model)
 """
 
+import logging
 import os
 import re
-from typing import Any, Dict, Set, Optional
+from typing import Any, Dict, Optional, Set
+
+log = logging.getLogger(__name__)
 
 # =============================================================================
 # Configuration
@@ -283,6 +294,9 @@ def _is_likely_real_user_data(data: Dict[str, Any]) -> Optional[str]:
     2. Known fixtures bypass all remaining checks (freeform text and medical
        keywords are expected in synthetic scenario data).
     3. Non-fixtures get a full scan for email, phone, freeform, and medical.
+    4. Layer 2 NLP scan (SpaCy): runs on freeform field values only to catch
+       PERSON entities (names) that regex patterns cannot detect. Fail-open
+       if SpaCy is not installed.
     """
     # Always check raw user-input fields for email/phone — even for known fixtures.
     raw_input_scope: Dict[str, Any] = {}
@@ -322,12 +336,113 @@ def _is_likely_real_user_data(data: Dict[str, Any]) -> Optional[str]:
     if medical:
         return f"Detected health/mobility indicator: '{medical}'"
 
+    # Layer 2: SpaCy NLP NER scan on freeform field values only.
+    # Detects PERSON entities that regex cannot catch (e.g. "My name is Priya Sharma").
+    # Runs only when spacy + en_core_web_sm are installed; fails-open otherwise.
+    # NLP_PII_GUARD_ENABLED=0 disables this layer (e.g. in unit tests).
+    if _is_nlp_guard_enabled():
+        freeform_texts: list[str] = []
+        for field_name in _FREEFORM_FIELD_NAMES:
+            val = data.get(field_name)
+            if isinstance(val, str) and len(val.strip()) > 5:
+                freeform_texts.append(val)
+            # Also check raw_input sub-fields
+            raw = data.get("raw_input", {})
+            if isinstance(raw, dict):
+                sub = raw.get(field_name)
+                if isinstance(sub, str) and len(sub.strip()) > 5:
+                    freeform_texts.append(sub)
+
+        for text in freeform_texts:
+            persons = _nlp_scan_for_person_entities(text)
+            if persons:
+                names = ", ".join(f"'{p}'" for p in persons[:3])
+                return (
+                    f"NLP Layer 2: Detected PERSON entity in freeform field "
+                    f"(names: {names}). Review before storing."
+                )
+
     return None
 
 
 # =============================================================================
-# Public API
+# LAYER 2: SpaCy NLP NER Guard (optional, fail-open)
 # =============================================================================
+# Loaded lazily on first scan call. If spacy or en_core_web_sm are not
+# installed, falls back to regex-only (Layer 1) with a single WARNING log.
+# This means the guard is always available even in development setups that
+# have not run scripts/setup_nlp_models.sh.
+#
+# Controlled by: NLP_PII_GUARD_ENABLED env var (default: enabled)
+# Set NLP_PII_GUARD_ENABLED=0 to disable in unit tests or CI without the model.
+
+_nlp_model = None  # Lazy-loaded on first use
+_nlp_load_attempted = False  # Prevent repeated import failures
+
+
+def _is_nlp_guard_enabled() -> bool:
+    """Check if SpaCy NLP guard is enabled via environment variable."""
+    val = os.environ.get("NLP_PII_GUARD_ENABLED", "1").strip().lower()
+    return val not in ("0", "false", "no", "off")
+
+
+def _get_nlp_model():
+    """
+    Lazy-load SpaCy en_core_web_sm. Returns model or None on failure.
+
+    Thread-safe in CPython (GIL protects module-level assignment).
+    Only attempts load once per process — failure is cached to avoid
+    repeated import overhead on every request.
+    """
+    global _nlp_model, _nlp_load_attempted
+    if _nlp_load_attempted:
+        return _nlp_model
+    _nlp_load_attempted = True
+
+    if not _is_nlp_guard_enabled():
+        return None
+
+    try:
+        import spacy  # noqa: PLC0415
+        _nlp_model = spacy.load("en_core_web_sm")
+        log.info("privacy_guard: SpaCy NLP Layer 2 loaded (en_core_web_sm)")
+    except ImportError:
+        log.warning(
+            "privacy_guard: spacy not installed — NLP Layer 2 disabled. "
+            "Run: bash scripts/setup_nlp_models.sh to enable."
+        )
+    except OSError:
+        log.warning(
+            "privacy_guard: en_core_web_sm model not found — NLP Layer 2 disabled. "
+            "Run: python -m spacy download en_core_web_sm"
+        )
+    return _nlp_model
+
+
+def _nlp_scan_for_person_entities(text: str) -> list[str]:
+    """
+    Use SpaCy NER to extract PERSON entity mentions from freeform text.
+
+    Returns a list of found person name strings (empty if none or NLP unavailable).
+
+    Why PERSON only: ORG and GPE (location) entities are expected in travel text
+    and would create noise. PERSON is the highest-signal PII risk in traveler
+    inquiry context — names embedded in WhatsApp messages like "My name is Priya
+    Sharma" are exactly what regex patterns miss.
+    """
+    nlp = _get_nlp_model()
+    if nlp is None:
+        return []
+
+    try:
+        doc = nlp(text[:2000])  # Cap at 2000 chars to bound latency
+        return [ent.text for ent in doc.ents if ent.label_ == "PERSON"]
+    except Exception as exc:  # noqa: BLE001
+        log.warning("privacy_guard: SpaCy scan error — %s", exc)
+        return []
+
+
+
 
 def is_dogfood_mode() -> bool:
     return _data_privacy_mode() == "dogfood"

@@ -33,8 +33,10 @@ from .packet_models import (
 FORBIDDEN_TRAVELER_CONCEPTS = {
     "unknown",
     "hypothesis",
+    "hypothesis_stack",
     "hypotheses",
     "contradiction",
+    "contradiction_stack",
     "contradictions",
     "blocker",
     "blockers",
@@ -54,6 +56,94 @@ FORBIDDEN_TRAVELER_CONCEPTS = {
     "ambiguity",
     "ambiguities",
 }
+
+# ---------------------------------------------------------------------------
+# ALLOWED_TRAVEL_PHRASES — legitimate travel language that contains forbidden
+# base words. Checked BEFORE the forbidden scan. If a phrase from this set is
+# found in the text, any contained forbidden base term is exempted for that
+# sentence. This prevents false positives on real traveller-facing copy.
+#
+# Decision rationale: bare word-boundary matching on "unknown" / "ambiguity"
+# was blocking legitimate export of proposals containing copy like "unknown
+# beaches of Goa" or "some ambiguity about visa dates". The structural
+# sanitization (Section 2) already removes internal-only fields at the data
+# layer; the phrase scan is a text-level secondary check that must not be
+# over-triggered. See ADR: ADR_NB03_LEAKAGE_FALSE_POSITIVE_FIX_2026-07-29.md
+# ---------------------------------------------------------------------------
+ALLOWED_TRAVEL_PHRASES: set[str] = {
+    # "unknown" in natural travel context
+    "unknown beaches",
+    "unknown island",
+    "unknown destination",
+    "unknown territory",
+    "unknown route",
+    "unknown parts",
+    "unknown region",
+    "unknown village",
+    "unknown town",
+    "unknown corner",
+    "unknown gem",
+    "lesser-known",
+    "less known",
+    # "ambiguity" / "ambiguities" in natural context
+    "some ambiguity",
+    "minor ambiguity",
+    "visa ambiguity",
+    "date ambiguity",
+    "pricing ambiguity",
+    "no ambiguity",
+    # "hypothesis" in natural context (rare but possible in itinerary notes)
+    "working hypothesis",
+    # "blocker" in neutral travel ops language
+    "no blocker",
+    "no blockers",
+    "not a blocker",
+}
+
+# ---------------------------------------------------------------------------
+# INTERNAL_CONCEPT_FIELD_MARKERS — patterns that unmistakably signal internal
+# pipeline context. When a forbidden term co-occurs within 80 characters of
+# one of these markers, it is ALWAYS a hard flag regardless of allowed phrases.
+# This is the second gate: even if a phrase was not in ALLOWED_TRAVEL_PHRASES,
+# we confirm it's truly internal (not just a false positive) before blocking.
+# ---------------------------------------------------------------------------
+_INTERNAL_FIELD_MARKER_PATTERN = re.compile(
+    r"(decision_state|confidence_score|owner_constraint|agency_note|internal_only"
+    r"|hard_blocker|soft_blocker|hypothesis_stack|contradiction_stack"
+    r"|packet\.facts\.|slot\.value|_NEEDS_INFO|_READY_FOR|_BLOCKED)",
+    re.IGNORECASE,
+)
+
+
+def _is_allowed_phrase_context(text: str, forbidden: str, match_start: int) -> bool:
+    """
+    Check if the forbidden term at match_start is covered by an ALLOWED_TRAVEL_PHRASE.
+
+    Extracts a 120-char window around the match and checks for allowed phrase overlap.
+    Returns True if the match is inside an allowed phrase (should NOT be flagged).
+    """
+    # Window: 60 chars before match, 60 chars after (capped to string bounds)
+    window_start = max(0, match_start - 60)
+    window_end = min(len(text), match_start + 60)
+    window = text[window_start:window_end].lower()
+
+    for phrase in ALLOWED_TRAVEL_PHRASES:
+        if phrase.lower() in window:
+            return True
+    return False
+
+
+def _has_internal_field_marker_nearby(text: str, match_start: int) -> bool:
+    """
+    Check if an internal field marker is within 80 chars of the forbidden term.
+
+    When True, the forbidden term is definitely a leakage (internal context leaked
+    into the text). This overrides any ALLOWED_TRAVEL_PHRASES exemption.
+    """
+    window_start = max(0, match_start - 80)
+    window_end = min(len(text), match_start + 80)
+    window = text[window_start:window_end]
+    return bool(_INTERNAL_FIELD_MARKER_PATTERN.search(window))
 
 # Field names that are internal-only and must be stripped
 INTERNAL_ONLY_FIELDS = {
@@ -249,6 +339,14 @@ def check_no_leakage(bundle_or_dict: Any) -> List[str]:
     """
     Verify that traveler-facing content contains no internal concepts.
 
+    Uses context-aware matching to eliminate false positives on legitimate travel copy.
+    A forbidden term is only flagged when:
+      1. It appears in the text (word-boundary match), AND
+      2. It is NOT covered by an ALLOWED_TRAVEL_PHRASE in the surrounding 120-char window
+         (e.g. "unknown beaches" exempts "unknown"), OR
+      3. An INTERNAL_CONCEPT_FIELD_MARKER is present within 80 chars (always a hard flag,
+         overriding the allowed-phrase exemption — this catches real leakage).
+
     Args:
         bundle_or_dict: Either a PromptBundle object or a dict with user_message/system_context
 
@@ -279,13 +377,31 @@ def check_no_leakage(bundle_or_dict: Any) -> List[str]:
         text_lower = text.lower()
 
         for forbidden in FORBIDDEN_TRAVELER_CONCEPTS:
-            # Check for the forbidden term as a whole word (not substring)
-            # to avoid false positives like "knowing" containing "unknown"
+            # Gate 1: word-boundary match (not substring — avoids "knowing"/"unknown")
             pattern = r'\b' + re.escape(forbidden) + r'\b'
-            if re.search(pattern, text_lower):
-                # Get excerpt (first 100 chars)
-                excerpt = text[:100] + "..." if len(text) > 100 else text
-                leaks.append(f"Leakage detected: '{forbidden}' in {field_name} (excerpt: {excerpt})")
+            match = re.search(pattern, text_lower)
+            if not match:
+                continue
+
+            match_start = match.start()
+
+            # Gate 2: internal field marker override — always flag regardless of phrase context
+            # e.g. "decision_state: unknown" → hard block even if "unknown" appears nearby
+            if _has_internal_field_marker_nearby(text, match_start):
+                excerpt = text[:120] + "..." if len(text) > 120 else text
+                leaks.append(
+                    f"Leakage detected: '{forbidden}' in {field_name} "
+                    f"[internal marker context] (excerpt: {excerpt})"
+                )
+                continue
+
+            # Gate 3: allowed phrase exemption — "unknown beaches of Goa" → not flagged
+            if _is_allowed_phrase_context(text, forbidden, match_start):
+                continue
+
+            # Not exempted and not marked internal — flag it
+            excerpt = text[:120] + "..." if len(text) > 120 else text
+            leaks.append(f"Leakage detected: '{forbidden}' in {field_name} (excerpt: {excerpt})")
 
     return leaks
 

@@ -261,6 +261,7 @@ function buildTripStructuredJsonSnapshot(trip: Trip | null | undefined): Record<
   const destination = normalizePlanningDisplayValue(trip.destination);
   const tripPurpose = normalizePlanningDisplayValue(trip.tripPurpose);
   const priorities = normalizePlanningDisplayValue(trip.tripPriorities);
+  const activityInterests = normalizePlanningDisplayValue(trip.activityInterests);
   const flexibility = normalizePlanningDisplayValue(trip.dateFlexibility);
   const dateWindow = normalizePlanningDisplayValue(trip.dateWindow);
   const budget = normalizePlanningDisplayValue(trip.budget);
@@ -272,6 +273,7 @@ function buildTripStructuredJsonSnapshot(trip: Trip | null | undefined): Record<
   if (budget) snapshot.budget = budget;
   if (dateWindow) snapshot.dates = dateWindow;
   if (priorities) snapshot.trip_priorities = priorities;
+  if (activityInterests) snapshot.activity_interests = activityInterests;
   if (flexibility) snapshot.date_flexibility = flexibility;
   if (normalizePlanningDisplayValue(trip.type)) snapshot.type = normalizePlanningDisplayValue(trip.type);
   if (normalizePlanningDisplayValue(trip.contactName)) snapshot.contact_name = normalizePlanningDisplayValue(trip.contactName);
@@ -502,6 +504,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const tripPriorities = normalizePlanningDisplayValue(
     trip?.tripPriorities ?? readTaggedNoteValue(trip?.agentNotes, NOTE_DETAIL_PREFIX.priorities) ?? trip?.activityProvenance
   );
+  const activityInterests = normalizePlanningDisplayValue(trip?.activityInterests);
   const dateFlexibility = normalizePlanningDisplayValue(
     trip?.dateFlexibility ?? readTaggedNoteValue(trip?.agentNotes, NOTE_DETAIL_PREFIX.flexibility)
   );
@@ -1189,7 +1192,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     roomingListRequirements,
     procurementShareNeeded ? 'shareable with procurement' : null,
   ].filter(Boolean).join(' · ');
-  const summaryCardCount = 2 + Number(Boolean(groupLogisticsSummary)) + Number(Boolean(familyDetailsSummary));
+  const summaryCardCount = 3 + Number(Boolean(groupLogisticsSummary)) + Number(Boolean(familyDetailsSummary));
   const planningDetailsPanelTitle = requiredPlanningDetails.length > 0 ? 'Missing customer details' : 'Recommended details';
   const planningDetailsPanelDescription = requiredPlanningDetails.length > 0
     ? 'Each missing field can be fixed here or pushed into a traveler follow-up.'
@@ -1568,7 +1571,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
               />
               <EditableField
-                label='Activity Interests'
+                label='Activity provenance'
                 value={editValues.activity_provenance}
                 displayValue={trip?.activityProvenance || '-'}
                 field='activity_provenance'
@@ -1592,6 +1595,19 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                   <Button type='button' variant='ghost' size='sm' onClick={() => openPlanningEditor('priorities')}>
                     {tripPriorities ? 'Edit' : 'Add'}
                   </Button>
+                </div>
+              </div>
+              <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
+                <div className='flex items-start justify-between gap-3'>
+                  <div>
+                    <p className='text-[var(--ui-text-xs)] uppercase tracking-[0.18em] text-[var(--text-secondary)]'>Activity interests</p>
+                    <p className='mt-1 text-[var(--ui-text-sm)] text-[var(--text-primary)]'>
+                      {activityInterests ?? 'Not captured yet'}
+                    </p>
+                    <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
+                      Derived from the intake note.
+                    </p>
+                  </div>
                 </div>
               </div>
               <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>

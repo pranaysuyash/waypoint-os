@@ -1,5 +1,9 @@
 # motto_v3 Compliance Audit
 
+## Status Note
+
+As of 2026-06-30, this audit is still active and should remain a working document. It captures open compliance findings and the closure criteria are not fully satisfied yet.
+
 **Date**: 2026-06-26  
 **Scope**: Full repo audit against all 42 sections of `motto_v3.md`  
 **Method**: Code inspection, test runs, static analysis, config review, documentation check  

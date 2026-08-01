@@ -1,5 +1,9 @@
 # Knowledge Management & Training — Synthesis (#23)
 
+## Status Note
+
+As of 2026-06-30, this is still a living synthesis, not an archive candidate. The research is consolidated, but the runtime data model, playbook engine, and training surfaces remain follow-on work.
+
 **Date**: 2026-06-26
 **Status**: Exploration synthesis complete. Ready for scoping.
 **Parent index**: [../EXPLORATION_TOPICS.md](../EXPLORATION_TOPICS.md) §23

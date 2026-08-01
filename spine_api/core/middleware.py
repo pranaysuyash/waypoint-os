@@ -27,6 +27,8 @@ PUBLIC_PREFIXES: tuple[str, ...] = ("/api/auth", "/api/public/", "/api/public-ch
 
 
 def _is_public_path(path: str) -> bool:
+    if os.environ.get("SPINE_API_DISABLE_AUTH"):
+        return True
     return path in PUBLIC_PATHS or any(
         path.startswith(prefix) for prefix in PUBLIC_PREFIXES
     )

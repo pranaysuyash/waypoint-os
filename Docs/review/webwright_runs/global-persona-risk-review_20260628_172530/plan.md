@@ -1,0 +1,21 @@
+# Critical Points
+- [ ] CP1: Log in successfully with newuser@test.com / testpass123.
+- [ ] CP2: Open the workbench after login.
+- [ ] CP3: Create a new trip or clearly reuse an existing trip suitable for this scenario.
+- [ ] CP4: Set destination to Cape Town.
+- [ ] CP5: Set travel timing to March.
+- [ ] CP6: Set group size to exactly 42 travelers.
+- [ ] CP7: Capture that the scenario is for a leadership offsite / events team from London.
+- [ ] CP8: Set budget to GBP 68,000.
+- [ ] CP9: Apply premium hotel requirement.
+- [ ] CP10: Apply meeting room requirement.
+- [ ] CP11: Apply airport transfers requirement.
+- [ ] CP12: Apply flexible dates requirement.
+- [ ] CP13: Apply child-free requirement.
+- [ ] CP14: Apply sunset cruise requirement.
+- [ ] CP15: Apply winery visit requirement.
+- [ ] CP16: Apply VIP airport fast track requirement.
+- [ ] CP17: Submit or advance the workflow so the app processes the completed trip request.
+- [ ] CP18: Reach the Risk Review stage/page in the app.
+- [ ] CP19: In the safety section, verify the UI shows the actual leaked terms or jargon, not only a generic failure message.
+- [ ] CP20: Capture evidence needed to document what is good, bad, missing, and workflow gaps observed during the end-to-end flow.

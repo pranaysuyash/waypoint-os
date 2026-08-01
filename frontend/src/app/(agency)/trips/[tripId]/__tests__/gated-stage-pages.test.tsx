@@ -70,7 +70,7 @@ describe("gated planning stage pages", () => {
 
     expect(screen.getByText("Before building options")).toBeInTheDocument();
     expect(screen.getByText("Confirm budget range and origin city first.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to missing details" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Open Trip Details" })).toHaveAttribute(
       "href",
       "/trips/trip_4b9e0d894872/intake",
     );

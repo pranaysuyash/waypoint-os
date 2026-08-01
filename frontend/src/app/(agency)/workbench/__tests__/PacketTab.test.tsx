@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PacketTab from '../PacketTab';
+import type { Trip } from '@/lib/api-client';
 
 const mockStore = vi.fn();
 
@@ -135,6 +136,33 @@ describe('PacketTab', () => {
       'href',
       '/trips/trip-workbench-cta/intake',
     );
+  });
+
+  it('uses the trip repair surface when packet data is still missing', () => {
+    render(
+      <PacketTab
+        trip={{
+          id: 'trip-missing-packet',
+          destination: 'Bali',
+          type: 'family leisure',
+          state: 'green',
+          age: '1h',
+          createdAt: '2026-05-27T00:00:00Z',
+          updatedAt: '2026-05-27T00:00:00Z',
+          origin: 'Mumbai',
+          budget: '₹4L',
+          dateWindow: 'Jul 2026',
+          party: 4,
+        } as Trip}
+      />
+    );
+
+    expect(screen.getByText(/No booking request data yet/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /open trip details/i })).toHaveAttribute(
+      'href',
+      '/trips/trip-missing-packet/intake',
+    );
+    expect(screen.queryByText(/New Inquiry/)).not.toBeInTheDocument();
   });
 
   it('shows group logistics when rooming and procurement details are captured', () => {

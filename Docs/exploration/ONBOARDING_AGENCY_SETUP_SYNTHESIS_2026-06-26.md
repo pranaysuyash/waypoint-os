@@ -1,5 +1,9 @@
 # Onboarding & Agency Setup (#22) — Research Synthesis
 
+## Status Note
+
+As of 2026-06-30, this remains active scoping material. The synthesis is complete, but the first-session flow still has concrete missing pieces and should stay live until those are designed and built.
+
 **Date**: 2026-06-26
 **Status**: ✅ Synthesis complete — consolidated from 7 prior documents + codebase audit
 **Priority**: 🔴 High — blocks agency adoption

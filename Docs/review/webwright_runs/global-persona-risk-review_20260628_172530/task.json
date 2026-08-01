@@ -1,0 +1,5 @@
+{
+  "task": "Log in with newuser@test.com / testpass123, open the workbench, create or reuse a new trip, and simulate this exact customer scenario end-to-end: London-based events team of 42 wants Cape Town in March for a leadership offsite, GBP 68k budget, premium hotel, meeting room, airport transfers, flexible dates, child-free, sunset cruise, winery visit, VIP airport fast track. Verify the app reaches Risk Review and the safety section lists the actual leaked terms or jargon instead of only a generic failure. Document what is good, bad, missing, and any workflow gaps you see.",
+  "task_id": "global-persona-risk-review",
+  "start_url": "http://localhost:3100/login"
+}

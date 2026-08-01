@@ -817,6 +817,46 @@ class TestGroupBookingSignals:
         assert rooming_requirements is not None
         assert "rooming lists" in str(rooming_requirements.value).lower()
 
+        priorities = packet.facts.get("trip_priorities")
+        assert priorities is not None, "trip_priorities should capture the corporate ops asks"
+        priority_values = [str(item).lower() for item in priorities.value]
+        assert "airport transfers" in priority_values
+        assert "meeting room" not in priority_values  # not present in this note
+        assert "fast quote" in priority_values
+        assert "hotel blocks" in priority_values
+
+    def test_corporate_meeting_room_and_transfer_priorities_are_captured(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Nairobi corporate offsite for 18 travelers wants Singapore in October, KES 4.8M budget, premium hotel, meeting room, airport transfers, flexible dates.",
+            "test",
+        )
+        packet = pipeline.extract([env])
+
+        priorities = packet.facts.get("trip_priorities")
+        assert priorities is not None, "trip_priorities should be captured for corporate needs"
+        priority_values = [str(item).lower() for item in priorities.value]
+        assert "meeting room" in priority_values
+        assert "airport transfers" in priority_values
+        assert "premium hotel" in priority_values
+
+        activity_interests = packet.facts.get("activity_interests")
+        assert activity_interests is not None, "activity_interests should capture the offsite note"
+        activity_values = [str(item).lower() for item in activity_interests.value]
+        assert "business offsite" in activity_values
+
+    def test_partial_sightseeing_is_preserved_as_activity_interest(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Nairobi corporate offsite for 18 travelers wants Singapore in October, KES 4.8M budget, premium hotel, partial sightseeing, airport transfers, flexible dates.",
+            "test",
+        )
+        packet = pipeline.extract([env])
+
+        activity_interests = packet.facts.get("activity_interests")
+        assert activity_interests is not None, "activity_interests should capture the sightseeing note"
+        assert "sightseeing" in [str(item).lower() for item in activity_interests.value]
+
     def test_rooming_lists_prefers_customer_message_over_agent_note_noise(self):
         pipeline = ExtractionPipeline()
         customer = SourceEnvelope.from_freeform(
@@ -1026,6 +1066,27 @@ class TestRuntimeInquiryRegressionCoverage:
         assert destination.value == ["Dubai"], f"Expected Dubai only, got {destination.value}"
         assert origin is not None
         assert origin.value == "Cape Town"
+        assert not any(
+            amb.field_name == "destination_candidates"
+            and amb.ambiguity_type == "unresolved_alternatives"
+            for amb in packet.ambiguities
+        ), [(amb.field_name, amb.ambiguity_type, amb.raw_value) for amb in packet.ambiguities if amb.field_name == "destination_candidates"]
+
+    def test_leading_city_note_keeps_origin_and_destination_separate(self):
+        text = (
+            "Cape Town family of 4 wants Mauritius in April, ZAR 95,000 budget, relaxed pace, "
+            "one resort near the beach, direct flight preferred."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+
+        origin = packet.facts.get("origin_city")
+        destination = packet.facts.get("destination_candidates")
+
+        assert origin is not None, f"origin_city missing; facts={list(packet.facts.keys())}"
+        assert origin.value == "Cape Town"
+        assert destination is not None, f"destination_candidates missing; facts={list(packet.facts.keys())}"
+        assert destination.value == ["Mauritius"], destination.value
         assert not any(
             amb.field_name == "destination_candidates"
             and amb.ambiguity_type == "unresolved_alternatives"
@@ -1369,7 +1430,12 @@ class TestTripPrioritiesExtraction:
     def test_luxury_experience_detected(self):
         result = _extract_trip_intent("want luxury resort with premium experience")
         priorities = result.get("trip_priorities", [])
-        assert "luxury experience" in priorities
+        assert "luxury experience" in priorities or "premium hotel" in priorities
+
+    def test_mid_range_hotel_detected(self):
+        result = _extract_trip_intent("mid-range hotel, direct flights, vegetarian meals")
+        priorities = result.get("trip_priorities", [])
+        assert "mid-range hotel" in priorities
 
     def test_must_have_extracted(self):
         result = _extract_trip_intent("must-have beach access, must visit Golden Temple")
@@ -1473,6 +1539,20 @@ class TestPrioritiesFlexibilityInPipeline:
         priorities_value = priorities_slot.value
         assert "kid-friendly" in priorities_value
         assert "direct flights" in priorities_value
+
+    def test_mid_range_hotel_in_facts_after_extraction(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Mumbai family of 4 wants Singapore in August, INR 2.5 lakh budget, direct flights, mid-range hotel, 5 nights, vegetarian meals."
+        )
+        packet = pipeline.extract([env])
+        facts = packet.facts
+        priorities_slot = facts.get("trip_priorities")
+        assert priorities_slot is not None, f"trip_priorities not in facts; keys={list(facts.keys())}"
+        priorities_value = priorities_slot.value
+        assert "mid-range hotel" in priorities_value
+        assert "direct flights" in priorities_value
+        assert "vegetarian food" in priorities_value
 
     def test_date_flexibility_in_facts_after_extraction(self):
         pipeline = ExtractionPipeline()

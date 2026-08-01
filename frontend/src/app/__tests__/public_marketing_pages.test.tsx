@@ -90,65 +90,53 @@ vi.mock('@/lib/api-client', () => {
 
 describe('public marketing pages', () => {
   it('renders the B2B landing page copy and CTA surfaces', () => {
-    const { container } = render(<HomePage />);
+    render(<HomePage />);
 
     expect(screen.getAllByText('Waypoint OS').length).toBeGreaterThan(0);
     expect(
       screen.getByRole('heading', {
-        name: /Waypoint OS/i,
+        name: /Turn raw trip notes into quote-ready briefs/i,
         level: 1,
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
-        name: /The operating system for boutique travel agencies/i,
+        name: /Not a prettier CRM\. A faster intake and quoting surface/i,
         level: 2,
       }),
     ).toBeInTheDocument();
     expect(
       screen
-        .getAllByRole('link', { name: /Book a demo/i })
+        .getAllByRole('link', { name: /Create workspace/i })
         .every((link) => link.getAttribute('href') === '/signup'),
     ).toBe(true);
     expect(
-      screen.getAllByRole('link', { name: /See the public checker/i }).every((link) =>
-        link.getAttribute('href') === '/itinerary-checker',
-      ),
-    ).toBe(true);
-    expect(screen.getByRole('img', { name: /Waypoint OS/i })).toBeInTheDocument();
-  });
-
-  it('homepage wedge section has an actionable itinerary checker CTA', () => {
-    render(<HomePage />);
-
-    const checkerLink = screen.getByRole('link', { name: /Try the free itinerary checker/i });
-    expect(checkerLink).toHaveAttribute('href', '/itinerary-checker');
-
-    expect(
-      screen.getByRole('heading', { name: /Bring your itinerary or travel plan\. Get it scored/i }),
+      screen.getByRole('img', { name: /Waypoint OS workspace preview showing a boutique travel operations desk/i }),
     ).toBeInTheDocument();
   });
 
-  it('homepage hero frames the public checker as part of the agency story', () => {
+  it('homepage makes the agency workflow benefits explicit', () => {
     render(<HomePage />);
 
     expect(
-      screen.getByText(/The public itinerary checker gives travelers a cleaner brief/i),
+      screen.getByRole('heading', { name: /It helps teams answer faster, quote cleaner, and keep owners out of every tiny decision/i }),
     ).toBeInTheDocument();
-
-    expect(
-      screen.getAllByRole('link', { name: /See the public checker/i }).every((link) =>
-        link.getAttribute('href') === '/itinerary-checker',
-      ),
-    ).toBe(true);
   });
 
-  it('homepage productMoments name concrete capabilities', () => {
+  it('homepage hero frames the product as an agency brief and quoting surface', () => {
     render(<HomePage />);
 
-    expect(screen.getByRole('heading', { name: /Intake normalization/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Risk question generation/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Owner review escalation/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Waypoint helps boutique travel agencies turn the notes they already have, whether from calls, emails, WhatsApp messages, or copied itineraries/i),
+    ).toBeInTheDocument();
+  });
+
+  it('homepage names concrete workflow improvements', () => {
+    render(<HomePage />);
+
+    expect(screen.getByText(/Extract dates, party size, budget, pace, and trip type from messy messages/i)).toBeInTheDocument();
+    expect(screen.getByText(/Surface the missing facts that change itinerary quality before anyone quotes/i)).toBeInTheDocument();
+    expect(screen.getByText(/Protect owner time by showing what needs a human decision and what does not/i)).toBeInTheDocument();
   });
 
   it('renders the itinerary checker landing page with tool-first upload framing', () => {

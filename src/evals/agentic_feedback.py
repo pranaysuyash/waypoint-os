@@ -293,6 +293,11 @@ def _infer_final_acceptance_status(event: ExecutionEvent) -> str | None:
 
 
 def _normalize_records(records: list[CanonicalAgenticEvidenceRecord]) -> list[dict[str, Any]]:
+    def _owner_for(record: CanonicalAgenticEvidenceRecord) -> str | None:
+        layer = record.failure_layer or "unknown"
+        _, cfg = _recommendation_profile(layer)
+        return cfg.get("owner")
+
     return [
         {
             "workflow_unit_id": record.workflow_unit_id,
@@ -310,17 +315,154 @@ def _normalize_records(records: list[CanonicalAgenticEvidenceRecord]) -> list[di
             "fallback_result": record.fallback_result,
             "review_trigger_reason": record.review_trigger_reason,
             "review_outcome": record.review_outcome,
+            "review_workflow_unit_id": record.review_workflow_unit_id,
             "escalation_outcome": record.escalation_outcome,
             "final_acceptance_status": record.final_acceptance_status,
             "failure_signature": record.failure_signature,
             "failure_layer": record.failure_layer,
             "next_fix_layer": record.next_fix_layer,
+            "owner": _owner_for(record),
             "latency_ms": record.latency_ms,
             "cost_usd": record.cost_usd,
             "created_at": record.created_at.isoformat(),
         }
         for record in records
     ]
+
+
+def _resolve_review_event_timestamp(event: Mapping[str, Any]) -> datetime | None:
+    """Resolve review event timestamp across known payload shapes."""
+    top_level_ts = _parse_event_timestamp(event.get("timestamp"))
+    if top_level_ts is not None:
+        return top_level_ts
+    details = event.get("details")
+    if isinstance(details, Mapping):
+        for ts_key in ("reviewed_at", "timestamp"):
+            resolved = _parse_event_timestamp(details.get(ts_key))
+            if resolved is not None:
+                return resolved
+    return None
+
+
+def _normalise_review_action(
+    event: Mapping[str, Any],
+    review_event_id: str,
+) -> dict[str, Any]:
+    """Convert an execution-review event into a stable timeline row."""
+    details = event.get("details")
+    if not isinstance(details, Mapping):
+        details = {}
+    timestamp = _resolve_review_event_timestamp(event)
+    return {
+        "stage": "review_action",
+        "review_event_id": review_event_id,
+        "review_workflow_unit_id": details.get("review_workflow_unit_id"),
+        "action": details.get("action"),
+        "review_outcome": details.get("action"),
+        "escalation_outcome": details.get("escalation_outcome"),
+        "reviewed_by": details.get("reviewed_by"),
+        "error_category": details.get("error_category"),
+        "notes": details.get("notes"),
+        "timestamp": timestamp.isoformat() if isinstance(timestamp, datetime) else None,
+    }
+
+
+def _build_review_cascade_timeline(
+    events: list[ExecutionEvent],
+    review_events: list[Mapping[str, Any]] | None,
+    *,
+    max_items: int = 200,
+    workflow_unit_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Build compact review-cascade rows for operator-facing traceability."""
+    if not events:
+        return []
+
+    target_ids = {str(event.id) for event in events if event.id}
+    if workflow_unit_ids:
+        target_ids &= set(workflow_unit_ids)
+
+    if not target_ids:
+        return []
+
+    fallback_timestamp = datetime.min.replace(tzinfo=timezone.utc)
+
+    reviews_by_unit: dict[str, list[dict[str, Any]]] = {}
+    if review_events:
+        for idx, event in enumerate(review_events):
+            if not isinstance(event, Mapping):
+                continue
+            if event.get("type") != "review_action":
+                continue
+            details = event.get("details")
+            if not isinstance(details, Mapping):
+                continue
+            review_workflow_unit_id = details.get("review_workflow_unit_id")
+            if not isinstance(review_workflow_unit_id, str):
+                continue
+            review_event_id = str(event.get("id", f"review-action:{idx}"))
+            row = _normalise_review_action(event, review_event_id)
+            reviews_by_unit.setdefault(review_workflow_unit_id, []).append(row)
+
+    for rows in reviews_by_unit.values():
+        rows.sort(
+            key=lambda row: _parse_event_timestamp(row.get("timestamp")) or fallback_timestamp,
+        )
+
+    timeline: list[dict[str, Any]] = []
+    for event in sorted(events, key=lambda e: e.created_at, reverse=True):
+        workflow_unit_id = str(event.id)
+        if workflow_unit_id not in target_ids:
+            continue
+
+        metadata = event.event_metadata or {}
+        review_workflow_unit_id = metadata.get("review_workflow_unit_id")
+        if not isinstance(review_workflow_unit_id, str):
+            review_workflow_unit_id = None
+
+        cascade_rows: list[dict[str, Any]] = []
+        cascade_rows.append(
+            {
+                "stage": "execution_event",
+                "execution_event_id": workflow_unit_id,
+                "workflow_type": str(event.event_category),
+                "event_type": event.event_type,
+                "created_at": event.created_at.isoformat(),
+                "timestamp": event.created_at.isoformat(),
+                "failure_signature": metadata.get("failure_signature"),
+                "failure_layer": metadata.get("failure_layer"),
+                "review_trigger_reason": metadata.get("review_trigger_reason"),
+                "review_outcome": metadata.get("review_outcome"),
+                "fallback_trigger_reason": metadata.get("fallback_trigger_reason"),
+                "fallback_result": metadata.get("fallback_result"),
+            }
+        )
+
+        linked_id = review_workflow_unit_id or workflow_unit_id
+        for row in reviews_by_unit.get(linked_id, []):
+            cascade_rows.append(row)
+
+        cascade_rows.sort(
+            key=lambda row: _parse_event_timestamp(row.get("timestamp")) or fallback_timestamp,
+        )
+
+        timeline.append(
+            {
+                "workflow_unit_id": workflow_unit_id,
+                "workflow_type": str(event.event_category),
+                "subject_id": event.subject_id,
+                "subject_type": event.subject_type,
+                "input_artifact_id": metadata.get("input_artifact_id", event.subject_id),
+                "failure_signature": metadata.get("failure_signature"),
+                "failure_layer": metadata.get("failure_layer"),
+                "next_fix_layer": metadata.get("next_fix_layer"),
+                "final_acceptance_status": _infer_final_acceptance_status(event),
+                "review_workflow_unit_id": review_workflow_unit_id,
+                "cascade": cascade_rows,
+            }
+        )
+
+    return timeline[:max_items]
 
 
 def build_canonical_evidence_records(
@@ -871,4 +1013,9 @@ def aggregate_eval_records(
             }
             for item in work_items
         ],
+        "review_cascade_timeline": _build_review_cascade_timeline(
+            candidates,
+            filtered_review_events,
+            workflow_unit_ids=candidate_unit_ids,
+        ),
     }

@@ -41,13 +41,35 @@ export async function POST(request: NextRequest) {
       return bffJson({ error: "tripIds (string[]) and action are required" }, 400);
     }
 
-    return bffJson({
-      success: true,
-      processed: tripIds.length,
-      failed: 0,
+    // Map frontend request structure to backend contract
+    const backendPayload = {
+      action,
+      trip_ids: tripIds,
+      agent_id: params?.agentId || params?.assignTo || "system",
+    };
+
+    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/inbox/bulk`;
+    const response = await fetch(spineApiUrl, {
+      ...bffFetchOptions(request, "POST"),
+      headers: {
+        ...bffFetchOptions(request, "POST").headers,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(backendPayload),
+      cache: "no-store",
     });
+
+    if (!response.ok) {
+      if (isAuthStatus(response.status)) {
+        return bffJson({ error: "Not authenticated" }, response.status);
+      }
+      throw new Error(`Spine API /inbox/bulk returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    return bffJson(data);
   } catch (error) {
-    console.error("Error processing bulk action:", error);
+    console.error("Error proxying bulk action:", error);
     return bffJson({ error: "Failed to process bulk action" }, 500);
   }
 }

@@ -60,6 +60,17 @@ export function getWorkbenchTripHref(tripId: string | undefined | null): string 
 }
 
 /**
+ * Canonical repair surface for missing trip details.
+ *
+ * Operators repair concrete fields in the trip workspace, not by bouncing back
+ * into the workbench capture funnel. This helper keeps that destination
+ * centralized so workbench banners, trip gates, and packet fallbacks stay aligned.
+ */
+export function getTripRepairRoute(tripId: string | undefined | null): string {
+  return getTripRoute(tripId, 'intake');
+}
+
+/**
  * Determines where "View Trip" should navigate after a Spine run completes.
  *
  * Priority order:

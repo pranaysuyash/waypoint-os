@@ -1933,7 +1933,15 @@
 
   .actions {
     width: 100%;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    justify-content: stretch;
+  }
+
+  .ghostButton,
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+    flex: 1 1 100%;
   }
 
   .section {

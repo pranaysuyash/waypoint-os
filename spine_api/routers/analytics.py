@@ -249,7 +249,7 @@ def get_conversion_funnel(agency: Agency = Depends(get_current_agency)):
 
 @router.post("/analytics/export")
 def export_insights(request: ExportRequest):
-    """Export insights data. Returns a mock export URL for now."""
+    """Export insights data and return a generated download URL."""
     export_id = f"export_{uuid.uuid4().hex[:12]}"
     expires = datetime.now(timezone.utc).isoformat()
 

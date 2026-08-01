@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
 # >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
+# Pin the canonical v4 motto source so agent-start never downgrades to v3.
+export AGENT_MOTTO_SOURCE="/Users/pranay/Downloads/motto_v4.md"
+
 # Commit-message gate (motto §0.4.2 multi-pass review + §0.5 evidence tiers).
 # Receives the commit message file path as $1. Blocks AI co-author trailers and
 # requires review/evidence/risk trailers aligned to the currently attested motto.
 if [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
   _msg_file="${1:-}"
   _msg="$(cat "$_msg_file" 2>/dev/null || true)"
-  _motto_file="motto_v3.md"
+  _motto_file="motto_v4.md"
   _attestation_file=".git/projects_agent_motto_attestation.env"
   _current_sha=""
   if [ -f "$_motto_file" ]; then
@@ -41,7 +44,7 @@ EOF
     exit 1
   fi
   if [ -n "$_current_sha" ] && ! printf '%s' "$_msg" | grep -qiE "^motto-sha256:[[:space:]]*${_current_sha}$"; then
-    echo "commit-msg: commit must include 'Motto-SHA256: $_current_sha' for the current full motto_v3.md." >&2
+    echo "commit-msg: commit must include 'Motto-SHA256: $_current_sha' for the current full motto_v4.md." >&2
     exit 1
   fi
   # High-risk path detection from staged files + stricter trailer requirement.
@@ -68,17 +71,17 @@ EOF
     if ! python3 "$_commitgate_script" --repo "$(pwd)" $_verify_flags; then
       cat >&2 <<'EOF'
 
-commit-msg: motto_v3 attestation FAILED (hardened v3 — coverage-complete).
+commit-msg: motto_v4 attestation FAILED (hardened v4 — coverage-complete).
 
-The agent must perform a FULL motto_v3 audit — every section, no exceptions.
-The v3 gate is COVERAGE-COMPLETE: all sections of motto_v3 are required for
+The agent must perform a FULL motto_v4 audit — every section, no exceptions.
+The v4 gate is COVERAGE-COMPLETE: all sections of motto_v4 are required for
 every commit, regardless of risk class. (v2 wrongly omitted load-bearing rules
 like §9 Artifact Handling and §14 Validation Rules from a "standard" subset,
 letting agents pass while blind-committing tool artifacts.)
 
 Three things are required:
 
-  (1) Review EVERY section of motto_v3 (all 42, including §9 Artifact Handling,
+  (1) Review EVERY section of motto_v4 (all 51, including §9 Artifact Handling,
       §14 Validation Rules, §3 Git Safety, §8 Group-by-Group, etc.) and record
       diff-aware evidence (>=20 chars) for each. Bare flag flips are rejected.
 
@@ -125,7 +128,7 @@ Minimum review time: 60s standard, 120s high-risk (from --init to --verify).
 The --high-risk flag controls ONLY the review time, not which sections apply —
 all 42 sections are always required.
 
-Required sections: ALL 42 (§full-integrated, §0, §0.1-§0.16, §1-§22).
+Required sections: ALL 51 (§full-integrated, §0, §0.0-§0.17, §1-§22).
 
 The attestation expires after 12 hours. Re-run --init in a new session.
 EOF

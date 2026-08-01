@@ -137,6 +137,33 @@ def test_build_canonical_evidence_records_maps_non_extraction_events():
     assert len(records) == 1
     assert records[0]["workflow_type"] == "document"
     assert records[0]["final_acceptance_status"] == "accepted"
+    assert records[0]["review_workflow_unit_id"] is None
+
+
+def test_build_canonical_evidence_records_includes_review_workflow_owner_trace():
+    records = build_canonical_evidence_records(
+        [
+            _event(
+                id="r1",
+                event_type="extraction_run_completed",
+                event_category="extraction",
+                event_metadata={
+                    "failure_signature": "sig-r1",
+                    "failure_layer": "routing",
+                    "next_fix_layer": "routing",
+                    "input_artifact_id": "doc-b",
+                    "review_workflow_unit_id": "review-r1",
+                    "review_outcome": "manual_apply",
+                },
+            )
+        ]
+    )
+    assert len(records) == 1
+    record = records[0]
+    assert record["workflow_unit_id"] == "r1"
+    assert record["review_workflow_unit_id"] == "review-r1"
+    assert record["review_outcome"] == "manual_apply"
+    assert record["owner"] == "platform-autonomy"
 
 
 def test_extract_metadata_signature_is_stable():
@@ -216,11 +243,13 @@ def test_aggregate_eval_records_includes_canonical_evidence_records():
         )
     ]
 
+    review_events = []
     summary = aggregate_eval_records(
         events,
         min_occurrences=1,
         window_minutes=120,
         reference_time=now,
+        review_events=review_events,
     )
 
     records = summary["canonical_evidence_records"]
@@ -231,6 +260,75 @@ def test_aggregate_eval_records_includes_canonical_evidence_records():
     assert records[0]["prompt_version"] == "p1"
     assert records[0]["schema_version"] == "s1"
     assert records[0]["final_acceptance_status"] == "pending_review"
+
+
+def test_aggregate_eval_records_includes_review_cascade_timeline():
+    now = datetime(2026, 6, 18, 10, 0, tzinfo=timezone.utc)
+    events = [
+        _event(
+            id="r1",
+            created_at=now,
+            event_type="extraction_run_completed",
+            event_metadata={
+                "failure_signature": "sig-a",
+                "failure_layer": "schema",
+                "next_fix_layer": "schema_contract",
+                "review_workflow_unit_id": "rw-1",
+                "review_trigger_reason": "manual_review_required",
+                "review_outcome": "manual_apply",
+            },
+        ),
+        _event(
+            id="r2",
+            created_at=now,
+            event_type="extraction_run_failed",
+            event_metadata={
+                "failure_signature": "sig-b",
+                "failure_layer": "routing",
+                "next_fix_layer": "routing",
+                "review_workflow_unit_id": "rw-2",
+            },
+        ),
+    ]
+    review_events = [
+        {
+            "type": "review_action",
+            "id": "rev-rw-1",
+            "timestamp": "2026-06-18T10:03:00+00:00",
+            "details": {
+                "action": "approved",
+                "reviewed_by": "owner",
+                "notes": "Looks good",
+                "escalation_outcome": "correct_escalation",
+                "review_workflow_unit_id": "rw-1",
+                "reviewed_at": "2026-06-18T10:03:00+00:00",
+            },
+        }
+    ]
+
+    summary = aggregate_eval_records(
+        events,
+        min_occurrences=1,
+        window_minutes=120,
+        reference_time=now,
+        review_events=review_events,
+    )
+
+    assert "review_cascade_timeline" in summary
+    timeline = summary["review_cascade_timeline"]
+    assert len(timeline) == 2
+
+    row_by_unit = {row["workflow_unit_id"]: row for row in timeline}
+    assert row_by_unit["r1"]["review_workflow_unit_id"] == "rw-1"
+    assert row_by_unit["r1"]["final_acceptance_status"] == "pending_review"
+
+    cascade = row_by_unit["r1"]["cascade"]
+    stages = [step["stage"] for step in cascade]
+    assert stages == ["execution_event", "review_action"]
+    review_row = next(step for step in cascade if step["stage"] == "review_action")
+    assert review_row["action"] == "approved"
+    assert review_row["escalation_outcome"] == "correct_escalation"
+    assert review_row["review_workflow_unit_id"] == "rw-1"
 
 
 def test_build_canonical_evidence_records_limits_output():

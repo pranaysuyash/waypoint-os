@@ -201,4 +201,27 @@ describe("PacketPanel trip details fallback", () => {
     expect(screen.getAllByText("₹4L").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Missing Details/)).not.toBeInTheDocument();
   });
+
+  it("labels the fallback repair path as the trip details surface", () => {
+    const trip: Trip = {
+      id: "trip-repair-fallback",
+      destination: "Singapore",
+      type: "Family leisure",
+      state: "green",
+      age: "1h",
+      createdAt: "2026-05-27T00:00:00Z",
+      updatedAt: "2026-05-27T00:00:00Z",
+      party: 4,
+      dateWindow: "Dec 2026",
+      budget: "₹4L",
+      origin: "Mumbai",
+    };
+
+    render(<PacketPanel tripId={trip.id} trip={null} />);
+
+    expect(screen.getByRole("link", { name: "Open Trip Details" })).toHaveAttribute(
+      "href",
+      "/trips/trip-repair-fallback/intake",
+    );
+  });
 });

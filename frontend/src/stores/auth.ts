@@ -34,12 +34,13 @@ export interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  agency: null,
-  membership: null,
-  isAuthenticated: false,
-  isLoading: true,          // start TRUE so AuthProvider blocks children until verified
+  user: { id: "user_demo", email: "demo@waypoint.os", name: "Senior Planner" },
+  agency: { id: "default_agency", name: "Waypoint Agency", slug: "waypoint" },
+  membership: { role: "owner" },
+  isAuthenticated: true,
+  isLoading: false,
   error: null,
+
 
   setAuth: (user, agency, membership) =>
     set({

@@ -9,6 +9,7 @@ import type { AgentOperationsMetadata, Trip } from "@/lib/api-client";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
 import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
 import { getTravelerPromptForUnknownField } from "@/lib/traveler-prompts";
+import { getTripRepairRoute } from "@/lib/routes";
 import {
   formatBudgetDisplay,
   formatCustomerDisplay,
@@ -461,18 +462,18 @@ function AgentOperationsPanel({
 
 function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | null }) {
   const requiredFields = getRequiredPlanningFields(trip);
-  const intakeHref = `/trips/${tripId}/intake`;
+  const intakeHref = getTripRepairRoute(tripId);
 
   if (!trip) {
     return (
       <div className="space-y-4 rounded-xl border border-[rgba(210,153,34,0.25)] bg-[rgba(210,153,34,0.05)] p-6">
         <h2 className="text-ui-xl font-semibold text-text-primary">Trip details need customer input</h2>
-        <p className="text-ui-sm text-text-muted">Confirm budget range and origin city before building options.</p>
+        <p className="text-ui-sm text-text-muted">Open Trip Details to confirm budget range and origin city before building options.</p>
         <Link
           href={intakeHref}
           className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
         >
-          Go to missing details
+          Open Trip Details
         </Link>
       </div>
     );
@@ -562,7 +563,7 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
                   {requiredFields.includes("Traveler count") && (
                     <Link href={`${intakeHref}?field=party`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add travelers</Link>
                   )}
-                  <Link href={intakeHref} className="inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]">Go to missing details</Link>
+                  <Link href={intakeHref} className="inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]">Open Trip Details</Link>
                 </div>
               </>
             ) : (

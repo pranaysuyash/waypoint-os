@@ -3,9 +3,14 @@
 import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SafetyResult, PromptBundle } from "@/types/spine";
-import { AlertCircle, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { isDebugJsonAllowed } from "@/lib/privacy-controls";
+import {
+  getSafetyCleanupChecklist,
+  getSafetyCleanupSummary,
+  getSafetyReviewStatusCopy,
+} from "@/lib/safety-review-copy";
 
 interface SafetyPanelProps {
   tripId: string;
@@ -42,32 +47,34 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
   const safety = result_safety as SafetyResult;
   const travelerBundle = result_traveler_bundle as PromptBundle | null;
   const isStrictFail = safety.strict_leakage && !safety.leakage_passed;
+  const safetyStatusCopy = getSafetyReviewStatusCopy(safety);
+  const cleanupChecklist = getSafetyCleanupChecklist();
 
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Risk Gate</h3>
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Message review</h3>
         <p className="text-ui-xs text-text-muted mb-3">
-          Final send-readiness check for customer-safe language and compliance-sensitive terms.
+          Final send-readiness check for customer-safe language before anything leaves the workspace.
         </p>
         {safety.leakage_passed ? (
           <div className="border border-[#1c2128] rounded-lg p-4 bg-sidebar">
             <div className="flex items-center text-accent-green font-semibold mb-1">
               <CheckCircle className="size-4 mr-2" />
-              PASS - Safe for Customer
+              {safetyStatusCopy.heading}
             </div>
             <p className="text-ui-sm text-text-muted">
-              No internal jargon or sensitive details found in the customer-facing message.
+              {safetyStatusCopy.body}
             </p>
           </div>
         ) : (
           <div className="border border-[rgba(var(--accent-red-rgb)/0.4)]/30 rounded-lg p-4 bg-[rgba(var(--accent-red-rgb)/0.18)]/10">
             <div className="flex items-center text-accent-red font-semibold mb-1">
               <XCircle className="size-4 mr-2" />
-              FAIL - Internal Jargon Found
+              {safetyStatusCopy.heading}
             </div>
             <p className="text-ui-sm text-text-muted">
-              Internal-only terms were found in the message the customer would see.
+              {safetyStatusCopy.body}
             </p>
           </div>
         )}
@@ -77,22 +84,25 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
         <div className="border-2 border-[rgba(var(--accent-red-rgb)/0.45)]/50 rounded-lg p-4 bg-[rgba(var(--accent-red-rgb)/0.18)]/20">
           <div className="flex items-center text-accent-red font-bold text-ui-sm mb-1">
             <AlertTriangle className="size-4 mr-2" />
-            NOT SAFE TO SEND
+            Hold send for now
           </div>
           <p className="text-ui-sm text-text-primary">
-            Customer message contains internal jargon and cannot be sent until fixed.
+            Rewrite the customer-facing reply, then run message review again before sending.
           </p>
         </div>
       )}
 
       {safety.leakage_errors && safety.leakage_errors.length > 0 && (
         <section>
-          <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Jargon Found in Customer Message</h3>
+          <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">What needs cleanup</h3>
           <div className="bg-sidebar rounded-lg border border-[#1c2128] p-4">
+            <p className="mb-3 text-ui-sm text-text-muted">
+              {getSafetyCleanupSummary(safety)}
+            </p>
             <ul className="space-y-2">
-              {safety.leakage_errors.map((item: string, i: number) => (
-                <li key={`leak-${item.slice(0, 15)}`} className="flex items-center text-ui-sm text-accent-red">
-                  <AlertCircle className="size-3.5 mr-2 shrink-0" />
+              {cleanupChecklist.map((item) => (
+                <li key={`leak-${item}`} className="flex items-start text-ui-sm text-text-primary">
+                  <span className="mr-2 shrink-0 text-accent-red">•</span>
                   {item}
                 </li>
               ))}
@@ -133,7 +143,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
             </>
           ) : (
             <p className="text-ui-sm text-text-muted italic">
-              {isStrictFail ? "Cannot be sent - contains internal jargon" : "No customer message available"}
+              {isStrictFail ? "Hold send until the customer-facing reply is rewritten." : "No customer message available"}
             </p>
           )}
         </div>

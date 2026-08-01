@@ -57,7 +57,8 @@ This graph turns the repo's research, feedback, graph, and learning docs into a 
   - supports -> `concept:autoresearch`
   - supports -> `concept:feedback`
   - supports -> `concept:governance`
-- `Docs/EXPLORATION_FRONTIER.md` - The Exploration Frontier | themes: agent_governance
+- `Docs/EXPLORATION_FRONTIER.md` - The Exploration Frontier | themes: feedback_learning, agent_governance
+  - supports -> `concept:feedback`
   - supports -> `concept:governance`
 - `Docs/INDEX.md` - Validation and Testing (2026-04-17) | themes: autoresearch, feedback_learning, graph_memory, live_intelligence, agent_governance
   - supports -> `concept:autoresearch`

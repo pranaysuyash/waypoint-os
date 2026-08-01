@@ -1,6 +1,15 @@
+import Link from "next/link";
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SafetyResult, PromptBundle, DecisionOutput, FollowUpQuestion } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
+import { normalizeSafetyResult } from "@/lib/bff-trip-adapters";
+import { DECISION_STATE_LABELS, FIELD_LABELS, labelOrTitle, titleCase } from "@/lib/label-maps";
+import { getTripRepairRoute } from "@/lib/routes";
+import {
+  getSafetyCleanupChecklist,
+  getSafetyCleanupSummary,
+  getSafetyReviewStatusCopy,
+} from "@/lib/safety-review-copy";
 import styles from "@/components/workbench/workbench.module.css";
 
 interface SpecialtyHit {
@@ -22,6 +31,21 @@ const URGENCY_STYLES: Record<string, string> = {
   NORMAL: styles.stateBlue,
 };
 
+const BLOCKER_LABELS: Record<string, string> = {
+  budget_feasibility: "Recheck whether the budget matches the requested trip",
+  date_flexibility: "Clarify how flexible the travel dates are",
+  incomplete_intake: "Complete the missing trip details",
+  missing_passport: "Collect the missing passport details",
+  resolved_destination: "Confirm the final destination",
+  soft_preferences: "Capture any must-have preferences before quoting",
+};
+
+function humanizeBlocker(raw: string): string {
+  const normalized = raw.trim().toLowerCase();
+  if (BLOCKER_LABELS[normalized]) return BLOCKER_LABELS[normalized];
+  return labelOrTitle(FIELD_LABELS, normalized, titleCase(normalized));
+}
+
 export default function SafetyTab({ trip }: SafetyTabProps) {
   const {
     result_safety,
@@ -32,7 +56,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
     setDebugRawJson,
   } = useWorkbenchStore();
 
-  const activeSafety = result_safety || (trip?.safety as SafetyResult | null);
+  const activeSafety = result_safety || normalizeSafetyResult(trip?.safety);
   const activeTravelerBundle = (result_traveler_bundle as PromptBundle | null) ?? (trip?.traveler_bundle as PromptBundle | null);
   const activeInternalBundle = (result_internal_bundle as PromptBundle | null) ?? (trip?.internal_bundle as PromptBundle | null);
   const activeDecision = result_decision ?? (trip?.decision as DecisionOutput | null) ?? null;
@@ -50,12 +74,15 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
   const internalBundle = activeInternalBundle;
   const strippedFields = safety?.leakage_errors || [];
   const isStrictFail = Boolean(safety?.strict_leakage && !safety?.leakage_passed);
+  const safetyStatusCopy = getSafetyReviewStatusCopy(safety);
+  const cleanupChecklist = getSafetyCleanupChecklist();
   const decisionState = activeDecision?.decision_state ?? null;
   const hasDerivedSafetyContext = !activeSafety && Boolean(activeDecision);
   const hardBlockers = (activeDecision as any)?.hard_blockers ?? [];
   const softBlockers = (activeDecision as any)?.soft_blockers ?? [];
   const followUpQuestions: FollowUpQuestion[] = (activeDecision as any)?.follow_up_questions ?? [];
   const overallConfidence = activeDecision?.confidence?.overall;
+  const tripRepairHref = trip?.id ? getTripRepairRoute(trip.id) : null;
   const confidenceLabel =
     typeof overallConfidence === "number" && Number.isFinite(overallConfidence)
       ? `${Math.round(overallConfidence * 100)}%`
@@ -65,37 +92,37 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
     <div>
       {activeDecision && (
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Decision State</h3>
+          <h3 className={styles.sectionTitle}>Trip readiness</h3>
           <div className={styles.card}>
             <span className={`${styles.badge} ${URGENCY_STYLES.NORMAL}`}>
-              {decisionState === "ASK_FOLLOWUP" ? "Waiting on Customer" : decisionState || "Review Required"}
+              {DECISION_STATE_LABELS[decisionState ?? ""] || "Review Required"}
             </span>
             <div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-muted)" }}>
               Overall Confidence: {confidenceLabel}
             </div>
             {hardBlockers.length > 0 && (
               <div style={{ marginTop: "12px" }}>
-                <strong style={{ color: "var(--color-danger)" }}>Hard Blockers:</strong>
+                <strong style={{ color: "var(--color-danger)" }}>Needs to be fixed before we can send:</strong>
                 <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
-                  {hardBlockers.map((b: string) => <li key={`hard-${b}`}>{b}</li>)}
+                  {hardBlockers.map((b: string) => <li key={`hard-${b}`}>{humanizeBlocker(b)}</li>)}
                 </ul>
               </div>
             )}
             {softBlockers.length > 0 && (
               <div style={{ marginTop: "12px" }}>
-                <strong style={{ color: "var(--color-warning)" }}>Soft Blockers:</strong>
+                <strong style={{ color: "var(--color-warning)" }}>Still worth confirming:</strong>
                 <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
-                  {softBlockers.map((b: string) => <li key={`soft-${b}`}>{b}</li>)}
+                  {softBlockers.map((b: string) => <li key={`soft-${b}`}>{humanizeBlocker(b)}</li>)}
                 </ul>
               </div>
             )}
             {followUpQuestions.length > 0 && (
               <div style={{ marginTop: "12px" }}>
-                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Follow-up Questions</strong>
+                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Questions to ask the traveler</strong>
                 <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
                   {followUpQuestions.map((question, index) => (
                     <li key={`fu-${question.field_name || index}`} style={{ marginBottom: "4px" }}>
-                      <strong>[{question.priority || "normal"}]</strong> {question.question}
+                      {question.question}
                     </li>
                   ))}
                 </ul>
@@ -107,7 +134,19 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
 
       {!activeSafety && !activeDecision && (
         <div className={styles.emptyState}>
-          <p>No risk review data yet. Process a trip from the &ldquo;New Inquiry&rdquo; section first.</p>
+          <p>
+            {tripRepairHref
+              ? 'No risk review data yet. Open Trip Details to continue repairing the trip.'
+              : 'No risk review data yet.'}
+          </p>
+          {tripRepairHref && (
+            <Link
+              href={tripRepairHref}
+              className="mt-3 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+            >
+              Open Trip Details
+            </Link>
+          )}
         </div>
       )}
 
@@ -116,10 +155,10 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
           <h3 className={styles.sectionTitle}>Customer Message QA</h3>
           <div className={styles.card}>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: 0 }}>
-              Safety bundle is not available for this run, so this view falls back to the decision and output preview.
+              The message audit is not available for this run yet, so this view is showing the readiness summary instead.
             </p>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
-              The decision state above is still available for review.
+              You can still review the traveler-facing draft below before sending.
             </p>
           </div>
           {travelerBundle && hasDerivedSafetyContext && (
@@ -138,28 +177,28 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
       {activeSafety && (
         <>
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Risk Gate</h3>
+        <h3 className={styles.sectionTitle}>Customer message check</h3>
         <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "0 0 10px 0" }}>
-          Final send-readiness check for customer-safe language and compliance-sensitive terms.
+          We review the traveler-facing draft here before anything leaves the workspace.
         </p>
       {safety.leakage_passed ? (
           <div className={styles.leakagePass}>
             <div className={styles.leakageTitle}>
               <span className={`${styles.listIcon} ${styles.iconSuccess}`} style={{ marginRight: "8px" }}>✓</span>
-              PASS - Safe for Customer
+              {safetyStatusCopy.heading}
             </div>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
-              No internal jargon or sensitive details found in the customer-facing message.
+              {safetyStatusCopy.body}
             </p>
           </div>
         ) : (
           <div className={styles.leakageFail}>
             <div className={styles.leakageTitle}>
               <span className={`${styles.listIcon} ${styles.iconDanger}`} style={{ marginRight: "8px" }}>✗</span>
-              FAIL - Internal Jargon Found
+              {safetyStatusCopy.heading}
             </div>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
-              Internal-only terms were found in the message the customer would see.
+              {safetyStatusCopy.body}
             </p>
           </div>
         )}
@@ -168,22 +207,25 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
       {safety.strict_leakage && !safety.leakage_passed && (
         <div className={styles.leakageFail} style={{ border: "2px solid rgba(239, 68, 68, 0.5)", marginBottom: "16px" }}>
           <div className={styles.leakageTitle} style={{ color: "var(--color-danger)", fontWeight: 700 }}>
-            NOT SAFE TO SEND
+            Hold before sending
           </div>
           <p style={{ fontSize: "13px", margin: "8px 0 0 0" }}>
-            Customer message contains internal jargon and cannot be sent until fixed.
+            Rewrite the customer-facing reply, then run this review again before sending.
           </p>
         </div>
       )}
 
       {strippedFields.length > 0 && (
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Jargon Found in Customer Message</h3>
+          <h3 className={styles.sectionTitle}>What needs cleanup</h3>
           <div className={styles.card}>
+            <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "0 0 10px 0" }}>
+              {getSafetyCleanupSummary(safety)}
+            </p>
             <ul className={styles.list}>
-              {strippedFields.map((item: any, i: number) => (
-                <li key={`leak-${item.slice(0, 30)}`} className={styles.listItem}>
-                  <span className={`${styles.listIcon} ${styles.iconDanger}`}>X</span>
+              {cleanupChecklist.map((item) => (
+                <li key={`leak-${item}`} className={styles.listItem}>
+                  <span className={`${styles.listIcon} ${styles.iconDanger}`}>•</span>
                   {item}
                 </li>
               ))}
@@ -276,7 +318,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
             </div>
           ) : (
             <p style={{ color: "var(--color-text-muted)" }}>
-              {isStrictFail ? "Cannot be sent - contains internal jargon" : "No customer message available"}
+              {isStrictFail ? "Blocked until the draft is cleaned up" : "No customer message available"}
             </p>
           )}
         </div>
@@ -305,6 +347,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
         <div className={styles.jsonOutput}>
           <pre>{JSON.stringify({
             safety: activeSafety,
+            raw_leakage_errors: strippedFields,
             traveler_bundle: activeTravelerBundle,
             internal_bundle: activeInternalBundle,
           }, null, 2)}</pre>

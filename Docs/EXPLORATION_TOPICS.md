@@ -36,7 +36,7 @@
 │  INFRASTRUCTURE & CONNECTIVITY              AI/ML STRATEGY                      │
 │  ├── Architecture Topology        [🟡]      ├── LLM Strategy & Costs         [ ]│
 │  ├── Integration Architecture    [🔴]      ├── Prompt Engineering          [ ]│
-│  ├── Data Strategy & Persistence [🔴]      ├── Evaluation Framework        [ ]│
+│  ├── Data Strategy & Persistence [🔴]      ├── Evaluation Framework        [🟡]│
 │  ├── Security & Compliance       [ ]       ├── KDD / Suitability Mining   [ ]│
 │  ├── Deployment & Operations     [🔴]      ├── Process Mining / Ideation   [ ]│
 │  └── Compliance & Regulatory     [🟡]      └── Testing & QA Strategy       [🟡]│
@@ -110,6 +110,8 @@ Legend:
 **Live Replay Note (2026-06-26, browser/runtime collision and tab navigation)**: A fresh live replay on the agent workspace found that `8000` was occupied by another repo's backend process, so the first login attempt was proxying to the wrong service. The repo now runs cleanly on `8001` with the frontend on `3103`. During the same run, the workbench tabs were found to be dead clicks in the live browser until they were changed to link-backed navigation, after which the Risk Review tab switched correctly and the intake workbench became usable again.
 
 **Live Replay Note (2026-06-26, post-submit durability)**: The updated intake replay progressed further once the missing travel dates were supplied, and the packet view appeared in-session after `/api/spine/run`. But a fresh reload of the same draft still fell back to the empty intake shell instead of restoring the processed packet, which means the post-submit state is still not durably rehydrated from backend state.
+
+**Live Replay Note (2026-06-28, completed-trip reload)**: The workbench now resolves a draft's terminal run snapshot back into the completed trip id on reload, rewrites the URL to the trip-backed packet route, and fetches the trip again instead of depending only on transient client state. This closes the packet durability gap that was visible in the earlier replay.
 
 **Key Questions**:
 - Is there an integration enablement layer today, or only provider-specific aspirations?
@@ -314,6 +316,8 @@ Legend:
 
 **v0 Implementation Scope** (handoff-ready): [exploration/KDD_V0_OVERRIDE_MINING_SCOPE_2026-05-18.md](exploration/KDD_V0_OVERRIDE_MINING_SCOPE_2026-05-18.md)
 
+**v0.1 Technical Audit & Upgrade Architecture**: [audit/KDD_OVERRIDE_MINING_AND_FEEDBACK_LOOP_AUDIT_2026-07-13.md](audit/KDD_OVERRIDE_MINING_AND_FEEDBACK_LOOP_AUDIT_2026-07-13.md) — Evaluates `exact-match-v1` signal loss bottlenecks across `src/analytics/kdd/clustering.py`, fixes tenant isolation in `spine_api/routers/kdd.py`, and specifies agglomerative Gower distance clustering plus `POST /kdd/clusters/{id}/promote` automated policy exception promotion.
+
 **Related Topics**: Evaluation Framework (#6, complementary), LLM Strategy (#4, override mining feeds prompt versioning), Advanced: Learning & Optimization (#15), Multi-Dimensional Priority Scoring (#20), Suitability renderer (cross-link to AI override controls launch blocker in `AGENTS.md`).
 
 ---
@@ -345,6 +349,25 @@ Legend:
 **Detailed Research**: [exploration/PROCESS_MINING_WORKFLOW_TIMELINES_EXPLORATION_2026-05-18.md](exploration/PROCESS_MINING_WORKFLOW_TIMELINES_EXPLORATION_2026-05-18.md)
 
 **Related Topics**: Priority Scoring (#20, complementary signal source), Evaluation Framework (#6), KDD (#6b).
+
+---
+
+### 6e. Domain-Specific RAG Pipeline & Knowledge Architecture 🔴 [EXPLORATION COMPLETED - READY FOR DISCUSSION]
+**Status**: Exploration completed 2026-07-25. Establishes the 5-pillar domain RAG blueprint (Institutional Memory, Regulatory/Visa Rules, Supplier/Destination Intelligence, Active Trip Evidence, Operator Overrides) and 6-capability execution engine (Searchable, Referenceable, Traceable, Grounded, Embedded, Linkages/Graphs).
+
+**Overview**: Replaces static keyword dictionaries (such as `specialty_knowledge.py`) and unindexed document blobs with an enterprise Multi-Tenant Hybrid Graph-Vector RAG system. Provides dense vector embeddings + BM25 lexical search + Knowledge Graph traversal with strict tenant isolation (`agency_id`).
+
+**Key Questions**:
+- How do we ensure zero hallucination on critical travel rules (visa, passport validity, yellow fever)?
+- How do we ground AI proposals with exact document ID, page, line, and confidence metadata?
+- How do we model relationships between Agency, Supplier, Destination, Policy, and Trip entities in a Knowledge Graph?
+- How does RAG integrate with existing Spine API endpoints and agent execution steps (`DocumentReadinessAgent`, `CheckerAgent`)?
+
+**Deliverable**: RAG Architecture Exploration & Blueprint (`Docs/exploration/RAG_PIPELINE_ARCHITECTURE_EXPLORATION_2026-07-25.md`) + Phased Implementation Plan.
+
+**Detailed Research**: [exploration/RAG_PIPELINE_ARCHITECTURE_EXPLORATION_2026-07-25.md](exploration/RAG_PIPELINE_ARCHITECTURE_EXPLORATION_2026-07-25.md)
+
+**Related Topics**: Knowledge Management (#23), Institutional Memory Layer, KDD (#6b), Document Readiness Agent (`src/agents/runtime.py`).
 
 ---
 
@@ -730,23 +753,65 @@ The trip intake page for the saved trip now also shows a red `Critical Issue` ca
 ---
 
 ### 18. Evaluation Framework 🔵
-**Status**: Specification complete - Ready for implementation
+**Status**: Core implementation present — evaluation loops are partially complete
 
-**Overview**: 4-layer evaluation pyramid for testing beyond unit tests:
-1. Structural Validation (schema, completeness, constraints)
-2. LLM-as-Judge (automated quality scoring)
-3. Human Evaluation (expert review, blind comparison)
-4. Business Outcomes (conversion, satisfaction, margin)
+**Current Ground-Truth**:
+- `src/evals/agentic_feedback.py` now normalizes runtime failures into a durable record shape (`AgenticEvalRecord`, `AgenticEvalWorkItem`, canonical summary + routing metrics).
+- `spine_api/services/agentic_eval_service.py` + `spine_api/routers/confirmations.py` expose trip-level eval APIs (`GET /api/trips/{trip_id}/agentic-eval`).
+- `src/evals/audit/` has D6-style fixture/scoring/gating scaffolding (`manifest.yaml`, rules + snapshot authority).
+- `src/agents/closed_loop_learning.py` plus runtime registration generate and test shadow-safe fix candidates from repeated failures.
+- Golden fixtures exist in `data/fixtures/` for extraction/pipeline/budget/activity eval paths.
+- D6 routing health now captures baseline `status`, `alerts`, and `metrics_snapshot` in the gate snapshot for deterministic drift detection.
+- Canonical evidence rows now carry `review_workflow_unit_id` and inferred `owner` to improve review-cascade traceability.
+- `/api/trips/{trip_id}/agentic-eval` now emits a compact `review_cascade_timeline` so operators can see execution → review action → closure progression in one artifact.
+- `/audit` operator panel now has real-time alerting UX (`Pause/Enable live refresh`, `Refresh now`, live refresh status, and last-refresh timestamp) with paging and routing-health event polling every 15 seconds.
 
-**Key Components**:
-- LLM evaluation prompts with calibration
-- Human evaluation rubric
-- Safety evaluation (red team testing)
-- A/B testing framework
-- Continuous evaluation pipeline
-- Success criteria and dashboard
+**What is still missing for production-grade maturity**:
+- End-to-end routing + budget + operational alerts that continuously page/escalate when thresholds are breached.
+- Real replay/shadow path to validate proposed fixes on live-like traffic (currently deterministic simulation exists).
+- Cross-agent overlap / duplicate-action detection before they can degrade trip state.
+- Per-step latency and cost attribution (current metrics are aggregate and partial).
 
-**Deliverable**: [research/EVALUATION_FRAMEWORK.md](research/EVALUATION_FRAMEWORK.md)
+**Comprehensiveness now (implemented / recommended)**:
+- Implemented:
+  - failure reduction + repeated-failure work items
+  - routing metric extraction (`fallback/review/escalation` rates, latency/cost summary)
+  - D6 category gates scaffold with snapshot authority
+  - closed-loop candidate generation
+  - review-cascade timeline export on agentic eval summary endpoint
+  - operator-facing real-time alerting controls in `/(agency)/audit` for routing-health escalation workflows
+- Recommended this cycle (should):
+  - add contract-aware routing-health alerts, trend-based regression detection, and runbook hooks
+  - wire end-to-end shadow evaluation to the real ingestion path
+  - persist and expose review-outcome outcomes (accepted/rejected/overruled) as first-class metrics
+  - add cross-agent conflict evaluation + owner attribution
+- Completed in this tranche:
+  - routing-health snapshot now stores alerts and metrics baseline
+  - canonical evidence now surfaces review-workflow linkage and owner inference
+  - operator panel now supports manual and periodic refresh, improving live paging visibility and incident response time
+- Optional expansion (can):
+  - LLM-as-Judge pipelines with judge rubric versioning
+  - business-outcome correlation (conversion/margin/satisfaction cohorts)
+  - agency-level eval governance dashboard + owner SLAs
+- Can also do in parallel:
+  - concept-drift monitoring across prompt/model/schema versions
+  - automated recommendation-to-execution evidence chain (proposal, shadow, rollout, rollback)
+
+**Status of docs/research coverage**:
+- [`research/AGENTIC_EVAL_CANONICAL_ROADMAP_2026-06-20.md`](research/AGENTIC_EVAL_CANONICAL_ROADMAP_2026-06-20.md) — consolidated current roadmap and gap assessment
+- [`research/AGENTIC_FLOW_EVAL_AUDIT_2026-06-18.md`](research/AGENTIC_FLOW_EVAL_AUDIT_2026-06-18.md) — execution audit and concrete improvement recommendations
+- [`/Users/pranay/Projects/skills/agentic-eval-loop/SKILL.md`](/Users/pranay/Projects/skills/agentic-eval-loop/SKILL.md) — canonical loop skill for periodic evaluation practice
+- [`tests/evals/`](tests/evals/) — coverage currently focused on agentic feedback, routing-health, and D6 gate snapshots (growth path here is trend + production gating tests)
+
+**Detailed Research**: [research/AGENTIC_EVAL_CANONICAL_ROADMAP_2026-06-20.md](research/AGENTIC_EVAL_CANONICAL_ROADMAP_2026-06-20.md)
+
+**Recommended next concrete outputs (this roadmap):**
+- `Docs/research/AGENTIC_EVAL_MATURITY_VNEXT_2026-07-01.md` (living plan: will/should/can with ownership)
+  - `spine_api/services/` alert hooks for routing health threshold breaches
+  - `src/evals/audit/rules/` completion for all manifest categories
+  - `/api/trips/{trip_id}/agentic-eval` response migration of review actions to include richer closure metadata (notes/action actor, unlinked review actions)
+
+**Deliverable**: Production-grade agentic evaluation loop with routing health gates, continuous shadow validation, and operator action closure.
 
 ---
 
@@ -1593,3 +1658,68 @@ These are **blocking** for moving from notebooks to real implementation.
 - A live trip intake simulation on `/trips/trip_2333bff6434d/intake` showed that budget and origin edits can be made inline from the agent page.
 - The reassessment request now carries the current trip fields forward as a structured overlay, so manual edits do not get wiped by the next auto-reprocess run.
 - This belongs in the exploration map because preserving agent-entered truth across auto-reassess is a core trust boundary for the planning workflow.
+
+## Live Validation Note: Frontier Result Must Survive Refresh
+
+- The saved frontier trip `trip_e1e875755042` now returns `frontier_result` from `GET /trips/{id}` instead of dropping it at the response-model boundary.
+- In the live workbench, the Frontier OS tab stays visible and selected before and after a refresh when the URL points at `tab=frontier`.
+- The reload now preserves the Frontier analysis panel for the saved trip, so the operator does not lose the intelligence surface when the page refreshes.
+- This belongs in the exploration map because it closes a real reload-durability gap in the main app rather than a transient UI-state glitch.
+
+## Live Validation Note: Persona Matrix Across Markets
+
+- A live matrix across small India, large Africa, African family, and global family scenarios preserved the workbench trip context across reloads in every run.
+- Small India, large Africa, and African family prompts landed in `Risk Review` with Frontier available but not selected, which suggests the current intake model is conservative and waits for stronger completion signals before promoting the intelligence surface.
+- The global family run stayed in `Risk Review` without Frontier visible, because the input still had unresolved destination ambiguity and a missing-origin warning.
+- Currency/local-market details survived in the saved trips, including INR, KES, and ZAR expressions, which is important for operator trust across regions.
+- This belongs in the exploration map because it shows the current branch threshold and regional formatting behavior in real browser replays, not just in static tests.
+
+## Live Validation Note: First-Login Welcome Surface Should Not Block Workbench
+
+- The first-login welcome surface now renders as a floating card rather than a modal that inerted the whole page.
+- In a fresh browser profile, the welcome card was visible while `Process Inquiry` remained clickable immediately after filling the inputs.
+- The live workbench flow completed normally with the welcome card present, which makes the onboarding feel supportive instead of obstructive.
+- This belongs in the exploration map because it is a user-flow issue discovered during browser replay, not a styling tweak.
+
+## Live Validation Note: Leading City Must Stay in Origin, Not Destination
+
+- A live replay on `http://localhost:3103` with `Cape Town family of 4 wants Mauritius in April, ZAR 95,000 budget, relaxed pace, one resort near the beach, direct flight preferred.` now resolves to `Mauritius family leisure trip`.
+- The trip details surface shows `Origin = Cape Town` and `Destination = Mauritius`, which is the correct shape for this agency-style note.
+- Before the fix, the same note could be misread as a destination ambiguity because the leading city was treated like a destination candidate instead of an origin cue.
+- This belongs in the exploration map because it is a real-world intake parsing pattern, not just a unit-test edge case.
+
+## Live Validation Note: Corporate Ops Requests Must Surface in Trip Priorities
+
+- A live replay on `http://localhost:3103` with `Nairobi corporate offsite for 18 travelers wants Singapore in October, KES 4.8M budget, premium hotel, meeting room, airport transfers, flexible dates.` now surfaces `MUST-HAVES: premium hotel, airport transfers, meeting room` on the trip details page.
+- The corporate note now keeps the operational asks visible instead of dropping them into generic notes or leaving the must-have field empty.
+- This belongs in the exploration map because corporate groups rely on these operational asks to scope suppliers and rooming, so losing them changes the operator workflow.
+
+## Live Validation Note: Mid-Range Hotel Must Surface for Family Leisure Notes
+
+- A live replay on `http://localhost:3103` with `Mumbai family of 4 wants Singapore in August, INR 2.5 lakh budget, direct flights, mid-range hotel, 5 nights, vegetarian meals.` now surfaces `MUST-HAVES: mid-range hotel, direct flights, vegetarian food` on the trip details page.
+- The hotel tier is now visible in the same trip surface as the flight and diet constraints, which is the right operator-facing shape.
+- This belongs in the exploration map because hotel tier is a core planning signal, not a decorative note, and it should survive the intake pass.
+
+## Live Validation Note: Activity Interests Must Surface Separately from Activity Provenance
+
+- A live replay on `http://localhost:3103` with `Nairobi corporate offsite for 18 travelers wants Singapore in October, KES 4.8M budget, premium hotel, partial sightseeing, airport transfers, flexible dates.` now shows `ACTIVITY INTERESTS: sightseeing, business offsite` on the trip details page.
+- The same surface keeps `ACTIVITY PROVENANCE` separate, so traveler interest does not get conflated with source metadata.
+- The card is explicitly marked as derived from the intake note, which makes the origin of the signal clear to the operator.
+- This belongs in the exploration map because it closes a live app-surface gap that was visible in browser replay, not just in the extraction packet.
+
+## Live Validation Note: Welcome Card Must Not Block Narrow Viewports
+
+- A narrow-viewport replay at `390px` width showed the onboarding welcome card covering too much of the live workbench, including the bottom controls.
+- The welcome card now switches to a compact banner on small screens and keeps the full shortcut card only on larger screens.
+- The compact banner keeps the workflow reachable while still giving the user a quick onboarding action and a dismissal path.
+- This belongs in the exploration map because it is a real responsiveness issue visible in browser replay, not an abstract styling preference.
+
+## Live Validation Note: Risk Review Safety Must Survive Trip Reloads
+
+- A live replay on `http://localhost:3103` with a freshly created Cape Town leadership-offsite trip now shows the real safety leak list after reload.
+- The backend trip record already stored `safety`, but the canonical `TripResponse` contract had been dropping it, which made the workbench fall back to a generic safe/unsafe shell on reread.
+- The contract now returns `safety` verbatim, the frontend types were regenerated, and the Risk Review tab can display:
+  - `decision_state`
+  - `confidence_score`
+  - `owner_constraint`
+- This belongs in the exploration map because it is a persistence/contract gap, not just a UI-state issue. The live browser replay proved the gap and the contract fix closed it.

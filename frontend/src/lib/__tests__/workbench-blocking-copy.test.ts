@@ -20,7 +20,7 @@ describe('getWorkbenchBlockCopy', () => {
       'Some key trip details are missing',
       'Budget details are needed for this request type',
     ]);
-    expect(copy.actionLabel).toBe('Review Missing Fields');
+    expect(copy.actionLabel).toBe('Open Trip Details');
   });
 
   it('uses run block reasons when validation is absent', () => {

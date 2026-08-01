@@ -150,3 +150,7 @@ data/trips/*.lock
 
 # Local/generated agent session context
 **/agent-start/SESSION_CONTEXT.md
+
+# Launch-audit hygiene (2026-08-01): keep test debris and temp screenshots out of history
+.tmp-*.png
+data/trips/tc_roundtrip_*.json

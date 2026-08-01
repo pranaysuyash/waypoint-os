@@ -1,6 +1,17 @@
 import type { Metadata } from 'next';
+import { Rubik, Sora } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
+
+const sora = Sora({
+  subsets: ['latin'],
+  variable: '--font-sora',
+});
+
+const rubik = Rubik({
+  subsets: ['latin'],
+  variable: '--font-rubik',
+});
 
 export const metadata: Metadata = {
   title: 'Waypoint OS',
@@ -34,7 +45,7 @@ export default function RootLayout({
           />
         </head>
       ) : null}
-      <body>{children}</body>
+      <body className={`${sora.variable} ${rubik.variable}`}>{children}</body>
     </html>
   );
 }

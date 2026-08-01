@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import SafetyTab from '../SafetyTab';
 
 // Mock the workbench store
@@ -22,6 +23,14 @@ const mockStore = {
 
 vi.mock('@/stores/workbench', () => ({
   useWorkbenchStore: () => mockStore,
+}));
+
+vi.mock('next/link', () => ({
+  default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 // Mock CSS module
@@ -156,14 +165,41 @@ describe('SafetyTab - Special Handling Controls', () => {
 
     render(<SafetyTab />);
 
-    expect(screen.getByText('Decision State')).toBeDefined();
+    expect(screen.getByText('Trip readiness')).toBeDefined();
     expect(screen.getByText('Waiting on Customer')).toBeDefined();
-    expect(screen.getByText('resolved_destination')).toBeDefined();
-    expect(screen.getByText('date_flexibility')).toBeDefined();
+    expect(screen.getByText('Confirm the final destination')).toBeDefined();
+    expect(screen.getByText('Clarify how flexible the travel dates are')).toBeDefined();
     expect(screen.getByText('Which island or region are you leaning toward?')).toBeDefined();
-    expect(screen.getByText('Safety bundle is not available for this run, so this view falls back to the decision and output preview.')).toBeDefined();
+    expect(screen.getByText('The message audit is not available for this run yet, so this view is showing the readiness summary instead.')).toBeDefined();
     expect(screen.getByText('Customer Message Preview')).toBeDefined();
     expect(screen.getByText('Here’s the options plan for Zanzibar.')).toBeDefined();
+  });
+
+  it('routes missing decision data to the trip repair surface when a trip exists', () => {
+    render(
+      <SafetyTab
+        trip={{
+          id: 'trip-safety-repair',
+          destination: 'Bali',
+          type: 'family leisure',
+          state: 'green',
+          age: '1h',
+          createdAt: '2026-05-27T00:00:00Z',
+          updatedAt: '2026-05-27T00:00:00Z',
+          origin: 'Mumbai',
+          budget: '₹4L',
+          dateWindow: 'Jul 2026',
+          party: 4,
+        } as never}
+      />
+    );
+
+    expect(screen.getByText(/No risk review data yet/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Trip Details' })).toHaveAttribute(
+      'href',
+      '/trips/trip-safety-repair/intake',
+    );
+    expect(screen.queryByText(/New Inquiry/)).not.toBeInTheDocument();
   });
 
   it('renders CRITICAL urgency badge', () => {
@@ -194,5 +230,40 @@ describe('SafetyTab - Special Handling Controls', () => {
 
     expect(screen.getByText('Risk Notes')).toBeDefined();
     expect(screen.getByText('Verify proximity to emergency care.')).toBeDefined();
+  });
+
+  it('normalizes raw trip safety leaks when the store has not hydrated yet', () => {
+    mockStore.result_safety = null;
+    mockStore.result_decision = null;
+
+    render(
+      <SafetyTab
+        trip={{
+          id: 'trip-safety-raw',
+          destination: 'Reykjavik',
+          type: 'self drive',
+          state: 'green',
+          age: '1h',
+          createdAt: '2026-05-27T00:00:00Z',
+          updatedAt: '2026-05-27T00:00:00Z',
+          origin: 'London',
+          budget: '£4,000',
+          dateWindow: 'Sep 2026',
+          party: 2,
+          safety: {
+            leaks: ['internal_jargon'],
+            traveler_bundle_leaks: ['MVB'],
+            sanitized_view_leaks: [],
+          } as never,
+        } as never}
+      />
+    );
+
+    expect(screen.getByText('What needs cleanup')).toBeDefined();
+    expect(screen.getByText('2 internal-only references detected in the customer-facing reply.')).toBeDefined();
+    expect(screen.getByText('Remove system labels, scores, and field names from the customer reply.')).toBeDefined();
+    expect(screen.getByText('Keep operator notes and planning rationale in internal comments only.')).toBeDefined();
+    expect(screen.queryByText('internal_jargon')).toBeNull();
+    expect(screen.queryByText('MVB')).toBeNull();
   });
 });

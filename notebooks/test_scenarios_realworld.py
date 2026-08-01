@@ -341,7 +341,7 @@ def t_ready_to_buy():
     assert len(r.contradictions) == 0
     assert len(r.follow_up_questions) == 0
 
-    return f"Proceeds safely — confidence {r.confidence_score}, no blockers, no contradictions"
+    return f"Proceeds safely — confidence {r.confidence.overall}, no blockers, no contradictions"
 
 test("Ready-to-Buy → PROCEED_TRAVELER_SAFE", t_ready_to_buy)
 
@@ -456,7 +456,7 @@ def t_crm_return():
     assert len(r.hard_blockers) == 0
     assert len(r.follow_up_questions) == 0
 
-    return f"Proceeds with new data — confidence {r.confidence_score}"
+    return f"Proceeds with new data — confidence {r.confidence.overall}"
 
 test("CRM Return → PROCEED_TRAVELER_SAFE with new data", t_crm_return)
 
@@ -719,10 +719,10 @@ def t_inferred_destination():
     assert len(r.hard_blockers) == 0, f"All blockers should be filled, got {r.hard_blockers}"
 
     # But confidence should be lower than an explicit statement
-    assert r.confidence_score < 0.9, \
-        f"Confidence should reflect derived signal uncertainty, got {r.confidence_score}"
+    assert r.confidence.overall < 0.9, \
+        f"Confidence should reflect derived signal uncertainty, got {r.confidence.overall}"
 
-    return f"All blockers filled by derived signal — confidence {r.confidence_score} (lower than explicit)"
+    return f"All blockers filled by derived signal — confidence {r.confidence.overall} (lower than explicit)"
 
 test("Inferred Destination → derived_signal fills blocker with lower confidence", t_inferred_destination)
 
@@ -788,7 +788,7 @@ def t_multi_envelope():
     assert len(r.hard_blockers) == 0
     assert len(r.soft_blockers) == 0
 
-    return f"3 sources merged seamlessly — confidence {r.confidence_score}"
+    return f"3 sources merged seamlessly — confidence {r.confidence.overall}"
 
 test("Multi-Envelope Accumulation → merges 3 sources, proceeds safely", t_multi_envelope)
 

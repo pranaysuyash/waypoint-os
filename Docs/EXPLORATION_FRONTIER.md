@@ -11,7 +11,7 @@
 - **[Concept] Agent-Role Swapping**: Allow operators to "swap" the persona of an agent dynamically (e.g., "Take your current plan and explain it to a budget-conscious traveler instead of the current luxury profile").
 - **[Concept] Automatic 'Next-Action' Nudging**: AI detects when a trip has been idle in a stage for X hours and suggests an "Internal Note" to nudge the process forward.
 - **[Concept] Visual State Replay**: Rather than just logs, create a "Video-Game Style Replay" button that iterates through the `TimelinePanel` steps at 0.5s intervals, allowing the operator to see the AI's "thought" progression visually.
-- **[Concept] Collaborative Workspaces**: Enable two agents to "negotiate" a trip feasibility when the operator is stuck, rather than just showing a "Contradiction."
+- **[Concept & Engineering] KDD v0.1: Fuzzy Feature Vector Clustering (`HDBSCAN` / Gower Distance) & Automated Rule Promotion Loop**: Upgrade the `exact-match-v1` override clustering algorithm (`src/analytics/kdd/clustering.py`) to a density-based fuzzy distance metric over `(flag, action, destination, party_size, duration_days)`. Prevents high-value domain overrides from dropping into the noise floor and implements a closed-loop `POST /kdd/clusters/{id}/promote` endpoint to convert verified operator patterns into automated suitability policy overrides. See `Docs/audit/KDD_OVERRIDE_MINING_AND_FEEDBACK_LOOP_AUDIT_2026-07-13.md`.
 
 ---
 
@@ -24,6 +24,7 @@
 | **Next-Action Nudging** | Raw | Feasibility study: can this be a trigger in the `Orchestrator`? |
 | **Visual State Replay** | Experimental | Needs exploration of `PacketPanel` state rehydration (the "Time Travel" feature). |
 | **Collaborative Agents** | Raw | Requires multi-agent orchestration infrastructure. |
+| **KDD v0.1: Fuzzy Clustering & Rule Promotion** | Explored & Audited | Implement tenant isolation in `spine_api/routers/kdd.py` and benchmark agglomerative Gower clustering across historical overrides (`OverrideStore`). |
 
 ---
 

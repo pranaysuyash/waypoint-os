@@ -47,6 +47,6 @@ describe('SafetyPanel privacy gating', () => {
     fireEvent.click(toggle);
 
     expect(screen.getAllByText(/Traveler context/i).length).toBeGreaterThan(1);
-    expect(screen.getByText(/Internal notes/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Internal notes/i).length).toBeGreaterThan(0);
   });
 });

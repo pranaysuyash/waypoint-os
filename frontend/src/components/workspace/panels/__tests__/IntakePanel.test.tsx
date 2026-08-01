@@ -107,6 +107,7 @@ describe('IntakePanel', () => {
       destination: 'Test Destination',
       type: 'Vacation',
       tripPurpose: 'family holiday',
+      activityInterests: 'sightseeing, beach time',
       budget: '$5000',
       party: '2',
       dateWindow: 'Next month',
@@ -120,6 +121,8 @@ describe('IntakePanel', () => {
     expect(screen.getAllByText('Test Destination').length).toBeGreaterThan(0);
     expect(screen.getByText('Purpose')).toBeInTheDocument();
     expect(screen.getByText('family holiday')).toBeInTheDocument();
+    expect(screen.getByText('Activity interests')).toBeInTheDocument();
+    expect(screen.getByText('sightseeing, beach time')).toBeInTheDocument();
     expect(screen.getAllByText(formatInquiryReference('TRIP-123')).length).toBeGreaterThan(0);
     
     // Check if configuration elements are rendered
@@ -506,6 +509,7 @@ describe('IntakePanel', () => {
           origin: 'Mumbai',
           type: 'Family Leisure',
           tripPurpose: 'family holiday',
+          activityInterests: 'sightseeing, heritage walk',
           tripPriorities: 'kid-friendly, vegetarian food',
           dateFlexibility: 'firm',
           budget: '₹3.5L',
@@ -540,6 +544,7 @@ describe('IntakePanel', () => {
             budget: '₹3.5L',
             dates: 'in Jul',
             trip_priorities: 'kid-friendly, vegetarian food',
+            activity_interests: 'sightseeing, heritage walk',
             date_flexibility: 'firm',
             type: 'Family Leisure',
           }),
