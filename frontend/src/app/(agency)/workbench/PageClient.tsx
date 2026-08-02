@@ -91,8 +91,12 @@ const VALID_SPINE_STAGES = [
   'booking',
 ] as const satisfies readonly SpineStage[];
 
+const VALID_SPINE_STAGES_SET = new Set<string>(VALID_SPINE_STAGES);
 function toSpineStage(value: string | null): SpineStage | null {
-  return VALID_SPINE_STAGES.find((stage) => stage === value) ?? null;
+  if (value && VALID_SPINE_STAGES_SET.has(value)) {
+    return value as SpineStage;
+  }
+  return null;
 }
 
 const VALID_OPERATING_MODES = [
@@ -106,12 +110,20 @@ const VALID_OPERATING_MODES = [
   'owner_review',
 ] as const satisfies readonly OperatingMode[];
 
+const VALID_OPERATING_MODES_SET = new Set<string>(VALID_OPERATING_MODES);
 function toOperatingMode(value: string | null): OperatingMode | null {
-  return VALID_OPERATING_MODES.find((mode) => mode === value) ?? null;
+  if (value && VALID_OPERATING_MODES_SET.has(value)) {
+    return value as OperatingMode;
+  }
+  return null;
 }
 
+const WORKSPACE_TAB_IDS_SET = new Set<string>(workspaceTabs.map((t) => t.id));
 function toWorkspaceTabId(value: string | null): WorkspaceTabId | null {
-  return workspaceTabs.find((tab) => tab.id === value)?.id ?? null;
+  if (value && WORKSPACE_TAB_IDS_SET.has(value)) {
+    return value as WorkspaceTabId;
+  }
+  return null;
 }
 
 export function extractCompletedTripIdFromDraft(draft: Record<string, unknown> | null | undefined): string | null {

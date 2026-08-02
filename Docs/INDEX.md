@@ -26,7 +26,9 @@
 - **[ADR: Progressive Background Model Pre-Caching & Offline Sync (2026-07-29)](ADR_PROGRESSIVE_MODEL_PRECACHING_AND_OFFLINE_SYNC_2026-07-29.md) — ServiceWorker model pre-caching into IndexedDB and draft_pending_sync state machine.**
 - **[ADR: Tier 3/4 Suitability Engine & Lead Lifecycle Retention (2026-07-29)](ADR_SUITABILITY_TIER3_TIER4_AND_LEAD_LIFECYCLE_2026-07-29.md) — Pacing overload rules, senior fatigue rest windows, and lead retention interventions.**
 - **[ADR: Rule 0.15 Decoupling Linter & Cryptographic Audit Chain Hashing (2026-07-29)](ADR_RULE_015_DECOUPLING_AND_AUDIT_CHAIN_HASHING_2026-07-29.md) — Decoupling linter check and SHA-256 tamper-evident audit log hashing.**
-- **[ADR: AI Workforce Governance Registry (2026-07-29)](ADR_AI_WORKFORCE_GOVERNANCE_REGISTRY_2026-07-29.md) — Canonical agent role registration, tier scoping, and action validation.**
+- **[ADR: Edge SLM ONNX Progressive Downloading & Offline Inference (2026-08-02)](ADR_EDGE_SLM_ONNX_OFFLINE_INFERENCE_2026-08-02.md) — ServiceWorker model downloading into IndexedDB and offline client inference fallback.**
+- **[ADR: Multi-Agent High-Concurrency Stress Suite & Load Benchmark (2026-08-02)](ADR_MULTI_AGENT_HIGH_CONCURRENCY_BENCHMARK_2026-08-02.md) — Async load generator (50+ concurrent agents), lock contention tests, and audit chain hash integrity.**
+- **[ADR: Karpathy AutoResearch Autonomic Prompt & Strategy Tuning Engine (2026-08-02)](ADR_AUTORESEARCH_AUTONOMIC_PROMPT_TUNING_2026-08-02.md) — Autonomous experiment loop mutator, composite quality scoring, and experiment lineage audit logging.**
 
 
 

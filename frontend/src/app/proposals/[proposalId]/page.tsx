@@ -21,33 +21,35 @@ interface ProposalData {
   transparency_badges: Array<{ badge: string; label: string }>;
 }
 
+const DEFAULT_DEMO_PROPOSAL: ProposalData = {
+  ok: true,
+  proposal_token: 'prop_demo123',
+  trip_id: 'trip_demo123',
+  destination: 'Goa, India',
+  budget_max: 4500,
+  dates: 'Oct 15 - Oct 22, 2026',
+  party_size: 2,
+  suitability_match_pct: 96,
+  recommended_option: {
+    name: 'Taj Exotica Resort & Spa, Goa',
+    cost: 4200,
+    currency: 'USD',
+    highlights: ['Luxury Sea View Villa', 'Personal Butler Service', 'Complimentary Spa Credit & Transfers'],
+  },
+  transparency_badges: [
+    { badge: 'VERIFIED_PARTNER', label: 'Direct Supplier Contract — Zero Middleman Markup' },
+    { badge: 'FLEXIBLE_CANCEL', label: '100% Refundable up to 14 Days Prior' },
+    { badge: 'PRICE_LOCK_72H', label: 'Price Locked & Guaranteed for 72 Hours' },
+  ],
+};
+
 export default function InteractiveProposalPage({
   params,
 }: {
   params: Promise<{ proposalId: string }>;
 }) {
   const { proposalId } = use(params);
-  const [data, setData] = useState<ProposalData | null>({
-    ok: true,
-    proposal_token: 'prop_demo123',
-    trip_id: 'trip_demo123',
-    destination: 'Goa, India',
-    budget_max: 4500,
-    dates: 'Oct 15 - Oct 22, 2026',
-    party_size: 2,
-    suitability_match_pct: 96,
-    recommended_option: {
-      name: 'Taj Exotica Resort & Spa, Goa',
-      cost: 4200,
-      currency: 'USD',
-      highlights: ['Luxury Sea View Villa', 'Personal Butler Service', 'Complimentary Spa Credit & Transfers'],
-    },
-    transparency_badges: [
-      { badge: 'VERIFIED_PARTNER', label: 'Direct Supplier Contract — Zero Middleman Markup' },
-      { badge: 'FLEXIBLE_CANCEL', label: '100% Refundable up to 14 Days Prior' },
-      { badge: 'PRICE_LOCK_72H', label: 'Price Locked & Guaranteed for 72 Hours' },
-    ],
-  });
+  const [data, setData] = useState<ProposalData | null>(DEFAULT_DEMO_PROPOSAL);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
