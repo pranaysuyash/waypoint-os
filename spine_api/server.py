@@ -1642,9 +1642,8 @@ async def run_spine(
 # =============================================================================
 
 @app.get("/metrics")
-@app.get("/health")
-async def health_and_metrics_endpoint():
-    """Health check and Prometheus metrics endpoint."""
+async def metrics_endpoint():
+    """Prometheus metrics endpoint."""
     return {"status": "ok", "app": "spine_api", "version": "1.0.0"}
 
 
