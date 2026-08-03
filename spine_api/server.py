@@ -2779,6 +2779,12 @@ async def create_collection_link(
         )
 
     async with rls_session(agency.id) as db:
+        # DEBUG
+        _ctx = await db.execute(text("SELECT current_setting('app.current_agency_id', TRUE)"))
+        _trip_row = await db.execute(text("SELECT id, agency_id FROM trips WHERE id = :trip_id"), {"trip_id": trip_id})
+        _trip_data = _trip_row.fetchone()
+        print(f"DEBUG collection-link: trip_id={trip_id} agency.id={agency.id} rls_ctx={_ctx.scalar()} trip_row={_trip_data}")
+        # END DEBUG
         plain_token, record = await generate_token(
             db,
             trip_id=trip_id,
