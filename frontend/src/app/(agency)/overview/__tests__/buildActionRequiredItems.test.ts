@@ -303,12 +303,12 @@ describe('buildActionRequiredItems', () => {
       expect.objectContaining({
         title: '25d waiting',
         detail: 'Unnamed customer · 1 pax · Travel Dates to confirm · Not assigned · Ref SC-901',
-        href: '/inbox',
+        href: '/trips/oldest/intake',
       }),
       expect.objectContaining({
         title: '14d waiting',
         detail: 'Unnamed customer · 5 pax · Travel Feb 9-14, 2026 · Not assigned · Ref SC-902',
-        href: '/inbox',
+        href: '/trips/middle/intake',
       }),
     ]);
 

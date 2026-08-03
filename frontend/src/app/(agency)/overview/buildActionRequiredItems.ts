@@ -510,7 +510,7 @@ export function buildActionRequiredItems({
       meta: compactTiming('Received', enquiry.submittedAt, referenceNow),
       reason: enquiryReason(enquiry),
       reference: isInternalLookingName(enquiry.customerName) ? formatReference(enquiry.reference) : undefined,
-      href: '/inbox',
+      href: getTripRoute(enquiry.id, 'intake'),
       ctaLabel: 'Open enquiry',
       criticalityLabel: enquiryCriticality(enquiry, referenceNow),
       pendingActions: enquiryPendingActions(enquiry, referenceNow),
