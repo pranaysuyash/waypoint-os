@@ -3,7 +3,6 @@ import os
 os.environ["SPINE_API_DISABLE_AUTH"] = "1"
 os.environ["DATA_PRIVACY_MODE"] = "beta"
 
-import pytest
 from fastapi.testclient import TestClient
 
 from spine_api.server import app

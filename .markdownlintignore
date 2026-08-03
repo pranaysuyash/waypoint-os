@@ -22,3 +22,6 @@ notebooks/
 scratch/
 tmp/
 output/
+# Append-only conversation log: intentionally uses recurring section templates
+# (duplicate headings, variable blank lines) that are not worth lint-gating.
+Docs/DISCUSSION_LOG.md

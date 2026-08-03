@@ -10,12 +10,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
-
-from spine_api.persistence import AuditStore, TripStore
 
 logger = logging.getLogger("spine_api.corporate")
 
