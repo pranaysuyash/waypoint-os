@@ -479,3 +479,14 @@ def check_trip_data(trip_data: Dict[str, Any]) -> None:
             f"Enable encryption/migration before storing real user data. "
             f"Set DATA_PRIVACY_MODE=beta or production only after encryption is configured."
         )
+
+
+def sanitize_input(text: str) -> str:
+    """Scrub email addresses and phone numbers from raw text input."""
+    if not text:
+        return text
+    # Mask emails
+    scrubbed = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "[REDACTED_EMAIL]", text)
+    # Mask phone numbers
+    scrubbed = re.sub(r"\+?\d{1,4}[-.\s]?\(?\d{1,3}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}", "[REDACTED_PHONE]", scrubbed)
+    return scrubbed

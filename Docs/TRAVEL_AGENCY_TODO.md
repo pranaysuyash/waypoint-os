@@ -1,4 +1,5 @@
-# Travel Agency Agent - TODO List
+## Travel Creator & Influencer Operations Paradigm (Parked TODOs)
+- [ ] **Parked Idea 2 (Creator Aesthetic Presets & Custom Domain Mapping)**: Custom glassmorphic proposal presets (Minimalist Editorial, Luxury Dark, Industrial Brutalist) and custom domain mapping (`trips.creator.com`).
 
 ## Immediate Product B TODOs (Queued 2026-05-07)
 - [x] Lock deployment config: add `PUBLIC_CHECKER_AGENCY_ID` to `.env.example`, deployment templates, and startup runbook with SQL preflight requirement (`agencies.id` must exist).

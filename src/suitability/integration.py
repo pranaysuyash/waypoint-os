@@ -378,7 +378,7 @@ def assess_activity_suitability(packet) -> List[Any]:
         ))
 
     # Tier 4: Real-time Fatigue & Environmental Adjustments
-    has_elderly = any(p.age_group in ("elderly", "senior") for p in participants)
+    has_elderly = any(p.label in ("elderly", "senior") for p in participants)
     if has_elderly:
         flags.append(SuitabilityFlag(
             flag_type="suitability_tier4_fatigue_warning",
@@ -386,7 +386,7 @@ def assess_activity_suitability(packet) -> List[Any]:
             reason="Senior travelers detected: daily schedule padded with mandatory 90min rest windows.",
             confidence=0.90,
             details={"tier": "tier4", "fatigue_mitigation": "mandatory_rest_window"},
-            affected_travelers=[p.ref_id for p in participants if p.age_group in ("elderly", "senior")],
+            affected_travelers=[p.ref_id for p in participants if p.label in ("elderly", "senior")],
         ))
 
     return flags

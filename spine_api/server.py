@@ -354,6 +354,8 @@ try:
     from spine_api.routers import yield_arbitrage as yield_arbitrage_router
     from spine_api.routers import concierge as concierge_router
     from spine_api.routers import team_workflows as team_workflows_router
+    from spine_api.routers import social_inbound as social_inbound_router
+    from spine_api.routers import corporate as corporate_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -499,6 +501,16 @@ except (ImportError, ValueError):
     _kdd_mod = importlib.util.module_from_spec(_kdd_spec)
     _kdd_spec.loader.exec_module(_kdd_mod)
     kdd_router = _kdd_mod
+
+    _social_inbound_spec = importlib.util.spec_from_file_location("routers.social_inbound", _base / "routers" / "social_inbound.py")
+    _social_inbound_mod = importlib.util.module_from_spec(_social_inbound_spec)
+    _social_inbound_spec.loader.exec_module(_social_inbound_mod)
+    social_inbound_router = _social_inbound_mod
+
+    _corporate_spec = importlib.util.spec_from_file_location("routers.corporate", _base / "routers" / "corporate.py")
+    _corporate_mod = importlib.util.module_from_spec(_corporate_spec)
+    _corporate_spec.loader.exec_module(_corporate_mod)
+    corporate_router = _corporate_mod
 
 
 def _register_router_module_aliases() -> None:
@@ -1147,6 +1159,8 @@ app.include_router(messaging_router.router, dependencies=[Depends(_auth_or_skip)
 app.include_router(yield_arbitrage_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(concierge_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(team_workflows_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(social_inbound_router.router)
+app.include_router(corporate_router.router)
 
 
 def _seed_scenario(agency_id: Optional[str] = None):

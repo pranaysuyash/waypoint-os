@@ -53,7 +53,6 @@ jobs:
         with:
           args: >-
             --no-progress
-            --include-mail false
             --exclude "^http://127\.0\.0\.1"
             --exclude "^http://localhost"
             --exclude "^/Users/"

@@ -1565,3 +1565,77 @@ After reviewing recent commits and current dirty changes, several regressions we
 - `cd frontend && npm test -- --run src/components/workspace/panels/__tests__/OutputPanel.test.tsx src/components/inbox/__tests__/TripCard.test.tsx src/lib/__tests__/inbox-helpers.test.ts` -> 71 passed
 - `git diff --check`
 - FastAPI smoke via `TestClient`: `/health` returned 200 and unauthenticated `/trips` returned 401.
+
+## Log Entry: 2026-08-03 - Travel Creator & Influencer Operations Paradigm (Master Record)
+
+### Context
+Exploration of creator economy workflows (Instagram/TikTok DMs, 1-on-1 boutique luxury trips, follower group tours) and architectural alignment with `motto_v4` principles (Rule 0: zero shadow pipelines, Rule 0.15: third-layer decoupling, non-destructive documentation preservation).
+
+### Chronological Decision & Addendum Lineage
+
+1. **Non-Destructive Preservation Mandate**: Per `motto_v4` §0.12 and user directives, all historical options, competitor audits, critiques, objections, deferments, and decisions are preserved chronologically in durable project artifacts (`Docs/exploration/TRAVEL_CREATOR_INFLUENCER_PARADIGM_2026-08-03.md`, `Docs/DISCUSSION_LOG.md`, `Docs/TRAVEL_AGENCY_TODO.md`, and `IDEA_PAD.md` IDEA-119).
+
+2. **Track 1: Social Media Lead Fast-Pass (`POST /api/v1/inbox/parse_social`)**:
+   - *Historical Options Evaluated*: Option A1 (Manual Copy-Paste / Share Sheet / Extension), Option A2 (Automated Meta Graph API / Instagram Webhook), Option A3 (Link-in-Bio Quick Form).
+   - *Addendum 1 (2026-08-03) — Zero-External-API Pivot*: Reject Option A2 Meta API dependency due to platform lock-in and OAuth fragility. Adopt a standalone, direct **Fast Lead Intake Surface** (`/intake/fast` or `/c/[creatorId]/plan`) supporting dual modes:
+     - *Creator Fast-Paste Mode*: Creator pastes copied DM text into widget/extension $\rightarrow$ instant proposal link in <15s.
+     - *Follower Direct Link Mode*: Shareable short-link in bio/DM where followers input raw text $\rightarrow$ instant proposal link.
+   - *2-Stage Intent Funnel (Tire-Kicker Prevention)*:
+     - **Stage 1 (Free Teaser Link)**: Unauthenticated glassmorphic link (`/proposals/[proposalId]`) with masked property/flight details (protecting creator IP) and 72-hour price lock.
+     - **Stage 2 (Deposit Unmask Gate)**: $25–$50 refundable deposit unmasks exact supplier names and locks booking.
+
+3. **Track 2: Creator Co-Branded Aesthetic Presets (Deferred / Parked)**:
+   - *Status*: Parked in `Docs/TRAVEL_AGENCY_TODO.md` for later evaluation.
+   - *Concept*: Glassmorphic proposal link presets (*Minimalist Editorial*, *Luxury Dark*, *Industrial Brutalist*) and custom domain mapping (`trips.creator.com`).
+
+4. **Track 3: Visual Trust Scorecard Engine**:
+   - Embedded badges (`[VERIFIED_PARTNER]`, `[FLEXIBLE_CANCEL]`, `[PRICE_LOCK_72H]`, `[96% MATCH]`) served via `src/suitability/engine.py` and `spine_api/routers/trust_scorecard.py` (Priority #3).
+
+5. **Track 4: Autonomic Ghost Concierge (Native Web Portal Surface)**:
+   - *Market Competitor Audit*: Creator platforms (TrovaTrip, SquadTrip) handle disruptions 100% manually via WhatsApp; flight trackers (Flighty, TripIt Pro) have zero group awareness; corporate platforms (Navan) are enterprise-focused.
+   - *Industry Vacuum*: No product connects real-time flight tracking $\rightarrow$ downstream group schedule recalculation $\rightarrow$ native web portal SSE stream $\rightarrow$ host relief.
+   - *Native Web Portal Architecture*: Reject third-party messaging gateways (WhatsApp, SMS). Served natively on `/group/[tripId]` web surface over browser SSE streams (`EventSource('/api/v1/stream-events')`).
+   - *Autonomic Cascade Engine*: Flight delay detection $\rightarrow$ calculate shared transfer & dinner impact $\rightarrow$ push live SSE updates to portal $\rightarrow$ update Host Cockpit digest.
+   - *3-Tier Autonomy Classification Matrix*:
+     - **Tier 1 (Read-Only Informational)**: 100% fully automated flight status tracking, group ETA recalculation, PNR updates. Zero financial risk.
+     - **Tier 2 (Guarded Operational)**: Rescheduling shared shuttles, $0 fare-difference rebookings; executed based on Host Autonomy Switch.
+     - **Tier 3 (Financial & Relationship)**: Out-of-pocket rebookings (>$100 delta), non-refundable cancellations; 100% mandatory human signoff.
+   - *Host Cockpit Autonomy Switch*: 3-way toggle (`FULL_AUTONOMOUS`, `GUARDED_COPILOT`, `MANUAL_ADVISORY`).
+   - *Human Takeover & Custom Option Injection Switch*: Instant `[⚡ TAKEOVER / OVERRIDE]` switch in operator cockpit that pauses AI solvers and allows manual injection of custom offline options (e.g. private van, lounge voucher) directly onto the traveler's native web portal surface (`/concierge/[tripId]`).
+   - *Addendum 2 (2026-08-03) — Expansion to Universal Concierge Architecture across 4 ICPs (`motto_v4` Rule 0)*: Single canonical engine (`spine_api/routers/concierge.py`) serving B2B Luxury Travel Agencies, Corporate Travel Managers, Creator Group Hosts, and Direct B2C Travelers without shadow pipelines.
+
+6. **Track 5: Creator Yield Arbitrage & Split Payout Engine**:
+   - Integrated via `spine_api/routers/yield_arbitrage.py` (Priority #6) and `TripStore` invoice persistence.
+
+7. **Controlled / Guarded Booking Autonomy Architecture**:
+   - Booking execution uses Controlled Autonomy (Stage 1 AI Soft-Hold $\rightarrow$ Stage 2 Automated 5-Point Pre-Flight Audit $\rightarrow$ Stage 3 1-Tap Human Release $\rightarrow$ Stage 4 Instant API Issuance). Prevents catastrophic non-refundable typos while eliminating 99% of manual data entry.
+
+8. **Complete Pending Decisions Inventory Documented (Decisions 1–13)**:
+   - *Pending Decision 1*: Single freeform AI text area vs Hybrid text + optional quick-fields (*Destination*, *Dates*, *Budget*).
+   - *Pending Decision 2*: Auto-copy generated proposal short-link directly to system clipboard vs manual copy button with preview.
+   - *Pending Decision 3*: Degree of property masking on Stage 1 free teaser proposals (hotel name only vs hotel + flights).
+   - *Pending Decision 4*: Fixed flat deposit ($25–$50) vs 1% budget-proportional deposit.
+   - *Pending Decision 5*: Creator-configurable trust badges vs system-mandated badges based on verified supplier contract data.
+   - *Pending Decision 6*: Explicit Itemized Drawer (`[Wholesale Rate] + [Creator Fee] = [Total]`) vs Single All-Inclusive Price with `"Best Rate Guaranteed"` badge.
+   - *Pending Decision 7*: Auto-confirm $0 flight rebooking options instantly on attendee portal vs require 1-tap host approval for delays >4 hours.
+   - *Pending Decision 8*: Creator sees full wholesale supplier rates vs agency margins vs creator sees net commission payout amount only.
+   - *Pending Decision 9*: 50% payout on traveler deposit / 50% post-trip completion vs 100% payout post-trip completion.
+   - *Pending Decision 10*: `GUARDED_COPILOT` (1-tap approval for Tier 2) as default mode vs `FULL_AUTONOMOUS`.
+   - *Pending Decision 11*: Threshold for mandatory human operator signoff ($100 fare delta vs configurable per trip budget).
+   - *Pending Decision 12*: Controlled / Guarded Booking Autonomy (AI 5-Point Audit + 1-Tap Release) as canonical default vs `FULLY_AUTONOMOUS` for refundable hotel inventory.
+   - *Pending Decision 13*: Human Takeover Override Switch with Custom Option Injection directly onto the traveler's native web portal (`/concierge/[tripId]`).
+
+10. **Formulation & Adoption of ADR 18 (`Docs/ADR_SOCIAL_INBOUND_ADAPTER_AND_TEASER_FUNNEL_2026-08-03.md`)**:
+   - Formally specified `SocialInboundAdapter` (`POST /api/v1/inbox/parse_social`), Zero-External-API direct intake surface (`/intake/fast`), 2-Stage Teaser-to-Deposit funnel (Stage 1 Masked Teaser $\rightarrow$ Stage 2 Deposit Unmask Gate), and Universal 4-ICP Ghost Concierge integration.
+
+12. **Exploration & Multi-Role Brainstorm: Corporate EA Workflows & B2B DMC Supplier Portal**:
+   - Evaluated Corporate EA & B2B DMC Supplier domain using Wide-Open Brainstorm framework (Strategist, Operator, Skeptic, Executioner roles).
+   - Documented in `Docs/exploration/CORPORATE_EA_AND_DMC_SUPPLIER_PARADIGM_2026-08-03.md`.
+   - Reaffirmed `motto_v4` Rule 0 (Zero Shadow Pipelines): Features leverage canonical `spine_api/routers/concierge.py`, `yield_arbitrage.py`, `src/intake/lifecycle.py`, and `TripStore` metadata extensions without separate DBs or parallel AI engines.
+   - Identified Skeptic failure modes (enterprise policy over-engineering bloat, DMC portal abandonment) and adopted Executioner MVPs (Scalar Policy Annotator, Zero-Portal LLM PDF/Excel Rate Sheet Extractor).
+
+13. **Git Discipline**: All documentation changes remain local; no git commit/push is executed without explicit user command.
+
+14. **Integration & Documentation of Autonomic Agentic Workflows & Manual Takeover Control (`motto_v4` §0.3.1)**:
+    - Fully documented the 4-way interconnected agentic flow (`SocialInboundAdapter` $\rightarrow$ `Ghost Concierge Watcher` $\rightarrow$ `Yield Arbitrage Engine` $\rightarrow$ `Karpathy AutoResearch Eval Loop`) in both `Docs/ADR_SOCIAL_INBOUND_ADAPTER_AND_TEASER_FUNNEL_2026-08-03.md` and `Docs/exploration/CORPORATE_EA_AND_DMC_SUPPLIER_PARADIGM_2026-08-03.md`.
+    - Documented the Manual/Hybrid Takeover Switch (`[ ⚡ TAKEOVER ]`) across `/corporate/offsites` and `/group/[tripId]/host-cockpit`, ensuring human operators can pause automated solvers and inject manual options at any time.

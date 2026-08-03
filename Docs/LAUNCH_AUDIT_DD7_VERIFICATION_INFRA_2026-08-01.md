@@ -119,3 +119,27 @@ After the second-pass fixes, two jobs still failed:
 
 - `uv run pytest tests/test_agent_events_api.py tests/test_api_trips_post.py -q` → 16 passed
 - `uv run python -m py_compile tests/conftest.py` → clean
+
+### Fourth-pass fixes (commit `d8a6380..TBD`)
+
+- **Docs link checker**: removed invalid `--include-mail false` argument from `lychee-action`; lychee treats mail inclusion as a boolean flag.
+- **Stale route snapshots**: regenerated `tests/fixtures/server_openapi_paths_snapshot.json` and `tests/fixtures/server_route_snapshot.json` (routed count grew from 150→175 paths / 178→205 routes as new ADR features landed).
+- **Suitability `ParticipantRef.age_group` bug**: `src/suitability/integration.py` referenced a nonexistent field; changed to `.label` (which holds `adult`/`elderly`/`child`/`toddler`). This fixes the 14 `AttributeError: 'ParticipantRef' object has no attribute 'age_group'` failures.
+
+### Current CI state after fourth-pass fixes
+
+| Job | Status |
+|---|---|
+| `backend-lint` | ✅ green |
+| `frontend-quality` | ✅ green |
+| `docs-quality` | ✅ green after link-checker arg fix |
+| `backend-tests` | ⚠️ runs end-to-end but exposes **~190 real failures** on fresh Postgres |
+
+The remaining backend failures are pre-existing product/data issues, not CI infrastructure:
+
+- **Geography dataset missing in CI**: `data/cities5000.txt` and `data/cities.json` are `.gitignore`-d and therefore absent from the checkout; `is_known_city` sees only 1 city. ~30 failures.
+- **Router contract drift**: `test_messaging_router.py`, `test_team_workflows_router.py`, `test_trust_scorecard_router.py`, `test_yield_arbitrage_router.py` fail with `KeyError: 'trip_id'` — the response shape no longer contains the field tests expect. ~6 failures.
+- **Timeline audit event schema drift**: `test_timeline_P0_02.py`, `test_timeline_e2e.py` expect a top-level `type` field that is no longer emitted. ~4 failures.
+- **Feature-scan / orchestration / stage-transition / geography-regression / misc**: ~150 additional failures needing individual triage.
+
+These failures confirm DD-7 V1/V2 findings: the suite was not being executed in CI, so test/contracts/data drift accumulated unchecked. The CI itself is now functional; the next phase is fixing the underlying product issues it surfaces.

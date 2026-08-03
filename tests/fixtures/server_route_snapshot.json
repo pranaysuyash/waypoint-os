@@ -1,5 +1,5 @@
 {
-  "route_count": 178,
+  "route_count": 209,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -898,6 +898,198 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/concierge/auto-rebook/{trip_id}",
+      "name": "execute_auto_rebook",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/concierge/disruptions",
+      "name": "list_active_disruptions",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/concierge/monitor/{trip_id}",
+      "name": "monitor_trip_status",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/corporate/duty-of-care/cockpit",
+      "name": "get_duty_of_care_cockpit",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/corporate/policy-audit",
+      "name": "audit_corporate_policy",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/inbound/followup-prompt/{trip_id}",
+      "name": "generate_client_followup_prompt",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/inbound/optimistic-sync/{trip_id}",
+      "name": "optimistic_sync_trip_fields",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/inbound/parse",
+      "name": "parse_inbound_inquiry",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/inbound/stream-events/{trip_id}",
+      "name": "stream_trip_events",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/inbox/parse_social",
+      "name": "parse_social_inbound",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/inbox/unmask_teaser",
+      "name": "unmask_teaser_proposal",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/messaging/send",
+      "name": "send_outbound_message",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/messaging/webhook/{provider}",
+      "name": "verify_messaging_webhook",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/messaging/webhook/{provider}",
+      "name": "process_messaging_webhook",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/proposals/generate-link",
+      "name": "generate_proposal_link",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/proposals/token/{token}",
+      "name": "get_proposal_by_token",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/proposals/token/{token}/accept",
+      "name": "accept_proposal_by_token",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/proposals/{trip_id}/trust-scorecard",
+      "name": "get_proposal_trust_scorecard",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/team/assign",
+      "name": "assign_trip_to_team_member",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/team/high-value-gate-check/{trip_id}",
+      "name": "check_high_value_signoff_gate",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/team/review-signoff",
+      "name": "submit_review_signoff",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/yield/arbitrage/{trip_id}",
+      "name": "compute_yield_arbitrage",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/yield/opportunities",
+      "name": "list_global_yield_opportunities",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/yield/swap-supplier",
+      "name": "swap_supplier_option",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/workspace",
       "name": "get_current_workspace",
       "methods": [
@@ -938,10 +1130,50 @@
       "operation_id": null
     },
     {
+      "path": "/audit/routing-health/batch-triage",
+      "name": "batch_triage_routing_health_alerts",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/audit/routing-health/export",
+      "name": "export_routing_health_evidence",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/audit/{event_id}/suppress-routing-health-paging",
+      "name": "suppress_routing_health_paging_alert",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/audit/{event_id}/triage",
+      "name": "triage_routing_health_alert",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/followups/dashboard",
       "name": "get_followups_dashboard",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/followups/generate",
+      "name": "generate_followup_prompt",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },
@@ -1010,6 +1242,14 @@
       "operation_id": null
     },
     {
+      "path": "/health",
+      "name": "health_and_metrics_endpoint",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/inbox",
       "name": "get_inbox",
       "methods": [
@@ -1068,6 +1308,14 @@
     {
       "path": "/kdd/digest",
       "name": "get_kdd_digest",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/metrics",
+      "name": "health_and_metrics_endpoint",
       "methods": [
         "GET"
       ],
