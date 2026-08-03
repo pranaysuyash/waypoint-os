@@ -160,3 +160,57 @@ Two latent CI/workflow bugs were exposed once the obvious lint failures were cle
 - `npx -y markdownlint-cli2 Docs/ADR_SOCIAL_INBOUND_ADAPTER_AND_TEASER_FUNNEL_2026-08-03.md Docs/DISCUSSION_LOG.md` → `Summary: 0 issues in 0 files`
 - `.venv/bin/ruff check --select F401 spine_api/routers/corporate.py spine_api/routers/supplier.py tests/test_social_inbound_and_teaser_suite.py tests/test_supplier_contract_suite.py` → `All checks passed!`
 - Local YAML parse of `.github/workflows/ci.yml` → clean
+
+### Sixth-pass fix (commit `faea0c5..d28ebb3`)
+
+| Job | Symptom | Root cause | Fix |
+|---|---|---|---|
+| `backend-tests` | `test_architecture_route_inventory.py::test_route_inventory_detects_no_exact_backend_route_duplicates` fails | `spine_api/server.py` declared both `/metrics` and `/health` on the same function, duplicating the `/health` route already owned by `spine_api/routers/health.py` | Removed `@app.get("/health")` from the metrics function; `/health` is served only by the dedicated health router |
+
+### Current CI state after sixth-pass fix
+
+| Job | Status | Notes |
+|---|---|---|
+| `backend-lint` | ✅ green | Ruff + F401 gate pass |
+| `frontend-quality` | ✅ green | TypeScript, ESLint, route-map guard pass |
+| `docs-quality` | ✅ green | Markdown lint + link check pass |
+| `backend-tests` | ❌ 186 failed, 2775 passed, 44 skipped, 2 xfailed | CI infrastructure is fixed; remaining failures are real product/data issues |
+
+### Backend failure breakdown (run `30791574071`)
+
+| File | Failures | Dominant symptom / hypothesis |
+|---|---|---|
+| `tests/test_booking_collection.py` | 32 | `ForeignKeyViolation` on `booking_collection_tokens.trip_id_fkey` — collection links are inserted into Postgres for trips that do not exist in the SQL `trips` table (tests set `TRIPSTORE_BACKEND=file`, so trips live in JSON files while collection tokens still hit SQL) |
+| `tests/test_booking_documents.py` | 22 | Same `trip_id_fkey` violation on `booking_documents` |
+| `tests/test_booking_data.py` | 2 | Same FK family |
+| `tests/test_document_extractions.py` | 27 | TBD — likely downstream of extraction models/document pipeline drift |
+| `tests/test_extraction_fixes.py` | 20 | TBD — extraction output/contract drift |
+| `tests/test_extraction_attempts.py` | 14 | TBD — extraction output/contract drift |
+| `tests/test_geography_regression.py` | 23 | `data/cities5000.txt` and `data/cities.json` are absent in CI checkout (`.gitignore`'d) |
+| `tests/test_geography.py` | 6 | Same missing geography dataset |
+| `tests/test_feature_gates.py` | 9 | TBD — feature-gate contract drift |
+| `tests/test_e2e_freeze_pack.py` | 7 | TBD — end-to-end pipeline drift |
+| `tests/test_trust_scorecard_router.py` | 2 | `KeyError: 'trip_id'` — `/api/v1/inbound/parse` response no longer contains `trip_id` (root cause likely an exception/early-exit in `run_spine_once` before response construction) |
+| `tests/test_team_workflows_router.py` | 2 | Same `trip_id` contract drift |
+| `tests/test_concierge_router.py` | 2 | Same `trip_id` contract drift |
+| `tests/test_messaging_router.py` | 1 | Same `trip_id` contract drift |
+| `tests/test_yield_arbitrage_router.py` | 1 | Same `trip_id` contract drift |
+| `tests/test_timeline_P0_02.py` | 2 | Audit event schema drift: tests expect top-level `type` field |
+| `tests/test_timeline_e2e.py` | 2 | Same audit-event `type` field drift |
+| `tests/test_stage_transitions.py` | 1 | TBD |
+| `tests/test_server_route_parity.py` | 1 | TBD |
+| `tests/test_server_openapi_path_parity.py` | 1 | TBD |
+| `tests/test_product_b_events.py` | 1 | TBD |
+| `tests/test_p1_backend_regressions.py` | 1 | TBD |
+| `tests/test_orchestration_stage_progress.py` | 1 | TBD |
+| `tests/test_integrations_api.py` | 1 | TBD |
+| `tests/test_feature_scan_tool.py` | 1 | TBD |
+| `tests/test_call_capture_e2e.py` | 1 | TBD |
+| `tests/test_block3_extraction.py` | 1 | Geography-related false positive |
+| `tests/test_auth_integration.py` | 1 | `get_current_agency_id()` signature drift: caller missing `request` positional arg |
+
+**Three highest-impact clusters (in order of fix leverage):**
+
+1. **Booking FK violations (~56 failures)** — the `TRIPSTORE_BACKEND=file` test modules are incompatible with SQL-only auxiliary tables (`booking_collection_tokens`, `booking_documents`). Fix options: make those tests use `sql` backend, or make the auxiliary tables reference a logical trip store instead of SQL FK.
+2. **Geography dataset (~29 failures)** — add a CI step (and local dev helper) to download `cities5000.txt` and `cities.json` before tests run.
+3. **`trip_id` contract drift (~8 failures)** — `/api/v1/inbound/parse` is returning an error response instead of the expected `InboundInquiryResponse`; need to debug `run_spine_once` exception/early-exit path.
