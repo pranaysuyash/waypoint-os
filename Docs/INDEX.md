@@ -1,3 +1,4 @@
+- **[⭐ Travel Creator & Influencer Operations Paradigm (2026-08-03)](exploration/TRAVEL_CREATOR_INFLUENCER_PARADIGM_2026-08-03.md) — Exploration, persona analysis, critiques/objections, and strategic decision record.**
 - **[⭐ BASELINE AUDIT INDEX (2026-05-02)](BASELINE_AUDIT_INDEX_2026-05-02.md) — Entry point for the May 2 architectural and feature baseline. Contains quick reference numbers and links to all baseline docs.**
 - **[⭐ Month 6 Product Audit & Simulation (2026-07-28)](MONTH6_PRODUCT_AUDIT_AND_SIMULATION_2026-07-28.md) — Diagnostic failure analysis, ICP vs user flow evaluation, cohort retention funnel, and 3-phase turnaround plan.**
 - **[⭐ First-Principles Strategy (2026-07-28)](FIRST_PRINCIPLES_TURNAROUND_PRIORITY_2026-07-28.md) — First-principles analysis of what to build first (Native Ingestion & State Trust Engine) and why.**
