@@ -93,7 +93,7 @@ async def _seed_agency_if_missing() -> int:
             )
             return 0
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         await conn.execute(
             text(
                 """

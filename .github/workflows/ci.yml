@@ -49,11 +49,14 @@ jobs:
         run: npx -y markdownlint-cli2 ${{ steps.changed.outputs.files }}
       - name: Link check (changed files only)
         if: steps.changed.outputs.files != '[]'
-        run: |
-          npx -y lychee --no-progress --exclude-mail \
-            --exclude "^http://127\.0\.0\.1" \
-            --exclude "^http://localhost" \
-            --exclude "^/Users/" \
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --exclude-mail
+            --exclude "^http://127\.0\.0\.1"
+            --exclude "^http://localhost"
+            --exclude "^/Users/"
             ${{ steps.changed.outputs.files }}
 
   # ──────────────────────────────────────────────

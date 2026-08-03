@@ -91,6 +91,15 @@ Commands run locally before the repair commit:
 - `cd frontend && npm run lint` → 0 errors, 17 warnings (warnings do not fail CI)
 - `npx markdownlint-cli2 "Docs/LAUNCH_AUDIT_*.md"` → 0 issues
 
+### Second-pass failures (run `30788552287`)
+
+Two jobs that passed local checks still failed in CI on the first repair commit:
+
+| Job | Symptom | Root cause | Fix |
+|---|---|---|---|
+| `backend-tests` | `DataError: invalid input for query argument $6: '2026-08-03T05:56:35.738281+00:00'` (expected datetime, got `str`) | `scripts/bootstrap_public_checker_agency.py:96` called `.isoformat()` on a `datetime` before binding it to SQLAlchemy/asyncpg | Pass the `datetime` object directly |
+| `docs-quality` | `npm error could not determine executable to run` from `npx -y lychee` | `lychee` is a Rust binary, not an npm package; `npx` cannot install it | Switch the link-check step to `lycheeverse/lychee-action@v2` |
+
 ### Open items
 
 - The 17 remaining ESLint warnings are all `react-hooks/exhaustive-deps` in production components. They do not fail the current `npm run lint` (no `--max-warnings`), but they are real memoization-correctness holes and should be fixed before launch.
