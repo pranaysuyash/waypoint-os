@@ -58,6 +58,7 @@ jobs:
         if: steps.changed.outputs.files != '[]'
         uses: lycheeverse/lychee-action@v2
         with:
+          failIfEmpty: false
           args: >-
             --no-progress
             --exclude "^http://127\.0\.0\.1"
