@@ -115,6 +115,8 @@ jobs:
         uses: astral-sh/setup-uv@v4
       - name: Install dependencies
         run: uv sync
+      - name: Download geography datasets
+        run: uv run python scripts/download_geography_data.py
       - name: Run database migrations
         run: uv run alembic upgrade head
         env:
