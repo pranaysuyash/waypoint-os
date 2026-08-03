@@ -105,3 +105,17 @@ Two jobs that passed local checks still failed in CI on the first repair commit:
 - The 17 remaining ESLint warnings are all `react-hooks/exhaustive-deps` in production components. They do not fail the current `npm run lint` (no `--max-warnings`), but they are real memoization-correctness holes and should be fixed before launch.
 - Backend ruff still reports 15 E402 errors outside the CI scope (`tools/`, notebooks). CI checks only `src/`, `spine_api/`, `tests/`, so these do not block merges, but they are rotting scripts.
 - The backend test failures and frontend test failures recorded in V1–V2 above are unchanged by this repair; they are the next verification priority.
+
+### Third-pass failures (run `30788761556` continued)
+
+After the second-pass fixes, two jobs still failed:
+
+| Job | Symptom | Root cause | Fix |
+|---|---|---|---|
+| `backend-tests` | ~300 tests fail with `401 {"detail":"User not found or inactive"}` | `tests/conftest.py` issues a JWT for a hard-coded `session_client` user, but CI's fresh Postgres database contains no such user | Seed the canonical test principal (`323468de-...`) plus agency membership in `session_client` before generating the token, using a throw-away async engine so the app's pool is not bound to a pre-TestClient event loop |
+| `docs-quality` | `error: unexpected argument '--exclude-mail' found` | `lychee` v0.24.2 renamed/removed `--exclude-mail`; the correct negation is `--include-mail false` | Update the `lychee-action` args to `--include-mail false` |
+
+### Verification after third-pass fixes
+
+- `uv run pytest tests/test_agent_events_api.py tests/test_api_trips_post.py -q` → 16 passed
+- `uv run python -m py_compile tests/conftest.py` → clean

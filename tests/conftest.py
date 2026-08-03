@@ -8,13 +8,16 @@ tests/conftest — Pytest configuration and shared fixtures.
   `RuntimeError: attached to a different loop`.
 """
 
+import asyncio
 import os
 import sys
+import uuid
 import warnings
 from datetime import timedelta
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 
 # Suppress SWIG-generated C extension warnings from sentencepiece/grpcio
 # (upstream bug — their SWIG bindings don't set __module__ on C types)
@@ -84,6 +87,80 @@ except ImportError:
     pass
 
 # ---------------------------------------------------------------------------
+# Canonical test principal — must exist in the DB for Bearer auth to resolve.
+# The same IDs are hard-coded in JWT fixtures and several test modules.
+# ---------------------------------------------------------------------------
+
+_TEST_USER_ID = "323468de-ba3d-437b-aa10-35b281a0c6a6"
+_TEST_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+_TEST_USER_EMAIL = "test-owner@waypoint.test"
+
+
+async def _ensure_test_principal() -> None:
+    """Idempotently create the canonical test user, agency, and membership.
+
+    CI starts from a fresh Postgres database, so the JWT-bearing TestClient
+    would otherwise receive 401 on every request because `get_current_user`
+    cannot find the user claimed by the token.
+    """
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from spine_api.core.database import DATABASE_URL
+
+    engine = create_async_engine(DATABASE_URL)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO agencies (id, slug, name, plan, settings, is_test, jurisdiction, created_at)
+                    VALUES (:id, :slug, :name, 'internal', CAST(:settings AS JSONB), true, 'other', NOW())
+                    ON CONFLICT (id) DO NOTHING
+                    """
+                ),
+                {
+                    "id": _TEST_AGENCY_ID,
+                    "slug": "waypoint-nonprod-public-checker",
+                    "name": "Waypoint Non-Prod Public Checker",
+                    "settings": '{"source":"conftest"}',
+                },
+            )
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO users (id, email, password_hash, name, is_active, created_at)
+                    VALUES (:id, :email, :password_hash, :name, true, NOW())
+                    ON CONFLICT (id) DO NOTHING
+                    """
+                ),
+                {
+                    "id": _TEST_USER_ID,
+                    "email": _TEST_USER_EMAIL,
+                    "password_hash": "not-a-real-hash-for-tests",
+                    "name": "Test Owner",
+                },
+            )
+            membership_id = str(uuid.uuid4())
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO memberships (id, user_id, agency_id, role, is_primary, status, created_at)
+                    SELECT :id, :user_id, :agency_id, 'owner', true, 'active', NOW()
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM memberships WHERE user_id = CAST(:user_id AS VARCHAR(36)) AND agency_id = CAST(:agency_id AS VARCHAR(36))
+                    )
+                    """
+                ),
+                {
+                    "id": membership_id,
+                    "user_id": _TEST_USER_ID,
+                    "agency_id": _TEST_AGENCY_ID,
+                },
+            )
+    finally:
+        await engine.dispose()
+
+
+# ---------------------------------------------------------------------------
 # Shared session-scoped TestClient (prevents asyncpg loop mismatches)
 # ---------------------------------------------------------------------------
 
@@ -108,9 +185,11 @@ def session_client():
     from server import app
     from spine_api.core.security import create_access_token
 
+    asyncio.run(_ensure_test_principal())
+
     token = create_access_token(
-        user_id="323468de-ba3d-437b-aa10-35b281a0c6a6",
-        agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        user_id=_TEST_USER_ID,
+        agency_id=_TEST_AGENCY_ID,
         role="owner",
         expires_delta=timedelta(hours=12),
     )
