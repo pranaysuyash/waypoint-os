@@ -1,5 +1,6 @@
 'use client';
 
+import type React from 'react';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -75,6 +76,33 @@ function ToggleRow({
   );
 }
 
+function Section({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className='rounded-xl border p-4 space-y-3' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
+      <div className='flex items-center gap-3'>
+        <div className='size-8 rounded-lg flex items-center justify-center shrink-0' style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+          <Icon className='size-4' style={{ color: 'var(--text-tertiary)' }} />
+        </div>
+        <div>
+          <h4 className='text-[13px] font-semibold' style={{ color: 'var(--text-primary)' }}>{title}</h4>
+          <p className='text-[11px]' style={{ color: 'var(--text-muted)' }}>{description}</p>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 export function CommSettingsTab() {
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
@@ -118,31 +146,6 @@ export function CommSettingsTab() {
       </div>
     );
   }
-
-  const Section = ({
-    icon: Icon,
-    title,
-    description,
-    children,
-  }: {
-    icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
-    title: string;
-    description: string;
-    children: React.ReactNode;
-  }) => (
-    <div className='rounded-xl border p-4 space-y-3' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
-      <div className='flex items-center gap-3'>
-        <div className='size-8 rounded-lg flex items-center justify-center shrink-0' style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
-          <Icon className='size-4' style={{ color: 'var(--text-tertiary)' }} />
-        </div>
-        <div>
-          <h4 className='text-[13px] font-semibold' style={{ color: 'var(--text-primary)' }}>{title}</h4>
-          <p className='text-[11px]' style={{ color: 'var(--text-muted)' }}>{description}</p>
-        </div>
-      </div>
-      {children}
-    </div>
-  );
 
   return (
     <div className='space-y-6'>

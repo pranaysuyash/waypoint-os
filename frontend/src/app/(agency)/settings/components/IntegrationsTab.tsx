@@ -70,15 +70,17 @@ function formatDate(value: string | null): string {
   }
 }
 
-function statusIcon(status: Integration['status']) {
-  if (status === 'connected') return CheckCircle2;
-  if (status === 'disabled') return CircleDashed;
-  return AlertCircle;
-}
+const STATUS_ICONS: Record<Integration['status'], React.ComponentType<{ className?: string }>> = {
+  connected: CheckCircle2,
+  disabled: CircleDashed,
+  degraded: AlertCircle,
+  auth_expired: AlertCircle,
+  misconfigured: AlertCircle,
+};
 
 export function IntegrationCard({ integration }: { integration: Integration }) {
   const ProviderIcon = PROVIDER_ICONS[integration.provider] ?? Cloud;
-  const StatusIcon = statusIcon(integration.status);
+  const StatusIcon = STATUS_ICONS[integration.status];
 
   return (
     <article className="rounded-xl border border-[#30363d] bg-[#0d1117] p-4 space-y-4">

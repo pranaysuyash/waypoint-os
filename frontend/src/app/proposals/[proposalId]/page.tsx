@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, use } from 'react';
+import Link from 'next/link';
 import { CheckCircle2, ShieldCheck, Clock, Award, ChevronRight, Sparkles, MapPin, Calendar, Users, DollarSign } from 'lucide-react';
 
 interface ProposalData {
@@ -136,12 +137,12 @@ export default function InteractiveProposalPage({
           <div className="text-red-400 text-4xl mb-3">⚠️</div>
           <h2 className="text-lg font-semibold mb-2">Proposal Link Expired or Unavailable</h2>
           <p className="text-sm text-slate-400 mb-4">{error || 'Could not locate proposal.'}</p>
-          <a
+          <Link
             href="/"
             className="inline-block text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
           >
             Return to Waypoint OS Home
-          </a>
+          </Link>
         </div>
       </div>
     );

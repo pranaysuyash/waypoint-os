@@ -222,10 +222,7 @@ export function useFieldAuditLog({
  * Hook for accessing all audit logs across trips (admin function).
  */
 export function useAllAuditLogs() {
-  const [logs, setLogs] = useState<Record<string, AuditLog>>({});
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
+  const [logs] = useState<Record<string, AuditLog>>(() => {
     try {
       const allLogs: Record<string, AuditLog> = {};
       for (let i = 0; i < localStorage.length; i++) {
@@ -239,13 +236,12 @@ export function useAllAuditLogs() {
           }
         }
       }
-      setLogs(allLogs);
+      return allLogs;
     } catch (error) {
       console.error('Failed to load audit logs:', error);
-    } finally {
-      setIsLoading(false);
+      return {};
     }
-  }, []);
+  });
 
-  return { logs, isLoading };
+  return { logs, isLoading: false };
 }

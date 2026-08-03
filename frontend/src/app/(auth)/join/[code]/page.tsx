@@ -45,7 +45,9 @@ export default function JoinPage() {
   const { replace } = useRouter();
   const hydrate = useAuthStore((s) => s.hydrate);
 
-  const [state, setState] = useState<PageState>({ phase: 'loading' });
+  const [state, setState] = useState<PageState>(() =>
+    code ? { phase: 'loading' } : { phase: 'invalid', reason: 'No invitation code provided.' }
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,10 +55,7 @@ export default function JoinPage() {
   // Step 1: validate code on mount
 // react-doctor-disable-next-line react-doctor/no-fetch-in-effect, react-doctor/no-cascading-set-state, react-doctor/nextjs-no-client-fetch-for-server-data — dynamic code param + auth via credentials:include; server component can't handle
   useEffect(() => {
-    if (!code) {
-      setState({ phase: 'invalid', reason: 'No invitation code provided.' });
-      return;
-    }
+    if (!code) return;
 
     let cancelled = false;
 

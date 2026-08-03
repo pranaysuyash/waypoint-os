@@ -236,6 +236,11 @@ function AssignAction({
     setActiveIndex(nextIndex);
   }, [agents.length]);
 
+  const openDropdown = useCallback(() => {
+    setActiveIndex(0);
+    setShowDropdown(true);
+  }, []);
+
   const close = useCallback((moveFocusOut = false) => {
     setShowDropdown(false);
     const active = document.activeElement;
@@ -270,26 +275,20 @@ function AssignAction({
 
   useEffect(() => {
     if (!showDropdown) return;
-    setActiveIndex(0);
-    itemRefs.current[0]?.focus();
-  }, [showDropdown]);
-
-  useEffect(() => {
-    if (!showDropdown) return;
     itemRefs.current[activeIndex]?.focus();
   }, [activeIndex, showDropdown]);
 
   const handleTriggerKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      setShowDropdown(true);
+      openDropdown();
       return;
     }
     if (event.key === 'Escape') {
       event.preventDefault();
       close();
     }
-  }, [close]);
+  }, [close, openDropdown]);
 
   const handleMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (agents.length === 0) {
@@ -348,7 +347,11 @@ function AssignAction({
         onKeyDown={handleTriggerKeyDown}
         onClick={(event) => {
           event.stopPropagation();
-          setShowDropdown((isOpen) => !isOpen);
+          if (showDropdown) {
+            setShowDropdown(false);
+          } else {
+            openDropdown();
+          }
         }}
         className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-medium transition-colors"
         style={{ color: 'var(--accent-blue)' }}

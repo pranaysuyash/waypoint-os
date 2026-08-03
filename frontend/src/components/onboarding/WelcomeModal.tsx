@@ -20,32 +20,19 @@ export interface WelcomeModalProps {
 }
 
 export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [hasSeenWelcome, setHasSeenWelcome] = useState(true);
+  const [hasSeenWelcome, setHasSeenWelcome] = useState(() => {
+    try {
+      return localStorage.getItem(WELCOME_SEEN_KEY) === '1';
+    } catch {
+      // localStorage unavailable
+      return false;
+    }
+  });
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const { push } = useRouter();
   const pathname = usePathname();
 
-  // Check localStorage on mount and when auth state changes
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setIsOpen(false);
-      return;
-    }
-
-    try {
-      const seen = localStorage.getItem(WELCOME_SEEN_KEY);
-      if (seen === '1') {
-        setHasSeenWelcome(true);
-        return;
-      }
-    } catch {
-      // localStorage unavailable
-    }
-
-    setHasSeenWelcome(false);
-    setIsOpen(true);
-  }, [isAuthenticated]);
+  const isOpen = isAuthenticated && !hasSeenWelcome;
 
   useEffect(() => {
     const updateViewport = () => setIsCompactViewport(window.innerWidth < 640);
@@ -61,7 +48,6 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
       // ignore
     }
     setHasSeenWelcome(true);
-    setIsOpen(false);
   }, []);
 
   const handleNavigate = useCallback((href: string) => {
@@ -69,8 +55,8 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
     push(href);
   }, [dismiss, push]);
 
-  // Don't render anything if already seen
-  if (hasSeenWelcome || pathname.startsWith('/workbench')) return null;
+  // Don't render anything if not authenticated or already seen
+  if (!isAuthenticated || hasSeenWelcome || pathname.startsWith('/workbench')) return null;
 
   const preferCompactCard = isCompactViewport;
 

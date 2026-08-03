@@ -43,6 +43,7 @@ export function Modal({
     if (!isOpen) {
       if (host) {
         host.remove();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setHost(null);
       }
       return;

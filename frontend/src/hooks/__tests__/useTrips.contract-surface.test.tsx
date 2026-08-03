@@ -9,7 +9,9 @@ vi.mock('@/lib/api-client');
 
 function createWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
-  return ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  const Wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  Wrapper.displayName = 'TestWrapper';
+  return Wrapper;
 }
 
 beforeEach(() => {

@@ -675,7 +675,7 @@ function WorkbenchContent() {
       inFlightRef.current = false;
       setIsRunning(false);
     }
-  }, [store, executeSpineRun, spineStage, currentMode, currentScenario, ensureDraftSaved]);
+  }, [store, executeSpineRun, spineStage, currentMode, currentScenario, ensureDraftSaved, setIsRunning, setRunError, setRunSuccess, setCompletedTripId]);
 
   // ==========================================================================
   // Draft Save
@@ -913,7 +913,7 @@ function WorkbenchContent() {
     store.resetAll();
     resetSpine();
     setCompletedTripId(null);
-  }, [store, resetSpine]);
+  }, [store, resetSpine, setCompletedTripId]);
 
   const handleResolve = useCallback(async () => {
     if (!tripId) return;

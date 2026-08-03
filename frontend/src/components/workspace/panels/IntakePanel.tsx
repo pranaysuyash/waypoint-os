@@ -160,7 +160,7 @@ interface PlanningDetailEditorProps {
   currencyOptions: Array<{ value: SupportedCurrency; label: string; symbol: string; flag: string }>;
   setBudgetAmount: (value: string) => void;
   setBudgetCurrency: (value: SupportedCurrency) => void;
-  planningEditorRefs: React.MutableRefObject<Record<PlanningDetailId, HTMLTextAreaElement | null>>;
+  setPlanningEditorRef: (detailId: PlanningDetailId, el: HTMLTextAreaElement | null) => void;
   planningEditorDrafts: Record<PlanningDetailId, string>;
   savePlanningEditor: (detailId: PlanningDetailId) => Promise<void>;
   closePlanningEditor: () => void;
@@ -174,7 +174,7 @@ function PlanningDetailEditor({
   currencyOptions,
   setBudgetAmount,
   setBudgetCurrency,
-  planningEditorRefs,
+  setPlanningEditorRef,
   planningEditorDrafts,
   savePlanningEditor,
   closePlanningEditor,
@@ -221,7 +221,7 @@ function PlanningDetailEditor({
   return (
     <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
       <textarea
-        ref={(el) => { planningEditorRefs.current[detailId] = el; }}
+        ref={(el) => { setPlanningEditorRef(detailId, el); }}
         defaultValue={planningEditorDrafts[detailId] ?? ''}
         rows={3}
         className='w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
@@ -367,20 +367,6 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const captureMode = getSearchParam('capture_mode');
   const entry = getSearchParam('entry');
 
-  // Auto-open editor when deep-linked from Trip Details
-  useEffect(() => {
-    if (fieldParam == null) return;
-    const planningEditFields: PlanningDetailId[] = ['budget', 'customerName', 'origin', 'destination', 'priorities', 'flexibility'];
-    const inlineEditFields = ['type', 'dateWindow', 'party'];
-    if (planningEditFields.includes(fieldParam as PlanningDetailId)) {
-      openPlanningEditor(fieldParam as PlanningDetailId);
-      window.history.replaceState(null, '', `/trips/${tripId}/intake`);
-    } else if (inlineEditFields.includes(fieldParam)) {
-      setEditingField(fieldParam);
-      window.history.replaceState(null, '', `/trips/${tripId}/intake`);
-    }
-  }, [fieldParam, tripId]);
-
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
@@ -415,11 +401,21 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   });
 
   // Budget state with currency
-  const [budgetAmount, setBudgetAmount] = useState('');
-  const [budgetCurrency, setBudgetCurrency] = useState<SupportedCurrency>('INR');
+  const [budgetAmount, setBudgetAmount] = useState(() => {
+    const parsed = trip?.budget ? parseBudgetString(trip.budget) : null;
+    return parsed ? parsed.amount.toString() : '';
+  });
+  const [budgetCurrency, setBudgetCurrency] = useState<SupportedCurrency>(() => {
+    const parsed = trip?.budget ? parseBudgetString(trip.budget) : null;
+    return parsed ? parsed.currency : 'INR';
+  });
   const [followUpDraftByTrip, setFollowUpDraftByTrip] = useState<Record<string, string>>({});
   const [notesExpandedByTrip, setNotesExpandedByTrip] = useState<Record<string, boolean>>({});
-  const [activePlanningEditor, setActivePlanningEditor] = useState<PlanningDetailId | null>(null);
+  const [activePlanningEditor, setActivePlanningEditor] = useState<PlanningDetailId | null>(() => {
+    const param = searchParams.get('field');
+    const planningEditFields: PlanningDetailId[] = ['budget', 'customerName', 'origin', 'destination', 'priorities', 'flexibility'];
+    return planningEditFields.includes(param as PlanningDetailId) ? (param as PlanningDetailId) : null;
+  });
   const [planningEditorDrafts, setPlanningEditorDrafts] = useState<Record<PlanningDetailId, string>>({
     budget: '',
     customerName: '',
@@ -440,6 +436,9 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     priorities: null,
     flexibility: null,
   } as any);
+  const setPlanningEditorRef = useCallback((detailId: PlanningDetailId, el: HTMLTextAreaElement | null) => {
+    planningEditorRefs.current[detailId] = el;
+  }, []);
 
   const clearRunTimer = useCallback(() => {
     if (runElapsedTimerRef.current !== null) {
@@ -469,7 +468,23 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   useEffect(() => clearRunTimer, [clearRunTimer]);
 
   // Editable trip details state
-  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(() => {
+    const param = searchParams.get('field');
+    const inlineEditFields = ['type', 'dateWindow', 'party'];
+    return param && inlineEditFields.includes(param) ? param : null;
+  });
+
+  // Clean the deep-link field param from the URL once it has been consumed by
+  // the initial state above.
+  const deepLinkHandledRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandledRef.current) return;
+    const param = searchParams.get('field');
+    if (!param) return;
+    deepLinkHandledRef.current = true;
+    window.history.replaceState(null, '', `/trips/${tripId}/intake`);
+  }, [searchParams, tripId]);
+
   const [editValues, setEditValues] = useState({
     destination: trip?.destination || '',
     type: trip?.type || '',
@@ -486,16 +501,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     activity_provenance: trip?.activityProvenance || '',
   });
 
-  // Parse existing budget to get currency and amount
-  useEffect(() => {
-    if (trip?.budget) {
-      const parsed = parseBudgetString(trip.budget);
-      if (parsed) {
-        setBudgetAmount(parsed.amount.toString());
-        setBudgetCurrency(parsed.currency);
-      }
-    }
-  }, [trip?.budget]);
+
 
   const currencyOptions = getCurrencyOptions();
   const planningBriefStatus = getPlanningBriefStatus(trip);
@@ -807,7 +813,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const startEditing = useCallback((field: string, currentValue: string) => {
     setEditValues(prev => ({ ...prev, [field]: currentValue }));
     setEditingField(field);
-  }, []);
+  }, [setEditValues, setEditingField]);
 
   const cancelEditing = useCallback(() => {
     setEditingField(null);
@@ -829,7 +835,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         activity_provenance: trip.activityProvenance || '',
       });
     }
-  }, [trip, budgetCurrency]);
+  }, [trip, budgetCurrency, setEditingField, setEditValues]);
 
   const saveFieldEdit = useCallback(async (field: string) => {
     if (!tripId) return;
@@ -1039,7 +1045,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     }
 
     setPlanningEditorDraft(detailId, getPlanningEditorInitialValue(detailId));
-  }, [getPlanningEditorInitialValue, setPlanningEditorDraft, trip?.budget]);
+  }, [getPlanningEditorInitialValue, setPlanningEditorDraft, trip, setActivePlanningEditor, setEditingField, setBudgetAmount, setBudgetCurrency]);
 
   const closePlanningEditor = useCallback(() => {
     if (activePlanningEditor && activePlanningEditor !== 'budget') {
@@ -1150,7 +1156,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
       currencyOptions={currencyOptions}
       setBudgetAmount={setBudgetAmount}
       setBudgetCurrency={setBudgetCurrency}
-      planningEditorRefs={planningEditorRefs}
+      setPlanningEditorRef={setPlanningEditorRef}
       planningEditorDrafts={planningEditorDrafts}
       savePlanningEditor={savePlanningEditor}
       closePlanningEditor={closePlanningEditor}

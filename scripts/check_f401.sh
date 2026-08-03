@@ -78,7 +78,9 @@ _generate_report() {
 # ── Count violations in a report ────────────────────────────────────────────
 _count_violations() {
     local report="$1"
-    echo "$report" | grep -cE '^[a-zA-Z]' 2>/dev/null || echo 0
+    local n
+    n=$(echo "$report" | grep -cE '^[a-zA-Z]' 2>/dev/null || true)
+    echo "${n:-0}"
 }
 
 # ── Normalize a report (strip trailing whitespace) ─────────────────────

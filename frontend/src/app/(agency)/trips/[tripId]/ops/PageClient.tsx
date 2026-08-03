@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import Link from 'next/link';
 import { useTripContext } from '@/contexts/TripContext';
@@ -11,16 +11,14 @@ import { getTripRoute } from '@/lib/routes';
 const MIGRATION_BANNER_KEY = 'waypoint:ops-migration-banner-dismissed:v1';
 
 function OpsMigrationBanner() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
+  const [visible, setVisible] = useState(() => {
     try {
-      const dismissed = localStorage.getItem(MIGRATION_BANNER_KEY);
-      if (!dismissed) setVisible(true);
+      return localStorage.getItem(MIGRATION_BANNER_KEY) !== '1';
     } catch {
       // localStorage unavailable (SSR guard)
+      return true;
     }
-  }, []);
+  });
 
   if (!visible) return null;
 

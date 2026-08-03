@@ -66,3 +66,33 @@ Four deep-dives independently hit the same root: safety posture depends on env v
 ## Status
 
 V0–V5 verified with executed evidence. Fix order proposed; items 1–2 are immediate. Next: DD-8 (doc truth reconciliation).
+
+## Addendum: CI repair on first real run (2026-08-01)
+
+The first push of the new `ci.yml` to `origin/master` (run `30704511392`, commit range ending in the record-sync commit) failed all four jobs. This addendum records the failures, root causes, and fixes so the next audit does not re-derive them.
+
+### Failure summary
+
+| Job | Symptom | Root cause | Fix |
+|---|---|---|---|
+| `alembic-upgrade` | `FileNotFoundError: /Users/pranay/Projects/travel_agency_agent/...` | Hardcoded absolute path in `alembic/env.py:19` from a local dev machine | Changed to `Path(__file__).resolve().parent.parent` |
+| `backend-lint` F401 gate | Gate reported a violation on a clean tree | `scripts/check_f401.sh` counted ruff's "All checks passed!" line as a violation | Filter out the summary line; also fixed the `grep -c` zero-count path that duplicated output |
+| `docs-quality` | 88,982 markdownlint errors on all `.md` files | Workflow linted the entire repo including `.agents/skills/`, `.playwright-profile*/`, etc. | Ratchet: lint only changed `.md` files; add `.markdownlint-cli2.jsonc` (disable MD013/MD060); add `.markdownlintignore`; fix 8 structural issues in the 10 `Docs/LAUNCH_AUDIT_*.md` files |
+| `frontend-quality` TypeScript | 24 type errors across 8 files | Stale types / missing null guards from recent refactors | Fixed in `frontend/src/app/(agency)/...` and related files |
+| `frontend-quality` ESLint | 37 errors / 18 warnings | `react-hooks/static-components` (components defined inside render), react-compiler setState-in-effect, missing `displayName`, raw `<a href="/">` | Moved `FeatureSection`, `Section`, `STATUS_ICONS` to module scope; refactored synchronous `setState` effects into lazy initial state; added `displayName`; replaced raw anchor with Next `Link` |
+
+### Verification after fixes
+
+Commands run locally before the repair commit:
+
+- `uv run alembic current` → `0cd0399e2c3c (head)`
+- `bash scripts/check_f401.sh` → 0 violations, 0 new, allowlist clean
+- `cd frontend && npx tsc -p tsconfig.json --noEmit` → clean
+- `cd frontend && npm run lint` → 0 errors, 17 warnings (warnings do not fail CI)
+- `npx markdownlint-cli2 "Docs/LAUNCH_AUDIT_*.md"` → 0 issues
+
+### Open items
+
+- The 17 remaining ESLint warnings are all `react-hooks/exhaustive-deps` in production components. They do not fail the current `npm run lint` (no `--max-warnings`), but they are real memoization-correctness holes and should be fixed before launch.
+- Backend ruff still reports 15 E402 errors outside the CI scope (`tools/`, notebooks). CI checks only `src/`, `spine_api/`, `tests/`, so these do not block merges, but they are rotting scripts.
+- The backend test failures and frontend test failures recorded in V1–V2 above are unchanged by this repair; they are the next verification priority.

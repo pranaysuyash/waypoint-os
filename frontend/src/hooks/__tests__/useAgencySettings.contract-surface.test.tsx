@@ -66,7 +66,9 @@ function createWrapper() {
       mutations: { retry: false },
     },
   });
-  return ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  const Wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  Wrapper.displayName = 'TestWrapper';
+  return Wrapper;
 }
 
 function createHarness() {
@@ -77,6 +79,7 @@ function createHarness() {
     },
   });
   const Wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  Wrapper.displayName = 'TestWrapper';
   return { Wrapper, queryClient };
 }
 
