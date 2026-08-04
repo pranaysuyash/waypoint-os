@@ -86,6 +86,7 @@ def reassess_trip(
 
 
 @router.patch("/trips/{trip_id}/stage")
+@router.patch("/api/v1/trips/{trip_id}/stage")
 def transition_trip_stage(
     trip_id: str,
     request: StageTransitionRequest,

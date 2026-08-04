@@ -86,6 +86,9 @@ jobs:
       - name: F401 unused import gate
         run: bash scripts/check_f401.sh
 
+      - name: Tenant isolation unscoped access gate
+        run: bash scripts/check_unscoped_trip_access.sh
+
 
   # ──────────────────────────────────────────────
   # Backend tests (with PostgreSQL service)

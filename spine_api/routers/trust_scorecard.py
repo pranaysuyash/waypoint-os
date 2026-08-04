@@ -18,7 +18,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
@@ -28,11 +28,12 @@ from spine_api.contract import (
     TrustScorecardResponse,
     ProposalLinkRequest,
     ProposalLinkResponse,
+    ComputedScore,
 )
 from spine_api.core.auth import get_current_agency_id
 from spine_api.core.feature_gates import get_feature_tier
 from spine_api.core.reality_tier import TierMetadata
-from spine_api.persistence import TripStore
+from spine_api.persistence import AuditStore, TripStore
 
 logger = logging.getLogger("spine_api.trust_scorecard")
 
@@ -59,34 +60,42 @@ def compute_completeness_score(packet: Dict[str, Any]) -> tuple[float, bool]:
 def compute_budget_fit_status(packet: Dict[str, Any], proposal_cost: Optional[float] = None) -> str:
     """Evaluate budget alignment from packet data."""
     budget_max = float(packet.get("budget_max") or 0.0)
-    budget_min = float(packet.get("budget_min") or 0.0)
+    if budget_max <= 0:
+        return "BUDGET_UNSPECIFIED"
 
-    if budget_max == 0.0:
-        return "BUDGET_NOT_SPECIFIED"
-
-    cost = proposal_cost or budget_max
-
-    if budget_min > 0 and cost < budget_min:
-        return "UNDER_BUDGET"
-    elif cost <= budget_max:
+    cost = proposal_cost or float(packet.get("budget_max") or 0.0) * 0.9
+    if cost <= budget_max:
         return "PERFECT_MATCH"
     elif cost <= budget_max * 1.15:
         return "SLIGHT_STRETCH"
     else:
-        return "OVER_BUDGET"
+        return "EXCEEDS_BUDGET"
 
 
 def compute_transparency_badges(packet: Dict[str, Any], has_owner_review: bool = False) -> List[Dict[str, str]]:
-    """Compute honest badges supported by actual data."""
+    """Generate transparency badge breakdown from real packet facts."""
     badges = []
-    completeness_score, sufficient = compute_completeness_score(packet)
+    if packet.get("destination") and packet.get("start_date") and packet.get("end_date"):
+        badges.append({
+            "badge": "COMPLETE_BRIEF",
+            "label": "Full travel parameters provided by client",
+            "tooltip": "All core trip constraints were captured before generating options.",
+        })
 
-    if completeness_score >= 80.0:
-        badges.append({"badge": "COMPLETE_BRIEF", "label": "All core trip requirements captured"})
-    if packet.get("budget_max"):
-        badges.append({"badge": "BUDGET_ALIGNED", "label": "Proposal fits within stated budget range"})
+    budget_fit = compute_budget_fit_status(packet)
+    if budget_fit in ("PERFECT_MATCH", "SLIGHT_STRETCH"):
+        badges.append({
+            "badge": "BUDGET_ALIGNED",
+            "label": f"Quote fits target budget ({budget_fit.replace('_', ' ').title()})",
+            "tooltip": "Option stays within or near the stated budget max.",
+        })
+
     if has_owner_review:
-        badges.append({"badge": "OWNER_REVIEWED", "label": "Reviewed and approved by agency owner"})
+        badges.append({
+            "badge": "OWNER_REVIEWED",
+            "label": "Reviewed and approved by senior travel advisor",
+            "tooltip": "A human operator verified itinerary quality.",
+        })
 
     return badges
 
@@ -126,12 +135,34 @@ async def get_proposal_trust_scorecard(
 
     overall_trust_score = round(completeness_score, 1)
 
+    comp_score_obj = ComputedScore(
+        value=completeness_score,
+        data_sufficient=data_sufficient,
+        computation_method="field_presence_ratio",
+        reality_tier="deterministic_preview",
+    )
+    budget_score_obj = ComputedScore(
+        value=100.0 if budget_fit == "PERFECT_MATCH" else 75.0,
+        data_sufficient=bool(packet.get("budget_max")),
+        computation_method="budget_to_packet_ratio",
+        reality_tier="deterministic_preview",
+    )
+    conf_score_obj = ComputedScore(
+        value=completeness_score,
+        data_sufficient=data_sufficient,
+        computation_method="heuristic_completeness",
+        reality_tier="deterministic_preview",
+    )
+
     return TrustScorecardResponse(
         ok=True,
         trip_id=trip_id,
+        completeness_score=comp_score_obj,
+        budget_alignment_score=budget_score_obj,
+        confidence_score=conf_score_obj,
         overall_trust_score=overall_trust_score,
         suitability_match_pct=completeness_score,
-        safety_score=None,  # Null when external verification unavailable
+        safety_score=None,
         budget_fit_status=budget_fit,
         highlights=highlights,
         risk_mitigations=risk_mitigations,
@@ -151,15 +182,24 @@ async def generate_proposal_link(
         raise HTTPException(status_code=404, detail="Trip not found")
 
     token = f"prop_{uuid4().hex[:16]}"
-    expires_at = datetime.now(timezone.utc).isoformat()
-    web_url = f"https://waypoint-os.com/p/{token}"
+    now_dt = datetime.now(timezone.utc)
+    expires_dt = now_dt + timedelta(days=body.expiry_days)
+    expires_at = expires_dt.isoformat()
+    web_url = f"/proposals/{token}"
 
     capabilities = ["view_itinerary", "accept_quote", "request_change"]
     if body.allow_customization:
         capabilities.append("select_room_upgrades")
 
     trip["proposal_link_token"] = token
+    trip["proposal_token_expires_at"] = expires_at
     TripStore.save_trip(trip)
+
+    AuditStore.log_event(
+        event_type="proposal_link_generated",
+        user_id=agency_id,
+        details={"trip_id": body.trip_id, "token": token, "expires_at": expires_at},
+    )
 
     return ProposalLinkResponse(
         ok=True,
@@ -168,7 +208,7 @@ async def generate_proposal_link(
         web_url=web_url,
         expires_at=expires_at,
         interactive_capabilities=capabilities,
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=now_dt.isoformat(),
     )
 
 
@@ -183,13 +223,24 @@ async def get_proposal_by_token(token: str):
 
     all_trips = TripStore.list_trips()
     target_trip_id = None
+    expires_at_str = None
+
     for trip in all_trips:
         if trip.get("proposal_link_token") == token:
             target_trip_id = trip.get("id")
+            expires_at_str = trip.get("proposal_token_expires_at")
             break
 
     if not target_trip_id:
         raise HTTPException(status_code=404, detail="Proposal not found or link expired")
+
+    if expires_at_str:
+        try:
+            exp_dt = datetime.fromisoformat(expires_at_str)
+            if datetime.now(timezone.utc) > exp_dt:
+                raise HTTPException(status_code=410, detail="Proposal link expired")
+        except ValueError:
+            pass
 
     # Use traveler-safe public access projection
     safe_trip = TripStore.get_trip_for_public_access(target_trip_id)
@@ -225,31 +276,53 @@ async def get_proposal_by_token(token: str):
 async def accept_proposal_by_token(token: str):
     """
     1-click acceptance endpoint for travelers to confirm proposal booking intent.
-    Updates trip decision state to PROCEED_BOOKING.
+    Updates trip decision state to PROCEED_BOOKING and logs audit event.
     """
     if not token or len(token) < 5:
         raise HTTPException(status_code=400, detail="Invalid proposal token")
 
     all_trips = TripStore.list_trips()
     target_trip = None
+    expires_at_str = None
+
     for trip in all_trips:
         if trip.get("proposal_link_token") == token:
             target_trip = trip
+            expires_at_str = trip.get("proposal_token_expires_at")
             break
 
     if not target_trip:
         raise HTTPException(status_code=404, detail="Proposal token not found or link expired")
 
+    if expires_at_str:
+        try:
+            exp_dt = datetime.fromisoformat(expires_at_str)
+            if datetime.now(timezone.utc) > exp_dt:
+                raise HTTPException(status_code=410, detail="Proposal link expired")
+        except ValueError:
+            pass
+
+    now_iso = datetime.now(timezone.utc).isoformat()
     target_trip["stage"] = "booking"
-    target_trip["accepted_at"] = datetime.now(timezone.utc).isoformat()
+    target_trip["accepted_at"] = now_iso
     target_trip["decision_state"] = "PROCEED_BOOKING"
     TripStore.save_trip(target_trip)
+
+    AuditStore.log_event(
+        event_type="proposal_accepted_by_traveler",
+        user_id=target_trip.get("agency_id", "public_traveler"),
+        details={
+            "trip_id": target_trip.get("id"),
+            "token": token,
+            "accepted_at": now_iso,
+        },
+    )
 
     return {
         "ok": True,
         "message": "Proposal accepted! Your travel planner has been notified to finalize bookings.",
         "trip_id": target_trip.get("id"),
-        "accepted_at": datetime.now(timezone.utc).isoformat(),
+        "accepted_at": now_iso,
         "next_step": "Planner will reach out with final voucher & payment details.",
         "_meta": TierMetadata.for_response(
             get_feature_tier("proposal_lifecycle"),

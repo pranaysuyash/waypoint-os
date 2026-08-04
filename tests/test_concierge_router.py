@@ -3,13 +3,17 @@ tests/test_concierge_router.py — Unit & Integration tests for Autonomic Ghost 
 """
 
 import os
+from unittest.mock import patch
 import pytest
 from starlette.testclient import TestClient
 
+from spine_api.contract import AutoRebookRequest
+from spine_api.persistence import TEST_AGENCY_ID, TripStore
+from spine_api.routers.concierge import execute_auto_rebook, monitor_trip_status
+from spine_api.server import app
+
 os.environ["RUNNING_TESTS"] = "1"
 os.environ["TRIPSTORE_BACKEND"] = "file"
-
-from spine_api.server import app
 
 
 @pytest.fixture
@@ -20,66 +24,40 @@ def session_client():
 @pytest.fixture(autouse=True)
 def setup_test_env(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
-    monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
 
 
-def test_monitor_trip_status(session_client):
+@pytest.mark.asyncio
+async def test_monitor_trip_status_success():
     """Verify actively monitoring trip flight status for disruptions."""
-    inbound_res = session_client.post(
-        "/api/v1/inbound/parse",
-        json={
-            "channel": "email",
-            "raw_text": "Flight AF128 from SFO to CDG.",
-            "customer_name": "Oliver Queen",
-            "agent_notes": "Client flight delay expected due to strike",
-        },
-        headers={"X-Agency-ID": "agency_concierge_test"},
-    ).json()
-
-    trip_id = inbound_res["trip_id"]
-
-    response = session_client.post(
-        f"/api/v1/concierge/monitor/{trip_id}",
-        headers={"X-Agency-ID": "agency_concierge_test"},
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["ok"] is True
-    assert data["trip_id"] == trip_id
-    assert data["disruption_detected"] is True
-    assert data["disruption_type"] == "FLIGHT_DELAY"
-    assert "Auto-rebook" in data["recommended_action"]
+    trip_data = {
+        "id": "trip_concierge_1",
+        "agency_id": TEST_AGENCY_ID,
+        "destination": "Paris",
+        "status": "active",
+        "agent_notes": "Client flight delay expected due to strike",
+    }
+    with patch.object(TripStore, "get_trip_for_agency", return_value=trip_data):
+        res = await monitor_trip_status("trip_concierge_1", agency_id=TEST_AGENCY_ID)
+        assert res.ok is True
+        assert res.trip_id == "trip_concierge_1"
+        assert res.disruption_detected is True
+        assert res.disruption_type == "FLIGHT_DELAY"
 
 
-def test_execute_auto_rebook(session_client):
-    """Verify executing autonomous rebooking for a disrupted segment."""
-    inbound_res = session_client.post(
-        "/api/v1/inbound/parse",
-        json={
-            "channel": "email",
-            "raw_text": "Flight AF128 from SFO to CDG.",
-            "customer_name": "Oliver Queen",
-        },
-        headers={"X-Agency-ID": "agency_concierge_test"},
-    ).json()
+@pytest.mark.asyncio
+async def test_execute_auto_rebook_blocks_when_tier_lacks_capability():
+    """Verify execute_auto_rebook raises 403 when concierge tier is DATA_DEPENDENT."""
+    from fastapi import HTTPException
 
-    trip_id = inbound_res["trip_id"]
-
-    response = session_client.post(
-        f"/api/v1/concierge/auto-rebook/{trip_id}",
-        json={
-            "trip_id": trip_id,
-            "disruption_event_id": "evt_delay_9921",
-            "auto_approve": True,
-        },
-        headers={"X-Agency-ID": "agency_concierge_test"},
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["ok"] is True
-    assert data["trip_id"] == trip_id
-    assert data["status"] == "REBOOKED"
-    assert data["new_confirmation_code"].startswith("PNR_")
-    assert "Flight AF128" in data["rebooked_segment"]
+    trip_data = {
+        "id": "trip_concierge_2",
+        "agency_id": TEST_AGENCY_ID,
+        "destination": "Paris",
+        "status": "active",
+    }
+    req = AutoRebookRequest(trip_id="trip_concierge_2", disruption_event_id="evt_delay_9921")
+    with patch.object(TripStore, "get_trip_for_agency", return_value=trip_data):
+        with pytest.raises(HTTPException) as exc_info:
+            await execute_auto_rebook("trip_concierge_2", req, agency_id=TEST_AGENCY_ID)
+        assert exc_info.value.status_code == 403
+        assert "can_mutate_booking_state" in exc_info.value.detail

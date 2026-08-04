@@ -87,19 +87,19 @@ class TestSecretKey:
             assert not passed
 
     def test_known_default_secret(self):
-        with patch.dict(os.environ, {"SECRET_KEY": "changeme"}):
+        with patch.dict(os.environ, {"JWT_SECRET": "changeme", "SECRET_KEY": "changeme"}):
             passed, msg = _check_secret_key()
             assert not passed
             assert "known default" in msg
 
     def test_short_secret(self):
-        with patch.dict(os.environ, {"SECRET_KEY": "abc"}):
+        with patch.dict(os.environ, {"JWT_SECRET": "abc", "SECRET_KEY": "abc"}):
             passed, msg = _check_secret_key()
             assert not passed
             assert "characters" in msg
 
     def test_valid_secret(self):
-        with patch.dict(os.environ, {"SECRET_KEY": "a" * 32}):
+        with patch.dict(os.environ, {"JWT_SECRET": "a" * 32, "SECRET_KEY": "a" * 32}):
             passed, msg = _check_secret_key()
             assert passed
 

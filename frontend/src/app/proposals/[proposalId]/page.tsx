@@ -22,40 +22,17 @@ interface ProposalData {
   transparency_badges: Array<{ badge: string; label: string }>;
 }
 
-const DEFAULT_DEMO_PROPOSAL: ProposalData = {
-  ok: true,
-  proposal_token: 'prop_demo123',
-  trip_id: 'trip_demo123',
-  destination: 'Goa, India',
-  budget_max: 4500,
-  dates: 'Oct 15 - Oct 22, 2026',
-  party_size: 2,
-  suitability_match_pct: 96,
-  recommended_option: {
-    name: 'Taj Exotica Resort & Spa, Goa',
-    cost: 4200,
-    currency: 'USD',
-    highlights: ['Luxury Sea View Villa', 'Personal Butler Service', 'Complimentary Spa Credit & Transfers'],
-  },
-  transparency_badges: [
-    { badge: 'VERIFIED_PARTNER', label: 'Direct Supplier Contract — Zero Middleman Markup' },
-    { badge: 'FLEXIBLE_CANCEL', label: '100% Refundable up to 14 Days Prior' },
-    { badge: 'PRICE_LOCK_72H', label: 'Price Locked & Guaranteed for 72 Hours' },
-  ],
-};
-
 export default function InteractiveProposalPage({
   params,
 }: {
   params: Promise<{ proposalId: string }>;
 }) {
   const { proposalId } = use(params);
-  const [data, setData] = useState<ProposalData | null>(DEFAULT_DEMO_PROPOSAL);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<ProposalData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [accepting, setAccepting] = useState(false);
-
 
   useEffect(() => {
     const fetchProposal = async () => {
@@ -64,44 +41,23 @@ export default function InteractiveProposalPage({
         const res = await fetch(`${apiUrl}/api/v1/proposals/token/${proposalId}`);
 
         if (!res.ok) {
-          throw new Error(`Proposal not found (${res.status})`);
+          throw new Error(`Proposal not found or expired (${res.status})`);
         }
         const json = await res.json();
+        if (!json.ok) {
+          throw new Error(json.detail || 'Proposal link invalid');
+        }
         setData(json);
       } catch (err: any) {
-        if (proposalId.startsWith('prop_') || proposalId === 'test-proposal-123') {
-          setData({
-            ok: true,
-            proposal_token: proposalId,
-            trip_id: 'trip_demo123',
-            destination: 'Goa, India',
-            budget_max: 4500,
-            dates: 'Oct 15 - Oct 22, 2026',
-            party_size: 2,
-            suitability_match_pct: 96,
-            recommended_option: {
-              name: 'Taj Exotica Resort & Spa, Goa',
-              cost: 4200,
-              currency: 'USD',
-              highlights: ['Luxury Sea View Villa', 'Personal Butler Service', 'Complimentary Spa Credit & Transfers'],
-            },
-            transparency_badges: [
-              { badge: 'VERIFIED_PARTNER', label: 'Direct Supplier Contract — Zero Middleman Markup' },
-              { badge: 'FLEXIBLE_CANCEL', label: '100% Refundable up to 14 Days Prior' },
-              { badge: 'PRICE_LOCK_72H', label: 'Price Locked & Guaranteed for 72 Hours' },
-            ],
-          });
-        } else {
-          setError(err.message || 'Failed to load proposal');
-        }
+        setError(err.message || 'Failed to load proposal');
+        setData(null);
       } finally {
         setLoading(false);
       }
-
     };
 
     fetchProposal();
-  }, [proposalId]);
+  }, [proposalId]);d]);
 
   const handleAccept = async () => {
     setAccepting(true);

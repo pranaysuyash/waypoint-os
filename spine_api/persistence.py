@@ -1377,7 +1377,7 @@ def _get_sync_async_bridge() -> _SyncAsyncBridge:
 class TripStore:
     """Stable synchronous TripStore facade over file or SQL persistence."""
 
-    _ALLOWED_BACKENDS = frozenset({"file", "sql", "json"})
+    _ALLOWED_BACKENDS = frozenset({"file", "sql", "json", "postgres", "postgresql"})
 
     @staticmethod
     def _backend():
@@ -1397,7 +1397,7 @@ class TripStore:
                 f"Allowed values: {', '.join(sorted(TripStore._ALLOWED_BACKENDS))}."
             )
 
-        if raw_backend == "sql":
+        if raw_backend in ("sql", "postgres", "postgresql"):
             return SQLTripStore
 
         return FileTripStore
@@ -1426,15 +1426,25 @@ class TripStore:
 
     @staticmethod
     def get_trip_for_public_access(trip_id: str) -> Optional[dict]:
-        """Get a trip by ID, returning a traveler-safe projection (strips agency internals, agent notes, financial details)."""
+        """Get a trip by ID, returning an explicit allowlisted traveler-safe projection."""
         trip = TripStore._get_trip_internal(trip_id)
         if not trip:
             return None
-        safe_trip = trip.copy()
-        # Strip agency internals, agent notes, financial details
-        for key in ["internal_bundle", "agent_notes", "fees", "frontier_result"]:
-            safe_trip.pop(key, None)
-        return safe_trip
+        public_allowlist = {
+            "id",
+            "destination",
+            "packet",
+            "strategy",
+            "created_at",
+            "stage",
+            "status",
+            "dates",
+            "party_size",
+            "budget_max",
+            "proposal_link_token",
+            "proposal_token_expires_at",
+        }
+        return {k: v for k, v in trip.items() if k in public_allowlist}
 
     @staticmethod
     def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:

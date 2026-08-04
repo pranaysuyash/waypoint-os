@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from spine_api.contract import AutoRebookRequest, AutoRebookResponse, ConciergeMonitorResponse
 from spine_api.core.auth import get_current_agency_id
 from spine_api.core.feature_gates import get_feature_tier
-from spine_api.core.reality_tier import TierMetadata
+from spine_api.core.reality_tier import TierMetadata, assert_tier_capability
 from spine_api.persistence import AuditStore, TripStore
 
 logger = logging.getLogger("spine_api.concierge")
@@ -82,6 +82,9 @@ async def execute_auto_rebook(
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
+
+    tier = get_feature_tier("concierge")
+    assert_tier_capability(tier, "can_mutate_booking_state", "concierge")
 
     rebook_ref = f"REBOOK_{uuid4().hex[:8].upper()}"
     now_iso = datetime.now(timezone.utc).isoformat()

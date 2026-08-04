@@ -23,7 +23,14 @@ from spine_api.models.tenant import User
 logger = logging.getLogger("spine_api.middleware")
 
 PUBLIC_PATHS: set[str] = {"/health", "/docs", "/openapi.json", "/redoc"}
-PUBLIC_PREFIXES: tuple[str, ...] = ("/api/auth", "/api/public/", "/api/public-checker/run", "/api/public-checker/events")
+PUBLIC_PREFIXES: tuple[str, ...] = (
+    "/api/auth",
+    "/api/public/",
+    "/api/public-checker/run",
+    "/api/public-checker/events",
+    "/api/v1/proposals/token/",
+    "/api/v1/trust-scorecard/proposal/",
+)
 
 
 def _is_public_path(path: str) -> bool:

@@ -158,8 +158,8 @@ def transition_trip_stage(
     reason: Optional[str] = None,
     expected_current_stage: Optional[str] = None,
 ) -> dict[str, Any]:
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency_id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
         raise KeyError("Trip not found")
 
     if target_stage not in VALID_STAGES:

@@ -53,16 +53,16 @@ def _check_auth_not_disabled_in_production() -> Tuple[bool, str]:
 
 
 def _check_secret_key() -> Tuple[bool, str]:
-    """SECRET_KEY must be set and not a well-known default."""
-    key = os.environ.get("SECRET_KEY", "")
+    """JWT_SECRET or SECRET_KEY must be set and not a well-known default."""
+    key = os.environ.get("JWT_SECRET") or os.environ.get("SECRET_KEY", "")
     known_defaults = {"secret", "changeme", "password", "default", "test", "dev"}
     if not key:
-        return False, "SECRET_KEY is not set. JWT signing requires a real secret."
+        return False, "JWT_SECRET (or SECRET_KEY) is not set. JWT signing requires a real secret."
     if key.lower().strip() in known_defaults:
-        return False, f"SECRET_KEY is a known default ('{key}'). Use a real secret."
+        return False, f"JWT_SECRET is a known default ('{key}'). Use a real secret."
     if len(key) < 16:
-        return False, f"SECRET_KEY is only {len(key)} characters. Use at least 32 characters."
-    return True, "SECRET_KEY is set and appears non-trivial."
+        return False, f"JWT_SECRET is only {len(key)} characters. Use at least 32 characters."
+    return True, "JWT_SECRET is set and satisfies security requirements."
 
 
 def _check_environment_declared() -> Tuple[bool, str]:
@@ -80,18 +80,18 @@ def _check_environment_declared() -> Tuple[bool, str]:
 
 
 def _check_tripstore_backend() -> Tuple[bool, str]:
-    """TRIPSTORE_BACKEND must be explicitly set in production."""
+    """TRIPSTORE_BACKEND must be explicitly set to sql/postgres in production."""
     env = os.environ.get("ENVIRONMENT", "development")
-    backend = os.environ.get("TRIPSTORE_BACKEND", "")
+    backend = os.environ.get("TRIPSTORE_BACKEND", "").strip().lower()
     if env == "production" and not backend:
         return False, (
             "TRIPSTORE_BACKEND is not set in production. "
-            "Set to 'postgres' to prevent silent fallback to file-based storage."
+            "Set to 'sql' or 'postgres' to prevent silent fallback to file-based storage."
         )
-    if env == "production" and backend != "postgres":
+    if env == "production" and backend not in ("sql", "postgres", "postgresql"):
         return False, (
             f"TRIPSTORE_BACKEND='{backend}' in production. "
-            "Production must use 'postgres'."
+            "Production must use 'sql' or 'postgres'."
         )
     return True, f"TRIPSTORE_BACKEND is '{backend or 'not set (ok for dev)'}'"
 

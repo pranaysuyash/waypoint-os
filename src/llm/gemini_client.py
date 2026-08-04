@@ -17,6 +17,8 @@ import json
 import os
 from typing import Any, Dict, Optional
 
+from spine_api.core.llm_egress import DecisionType, prepare_egress_payload
+
 try:
     from google import genai
     from google.genai import types as genai_types
@@ -146,6 +148,11 @@ class GeminiClient(BaseLLMClient):
             raise LLMUnavailableError("Gemini client not available")
 
         full_prompt = self._build_prompt(prompt, schema)
+        full_prompt = prepare_egress_payload(
+            decision_type=DecisionType.EXTRACTION,
+            content=full_prompt,
+            provider="gemini",
+        )
 
         config = genai_types.GenerateContentConfig(
             temperature=temperature if temperature is not None else self.temperature,

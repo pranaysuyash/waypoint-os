@@ -311,7 +311,7 @@ class TestStageTransitionEndpoint:
         events = AuditStore.get_events(limit=200)
         stage_events = [
             e for e in events
-            if e.get("type") == "stage_transition"
+            if (e.get("event_type") == "stage_transition" or e.get("type") == "stage_transition")
             and e.get("details", {}).get("trip_id") == trip_id
         ]
         assert len(stage_events) >= 1, f"No stage_transition events found for {trip_id}"

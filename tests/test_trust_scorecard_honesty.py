@@ -83,6 +83,28 @@ class TestTrustScorecardEndpoints:
                 await get_proposal_trust_scorecard("nonexistent_trip", agency_id="agency_1")
             assert exc_info.value.status_code == 404
 
+    async def test_get_scorecard_success_path(self):
+        trip_data = {
+            "id": "trip_101",
+            "agency_id": "agency_1",
+            "destination": "Kyoto",
+            "packet": {
+                "destination": "Kyoto",
+                "start_date": "2026-11-01",
+                "end_date": "2026-11-10",
+                "budget_max": 6000.0,
+                "party_size": 2,
+            },
+        }
+        with patch.object(TripStore, "get_trip_for_agency", return_value=trip_data):
+            res = await get_proposal_trust_scorecard("trip_101", agency_id="agency_1")
+            assert res.ok is True
+            assert res.trip_id == "trip_101"
+            assert res.completeness_score.value == 100.0
+            assert res.completeness_score.data_sufficient is True
+            assert res.budget_alignment_score.value == 100.0
+            assert res.confidence_score.value == 100.0
+
     async def test_get_proposal_by_unknown_token_returns_404(self):
         with patch.object(TripStore, "list_trips", return_value=[]):
             with pytest.raises(HTTPException) as exc_info:

@@ -15,6 +15,8 @@ import json
 import os
 from typing import Any, Dict, Optional
 
+from spine_api.core.llm_egress import DecisionType, prepare_egress_payload
+
 try:
     from openai import OpenAI
     OPENAI_AVAILABLE = True
@@ -147,6 +149,11 @@ class OpenAIClient(BaseLLMClient):
 
         # Build the prompt with JSON schema instruction
         full_prompt = self._build_prompt(prompt, schema)
+        full_prompt = prepare_egress_payload(
+            decision_type=DecisionType.EXTRACTION,
+            content=full_prompt,
+            provider="openai",
+        )
 
         try:
             # Call the API

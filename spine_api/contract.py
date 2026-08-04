@@ -1108,6 +1108,9 @@ class TrustScorecardResponse(BaseModel):
     completeness_score: ComputedScore
     budget_alignment_score: ComputedScore
     confidence_score: ComputedScore
+    overall_trust_score: Optional[float] = None
+    suitability_match_pct: Optional[float] = None
+    safety_score: Optional[float] = None
     budget_fit_status: str = "PERFECT_MATCH"
     highlights: List[str] = Field(default_factory=list)
     risk_mitigations: List[str] = Field(default_factory=list)

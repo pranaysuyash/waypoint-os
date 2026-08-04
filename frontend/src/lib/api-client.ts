@@ -992,7 +992,7 @@ export async function transitionTripStage(
   reason?: string,
   expectedCurrentStage?: string,
 ): Promise<StageTransitionResponse> {
-  return api.patch(`/trips/${tripId}/stage`, {
+  return api.patch(`/api/v1/trips/${tripId}/stage`, {
     target_stage: targetStage,
     reason,
     expected_current_stage: expectedCurrentStage,
