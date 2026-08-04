@@ -47,11 +47,8 @@ class PublicCheckerEventEnvelope(BaseModel):
 
 
 def _load_public_checker_package_or_404(trip_id: str) -> dict[str, Any]:
-    trip = persistence.TripStore.get_trip(trip_id)
-    if not trip:
-        public_checker_agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
-        if public_checker_agency_id and public_checker_agency_id != DEFAULT_PUBLIC_CHECKER_AGENCY_ID:
-            trip = persistence.TripStore.get_trip_for_agency(trip_id, public_checker_agency_id)
+    public_checker_agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+    trip = persistence.TripStore.get_trip_for_agency(trip_id, public_checker_agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Public checker record not found")
 
@@ -116,14 +113,10 @@ def export_public_checker_package(
 def delete_public_checker_package(
     trip_id: str,
 ):
-    package = _load_public_checker_package_or_404(trip_id)
-    trip = package.get("trip") or {}
+    _package = _load_public_checker_package_or_404(trip_id)
+    public_checker_agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
     deleted_artifacts = persistence.PublicCheckerArtifactStore.delete_trip_artifacts(trip_id)
-    trip_agency_id = trip.get("agency_id")
-    if isinstance(trip_agency_id, str) and trip_agency_id.strip():
-        deleted_trip = persistence.TripStore.delete_trip_for_agency(trip_id, trip_agency_id)
-    else:
-        deleted_trip = persistence.TripStore.delete_trip(trip_id)
+    deleted_trip = persistence.TripStore.delete_trip_for_agency(trip_id, public_checker_agency_id)
     if not deleted_artifacts and not deleted_trip:
         raise HTTPException(status_code=404, detail="Public checker record not found")
     return {

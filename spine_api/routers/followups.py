@@ -122,8 +122,8 @@ def mark_followup_complete(
     agency: Agency = Depends(get_current_agency),
 ):
     """Mark a follow-up as completed."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if not trip.get("follow_up_due_date"):
@@ -162,8 +162,8 @@ def snooze_followup(
     Query params:
     - days: 1, 3, or 7 (default: 1)
     """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if not trip.get("follow_up_due_date"):
@@ -214,8 +214,8 @@ def reschedule_followup(
 
     Body: {"new_date": "2026-05-15T14:00:00Z"}
     """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if not trip.get("follow_up_due_date"):
@@ -269,14 +269,9 @@ def generate_followup_prompt(
     if not trip_id:
         raise HTTPException(status_code=400, detail="trip_id is required")
 
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        # Demo fallback
-        trip = {
-            "id": trip_id,
-            "destination": body.get("destination", "Goa"),
-            "traveler_name": body.get("traveler_name", "Valued Guest"),
-        }
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
 
     traveler_name = trip.get("traveler_name", "there")
     destination = trip.get("destination") or trip.get("packet", {}).get("destination", "your destination")

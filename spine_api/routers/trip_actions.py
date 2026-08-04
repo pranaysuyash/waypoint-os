@@ -38,8 +38,8 @@ def post_review_action(
     _perm=require_permission("trips:write"),
 ):
     """Apply a review action (approve/reject/request_changes/escalate) to a trip."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     try:
@@ -71,8 +71,8 @@ def get_activities_provenance(
     """
     Retrieve activity provenance for a trip.
     """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
 
     activities = []

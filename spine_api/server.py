@@ -982,6 +982,13 @@ async def _validate_rls_runtime_posture_configuration() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager (replaces deprecated on_event)."""
+    from spine_api.core.startup_assertions import run_startup_assertions
+    from spine_api.core.feature_gates import log_feature_status
+
+    # Run fail-closed boot checks
+    run_startup_assertions(strict=True)
+    log_feature_status()
+
     env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development")).lower().strip()
     if os.environ.get("SPINE_API_DISABLE_AUTH") and env in ("production", "staging"):
         raise RuntimeError(

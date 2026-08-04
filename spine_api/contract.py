@@ -1096,12 +1096,18 @@ class FollowUpPromptResponse(BaseModel):
     generated_at: str
 
 
+class ComputedScore(BaseModel):
+    value: Optional[float] = None
+    data_sufficient: bool
+    computation_method: str
+    reality_tier: str = "deterministic_preview"
+
 class TrustScorecardResponse(BaseModel):
     ok: bool = True
     trip_id: str
-    overall_trust_score: float = Field(..., ge=0.0, le=100.0, description="Overall trust and suitability confidence rating 0-100")
-    suitability_match_pct: float = Field(..., ge=0.0, le=100.0)
-    safety_score: float = Field(..., ge=0.0, le=100.0)
+    completeness_score: ComputedScore
+    budget_alignment_score: ComputedScore
+    confidence_score: ComputedScore
     budget_fit_status: str = "PERFECT_MATCH"
     highlights: List[str] = Field(default_factory=list)
     risk_mitigations: List[str] = Field(default_factory=list)

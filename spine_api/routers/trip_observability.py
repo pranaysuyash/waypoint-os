@@ -43,8 +43,8 @@ def get_trip_agent_events(
     """
     Return product-agent observability events for a single trip.
     """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     events = AuditStore.get_agent_events_for_trip(trip_id=trip_id, limit=limit)
@@ -55,10 +55,15 @@ def get_trip_agent_events(
 def get_trip_timeline(
     trip_id: str,
     stage: Optional[str] = None,
+    agency: Agency = Depends(get_current_agency),
 ) -> TimelineResponse:
     """
     Retrieve the unified timeline for a trip from AuditStore.
     """
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
     if stage:
         valid_stages = {"intake", "packet", "decision", "strategy", "safety"}
         if stage.lower() not in valid_stages:

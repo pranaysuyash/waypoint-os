@@ -221,8 +221,8 @@ def assign_trip(
     agency: Agency = Depends(get_current_agency),
 ):
     """Assign a trip to an agent."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     AssignmentStore.assign_trip(trip_id, agent_id, agent_name, assigned_by)
@@ -237,8 +237,8 @@ def unassign_trip(
     agency: Agency = Depends(get_current_agency),
 ):
     """Remove assignment from a trip."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     AssignmentStore.unassign_trip(trip_id, unassigned_by)
@@ -252,8 +252,8 @@ def snooze_trip(
     agency: Agency = Depends(get_current_agency),
 ):
     """Snooze a trip until a specified time."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     analytics = trip.get("analytics") or {}
@@ -274,8 +274,8 @@ def acknowledge_suitability_flags(
     agency: Agency = Depends(get_current_agency),
 ):
     """Acknowledge suitability flags for a trip, allowing it to proceed."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     analytics = trip.get("analytics") or {}
@@ -594,8 +594,8 @@ def create_override(
     agency: Agency = Depends(get_current_agency),
 ) -> OverrideResponse:
     """Record an operator override of a risk flag for a trip."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
 
     if not request.reason or len(request.reason.strip()) < 1:
@@ -709,8 +709,8 @@ def create_override(
 @router.get("/trips/{trip_id}/overrides")
 def list_overrides(trip_id: str, agency: Agency = Depends(get_current_agency)) -> dict:
     """List all overrides for a trip."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
 
     overrides = OverrideStore.get_overrides_for_trip(trip_id)
@@ -718,11 +718,17 @@ def list_overrides(trip_id: str, agency: Agency = Depends(get_current_agency)) -
 
 
 @router.get("/overrides/{override_id}")
-def get_override(override_id: str) -> dict:
+def get_override(override_id: str, agency: Agency = Depends(get_current_agency)) -> dict:
     """Get a specific override by ID."""
     override = OverrideStore.get_override(override_id)
     if not override:
         raise HTTPException(status_code=404, detail=f"Override not found: {override_id}")
+    # Verify trip ownership
+    trip_id = override.get("trip_id")
+    if trip_id:
+        trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+        if not trip:
+            raise HTTPException(status_code=404, detail=f"Override not found: {override_id}")
     return {"ok": True, "override": override}
 
 
@@ -736,8 +742,8 @@ def reassign_trip(
     _perm=require_permission("trips:reassign"),
 ):
     """Reassign a trip to a different agent."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     existing = AssignmentStore.get_assignment(trip_id)

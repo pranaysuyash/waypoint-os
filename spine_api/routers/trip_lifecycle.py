@@ -46,8 +46,8 @@ def reassess_trip(
     if _execute_pipeline is None:
         raise HTTPException(status_code=500, detail="Reassessment executor is not configured")
 
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     settings = AgencySettingsStore.load(agency.id)

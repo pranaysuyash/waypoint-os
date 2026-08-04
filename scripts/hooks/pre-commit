@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 # >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
-# Pin the canonical v4 motto source so agent-start never downgrades to v3.
-export AGENT_MOTTO_SOURCE="/Users/pranay/Downloads/motto_v4.md"
+# Pin the canonical v5 motto source so agent-start never downgrades to a retired doctrine.
+export AGENT_MOTTO_SOURCE="/Users/pranay/Downloads/motto_v5.md"
 
 if [ -x /Users/pranay/Projects/agent-start ] && [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
-  _motto_file="motto_v4.md"
+  _motto_file="motto_v5.md"
   if [ ! -f "$_motto_file" ]; then
     echo "pre-commit: expected $_motto_file is missing; rerun /Users/pranay/Projects/agent-start and restore the project motto before committing." >&2
     exit 1
@@ -100,7 +100,7 @@ fi
   #    durable artifact check, not a self-attestation. It catches "code changed
   #    auth/payments/webhooks but no docs/worklog changed" before commit.
   if [ "$_high_risk" = "1" ]; then
-    if ! printf '%s\n' "$_staged_all" | grep -qiE '^(Docs|docs|README|CHANGELOG|.*WORKLOG|.*tracking|.*decisions|.*exploration)/|^(Docs|docs)/|CLAUDE\.md|AGENTS\.md|motto_v4\.md'; then
+    if ! printf '%s\n' "$_staged_all" | grep -qiE '^(Docs|docs|README|CHANGELOG|.*WORKLOG|.*tracking|.*decisions|.*exploration)/|^(Docs|docs)/|CLAUDE\.md|AGENTS\.md|motto_v5\.md'; then
       cat >&2 <<'EOF'
 pre-commit: high-risk staged changes detected, but no durable docs/tracking artifact is staged.
 For auth/payments/webhooks/background jobs/db/data/privacy/billing changes, update a repo-local

@@ -9,10 +9,10 @@
 
 ## Project Motto
 
-- File: `/Users/pranay/Projects/travel_agency_agent/spine_api/motto_v3.md`
+- File: `/Users/pranay/Projects/travel_agency_agent/spine_api/motto_v5.md`
 - Legacy bridge: `/Users/pranay/Projects/travel_agency_agent/spine_api/motto_v2.md`
-- Source: `/Users/pranay/Downloads/motto_v3.md`
-- Sync status: `synced from /Users/pranay/Downloads/motto_v3.md; legacy motto_v2.md symlinked to motto_v3.md`
+- Source: `/Users/pranay/Downloads/motto_v5.md`
+- Sync status: `synced from /Users/pranay/Downloads/motto_v5.md; legacy motto_v2.md symlinked to motto_v5.md`
 - Guidance: read this before implementation or review on this project.
 
 ## Project-Focused Retrieval

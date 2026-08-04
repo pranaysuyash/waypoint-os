@@ -38,8 +38,8 @@ async def assign_trip_to_team_member(
     """
     Assign a trip packet to an agency team member or specialized sub-agent role.
     """
-    trip = TripStore.get_trip(body.trip_id)
-    if not trip or trip.get("agency_id") != agency_id:
+    trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     now_str = datetime.now(timezone.utc).isoformat()
@@ -77,8 +77,8 @@ async def submit_review_signoff(
     """
     Submit a formal review signoff or change request decision on a travel proposal.
     """
-    trip = TripStore.get_trip(body.trip_id)
-    if not trip or trip.get("agency_id") != agency_id:
+    trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     now_str = datetime.now(timezone.utc).isoformat()
@@ -119,10 +119,9 @@ async def check_high_value_signoff_gate(
     Enforces agency review policy: quotes exceeding $10,000 require formal
     senior planner approval before proposal export/dispatch to traveler.
     """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency_id:
-        # Fallback for demo
-        trip = {"id": trip_id, "packet": {"budget_max": 12500.0}}
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
 
     packet = trip.get("packet", {}) or {}
     quote_amount = float(packet.get("budget_max") or 0.0)

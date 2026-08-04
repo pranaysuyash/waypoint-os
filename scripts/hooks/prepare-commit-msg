@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
-# Pin the canonical v4 motto source so agent-start never downgrades to v3.
-export AGENT_MOTTO_SOURCE="/Users/pranay/Downloads/motto_v4.md"
+# Pin the canonical v5 motto source so agent-start never downgrades to a retired doctrine.
+export AGENT_MOTTO_SOURCE="/Users/pranay/Downloads/motto_v5.md"
 
 # Motto attestation gate. This runs in prepare-commit-msg so `git commit --no-verify`
 # still hits it. The goal is to block commits until the repo has a fresh
-# attestation for the current full motto_v4.md content.
+# attestation for the current full motto_v5.md content.
 if [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
-  _motto_file="motto_v4.md"
+  _motto_file="motto_v5.md"
   _attestation_file=".git/projects_agent_motto_attestation.env"
   _attestation_tool="/Users/pranay/Projects/workspace_memory/scripts/attest_motto.py"
   _max_age_secs="${PROJECTS_AGENT_MOTTO_ATTEST_MAX_AGE_SECS:-43200}"

@@ -130,8 +130,8 @@ def post_dismiss_alert(alert_id: str, agency: Agency = Depends(get_current_agenc
     """Dismiss an operational alert by flagging the source trip."""
     # Alert ID format is alert_{trip_id}
     trip_id = alert_id.replace("alert_", "")
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail=f"Target trip for alert {alert_id} not found")
 
     analytics = trip.get("analytics") or {}
@@ -159,15 +159,15 @@ def get_pending_reviews(agency: Agency = Depends(get_current_agency)):
 @router.get("/analytics/reviews/{review_id}")
 def get_review(review_id: str, agency: Agency = Depends(get_current_agency)):
     """Get a single review by trip ID."""
-    trip = TripStore.get_trip(review_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(review_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Review not found")
 
     return trip_to_review(trip)
 
 
 @router.post("/analytics/reviews/bulk-action")
-def bulk_review_action(actions: List[dict]):
+def bulk_review_action(actions: List[dict], agency: Agency = Depends(get_current_agency)):
     """Apply review actions in bulk."""
     processed = 0
     failed = 0
@@ -178,6 +178,12 @@ def bulk_review_action(actions: List[dict]):
             trip_id = action.get("trip_id") or action.get("review_id")
             if not trip_id:
                 failed += 1
+                continue
+
+            trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+            if not trip:
+                failed += 1
+                results.append({"trip_id": trip_id, "status": "failed", "error": "Trip not found for agency"})
                 continue
 
             process_review_action(

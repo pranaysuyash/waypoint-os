@@ -328,7 +328,7 @@ class FileTripStore:
         return trip_id
     
     @staticmethod
-    def get_trip(trip_id: str) -> Optional[dict]:
+    def _get_trip_internal(trip_id: str) -> Optional[dict]:
         """Get a trip by ID."""
         try:
             safe_trip_id = _validate_trip_id(trip_id)
@@ -345,7 +345,7 @@ class FileTripStore:
     @staticmethod
     def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
         """Get a trip by ID if it belongs to the given agency."""
-        trip = FileTripStore.get_trip(trip_id)
+        trip = FileTripStore._get_trip_internal(trip_id)
         if trip and trip.get("agency_id") == agency_id:
             return trip
         return None
@@ -405,7 +405,7 @@ class FileTripStore:
 
         with FileTripStore._lock:
             with file_lock(filepath):
-                trip = FileTripStore.get_trip(safe_trip_id)
+                trip = FileTripStore._get_trip_internal(safe_trip_id)
                 if not trip:
                     return None
                 
@@ -438,7 +438,7 @@ class FileTripStore:
 
         with FileTripStore._lock:
             with file_lock(filepath):
-                trip = FileTripStore.get_trip(safe_trip_id)
+                trip = FileTripStore._get_trip_internal(safe_trip_id)
                 if not trip:
                     return None
                 if expected_updated_at is not None and trip.get("updated_at") != expected_updated_at:
@@ -482,7 +482,7 @@ class FileTripStore:
 
         with FileTripStore._lock:
             with file_lock(filepath):
-                trip = FileTripStore.get_trip(safe_trip_id)
+                trip = FileTripStore._get_trip_internal(safe_trip_id)
                 if not trip:
                     return None
                 if trip.get("agency_id") != agency_id:
@@ -499,19 +499,19 @@ class FileTripStore:
     @staticmethod
     def get_booking_data(trip_id: str) -> Optional[dict]:
         """Get booking_data from file store. Returns None if trip missing."""
-        trip = FileTripStore.get_trip(trip_id)
+        trip = FileTripStore._get_trip_internal(trip_id)
         return trip.get("booking_data") if trip else None
 
     @staticmethod
     def get_pending_booking_data(trip_id: str) -> Optional[dict]:
         """Get pending_booking_data from file store. Returns None if trip missing."""
-        trip = FileTripStore.get_trip(trip_id)
+        trip = FileTripStore._get_trip_internal(trip_id)
         return trip.get("pending_booking_data") if trip else None
 
     @staticmethod
     def update_trip_for_agency(trip_id: str, agency_id: str, updates: dict) -> Optional[dict]:
         """Update a trip only if it belongs to the given agency."""
-        trip = FileTripStore.get_trip(trip_id)
+        trip = FileTripStore._get_trip_internal(trip_id)
         if not trip:
             return None
         if trip.get("agency_id") != agency_id:
@@ -857,7 +857,7 @@ class SQLTripStore:
             )
 
     @staticmethod
-    async def get_trip(trip_id: str) -> Optional[dict]:
+    async def _get_trip_internal(trip_id: str) -> Optional[dict]:
         async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
             return SQLTripStore._to_dict(trip_obj) if trip_obj else None
@@ -1417,11 +1417,24 @@ class TripStore:
         return await SQLTripStore.save_trip(trip_data, agency_id=agency_id)
 
     @staticmethod
-    def get_trip(trip_id: str) -> Optional[dict]:
+    def _get_trip_internal(trip_id: str) -> Optional[dict]:
+        """System-level only. Never call from router context. Use get_trip_for_agency() instead."""
         backend = TripStore._backend()
         if backend is FileTripStore:
-            return FileTripStore.get_trip(trip_id)
-        return _run_async_blocking(SQLTripStore.get_trip(trip_id))
+            return FileTripStore._get_trip_internal(trip_id)
+        return _run_async_blocking(SQLTripStore._get_trip_internal(trip_id))
+
+    @staticmethod
+    def get_trip_for_public_access(trip_id: str) -> Optional[dict]:
+        """Get a trip by ID, returning a traveler-safe projection (strips agency internals, agent notes, financial details)."""
+        trip = TripStore._get_trip_internal(trip_id)
+        if not trip:
+            return None
+        safe_trip = trip.copy()
+        # Strip agency internals, agent notes, financial details
+        for key in ["internal_bundle", "agent_notes", "fees", "frontier_result"]:
+            safe_trip.pop(key, None)
+        return safe_trip
 
     @staticmethod
     def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
@@ -1439,8 +1452,8 @@ class TripStore:
     async def aget_trip(trip_id: str) -> Optional[dict]:
         backend = TripStore._backend()
         if backend is FileTripStore:
-            return FileTripStore.get_trip(trip_id)
-        return await SQLTripStore.get_trip(trip_id)
+            return FileTripStore._get_trip_internal(trip_id)
+        return await SQLTripStore._get_trip_internal(trip_id)
 
     @staticmethod
     def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
@@ -2147,7 +2160,7 @@ class PublicCheckerArtifactStore:
 
     @staticmethod
     def export_trip_package(trip_id: str) -> Optional[dict]:
-        trip = TripStore.get_trip(trip_id)
+        trip = TripStore._get_trip_internal(trip_id)
         if not trip:
             return None
         return {
@@ -2824,7 +2837,7 @@ def save_processed_trip(
     """
     preserve_created_at: Optional[str] = None
     if preserve_trip_id:
-        existing_trip = TripStore.get_trip(preserve_trip_id)
+        existing_trip = TripStore._get_trip_internal(preserve_trip_id)
         if existing_trip:
             preserve_created_at = existing_trip.get("created_at")
 
@@ -2886,7 +2899,7 @@ async def save_processed_trip_async(
     """Async variant for FastAPI/background tasks and SQL-backed persistence."""
     preserve_created_at: Optional[str] = None
     if preserve_trip_id:
-        existing_trip = TripStore.get_trip(preserve_trip_id)
+        existing_trip = TripStore._get_trip_internal(preserve_trip_id)
         if existing_trip:
             preserve_created_at = existing_trip.get("created_at")
 

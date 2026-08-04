@@ -187,8 +187,8 @@ def optimistic_sync_trip_fields(
     Optimistically reconcile client-side field updates (budget, dates, preferences) directly
     into trip storage and recalculate state transitions instantly.
     """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency_id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     previous_state = trip.get("decision_state", "UNKNOWN")
@@ -267,8 +267,8 @@ async def generate_client_followup_prompt(
     """
     Generate an automated, client-facing follow-up prompt for missing travel inquiry fields.
     """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency_id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     customer_name = trip.get("customer_name") or trip.get("packet", {}).get("traveler_name") or "Valued Client"
@@ -354,8 +354,8 @@ async def stream_trip_events(
     """
     Server-Sent Events (SSE) stream for real-time state sync and trip state notifications.
     """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency_id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     queue: asyncio.Queue = asyncio.Queue()

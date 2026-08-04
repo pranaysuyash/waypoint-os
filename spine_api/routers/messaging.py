@@ -52,8 +52,8 @@ async def send_outbound_message(
     """
     Send an outbound message to a travel client via WhatsApp Cloud API or SendGrid.
     """
-    trip = TripStore.get_trip(body.trip_id)
-    if not trip or trip.get("agency_id") != agency_id:
+    trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     message_id = f"msg_{uuid4().hex[:12]}"
