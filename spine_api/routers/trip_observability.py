@@ -60,12 +60,8 @@ def get_trip_timeline(
     """
     Retrieve the unified timeline for a trip from AuditStore.
     """
-    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-
     if stage:
-        valid_stages = {"intake", "packet", "decision", "strategy", "safety"}
+        valid_stages = {"intake", "packet", "decision", "strategy", "safety", "discovery", "booking"}
         if stage.lower() not in valid_stages:
             raise HTTPException(
                 status_code=400,

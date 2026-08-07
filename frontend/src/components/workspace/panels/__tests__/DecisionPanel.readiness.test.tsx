@@ -80,7 +80,7 @@ describe("DecisionPanel readiness banner", () => {
     render(<DecisionPanel />);
 
     expect(screen.getByText("Readiness")).toBeInTheDocument();
-    expect(screen.getByText("Quote Ready")).toBeInTheDocument();
+    expect(screen.getByText(/Quote Ready/)).toBeInTheDocument();
     expect(screen.getByText(/2 fields needed for Shortlist/i)).toBeInTheDocument();
   });
 
@@ -103,7 +103,7 @@ describe("DecisionPanel readiness banner", () => {
     render(<DecisionPanel trip={trip} />);
 
     expect(screen.getByText("Readiness")).toBeInTheDocument();
-    expect(screen.getByText("Quote Ready")).toBeInTheDocument();
+    expect(screen.getByText(/Quote Ready/)).toBeInTheDocument();
   });
 
   it("prefers result_validation over trip.validation", () => {
@@ -143,7 +143,7 @@ describe("DecisionPanel readiness banner", () => {
     render(<DecisionPanel trip={trip} />);
 
     // Store readiness (quote_ready) should win over trip readiness (intake_minimum)
-    expect(screen.getByText("Quote Ready")).toBeInTheDocument();
+    expect(screen.getByText(/Quote Ready/)).toBeInTheDocument();
     expect(screen.queryByText("Intake")).not.toBeInTheDocument();
   });
 

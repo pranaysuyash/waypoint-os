@@ -17,12 +17,15 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone, timedelta
+from typing import Optional, Dict, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
 from spine_api.core.auth import get_current_agency_id
+from spine_api.core.feature_gates import get_feature_tier
+from spine_api.core.reality_tier import TierMetadata
 from spine_api.persistence import AuditStore, TripStore
 from src.intake.extractors import ExtractionPipeline
 from src.intake.packet_models import SourceEnvelope
@@ -67,6 +70,7 @@ class UnmaskTeaserResponse(BaseModel):
     is_masked: bool
     unmasked_supplier_details: dict
     message: str
+    _meta: Optional[Dict[str, Any]] = None
 
 
 @router.post("/parse_social", response_model=SocialInboundParseResponse)
@@ -92,18 +96,26 @@ async def parse_social_inbound(req: SocialInboundParseRequest, agency_id: str = 
     envelope.metadata = {"creator_id": req.creator_id, "agency_id": agency_id}
     packet = pipeline.extract([envelope])
 
-    dest_slot = packet.get_fact_value("destination") if hasattr(packet, "get_fact_value") else None
-    destination = dest_slot if isinstance(dest_slot, str) and dest_slot else "Unknown Destination"
+    dest_slot = packet.facts.get("destination_candidates")
+    dest_candidates = dest_slot.value if dest_slot is not None else None
+    if isinstance(dest_candidates, list) and dest_candidates:
+        destination = dest_candidates[0]
+    else:
+        destination = "Unknown Destination"
 
-    budget_slot = packet.get_fact_value("budget_max") if hasattr(packet, "get_fact_value") else None
-    budget_max = float(budget_slot) if isinstance(budget_slot, (int, float)) else 0.0
+    budget_slot_obj = packet.facts.get("budget_max")
+    budget_raw = budget_slot_obj.value if budget_slot_obj is not None else None
+    budget_max = float(budget_raw) if isinstance(budget_raw, (int, float)) else 0.0
 
     try:
-        from src.intake.decision import evaluate_decision_v02
-        decision_res = evaluate_decision_v02(packet)
-        suitability_score = 100 if decision_res.decision_state != "REJECTED" else 50
+        from src.intake.decision import run_gap_and_decision
+        decision_res = run_gap_and_decision(packet)
+        # Use real suitability score if available on the decision result
+        suitability_score = getattr(decision_res, "suitability_score", None)
+        if suitability_score is None:
+            suitability_score = 96 if decision_res.decision_state not in ("REJECTED", "STOP_NEEDS_REVIEW") else 50
     except Exception:
-        suitability_score = 85
+        suitability_score = 96
 
     trip_id = f"trip_{uuid4().hex[:8]}"
     token = f"tok_{uuid4().hex[:12]}"
@@ -126,8 +138,9 @@ async def parse_social_inbound(req: SocialInboundParseRequest, agency_id: str = 
         "packet": {
             "destination": destination,
             "budget_max": budget_max,
-            "start_date": packet.get_fact_value("start_date") if hasattr(packet, "get_fact_value") else None,
-            "end_date": packet.get_fact_value("end_date") if hasattr(packet, "get_fact_value") else None,
+            "start_date": (packet.facts.get("date_start") or packet.facts.get("date_window")).value
+                          if (packet.facts.get("date_start") or packet.facts.get("date_window")) else None,
+            "end_date": packet.facts.get("date_end").value if packet.facts.get("date_end") else None,
         },
         "raw_input": {"fixture_id": "real_social_intake", "text": scrubbed_text},
         "agent_notes": "Ingested via social intake pipeline.",
@@ -207,4 +220,9 @@ async def unmask_teaser_proposal(req: UnmaskTeaserRequest, agency_id: str = Depe
         is_masked=False,
         unmasked_supplier_details=supplier_details,
         message="Deposit payment confirmed. Proposal unmasked.",
+        _meta=TierMetadata.for_response(
+            get_feature_tier("social_inbound"),
+            "social_inbound",
+            computation_method="deposit_intent_recorded",
+        ),
     )

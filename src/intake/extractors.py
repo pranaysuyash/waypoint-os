@@ -87,7 +87,7 @@ _LEADING_ORIGIN_HINTS = frozenset({
     "trip", "travel", "planning", "planned", "looking", "want", "wants",
     "need", "needs", "going", "visit", "holiday", "vacation",
     "corporate", "leisure", "honeymoon", "wedding",
-    "to", "for", "from",
+    "to", "for",
 })
 
 _NON_DESTINATION_PLACEHOLDERS = frozenset({
@@ -511,6 +511,10 @@ def _extract_leading_origin_city(text: str) -> Optional[str]:
             return city
 
         if _DESTINATION_RE.search(" ".join(remainder)):
+            # "City from Another_City" → first city is destination, not origin.
+            # Remainder starting with "from" means the pattern is "DEST from ORIGIN".
+            if remainder and remainder[0].lower() == "from":
+                continue
             return city
 
     return None

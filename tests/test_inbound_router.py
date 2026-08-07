@@ -11,7 +11,6 @@ Tests:
 import os
 
 os.environ["RUNNING_TESTS"] = "1"
-os.environ["TRIPSTORE_BACKEND"] = "file"
 if not os.environ.get("JWT_SECRET"):
     os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-only-32byt"
 
@@ -27,6 +26,7 @@ AuditStore = persistence.AuditStore
 def setup_test_privacy(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
     monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 
 def test_inbound_parse_chrome_extension(session_client):

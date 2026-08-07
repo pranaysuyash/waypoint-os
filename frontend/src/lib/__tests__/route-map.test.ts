@@ -48,9 +48,15 @@ describe("resolveBackendPath", () => {
     expect(resolveBackendPath(["unmapped", "resource"])).toBeNull();
   });
 
-  it("resolves trip timeline paths with non-UUID trip IDs", () => {
+  it("resolves trip timeline and stage transition paths with non-UUID trip IDs", () => {
     expect(resolveBackendPath(["trips", "trip_1cad495b9586", "timeline"])).toBe(
       "api/trips/trip_1cad495b9586/timeline"
+    );
+    expect(resolveBackendPath(["trips", "trip_1cad495b9586", "stage"])).toBe(
+      "api/v1/trips/trip_1cad495b9586/stage"
+    );
+    expect(resolveBackendPath(["v1", "trips", "trip_1cad495b9586", "stage"])).toBe(
+      "api/v1/trips/trip_1cad495b9586/stage"
     );
   });
 

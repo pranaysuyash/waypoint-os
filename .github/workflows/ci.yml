@@ -170,5 +170,5 @@ jobs:
         run: npx tsc -p tsconfig.json --noEmit
       - name: ESLint
         run: npm run lint
-      - name: Route-map guard tests
-        run: npm test -- --run src/lib/__tests__/route-map.test.ts
+      - name: Frontend Vitest test suite
+        run: npm test -- --run

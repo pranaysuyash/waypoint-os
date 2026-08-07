@@ -56,6 +56,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY src/ ./src/
 COPY spine_api/ ./spine_api/
 COPY data/ ./data/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./alembic.ini
+COPY scripts/ ./scripts/
 COPY pyproject.toml uv.lock ./
 
 # Non-root user for security

@@ -38,3 +38,13 @@ def test_production_boot_assertions_pass_with_postgres_alias():
     with patch.dict(os.environ, prod_env):
         run_startup_assertions(strict=True)
         assert TripStore._backend() is SQLTripStore
+
+
+def test_server_get_tripstore_backend_normalizes_aliases():
+    from spine_api.server import _get_tripstore_backend
+    for alias in ("sql", "postgres", "postgresql"):
+        with patch.dict(os.environ, {"TRIPSTORE_BACKEND": alias}):
+            assert _get_tripstore_backend() == "sql"
+    for alias in ("file", "json"):
+        with patch.dict(os.environ, {"TRIPSTORE_BACKEND": alias}):
+            assert _get_tripstore_backend() == "file"

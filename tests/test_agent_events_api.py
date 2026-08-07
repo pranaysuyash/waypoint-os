@@ -9,7 +9,7 @@ def test_get_trip_agent_events_filters_and_returns_payload(session_client, monke
     trip_id = "trip_agent_evt_1"
     agency_id = TEST_AGENCY_ID
 
-    def _fake_get_trip(_trip_id: str):
+    def _fake_get_trip(*args, **kwargs):
         return {"id": trip_id, "agency_id": agency_id}
 
     def _fake_get_agent_events_for_trip(trip_id: str, limit: int = 100):
@@ -21,6 +21,7 @@ def test_get_trip_agent_events_filters_and_returns_payload(session_client, monke
         ]
 
     monkeypatch.setattr(server.TripStore, "get_trip", _fake_get_trip)
+    monkeypatch.setattr(server.TripStore, "get_trip_for_agency", _fake_get_trip)
     monkeypatch.setattr(server.AuditStore, "get_agent_events_for_trip", _fake_get_agent_events_for_trip)
 
     resp = session_client.get(f"/trips/{trip_id}/agent-events?limit=3")

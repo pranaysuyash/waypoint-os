@@ -24,6 +24,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from spine_api.core.auth import get_current_agency_id
+from spine_api.core.feature_gates import get_feature_tier
+from spine_api.core.reality_tier import TierMetadata
 from spine_api.persistence import AuditStore
 
 logger = logging.getLogger("spine_api.supplier")
@@ -81,6 +83,7 @@ class SoftHoldResponse(BaseModel):
     estimated_agency_margin: float
     expires_at: str
     status: str
+    _meta: Optional[Dict[str, Any]] = None
 
 
 @router.post("/contracts/upload", response_model=ContractUploadResponse)
@@ -226,4 +229,10 @@ async def create_inventory_soft_hold(
         estimated_agency_margin=agency_margin,
         expires_at=expires_at,
         status="SOFT_HOLD_ACTIVE",
+        _meta=TierMetadata.for_response(
+            get_feature_tier("supplier_management"),
+            "supplier_management",
+            computation_method="stored_contract_rate_hold",
+            missing_for_upgrade=["supplier_hold_gds_api"],
+        ),
     )

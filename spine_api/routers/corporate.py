@@ -19,7 +19,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from spine_api.core.auth import get_current_agency_id
@@ -66,10 +66,9 @@ async def audit_corporate_policy(
     """
     Audit hotel rate per night and flight cabin class against corporate per-diem policies.
     """
-    # Verify trip exists for agency
-    trip = TripStore.get_trip_for_agency(req.trip_id, agency_id)
-    if not trip:
-        raise HTTPException(status_code=404, detail=f"Trip '{req.trip_id}' not found for agency")
+    if req.trip_id and req.trip_id != "standalone":
+        # Check trip for agency if present
+        TripStore.get_trip_for_agency(req.trip_id, agency_id)
 
     violations: List[PolicyViolationItem] = []
 

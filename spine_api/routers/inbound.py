@@ -126,7 +126,7 @@ def parse_inbound_inquiry(
             "updated_at": now_str,
         }
 
-        TripStore.save_trip(trip_record)
+        TripStore.save_trip(trip_record, agency_id=agency_id)
 
         AuditStore.log_event(
             event_type="inbound_parse",

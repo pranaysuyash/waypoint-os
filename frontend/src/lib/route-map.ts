@@ -111,6 +111,8 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["reviews/bulk-action", { backendPath: "analytics/reviews/bulk-action" }],
 
   // ── Dynamic patterns (last segment is an ID) ─────────────────
+  ["trips/{id}/stage", { backendPath: "api/v1/trips/{id}/stage" }],
+  ["v1/trips/{id}/stage", { backendPath: "api/v1/trips/{id}/stage" }],
   ["trips/{id}/timeline", { backendPath: "api/trips/{id}/timeline" }],
   ["trips/{id}/agent-events", { backendPath: "trips/{id}/agent-events" }],
   ["trips/{id}/assign", { backendPath: "trips/{id}/assign" }],

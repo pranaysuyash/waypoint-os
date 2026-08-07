@@ -68,4 +68,4 @@ class TestNoUnscopedGetTripInRouters:
             text=True,
         )
         # Check script output structure
-        assert "TripStore" in result.stdout or "TripStore" in result.stderr or result.returncode in (0, 1)
+        assert result.returncode == 0, f"check_unscoped_trip_access.sh failed: stdout={result.stdout}, stderr={result.stderr}"

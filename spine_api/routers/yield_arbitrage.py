@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field
 from spine_api.contract import SupplierOption, YieldArbitrageResponse
 from spine_api.core.auth import get_current_agency_id
 from spine_api.core.feature_gates import get_feature_tier
-from spine_api.core.reality_tier import TierMetadata
+from spine_api.core.reality_tier import TierMetadata, assert_tier_capability
 from spine_api.persistence import AuditStore, TripStore
 from spine_api.routers.supplier import CONTRACTS_STORE
 
@@ -149,9 +149,12 @@ async def swap_supplier_option(
     """
     Apply a 1-click supplier swap to maximize commission yield on a trip.
     """
+    tier = get_feature_tier("yield_arbitrage")
     trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
+
+    assert_tier_capability(tier, "can_mutate_booking_state", "yield_arbitrage")
 
     trip["selected_supplier"] = body.supplier_name
     trip["yield_optimized"] = True

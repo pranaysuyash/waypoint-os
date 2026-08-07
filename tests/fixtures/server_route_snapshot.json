@@ -1,5 +1,5 @@
 {
-  "route_count": 209,
+  "route_count": 211,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1042,6 +1042,22 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/supplier/contracts/upload",
+      "name": "upload_supplier_contract",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/supplier/inventory/soft-hold",
+      "name": "create_inventory_soft_hold",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/team/assign",
       "name": "assign_trip_to_team_member",
       "methods": [
@@ -1062,6 +1078,14 @@
       "name": "submit_review_signoff",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/stage",
+      "name": "transition_trip_stage",
+      "methods": [
+        "PATCH"
       ],
       "operation_id": null
     },
@@ -1242,14 +1266,6 @@
       "operation_id": null
     },
     {
-      "path": "/health",
-      "name": "health_and_metrics_endpoint",
-      "methods": [
-        "GET"
-      ],
-      "operation_id": null
-    },
-    {
       "path": "/inbox",
       "name": "get_inbox",
       "methods": [
@@ -1315,7 +1331,7 @@
     },
     {
       "path": "/metrics",
-      "name": "health_and_metrics_endpoint",
+      "name": "metrics_endpoint",
       "methods": [
         "GET"
       ],

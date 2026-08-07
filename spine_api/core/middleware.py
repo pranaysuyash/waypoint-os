@@ -20,6 +20,8 @@ from spine_api.core.database import async_session_maker
 from spine_api.core.security import decode_token_safe
 from spine_api.models.tenant import User
 
+from spine_api.core.auth import _jwt_agency_id
+
 logger = logging.getLogger("spine_api.middleware")
 
 PUBLIC_PATHS: set[str] = {"/health", "/docs", "/openapi.json", "/redoc"}
@@ -67,6 +69,10 @@ class AuthMiddleware:
             await self.app(scope, receive, send)
             return
 
+        if os.environ.get("SPINE_API_DISABLE_AUTH"):
+            await self.app(scope, receive, send)
+            return
+
         # Build a FastAPI Request from the ASGI scope to access headers/cookies.
         # We intercept before the app runs so we don't consume the body.
         request = Request(scope, receive)
@@ -106,6 +112,8 @@ class AuthMiddleware:
             )
             await response(scope, receive, send)
             return
+
+        _jwt_agency_id.set(payload.get("agency_id"))
 
         async with async_session_maker() as db:
             result = await db.execute(select(User).where(User.id == user_id))

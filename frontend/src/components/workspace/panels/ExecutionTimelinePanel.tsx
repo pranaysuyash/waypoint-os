@@ -229,7 +229,7 @@ export default function ExecutionTimelinePanel({ tripId }: ExecutionTimelinePane
       <div className="flex gap-1 flex-wrap">
         {Object.entries(CATEGORY_LABELS).map((entry) => {
           const [key, label] = entry;
-          const count = key === "all" ? (summary.total ?? 0) : (summary[key] ?? 0);
+          const count = key === "all" ? (summary?.total ?? 0) : (summary?.[key] ?? 0);
           return (
             <button
               key={key}

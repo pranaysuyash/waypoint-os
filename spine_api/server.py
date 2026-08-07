@@ -212,9 +212,11 @@ def _get_tripstore_backend() -> str:
     backend = raw_backend
     if backend == "json":
         backend = "file"
+    elif backend in {"postgres", "postgresql"}:
+        backend = "sql"
     if backend not in {"file", "sql"}:
         raise RuntimeError(
-            f"Unknown TRIPSTORE_BACKEND='{backend}'. Allowed values: file, json, sql."
+            f"Unknown TRIPSTORE_BACKEND='{backend}'. Allowed values: file, json, sql, postgres, postgresql."
         )
     return backend
 
@@ -1168,6 +1170,7 @@ app.include_router(extraction_router.router, dependencies=[Depends(_auth_or_skip
 app.include_router(kdd_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(inbound_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(trust_scorecard_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(trust_scorecard_router.public_router)
 app.include_router(messaging_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(yield_arbitrage_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(concierge_router.router, dependencies=[Depends(_auth_or_skip)])

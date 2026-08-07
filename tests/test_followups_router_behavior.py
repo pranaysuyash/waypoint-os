@@ -107,7 +107,7 @@ def test_mark_followup_complete_success_and_audit(session_client, monkeypatch):
 
     captured = {}
 
-    monkeypatch.setattr(followups.TripStore, "get_trip", lambda trip_id: trip)
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: trip)
 
     def _update_trip(trip_id, updates):
         return {**trip, **updates, "id": trip_id}
@@ -135,7 +135,7 @@ def test_mark_followup_complete_success_and_audit(session_client, monkeypatch):
 
 
 def test_mark_followup_complete_not_found(session_client, monkeypatch):
-    monkeypatch.setattr(followups.TripStore, "get_trip", lambda trip_id: None)
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: None)
 
     resp = session_client.patch("/followups/missing-trip/mark-complete")
     assert resp.status_code == 404
@@ -144,7 +144,7 @@ def test_mark_followup_complete_not_found(session_client, monkeypatch):
 
 def test_mark_followup_complete_without_scheduled_followup(session_client, monkeypatch):
     trip = {"id": "trip-1", "agency_id": "agency_test"}
-    monkeypatch.setattr(followups.TripStore, "get_trip", lambda trip_id: trip)
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: trip)
 
     resp = session_client.patch("/followups/trip-1/mark-complete")
     assert resp.status_code == 400
@@ -161,7 +161,7 @@ def test_snooze_followup_success_and_audit(session_client, monkeypatch):
 
     captured = {}
 
-    monkeypatch.setattr(followups.TripStore, "get_trip", lambda trip_id: trip)
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: trip)
 
     def _update_trip(trip_id, updates):
         return {**trip, **updates, "id": trip_id}
@@ -198,7 +198,7 @@ def test_snooze_followup_invalid_days(session_client, monkeypatch):
         "agency_id": "agency_test",
         "follow_up_due_date": "2026-05-15T14:00:00+00:00",
     }
-    monkeypatch.setattr(followups.TripStore, "get_trip", lambda trip_id: trip)
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: trip)
 
     resp = session_client.patch("/followups/trip-2/snooze", params={"days": 2})
     assert resp.status_code == 400
@@ -211,7 +211,7 @@ def test_snooze_followup_invalid_due_date_format(session_client, monkeypatch):
         "agency_id": "agency_test",
         "follow_up_due_date": "not-a-date",
     }
-    monkeypatch.setattr(followups.TripStore, "get_trip", lambda trip_id: trip)
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: trip)
 
     resp = session_client.patch("/followups/trip-2/snooze", params={"days": 1})
     assert resp.status_code == 400
@@ -229,7 +229,7 @@ def test_reschedule_followup_success_and_audit(session_client, monkeypatch):
 
     captured = {}
 
-    monkeypatch.setattr(followups.TripStore, "get_trip", lambda trip_id: trip)
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: trip)
 
     def _update_trip(trip_id, updates):
         return {**trip, **updates, "id": trip_id}
@@ -262,7 +262,7 @@ def test_reschedule_followup_invalid_date_format(session_client, monkeypatch):
         "agency_id": "agency_test",
         "follow_up_due_date": "2026-05-20T10:00:00+00:00",
     }
-    monkeypatch.setattr(followups.TripStore, "get_trip", lambda trip_id: trip)
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: trip)
 
     resp = session_client.patch("/followups/trip-3/reschedule", params={"new_date": "05/25/2026 09:30"})
     assert resp.status_code == 400

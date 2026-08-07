@@ -174,7 +174,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
   it("sends normal_intake operating_mode in spine payload by default", async () => {
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Continue to options/i });
+    const processButton = screen.getByRole("button", { name: /Build trip options/i });
     fireEvent.click(processButton);
 
     await waitFor(() => {
@@ -194,7 +194,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
 
       render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-      const processButton = screen.getByRole("button", { name: /Continue to options/i });
+      const processButton = screen.getByRole("button", { name: /Build trip options/i });
       fireEvent.click(processButton);
 
       await waitFor(() => {
@@ -220,7 +220,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
 
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Continue to options/i });
+    const processButton = screen.getByRole("button", { name: /Build trip options/i });
     fireEvent.click(processButton);
 
     await waitFor(() => {
@@ -234,7 +234,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
   it("sends retention_consent=true in the agency payload", async () => {
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Continue to options/i });
+    const processButton = screen.getByRole("button", { name: /Build trip options/i });
     fireEvent.click(processButton);
 
     await waitFor(() => {
@@ -250,7 +250,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
 
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Continue to options/i });
+    const processButton = screen.getByRole("button", { name: /Build trip options/i });
     fireEvent.click(processButton);
 
     await waitFor(() => {

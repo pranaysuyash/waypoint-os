@@ -4,24 +4,17 @@ tests/test_team_workflows_router.py — Unit & Integration tests for Agency Team
 
 import os
 import pytest
-from starlette.testclient import TestClient
 
 os.environ["RUNNING_TESTS"] = "1"
-os.environ["TRIPSTORE_BACKEND"] = "file"
 
 from spine_api.persistence import TripStore
-from spine_api.server import app
-
-
-@pytest.fixture
-def session_client():
-    return TestClient(app)
 
 
 @pytest.fixture(autouse=True)
 def setup_test_env(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
     monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 
 def test_assign_trip_to_team_member(session_client):

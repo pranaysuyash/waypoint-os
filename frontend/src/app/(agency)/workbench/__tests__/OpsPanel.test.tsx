@@ -6,6 +6,16 @@ import OpsPanel from '../OpsPanel';
 // OpsPanel no longer reads from the Workbench store — readiness comes from trip.validation only.
 // No useWorkbenchStore mock needed here.
 
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: (selector?: (state: { membership: { role: string; agency_id: string }; isAuthenticated: boolean }) => unknown) => {
+    const state = {
+      membership: { role: 'owner', agency_id: 'agency_1' },
+      isAuthenticated: true,
+    };
+    return selector ? selector(state) : state;
+  },
+}));
+
 const mockApi = {
   getBookingData: vi.fn(),
   updateBookingData: vi.fn(),
@@ -26,6 +36,9 @@ const mockApi = {
   getExtraction: vi.fn(),
   applyExtraction: vi.fn(),
   rejectExtraction: vi.fn(),
+  getConfirmations: vi.fn(),
+  getExecutionTimeline: vi.fn(),
+  getBookingTasks: vi.fn(),
 };
 
 vi.mock('@/lib/api-client', () => ({
@@ -38,6 +51,9 @@ vi.mock('@/lib/api-client', () => ({
   getPendingBookingData: (...args: unknown[]) => mockApi.getPendingBookingData(...args),
   acceptPendingBookingData: (...args: unknown[]) => mockApi.acceptPendingBookingData(...args),
   rejectPendingBookingData: (...args: unknown[]) => mockApi.rejectPendingBookingData(...args),
+  getConfirmations: (...args: unknown[]) => mockApi.getConfirmations(...args),
+  getExecutionTimeline: (...args: unknown[]) => mockApi.getExecutionTimeline(...args),
+  getBookingTasks: (...args: unknown[]) => mockApi.getBookingTasks(...args),
   getDocuments: (...args: unknown[]) => mockApi.getDocuments(...args),
   uploadDocument: (...args: unknown[]) => mockApi.uploadDocument(...args),
   acceptDocument: (...args: unknown[]) => mockApi.acceptDocument(...args),
@@ -152,12 +168,17 @@ describe('OpsPanel extraction apply flow', () => {
           document_type: 'passport',
           status: 'accepted',
           uploaded_by: 'agent',
+          file_size_bytes: 1024,
           created_at: '2026-05-06T00:00:00Z',
         },
       ],
     });
     mockApi.getCollectionLink.mockRejectedValue(new Error('not found'));
     mockApi.getPendingBookingData.mockRejectedValue(new Error('not found'));
+    mockApi.getExtraction.mockResolvedValue(EXTRACTION_RESPONSE);
+    mockApi.getConfirmations.mockResolvedValue({ confirmations: [] });
+    mockApi.getExecutionTimeline.mockResolvedValue({ events: [], summary: { total: 0 } });
+    mockApi.getBookingTasks.mockResolvedValue({ tasks: [] });
   }
 
   const EXTRACTION_RESPONSE = {
@@ -185,6 +206,7 @@ describe('OpsPanel extraction apply flow', () => {
     const user = userEvent.setup();
     render(<OpsPanel trip={tripAtStage('proposal')} />);
 
+    await screen.findByTestId(`ops-document-${DOC_ID}`);
     const extractBtn = await screen.findByTestId(`ops-doc-extract-btn-${DOC_ID}`);
     await user.click(extractBtn);
 

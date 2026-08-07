@@ -136,8 +136,8 @@ class TestExtractionRouter:
         with patch("spine_api.services.extraction_service.get_version_snapshot_for_attempt", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = mock_attempt
 
-            client = TestClient(app)
-            response = client.get("/api/extractions/att_001/version-snapshot")
+            with TestClient(app) as client:
+                response = client.get("/api/extractions/att_001/version-snapshot")
 
         assert response.status_code == 200
         data = response.json()
@@ -154,8 +154,8 @@ class TestExtractionRouter:
         with patch("spine_api.services.extraction_service.get_version_snapshot_for_attempt", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = None
 
-            client = TestClient(app)
-            response = client.get("/api/extractions/nonexistent/version-snapshot")
+            with TestClient(app) as client:
+                response = client.get("/api/extractions/nonexistent/version-snapshot")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()

@@ -326,7 +326,7 @@ describe('OverviewPage', () => {
   it('keeps the trip list visible when planning already has trips', () => {
     render(<OverviewPage />);
 
-    expect(screen.getByRole('link', { name: /open missing details/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /open trip/i })[0]).toBeInTheDocument();
     expect(screen.queryByText('No trips in planning yet')).not.toBeInTheDocument();
   });
 

@@ -12,6 +12,11 @@ from spine_api import persistence
 
 os.environ["RUNNING_TESTS"] = "1"
 
+
+@pytest.fixture(autouse=True)
+def setup_test_env(monkeypatch):
+    monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+
 @pytest.mark.asyncio
 async def test_concurrent_audit_logging_chain_integrity():
     """Verify SHA-256 block hash integrity under concurrent multi-agent audit logging."""
@@ -49,18 +54,24 @@ async def test_concurrent_audit_logging_chain_integrity():
 async def test_concurrent_trip_store_isolation():
     """Verify concurrent trip store updates do not cause race conditions or state corruption."""
     trip_store = persistence.TripStore()
+    agency_id = persistence.TEST_AGENCY_ID
 
     async def create_and_update_trip(trip_idx: int):
         trip_id = f"trip_conc_{trip_idx}"
         data = {
             "id": trip_id,
-            "agency_id": "default_agency",
+            "agency_id": agency_id,
             "destination": "Singapore",
             "status": "assigned",
             "party": 2,
+            "raw_input": {"fixture_id": "synthetic_concurrency_test"},
         }
-        trip_store.save_trip(data)
-        retrieved = trip_store.get_trip(trip_id)
+        await trip_store.asave_trip(data, agency_id=agency_id)
+        backend = trip_store._backend()
+        if backend is persistence.FileTripStore:
+            retrieved = persistence.FileTripStore.get_trip_for_agency(trip_id, agency_id)
+        else:
+            retrieved = await persistence.SQLTripStore.get_trip_for_agency(trip_id, agency_id)
         assert retrieved is not None
 
     tasks = [create_and_update_trip(i) for i in range(25)]

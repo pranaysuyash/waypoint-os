@@ -61,6 +61,7 @@ class TestYieldArbitrageEngine:
             assert exc_info.value.status_code == 404
 
     async def test_swap_supplier_success(self):
+        from spine_api.core.reality_tier import RealityTier
         trip_data = {
             "id": "trip_1",
             "agency_id": "agency_1",
@@ -71,7 +72,8 @@ class TestYieldArbitrageEngine:
             supplier_name="Kyoto Luxury DMC",
         )
         with patch.object(TripStore, "get_trip_for_agency", return_value=trip_data), \
-             patch.object(TripStore, "save_trip") as mock_save:
+             patch.object(TripStore, "save_trip") as mock_save, \
+             patch("spine_api.routers.yield_arbitrage.get_feature_tier", return_value=RealityTier.REAL):
             res = await swap_supplier_option(req, agency_id="agency_1")
             assert res["ok"] is True
             assert res["selected_supplier"] == "Kyoto Luxury DMC"

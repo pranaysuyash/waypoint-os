@@ -2,19 +2,16 @@
 Test Suite for DMC & Preferred Supplier Wholesale Contract Ingestion & Inventory Soft-Hold Engine
 """
 
-import os
-from fastapi.testclient import TestClient
-
-# Disable auth & set beta privacy mode for test environment
-os.environ["SPINE_API_DISABLE_AUTH"] = "1"
-os.environ["DATA_PRIVACY_MODE"] = "beta"
-
-from spine_api.server import app
-
-client = TestClient(app)
+import pytest
 
 
-def test_upload_supplier_contract_success():
+@pytest.fixture(autouse=True)
+def setup_test_env(monkeypatch):
+    monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
+    monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+
+
+def test_upload_supplier_contract_success(session_client):
     """Verify uploading a wholesale DMC rate sheet."""
     payload = {
         "supplier_name": "Marrakech Destination Management Co.",
@@ -42,7 +39,7 @@ def test_upload_supplier_contract_success():
         "terms_and_conditions": "100% refundable up to 7 days prior.",
     }
 
-    res = client.post("/api/v1/supplier/contracts/upload", json=payload)
+    res = session_client.post("/api/v1/supplier/contracts/upload", json=payload)
     assert res.status_code == 200
     data = res.json()
 
@@ -52,7 +49,7 @@ def test_upload_supplier_contract_success():
     assert data["status"] == "ACTIVE"
 
 
-def test_create_inventory_soft_hold_success():
+def test_create_inventory_soft_hold_success(session_client):
     """Verify reserving a 48h zero-cost soft hold on DMC wholesale inventory."""
     # 1. Upload contract first
     upload_payload = {
@@ -66,7 +63,7 @@ def test_create_inventory_soft_hold_success():
             }
         ],
     }
-    upload_res = client.post("/api/v1/supplier/contracts/upload", json=upload_payload)
+    upload_res = session_client.post("/api/v1/supplier/contracts/upload", json=upload_payload)
     assert upload_res.status_code == 200
     contract_id = upload_res.json()["contract_id"]
 
@@ -80,7 +77,7 @@ def test_create_inventory_soft_hold_success():
         "agent_id": "agent_test",
     }
 
-    hold_res = client.post("/api/v1/supplier/inventory/soft-hold", json=hold_payload)
+    hold_res = session_client.post("/api/v1/supplier/inventory/soft-hold", json=hold_payload)
     assert hold_res.status_code == 200
     hold_data = hold_res.json()
 

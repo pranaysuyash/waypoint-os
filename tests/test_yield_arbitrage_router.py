@@ -4,23 +4,16 @@ tests/test_yield_arbitrage_router.py — Unit & Integration tests for Yield Arbi
 
 import os
 import pytest
-from starlette.testclient import TestClient
 
 os.environ["RUNNING_TESTS"] = "1"
-os.environ["TRIPSTORE_BACKEND"] = "file"
 
-from spine_api.server import app
-
-
-@pytest.fixture
-def session_client():
-    return TestClient(app)
 
 
 @pytest.fixture(autouse=True)
 def setup_test_env(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
     monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 
 def test_compute_yield_arbitrage(session_client):

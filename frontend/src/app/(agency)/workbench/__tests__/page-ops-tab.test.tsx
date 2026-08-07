@@ -234,7 +234,7 @@ describe('Workbench ops tab visibility', () => {
 
     render(<WorkbenchPage />);
 
-    expect(mockRouterReplace).toHaveBeenCalledWith('?tab=frontier', { scroll: false });
+    expect(mockRouterReplace).toHaveBeenCalledWith('/workbench?tab=frontier', { scroll: false });
   });
 
   it('keeps Trip Details open when a completed run already includes follow-up blockers', () => {
@@ -301,7 +301,7 @@ describe('Workbench ops tab visibility', () => {
     };
     rerender(<WorkbenchPage />);
 
-    expect(mockRouterReplace).toHaveBeenCalledWith('?tab=frontier', { scroll: false });
+    expect(mockRouterReplace).toHaveBeenCalledWith('/workbench?tab=frontier', { scroll: false });
   });
 });
 

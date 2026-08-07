@@ -5,25 +5,19 @@ tests/test_concierge_router.py — Unit & Integration tests for Autonomic Ghost 
 import os
 from unittest.mock import patch
 import pytest
-from starlette.testclient import TestClient
 
 from spine_api.contract import AutoRebookRequest
 from spine_api.persistence import TEST_AGENCY_ID, TripStore
 from spine_api.routers.concierge import execute_auto_rebook, monitor_trip_status
-from spine_api.server import app
 
 os.environ["RUNNING_TESTS"] = "1"
-os.environ["TRIPSTORE_BACKEND"] = "file"
 
-
-@pytest.fixture
-def session_client():
-    return TestClient(app)
 
 
 @pytest.fixture(autouse=True)
 def setup_test_env(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 
 @pytest.mark.asyncio

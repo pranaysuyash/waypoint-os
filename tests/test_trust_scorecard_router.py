@@ -4,23 +4,16 @@ tests/test_trust_scorecard_router.py — Unit & Integration tests for Visual Tru
 
 import os
 import pytest
-from starlette.testclient import TestClient
 
 os.environ["RUNNING_TESTS"] = "1"
-os.environ["TRIPSTORE_BACKEND"] = "file"
 
-from spine_api.server import app
-
-
-@pytest.fixture
-def session_client():
-    return TestClient(app)
 
 
 @pytest.fixture(autouse=True)
 def setup_test_env(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
     monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 
 def test_get_proposal_trust_scorecard(session_client):
@@ -36,7 +29,6 @@ def test_get_proposal_trust_scorecard(session_client):
         },
         headers={"X-Agency-ID": "agency_scorecard_test"},
     ).json()
-
     trip_id = inbound_res["trip_id"]
 
     response = session_client.get(

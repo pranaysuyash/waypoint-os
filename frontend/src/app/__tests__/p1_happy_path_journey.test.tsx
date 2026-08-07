@@ -201,7 +201,7 @@ describe("P1 Happy Path Journey", () => {
     });
     expect(setOperatingModeMock).toHaveBeenCalledWith("emergency");
 
-    fireEvent.click(screen.getByRole("button", { name: /Continue to options/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Build trip options/i }));
 
     await waitFor(() => {
       expect(executeMock).toHaveBeenCalledTimes(1);

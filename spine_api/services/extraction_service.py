@@ -705,7 +705,7 @@ async def apply_extraction(db, document, extraction, fields_to_apply: list[str],
     await asyncio.to_thread(TripStore.update_trip, extraction.trip_id, {"booking_data": booking_data})
 
     # Recompute readiness using same pattern as Phase 4A accept
-    updated_trip = await asyncio.to_thread(TripStore.get_trip, extraction.trip_id)
+    updated_trip = await TripStore.aget_trip(extraction.trip_id)
     if updated_trip:
         from intake.readiness import compute_readiness
         from intake.packet_models import CanonicalPacket

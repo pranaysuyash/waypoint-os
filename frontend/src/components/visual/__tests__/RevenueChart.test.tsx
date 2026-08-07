@@ -48,7 +48,7 @@ describe('RevenueChart', () => {
 
     render(<RevenueChart data={SAMPLE_DATA} />);
 
-    expect(screen.getByRole('application')).toBeInTheDocument();
+    expect(screen.getByText('Monthly Trend')).toBeInTheDocument();
   });
 
   it('renders an empty state when no data is provided', () => {

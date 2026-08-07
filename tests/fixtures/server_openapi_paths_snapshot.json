@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 179,
+  "openapi_path_count": 182,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -109,9 +109,12 @@
     "/api/v1/proposals/token/{token}",
     "/api/v1/proposals/token/{token}/accept",
     "/api/v1/proposals/{trip_id}/trust-scorecard",
+    "/api/v1/supplier/contracts/upload",
+    "/api/v1/supplier/inventory/soft-hold",
     "/api/v1/team/assign",
     "/api/v1/team/high-value-gate-check/{trip_id}",
     "/api/v1/team/review-signoff",
+    "/api/v1/trips/{trip_id}/stage",
     "/api/v1/yield/arbitrage/{trip_id}",
     "/api/v1/yield/opportunities",
     "/api/v1/yield/swap-supplier",

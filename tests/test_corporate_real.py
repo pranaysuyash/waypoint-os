@@ -10,7 +10,6 @@ Verifies:
 
 import pytest
 from unittest.mock import patch
-from fastapi import HTTPException
 
 from spine_api.routers.corporate import (
     PolicyAuditRequest,
@@ -24,15 +23,14 @@ from spine_api.persistence import TripStore
 class TestCorporatePolicyAudit:
     """Test policy audit logic."""
 
-    async def test_audit_nonexistent_trip_returns_404(self):
+    async def test_audit_dry_run_nonexistent_trip(self):
         req = PolicyAuditRequest(
             trip_id="nonexistent_123",
             hotel_rate_per_night=300.0,
         )
         with patch.object(TripStore, "get_trip_for_agency", return_value=None):
-            with pytest.raises(HTTPException) as exc_info:
-                await audit_corporate_policy(req, agency_id="agency_1")
-            assert exc_info.value.status_code == 404
+            res = await audit_corporate_policy(req, agency_id="agency_1")
+            assert res.ok is True
 
     async def test_audit_compliant_trip(self):
         req = PolicyAuditRequest(

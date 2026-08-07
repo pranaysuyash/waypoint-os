@@ -343,6 +343,11 @@ class FileTripStore:
             return json.load(f)
 
     @staticmethod
+    def get_trip(trip_id: str) -> Optional[dict]:
+        """Get a trip by ID (alias for internal lookup)."""
+        return FileTripStore._get_trip_internal(trip_id)
+
+    @staticmethod
     def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
         """Get a trip by ID if it belongs to the given agency."""
         trip = FileTripStore._get_trip_internal(trip_id)
@@ -698,7 +703,7 @@ class SQLTripStore:
 
     @staticmethod
     def _to_dict(trip_obj: Trip) -> dict:
-        return {
+        res = {
             "id": trip_obj.id,
             "run_id": trip_obj.run_id,
             "agency_id": trip_obj.agency_id,
@@ -728,6 +733,13 @@ class SQLTripStore:
             "created_at": trip_obj.created_at.isoformat() if trip_obj.created_at else None,
             "updated_at": trip_obj.updated_at.isoformat() if trip_obj.updated_at else None,
         }
+        if trip_obj.analytics and isinstance(trip_obj.analytics, dict):
+            extra = trip_obj.analytics.get("_extra")
+            if isinstance(extra, dict):
+                for k, v in extra.items():
+                    if k not in res:
+                        res[k] = v
+        return res
 
     @staticmethod
     def _to_summary_dict(row: Any) -> dict:
@@ -819,6 +831,15 @@ class SQLTripStore:
             "created_at": SQLTripStore._parse_datetime(trip_data.get("created_at")) or datetime.now(timezone.utc),
             "updated_at": SQLTripStore._parse_datetime(trip_data.get("updated_at")),
         }
+        known_model_keys = set(model_data.keys())
+        unmapped = {k: v for k, v in trip_data.items() if k not in known_model_keys and k != "saved_at"}
+        if unmapped:
+            analytics_dict = dict(model_data.get("analytics") or {})
+            existing_extra = dict(analytics_dict.get("_extra") or {})
+            existing_extra.update(unmapped)
+            analytics_dict["_extra"] = existing_extra
+            model_data["analytics"] = analytics_dict
+
         if not model_data["agency_id"]:
             raise ValueError("SQLTripStore requires agency_id")
 
@@ -861,6 +882,10 @@ class SQLTripStore:
         async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
             return SQLTripStore._to_dict(trip_obj) if trip_obj else None
+
+    @staticmethod
+    async def get_trip(trip_id: str) -> Optional[dict]:
+        return await SQLTripStore._get_trip_internal(trip_id)
 
     @staticmethod
     async def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
@@ -1425,26 +1450,64 @@ class TripStore:
         return _run_async_blocking(SQLTripStore._get_trip_internal(trip_id))
 
     @staticmethod
+    def get_trip(trip_id: str) -> Optional[dict]:
+        """System-level internal trip lookup by ID."""
+        return TripStore._get_trip_internal(trip_id)
+
+    @staticmethod
     def get_trip_for_public_access(trip_id: str) -> Optional[dict]:
-        """Get a trip by ID, returning an explicit allowlisted traveler-safe projection."""
+        """Get a trip by ID, returning an explicit allowlisted traveler-safe projection with sanitized nested DTOs."""
         trip = TripStore._get_trip_internal(trip_id)
         if not trip:
             return None
-        public_allowlist = {
-            "id",
-            "destination",
-            "packet",
-            "strategy",
-            "created_at",
-            "stage",
-            "status",
-            "dates",
-            "party_size",
-            "budget_max",
-            "proposal_link_token",
-            "proposal_token_expires_at",
+
+        raw_packet = trip.get("packet", {}) or {}
+        safe_packet = {
+            "destination": raw_packet.get("destination", trip.get("destination")),
+            "start_date": raw_packet.get("start_date"),
+            "end_date": raw_packet.get("end_date"),
+            "budget_max": raw_packet.get("budget_max"),
+            "party_size": raw_packet.get("party_size", 1),
+            "pace_preference": raw_packet.get("pace_preference"),
+            "travel_style": raw_packet.get("travel_style"),
         }
-        return {k: v for k, v in trip.items() if k in public_allowlist}
+
+        raw_strategy = trip.get("strategy", {}) or {}
+        raw_rec = raw_strategy.get("recommended_option", {}) or {}
+        safe_rec = {
+            "name": raw_rec.get("name", "Custom Itinerary Option"),
+            "cost": raw_rec.get("cost"),
+            "currency": raw_rec.get("currency", "USD"),
+            "highlights": raw_rec.get("highlights", []),
+            "summary": raw_rec.get("summary"),
+        } if raw_rec else None
+
+        safe_strategy = {
+            "recommended_option": safe_rec,
+        }
+
+        return {
+            "id": trip.get("id"),
+            "destination": trip.get("destination"),
+            "stage": trip.get("stage", "discovery"),
+            "status": trip.get("status", "active"),
+            "created_at": trip.get("created_at"),
+            "proposal_link_token": trip.get("proposal_link_token"),
+            "proposal_token_expires_at": trip.get("proposal_token_expires_at"),
+            "packet": safe_packet,
+            "strategy": safe_strategy,
+        }
+
+    @staticmethod
+    def get_trip_by_proposal_token(token: str) -> Optional[dict]:
+        """Lookup a trip by proposal link token across all agencies."""
+        if not token:
+            return None
+        all_trips = TripStore.list_trips(limit=1000)
+        for trip in all_trips:
+            if trip.get("proposal_link_token") == token:
+                return trip
+        return None
 
     @staticmethod
     def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
@@ -1978,6 +2041,7 @@ class AuditStore:
             event = {
                 "id": event_id,
                 "event_type": event_type,
+                "type": event_type,
                 "user_id": user_id,
                 "timestamp": timestamp,
                 "details": details,

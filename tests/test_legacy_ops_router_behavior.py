@@ -71,8 +71,8 @@ def test_list_assignments_filters_to_current_agency_trips(session_client, monkey
 def test_override_conflict_when_original_severity_is_stale(session_client, monkeypatch):
     monkeypatch.setattr(
         legacy_ops.TripStore,
-        "get_trip",
-        lambda trip_id: {
+        "get_trip_for_agency",
+        lambda trip_id, agency_id: {
             "id": trip_id,
             "agency_id": "agency_test",
             "decision": {"suitability_flags": [{"flag": "budget_risk", "severity": "critical"}]},
