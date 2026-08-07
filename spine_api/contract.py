@@ -1165,10 +1165,12 @@ class SupplierOption(BaseModel):
 class YieldArbitrageResponse(BaseModel):
     ok: bool = True
     trip_id: str
+    data_sufficient: bool = True
     supplier_options: List[SupplierOption] = Field(default_factory=list)
     optimal_supplier: str
     potential_margin_gain: float
     generated_at: str
+    _meta: Optional[Dict[str, Any]] = None
 
 
 class ConciergeMonitorResponse(BaseModel):

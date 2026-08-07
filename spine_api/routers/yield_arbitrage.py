@@ -52,14 +52,11 @@ async def compute_yield_arbitrage(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    packet = trip.get("packet", {}) or {}
-    budget_max = float(packet.get("budget_max") or 5000.0)
-    base = budget_max * 0.85
-
     # Check for real supplier contracts for this agency
     agency_contracts = CONTRACTS_STORE.get(agency_id, {})
 
     supplier_options: List[SupplierOption] = []
+    data_sufficient = True
 
     if agency_contracts:
         for c_id, contract in agency_contracts.items():
@@ -82,51 +79,33 @@ async def compute_yield_arbitrage(
                     suitability_score=95.0,
                 )
             )
+    else:
+        data_sufficient = False
 
-    # Standard channel comparisons if needed
-    if not supplier_options:
-        supplier_options = [
-            SupplierOption(
-                supplier_name="Direct Preferred Resort Contract (Estimated)",
-                supplier_type="direct_contract",
-                base_cost=round(base, 2),
-                commission_pct=18.0,
-                net_margin=round(base * 0.18, 2),
-                bonus_override_eligible=True,
-                suitability_score=95.0,
-            ),
-            SupplierOption(
-                supplier_name="GDS Preferred Channel (Estimated)",
-                supplier_type="gds",
-                base_cost=round(base * 0.95, 2),
-                commission_pct=12.0,
-                net_margin=round(base * 0.95 * 0.12, 2),
-                bonus_override_eligible=False,
-                suitability_score=90.0,
-            ),
-            SupplierOption(
-                supplier_name="Wholesaler Channel (Estimated)",
-                supplier_type="bedbank",
-                base_cost=round(base * 0.90, 2),
-                commission_pct=10.0,
-                net_margin=round(base * 0.90 * 0.10, 2),
-                bonus_override_eligible=False,
-                suitability_score=85.0,
-            ),
-        ]
-
-    sorted_options = sorted(supplier_options, key=lambda x: x.net_margin, reverse=True)
-    optimal = sorted_options[0]
-    worst = sorted_options[-1]
-    potential_margin_gain = round(optimal.net_margin - worst.net_margin, 2)
+    if supplier_options:
+        sorted_options = sorted(supplier_options, key=lambda x: x.net_margin, reverse=True)
+        optimal_supplier = sorted_options[0].supplier_name
+        worst_margin = sorted_options[-1].net_margin
+        potential_margin_gain = round(sorted_options[0].net_margin - worst_margin, 2)
+    else:
+        sorted_options = []
+        optimal_supplier = "None (No Contracts Uploaded)"
+        potential_margin_gain = 0.0
 
     return YieldArbitrageResponse(
         ok=True,
         trip_id=trip_id,
+        data_sufficient=data_sufficient,
         supplier_options=sorted_options,
-        optimal_supplier=optimal.supplier_name,
+        optimal_supplier=optimal_supplier,
         potential_margin_gain=potential_margin_gain,
         generated_at=datetime.now(timezone.utc).isoformat(),
+        _meta=TierMetadata.for_response(
+            get_feature_tier("yield_arbitrage"),
+            "yield_arbitrage",
+            data_sufficient=data_sufficient,
+            computation_method="uploaded_agency_contracts",
+        ),
     )
 
 

@@ -1500,11 +1500,14 @@ class TripStore:
 
     @staticmethod
     def get_trip_by_proposal_token(token: str) -> Optional[dict]:
-        """Lookup a trip by proposal link token across all agencies."""
+        """Lookup a trip by proposal link token (or its SHA256 hash) across all agencies."""
         if not token:
             return None
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         all_trips = TripStore.list_trips(limit=1000)
         for trip in all_trips:
+            if trip.get("proposal_token_hash") == token_hash:
+                return trip
             if trip.get("proposal_link_token") == token:
                 return trip
         return None

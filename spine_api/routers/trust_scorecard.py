@@ -17,10 +17,12 @@ Endpoints:
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -105,7 +107,7 @@ def compute_budget_fit_status(packet: Dict[str, Any], proposal_cost: Optional[fl
 
 
 def compute_transparency_badges(packet: Dict[str, Any], has_owner_review: bool = False) -> List[Dict[str, str]]:
-    """Generate transparency badge breakdown from real packet facts."""
+    """Generate transparency badge breakdown from real packet facts and verification evidence."""
     badges = []
     dest = _extract_fact_value(packet, "destination")
     start_date = _extract_fact_value(packet, "start_date") or _extract_fact_value(packet, "startDate") or _extract_fact_value(packet, "date_window")
@@ -125,22 +127,19 @@ def compute_transparency_badges(packet: Dict[str, Any], has_owner_review: bool =
             "tooltip": "Option stays within or near the stated budget max.",
         })
 
-    badges.append({
-        "badge": "DETERMINISTIC_PRICING",
-        "label": "Verified supplier rates with zero markup",
-        "tooltip": "Pricing is sourced directly from supplier inventories.",
-    })
+    if packet.get("supplier_verified") is True:
+        badges.append({
+            "badge": "REALITY_VERIFIED",
+            "label": "Deterministic options with real availability checks",
+            "tooltip": "All proposed components are backed by verified availability and pricing.",
+        })
 
-    badges.append({
-        "badge": "REALITY_VERIFIED",
-        "label": "Deterministic options with real availability checks",
-        "tooltip": "All proposed components are backed by verified availability and pricing.",
-    })
-    badges.append({
-        "badge": "SAFETY_AUDITED",
-        "label": "Automated PII and safety privacy guard applied",
-        "tooltip": "Personal data is strictly masked and protected according to privacy settings.",
-    })
+    if packet.get("safety_audited") is True:
+        badges.append({
+            "badge": "SAFETY_AUDITED",
+            "label": "Automated PII and safety privacy guard applied",
+            "tooltip": "Personal data is strictly masked and protected according to privacy settings.",
+        })
 
     if has_owner_review:
         badges.append({
@@ -250,24 +249,28 @@ async def generate_proposal_link(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    token = f"prop_{uuid4().hex[:16]}"
+    token = f"prop_{secrets.token_urlsafe(32)}"
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
     now_dt = datetime.now(timezone.utc)
     expires_dt = now_dt + timedelta(days=body.expiry_days)
     expires_at = expires_dt.isoformat()
-    web_url = f"https://waypoint-os.com/p/{token}"
+
+    frontend_base_url = os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:3005").rstrip("/")
+    web_url = f"{frontend_base_url}/proposals/{token}"
 
     capabilities = ["view_itinerary", "accept_quote", "request_change"]
     if body.allow_customization:
         capabilities.append("select_room_upgrades")
 
     trip["proposal_link_token"] = token
+    trip["proposal_token_hash"] = token_hash
     trip["proposal_token_expires_at"] = expires_at
     TripStore.save_trip(trip)
 
     AuditStore.log_event(
         event_type="proposal_link_generated",
         user_id=agency_id,
-        details={"trip_id": body.trip_id, "token": token, "expires_at": expires_at},
+        details={"trip_id": body.trip_id, "token_hash_prefix": token_hash[:8], "expires_at": expires_at},
     )
 
     return ProposalLinkResponse(

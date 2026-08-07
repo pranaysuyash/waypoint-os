@@ -35,6 +35,17 @@ class TestYieldArbitrageEngine:
             assert exc_info.value.status_code == 404
 
     async def test_compute_yield_arbitrage_real_trip(self):
+        from spine_api.routers.supplier import CONTRACTS_STORE
+        CONTRACTS_STORE["agency_1"] = {
+            "c_1": {
+                "supplier_name": "Direct Resort Contract",
+                "rate_table": [{"net_rate_per_night": 300.0, "rack_rate_per_night": 500.0}],
+            },
+            "c_2": {
+                "supplier_name": "Partner Villa Contract",
+                "rate_table": [{"net_rate_per_night": 400.0, "rack_rate_per_night": 700.0}],
+            },
+        }
         trip_data = {
             "id": "trip_1",
             "agency_id": "agency_1",
@@ -44,7 +55,8 @@ class TestYieldArbitrageEngine:
             res = await compute_yield_arbitrage("trip_1", agency_id="agency_1")
             assert res.ok is True
             assert res.trip_id == "trip_1"
-            assert len(res.supplier_options) >= 3
+            assert res.data_sufficient is True
+            assert len(res.supplier_options) == 2
             # Check options are sorted by net_margin descending
             margins = [o.net_margin for o in res.supplier_options]
             assert margins == sorted(margins, reverse=True)

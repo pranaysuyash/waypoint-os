@@ -128,7 +128,7 @@ export default function InteractiveProposalPage({
 
           <div className="flex items-center gap-2 text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-3">
             <CheckCircle2 className="w-4 h-4" />
-            <span>Verified Travel Proposal</span>
+            <span>Travel Proposal Brief</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-50 tracking-tight mb-3">
@@ -136,7 +136,7 @@ export default function InteractiveProposalPage({
           </h1>
 
           <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
-            Curated specifically for your trip parameters based on verified agency availability and terms.
+            Curated for your travel parameters based on your brief preferences.
           </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-8 pt-6 border-t border-slate-800/80 text-xs">
@@ -170,13 +170,13 @@ export default function InteractiveProposalPage({
         <section className="grid sm:grid-cols-2 gap-6">
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Suitability Match</span>
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Brief Completeness</span>
               <Award className="w-4 h-4 text-indigo-400" />
             </div>
 
             <div className="flex items-baseline gap-2 mb-3">
               <span className="text-4xl font-extrabold text-indigo-400">{data.suitability_match_pct}%</span>
-              <span className="text-xs text-slate-400">Match to your request</span>
+              <span className="text-xs text-slate-400">Parameter capture</span>
             </div>
 
             <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden mb-4">
@@ -214,7 +214,7 @@ export default function InteractiveProposalPage({
               <span className="text-2xl font-black text-slate-50">
                 ${data.recommended_option?.cost?.toLocaleString()} {data.recommended_option?.currency}
               </span>
-              <span className="text-[10px] text-slate-500 block">Estimated quote based on current inventory</span>
+              <span className="text-[10px] text-slate-500 block">Quote proposal based on brief parameters</span>
             </div>
           </div>
 

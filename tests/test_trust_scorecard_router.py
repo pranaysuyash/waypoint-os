@@ -18,7 +18,6 @@ def setup_test_env(monkeypatch):
 
 def test_get_proposal_trust_scorecard(session_client):
     """Verify visual trust scorecard generation for an active trip proposal."""
-    # First ingest a trip
     inbound_res = session_client.post(
         "/api/v1/inbound/parse",
         json={
@@ -40,13 +39,13 @@ def test_get_proposal_trust_scorecard(session_client):
     data = response.json()
     assert data["ok"] is True
     assert data["trip_id"] == trip_id
-    assert data["overall_trust_score"] >= 80.0
-    assert data["suitability_match_pct"] >= 80.0
-    assert data["safety_score"] >= 90.0
+    assert isinstance(data["suitability_match_pct"], float)
     assert data["budget_fit_status"] in ("UNDER_BUDGET", "PERFECT_MATCH")
-    assert len(data["highlights"]) >= 3
-    assert len(data["risk_mitigations"]) >= 2
-    assert len(data["transparency_badges"]) >= 3
+    assert len(data["highlights"]) >= 1
+    # Verify unevidenced badges are absent when safety/supplier checks were not run
+    badge_names = [b["badge"] for b in data["transparency_badges"]]
+    assert "REALITY_VERIFIED" not in badge_names
+    assert "SAFETY_AUDITED" not in badge_names
 
 
 def test_generate_proposal_link(session_client):
@@ -78,5 +77,5 @@ def test_generate_proposal_link(session_client):
     assert data["ok"] is True
     assert data["trip_id"] == trip_id
     assert data["proposal_token"].startswith("prop_")
-    assert "https://waypoint-os.com/p/" in data["web_url"]
+    assert "/proposals/prop_" in data["web_url"]
     assert "select_room_upgrades" in data["interactive_capabilities"]
