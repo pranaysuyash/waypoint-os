@@ -359,6 +359,7 @@ try:
     from spine_api.routers import social_inbound as social_inbound_router
     from spine_api.routers import corporate as corporate_router
     from spine_api.routers import supplier as supplier_router
+    from spine_api.routers import group_booking as group_booking_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -519,6 +520,11 @@ except (ImportError, ValueError):
     _supplier_mod = importlib.util.module_from_spec(_supplier_spec)
     _supplier_spec.loader.exec_module(_supplier_mod)
     supplier_router = _supplier_mod
+
+    _group_booking_spec = importlib.util.spec_from_file_location("routers.group_booking", _base / "routers" / "group_booking.py")
+    _group_booking_mod = importlib.util.module_from_spec(_group_booking_spec)
+    _group_booking_spec.loader.exec_module(_group_booking_mod)
+    group_booking_router = _group_booking_mod
 
 
 def _register_router_module_aliases() -> None:
@@ -1178,6 +1184,7 @@ app.include_router(team_workflows_router.router, dependencies=[Depends(_auth_or_
 app.include_router(social_inbound_router.router)
 app.include_router(corporate_router.router)
 app.include_router(supplier_router.router)
+app.include_router(group_booking_router.router)
 
 
 def _seed_scenario(agency_id: Optional[str] = None):

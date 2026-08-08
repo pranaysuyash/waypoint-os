@@ -1513,6 +1513,35 @@ class TripStore:
         return None
 
     @staticmethod
+    def get_trip_by_group_token(token: str) -> Optional[dict]:
+        """Lookup a trip by group invite token (or its SHA256 hash) across all agencies."""
+        if not token:
+            return None
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            for filepath in TRIPS_DIR.glob("*.json"):
+                try:
+                    with open(filepath) as f:
+                        trip = json.load(f)
+                    gb = trip.get("group_booking", {}) or {}
+                    invites = gb.get("invites", [])
+                    for inv in invites:
+                        if inv.get("token_hash") == token_hash or inv.get("raw_token") == token:
+                            return trip
+                except Exception:
+                    continue
+            return None
+        all_trips = _run_async_blocking(SQLTripStore.list_trips(limit=1000))
+        for trip in all_trips:
+            gb = trip.get("group_booking", {}) or {}
+            invites = gb.get("invites", [])
+            for inv in invites:
+                if inv.get("token_hash") == token_hash or inv.get("raw_token") == token:
+                    return trip
+        return None
+
+    @staticmethod
     def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
         """Get a trip by ID, returning None if it does not belong to the given agency.
 

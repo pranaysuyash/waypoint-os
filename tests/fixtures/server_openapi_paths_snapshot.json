@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 182,
+  "openapi_path_count": 186,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -97,6 +97,10 @@
     "/api/v1/concierge/monitor/{trip_id}",
     "/api/v1/corporate/duty-of-care/cockpit",
     "/api/v1/corporate/policy-audit",
+    "/api/v1/group/token/{token}",
+    "/api/v1/group/token/{token}/pay-share",
+    "/api/v1/group/{trip_id}/invites",
+    "/api/v1/group/{trip_id}/manual-override",
     "/api/v1/inbound/followup-prompt/{trip_id}",
     "/api/v1/inbound/optimistic-sync/{trip_id}",
     "/api/v1/inbound/parse",

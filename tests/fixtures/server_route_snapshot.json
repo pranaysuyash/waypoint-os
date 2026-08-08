@@ -1,5 +1,5 @@
 {
-  "route_count": 211,
+  "route_count": 215,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -932,6 +932,38 @@
     {
       "path": "/api/v1/corporate/policy-audit",
       "name": "audit_corporate_policy",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/group/token/{token}",
+      "name": "get_passenger_share_by_token",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/group/token/{token}/pay-share",
+      "name": "notify_passenger_pay_share",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/group/{trip_id}/invites",
+      "name": "generate_group_invites",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/group/{trip_id}/manual-override",
+      "name": "manual_advisor_override_share",
       "methods": [
         "POST"
       ],
