@@ -360,6 +360,7 @@ try:
     from spine_api.routers import corporate as corporate_router
     from spine_api.routers import supplier as supplier_router
     from spine_api.routers import group_booking as group_booking_router
+    from spine_api.routers import price_lock as price_lock_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -525,6 +526,11 @@ except (ImportError, ValueError):
     _group_booking_mod = importlib.util.module_from_spec(_group_booking_spec)
     _group_booking_spec.loader.exec_module(_group_booking_mod)
     group_booking_router = _group_booking_mod
+
+    _price_lock_spec = importlib.util.spec_from_file_location("routers.price_lock", _base / "routers" / "price_lock.py")
+    _price_lock_mod = importlib.util.module_from_spec(_price_lock_spec)
+    _price_lock_spec.loader.exec_module(_price_lock_mod)
+    price_lock_router = _price_lock_mod
 
 
 def _register_router_module_aliases() -> None:
@@ -1185,6 +1191,7 @@ app.include_router(social_inbound_router.router)
 app.include_router(corporate_router.router)
 app.include_router(supplier_router.router)
 app.include_router(group_booking_router.router)
+app.include_router(price_lock_router.router)
 
 
 def _seed_scenario(agency_id: Optional[str] = None):

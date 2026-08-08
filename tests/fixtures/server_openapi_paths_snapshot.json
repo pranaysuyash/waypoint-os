@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 186,
+  "openapi_path_count": 189,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -109,6 +109,9 @@
     "/api/v1/inbox/unmask_teaser",
     "/api/v1/messaging/send",
     "/api/v1/messaging/webhook/{provider}",
+    "/api/v1/price-lock/opportunities",
+    "/api/v1/price-lock/{trip_id}/audit-rate",
+    "/api/v1/price-lock/{trip_id}/re-lock",
     "/api/v1/proposals/generate-link",
     "/api/v1/proposals/token/{token}",
     "/api/v1/proposals/token/{token}/accept",

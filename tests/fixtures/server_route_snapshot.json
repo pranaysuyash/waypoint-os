@@ -1,5 +1,5 @@
 {
-  "route_count": 215,
+  "route_count": 218,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1036,6 +1036,30 @@
     {
       "path": "/api/v1/messaging/webhook/{provider}",
       "name": "process_messaging_webhook",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/price-lock/opportunities",
+      "name": "list_price_lock_opportunities",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/price-lock/{trip_id}/audit-rate",
+      "name": "audit_trip_price_lock_rate",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/price-lock/{trip_id}/re-lock",
+      "name": "re_lock_lower_rate",
       "methods": [
         "POST"
       ],
