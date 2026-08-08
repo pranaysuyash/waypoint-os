@@ -1,5 +1,5 @@
 {
-  "route_count": 218,
+  "route_count": 221,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -932,6 +932,30 @@
     {
       "path": "/api/v1/corporate/policy-audit",
       "name": "audit_corporate_policy",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/customers/hydrate-trip/{trip_id}",
+      "name": "hydrate_trip_with_customer_memory",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/customers/memory",
+      "name": "get_customer_memory",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/customers/remember",
+      "name": "remember_customer_preferences",
       "methods": [
         "POST"
       ],
