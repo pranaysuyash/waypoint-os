@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 194,
+  "openapi_path_count": 197,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -92,6 +92,9 @@
     "/api/trips/{trip_id}/confirmations/{confirmation_id}/void",
     "/api/trips/{trip_id}/execution-timeline",
     "/api/trips/{trip_id}/timeline",
+    "/api/v1/commission/reconcile",
+    "/api/v1/commission/record",
+    "/api/v1/commission/summary",
     "/api/v1/concierge/auto-rebook/{trip_id}",
     "/api/v1/concierge/disruptions",
     "/api/v1/concierge/monitor/{trip_id}",

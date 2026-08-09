@@ -1,5 +1,5 @@
 {
-  "route_count": 223,
+  "route_count": 226,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -892,6 +892,30 @@
     {
       "path": "/api/trips/{trip_id}/timeline",
       "name": "get_trip_timeline",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/commission/reconcile",
+      "name": "reconcile_supplier_commission",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/commission/record",
+      "name": "record_expected_commission",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/commission/summary",
+      "name": "get_commission_summary",
       "methods": [
         "GET"
       ],

@@ -363,6 +363,7 @@ try:
     from spine_api.routers import price_lock as price_lock_router
     from spine_api.routers import customer_memory as customer_memory_router
     from spine_api.routers import multimodal as multimodal_router
+    from spine_api.routers import commission as commission_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -543,6 +544,11 @@ except (ImportError, ValueError):
     _multimodal_mod = importlib.util.module_from_spec(_multimodal_spec)
     _multimodal_spec.loader.exec_module(_multimodal_mod)
     multimodal_router = _multimodal_mod
+
+    _commission_spec = importlib.util.spec_from_file_location("routers.commission", _base / "routers" / "commission.py")
+    _commission_mod = importlib.util.module_from_spec(_commission_spec)
+    _commission_spec.loader.exec_module(_commission_mod)
+    commission_router = _commission_mod
 
 
 def _register_router_module_aliases() -> None:
@@ -1206,6 +1212,7 @@ app.include_router(group_booking_router.router)
 app.include_router(price_lock_router.router)
 app.include_router(customer_memory_router.router)
 app.include_router(multimodal_router.router)
+app.include_router(commission_router.router)
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
