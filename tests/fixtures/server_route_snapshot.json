@@ -1,5 +1,5 @@
 {
-  "route_count": 221,
+  "route_count": 223,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1060,6 +1060,22 @@
     {
       "path": "/api/v1/messaging/webhook/{provider}",
       "name": "process_messaging_webhook",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/multimodal/image-ocr",
+      "name": "parse_image_ocr",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/multimodal/voice-note",
+      "name": "parse_voice_note_transcript",
       "methods": [
         "POST"
       ],

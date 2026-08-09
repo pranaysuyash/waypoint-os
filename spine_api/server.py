@@ -362,6 +362,7 @@ try:
     from spine_api.routers import group_booking as group_booking_router
     from spine_api.routers import price_lock as price_lock_router
     from spine_api.routers import customer_memory as customer_memory_router
+    from spine_api.routers import multimodal as multimodal_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -537,6 +538,11 @@ except (ImportError, ValueError):
     _customer_memory_mod = importlib.util.module_from_spec(_customer_memory_spec)
     _customer_memory_spec.loader.exec_module(_customer_memory_mod)
     customer_memory_router = _customer_memory_mod
+
+    _multimodal_spec = importlib.util.spec_from_file_location("routers.multimodal", _base / "routers" / "multimodal.py")
+    _multimodal_mod = importlib.util.module_from_spec(_multimodal_spec)
+    _multimodal_spec.loader.exec_module(_multimodal_mod)
+    multimodal_router = _multimodal_mod
 
 
 def _register_router_module_aliases() -> None:
@@ -1199,6 +1205,7 @@ app.include_router(supplier_router.router)
 app.include_router(group_booking_router.router)
 app.include_router(price_lock_router.router)
 app.include_router(customer_memory_router.router)
+app.include_router(multimodal_router.router)
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
