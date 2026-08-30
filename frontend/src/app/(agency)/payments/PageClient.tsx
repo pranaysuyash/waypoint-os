@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Suspense, useCallback, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, RefreshCw } from 'lucide-react';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { InlineError } from '@/components/error-boundary';
@@ -82,11 +83,70 @@ function toTitleCase(value: string): string {
 }
 
 export default function PaymentsPage() {
-  const [queueStatus, setQueueStatus] = useState<QueueStatus | ''>('');
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | ''>('');
-  const [refundStatus, setRefundStatus] = useState<RefundStatus | ''>('');
-  const [dueBucket, setDueBucket] = useState<PaymentQueueParams['due_bucket'] | ''>('');
-  const [offset, setOffset] = useState(0);
+  return (
+    <Suspense fallback={<div className='p-6 text-[#8b949e]'>Loading payments queue…</div>}>
+      <PaymentsPageWithSearchParams />
+    </Suspense>
+  );
+}
+
+function PaymentsPageWithSearchParams() {
+  const { push } = useRouter();
+  const searchParams = useSearchParams();
+  const getSearchParam = searchParams.get.bind(searchParams);
+
+  const [queueStatus, setQueueStatusState] = useState<QueueStatus | ''>(
+    () => (getSearchParam('queue_status') as QueueStatus | null) || '',
+  );
+  const [paymentStatus, setPaymentStatusState] = useState<PaymentStatus | ''>(
+    () => (getSearchParam('payment_status') as PaymentStatus | null) || '',
+  );
+  const [refundStatus, setRefundStatusState] = useState<RefundStatus | ''>(
+    () => (getSearchParam('refund_status') as RefundStatus | null) || '',
+  );
+  const [dueBucket, setDueBucketState] = useState<PaymentQueueParams['due_bucket'] | ''>(
+    () => (getSearchParam('due_bucket') as PaymentQueueParams['due_bucket'] | null) || '',
+  );
+  const [offset, setOffsetState] = useState<number>(
+    () => Math.max(0, Number.parseInt(getSearchParam('offset') || '0', 10) || 0),
+  );
+
+  const updateParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === '') params.delete(key);
+      else params.set(key, value);
+    });
+    push(`?${params.toString()}`);
+  }, [push, searchParams]);
+
+  const setQueueStatus = (v: QueueStatus | '') => {
+    setQueueStatusState(v);
+    setOffsetState(0);
+    updateParams({ queue_status: v || null, offset: '0' });
+  };
+  const setPaymentStatus = (v: PaymentStatus | '') => {
+    setPaymentStatusState(v);
+    setOffsetState(0);
+    updateParams({ payment_status: v || null, offset: '0' });
+  };
+  const setRefundStatus = (v: RefundStatus | '') => {
+    setRefundStatusState(v);
+    setOffsetState(0);
+    updateParams({ refund_status: v || null, offset: '0' });
+  };
+  const setDueBucket = (v: PaymentQueueParams['due_bucket'] | '') => {
+    setDueBucketState(v);
+    setOffsetState(0);
+    updateParams({ due_bucket: v || null, offset: '0' });
+  };
+  const setOffset = (v: number | ((current: number) => number)) => {
+    setOffsetState((prev) => {
+      const next = typeof v === 'function' ? v(prev) : v;
+      updateParams({ offset: next > 0 ? String(next) : null });
+      return next;
+    });
+  };
 
   const params = useMemo<PaymentQueueParams>(
     () => ({
@@ -111,11 +171,13 @@ export default function PaymentsPage() {
   const canNext = Boolean(pagination?.has_more);
 
   const resetFilters = () => {
-    setQueueStatus('');
-    setPaymentStatus('');
-    setRefundStatus('');
-    setDueBucket('');
-    setOffset(0);
+    updateParams({
+      queue_status: null,
+      payment_status: null,
+      refund_status: null,
+      due_bucket: null,
+      offset: null,
+    });
   };
 
   return (

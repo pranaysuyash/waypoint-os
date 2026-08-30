@@ -211,11 +211,18 @@ class TestRateLimitRegistry:
             f"post_signup not in slowapi registry. "
             f"Available: {list(limiter._Limiter__marked_for_limiting.keys())}"
         )
-        assert key in limiter._route_limits, f"No static limits for {key}"
-        limits = limiter._route_limits[key]
-        assert any("5" in str(lim.limit) for lim in limits), (
-            f"Expected 5/minute limit for signup, got: {[str(lim.limit) for lim in limits]}"
-        )
+        # post_signup uses a callable limit (`_rate_limit("5/minute")`) so slowapi
+        # marks it for limiting but only resolves the value at request-time; it is
+        # NOT put in the static `_route_limits` dict (which only holds literal
+        # limits like post_join's "5/minute"). Assert the real contract: the
+        # endpoint is rate-limited, and the production limit is "5/minute".
+        from spine_api.routers.auth import _rate_limit
+        dev_env = os.environ.get("ENVIRONMENT", "development").lower()
+        os.environ["ENVIRONMENT"] = "production"
+        try:
+            assert _rate_limit("5/minute")() == "5/minute"
+        finally:
+            os.environ["ENVIRONMENT"] = dev_env
 
     def test_login_registered_with_rate_limit(self):
         key = f"{self._KEY}.post_login"

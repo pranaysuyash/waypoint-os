@@ -552,14 +552,16 @@ class TestExtractionPrivacy:
         doc_id = _upload_and_accept(session_client, created_trip_id)
         session_client.post(f"/trips/{created_trip_id}/documents/{doc_id}/extract")
 
-        events = AuditStore.get_events(limit=50)
+        # Scoped to this trip's events: the global audit stream is shared by the
+        # whole suite, so reading the global tail makes this test order-dependent.
+        events = AuditStore.get_events_for_trip(created_trip_id)
         extraction_events = [
             e for e in events
             if isinstance(e, dict) and e.get("event_type") == "extraction_created"
         ]
-        if extraction_events:
-            last = extraction_events[-1]
-            event_str = str(last)
+        assert extraction_events, "expected an extraction_created event for this trip"
+        for extraction_event in extraction_events:
+            event_str = str(extraction_event)
             for sentinel in [
                 "DO_NOT_LOG_NAME", "DO_NOT_LOG_PASSPORT",
                 "DO_NOT_LOG_DOB", "DO_NOT_LOG_EXPIRY",

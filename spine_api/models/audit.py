@@ -96,6 +96,15 @@ class AuditLog(Base):
     user_agent: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True
     )
+    # RULE_015 tamper-evident chain (unified with file-based AuditStore).
+    # previous_hash links to the prior entry's current_hash (GENESIS_BLOCK_HASH
+    # for the first). current_hash = sha256(id:agency:user:action:prev:created:changes).
+    previous_hash: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True
+    )
+    current_hash: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -113,5 +122,7 @@ class AuditLog(Base):
             "changes": self.changes,
             "ip_address": self.ip_address,
             "user_agent": self.user_agent,
+            "previous_hash": self.previous_hash,
+            "current_hash": self.current_hash,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

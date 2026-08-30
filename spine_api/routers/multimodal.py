@@ -8,9 +8,10 @@ with confidence scoring and visual provenance flags.
 import re
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.core.auth import get_current_agency_id
+from spine_api.persistence import AuditStore, TripStore
 
 router = APIRouter(prefix="/api/v1/multimodal", tags=["Multimodal Fact Extraction"])
 
@@ -158,12 +159,11 @@ def _determine_confidence_tier(confidence: float) -> str:
 
 
 @router.post("/voice-note", response_model=MultimodalExtractionResponse)
-def parse_voice_note_transcript(
+async def parse_voice_note_transcript(
     body: VoiceNoteParseRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Extract structured travel facts from a voice note transcript."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     if not body.transcript_text or not body.transcript_text.strip():
         raise HTTPException(status_code=400, detail="transcript_text cannot be empty")
 
@@ -209,12 +209,11 @@ def parse_voice_note_transcript(
 
 
 @router.post("/image-ocr", response_model=MultimodalExtractionResponse)
-def parse_image_ocr(
+async def parse_image_ocr(
     body: ImageOcrParseRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Extract structured travel facts from screenshot or document OCR text."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     if not body.ocr_text or not body.ocr_text.strip():
         raise HTTPException(status_code=400, detail="ocr_text cannot be empty")
 

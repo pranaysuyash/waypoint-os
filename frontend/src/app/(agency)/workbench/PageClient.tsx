@@ -50,6 +50,8 @@ import { ProtectedSurfaceNotice } from '@/components/auth/ProtectedSurfaceNotice
 const IntakeTab = dynamic(() => import('./IntakeTab'));
 const PacketTab = dynamic(() => import('./PacketTab'));
 const SafetyTab = dynamic(() => import('./SafetyTab'));
+const PersonaCouncilPanel = dynamic(() => import('./PersonaCouncilPanel'));
+const MemoryArchitectPanel = dynamic(() => import('./MemoryArchitectPanel').then(m => m.MemoryArchitectPanel));
 const FrontierDashboard = dynamic(() =>
   import('@/components/workspace/FrontierDashboard').then((mod) => ({
     default: mod.FrontierDashboard,
@@ -79,6 +81,7 @@ const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
   { id: 'packet', label: 'Trip Details' },
   { id: 'safety', label: 'Risk Review' },
+  { id: 'council', label: 'Persona Council' },
   { id: 'frontier', label: 'Frontier OS' },
 ] as const;
 
@@ -1323,6 +1326,8 @@ function WorkbenchContent() {
             <Suspense fallback={<InlineLoading message='Loading…' />}>
               {effectiveTab === 'safety' ? (
                 <SafetyTab trip={trip} />
+              ) : effectiveTab === 'council' ? (
+                <PersonaCouncilPanel />
               ) : effectiveTab === 'frontier' ? (
                 <FrontierDashboard />
               ) : effectiveTab === 'packet' ? (

@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { WorkspaceTripLayoutShell } from "../layout";
+import WorkspaceTripLayoutShell from "../layout";
 import { ApiException } from "@/lib/api-client";
 import * as apiClient from "@/lib/api-client";
 import * as navigation from "next/navigation";

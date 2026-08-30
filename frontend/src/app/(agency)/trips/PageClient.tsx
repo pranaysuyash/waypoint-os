@@ -259,20 +259,49 @@ function ViewToggle({
   );
 }
 
-// ============================================================================
-// PAGE
-// ============================================================================
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Suspense } from 'react';
 
 export default function WorkspacesPage() {
-  const { data: workspaceTrips, isLoading, error, refetch } = useTrips({ view: 'workspace' });
-  const [viewMode, setViewMode] = useState<'card' | 'table'>(getSavedView);
-  const [sortField, setSortField] = useState<SortField>('stage');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  return (
+    <Suspense fallback={<div className='p-6 text-[#8b949e]'>Loading trips in planning…</div>}>
+      <WorkspacesPageWithSearchParams />
+    </Suspense>
+  );
+}
 
-  // Persist view preference
-  useEffect(() => {
-    saveView(viewMode);
-  }, [viewMode]);
+function WorkspacesPageWithSearchParams() {
+  const { push } = useRouter();
+  const searchParams = useSearchParams();
+  const getSearchParam = searchParams.get.bind(searchParams);
+
+  const { data: workspaceTrips, isLoading, error, refetch } = useTrips({ view: 'workspace' });
+
+  // URL state persistence with localStorage fallback
+  const urlView = getSearchParam('view') as 'card' | 'table' | null;
+  const [viewMode, setViewModeState] = useState<'card' | 'table'>(() => urlView || getSavedView());
+  
+  const [sortField, setSortField] = useState<SortField>(
+    () => (getSearchParam('sort') as SortField) || 'stage'
+  );
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    () => (getSearchParam('dir') as SortDirection) || 'asc'
+  );
+
+  const updateParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    });
+    push(`?${params.toString()}`);
+  }, [push, searchParams]);
+
+  const setViewMode = useCallback((v: 'card' | 'table') => {
+    setViewModeState(v);
+    saveView(v);
+    updateParams({ view: v });
+  }, [updateParams]);
 
   const needsDetailsCount = useMemo(
     () => workspaceTrips.filter((trip) => hasPlanningBriefBlocker(trip)).length,
@@ -291,14 +320,12 @@ export default function WorkspacesPage() {
 
   const handleSort = useCallback((field: SortField) => {
     setSortField((current) => {
-      if (current === field) {
-        setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
-        return current;
-      }
-      setSortDirection('asc');
+      const nextDir: SortDirection = current === field && sortDirection === 'asc' ? 'desc' : 'asc';
+      setSortDirection(nextDir);
+      updateParams({ sort: field, dir: nextDir });
       return field;
     });
-  }, []);
+  }, [sortDirection, updateParams]);
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>

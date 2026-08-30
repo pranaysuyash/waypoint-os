@@ -2,15 +2,24 @@
 set -euo pipefail
 
 # >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
-# Pin the canonical v5 motto source so agent-start never downgrades to a retired doctrine.
-export AGENT_MOTTO_SOURCE="/Users/pranay/Downloads/motto_v5.md"
+# Pin the canonical doctrine source so agent-start and hooks use one source.
+export AGENT_DOCTRINE_SOURCE="/Users/pranay/Downloads/OPERATING_DOCTRINE.md"
 
 # Motto attestation gate. This runs in prepare-commit-msg so `git commit --no-verify`
 # still hits it. The goal is to block commits until the repo has a fresh
-# attestation for the current full motto_v5.md content.
+# attestation for the current full OPERATING_DOCTRINE.md content.
 if [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
-  _motto_file="motto_v5.md"
-  _attestation_file=".git/projects_agent_motto_attestation.env"
+  _doctrine_file="OPERATING_DOCTRINE.md"
+  _git_dir="$(git rev-parse --git-dir 2>/dev/null || true)"
+  if [ -z "$_git_dir" ]; then
+    echo "prepare-commit-msg: unable to resolve gitdir for attestation." >&2
+    exit 1
+  fi
+  case "$_git_dir" in
+    /*) _git_dir_abs="$_git_dir" ;;
+    *) _git_dir_abs="$(pwd)/$_git_dir" ;;
+  esac
+  _attestation_file="$_git_dir_abs/projects_agent_motto_attestation.env"
   _attestation_tool="/Users/pranay/Projects/workspace_memory/scripts/attest_motto.py"
   _max_age_secs="${PROJECTS_AGENT_MOTTO_ATTEST_MAX_AGE_SECS:-43200}"
 
@@ -29,12 +38,12 @@ PY
     fi
   }
 
-  if [ ! -f "$_motto_file" ]; then
-    echo "prepare-commit-msg: expected $_motto_file is missing; rerun /Users/pranay/Projects/agent-start and restore the project motto before committing." >&2
+  if [ ! -f "$_doctrine_file" ]; then
+    echo "prepare-commit-msg: expected $_doctrine_file is missing; rerun /Users/pranay/Projects/agent-start/bin/agent-start and restore the project doctrine before committing." >&2
     exit 1
   fi
 
-  _current_sha="$(_sha256_file "$_motto_file")"
+  _current_sha="$(_sha256_file "$_doctrine_file")"
   _need_attestation="1"
   if [ -f "$_attestation_file" ]; then
     # shellcheck disable=SC1090
@@ -53,7 +62,7 @@ PY
 prepare-commit-msg: commit blocked until the current full motto is freshly attested.
 
 Read and follow:
-  $(pwd)/$_motto_file
+  $(pwd)/$_doctrine_file
 
 Then refresh the attestation:
   python3 "$_attestation_tool" --repo "$(pwd)"

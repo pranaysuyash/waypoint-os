@@ -47,9 +47,7 @@ describe('useTrips contract-shape safety', () => {
 
     const { result } = renderHook(() => usePipeline(), { wrapper: createWrapper() });
 
-    await act(async () => {
-      await waitFor(() => expect(result.current.isLoading).toBe(false));
-    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.data).toEqual([]);
     expect(result.current.error).toBeNull();

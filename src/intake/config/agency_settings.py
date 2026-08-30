@@ -422,6 +422,24 @@ def tier_allows_feature(tier: AgencyTier, feature_name: str) -> bool:
 
 
 @dataclass(slots=True)
+class EpistemicPolicySettings:
+    """Per-agency epistemic assumption policy (PER-0922/0923).
+
+    Controls how inferred and assumed traveler slots behave during quote generation:
+    - critical_slot_gate: "block" (requires operator confirmation) | "warn_watermark" | "allow"
+    - preference_slot_gate: "warn_advisory" (badges slot) | "block" | "silent_default"
+    - custom_critical_slots: list of slot names deemed critical by agency owner
+    - require_evidence_provenance: bool (enforces non-empty evidence_refs for facts)
+    """
+    critical_slot_gate: Literal["block", "warn_watermark", "allow"] = "block"
+    preference_slot_gate: Literal["warn_advisory", "block", "silent_default"] = "warn_advisory"
+    custom_critical_slots: List[str] = field(
+        default_factory=lambda: ["origin", "destinations", "dates", "budget", "party_size"]
+    )
+    require_evidence_provenance: bool = True
+
+
+@dataclass(slots=True)
 class AgencySettings:
     """Configuration set for an agency."""
 
@@ -455,6 +473,9 @@ class AgencySettings:
 
     # -- Autonomy --
     autonomy: AgencyAutonomyPolicy = field(default_factory=AgencyAutonomyPolicy)
+
+    # -- Epistemic Policy (PER-0922/0923) --
+    epistemic: EpistemicPolicySettings = field(default_factory=EpistemicPolicySettings)
 
     # -- LLM Usage Guard --
     llm_guard: LLMGuardSettings = field(default_factory=LLMGuardSettings)
@@ -493,6 +514,10 @@ class AgencySettings:
         raw_autonomy = data.get("autonomy")
         if isinstance(raw_autonomy, dict):
             filtered["autonomy"] = AgencyAutonomyPolicy.from_legacy_dict(raw_autonomy)
+
+        raw_epistemic = data.get("epistemic")
+        if isinstance(raw_epistemic, dict):
+            filtered["epistemic"] = EpistemicPolicySettings(**raw_epistemic)
 
         raw_seasonal = data.get("seasonal")
         if isinstance(raw_seasonal, dict):

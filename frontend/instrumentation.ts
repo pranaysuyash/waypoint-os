@@ -1,12 +1,6 @@
-import { trace, TracerProvider } from "@opentelemetry/api";
-import {
-  BasicTracerProvider,
-  BatchSpanProcessor,
-} from "@opentelemetry/sdk-trace-base";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { resourceFromAttributes } from "@opentelemetry/resources";
-import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-import { registerInstrumentations } from "@opentelemetry/instrumentation";
+// All OTEL imports are dynamic so Turbopack does not try to resolve them at
+// build time. Static imports of optional packages break the dev server if the
+// package is installed in a non-standard location (e.g. node_modules/.ignored).
 
 function parsePositiveInt(raw: string | undefined, fallback: number): number {
   if (!raw) return fallback;
@@ -27,31 +21,42 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (!OTEL_ENDPOINT) return;
 
-  const provider: TracerProvider = new BasicTracerProvider({
-    resource: resourceFromAttributes({
-      [ATTR_SERVICE_NAME]: "travel_agency_frontend",
-    }),
-    spanProcessors: [
-      new BatchSpanProcessor(
-        new OTLPTraceExporter({
-          url: OTEL_ENDPOINT,
-          timeoutMillis: BSP_EXPORT_TIMEOUT_MS,
-        }),
-        {
-          maxQueueSize: BSP_MAX_QUEUE_SIZE,
-          maxExportBatchSize: BSP_MAX_EXPORT_BATCH_SIZE,
-          scheduledDelayMillis: BSP_SCHEDULE_DELAY_MS,
-          exportTimeoutMillis: BSP_EXPORT_TIMEOUT_MS,
-        },
-      ),
-    ],
-  });
+  try {
+    const { trace } = await import("@opentelemetry/api");
+    const { BasicTracerProvider, BatchSpanProcessor } = await import("@opentelemetry/sdk-trace-base");
+    const { OTLPTraceExporter } = await import("@opentelemetry/exporter-trace-otlp-http");
+    const { resourceFromAttributes } = await import("@opentelemetry/resources");
+    const { ATTR_SERVICE_NAME } = await import("@opentelemetry/semantic-conventions");
+    const { registerInstrumentations } = await import("@opentelemetry/instrumentation");
 
-  trace.setGlobalTracerProvider(provider);
+    const provider = new BasicTracerProvider({
+      resource: resourceFromAttributes({
+        [ATTR_SERVICE_NAME]: "travel_agency_frontend",
+      }),
+      spanProcessors: [
+        new BatchSpanProcessor(
+          new OTLPTraceExporter({
+            url: OTEL_ENDPOINT,
+            timeoutMillis: BSP_EXPORT_TIMEOUT_MS,
+          }),
+          {
+            maxQueueSize: BSP_MAX_QUEUE_SIZE,
+            maxExportBatchSize: BSP_MAX_EXPORT_BATCH_SIZE,
+            scheduledDelayMillis: BSP_SCHEDULE_DELAY_MS,
+            exportTimeoutMillis: BSP_EXPORT_TIMEOUT_MS,
+          },
+        ),
+      ],
+    });
 
-  registerInstrumentations({
-    tracerProvider: provider,
-  });
+    trace.setGlobalTracerProvider(provider);
 
-  console.log("OpenTelemetry tracing enabled (OTLP HTTP → %s)", OTEL_ENDPOINT);
+    registerInstrumentations({
+      tracerProvider: provider,
+    });
+
+    console.log("OpenTelemetry tracing enabled (OTLP HTTP → %s)", OTEL_ENDPOINT);
+  } catch (err) {
+    console.warn("OpenTelemetry initialization skipped:", err instanceof Error ? err.message : err);
+  }
 }

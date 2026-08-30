@@ -65,7 +65,9 @@ def _load_fixture_ids() -> None:
                 for node in ast.walk(tree):
                     if isinstance(node, ast.Call) and getattr(node.func, "attr", None) == "get":
                         if len(node.args) >= 2 and isinstance(node.args[1], ast.Constant):
-                            KNOWN_FIXTURE_IDS.add(node.args[1].value)
+                            fixture_id = node.args[1].value
+                            if isinstance(fixture_id, str):
+                                KNOWN_FIXTURE_IDS.add(fixture_id)
         except (SyntaxError, ValueError, OSError, AttributeError):
             pass
 
@@ -407,11 +409,23 @@ def _get_nlp_model():
         _nlp_model = spacy.load("en_core_web_sm")
         log.info("privacy_guard: SpaCy NLP Layer 2 loaded (en_core_web_sm)")
     except ImportError:
+        if _data_privacy_mode() == "production":
+            raise RuntimeError(
+                "privacy_guard: spacy is not installed in production. "
+                "NLP Layer 2 is required for fail-closed PII scanning; "
+                "install it or disable production mode."
+            )
         log.warning(
             "privacy_guard: spacy not installed — NLP Layer 2 disabled. "
             "Run: bash scripts/setup_nlp_models.sh to enable."
         )
     except OSError:
+        if _data_privacy_mode() == "production":
+            raise RuntimeError(
+                "privacy_guard: en_core_web_sm model not found in production. "
+                "NLP Layer 2 is required for fail-closed PII scanning; "
+                "run: python -m spacy download en_core_web_sm"
+            )
         log.warning(
             "privacy_guard: en_core_web_sm model not found — NLP Layer 2 disabled. "
             "Run: python -m spacy download en_core_web_sm"

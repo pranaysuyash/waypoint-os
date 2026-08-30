@@ -195,7 +195,7 @@
     },
     "expected_baseline_f1": 1.0,
     "fixture_accuracy": 1.0,
-    "note": "Baseline using expected outputs as actuals. Override with real extraction results at runtime.",
+    "note": "Self-consistent baseline: expected extraction used as actual.",
     "overall_f1": 1.0,
     "overall_precision": 1.0,
     "overall_recall": 1.0,
@@ -203,7 +203,7 @@
     "total_fixtures": 50
   },
   "fixture_root": "data/fixtures/audit",
-  "generated_at": "2026-06-23T14:49:57.712688+00:00",
+  "generated_at": "2026-08-30T06:05:30.924405+00:00",
   "manifest_version": 1,
   "pipeline_health": {
     "baseline_drifted": false,
@@ -211,7 +211,7 @@
     "expected_baseline_accuracy": 1.0,
     "fixtures_failing": 0,
     "fixtures_passing": 7,
-    "note": "Baseline using expected outputs as actuals. Override with real pipeline results at runtime.",
+    "note": "Self-consistent baseline: expected pipeline outputs used as actual.",
     "overall_accuracy": 1.0,
     "stage_accuracies": {
       "agents": 1.0,
@@ -222,8 +222,41 @@
     "total_fixtures": 7
   },
   "routing_health": {
+    "alerts": [],
     "blocks_ci": false,
-    "checked_at": "2026-06-23T14:49:57.207298+00:00",
+    "checked_at": "2026-08-30T06:05:30.394484+00:00",
+    "metrics_snapshot": {
+      "correct_escalation_count": null,
+      "cost_usd": {
+        "avg_per_eval_event": null,
+        "event_count_with_cost": 0,
+        "total": 0.0
+      },
+      "escalation_outcome_count": null,
+      "fallback_trigger_count": 0,
+      "fallback_trigger_rate": 0.0,
+      "false_escalation_count": null,
+      "false_escalation_rate": null,
+      "latency_by_candidates": {
+        "avg_ms": null,
+        "count": 0,
+        "p50_ms": null,
+        "p95_ms": null
+      },
+      "missed_escalation_count": null,
+      "missed_escalation_rate": null,
+      "notes": [
+        "false_escalation and missed_escalation are populated when review events log escalation_outcome."
+      ],
+      "review_accept_count": 0,
+      "review_correction_rate": 0.0,
+      "review_reject_count": 0,
+      "review_trigger_count": 0,
+      "review_trigger_rate": 0.0,
+      "useful_fallback_count": 0,
+      "useful_fallback_rate": 0.0,
+      "wasteful_fallback_count": 0
+    },
     "status": "healthy",
     "thresholds": {
       "fallback_trigger_rate_critical": 0.5,

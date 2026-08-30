@@ -7,15 +7,19 @@ import { cn } from '@/lib/utils';
 type BackToOverviewLinkProps = {
   className?: string;
   label?: string;
+  href?: string;
 };
 
 export function BackToOverviewLink({
   className,
   label = 'Back to Overview',
+  href,
 }: BackToOverviewLinkProps) {
+  const targetHref = href || (label.toLowerCase().includes('trips') ? '/trips' : '/overview');
+
   return (
     <Link
-      href='/overview'
+      href={targetHref}
       className={cn(
         'inline-flex items-center gap-1.5 text-ui-sm font-medium text-[#58a6ff] hover:text-[#79b8ff] transition-colors',
         className,
@@ -26,4 +30,5 @@ export function BackToOverviewLink({
     </Link>
   );
 }
+
 

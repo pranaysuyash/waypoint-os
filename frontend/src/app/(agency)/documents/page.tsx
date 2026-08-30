@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import PageClient from './PageClient';
 
 export const metadata: Metadata = {
@@ -7,6 +8,11 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PageClient />;
+  return (
+    <Suspense fallback={<div className="p-6 text-[#8b949e]">Loading documents…</div>}>
+      <PageClient />
+    </Suspense>
+  );
 }
+
 

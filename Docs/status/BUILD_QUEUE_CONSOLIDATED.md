@@ -5,41 +5,24 @@
 
 ---
 
-## Current Wave: Wave 12 — Suitability Engine Foundation
+## Current Wave: Wave 15 — Financial State Persistence & Sourcing
 
 | Item | Description | Status | Priority |
 |------|-------------|--------|----------|
-| P0-A | **Test Contract Hardening** (Stabilize `uv run pytest`) | **Done** | P0 |
-| P0-B | **Suitability Engine (Tier 1)** (Deterministic Scorer) | **Done** | P0 |
-| P0-C | **Suitability Engine (Tier 2)** (Tour-Context Coherence) | **Done** | P0 |
-| P1-D | **Suitability Engine (Tier 3)** (LLM Contextual Scorer) | Planned | P1 |
-| P1-F | **Frontend/API Contract Tests** (Boundary hardening) | Planned | P1 |
-
----
-
-## Future Roadmap (Next Phases)
-
-### Phase 2: Agentic Expansion (Wave B)
-- **Autonomous Clarification Drafting** (The "Communicator")
-- **Refinement Loops** (The "Operator")
-
-### Phase 3: Infrastructure & Commercial
-- **Vendor/Cost/Sourcing Tracking** (Gap #01)
-- **Financial State Persistence** (Gap #04)
-- **Indian Tax Compliance (TCS/GST)** (Gap #15)
-
----
-
-## Task Backlog (Reconciled)
-
-- [ ] **SLA Smoke Test**: Visual verification of Wave 11 banners (Blocked by environment EPERM).
-- [ ] **Analytics Persistence**: Ensure SLA metadata survives reprocessing.
-- [ ] **Master Gap Closure**: Implement missing NB concepts from Area #17.
+| P3-A | **Vendor/Cost/Sourcing Tracking** (Gap #01) | Ready | P0 |
+| P3-B | **Financial State Persistence** (Gap #04) | Ready | P0 |
+| P3-C | **Indian Tax Compliance (TCS/GST)** (Gap #15) | Planned | P1 |
 
 ---
 
 ## Completed (Recent)
 
+- [x] **Wave 14 / Wave B**: Agentic Expansion:
+  - **Tier 3 Suitability Scorer** (`LLMContextualScorer` with disk caching and tour-context keys).
+  - **Communicator Agent** (Autonomous multi-tonal clarification drafting for blocked inquiries).
+  - **Operator Refinement Agent** (Autonomous refinement loops and counterfactual trade-off proposals).
+- [x] **Wave 13**: Risk-Adjusted Dynamic Fee Calculation & FX Protection.
+- [x] **Wave 12**: Suitability Engine Foundation (Tier 1 tag rules & Tier 2 itinerary coherence).
 - [x] **Wave 11**: Real-time SLA Tracking & Escalation.
 - [x] **Wave 10**: Feedback-Driven Actioning.
 - [x] **Wave 9**: Post-Trip Feedback & CSAT Analytics.

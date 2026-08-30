@@ -75,7 +75,7 @@ export function ProgressSteps({
                 )}
               >
                 {status === 'completed' ? (
-                  <CheckCircle2 className={size === 'md' ? 'size-4' : 'size-3'} />
+                  <CheckCircle2 className={size === 'md' ? 'size-4' : 'size-3'} aria-hidden="true" />
                 ) : (
                   <span className="font-semibold">{index + 1}</span>
                 )}

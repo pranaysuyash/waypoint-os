@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { WorkspaceTripLayoutShell } from "../layout";
+import WorkspaceTripLayoutShell from "../layout";
 import { ApiException, type Trip } from "@/lib/api-client";
 import * as apiClient from "@/lib/api-client";
 import * as navigation from "next/navigation";
@@ -88,11 +88,12 @@ describe("trips/[tripId]/layout", () => {
     vi.mocked(navigation.useParams).mockReturnValue({ tripId: "TRIP-123" });
     vi.mocked(navigation.usePathname).mockReturnValue("/trips/TRIP-123/intake");
     mockTimelineFetch();
+    vi.mocked(apiClient.api.get).mockReset();
     vi.mocked(apiClient.api.get).mockResolvedValue(baseTrip as Trip);
   });
 
   it("renders loading state while trip is pending", () => {
-    vi.mocked(apiClient.api.get).mockImplementation(
+    vi.mocked(apiClient.api.get).mockImplementationOnce(
       () => new Promise<Trip>(() => {}),
     );
 
@@ -112,8 +113,8 @@ describe("trips/[tripId]/layout", () => {
       </WorkspaceTripLayoutShell>,
     );
 
+    expect(await screen.findByRole("heading", { name: "Trip details incomplete" })).toBeInTheDocument();
     await waitForTimelineFetch();
-    expect(screen.getByRole("heading", { name: "Trip details incomplete" })).toBeInTheDocument();
     expect(screen.getByText("Missing customer details")).toBeInTheDocument();
     expect(screen.getByText("In planning · Inquiry Ref: TRIP")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Intake" })).toHaveAttribute("aria-current", "page");

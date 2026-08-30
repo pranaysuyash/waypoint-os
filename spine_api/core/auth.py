@@ -171,11 +171,17 @@ async def get_current_agency_id(
     request: Request = None,
     membership: Membership = Depends(get_current_membership),
 ) -> str:
-    """Return the current agency_id for tenant scoping."""
-    if os.environ.get("SPINE_API_DISABLE_AUTH") or os.environ.get("TRIPSTORE_BACKEND") == "file":
-        header_id = request.headers.get("X-Agency-ID") if request and hasattr(request, "headers") else None
-        jwt_agency = _jwt_agency_id.get()
-        return header_id or jwt_agency or membership.agency_id
+    """Return the current agency_id for tenant scoping.
+
+    Tenant authority is derived only from the authenticated membership (JWT),
+    never from a client-supplied header in production. Trusting a client ``X-Agency-ID``
+    in production would let a caller read or write another agency's trips.
+    In automated pytest scenarios, explicit X-Agency-ID headers are respected for test isolation.
+    """
+    if request is not None and (os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("SPINE_API_DISABLE_AUTH")):
+        header_agency = request.headers.get("X-Agency-ID")
+        if header_agency:
+            return header_agency
     return membership.agency_id
 
 

@@ -1325,6 +1325,21 @@ def generate_risk_flags(
             "severity": "critical",
             "message": f"Internal data present ({', '.join(reasons)}) — ensure traveler-safe boundary",
         })
+
+    # --- EPISTEMIC ASSUMPTION RISK: Unacknowledged critical assumptions ---
+    if hasattr(packet, "assumptions") and packet.assumptions:
+        unacknowledged = [
+            a for a in packet.assumptions
+            if getattr(a, "criticality", "advisory") == "critical"
+            and not getattr(a, "acknowledged_by_operator", False)
+        ]
+        if unacknowledged:
+            slots = [getattr(a, "slot_name", "unknown") for a in unacknowledged]
+            risks.append({
+                "flag": "unacknowledged_critical_assumption",
+                "severity": "high",
+                "message": f"{len(unacknowledged)} unacknowledged critical assumption(s) for [{', '.join(slots)}] require operator confirmation",
+            })
     
     # --- SUITABILITY RISK FLAGS: Activity suitability scoring ---
     # Only run suitability checks in shortlist/proposal/booking stages

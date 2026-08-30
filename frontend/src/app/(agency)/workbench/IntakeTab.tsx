@@ -19,6 +19,7 @@ import type { Trip } from '@/lib/api-client';
 import { useWorkbenchStore } from '@/stores/workbench';
 import type { SpineStage, OperatingMode } from '@/types/spine';
 import { getTravelerPromptForUnknownField } from '@/lib/traveler-prompts';
+import { RepeatTravelerRecallCard } from './RepeatTravelerRecallCard';
 
 const stages: { value: SpineStage; label: string }[] = [
   { value: 'discovery', label: 'Discovery' },
@@ -136,6 +137,19 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
           </p>
         )}
       </div>
+
+      {/* Repeat Traveler Auto-Recall Memory Card */}
+      <RepeatTravelerRecallCard
+        customerMessage={input_raw_note}
+        onApplyPreferences={(prefs) => {
+          const prefSummary = `[Verified Profile Memory Applied]: Dietary: ${prefs.dietary || '-'} | Seating: ${prefs.seating || '-'} | Delta SkyMiles: ${prefs.loyalty_delta || '-'}`;
+          if (input_owner_note && !input_owner_note.includes('[Verified Profile Memory Applied]')) {
+            setInputOwnerNote(`${input_owner_note}\n\n${prefSummary}`);
+          } else if (!input_owner_note) {
+            setInputOwnerNote(prefSummary);
+          }
+        }}
+      />
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>

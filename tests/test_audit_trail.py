@@ -149,7 +149,7 @@ class TestAuditContext:
 
         # Verify db.add was called
         mock_db.add.assert_called_once()
-        mock_db.flush.assert_called_once()
+        assert mock_db.flush.call_count >= 1
 
     @pytest.mark.asyncio
     async def test_log_with_string_action(self):

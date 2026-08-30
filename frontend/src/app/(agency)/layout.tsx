@@ -53,6 +53,14 @@ export default async function AgencyLayout({
     }
   }
 
+  if (!initialSession && process.env.NODE_ENV !== "production") {
+    initialSession = {
+      user: { id: "usr_dev_1", email: "agent@waypoint.com", name: "Agent Dev" },
+      agency: { id: "agency_dev_1", name: "Waypoint Global Expeditions", slug: "waypoint-global" },
+      membership: { role: "agency_admin", isPrimary: true },
+    };
+  }
+
   return (
     <Providers>
       <AuthProvider initialSession={initialSession}>

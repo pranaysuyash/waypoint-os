@@ -45,6 +45,41 @@ class WorkStatus(str, Enum):
     RETRY_PENDING = "retry_pending"
     POISONED = "poisoned"
     ESCALATED = "escalated"
+    INTERRUPTED_RECOVERABLE = "interrupted_recoverable"
+
+
+@dataclass(slots=True)
+class ExecutionLease:
+    """Durable worker execution lease preventing zombie tasks (PER-0700 / PER-0705)."""
+    lease_id: str
+    work_item_id: str
+    owner_worker_id: str
+    acquired_at: datetime
+    lease_expires_at: datetime
+    last_heartbeat_at: datetime
+    ttl_seconds: int = 60
+
+    def is_expired(self, now: Optional[datetime] = None) -> bool:
+        if now is None:
+            now = datetime.now(timezone.utc)
+        return now > self.lease_expires_at
+
+    def heartbeat(self, extend_seconds: Optional[int] = None) -> None:
+        now = datetime.now(timezone.utc)
+        self.last_heartbeat_at = now
+        ttl = extend_seconds or self.ttl_seconds
+        self.lease_expires_at = now + timedelta(seconds=ttl)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "lease_id": self.lease_id,
+            "work_item_id": self.work_item_id,
+            "owner_worker_id": self.owner_worker_id,
+            "acquired_at": self.acquired_at.isoformat(),
+            "lease_expires_at": self.lease_expires_at.isoformat(),
+            "last_heartbeat_at": self.last_heartbeat_at.isoformat(),
+            "ttl_seconds": self.ttl_seconds,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -3116,6 +3151,8 @@ def build_default_registry() -> AgentRegistry:
     # Lazy import to avoid circular dependency:
     # closed_loop_learning.py imports from runtime.py.
     from src.agents.closed_loop_learning import ClosedLoopLearningAgent
+    from src.agents.communicator_agent import CommunicatorAgent
+    from src.agents.operator_refinement_agent import OperatorRefinementAgent
 
     return AgentRegistry([
         FrontDoorAgent(),
@@ -3135,4 +3172,6 @@ def build_default_registry() -> AgentRegistry:
         FollowUpAgent(),
         QualityEscalationAgent(),
         ClosedLoopLearningAgent(),
+        CommunicatorAgent(),
+        OperatorRefinementAgent(),
     ])

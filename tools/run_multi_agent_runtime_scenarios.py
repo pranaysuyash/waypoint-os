@@ -17,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.agents.runtime import AgentSupervisor, build_default_registry
+from src.agents.runtime import AgentSupervisor, build_default_registry  # noqa: E402
 
 
 class MemoryTripRepo:

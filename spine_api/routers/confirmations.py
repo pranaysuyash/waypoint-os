@@ -17,6 +17,7 @@ Auth model:
 """
 
 import logging
+import re
 from dataclasses import asdict
 from typing import Optional
 
@@ -57,6 +58,13 @@ class UpdateConfirmationRequest(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=2000)
     external_ref: Optional[str] = Field(default=None, max_length=200)
     evidence_refs: Optional[list[dict]] = None
+
+
+class ExtractConfirmationRequest(BaseModel):
+    raw_text: str = Field(..., min_length=5, description="Raw email, voucher, or ticket text to extract from")
+    document_name: Optional[str] = None
+    auto_record: bool = False
+    task_id: Optional[str] = None
 
 
 # ── Summary response helper ──────────────────────────────────────────────────
@@ -364,3 +372,113 @@ async def get_agentic_eval(
         "summary": summary,
         "routing_health": routing_health,
     }
+
+
+@router.post("/{trip_id}/confirmations/extract")
+async def extract_confirmation_data(
+    trip_id: str,
+    body: ExtractConfirmationRequest,
+    agency_id: str = Depends(get_current_agency_id),
+    membership=require_permission("trips:write"),
+    db: AsyncSession = Depends(get_rls_db),
+):
+    """Auto-extract PNR, supplier, dates, amounts, and metadata from raw confirmation text."""
+    text = body.raw_text
+    lower_text = text.lower()
+
+    # Type inference
+    conf_type = "other"
+    if any(k in lower_text for k in ["flight", "airline", "pnr", "boarding", "ticket", "aircraft", "seat"]):
+        conf_type = "flight"
+    elif any(k in lower_text for k in ["hotel", "resort", "check-in", "checkout", "room", "suite", "nights"]):
+        conf_type = "hotel"
+    elif any(k in lower_text for k in ["transfer", "chauffeur", "pickup", "dropoff", "vehicle", "driver"]):
+        conf_type = "transfer"
+    elif any(k in lower_text for k in ["safari", "tour", "excursion", "helicopter", "cruise", "activity"]):
+        conf_type = "activity"
+    elif any(k in lower_text for k in ["insurance", "policy", "coverage", "underwriter"]):
+        conf_type = "insurance"
+
+    # PNR / Confirmation number extraction
+    conf_num = None
+    pnr_match = re.search(r"(?:PNR|Booking Ref|Record Locator|Confirmation (?:Number|Code|ID|#)?|Reservation #)[:\s]*([A-Z0-9\-]{5,15})", text, re.IGNORECASE)
+    if pnr_match:
+        conf_num = pnr_match.group(1).strip()
+    else:
+        pnr_fallback = re.search(r"\b([A-Z0-9]{6})\b", text)
+        if pnr_fallback:
+            conf_num = pnr_fallback.group(1).strip()
+
+    # Supplier name detection
+    supplier_name = None
+    known_suppliers = [
+        "Emirates", "Qatar Airways", "Singapore Airlines", "British Airways", "Air India", "Etihad",
+        "The Silo Hotel", "The Royal Portfolio", "Wilderness Safaris", "Singita", "Marriott", "Hilton",
+        "Four Seasons", "Belmond", "Aman", "NAC Helicopters", "Cape Executive VIP", "Allianz"
+    ]
+    for s in known_suppliers:
+        if s.lower() in lower_text:
+            supplier_name = s
+            break
+
+    if not supplier_name:
+        supp_match = re.search(r"(?:Supplier|Provider|Merchant|Airline|Hotel|Property)[:\s]*([A-Za-z0-9\s&]{3,40})", text, re.IGNORECASE)
+        if supp_match:
+            supplier_name = supp_match.group(1).strip()
+
+    # Date extraction
+    dates = []
+    for d_match in re.finditer(r"\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4}|\d{4}-\d{2}-\d{2})\b", text, re.IGNORECASE):
+        dates.append(d_match.group(1))
+
+    # Amount extraction
+    amount = None
+    currency = "USD"
+    amt_match = re.search(r"(\$|EUR|GBP|INR|AED|USD)\s*([\d,]+(?:\.\d{2})?)", text, re.IGNORECASE)
+    if amt_match:
+        curr_symbol = amt_match.group(1).upper()
+        currency = "USD" if curr_symbol == "$" else curr_symbol
+        amount = float(amt_match.group(2).replace(",", ""))
+
+    # Confidence calculation
+    confidence = 0.5
+    if conf_num:
+        confidence += 0.25
+    if supplier_name:
+        confidence += 0.15
+    if conf_type != "other":
+        confidence += 0.10
+    confidence = min(1.0, confidence)
+
+    extracted_data = {
+        "confirmation_type": conf_type,
+        "confirmation_number": conf_num or "PENDING-CONF",
+        "supplier_name": supplier_name or "Direct Supplier",
+        "dates": " - ".join(dates) if dates else "Confirmed Schedule",
+        "amount": amount,
+        "currency": currency,
+        "confidence_score": round(confidence, 2),
+        "notes": f"Auto-extracted from {body.document_name or 'document snippet'}",
+    }
+
+    created_confirmation = None
+    if body.auto_record and conf_num:
+        created_confirmation = await confirmation_service.create_confirmation(
+            db=db,
+            trip_id=trip_id,
+            agency_id=agency_id,
+            created_by=membership.user_id,
+            confirmation_type=conf_type,
+            supplier_name=supplier_name or "Direct Supplier",
+            confirmation_number=conf_num,
+            notes=extracted_data["notes"],
+            task_id=body.task_id,
+        )
+
+    return {
+        "ok": True,
+        "trip_id": trip_id,
+        "extracted": extracted_data,
+        "recorded_confirmation": _detail_to_dict(created_confirmation) if created_confirmation else None,
+    }
+

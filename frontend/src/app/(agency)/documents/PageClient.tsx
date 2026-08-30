@@ -1,23 +1,41 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import OpsPanel from '../workbench/OpsPanel';
 import { useTrip, useTrips } from '@/hooks/useTrips';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { formatTripPickerLabel } from '@/lib/trip-picker-label';
 
 export default function DocumentsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlTripId = searchParams.get('tripId') || searchParams.get('trip') || '';
+
   const { data: trips, isLoading } = useTrips({ view: 'workspace', limit: 100 });
-  const [selectedTripId, setSelectedTripId] = useState<string>('');
 
   const tripOptions = useMemo(
     () => trips.map((trip) => ({ id: trip.id, label: formatTripPickerLabel(trip) })),
     [trips],
   );
-  const selectedTripExists = trips.some((trip) => trip.id === selectedTripId);
-  const effectiveSelectedTripId = selectedTripExists ? selectedTripId : trips[0]?.id ?? '';
+  const selectedTripExists = trips.some((trip) => trip.id === urlTripId);
+  const effectiveSelectedTripId = selectedTripExists ? urlTripId : trips[0]?.id ?? '';
   const { data: selectedTrip } = useTrip(effectiveSelectedTripId || null);
+
+  const handleTripChange = useCallback(
+    (newTripId: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (newTripId) {
+        params.set('tripId', newTripId);
+      } else {
+        params.delete('tripId');
+      }
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   return (
     <div className='p-6 space-y-6'>
@@ -37,7 +55,7 @@ export default function DocumentsPage() {
           id='documents-trip-select'
           data-testid='documents-trip-select'
           value={effectiveSelectedTripId}
-          onChange={(e) => setSelectedTripId(e.target.value)}
+          onChange={(e) => handleTripChange(e.target.value)}
           className='w-full md:w-[420px] bg-[#0d1117] border border-[#30363d] rounded p-2 text-sm text-[#e6edf3]'
           disabled={isLoading || tripOptions.length === 0}
         >
@@ -72,3 +90,4 @@ export default function DocumentsPage() {
     </div>
   );
 }
+

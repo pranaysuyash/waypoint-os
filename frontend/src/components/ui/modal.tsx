@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,7 +37,11 @@ export function Modal({
   const previousActiveElement = useRef<HTMLElement | null>(null);
   const [host, setHost] = useState<HTMLElement | null>(null);
   const ids = surfaceIds('modal');
-  const onCloseEvent = useEffectEvent(() => onClose());
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+  const onCloseEvent = () => onCloseRef.current();
 
   useEffect(() => {
     if (!isOpen) {

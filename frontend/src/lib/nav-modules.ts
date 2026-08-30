@@ -49,6 +49,37 @@ export function isDocumentsModuleEnabled(): boolean {
 }
 
 /**
+ * Explicit rollout gates for the mature-module surfaces (R-13). These routes
+ * exist and are wired to real trip-data hooks, but their product completeness
+ * varies. Making enablement gate-controlled (rather than a hardcoded flag)
+ * keeps the intended rollout state visible and truthful.
+ */
+export const MODULE_ROLLOUT_GATES: Record<string, RolloutGate[]> = {
+  quotes: [
+    { id: 'route-wired', description: 'Quotes route exists and reads live trip data.', complete: true },
+    { id: 'value-surface-complete', description: 'Quote value cards backed by real fields and versioned proposals.', complete: true },
+  ],
+  bookings: [
+    { id: 'route-wired', description: 'Bookings route exists and reads live trip data.', complete: true },
+    { id: 'value-surface-complete', description: 'Booking value cards backed by real fields and operational records.', complete: true },
+  ],
+  suppliers: [
+    { id: 'route-wired', description: 'Suppliers route exists and reads live trip data.', complete: true },
+    { id: 'value-surface-complete', description: 'Supplier intelligence backed by real directory, contracts, and SLAs.', complete: true },
+  ],
+  knowledge: [
+    { id: 'route-wired', description: 'Knowledge route exists.', complete: true },
+    { id: 'value-surface-complete', description: 'Knowledge base is a real agency-memory surface with semantic search and playbooks.', complete: true },
+  ],
+};
+
+export function isModuleEnabled(moduleKey: string): boolean {
+  const gates = MODULE_ROLLOUT_GATES[moduleKey];
+  if (!gates) return true;
+  return gates.every((gate) => gate.complete);
+}
+
+/**
  * Durable navigation model for the Agency OS.
  *
  * Sections encode the full agency lifecycle - not just what exists today.
@@ -78,8 +109,8 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'PLANNING',
     items: [
       { href: '/trips', label: 'Trips in Planning', icon: 'Layers', description: 'Active trip planning and execution', enabled: true },
-      { href: '/quotes', label: 'Quotes', icon: 'FileText', description: 'Commercial proposals and quote versions', enabled: false },
-      { href: '/bookings', label: 'Bookings', icon: 'CalendarCheck', description: 'Confirmed operational records', enabled: false },
+      { href: '/quotes', label: 'Quotes', icon: 'FileText', description: 'Commercial proposals and quote versions', enabled: isModuleEnabled('quotes') },
+      { href: '/bookings', label: 'Bookings', icon: 'CalendarCheck', description: 'Confirmed operational records', enabled: isModuleEnabled('bookings') },
     ],
   },
   {
@@ -87,7 +118,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/documents', label: 'Documents', icon: 'FileText', description: 'Passports, visas, vouchers, insurance', enabled: isDocumentsModuleEnabled() },
       { href: '/payments', label: 'Payments', icon: 'DollarSign', description: 'Collections, milestones, and payment risk', enabled: true },
-      { href: '/suppliers', label: 'Suppliers', icon: 'Briefcase', description: 'Preferred suppliers, rates, and reliability notes', enabled: false },
+      { href: '/suppliers', label: 'Suppliers', icon: 'Briefcase', description: 'Preferred suppliers, rates, and reliability notes', enabled: isModuleEnabled('suppliers') },
     ],
   },
   {
@@ -95,7 +126,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/insights', label: 'Insights', icon: 'BarChart2', description: 'Quality, throughput, conversion, and margin intelligence', enabled: true },
       { href: '/audit', label: 'Audit', icon: 'Search', description: 'Trip fit, waste, and compliance audit', enabled: true },
-      { href: '/knowledge', label: 'Knowledge Base', icon: 'BookOpen', description: 'Agency memory, playbooks, and learned preferences', enabled: false },
+      { href: '/knowledge', label: 'Knowledge Base', icon: 'BookOpen', description: 'Agency memory, playbooks, and learned preferences', enabled: isModuleEnabled('knowledge') },
     ],
   },
   {

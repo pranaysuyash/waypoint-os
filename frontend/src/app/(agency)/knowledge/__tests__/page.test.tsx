@@ -9,13 +9,13 @@ vi.mock('@/components/navigation/BackToOverviewLink', () => ({
 }));
 
 describe('KnowledgePage', () => {
-  it('renders the knowledge base shell', () => {
+  it('renders the knowledge base and agency memory studio', () => {
     render(<KnowledgePage />);
 
-    expect(screen.getByText('Knowledge Base')).toBeInTheDocument();
-    expect(screen.getByText(/Canonical agency memory shell/i)).toBeInTheDocument();
-    expect(screen.getByText('Playbooks')).toBeInTheDocument();
-    expect(screen.getByText('Preferences')).toBeInTheDocument();
-    expect(screen.getByText('Memory')).toBeInTheDocument();
+    expect(screen.getByText(/Knowledge Base & Agency Memory/i)).toBeInTheDocument();
+    expect(screen.getByText(/Canonical agency intelligence/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/South Africa Luxury Safari/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Schengen Visa Processing/i)).toBeInTheDocument();
+    expect(screen.getByText(/Create New Playbook/i)).toBeInTheDocument();
   });
 });

@@ -39,12 +39,35 @@ def _get_default_limits() -> list[str]:
     return ["60/minute"]
 
 
-limiter = Limiter(
-    key_func=_key_func,
-    default_limits=_get_default_limits(),
-    enabled=True,
-    headers_enabled=True,
-)
+def _get_storage_uri() -> str:
+    redis_url = os.environ.get("REDIS_URL") or os.environ.get("SPINE_REDIS_URL")
+    if redis_url:
+        return redis_url
+    return "memory://"
+
+
+_storage_uri = _get_storage_uri()
+try:
+    limiter = Limiter(
+        key_func=_key_func,
+        default_limits=_get_default_limits(),
+        storage_uri=_storage_uri,
+        enabled=True,
+        headers_enabled=True,
+    )
+except Exception as e:
+    logger.warning(
+        "Failed to initialize rate limiter with storage_uri=%s, falling back to memory: %s",
+        _storage_uri,
+        e,
+    )
+    limiter = Limiter(
+        key_func=_key_func,
+        default_limits=_get_default_limits(),
+        storage_uri="memory://",
+        enabled=True,
+        headers_enabled=True,
+    )
 
 
 class RateLimitExceededHandler:

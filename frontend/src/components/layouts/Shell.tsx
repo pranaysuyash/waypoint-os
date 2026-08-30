@@ -157,7 +157,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { push: routerPush } = useRouter();
 
   useHotkey('n', true, useCallback(() => {
-    routerPush('/workbench?draft=new&tab=intake');
+    routerPush('/inquiries/new?draft=new&tab=intake');
   }, [routerPush]));
 
   const shellTripId = parseTripIdFromPathname(pathname);
@@ -196,7 +196,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           style={{ borderBottom: '1px solid var(--border-default)' }}
         >
           <div
-            className='flex size-7 items-center justify-center rounded-sm shrink-0'
+            className='flex size-[#1.75rem] items-center justify-center rounded-sm shrink-0'
             style={{ background: 'var(--accent-blue)' }}
           >
             <MapPin className='size-3.5' style={{ color: 'var(--text-on-accent)' }} aria-hidden='true' />
@@ -219,7 +219,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {/* New Inquiry CTA - action, not a place. Icon-only on collapsed sidebar. */}
         <div className='px-2 md:px-4 pt-3 pb-1'>
           <Link
-            href='/workbench?draft=new&tab=intake&capture_mode=call&entry=new'
+            href='/inquiries/new?draft=new&tab=intake&capture_mode=call&entry=new'
             aria-label='New Inquiry'
             className='flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border'
             style={{
@@ -354,7 +354,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
             style={{ background: 'var(--accent-red)', color: '#ffffff' }}
           >
             <AlertTriangle className='size-3' aria-hidden='true' />
-            CRITICAL: Data inconsistency detected. Please refresh.
+            CRITICAL: Data inconsistency detected.{' '}
+            <Link href='/audit?severity=critical' className='underline font-bold text-white hover:opacity-90 ml-1'>
+              Inspect Audit Log
+            </Link>
           </div>
         )}
 
@@ -389,9 +392,44 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main id='main-content' className='flex-1 overflow-visible pb-0 md:overflow-y-auto' tabIndex={-1}>
+        <main id='main-content' className='flex-1 overflow-visible pb-16 md:pb-0 md:overflow-y-auto' tabIndex={-1}>
           {children}
         </main>
+
+        {/* Mobile Bottom Navigation Bar (< 768px) */}
+        <nav
+          className='md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around h-14 border-t px-2 shadow-lg'
+          style={{
+            background: 'var(--bg-surface)',
+            borderColor: 'var(--border-default)',
+          }}
+          aria-label='Mobile bottom navigation'
+        >
+          {[
+            { href: '/inbox', label: 'Inbox', icon: Inbox },
+            { href: '/trips', label: 'Trips', icon: Layers },
+            { href: '/inquiries/new?draft=new&tab=intake', label: 'New', icon: Send },
+            { href: '/documents', label: 'Docs', icon: FileText },
+            { href: '/settings', label: 'Settings', icon: Settings },
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || (item.href !== '/inquiries/new' && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-label={item.label}
+                className={cn(
+                  'flex flex-col items-center justify-center min-w-[56px] py-1 text-[11px] font-medium transition-colors',
+                  isActive ? 'text-[var(--accent-blue)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                )}
+              >
+                <Icon className='size-5 mb-0.5' aria-hidden='true' />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );

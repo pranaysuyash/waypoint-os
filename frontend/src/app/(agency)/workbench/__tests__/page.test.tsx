@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import WorkbenchPage, { extractCompletedTripIdFromDraft } from '../page';
+import WorkbenchPage from '../page';
+import { extractCompletedTripIdFromDraft } from '../PageClient';
 import { normalizeSafetyResult } from '@/lib/bff-trip-adapters';
 
 const mockReplace = vi.fn();

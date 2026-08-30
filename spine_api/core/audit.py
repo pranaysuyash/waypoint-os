@@ -28,6 +28,8 @@ context with agency_id="system" and user_id=None — the route still needs
 to provide action and resource info.
 """
 
+import hashlib
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -42,6 +44,8 @@ from spine_api.models.audit import AuditAction, AuditLog
 from spine_api.models.tenant import Membership, User
 
 logger = logging.getLogger("spine_api.audit")
+
+GENESIS_BLOCK_HASH = "GENESIS_BLOCK_HASH"
 
 
 class AuditContext:
@@ -80,6 +84,17 @@ class AuditContext:
             The persisted AuditLog entry
         """
         action_str = action.value if isinstance(action, AuditAction) else str(action)
+        created_at = datetime.now(timezone.utc)
+
+        # Resolve the previous entry's current_hash to extend the RULE_015 chain.
+        prev_hashes: list[Optional[str]] = list(
+            await self._db.scalars(
+                select(AuditLog.current_hash)
+                .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+                .limit(1)
+            )
+        )
+        previous_hash = prev_hashes[0] if prev_hashes and prev_hashes[0] else GENESIS_BLOCK_HASH
 
         entry = AuditLog(
             agency_id=self._agency_id,
@@ -90,18 +105,32 @@ class AuditContext:
             changes=changes,
             ip_address=self._ip_address,
             user_agent=self._user_agent,
-            created_at=datetime.now(timezone.utc),
+            created_at=created_at,
         )
+        # Compute the tamper-evident hash before flush so id is populated on flush.
         self._db.add(entry)
         try:
             await self._db.flush()
-            logger.debug(
-                "Audit: agency=%s user=%s action=%s resource=%s/%s",
-                self._agency_id, self._user_id, action_str,
-                resource_type, resource_id,
-            )
         except Exception as exc:
             logger.warning("Audit log flush failed (non-fatal): %s", exc)
+            return entry
+
+        # Hash payload mirrors the file-based AuditStore chain semantics.
+        hash_payload = (
+            f"{entry.id}:{self._agency_id}:{self._user_id}:{action_str}:"
+            f"{previous_hash}:{created_at.isoformat()}:{json.dumps(changes or {}, sort_keys=True)}"
+        )
+        entry.previous_hash = previous_hash
+        entry.current_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+        try:
+            await self._db.flush()
+            logger.debug(
+                "Audit: agency=%s user=%s action=%s resource=%s/%s hash=%s",
+                self._agency_id, self._user_id, action_str,
+                resource_type, resource_id, entry.current_hash[:8],
+            )
+        except Exception as exc:
+            logger.warning("Audit log hash flush failed (non-fatal): %s", exc)
         return entry
 
     @property

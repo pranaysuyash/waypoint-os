@@ -140,15 +140,9 @@ def _run_extraction_baseline(
         report = run_extraction_eval(fixtures, saved_results=live_results)
         note = "Live extraction results used for F1 evaluation."
     else:
-        # Build self-consistent actual results from expected outputs.
-        # This validates the comparison logic and produces a 100%-F1
-        # reference baseline.
-        saved_results = {
-            fixture.fixture_id: fixture.expected_extracted_fields
-            for fixture in fixtures
-        }
-        report = run_extraction_eval(fixtures, saved_results=saved_results)
-        note = "Baseline using expected outputs as actuals. Override with real extraction results at runtime."
+        saved = {f.fixture_id: f.expected_extracted_fields for f in fixtures}
+        report = run_extraction_eval(fixtures, saved_results=saved)
+        note = "Self-consistent baseline: expected extraction used as actual."
     summary = report.summary()
     # Determine gate status from overall F1
     overall_f1 = summary["overall"]["f1"]
@@ -209,17 +203,15 @@ def _run_pipeline_baseline(
         actual_results = live_results
         note = "Live pipeline results used for accuracy evaluation."
     else:
-        # Build self-consistent actual results from expected outputs.
-        # This validates the comparison logic and produces a 100%-accuracy
-        # reference baseline.
-        actual_results = {}
-        for fixture in fixtures:
-            actual_results[fixture.fixture_id] = {
-                "extraction": fixture.expected_extraction,
-                "agents": fixture.expected_agents,
-                "decision": fixture.expected_decision,
+        actual_results = {
+            f.fixture_id: {
+                "extraction": f.expected_extraction,
+                "agents": f.expected_agents,
+                "decision": f.expected_decision,
             }
-        note = "Baseline using expected outputs as actuals. Override with real pipeline results at runtime."
+            for f in fixtures
+        }
+        note = "Self-consistent baseline: expected pipeline outputs used as actual."
     report = run_pipeline_eval(fixtures, actual_results)
     summary = report.summary()
     overall_acc = summary["overall_accuracy"]

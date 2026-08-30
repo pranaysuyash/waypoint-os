@@ -55,7 +55,7 @@ describe('SuppliersPage', () => {
   it('renders the suppliers shell and trip context', () => {
     render(<SuppliersPage />);
 
-    expect(screen.getByText('Suppliers')).toBeInTheDocument();
+    expect(screen.getByText(/Suppliers & DMC Directory/i)).toBeInTheDocument();
     expect(screen.getByTestId('suppliers-trip-select')).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /Cape Town business trip · Updated recently · BC27/i })).toBeInTheDocument();
     expect(screen.getByText(/Current supplier risk: medium/i)).toBeInTheDocument();

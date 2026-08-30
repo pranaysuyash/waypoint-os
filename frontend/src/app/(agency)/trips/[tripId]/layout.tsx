@@ -90,7 +90,7 @@ function timelineRailReducer(
   }
 }
 
-export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
+function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
   const params = useParams<{ tripId?: string | string[] }>();
   const pathname = usePathname();
   const tripId = parseTripId(params?.tripId);

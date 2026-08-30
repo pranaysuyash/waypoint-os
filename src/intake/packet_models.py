@@ -85,6 +85,41 @@ def higher_authority(auth1: str, auth2: str) -> str:
 
 
 # =============================================================================
+# SECTION 1A: EPISTEMIC INTEGRITY MODELS
+# =============================================================================
+
+class EpistemicStatus(StrEnum):
+    """Explicit epistemic classification for truth-state tracking (PER-0922/0923)."""
+    FACT = "FACT"              # Explicitly stated by the traveler / verified customer input
+    INFERRED = "INFERRED"      # Extracted by NLP or derived with high confidence (>0.85)
+    ASSUMED = "ASSUMED"        # Defaulted by system business rules or heuristic assumptions
+    UNKNOWN = "UNKNOWN"        # Unresolved or missing slot
+
+
+@dataclass(slots=True)
+class AssumptionRecord:
+    """Explicit assumption entry tracked in the AssumptionRegister."""
+    slot_name: str
+    assumed_value: Any
+    rationale: str
+    criticality: Literal["critical", "preference", "advisory"] = "advisory"
+    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    acknowledged_by_operator: bool = False
+    operator_notes: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "slot_name": self.slot_name,
+            "assumed_value": self.assumed_value,
+            "rationale": self.rationale,
+            "criticality": self.criticality,
+            "created_at": self.created_at,
+            "acknowledged_by_operator": self.acknowledged_by_operator,
+            "operator_notes": self.operator_notes,
+        }
+
+
+# =============================================================================
 # SECTION 2: EVIDENCE & SLOT MODELS
 # =============================================================================
 
@@ -125,6 +160,8 @@ class Slot:
     notes: Optional[str] = None
     # Maturity tag for derived signals: stub | heuristic | verified
     maturity: Optional[Literal["stub", "heuristic", "verified"]] = None
+    # Epistemic status: FACT | INFERRED | ASSUMED | UNKNOWN
+    epistemic_status: Optional[str] = None
 
     def to_dict(self) -> dict:
         d = {
@@ -139,6 +176,8 @@ class Slot:
         }
         if self.maturity is not None:
             d["maturity"] = self.maturity
+        if self.epistemic_status is not None:
+            d["epistemic_status"] = self.epistemic_status
         return d
 
 
@@ -419,6 +458,9 @@ class CanonicalPacket:
     # Audit trail
     event_cursor: int = 0
     events: List[Dict[str, Any]] = field(default_factory=list)
+
+    # Epistemic tracking (PER-0922 / PER-0923)
+    assumptions: List[AssumptionRecord] = field(default_factory=list)
 
     # Feature gate metadata (e.g. agent_flags)
     metadata: Dict[str, Any] = field(default_factory=dict)

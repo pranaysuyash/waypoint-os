@@ -143,3 +143,53 @@ def get_trip_timeline(
     except Exception as e:
         logger.error("Failed to retrieve timeline for trip %s: %s", trip_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve trip timeline")
+
+
+@router.get("/api/trips/{trip_id}/events/stream")
+async def stream_trip_events(
+    trip_id: str,
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Stream live timeline and agent events for a trip via Server-Sent Events (SSE).
+    """
+    import asyncio
+    import json
+    from starlette.responses import StreamingResponse
+
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    async def event_generator():
+        last_count = 0
+        iterations = 0
+        max_iterations = 600  # 10 minutes max connection lifetime before auto-reconnect
+        try:
+            while iterations < max_iterations:
+                audit_events = AuditStore.get_events_for_trip(trip_id)
+                if len(audit_events) > last_count:
+                    new_events = audit_events[last_count:]
+                    last_count = len(audit_events)
+                    for ev in new_events:
+                        payload = json.dumps(ev, default=str)
+                        yield f"event: agent_event\ndata: {payload}\n\n"
+                else:
+                    # Heartbeat ping every second
+                    yield f"event: ping\ndata: {json.dumps({'time': iterations})}\n\n"
+
+                iterations += 1
+                await asyncio.sleep(1.0)
+        except asyncio.CancelledError:
+            pass
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+

@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import PageClient, { extractCompletedTripIdFromDraft } from './PageClient';
-
-export { extractCompletedTripIdFromDraft };
+import PageClient from './PageClient';
 
 export const metadata: Metadata = {
   title: "Waypoint OS — Workbench",

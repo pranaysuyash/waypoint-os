@@ -14,14 +14,27 @@ describe('NAV_SECTIONS', () => {
     expect(planning?.items.map((item) => item.label)).not.toContain('Trips');
   });
 
-  it('enables Documents module when all rollout gates are complete', () => {
+  it('enables Documents, Quotes, Bookings, Suppliers, and Knowledge modules when all rollout gates are complete', () => {
     expect(isDocumentsModuleEnabled()).toBe(true);
     expect(DOCUMENTS_MODULE_ROLLOUT_GATES.every((gate) => gate.complete === true)).toBe(true);
 
+    const command = NAV_SECTIONS.find((section) => section.label === 'COMMAND');
+    const planning = NAV_SECTIONS.find((section) => section.label === 'PLANNING');
     const operations = NAV_SECTIONS.find((section) => section.label === 'OPERATIONS');
+    const intelligence = NAV_SECTIONS.find((section) => section.label === 'INTELLIGENCE');
+
+    const quotes = planning?.items.find((item) => item.href === '/quotes');
+    const bookings = planning?.items.find((item) => item.href === '/bookings');
     const documents = operations?.items.find((item) => item.href === '/documents');
     const payments = operations?.items.find((item) => item.href === '/payments');
+    const suppliers = operations?.items.find((item) => item.href === '/suppliers');
+    const knowledge = intelligence?.items.find((item) => item.href === '/knowledge');
+
+    expect(quotes?.enabled).toBe(true);
+    expect(bookings?.enabled).toBe(true);
     expect(documents?.enabled).toBe(true);
     expect(payments?.enabled).toBe(true);
+    expect(suppliers?.enabled).toBe(true);
+    expect(knowledge?.enabled).toBe(true);
   });
 });

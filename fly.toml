@@ -16,11 +16,12 @@ image = "ghcr.io/your-org/spine-api:latest"
 
 [env]
   PORT = "8000"
+  ENVIRONMENT = "production"
   SPINE_API_HOST = "0.0.0.0"
   SPINE_API_PORT = "8000"
   SPINE_API_WORKERS = "4"
   SPINE_API_RELOAD = "0"
-  TRAVELER_SAFE_STRICT = "0"
+  TRAVELER_SAFE_STRICT = "1"
   PUBLIC_CHECKER_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
 
 [http_service]

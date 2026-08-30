@@ -31,6 +31,7 @@ from spine_api.contract import (
     UpdateAiAgentSettings,
     UpdateAutonomyPolicy,
     UpdateCommSettings,
+    UpdateEpistemicPolicy,
     UpdateSeasonalCampaignRequest,
     UpdateOperationalSettings,
     UpdateSeasonalPolicy,
@@ -50,6 +51,7 @@ router = APIRouter()
 
 
 def _build_agency_settings_payload(settings) -> dict:
+    epistemic_data = getattr(settings, "epistemic", None)
     return {
         "agency_id": settings.agency_id,
         "tier": settings.tier.value,
@@ -85,6 +87,12 @@ def _build_agency_settings_payload(settings) -> dict:
             "min_proceed_confidence": settings.autonomy.min_proceed_confidence,
             "min_draft_confidence": settings.autonomy.min_draft_confidence,
         },
+        "epistemic": {
+            "critical_slot_gate": getattr(epistemic_data, "critical_slot_gate", "block") if epistemic_data else "block",
+            "preference_slot_gate": getattr(epistemic_data, "preference_slot_gate", "warn_advisory") if epistemic_data else "warn_advisory",
+            "custom_critical_slots": getattr(epistemic_data, "custom_critical_slots", ["origin", "destinations", "dates", "budget", "party_size"]) if epistemic_data else ["origin", "destinations", "dates", "budget", "party_size"],
+            "require_evidence_provenance": getattr(epistemic_data, "require_evidence_provenance", True) if epistemic_data else True,
+        },
     }
 
 
@@ -94,6 +102,57 @@ def get_agency_settings(
     _perm=require_permission("settings:read"),
 ):
     settings = AgencySettingsStore.load(agency_id)
+    return _build_agency_settings_payload(settings)
+
+
+@router.get("/api/settings/epistemic")
+def get_agency_epistemic_settings(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    """Retrieve epistemic assumption policy for an agency (PER-0922/0923)."""
+    settings = AgencySettingsStore.load(agency_id)
+    epistemic = getattr(settings, "epistemic", None)
+    return {
+        "agency_id": settings.agency_id,
+        "critical_slot_gate": getattr(epistemic, "critical_slot_gate", "block") if epistemic else "block",
+        "preference_slot_gate": getattr(epistemic, "preference_slot_gate", "warn_advisory") if epistemic else "warn_advisory",
+        "custom_critical_slots": getattr(epistemic, "custom_critical_slots", ["origin", "destinations", "dates", "budget", "party_size"]) if epistemic else ["origin", "destinations", "dates", "budget", "party_size"],
+        "require_evidence_provenance": getattr(epistemic, "require_evidence_provenance", True) if epistemic else True,
+    }
+
+
+@router.post("/api/settings/epistemic")
+def update_agency_epistemic_settings(
+    request: UpdateEpistemicPolicy,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    """Update epistemic assumption policy for an agency (PER-0922/0923)."""
+    settings = AgencySettingsStore.load(agency_id)
+    epistemic = getattr(settings, "epistemic", None)
+    if epistemic is None:
+        from src.intake.config.agency_settings import EpistemicPolicySettings
+        epistemic = EpistemicPolicySettings()
+        settings.epistemic = epistemic
+
+    if request.critical_slot_gate is not None:
+        if request.critical_slot_gate not in ("block", "warn_watermark", "allow"):
+            raise HTTPException(status_code=400, detail="critical_slot_gate must be block|warn_watermark|allow")
+        epistemic.critical_slot_gate = request.critical_slot_gate
+
+    if request.preference_slot_gate is not None:
+        if request.preference_slot_gate not in ("warn_advisory", "block", "silent_default"):
+            raise HTTPException(status_code=400, detail="preference_slot_gate must be warn_advisory|block|silent_default")
+        epistemic.preference_slot_gate = request.preference_slot_gate
+
+    if request.custom_critical_slots is not None:
+        epistemic.custom_critical_slots = list(request.custom_critical_slots)
+
+    if request.require_evidence_provenance is not None:
+        epistemic.require_evidence_provenance = bool(request.require_evidence_provenance)
+
+    AgencySettingsStore.save(settings)
     return _build_agency_settings_payload(settings)
 
 

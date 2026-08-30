@@ -60,7 +60,7 @@ async def send_outbound_message(
     provider = "whatsapp_cloud_api" if body.channel.lower() == "whatsapp" else "sendgrid_email"
 
     AuditStore.log_event(
-        event_type="outbound_message_dispatched",
+        event_type="outbound_message_queued",
         user_id=agency_id,
         details={
             "message_id": message_id,
@@ -68,17 +68,22 @@ async def send_outbound_message(
             "channel": body.channel,
             "recipient": body.recipient,
             "provider": provider,
+            "dispatch_status": "QUEUED",
         },
     )
 
+    # No provider HTTP call is made in this build. Return the honest QUEUED
+    # state, not "SENT", so the operator is never misled into believing the
+    # message was delivered to WhatsApp/SendGrid when no dispatch occurred.
     return OutboundMessageResponse(
         ok=True,
         message_id=message_id,
         trip_id=body.trip_id,
         channel=body.channel,
-        status="SENT",
+        status="QUEUED",
         provider=provider,
         dispatched_at=datetime.now(timezone.utc).isoformat(),
+        dispatch_status="QUEUED",
     )
 
 
@@ -96,7 +101,15 @@ async def verify_messaging_webhook(
     token = params.get("hub.verify_token")
     challenge = params.get("hub.challenge")
 
-    verify_token = os.environ.get("WHATSAPP_VERIFY_TOKEN", "waypoint_secret_verify_token")
+    verify_token = os.environ.get("WHATSAPP_VERIFY_TOKEN")
+
+    # Refuse the handshake if the verify token is unset — do not fall back to a
+    # hardcoded secret that would authenticate a forged verification request.
+    if provider.lower() in ("whatsapp", "whatsapp_cloud_api") and not verify_token:
+        raise HTTPException(
+            status_code=401,
+            detail="WHATSAPP_VERIFY_TOKEN is not configured; refusing webhook verification handshake",
+        )
 
     if mode == "subscribe" and token == verify_token:
         logger.info(f"WhatsApp webhook verified successfully for provider {provider}")
@@ -121,7 +134,15 @@ async def process_messaging_webhook(
     sig_header = request.headers.get("X-Hub-Signature-256")
     app_secret = os.environ.get("WHATSAPP_APP_SECRET")
 
-    if app_secret and provider.lower() in ("whatsapp", "whatsapp_cloud_api"):
+    # Default-deny: a webhook that mutates or records state must not accept
+    # unauthenticated payloads. If the provider secret is unset, refuse rather
+    # than silently processing a body that may be forged.
+    if provider.lower() in ("whatsapp", "whatsapp_cloud_api"):
+        if not app_secret:
+            raise HTTPException(
+                status_code=401,
+                detail="WHATSAPP_APP_SECRET is not configured; refusing unauthenticated webhook payload",
+            )
         if not _verify_meta_signature(raw_body, sig_header, app_secret):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
 

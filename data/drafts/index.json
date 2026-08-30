@@ -274,6 +274,12 @@
       "draft_110d5b916bae",
       "draft_9765dd7c8c79",
       "draft_d5ac912c3e4e"
+    ],
+    "9e764233-ffe9-4f52-9786-ffeda505fa68": [
+      "draft_a1a6434ca9b1"
+    ],
+    "f3223b3c-4111-4e95-8790-2deabaa7d8cc": [
+      "draft_3d7956a6145d"
     ]
   },
   "by_user": {
@@ -550,6 +556,12 @@
       "draft_110d5b916bae",
       "draft_9765dd7c8c79",
       "draft_d5ac912c3e4e"
+    ],
+    "65a2c53f-94ed-4980-aa1a-720eb014a9aa": [
+      "draft_a1a6434ca9b1"
+    ],
+    "c58ce226-9051-44f4-a4a4-cfe950eab055": [
+      "draft_3d7956a6145d"
     ]
   },
   "by_status": {
@@ -815,14 +827,16 @@
       "draft_56223192dcf6",
       "draft_c7c01cab13bf",
       "draft_909cabe06236",
-      "draft_813b7713f377"
+      "draft_813b7713f377",
+      "draft_3d7956a6145d"
     ],
     "promoted": [
       "draft_3710223c3aef",
       "draft_4f291c1da41b",
       "draft_3a62ec648ea5",
       "draft_46f7ec3be4d7",
-      "draft_7e1d66bd2d01"
+      "draft_7e1d66bd2d01",
+      "draft_a1a6434ca9b1"
     ],
     "processing": [],
     "discarded": [

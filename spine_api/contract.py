@@ -506,6 +506,277 @@ class UpdateAutonomyPolicy(BaseModel):
     auto_reprocess_stages: Optional[Dict[str, bool]] = None
 
 
+class UpdateEpistemicPolicy(BaseModel):
+    """Agency-level epistemic assumption policy update request (PER-0922/0923)."""
+    critical_slot_gate: Optional[Literal["block", "warn_watermark", "allow"]] = None
+    preference_slot_gate: Optional[Literal["warn_advisory", "block", "silent_default"]] = None
+    custom_critical_slots: Optional[List[str]] = None
+    require_evidence_provenance: Optional[bool] = None
+
+
+class EpistemicPolicyResponse(BaseModel):
+    """Agency-level epistemic assumption policy response (PER-0922/0923)."""
+    agency_id: str
+    critical_slot_gate: str = "block"
+    preference_slot_gate: str = "warn_advisory"
+    custom_critical_slots: List[str] = Field(default_factory=list)
+    require_evidence_provenance: bool = True
+
+
+class ConstraintViolationModel(BaseModel):
+    """Individual constraint violation in API responses (PER-0711)."""
+    constraint_id: str
+    name: str
+    category: str
+    constraint_type: str
+    severity: str
+    affected_elements: List[str]
+    description: str
+    relaxation_option: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ConstraintEvaluationResponse(BaseModel):
+    """Complete constraint feasibility evaluation response (PER-0711)."""
+    trip_id: str
+    is_feasible: bool
+    hard_violations: List[ConstraintViolationModel] = Field(default_factory=list)
+    soft_violations: List[ConstraintViolationModel] = Field(default_factory=list)
+    relaxation_hierarchy: List[Dict[str, Any]] = Field(default_factory=list)
+    evaluated_at: Optional[str] = None
+
+
+class ConstraintRuleItem(BaseModel):
+    """Definition of an active constraint rule in the engine (PER-0711)."""
+    rule_id: str
+    category: str
+    constraint_type: str
+    title: str
+    description: str
+    threshold_info: str
+
+
+class ConstraintRulesResponse(BaseModel):
+    """List of active deterministic constraint satisfaction rules."""
+    active_rules: List[ConstraintRuleItem] = Field(default_factory=list)
+    total_rules: int = 0
+
+
+class CircuitStatusItem(BaseModel):
+    """Operational telemetry of a single circuit breaker (PER-0924)."""
+    name: str
+    state: str
+    recent_failure_count: int
+    failure_threshold: int
+    recovery_timeout_seconds: float
+    cooldown_remaining_seconds: float
+    total_successes: int
+    total_failures: int
+
+
+class CircuitListResponse(BaseModel):
+    """List of registered circuit breakers across integrations."""
+    circuits: List[CircuitStatusItem] = Field(default_factory=list)
+    total_circuits: int = 0
+
+
+class CircuitResetResponse(BaseModel):
+    """Response returned when resetting a circuit breaker."""
+    circuit_name: str
+    reset_successful: bool
+    state: str
+
+
+class IncidentItem(BaseModel):
+    """Record of a failure incident or quarantined payload (PER-0924)."""
+    incident_id: str
+    domain: str
+    error_code: str
+    message: str
+    degradation_level: str
+    circuit_state: str
+    target_resource: Optional[str] = None
+    compensating_action: Optional[str] = None
+    quarantined_payload: Optional[Dict[str, Any]] = None
+    resolved: bool = False
+    occurred_at: str
+
+
+class IncidentListResponse(BaseModel):
+    """List of failure incidents and quarantine entries."""
+    incidents: List[IncidentItem] = Field(default_factory=list)
+    total_incidents: int = 0
+
+
+class QuarantineIntakeRequest(BaseModel):
+    """Request to isolate a poisoned/malformed inquiry payload."""
+    raw_input: str
+    reason: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class QuarantineIntakeResponse(BaseModel):
+    """Response acknowledging intake payload quarantine."""
+    incident_id: str
+    status: str
+    quarantined_at: str
+
+
+class CompensationRequest(BaseModel):
+    """Request to initiate compensating transaction for commercial failure."""
+    trip_id: str
+    payment_id: str
+    amount: float
+    reason: str
+
+
+class CompensationResponse(BaseModel):
+    """Response confirming compensating hold and operator escalation."""
+    status: str
+    incident_id: str
+    trip_id: str
+    payment_id: str
+    refund_amount: float
+    recommended_action: str
+    timestamp: str
+
+
+class IssueCapabilityTokenRequest(BaseModel):
+    """Request to issue a cryptographically signed scoped capability token (PER-0933)."""
+    trip_id: str
+    scopes: List[str]
+    traveler_id: Optional[str] = None
+    traveler_role: str = "primary_booker"
+    ttl_hours: int = 72
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class IssueCapabilityTokenResponse(BaseModel):
+    """Response returned upon issuing a scoped capability token."""
+    token_id: str
+    token_string: str
+    trip_id: str
+    agency_id: str
+    traveler_id: Optional[str] = None
+    traveler_role: str
+    allowed_scopes: List[str]
+    expires_at: str
+    issued_at: str
+
+
+class VerifyCapabilityTokenResponse(BaseModel):
+    """Verification diagnosis for a capability token."""
+    is_valid: bool
+    token_id: Optional[str] = None
+    trip_id: Optional[str] = None
+    agency_id: Optional[str] = None
+    traveler_id: Optional[str] = None
+    traveler_role: Optional[str] = None
+    allowed_scopes: List[str] = Field(default_factory=list)
+    expires_at: Optional[str] = None
+    revoked: bool = False
+    message: str
+
+
+class RevokeCapabilityTokenResponse(BaseModel):
+    """Response acknowledging token revocation."""
+    token_id: str
+    revoked: bool
+    message: str
+
+
+class AuthorityMatrixItem(BaseModel):
+    """Definition of an action authority rule (PER-0927)."""
+    action_name: str
+    tier: str
+    description: str
+    allowed_roles: List[str]
+    requires_dual_approval: bool = False
+
+
+class AuthorityMatrixResponse(BaseModel):
+    """Catalog of the 5-tier Human-AI Authority Matrix."""
+    actions: List[AuthorityMatrixItem] = Field(default_factory=list)
+    total_actions: int = 0
+
+
+class PassengerRightsRequest(BaseModel):
+    """Request to calculate legal disruption entitlements under EU261/DOT."""
+    disruption_type: str = "DELAY"
+    flight_distance_km: float
+    delay_arrival_hours: float
+    cancellation_notice_days: Optional[int] = None
+    is_extraordinary_circumstances: bool = False
+
+
+class PassengerRightsResponse(BaseModel):
+    """Legal entitlement claim report for flight disruptions."""
+    is_eligible_for_compensation: bool
+    is_eligible_for_full_refund: bool
+    jurisdiction: str
+    compensation_currency: str
+    compensation_amount: float
+    right_to_care_required: bool
+    duty_of_care_items: List[str]
+    statutory_reference: str
+    claim_rationale: str
+    rebooking_entitlement: str
+
+
+class FXConversionRequest(BaseModel):
+    """Request for multi-currency conversion with volatility buffer."""
+    amount_in_target: float
+    target_currency: str
+    agency_base_currency: str = "USD"
+    custom_slippage_buffer_pct: float = 0.02
+
+
+class FXConversionResponse(BaseModel):
+    """Calculated multi-currency conversion result with fee breakdown."""
+    base_currency: str
+    target_currency: str
+    mid_market_rate: float
+    slippage_buffer_pct: float
+    effective_rate: float
+    base_amount: float
+    target_amount: float
+    slippage_cost_base: float
+    payment_gateway_fee_base: float
+    total_cost_in_base_currency: float
+
+
+class CounterfactualReplanningRequest(BaseModel):
+    """Request to generate 3-tier counterfactual recovery alternatives."""
+    trip_id: str
+    disrupted_node_id: str
+    delay_minutes: int
+
+
+class CounterfactualReplanningResponse(BaseModel):
+    """3-tier ranked counterfactual recovery alternatives report."""
+    trip_id: str
+    disrupted_node_id: str
+    original_delay_hours: float
+    alternatives: List[Dict[str, Any]]
+    recommended_strategy: str
+    generated_at: str
+
+
+class GroupConsensusRequest(BaseModel):
+    """Request to compute Pareto-optimal group itinerary choices."""
+    travelers: List[Dict[str, Any]]
+    candidate_options: List[Dict[str, Any]]
+
+
+class GroupConsensusResponse(BaseModel):
+    """Ranked group consensus evaluation report."""
+    results: List[Dict[str, Any]]
+    total_options_evaluated: int
+
+
+
+
+
 class UpdateSeasonalPolicy(BaseModel):
     """Agency-level policy controls that govern seasonal campaign behavior."""
 
@@ -1134,6 +1405,7 @@ class OutboundMessageResponse(BaseModel):
     status: str = "QUEUED"
     provider: str = "mock_provider"
     dispatched_at: str
+    dispatch_status: str = "QUEUED"  # QUEUED | SENT | FAILED — what actually happened to the provider
 
 
 class ProposalLinkRequest(BaseModel):
@@ -1323,4 +1595,31 @@ __all__ = [
     "InboundInquiryResponse",
     "OptimisticSyncRequest",
     "OptimisticSyncResponse",
+    "ConstraintViolationModel",
+    "ConstraintEvaluationResponse",
+    "ConstraintRuleItem",
+    "ConstraintRulesResponse",
+    "CircuitStatusItem",
+    "CircuitListResponse",
+    "CircuitResetResponse",
+    "IncidentItem",
+    "IncidentListResponse",
+    "QuarantineIntakeRequest",
+    "QuarantineIntakeResponse",
+    "CompensationRequest",
+    "CompensationResponse",
+    "IssueCapabilityTokenRequest",
+    "IssueCapabilityTokenResponse",
+    "VerifyCapabilityTokenResponse",
+    "RevokeCapabilityTokenResponse",
+    "AuthorityMatrixItem",
+    "AuthorityMatrixResponse",
+    "PassengerRightsRequest",
+    "PassengerRightsResponse",
+    "FXConversionRequest",
+    "FXConversionResponse",
+    "CounterfactualReplanningRequest",
+    "CounterfactualReplanningResponse",
+    "GroupConsensusRequest",
+    "GroupConsensusResponse",
 ]

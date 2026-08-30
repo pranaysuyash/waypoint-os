@@ -159,6 +159,7 @@ export const FollowUpCard = memo(function FollowUpCard({
 }: FollowUpCardProps) {
   const [isSnoozing, setIsSnoozing] = useState(false);
   const [isRescheduling, setIsRescheduling] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const statusStyle = STATUS_STYLES[status];
@@ -173,11 +174,14 @@ export const FollowUpCard = memo(function FollowUpCard({
     minute: '2-digit',
   });
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (onComplete) {
-      startTransition(async () => {
+      setIsCompleting(true);
+      try {
         await onComplete(tripId);
-      });
+      } finally {
+        setIsCompleting(false);
+      }
     }
   };
 
@@ -272,7 +276,7 @@ export const FollowUpCard = memo(function FollowUpCard({
             <>
               <button
                 onClick={handleComplete}
-                disabled={isPending}
+                disabled={isCompleting || isPending}
                 className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded text-ui-xs font-medium transition-colors disabled:opacity-50"
                 style={{
                   background: 'var(--accent-green)',

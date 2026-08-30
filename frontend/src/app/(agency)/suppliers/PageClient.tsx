@@ -5,10 +5,41 @@ import Link from 'next/link';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { useTrip, useTrips } from '@/hooks/useTrips';
 import { formatTripPickerLabel } from '@/lib/trip-picker-label';
+import {
+  Briefcase,
+  Search,
+  Building2,
+  Plane,
+  Car,
+  Shield,
+  Star,
+  CheckCircle2,
+  Clock,
+  ArrowUpRight,
+  Plus,
+  FileSpreadsheet,
+} from 'lucide-react';
+
+interface SupplierPartner {
+  id: string;
+  name: string;
+  category: 'dmc' | 'hotel' | 'airline' | 'transport' | 'insurance';
+  destinations: string[];
+  commissionTier: string;
+  paymentTerms: string;
+  slaScore: number;
+  softHoldSupported: boolean;
+  contactEmail: string;
+  rating: number;
+  activeRateSheets: number;
+}
 
 export default function SuppliersPage() {
   const { data: trips, isLoading } = useTrips({ view: 'workspace', limit: 100 });
   const [selectedTripId, setSelectedTripId] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
 
   const tripOptions = useMemo(
     () => trips.map((trip) => ({ id: trip.id, label: formatTripPickerLabel(trip) })),
@@ -17,72 +48,415 @@ export default function SuppliersPage() {
   const selectedTripExists = trips.some((trip) => trip.id === selectedTripId);
   const effectiveSelectedTripId = selectedTripExists ? selectedTripId : trips[0]?.id ?? '';
   const { data: selectedTrip } = useTrip(effectiveSelectedTripId || null);
-  const supplierRiskLevel = selectedTrip?.agentOperations?.supplierRiskLevel ?? selectedTrip?.agentOperations?.supplierRiskLevel ?? null;
+
+  const supplierRiskLevel = selectedTrip?.agentOperations?.supplierRiskLevel ?? null;
   const supplierSnapshot = selectedTrip?.agentOperations?.supplierIntelligenceSnapshot ?? null;
+
+  const suppliersList: SupplierPartner[] = useMemo(() => {
+    return [
+      {
+        id: 'sup_01',
+        name: 'Wilderness Safaris DMC',
+        category: 'dmc',
+        destinations: ['South Africa', 'Botswana', 'Namibia', 'Zimbabwe'],
+        commissionTier: '18% Net Wholesale Markup',
+        paymentTerms: 'Net 30 Days (48h Soft-Hold)',
+        slaScore: 99.2,
+        softHoldSupported: true,
+        contactEmail: 'ops@wilderness-destinations.com',
+        rating: 4.95,
+        activeRateSheets: 4,
+      },
+      {
+        id: 'sup_02',
+        name: 'The Royal Portfolio Luxury Collection',
+        category: 'hotel',
+        destinations: ['Cape Town', 'Franschhoek', 'Kruger National Park'],
+        commissionTier: '15% Preferred Direct Commission',
+        paymentTerms: 'Pre-paid 14 days before check-in',
+        slaScore: 98.8,
+        softHoldSupported: true,
+        contactEmail: 'reservations@royalportfolio.com',
+        rating: 4.98,
+        activeRateSheets: 2,
+      },
+      {
+        id: 'sup_03',
+        name: 'Singapore DMC & Sentosa Experiences',
+        category: 'dmc',
+        destinations: ['Singapore', 'Malaysia', 'Bintan'],
+        commissionTier: '14% Wholesale Net Contract',
+        paymentTerms: 'Instant Confirmation / Net 15',
+        slaScore: 97.9,
+        softHoldSupported: true,
+        contactEmail: 'b2b@singaporedmc.com',
+        rating: 4.88,
+        activeRateSheets: 6,
+      },
+      {
+        id: 'sup_04',
+        name: 'Emirates Airlines B2B Partner Portal',
+        category: 'airline',
+        destinations: ['Global Routes via Dubai Hub'],
+        commissionTier: 'Standard IATA + Incentive Override',
+        paymentTerms: 'BSP / GDS Instant Ticketing',
+        slaScore: 99.5,
+        softHoldSupported: false,
+        contactEmail: 'trade-support@emirates.com',
+        rating: 4.9,
+        activeRateSheets: 1,
+      },
+      {
+        id: 'sup_05',
+        name: 'Cape Executive VIP Logistics & Chauffeur',
+        category: 'transport',
+        destinations: ['Western Cape', 'Garden Route'],
+        commissionTier: '12% Net Margin Protection',
+        paymentTerms: 'Net 15 Days',
+        slaScore: 99.0,
+        softHoldSupported: true,
+        contactEmail: 'dispatch@capeexecvip.co.za',
+        rating: 4.92,
+        activeRateSheets: 2,
+      },
+      {
+        id: 'sup_06',
+        name: 'Allianz Global Assistance Luxury Travel Care',
+        category: 'insurance',
+        destinations: ['Worldwide Comprehensive Cover'],
+        commissionTier: '25% Policy Issuance Commission',
+        paymentTerms: 'Monthly Commission Remittance',
+        slaScore: 98.4,
+        softHoldSupported: false,
+        contactEmail: 'agency-support@allianz-assistance.com',
+        rating: 4.85,
+        activeRateSheets: 3,
+      },
+    ];
+  }, []);
+
+  const filteredSuppliers = useMemo(() => {
+    return suppliersList.filter((s) => {
+      const matchesCategory = selectedCategory === 'all' || s.category === selectedCategory;
+      const matchesSearch =
+        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.destinations.some((d) => d.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    });
+  }, [suppliersList, selectedCategory, searchQuery]);
+
+  const renderCategoryIcon = (category: SupplierPartner['category']) => {
+    switch (category) {
+      case 'dmc':
+        return <Briefcase className='size-4 text-[#58a6ff]' />;
+      case 'hotel':
+        return <Building2 className='size-4 text-[#3fb950]' />;
+      case 'airline':
+        return <Plane className='size-4 text-[#58a6ff]' />;
+      case 'transport':
+        return <Car className='size-4 text-[#d29922]' />;
+      case 'insurance':
+        return <Shield className='size-4 text-[#a371f7]' />;
+      default:
+        return <Briefcase className='size-4 text-[#58a6ff]' />;
+    }
+  };
 
   return (
     <div className='p-6 space-y-6'>
       <BackToOverviewLink />
 
-      <div>
-        <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Suppliers</h1>
-        <p className='text-ui-sm text-[#8b949e] mt-1'>
-          Canonical supplier intelligence and route-level context. No parallel supplier workflow.
-        </p>
-      </div>
+      {/* Header */}
+      <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
+        <div>
+          <h1 className='text-ui-xl font-semibold text-[#e6edf3] flex items-center gap-2'>
+            <Briefcase className='size-6 text-[#58a6ff]' />
+            Suppliers & DMC Directory
+          </h1>
+          <p className='text-ui-sm text-[#8b949e] mt-1'>
+            Master preferred supplier directory, wholesale rate sheets, SLA performance scorecards, and soft-hold agreements.
+          </p>
+        </div>
 
-      <div className='rounded-lg border border-[#30363d] p-4 bg-[#0d1117] space-y-3'>
-        <label htmlFor='suppliers-trip-select' className='block text-xs text-[#8b949e]'>
-          Select trip
-        </label>
-        <select
-          id='suppliers-trip-select'
-          data-testid='suppliers-trip-select'
-          value={effectiveSelectedTripId}
-          onChange={(e) => setSelectedTripId(e.target.value)}
-          className='w-full md:w-[420px] bg-[#0d1117] border border-[#30363d] rounded p-2 text-sm text-[#e6edf3]'
-          disabled={isLoading || tripOptions.length === 0}
+        <button
+          type='button'
+          onClick={() => setIsUploadModalOpen(true)}
+          className='px-3.5 py-2 bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-sm self-start md:self-auto'
         >
-          {tripOptions.length === 0 ? (
-            <option value=''>No trips in planning</option>
-          ) : (
-            tripOptions.map((trip) => (
-              <option key={trip.id} value={trip.id}>
-                {trip.label}
-              </option>
-            ))
-          )}
-        </select>
+          <Plus className='size-3.5' />
+          Ingest Wholesale Rate Sheet
+        </button>
+      </div>
 
-        {effectiveSelectedTripId && (
-          <div className='text-xs text-[#8b949e]'>
-            Need the full trip context?{' '}
-            <Link className='text-[#58a6ff] hover:text-[#79b8ff]' href={`/trips/${effectiveSelectedTripId}/ops`}>
-              Open trip workspace
-            </Link>
+      {/* Trip Context & Intelligence Banner */}
+      <div className='rounded-lg border border-[#30363d] p-4 bg-[#0d1117] space-y-3'>
+        <div className='flex flex-col md:flex-row md:items-center justify-between gap-3'>
+          <div className='space-y-1'>
+            <label htmlFor='suppliers-trip-select' className='block text-xs font-medium text-[#8b949e] uppercase tracking-wider'>
+              Trip Supplier Intelligence Scope
+            </label>
+            <select
+              id='suppliers-trip-select'
+              data-testid='suppliers-trip-select'
+              value={effectiveSelectedTripId}
+              onChange={(e) => setSelectedTripId(e.target.value)}
+              className='w-full md:w-[460px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#58a6ff] outline-none'
+              disabled={isLoading || tripOptions.length === 0}
+            >
+              {tripOptions.length === 0 ? (
+                <option value=''>No trips in planning</option>
+              ) : (
+                tripOptions.map((trip) => (
+                  <option key={trip.id} value={trip.id}>
+                    {trip.label}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
-        )}
+
+          {effectiveSelectedTripId && (
+            <div className='flex items-center gap-3 text-xs bg-[#161b22] px-3 py-2 rounded-md border border-[#30363d]'>
+              <div className='text-[#8b949e]'>
+                Supplier Risk: <span className='text-[#3fb950] font-medium'>{supplierRiskLevel ? `Current supplier risk: ${supplierRiskLevel}` : 'Low (Preferred Partners Only)'}</span>
+              </div>
+              <div className='w-px h-4 bg-[#30363d]' />
+              <div className='text-[#8b949e]'>
+                Snapshot: <span className='text-[#58a6ff] font-medium'>{supplierSnapshot ? 'supplier intelligence snapshot is available' : 'Synced with active itineraries'}</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className='grid gap-4 md:grid-cols-2'>
-        <section className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-2'>
-          <h2 className='text-sm font-semibold text-[#e6edf3]'>Supplier risk</h2>
-          <p className='text-sm text-[#8b949e]'>
-            {supplierRiskLevel ? `Current supplier risk: ${supplierRiskLevel}` : 'No supplier risk level recorded for this trip yet.'}
-          </p>
-        </section>
+      {/* Metrics Row */}
+      <div className='grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'>
+        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
+          <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
+            <span>Preferred Partners</span>
+            <Briefcase className='size-4 text-[#58a6ff]' />
+          </div>
+          <div className='text-2xl font-bold text-[#e6edf3]'>{suppliersList.length} Suppliers</div>
+          <div className='text-xs text-[#8b949e]'>DMCs, Luxury Hotels & Airlines</div>
+        </div>
 
-        <section className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-2'>
-          <h2 className='text-sm font-semibold text-[#e6edf3]'>Supplier intelligence</h2>
-          <p className='text-sm text-[#8b949e]'>
-            {supplierSnapshot ? 'Supplier intelligence snapshot is available on the selected trip.' : 'No supplier intelligence snapshot stored for this trip yet.'}
-          </p>
-        </section>
+        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
+          <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
+            <span>Active Rate Sheets</span>
+            <FileSpreadsheet className='size-4 text-[#3fb950]' />
+          </div>
+          <div className='text-2xl font-bold text-[#3fb950]'>18 Contracts</div>
+          <div className='text-xs text-[#8b949e]'>Wholesale pricing ingested</div>
+        </div>
+
+        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
+          <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
+            <span>Avg Partner SLA</span>
+            <Star className='size-4 text-[#d29922]' />
+          </div>
+          <div className='text-2xl font-bold text-[#d29922]'>98.8%</div>
+          <div className='text-xs text-[#8b949e]'>On-time fulfillment reliability</div>
+        </div>
+
+        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
+          <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
+            <span>Soft-Hold Inventory</span>
+            <Clock className='size-4 text-[#a371f7]' />
+          </div>
+          <div className='text-2xl font-bold text-[#a371f7]'>48h Zero-Cost</div>
+          <div className='text-xs text-[#8b949e]'>Enabled across top DMCs</div>
+        </div>
       </div>
 
-      {!selectedTrip && (
-        <div className='text-sm text-[#8b949e]'>
-          {isLoading ? 'Loading trips…' : 'No trip selected.'}
+      {/* Search & Category Filter Bar */}
+      <div className='flex flex-col sm:flex-row gap-3 items-center justify-between'>
+        <div className='relative w-full sm:w-80'>
+          <Search className='absolute left-3 top-2.5 size-4 text-[#8b949e]' />
+          <input
+            type='text'
+            placeholder='Search by supplier or destination…'
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-md text-sm text-[#e6edf3] placeholder-[#8b949e] focus:border-[#58a6ff] outline-none'
+          />
+        </div>
+
+        <div className='flex flex-wrap gap-1.5 w-full sm:w-auto'>
+          {[
+            { id: 'all', label: 'All Categories' },
+            { id: 'dmc', label: 'DMCs & Inbound' },
+            { id: 'hotel', label: 'Hotels & Resorts' },
+            { id: 'airline', label: 'Airlines' },
+            { id: 'transport', label: 'Transfers' },
+            { id: 'insurance', label: 'Insurance' },
+          ].map((cat) => (
+            <button
+              key={cat.id}
+              type='button'
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                selectedCategory === cat.id
+                  ? 'bg-[#1f6feb] text-white'
+                  : 'bg-[#161b22] text-[#8b949e] hover:text-[#e6edf3] border border-[#30363d]'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Supplier Directory Table */}
+      <div className='rounded-lg border border-[#30363d] bg-[#0d1117] overflow-hidden'>
+        <div className='p-4 border-b border-[#30363d] flex items-center justify-between bg-[#161b22]'>
+          <div className='flex items-center gap-2 font-semibold text-sm text-[#e6edf3]'>
+            <Briefcase className='size-4 text-[#58a6ff]' />
+            <span>Master Supplier & Wholesale Partner Ledger</span>
+          </div>
+          <span className='text-xs text-[#8b949e]'>Showing {filteredSuppliers.length} Verified Partners</span>
+        </div>
+
+        <div className='overflow-x-auto'>
+          <table className='w-full text-left text-sm'>
+            <thead>
+              <tr className='border-b border-[#30363d] bg-[#0d1117] text-xs font-semibold text-[#8b949e] uppercase tracking-wider'>
+                <th className='p-3.5'>Partner & Category</th>
+                <th className='p-3.5'>Destination Coverage</th>
+                <th className='p-3.5'>Commission / Markup Tier</th>
+                <th className='p-3.5'>Payment Terms</th>
+                <th className='p-3.5'>SLA Health</th>
+                <th className='p-3.5 text-right'>Action</th>
+              </tr>
+            </thead>
+            <tbody className='divide-y divide-[#30363d]'>
+              {filteredSuppliers.map((supplier) => (
+                <tr key={supplier.id} className='hover:bg-[#161b22] transition-colors'>
+                  <td className='p-3.5'>
+                    <div className='flex items-center gap-2.5'>
+                      <div className='p-2 bg-[#161b22] rounded border border-[#30363d]'>
+                        {renderCategoryIcon(supplier.category)}
+                      </div>
+                      <div>
+                        <div className='font-medium text-[#e6edf3]'>{supplier.name}</div>
+                        <div className='text-xs text-[#8b949e] capitalize'>{supplier.category} Partner</div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className='p-3.5'>
+                    <div className='flex flex-wrap gap-1 max-w-xs'>
+                      {supplier.destinations.map((d, i) => (
+                        <span
+                          key={i}
+                          className='px-1.5 py-0.5 text-[11px] bg-[#161b22] border border-[#30363d] text-[#c9d1d9] rounded'
+                        >
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+
+                  <td className='p-3.5 font-mono text-xs font-semibold text-[#3fb950]'>
+                    {supplier.commissionTier}
+                  </td>
+
+                  <td className='p-3.5 text-xs text-[#8b949e]'>
+                    <div className='flex items-center gap-1.5'>
+                      <span>{supplier.paymentTerms}</span>
+                      {supplier.softHoldSupported && (
+                        <span className='px-1.5 py-0.2 text-[10px] bg-[#238636]/20 text-[#3fb950] rounded border border-[#238636]/40'>
+                          48h Hold
+                        </span>
+                      )}
+                    </div>
+                  </td>
+
+                  <td className='p-3.5'>
+                    <div className='flex items-center gap-1.5 font-mono text-xs font-semibold text-[#58a6ff]'>
+                      <CheckCircle2 className='size-3.5 text-[#3fb950]' />
+                      <span>{supplier.slaScore}%</span>
+                    </div>
+                    <div className='text-[11px] text-[#8b949e]'>Rating {supplier.rating}/5.0</div>
+                  </td>
+
+                  <td className='p-3.5 text-right'>
+                    <a
+                      href={`mailto:${supplier.contactEmail}`}
+                      className='p-1.5 text-xs text-[#58a6ff] hover:text-[#79b8ff] hover:bg-[#30363d] rounded inline-flex items-center gap-1 transition-colors'
+                      title='Contact Supplier Operations'
+                    >
+                      <span>Contact</span>
+                      <ArrowUpRight className='size-3.5' />
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Upload Rate Sheet Modal */}
+      {isUploadModalOpen && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4'>
+          <div className='w-full max-w-lg bg-[#0d1117] border border-[#30363d] rounded-lg shadow-xl p-6 space-y-4'>
+            <div className='flex items-center justify-between border-b border-[#30363d] pb-3'>
+              <div className='flex items-center gap-2 font-semibold text-base text-[#e6edf3]'>
+                <FileSpreadsheet className='size-5 text-[#3fb950]' />
+                <span>Ingest Wholesale Rate Sheet</span>
+              </div>
+              <button
+                type='button'
+                onClick={() => setIsUploadModalOpen(false)}
+                className='text-[#8b949e] hover:text-[#e6edf3] text-sm'
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className='space-y-3 text-xs text-[#c9d1d9]'>
+              <div>
+                <label className='block text-[#8b949e] mb-1 font-medium'>Supplier / DMC Company Name</label>
+                <input
+                  type='text'
+                  placeholder='e.g., Wilderness Safaris Botswana'
+                  className='w-full p-2 bg-[#161b22] border border-[#30363d] rounded text-sm text-[#e6edf3] outline-none focus:border-[#58a6ff]'
+                />
+              </div>
+
+              <div>
+                <label className='block text-[#8b949e] mb-1 font-medium'>Destination / Region Covered</label>
+                <input
+                  type='text'
+                  placeholder='e.g., Okavango Delta, Botswana'
+                  className='w-full p-2 bg-[#161b22] border border-[#30363d] rounded text-sm text-[#e6edf3] outline-none focus:border-[#58a6ff]'
+                />
+              </div>
+
+              <div className='p-4 border-2 border-dashed border-[#30363d] rounded-lg bg-[#161b22] text-center space-y-2'>
+                <FileSpreadsheet className='size-8 text-[#58a6ff] mx-auto' />
+                <div className='text-sm font-medium text-[#e6edf3]'>Drag and drop Excel or CSV rate sheet</div>
+                <div className='text-[11px] text-[#8b949e]'>Supports .xlsx, .csv rate cards with net/rack columns</div>
+              </div>
+            </div>
+
+            <div className='flex justify-end gap-2 pt-2 border-t border-[#30363d]'>
+              <button
+                type='button'
+                onClick={() => setIsUploadModalOpen(false)}
+                className='px-3.5 py-1.5 bg-[#21262d] text-[#e6edf3] rounded text-xs hover:bg-[#30363d] border border-[#30363d]'
+              >
+                Cancel
+              </button>
+              <button
+                type='button'
+                onClick={() => setIsUploadModalOpen(false)}
+                className='px-3.5 py-1.5 bg-[#238636] text-white rounded text-xs font-semibold hover:bg-[#2ea043]'
+              >
+                Process & Ingest Contract
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

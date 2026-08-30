@@ -8,9 +8,10 @@ detects commission variance discrepancies, and calculates advisor/agency split s
 from datetime import datetime, timezone
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.core.auth import get_current_agency_id
+from spine_api.persistence import AuditStore, TripStore
 
 router = APIRouter(prefix="/api/v1/commission", tags=["Supplier Commission & Split Settlement"])
 
@@ -59,11 +60,10 @@ class CommissionSummaryResponse(BaseModel):
 
 
 @router.get("/summary", response_model=CommissionSummaryResponse)
-def get_commission_summary(
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+async def get_commission_summary(
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """List and summarize supplier commissions and advisor splits across agency trips."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trips = TripStore.list_trips(agency_id=agency_id)
 
     records: List[ExpectedCommissionRecord] = []
@@ -79,11 +79,15 @@ def get_commission_summary(
 
     for trip in trips:
         comm_data = trip.get("commission")
-        rec_option = trip.get("strategy", {}).get("recommended_option", {}) or {}
+        strategy_data = trip.get("strategy") or {}
+        rec_option = strategy_data.get("recommended_option") or {}
         supplier_name = rec_option.get("name") or "Primary Supplier"
-        gross_cents = int((rec_option.get("cost") or 3000) * 100)
+        gross_cents = int((rec_option.get("cost") or 0) * 100)
 
         if not comm_data:
+            # Require a real booking amount; do not fabricate a ₹3000 default.
+            if gross_cents <= 0:
+                continue
             # Default 10% commission, 70% advisor split
             exp_pct = 10.0
             split_pct = 70.0
@@ -133,12 +137,11 @@ def get_commission_summary(
 
 
 @router.post("/record", response_model=ExpectedCommissionRecord)
-def record_expected_commission(
+async def record_expected_commission(
     body: RecordCommissionRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Set or update expected supplier commission and advisor split on a trip booking."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -179,12 +182,11 @@ def record_expected_commission(
 
 
 @router.post("/reconcile", response_model=ExpectedCommissionRecord)
-def reconcile_supplier_commission(
+async def reconcile_supplier_commission(
     body: ReconcileCommissionRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Reconcile actual supplier payout against expected commission, detecting variances and calculating splits."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -194,7 +196,9 @@ def reconcile_supplier_commission(
 
     if not comm_data:
         rec_option = trip.get("strategy", {}).get("recommended_option", {}) or {}
-        gross_cents = int((rec_option.get("cost") or 3000) * 100)
+        gross_cents = int((rec_option.get("cost") or 0) * 100)
+        if gross_cents <= 0:
+            raise HTTPException(status_code=400, detail="No booking amount to reconcile against")
         exp_comm = int(gross_cents * 0.10)
         exp_adv = int(exp_comm * 0.70)
         exp_net = exp_comm - exp_adv

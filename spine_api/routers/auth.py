@@ -59,6 +59,15 @@ _ACCESS_TTL_SECONDS = 15 * 60  # 15 minutes
 # Refresh token: long-lived, only sent to /api/auth/*
 _REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60  # 7 days
 
+
+def _rate_limit(prod_limit: str):
+    def _inner():
+        env = os.environ.get("ENVIRONMENT", "development").lower()
+        if env in ("development", "test", "dev"):
+            return "10000/minute"
+        return prod_limit
+    return _inner
+
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
@@ -150,7 +159,7 @@ class JoinRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
+@limiter.limit(_rate_limit("5/minute"))
 async def post_signup(
     request: Request,
     response: Response,
@@ -203,7 +212,7 @@ async def post_signup(
 
 
 @router.post("/login", response_model=AuthResponse)
-@limiter.limit("10/minute")
+@limiter.limit(_rate_limit("10/minute"))
 async def post_login(
     request: Request,
     response: Response,
@@ -276,7 +285,7 @@ async def get_me(
 
 
 @router.post("/refresh", response_model=RefreshResponse)
-@limiter.limit("30/minute")
+@limiter.limit(_rate_limit("30/minute"))
 async def post_refresh(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     """
     Refresh the access token using the refresh_token cookie.
@@ -306,7 +315,7 @@ async def post_refresh(request: Request, response: Response, db: AsyncSession = 
 # ---------------------------------------------------------------------------
 
 @router.post("/request-password-reset")
-@limiter.limit("3/minute")
+@limiter.limit(_rate_limit("3/minute"))
 async def post_request_password_reset(
     request: Request,
     reset_req: PasswordResetRequest,
@@ -334,7 +343,7 @@ async def post_request_password_reset(
 
 
 @router.post("/confirm-password-reset")
-@limiter.limit("5/minute")
+@limiter.limit(_rate_limit("5/minute"))
 async def post_confirm_password_reset(
     request: Request,
     confirm_req: PasswordResetConfirm,

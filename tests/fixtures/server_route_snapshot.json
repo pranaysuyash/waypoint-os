@@ -1,5 +1,5 @@
 {
-  "route_count": 226,
+  "route_count": 294,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -522,6 +522,30 @@
       "operation_id": null
     },
     {
+      "path": "/api/public/proposals/{token}",
+      "name": "get_public_proposal",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public/proposals/{token}/accept",
+      "name": "accept_proposal",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public/proposals/{token}/calculate",
+      "name": "calculate_proposal_options",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/settings",
       "name": "get_agency_settings",
       "methods": [
@@ -612,6 +636,22 @@
     {
       "path": "/api/settings/comm",
       "name": "update_comm_settings",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/epistemic",
+      "name": "get_agency_epistemic_settings",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/epistemic",
+      "name": "update_agency_epistemic_settings",
       "methods": [
         "POST"
       ],
@@ -842,6 +882,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/trips/{trip_id}/confirmations/extract",
+      "name": "extract_confirmation_data",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/trips/{trip_id}/confirmations/{confirmation_id}",
       "name": "get_confirmation",
       "methods": [
@@ -882,6 +930,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/trips/{trip_id}/events/stream",
+      "name": "stream_trip_events",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/trips/{trip_id}/execution-timeline",
       "name": "get_execution_timeline",
       "methods": [
@@ -892,6 +948,38 @@
     {
       "path": "/api/trips/{trip_id}/timeline",
       "name": "get_trip_timeline",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/boundaries/authority-matrix",
+      "name": "get_authority_matrix",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/boundaries/tokens/issue",
+      "name": "issue_capability_token",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/boundaries/tokens/{token}/revoke",
+      "name": "revoke_capability_token",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/boundaries/tokens/{token}/verify",
+      "name": "verify_capability_token",
       "methods": [
         "GET"
       ],
@@ -922,6 +1010,22 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/concierge-upsell/{trip_id}/dispatch",
+      "name": "dispatch_concierge_upsell_proposal",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/concierge-upsell/{trip_id}/propose",
+      "name": "propose_concierge_upsells",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/concierge/auto-rebook/{trip_id}",
       "name": "execute_auto_rebook",
       "methods": [
@@ -946,6 +1050,38 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/constraints/evaluate/{trip_id}",
+      "name": "evaluate_trip_constraints",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/constraints/rules",
+      "name": "list_constraint_rules",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/corporate/approve-policy-override/{trip_id}",
+      "name": "approve_corporate_policy_override",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/corporate/audit-policy/{trip_id}",
+      "name": "audit_trip_corporate_policy",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/corporate/duty-of-care/cockpit",
       "name": "get_duty_of_care_cockpit",
       "methods": [
@@ -956,6 +1092,70 @@
     {
       "path": "/api/v1/corporate/policy-audit",
       "name": "audit_corporate_policy",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/corporate/policy-rules",
+      "name": "get_corporate_policy_rules",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/counterfactual/group-consensus",
+      "name": "group_consensus_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/counterfactual/replan-disruption",
+      "name": "replan_disruption_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/crisis/beacon/check-in",
+      "name": "record_passenger_safety_beacon",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/crisis/consular/step-manifest",
+      "name": "generate_consular_step_manifest",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/crisis/evacuation/plan",
+      "name": "generate_evacuation_manifest",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/crisis/ground/dispatch",
+      "name": "dispatch_emergency_driver",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/crisis/incidents/declare",
+      "name": "declare_crisis_incident",
       "methods": [
         "POST"
       ],
@@ -978,10 +1178,162 @@
       "operation_id": null
     },
     {
-      "path": "/api/v1/customers/remember",
-      "name": "remember_customer_preferences",
+      "path": "/api/v1/customers/memory/entity/{entity_id}",
+      "name": "list_entity_memory_items",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/customers/memory/forget",
+      "name": "forget_customer_gdpr",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/customers/memory/ingest",
+      "name": "ingest_memory_item",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/customers/memory/query",
+      "name": "query_memory_items",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/customers/remember",
+      "name": "remember_customer_preference",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/disruptions/alerts",
+      "name": "list_disruption_alerts",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/disruptions/{trip_id}/rebook",
+      "name": "execute_rebook",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/disruptions/{trip_id}/rebook-options",
+      "name": "get_rebook_options",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/distribution/fare-rules/cat35-markup",
+      "name": "evaluate_cat35_markup",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/distribution/fare-rules/penalties",
+      "name": "check_fare_penalties",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/distribution/gds/generate-cryptics",
+      "name": "generate_gds_cryptic_commands",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/distribution/gds/parse-edifact",
+      "name": "parse_gds_terminal_dump",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/distribution/ndc/air-shopping",
+      "name": "request_ndc_air_shopping",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/distribution/ndc/orders/create",
+      "name": "create_ndc_order",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/feedback/supplier-scorecard",
+      "name": "get_supplier_scorecard",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/feedback/{trip_id}/trigger-survey",
+      "name": "trigger_post_trip_survey",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/financial-ops/convert-currency",
+      "name": "convert_currency_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/fx/exposures",
+      "name": "list_fx_exposures",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/fx/lock-rate/{trip_id}",
+      "name": "lock_fx_rate_hedging",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/fx/rates",
+      "name": "get_live_fx_rates",
+      "methods": [
+        "GET"
       ],
       "operation_id": null
     },
@@ -1066,6 +1418,38 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/insurance/quote",
+      "name": "generate_insurance_quotes",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/insurance/{trip_id}/attach-policy",
+      "name": "attach_insurance_policy_to_trip",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/loyalty/award-search",
+      "name": "search_award_availability",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/loyalty/{customer_id}/balances",
+      "name": "get_customer_loyalty_balances",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/messaging/send",
       "name": "send_outbound_message",
       "methods": [
@@ -1100,6 +1484,54 @@
     {
       "path": "/api/v1/multimodal/voice-note",
       "name": "parse_voice_note_transcript",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/negotiation/margins/optimize",
+      "name": "optimize_dynamic_margin",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/negotiation/sessions/evaluate-counter",
+      "name": "evaluate_supplier_counter",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/negotiation/sessions/start",
+      "name": "start_negotiation_session",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/negotiation/waivers/generate",
+      "name": "generate_supplier_fee_waiver",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/passenger-rights/evaluate",
+      "name": "evaluate_passenger_rights_claim",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/passenger-rights/{trip_id}/generate-claim",
+      "name": "generate_formal_airline_claim",
       "methods": [
         "POST"
       ],
@@ -1162,6 +1594,70 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/resilience/circuits",
+      "name": "list_circuits",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/resilience/circuits/{circuit_name}/reset",
+      "name": "reset_circuit",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/resilience/compensate",
+      "name": "compensate_transaction",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/resilience/incidents",
+      "name": "list_incidents",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/resilience/incidents/{incident_id}/resolve",
+      "name": "resolve_incident",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/resilience/quarantine",
+      "name": "quarantine_intake",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/subagent-payouts/{advisor_id}/ledger",
+      "name": "get_advisor_ledger",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/subagent-payouts/{advisor_id}/request-payout",
+      "name": "request_advisor_payout",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/supplier/contracts/upload",
       "name": "upload_supplier_contract",
       "methods": [
@@ -1172,6 +1668,30 @@
     {
       "path": "/api/v1/supplier/inventory/soft-hold",
       "name": "create_inventory_soft_hold",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/tax-compliance/calculate-gst",
+      "name": "calculate_gst_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/tax-compliance/calculate-tcs",
+      "name": "calculate_tcs_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/tax-compliance/compile-invoice",
+      "name": "compile_invoice_endpoint",
       "methods": [
         "POST"
       ],
@@ -1206,6 +1726,22 @@
       "name": "transition_trip_stage",
       "methods": [
         "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/visa-radar/check",
+      "name": "check_visa_and_passport_validity",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/visa-radar/{trip_id}/requirements",
+      "name": "get_trip_visa_requirements",
+      "methods": [
+        "GET"
       ],
       "operation_id": null
     },
@@ -1474,6 +2010,14 @@
       "operation_id": null
     },
     {
+      "path": "/ready",
+      "name": "ready",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/run",
       "name": "run_spine",
       "methods": [
@@ -1659,7 +2203,7 @@
     },
     {
       "path": "/trips/{trip_id}/documents/{document_id}/extraction",
-      "name": "get_extraction",
+      "name": "get_document_extraction",
       "methods": [
         "GET"
       ],

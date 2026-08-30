@@ -10,8 +10,9 @@ import secrets
 import hashlib
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from spine_api.core.auth import get_current_agency_id
 from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
 
 router = APIRouter(prefix="/api/v1/group", tags=["Group Booking"])
@@ -86,13 +87,12 @@ def _hash_token(token: str) -> str:
 
 
 @router.post("/{trip_id}/invites", response_model=GroupInviteResponse)
-def generate_group_invites(
+async def generate_group_invites(
     trip_id: str,
     body: GroupInviteRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Generate passenger deposit invite links for a multi-passenger group trip."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -115,7 +115,7 @@ def generate_group_invites(
         token_hash = _hash_token(raw_token)
         share_cents = p.custom_share_cents if p.custom_share_cents is not None else per_passenger_cents
 
-        item = {
+        item: dict = {
             "passenger_id": passenger_id,
             "name": p.name,
             "email": p.email,
@@ -264,13 +264,12 @@ def notify_passenger_pay_share(token: str, body: PassengerPayRequest):
 
 
 @router.post("/{trip_id}/manual-override")
-def manual_advisor_override_share(
+async def manual_advisor_override_share(
     trip_id: str,
     body: ManualOverrideRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Advisor endpoint to manually confirm, waive, or update a passenger's share status."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")

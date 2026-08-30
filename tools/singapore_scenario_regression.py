@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from spine_api.core.security import create_access_token
+from spine_api.core.security import create_access_token  # noqa: E402
 
 SCENARIO_PATH = REPO_ROOT / "data/fixtures/scenarios/SC-901_ravi_singapore_messy_call.json"
 REPORTS_DIR = REPO_ROOT / "Docs/reports"

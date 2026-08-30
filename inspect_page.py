@@ -29,7 +29,7 @@ with sync_playwright() as p:
         try:
             text = btn.text_content()
             print(f"  {i+1}. {text}")
-        except:
+        except Exception:
             print(f"  {i+1}. [unable to read text]")
     
     # Check for divs with specific text
@@ -38,7 +38,7 @@ with sync_playwright() as p:
         elements = page.locator("text=Capture Call")
         count = elements.count()
         print(f"  Found 'Capture Call' in {count} element(s)")
-    except:
+    except Exception:
         print("  'Capture Call' text not found")
     
     # Look for IntakePanel
@@ -46,7 +46,7 @@ with sync_playwright() as p:
     try:
         intake_elements = page.locator("[class*='Intake']").all()
         print(f"  Found {len(intake_elements)} Intake-related elements")
-    except:
+    except Exception:
         pass
     
     # Check for any action buttons
@@ -54,7 +54,7 @@ with sync_playwright() as p:
     try:
         action_buttons = page.locator("[class*='action'], [class*='Action']").all()
         print(f"  Found {len(action_buttons)} action-related elements")
-    except:
+    except Exception:
         pass
     
     # Save the content to a file for inspection

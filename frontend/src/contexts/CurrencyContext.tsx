@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, use, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import type { SupportedCurrency } from '@/lib/currency';
 import { formatMoney } from '@/lib/currency';
 
@@ -58,7 +58,7 @@ export function CurrencyProvider({ children, defaultCurrency = 'INR' }: Currency
 }
 
 export function useCurrency(): CurrencyContextValue {
-  const context = use(CurrencyContext);
+  const context = useContext(CurrencyContext);
   if (!context) {
     throw new Error('useCurrency must be used within a CurrencyProvider');
   }

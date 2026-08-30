@@ -40,6 +40,7 @@ from .integration import (
     generate_suitability_risks,
     assess_activity_suitability,
 )
+from .llm_scorer import LLMContextualScorer, compute_suitability_cache_key
 
 __all__ = [
     # Models
@@ -70,4 +71,7 @@ __all__ = [
     "extract_participants_from_packet",
     "generate_suitability_risks",
     "assess_activity_suitability",
+    # Tier 3 Contextual Scorer
+    "LLMContextualScorer",
+    "compute_suitability_cache_key",
 ]

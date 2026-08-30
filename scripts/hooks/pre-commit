@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 
 # >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
-# Pin the canonical v5 motto source so agent-start never downgrades to a retired doctrine.
-export AGENT_MOTTO_SOURCE="/Users/pranay/Downloads/motto_v5.md"
+# Pin the canonical doctrine source used by agent-start and the attestation gate.
+export AGENT_DOCTRINE_SOURCE="/Users/pranay/Downloads/OPERATING_DOCTRINE.md"
 
-if [ -x /Users/pranay/Projects/agent-start ] && [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
-  _motto_file="motto_v5.md"
-  if [ ! -f "$_motto_file" ]; then
-    echo "pre-commit: expected $_motto_file is missing; rerun /Users/pranay/Projects/agent-start and restore the project motto before committing." >&2
+if [ -x /Users/pranay/Projects/agent-start/bin/agent-start ] && [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
+  _doctrine_file="OPERATING_DOCTRINE.md"
+  if [ ! -f "$_doctrine_file" ]; then
+    echo "pre-commit: expected $_doctrine_file is missing; rerun /Users/pranay/Projects/agent-start/bin/agent-start and restore the project doctrine before committing." >&2
     exit 1
   fi
   echo "pre-commit: refreshing project context and running objective checks against the staged blast radius." >&2
   _cmd_timeout="${PROJECTS_AGENT_PRECOMMIT_TIMEOUT_SECS:-60}"
   _run_agent_start() {
     if command -v timeout >/dev/null 2>&1; then
-      timeout "$_cmd_timeout" /Users/pranay/Projects/agent-start --skip-index --quiet >/dev/null 2>&1
+      timeout "$_cmd_timeout" /Users/pranay/Projects/agent-start/bin/agent-start --skip-index --quiet >/dev/null 2>&1
     elif command -v gtimeout >/dev/null 2>&1; then
-      gtimeout "$_cmd_timeout" /Users/pranay/Projects/agent-start --skip-index --quiet >/dev/null 2>&1
+      gtimeout "$_cmd_timeout" /Users/pranay/Projects/agent-start/bin/agent-start --skip-index --quiet >/dev/null 2>&1
     else
-      /Users/pranay/Projects/agent-start --skip-index --quiet >/dev/null 2>&1 &
+      /Users/pranay/Projects/agent-start/bin/agent-start --skip-index --quiet >/dev/null 2>&1 &
       _agent_pid=$!
       (
         sleep "$_cmd_timeout"
@@ -50,7 +50,7 @@ if [ -x /Users/pranay/Projects/agent-start ] && [ "${PWD#"/Users/pranay/Projects
     fi
   fi
   if [ "$_need_refresh" = "1" ] && ! _run_agent_start; then
-    echo "pre-commit: agent-start refresh failed; rerun /Users/pranay/Projects/agent-start --skip-index and fix the issue before committing." >&2
+    echo "pre-commit: agent-start refresh failed; rerun /Users/pranay/Projects/agent-start/bin/agent-start --skip-index and fix the issue before committing." >&2
     exit 1
   fi
   for _stage_path in Docs/context/agent-start .agent; do
@@ -100,7 +100,7 @@ fi
   #    durable artifact check, not a self-attestation. It catches "code changed
   #    auth/payments/webhooks but no docs/worklog changed" before commit.
   if [ "$_high_risk" = "1" ]; then
-    if ! printf '%s\n' "$_staged_all" | grep -qiE '^(Docs|docs|README|CHANGELOG|.*WORKLOG|.*tracking|.*decisions|.*exploration)/|^(Docs|docs)/|CLAUDE\.md|AGENTS\.md|motto_v5\.md'; then
+    if ! printf '%s\n' "$_staged_all" | grep -qiE '^(Docs|docs|README|CHANGELOG|.*WORKLOG|.*tracking|.*decisions|.*exploration)/|^(Docs|docs)/|CLAUDE\.md|AGENTS\.md|OPERATING_DOCTRINE\.md'; then
       cat >&2 <<'EOF'
 pre-commit: high-risk staged changes detected, but no durable docs/tracking artifact is staged.
 For auth/payments/webhooks/background jobs/db/data/privacy/billing changes, update a repo-local
@@ -133,14 +133,28 @@ EOF
     fi
     if [ -f pyproject.toml ] && grep -qiE 'tool\.mypy|\[tool\.mypy' pyproject.toml; then
       if command -v uv >/dev/null 2>&1 && uv run mypy --version >/dev/null 2>&1; then
-        _mypy_target="src"
-        [ -d "$_mypy_target" ] || _mypy_target="$(printf '%s\n' "$_staged_py" | head -1)"
-        if ! uv run mypy "$_mypy_target" >/tmp/_pc_mypy.log 2>&1; then
-          echo "pre-commit: mypy FAILED." >&2
-          cat /tmp/_pc_mypy.log >&2
-          rm -f /tmp/_pc_mypy.log
-          echo "  Fix the issues and retry." >&2
-          exit 1
+        if grep -qE '^[[:space:]]*files[[:space:]]*=' pyproject.toml; then
+          # Project declares an explicit mypy scope via [tool.mypy].files.
+          # Run without a CLI target: an explicit target (e.g. "src") would
+          # override the configured files list and check unscoped untyped code
+          # the project intentionally keeps out of the gate.
+          if ! uv run mypy >/tmp/_pc_mypy.log 2>&1; then
+            echo "pre-commit: mypy FAILED (configured scope)." >&2
+            cat /tmp/_pc_mypy.log >&2
+            rm -f /tmp/_pc_mypy.log
+            echo "  Fix the issues and retry." >&2
+            exit 1
+          fi
+        else
+          _mypy_target="src"
+          [ -d "$_mypy_target" ] || _mypy_target="$(printf '%s\n' "$_staged_py" | head -1)"
+          if ! uv run mypy "$_mypy_target" >/tmp/_pc_mypy.log 2>&1; then
+            echo "pre-commit: mypy FAILED." >&2
+            cat /tmp/_pc_mypy.log >&2
+            rm -f /tmp/_pc_mypy.log
+            echo "  Fix the issues and retry." >&2
+            exit 1
+          fi
         fi
         rm -f /tmp/_pc_mypy.log
       else

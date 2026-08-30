@@ -41,7 +41,13 @@ def wait_for_terminal(
     deadline = time.time() + timeout_s
     last: dict[str, Any] | None = None
     while time.time() < deadline:
-        resp = get_run_status(api_base, run_id, headers)
+        # A single slow/timed-out poll must not fail the test — the deadline is
+        # the contract. Live servers can stall >10s while executing a run.
+        try:
+            resp = get_run_status(api_base, run_id, headers)
+        except (requests.Timeout, requests.ConnectionError):
+            time.sleep(poll_s)
+            continue
         assert resp.status_code == 200, f"GET /runs/{run_id} failed: {resp.status_code} {resp.text}"
         last = resp.json()
         if last.get("state") in TERMINAL_RUN_STATES:

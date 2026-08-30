@@ -1407,8 +1407,27 @@ class TripStore:
     @staticmethod
     def _backend():
         raw_backend = os.getenv("TRIPSTORE_BACKEND", "").strip().lower()
+        environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+
+        # Fail closed: in production/staging an unset or file backend is a
+        # split-brain hazard (file store coexists with Postgres and has no RLS).
+        # Never silently fall back to the file store in a non-development env.
+        if environment in ("production", "staging") and not raw_backend:
+            raise RuntimeError(
+                "TRIPSTORE_BACKEND is unset in a non-development environment. "
+                "Set it to 'sql' or 'postgres' to avoid the file-store split-brain "
+                "and RLS bypass risk."
+            )
+        if environment in ("production", "staging") and raw_backend not in (
+            "sql", "postgres", "postgresql"
+        ):
+            raise RuntimeError(
+                f"TRIPSTORE_BACKEND='{raw_backend}' is not allowed in a non-development "
+                "environment. Use 'sql' or 'postgres'."
+            )
+
         if not raw_backend:
-            logger.warning("TRIPSTORE_BACKEND is unset; defaulting to file store")
+            logger.warning("TRIPSTORE_BACKEND is unset; defaulting to file store (development only)")
             return FileTripStore
 
         # Backward-compatible alias: json behaves like file store.

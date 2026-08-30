@@ -18,6 +18,7 @@ import {
   Bot,
   Headphones,
   Send,
+  Brain,
 } from 'lucide-react';
 import {
   useAgencySettings,
@@ -42,6 +43,7 @@ import { AlertDestinationsTab } from './components/AlertDestinationsTab';
 import { AiAgentTab } from './components/AiAgentTab';
 import { SupportSettingsTab } from './components/SupportSettingsTab';
 import { CommSettingsTab } from './components/CommSettingsTab';
+import { MemorySettingsTab } from './components/MemorySettingsTab';
 import { useAuthStore } from '@/stores/auth';
 import { ProtectedSurfaceNotice } from '@/components/auth/ProtectedSurfaceNotice';
 
@@ -49,6 +51,7 @@ const TABS = [
   { id: 'profile', label: 'Profile', icon: Building2 },
   { id: 'operations', label: 'Operations', icon: SlidersHorizontal },
   { id: 'autonomy', label: 'Approval Rules', icon: ShieldCheck },
+  { id: 'memory', label: 'Memory & Retention', icon: Brain },
   { id: 'guard', label: 'Guard', icon: Shield },
   { id: 'alerts', label: 'Alerts', icon: Bell },
   { id: 'ai-agent', label: 'AI Agent', icon: Bot },
@@ -367,6 +370,9 @@ function SettingsPageInner() {
           )}
           {activeTab === 'autonomy' && (
             <AutonomyTab draft={activeDraft} onChange={updateDraft} />
+          )}
+          {activeTab === 'memory' && (
+            <MemorySettingsTab />
           )}
           {activeTab === 'seasonal' && (
             <SeasonalTab draft={activeDraft} onChange={updateDraft} />

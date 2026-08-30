@@ -20,17 +20,17 @@ with open(path, 'r', encoding='utf-8', errors='ignore') as f:
 out = []
 for f in files:
     status = 'M'
-    if any(l.startswith('new file mode') for l in f['lines']):
+    if any(line.startswith('new file mode') for line in f['lines']):
         status = 'A'
-    if any(l.startswith('deleted file mode') for l in f['lines']):
+    if any(line.startswith('deleted file mode') for line in f['lines']):
         status = 'D'
-    hunk_count = sum(1 for l in f['lines'] if l.startswith('@@ '))
-    added = sum(1 for l in f['lines'] if l.startswith('+') and not l.startswith('+++'))
-    removed = sum(1 for l in f['lines'] if l.startswith('-') and not l.startswith('---'))
+    hunk_count = sum(1 for line in f['lines'] if line.startswith('@@ '))
+    added = sum(1 for line in f['lines'] if line.startswith('+') and not line.startswith('+++'))
+    removed = sum(1 for line in f['lines'] if line.startswith('-') and not line.startswith('---'))
     sample = []
-    for l in f['lines']:
-        if l.startswith('@@ ') or l.startswith('+') or l.startswith('-'):
-            sample.append(l.rstrip('\n'))
+    for line in f['lines']:
+        if line.startswith('@@ ') or line.startswith('+') or line.startswith('-'):
+            sample.append(line.rstrip('\n'))
             if len(sample) >= 40:
                 break
     out.append({'path': f['path'], 'status': status, 'hunks': hunk_count, 'added': added, 'removed': removed, 'sample': sample})

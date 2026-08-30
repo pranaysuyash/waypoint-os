@@ -9,9 +9,10 @@ and allows advisors to re-lock lower rates before deposit confirmation.
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.core.auth import get_current_agency_id
+from spine_api.persistence import AuditStore, TripStore
 from spine_api.routers.supplier import CONTRACTS_STORE
 
 router = APIRouter(prefix="/api/v1/price-lock", tags=["Price Lock Sentinel"])
@@ -80,11 +81,10 @@ def _get_price_lock_expires_at(trip: dict) -> datetime:
 
 
 @router.get("/opportunities", response_model=List[PriceLockOpportunity])
-def list_price_lock_opportunities(
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+async def list_price_lock_opportunities(
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Scan active agency trips for price lock countdowns and margin re-shopping opportunities."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trips = TripStore.list_trips(agency_id=agency_id)
     now = datetime.now(timezone.utc)
     opportunities: List[PriceLockOpportunity] = []
@@ -93,7 +93,7 @@ def list_price_lock_opportunities(
         strategy = trip.get("strategy", {}) or {}
         rec_option = strategy.get("recommended_option", {}) or {}
         cost = rec_option.get("cost") or 0
-        original_net_cents = int(cost * 100) if cost > 0 else 300000  # Default $3,000
+        original_net_cents = int(cost * 100) if cost > 0 else 0
 
         exp_dt = _get_price_lock_expires_at(trip)
         hours_remaining = max(0.0, round((exp_dt - now).total_seconds() / 3600.0, 1))
@@ -105,7 +105,7 @@ def list_price_lock_opportunities(
         supplier_name = rec_option.get("name") or "Primary Supplier Contract"
 
         if contracts:
-            first_contract = next(iter(contracts.values()), {})
+            first_contract: dict = next(iter(contracts.values()), {})
             supplier_name = first_contract.get("supplier_name", supplier_name)
             rate_table = first_contract.get("rate_table", [])
             if rate_table and isinstance(rate_table, list) and len(rate_table) > 0:
@@ -135,20 +135,21 @@ def list_price_lock_opportunities(
 
 
 @router.post("/{trip_id}/audit-rate", response_model=RateAuditResponse)
-def audit_trip_price_lock_rate(
+async def audit_trip_price_lock_rate(
     trip_id: str,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Audit supplier rate feed for a specific trip to detect rate drops and margin savings."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    strategy = trip.get("strategy", {}) or {}
-    rec_option = strategy.get("recommended_option", {}) or {}
+    strategy = trip.get("strategy") or {}
+    rec_option = strategy.get("recommended_option") or {}
     cost = rec_option.get("cost") or 0
-    original_net_cents = int(cost * 100) if cost > 0 else 300000
+    if cost <= 0:
+        cost = 3000.0
+    original_net_cents = int(cost * 100)
 
     exp_dt = _get_price_lock_expires_at(trip)
     contracts = CONTRACTS_STORE.get(agency_id, {})
@@ -156,7 +157,7 @@ def audit_trip_price_lock_rate(
     supplier_name = rec_option.get("name") or "Primary Supplier Contract"
 
     if contracts:
-        first_contract = next(iter(contracts.values()), {})
+        first_contract: dict = next(iter(contracts.values()), {})
         supplier_name = first_contract.get("supplier_name", supplier_name)
         rate_table = first_contract.get("rate_table", [])
         if rate_table and isinstance(rate_table, list) and len(rate_table) > 0:
@@ -181,13 +182,12 @@ def audit_trip_price_lock_rate(
 
 
 @router.post("/{trip_id}/re-lock", response_model=ReLockResponse)
-def re_lock_lower_rate(
+async def re_lock_lower_rate(
     trip_id: str,
     body: ReLockRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Re-lock a lower net rate quote, updating trip strategy and logging margin savings."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -195,7 +195,10 @@ def re_lock_lower_rate(
     strategy = trip.setdefault("strategy", {})
     rec_option = strategy.setdefault("recommended_option", {})
 
-    prev_net_cents = int((rec_option.get("cost") or 3000) * 100)
+    cost = rec_option.get("cost") or 0
+    if cost <= 0:
+        cost = 3000.0
+    prev_net_cents = int(cost * 100)
     new_net_cents = body.new_net_rate_cents
     margin_saved_cents = max(0, prev_net_cents - new_net_cents)
 

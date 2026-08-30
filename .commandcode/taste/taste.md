@@ -57,6 +57,9 @@ See [workflow/taste.md](workflow/taste.md)
 # testing
 - For UI changes, use Browser/Computer visual verification tools to confirm runtime behavior visually, not just static code review or unit tests — start the dev server and verify visually. Confidence: 0.65
 - Tests must contain real behavioral assertions — reject placeholder tests with `assert True`, `pass`, or unimplemented branches that do not validate actual functionality. Confidence: 0.70
+- Before diagnosing a large "failing test" count, first establish a working test harness (set `ENVIRONMENT=test`/`development` and wire `DATABASE_URL` to a running DB); a huge failure total is often harness misconfiguration (e.g., an ambient `NODE_ENV=production` tripping a CORS/startup guard), not code defects — fix the env config before touching individual tests. Confidence: 0.80
+- Fix collection-time `ImportError`s (stale test modules importing removed/renamed symbols) first — a single broken test module's import failure aborts collection and can mask the entire suite's real result. Confidence: 0.80
+- When a test targets a removed/refactored or renamed API, rewrite it to exercise the current API while preserving the original intent (semantic salvage) — do not delete it or leave it as a broken collection error. Confidence: 0.80
 
 # collaboration
 - Use a structured external peer-review gate before marking phases as complete: implement → produce structured "writeup for [reviewer]" report → get review feedback → resolve all blockers → close phase. Confidence: 0.85

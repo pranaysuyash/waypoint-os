@@ -36,6 +36,7 @@ dependencies = [
 dev = [
     "aiosqlite>=0.22.1",
     "httpx>=0.28.1",
+    "mypy>=1.11.0",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
     "ruff>=0.15.12",
@@ -83,7 +84,7 @@ privacy = [
 [tool.ruff.lint.per-file-ignores]
 "tests/test_llm_clients.py" = ["F401"]
 "tools/verify_frontier_models.py" = ["F401"]
-"notebooks/*.py" = ["E402"]
+"notebooks/*" = ["E402"]
 "scripts/*.py" = ["E402"]
 "seed_test_user.py" = ["E402"]
 "spine_api/contract.py" = ["E402"]
@@ -107,3 +108,44 @@ pythonpath = ["src", "."]
 filterwarnings = [
     "ignore:builtin type.*has no __module__:DeprecationWarning",
 ]
+
+# =============================================================================
+# Type checking (mypy) — scoped to security/tenancy-critical surfaces.
+# Whole-repo mypy is intentionally not enabled: it would surface hundreds of
+# pre-existing errors across 70k LOC and block legitimate change. Instead we
+# hard-gate the files where a type mistake can cause a tenant isolation or
+# data-integrity defect. Extend this list as the codebase becomes typed.
+# =============================================================================
+[tool.mypy]
+python_version = "3.13"
+files = [
+    "spine_api/core/auth.py",
+    "spine_api/core/rls.py",
+    "spine_api/core/security.py",
+    "src/security/privacy_guard.py",
+    "spine_api/routers/commission.py",
+    "spine_api/routers/group_booking.py",
+    "spine_api/routers/multimodal.py",
+    "spine_api/routers/customer_memory.py",
+    "spine_api/routers/price_lock.py",
+    "spine_api/routers/messaging.py",
+]
+ignore_missing_imports = true
+# Do not follow transitive imports — gate only the listed files. Following
+# imports surfaces hundreds of pre-existing errors in untyped dependencies
+# (analytics/logger, orchestration, gates) that are unrelated to the
+# security/tenancy surfaces we are guarding.
+follow_imports = "skip"
+# Scoped to genuine type mismatches, not missing annotations. FastAPI routers
+# commonly omit return type annotations; requiring them repo-wide would block
+# legitimate change for mechanical noise. This catches real assignment/attr
+# errors that can cause tenant-isolation or data-integrity defects.
+disallow_untyped_defs = false
+check_untyped_defs = false
+# no_implicit_optional is OFF because FastAPI dependencies legitimately use
+# `request: Request = None` (the raw Request is injected, and implicit-Optional
+# is the idiomatic form here). Enabling it would block a valid FastAPI pattern.
+no_implicit_optional = false
+warn_unused_ignores = true
+
+

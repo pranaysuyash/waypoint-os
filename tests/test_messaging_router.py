@@ -48,20 +48,24 @@ def test_send_outbound_message(session_client):
     assert data["ok"] is True
     assert data["trip_id"] == trip_id
     assert data["channel"] == "whatsapp"
-    assert data["status"] == "SENT"
+    assert data["status"] == "QUEUED"
     assert data["provider"] == "whatsapp_cloud_api"
     assert data["message_id"].startswith("msg_")
 
 
-def test_process_messaging_webhook(session_client):
+def test_process_messaging_webhook(session_client, monkeypatch):
     """Verify processing incoming provider webhook status callbacks."""
+    import hashlib
+    import hmac
+    secret = "test_meta_app_secret"
+    monkeypatch.setenv("WHATSAPP_APP_SECRET", secret)
+    body = b'{"event": "message_delivered", "message_id": "msg_89a7f201", "status": "DELIVERED"}'
+    sig = "sha256=" + hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+
     response = session_client.post(
         "/api/v1/messaging/webhook/whatsapp",
-        json={
-            "event": "message_delivered",
-            "message_id": "msg_89a7f201",
-            "status": "DELIVERED",
-        },
+        content=body,
+        headers={"X-Hub-Signature-256": sig, "Content-Type": "application/json"},
     )
 
     assert response.status_code == 200

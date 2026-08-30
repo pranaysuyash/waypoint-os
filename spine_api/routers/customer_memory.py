@@ -1,22 +1,45 @@
 """
-spine_api/routers/customer_memory.py — Cross-Trip Relationship Memory & Repeat Traveler CRM Graph Engine.
+spine_api/routers/customer_memory.py — 5-Tier Agent Memory & CRM Graph Engine.
 
-Indexes customer preferences (dietary, room, seating, passport metadata) by normalized email/phone,
-auto-hydrates new trip packets with confirmed historical client memory, and tracks preference provenance.
+Implements enterprise REST endpoints for PER-0717 Agent Memory Architect:
+- 5-Tier Memory Ingestion (Working, Episodic, Semantic, Procedural, Preference)
+- Write Eligibility Gate and Source Hierarchy Scoring
+- Cryptographic Provenance Lineage Tracking
+- Temporal Half-Life Decay and Activation Scoring
+- GDPR Article 17 Right-to-Erasure with Cryptographic Certificates
+- Trip Auto-Hydration with Token-Budgeted Retrieval
 """
 
+from __future__ import annotations
+
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header, HTTPException
 
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.core.auth import get_current_agency_id
+from spine_api.persistence import AuditStore, TripStore
+from src.memory.models import (
+    MemorySourceType,
+    MemoryTier,
+)
+from src.memory.store import MemoryStore
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/customers", tags=["Customer Relationship Memory"])
 
-# In-memory customer memory store keyed by customer_id
+# Durable multi-tenant memory store singleton
+_MEMORY_STORE = MemoryStore()
+
+# Legacy in-memory dictionary maintained for backwards compatibility
 CUSTOMER_MEMORY_STORE: Dict[str, Dict[str, Any]] = {}
 
+
+# ---------------------------------------------------------------------------
+# Schema Models
+# ---------------------------------------------------------------------------
 
 class CustomerPreferenceProfile(BaseModel):
     customer_id: str
@@ -59,6 +82,46 @@ class HydrateTripResponse(BaseModel):
     preferences: Dict[str, Any] = Field(default_factory=dict)
 
 
+class IngestMemoryRequest(BaseModel):
+    entity_id: str
+    raw_text: str
+    source_type: str = "traveler_direct"
+    category_hint: Optional[str] = None
+    explicit_confidence: Optional[float] = None
+    is_safety_critical: bool = False
+    payload: Optional[Dict[str, Any]] = None
+    source_ref_id: Optional[str] = None
+
+
+class IngestMemoryResponse(BaseModel):
+    ok: bool
+    message: str
+    memory_id: Optional[str] = None
+    tier: Optional[str] = None
+    category: Optional[str] = None
+    confidence_score: Optional[float] = None
+    integrity_hash: Optional[str] = None
+
+
+class QueryMemoryResponse(BaseModel):
+    query: str
+    result_count: int
+    results: List[Dict[str, Any]]
+
+
+class GDPRForgetRequest(BaseModel):
+    customer_id: str
+
+
+class GDPRForgetResponse(BaseModel):
+    ok: bool = True
+    certificate: Dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Normalization Helpers
+# ---------------------------------------------------------------------------
+
 def _normalize_email(email: Optional[str]) -> Optional[str]:
     return email.strip().lower() if email and email.strip() else None
 
@@ -92,18 +155,22 @@ def _find_customer_profile(
     return None
 
 
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
 @router.get("/memory", response_model=Optional[CustomerPreferenceProfile])
-def get_customer_memory(
+async def get_customer_memory(
     email: Optional[str] = None,
     phone: Optional[str] = None,
     name: Optional[str] = None,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Lookup repeat customer memory by email, phone number, or name."""
-    if not email and not phone and not name:
+    if not any([email, phone, name]):
         raise HTTPException(status_code=400, detail="Must provide email, phone, or name for memory lookup")
 
-    profile = _find_customer_profile(email, phone, name)
+    profile = _find_customer_profile(email=email, phone=phone, name=name)
     if not profile:
         return None
 
@@ -123,67 +190,83 @@ def get_customer_memory(
 
 
 @router.post("/remember", response_model=CustomerPreferenceProfile)
-def remember_customer_preferences(
-    body: RememberPreferenceRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+async def remember_customer_preference(
+    req: RememberPreferenceRequest,
+    agency_id: str = Depends(get_current_agency_id),
 ):
-    """Save or update customer relationship preferences across trips."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
-    norm_e = _normalize_email(body.email)
-    norm_p = _normalize_phone(body.phone)
+    """Index or update customer preference profile with verified provenance."""
+    norm_e = _normalize_email(req.email)
+    norm_p = _normalize_phone(req.phone)
 
-    if not norm_e and not norm_p and not body.name:
+    if not norm_e and not norm_p and not req.name:
         raise HTTPException(status_code=400, detail="Must provide email, phone, or name to index customer memory")
 
-    profile = _find_customer_profile(body.email, body.phone, body.name)
+    profile = _find_customer_profile(email=req.email, phone=req.phone, name=req.name)
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    if not profile:
-        cust_id = f"cust_{datetime.now().strftime('%Y%m%d%H%M%S')}_{hash((norm_e or norm_p or body.name or '')[:8]) & 0xffff}"
+    if profile:
+        cust_id = profile["customer_id"]
+    else:
+        cust_id = f"cust_{norm_e or norm_p or req.name.lower().replace(' ', '_')}"
         profile = {
             "customer_id": cust_id,
-            "name": body.name,
-            "email": body.email,
-            "phone": body.phone,
-            "normalized_email": norm_e,
-            "normalized_phone": norm_p,
+            "name": req.name,
             "source_trip_ids": [],
         }
-        CUSTOMER_MEMORY_STORE[cust_id] = profile
 
-    profile["name"] = body.name or profile["name"]
-    if body.email:
-        profile["email"] = body.email
+    # Update profile fields
+    if req.email:
+        profile["email"] = req.email
         profile["normalized_email"] = norm_e
-    if body.phone:
-        profile["phone"] = body.phone
+    if req.phone:
+        profile["phone"] = req.phone
         profile["normalized_phone"] = norm_p
-
-    if body.dietary_requirements:
-        profile["dietary_requirements"] = body.dietary_requirements
-    if body.room_preference:
-        profile["room_preference"] = body.room_preference
-    if body.seating_preference:
-        profile["seating_preference"] = body.seating_preference
-    if body.passport_country:
-        profile["passport_country"] = body.passport_country
-    if body.passport_expiry:
-        profile["passport_expiry"] = body.passport_expiry
-
-    if body.source_trip_id and body.source_trip_id not in profile["source_trip_ids"]:
-        profile["source_trip_ids"].append(body.source_trip_id)
+    if req.dietary_requirements:
+        profile["dietary_requirements"] = req.dietary_requirements
+    if req.room_preference:
+        profile["room_preference"] = req.room_preference
+    if req.seating_preference:
+        profile["seating_preference"] = req.seating_preference
+    if req.passport_country:
+        profile["passport_country"] = req.passport_country
+    if req.passport_expiry:
+        profile["passport_expiry"] = req.passport_expiry
+    if req.source_trip_id and req.source_trip_id not in profile["source_trip_ids"]:
+        profile["source_trip_ids"].append(req.source_trip_id)
 
     profile["last_confirmed_at"] = now_iso
+    CUSTOMER_MEMORY_STORE[cust_id] = profile
+
+    # Also ingest structured facts into the 5-tier durable MemoryStore
+    if req.dietary_requirements:
+        _MEMORY_STORE.ingest_memory(
+            agency_id=agency_id,
+            entity_id=cust_id,
+            raw_text=f"Dietary requirement: {req.dietary_requirements}",
+            source_type=MemorySourceType.TRAVELER_DIRECT,
+            category_hint="dietary",
+            is_safety_critical=True,
+            source_ref_id=req.source_trip_id,
+        )
+
+    if req.seating_preference:
+        _MEMORY_STORE.ingest_memory(
+            agency_id=agency_id,
+            entity_id=cust_id,
+            raw_text=f"Seating preference: {req.seating_preference}",
+            source_type=MemorySourceType.TRAVELER_DIRECT,
+            category_hint="seating",
+            source_ref_id=req.source_trip_id,
+        )
 
     AuditStore.log_event(
         event_type="customer_memory_updated",
         user_id=agency_id,
         details={
-            "customer_id": profile["customer_id"],
-            "name": profile["name"],
-            "has_email": bool(norm_e),
-            "has_phone": bool(norm_p),
-            "source_trip_id": body.source_trip_id,
+            "customer_id": cust_id,
+            "name": req.name,
+            "updated_fields": [k for k in ["dietary_requirements", "room_preference", "seating_preference"] if getattr(req, k, None)],
+            "source_trip_id": req.source_trip_id,
         },
     )
 
@@ -203,57 +286,73 @@ def remember_customer_preferences(
 
 
 @router.post("/hydrate-trip/{trip_id}", response_model=HydrateTripResponse)
-def hydrate_trip_with_customer_memory(
+async def hydrate_trip_with_customer_memory(
     trip_id: str,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    req: HydrateTripRequest | None = None,
+    agency_id: str = Depends(get_current_agency_id),
 ):
-    """Auto-hydrate a trip packet with matching customer memory based on customer email, phone, or name."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
+    """Auto-hydrate a trip packet with matching customer memory."""
+    req = req or HydrateTripRequest(trip_id=trip_id)
+
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    packet = trip.setdefault("packet", {})
-    customer_name = packet.get("customer_name") or trip.get("customer_name") or trip.get("client_name")
-    email = packet.get("customer_email") or trip.get("customer_email") or trip.get("email") or trip.get("client_email")
-    phone = packet.get("customer_phone") or trip.get("customer_phone") or trip.get("phone") or trip.get("client_phone")
+    # Resolve the customer identity from the request body if provided, else from
+    # the trip's customer fields. This lets a body-less hydrate still match the
+    # remembered profile for the trip's customer.
+    packet = trip.get("packet", {}) or {}
+    trip_email = (
+        req.email
+        or packet.get("customer_email")
+        or trip.get("customer_email")
+        or trip.get("email")
+        or trip.get("client_email")
+    )
+    trip_phone = (
+        req.phone
+        or packet.get("customer_phone")
+        or trip.get("customer_phone")
+        or trip.get("phone")
+        or trip.get("client_phone")
+    )
+    trip_name = packet.get("customer_name") or trip.get("customer_name") or trip.get("client_name")
 
-    profile = _find_customer_profile(email=email, phone=phone, name=customer_name)
+    # _find_customer_profile matches by email, then phone, then normalized name,
+    # so passing all three makes a body-less hydrate robust to whichever field
+    # the trip carries.
+    profile = _find_customer_profile(email=trip_email, phone=trip_phone, name=trip_name)
     if not profile:
         return HydrateTripResponse(
-            ok=True,
             trip_id=trip_id,
             memory_found=False,
             hydrated_fields=[],
             preferences={},
         )
 
-    hydrated_fields = []
-    preferences = {}
+    hydrated = []
+    prefs = {}
 
-    if profile.get("dietary_requirements"):
-        packet["dietary_requirements"] = profile["dietary_requirements"]
-        preferences["dietary_requirements"] = profile["dietary_requirements"]
-        hydrated_fields.append("dietary_requirements")
+    extracted = trip.setdefault("extracted", {})
+    # Report hydrated fields using the profile/UI field names so the response
+    # matches the CustomerPreferenceProfile schema consumers expect.
+    if profile.get("dietary_requirements") and not extracted.get("dietary"):
+        extracted["dietary"] = profile["dietary_requirements"]
+        hydrated.append("dietary_requirements")
+        prefs["dietary_requirements"] = profile["dietary_requirements"]
 
-    if profile.get("room_preference"):
-        packet["room_preference"] = profile["room_preference"]
-        preferences["room_preference"] = profile["room_preference"]
-        hydrated_fields.append("room_preference")
+    if profile.get("seating_preference") and not extracted.get("seating_preference"):
+        extracted["seating_preference"] = profile["seating_preference"]
+        hydrated.append("seating_preference")
+        prefs["seating_preference"] = profile["seating_preference"]
 
-    if profile.get("seating_preference"):
-        packet["seating_preference"] = profile["seating_preference"]
-        preferences["seating_preference"] = profile["seating_preference"]
-        hydrated_fields.append("seating_preference")
+    if profile.get("room_preference") and not extracted.get("room_preference"):
+        extracted["room_preference"] = profile["room_preference"]
+        hydrated.append("room_preference")
+        prefs["room_preference"] = profile["room_preference"]
 
-    if profile.get("passport_country"):
-        packet["passport_country"] = profile["passport_country"]
-        preferences["passport_country"] = profile["passport_country"]
-        hydrated_fields.append("passport_country")
-
-    packet["customer_memory_applied"] = True
-    packet["customer_memory_id"] = profile["customer_id"]
-
+    trip["customer_memory_applied"] = True
+    trip["customer_memory_id"] = profile["customer_id"]
     TripStore.save_trip(trip, agency_id=agency_id)
 
     AuditStore.log_event(
@@ -262,15 +361,146 @@ def hydrate_trip_with_customer_memory(
         details={
             "trip_id": trip_id,
             "customer_id": profile["customer_id"],
-            "hydrated_fields": hydrated_fields,
+            "hydrated_fields": hydrated,
         },
     )
 
     return HydrateTripResponse(
-        ok=True,
         trip_id=trip_id,
         memory_found=True,
-        customer_name=profile["name"],
-        hydrated_fields=hydrated_fields,
-        preferences=preferences,
+        customer_name=profile.get("name"),
+        hydrated_fields=hydrated,
+        preferences=prefs,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Advanced 5-Tier Engine Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/memory/ingest", response_model=IngestMemoryResponse)
+async def ingest_memory_item(
+    req: IngestMemoryRequest,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Ingests a memory item through the Write Eligibility Gate and Provenance Engine."""
+    try:
+        source_enum = MemorySourceType(req.source_type)
+    except Exception:
+        source_enum = MemorySourceType.TRAVELER_DIRECT
+
+    item, msg = _MEMORY_STORE.ingest_memory(
+        agency_id=agency_id,
+        entity_id=req.entity_id,
+        raw_text=req.raw_text,
+        source_type=source_enum,
+        payload=req.payload,
+        source_ref_id=req.source_ref_id,
+        actor_id=agency_id,
+        category_hint=req.category_hint,
+        explicit_confidence=req.explicit_confidence,
+        is_safety_critical=req.is_safety_critical,
+    )
+
+    if not item:
+        return IngestMemoryResponse(
+            ok=False,
+            message=msg,
+        )
+
+    return IngestMemoryResponse(
+        ok=True,
+        message=msg,
+        memory_id=item.memory_id,
+        tier=item.tier.value,
+        category=item.category,
+        confidence_score=item.provenance.confidence_score,
+        integrity_hash=item.provenance.integrity_hash,
+    )
+
+
+@router.get("/memory/query", response_model=QueryMemoryResponse)
+async def query_memory_items(
+    query: str = Query(..., min_length=1),
+    entity_id: Optional[str] = Query(None),
+    tier: Optional[str] = Query(None),
+    top_k: int = Query(10, ge=1, le=50),
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Executes a hybrid recency-weighted search over agent memory facts."""
+    tier_enum = None
+    if tier:
+        try:
+            tier_enum = MemoryTier(tier)
+        except Exception:
+            pass
+
+    scored_items = _MEMORY_STORE.query_memories(
+        agency_id=agency_id,
+        query=query,
+        entity_id=entity_id,
+        tier=tier_enum,
+        top_k=top_k,
+    )
+
+    results = []
+    for item, score in scored_items:
+        d = item.to_dict()
+        d["relevance_score"] = score
+        results.append(d)
+
+    return QueryMemoryResponse(
+        query=query,
+        result_count=len(results),
+        results=results,
+    )
+
+
+@router.get("/memory/entity/{entity_id}")
+async def list_entity_memory_items(
+    entity_id: str,
+    include_superseded: bool = Query(False),
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Lists all active 5-tier memory records for an entity."""
+    items = _MEMORY_STORE.list_entity_memories(
+        agency_id=agency_id,
+        entity_id=entity_id,
+        include_superseded=include_superseded,
+    )
+    return {
+        "entity_id": entity_id,
+        "count": len(items),
+        "memories": [i.to_dict() for i in items],
+    }
+
+
+@router.post("/memory/forget", response_model=GDPRForgetResponse)
+async def forget_customer_gdpr(
+    req: GDPRForgetRequest,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Executes GDPR Article 17 Right-to-Erasure and returns a cryptographic certificate."""
+    cert = _MEMORY_STORE.forget_entity_gdpr(
+        agency_id=agency_id,
+        entity_id=req.customer_id,
+    )
+
+    # Also remove from legacy store
+    if req.customer_id in CUSTOMER_MEMORY_STORE:
+        del CUSTOMER_MEMORY_STORE[req.customer_id]
+
+    AuditStore.log_event(
+        event_type="gdpr_memory_erased",
+        user_id=agency_id,
+        details={
+            "customer_id": req.customer_id,
+            "certificate_id": cert.certificate_id,
+            "tombstones_created": cert.tombstone_count,
+        },
+    )
+
+    return GDPRForgetResponse(
+        ok=True,
+        certificate=cert.to_dict(),
     )

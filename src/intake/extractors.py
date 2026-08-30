@@ -30,6 +30,7 @@ from .packet_models import (
     Ambiguity,
     AuthorityLevel,
     CanonicalPacket,
+    EpistemicStatus,
     EvidenceRef,
     ExtractionMode,
     OwnerConstraint,
@@ -1732,9 +1733,25 @@ class ExtractionPipeline:
 
         return packet
 
+    @staticmethod
+    def _epistemic_for_authority(authority: str) -> str:
+        """Map an AuthorityLevel to an EpistemicStatus.
+
+        FACT: manually overridden or explicitly stated by the traveler/owner.
+        INFERRED: derived by NLP or a deterministic signal.
+        ASSUMED: defaulted by system business rules or a soft hypothesis.
+        UNKNOWN: unresolved or absent authority.
+        """
+        if AuthorityLevel.is_fact(authority):
+            return EpistemicStatus.FACT
+        if authority in (AuthorityLevel.DERIVED_SIGNAL, AuthorityLevel.SOFT_HYPOTHESIS):
+            return EpistemicStatus.INFERRED if authority == AuthorityLevel.DERIVED_SIGNAL else EpistemicStatus.ASSUMED
+        return EpistemicStatus.UNKNOWN
+
     def _make_slot(self, value: Any, confidence: float, authority: str,
                     excerpt: str, envelope_id: str, extraction_mode: str = "direct_extract",
-                    maturity: Optional[str] = None, notes: Optional[str] = None) -> Slot:
+                    maturity: Optional[str] = None, notes: Optional[str] = None,
+                    epistemic_status: Optional[str] = None) -> Slot:
         return Slot(
             value=value,
             confidence=confidence,
@@ -1747,6 +1764,7 @@ class ExtractionPipeline:
             )],
             maturity=maturity,
             notes=notes,
+            epistemic_status=epistemic_status or self._epistemic_for_authority(authority),
         )
 
     def _extract_from_freeform(self, envelope: SourceEnvelope, packet: CanonicalPacket, stage: str = "discovery") -> None:

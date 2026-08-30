@@ -82,6 +82,8 @@ jobs:
         run: uv sync
       - name: Ruff check
         run: uv run ruff check src/ spine_api/ tests/ --output-format=github
+      - name: mypy scoped security/tenancy type check
+        run: uv sync --group dev && uv run mypy --config-file pyproject.toml
 
       - name: F401 unused import gate
         run: bash scripts/check_f401.sh
