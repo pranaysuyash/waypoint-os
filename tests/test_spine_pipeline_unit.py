@@ -136,6 +136,7 @@ def _run_pipeline(
     run_id: str = "run-test-001",
     agency_id: str = "agency-001",
     user_id: str = "user-001",
+    target_trip_id: str | None = None,
 ) -> None:
     """Convenience wrapper — calls _execute_spine_pipeline with defaults."""
     _execute_spine_pipeline(
@@ -143,6 +144,7 @@ def _run_pipeline(
         request_dict=request_dict or dict(_BASE_REQUEST),
         agency_id=agency_id,
         user_id=user_id,
+        target_trip_id=target_trip_id,
     )
 
 
@@ -204,9 +206,10 @@ class TestHappyPath:
 class TestEarlyExit:
     """Pipeline blocked mid-way via early_exit flag."""
 
-    def test_early_exit_blocks_and_does_not_save_trip(
+    def test_early_exit_persists_incomplete_lead_for_new_inquiry(
         self, pipeline_mocks
     ) -> None:
+        """ESCALATE persists the inquiry as an incomplete lead (ADR_ESCALATE_LEAD_PERSISTENCE)."""
         from spine_api.server import save_processed_trip
 
         mock_run = pipeline_mocks["run"]
@@ -220,6 +223,23 @@ class TestEarlyExit:
             "run-test-001", block_reason="Missing destination"
         )
         pipeline_mocks["ledger"].complete.assert_not_called()
+        save_processed_trip.assert_called_once()
+        assert save_processed_trip.call_args.kwargs["trip_status"] == "incomplete"
+
+    def test_early_exit_never_overwrites_existing_trip(
+        self, pipeline_mocks
+    ) -> None:
+        """ESCALATE with a preserve target (existing trip) must not save — the record stands."""
+        from spine_api.server import save_processed_trip
+
+        mock_run = pipeline_mocks["run"]
+        mock_run.return_value = MockSpineResult(
+            early_exit=True, early_exit_reason="Missing destination"
+        )
+
+        _run_pipeline(target_trip_id="trip-existing-001")
+
+        pipeline_mocks["ledger"].block.assert_called_once()
         save_processed_trip.assert_not_called()
 
 

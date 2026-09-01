@@ -180,13 +180,13 @@ export default function JoinPage() {
         </div>
 
         <div className="auth-field">
-          <label htmlFor="email">Work email</label>
+          <label htmlFor="email">Email</label>
           <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@agency.com"
+            placeholder="you@example.com"
             required
             autoComplete="email"
             disabled={isSubmitting}

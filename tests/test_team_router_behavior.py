@@ -28,7 +28,7 @@ def override_team_dependencies():
     original = dict(app.dependency_overrides)
     app.dependency_overrides[team.get_current_agency] = lambda: SimpleNamespace(id="agency_test")
     app.dependency_overrides[team.get_current_user] = lambda: SimpleNamespace(id="user_test")
-    app.dependency_overrides[team.get_db] = lambda: SimpleNamespace(name="db_test")
+    app.dependency_overrides[team.get_rls_db] = lambda: SimpleNamespace(name="db_test")
     app.dependency_overrides[get_current_membership] = lambda: SimpleNamespace(
         role="owner", agency_id="agency_test", user_id="user_test"
     )
@@ -53,7 +53,7 @@ def test_get_member_handler_scopes_agency_and_user_dependencies():
 
     route = _get_route("/api/team/members/{member_id}", "GET")
     dependency_calls = [dep.call for dep in route.dependant.dependencies]
-    assert team.get_db in dependency_calls
+    assert team.get_rls_db in dependency_calls
     assert team.get_current_agency in dependency_calls
     assert team.get_current_user in dependency_calls
 

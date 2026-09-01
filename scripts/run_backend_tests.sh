@@ -13,9 +13,23 @@
 #
 # Env overrides are respected: if DATABASE_URL / TRIPSTORE_BACKEND /
 # JWT_SECRET / PUBLIC_CHECKER_AGENCY_ID are already set, they are kept.
+#
+# IMPORTANT (2026-08-30): if the dev server is running on :8000, the
+# integration tests execute against it mid-suite and contend with the shared
+# database — this manufactures phantom failures (observed: three consecutive
+# full-suite runs produced three different failure sets, 13 failures and a
+# 25-minute runtime with the server up vs 0-1 failures in ~70s with it down;
+# every failing test passes in isolation). For a citable baseline, stop the
+# dev server first. The script warns when it detects one.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+if curl -s -o /dev/null --max-time 2 http://127.0.0.1:8000/health; then
+    echo "WARNING: dev server detected on :8000 — integration tests will run" >&2
+    echo "against it and results are likely polluted (see header). Stop it for" >&2
+    echo "a citable baseline." >&2
+fi
 
 export DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os}"
 export TRIPSTORE_BACKEND="${TRIPSTORE_BACKEND:-sql}"

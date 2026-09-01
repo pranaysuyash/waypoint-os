@@ -527,7 +527,13 @@ def run_spine_once(
 
     # --- Phase 4.6: Plan Candidate ---
     _emit_stage_event("plan_candidate", "entered")
-    plan_candidate = build_plan_candidate(packet, decision, strategy, fees=fees)
+    plan_candidate = build_plan_candidate(
+        packet,
+        decision,
+        strategy,
+        fees=fees,
+        autonomy_outcome=autonomy_outcome,
+    )
     _emit_stage_event("plan_candidate", "completed", plan_candidate.to_internal_dict())
 
     # --- Phase 5: Internal Bundle ---

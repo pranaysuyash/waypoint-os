@@ -97,13 +97,13 @@ function SignupPageInner() {
         </div>
 
         <div className='auth-field'>
-          <label htmlFor='email'>Work email</label>
+          <label htmlFor='email'>Email</label>
           <input
             id='email'
             type='email'
             value={formState.email}
             onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'email', value: e.target.value })}
-            placeholder='you@agency.com'
+            placeholder='you@example.com'
             required
             autoComplete='email'
           />

@@ -114,15 +114,6 @@ _DESTINATION_RE = re.compile(
 # Only match destinations that appear in travel-intent context, not globally.
 # This prevents false positives like "got" in "I got your number".
 
-# Pattern 1: English travel verbs followed by destination.
-# "go to singapore", "want to go singapore", "travel to singapore", etc.
-_TRAVEL_VERB_DEST_RE = re.compile(
-    r"(?:want to go|go to|travel to|visit|flying to|trip to|holiday in|vacation in"
-    r"|planning to go to|planning to visit|head to|going to)\s+"
-    r"([a-z]+(?:\s+[a-z]+)*)",
-    re.IGNORECASE,
-)
-
 # Pattern 2: "somewhere" + destination (open intent)
 _SOMEWHERE_DEST_RE = re.compile(
     r"somewhere\s+(?:with|for|that)\s+(\w+)",
@@ -138,6 +129,12 @@ _OR_DESTINATION_RE = re.compile(
 _DESTINATION_METADATA_LABELS_RE = re.compile(
     r"^\s*(call\s+received|caller|referral|party|pace(?:\s+reference)?|budget|interests?|follow[\s-]*up|toddler\s+needs?|elderly\s+needs?|origin(?:\s+city)?|departure(?:\s+city)?|departing\s+from|from\s+city)\s*:",
     re.IGNORECASE,
+)
+
+# Salutations / greetings to exclude from destination parsing
+_SALUTATION_RE = re.compile(
+    r"^\s*(?:hi|hello|hey|dear|good\s+(?:morning|afternoon|evening))\s+[A-Za-z]+[!,.\s]*",
+    re.IGNORECASE | re.MULTILINE,
 )
 
 # Common inline patterns - pre-compiled for performance
@@ -183,6 +180,30 @@ _FUZZY_MONTH_RE = re.compile(
     r"(?:around|sometime\s+in|during)\s+((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)",
     re.IGNORECASE,
 )
+# "late march" / "early june" / "mid september" — no preposition required.
+_MODIFIER_MONTH_RE = re.compile(
+    r"\b(?:late|early|mid)[\s-]+"
+    r"(?:(?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)\b",
+    re.IGNORECASE,
+)
+# Season windows: "next spring", "this winter", "in fall". A qualifier is
+# REQUIRED — bare season words are prose verbs/nouns far too often ("we will
+# fall in love", "a spring in her step", "don't want winter") to invent an
+# INTAKE_MINIMUM date_window from. Northern-hemisphere month mapping (noted
+# for evidence); the raw phrase is kept as date_window — no ISO ends are
+# invented for a season-scale window.
+_SEASON_MONTHS = {
+    "spring": ("Mar", "May"),
+    "summer": ("Jun", "Aug"),
+    "fall": ("Sep", "Nov"),
+    "autumn": ("Sep", "Nov"),
+    "winter": ("Dec", "Feb"),
+}
+_SEASON_RE = re.compile(
+    r"\b(?:(?:next|this|in|around|early|late|sometime\s+in)\s+(?:the\s+)?)"
+    r"(spring|summer|fall|autumn|winter)\b",
+    re.IGNORECASE,
+)
 _FLEXIBLE_BUDGET_RE = re.compile(r"\bflexible\s+budget\b|\bbudget\s+is\s+flexible\b", re.IGNORECASE)
 _TOTAL_GROUP_RE = re.compile(r"\b(?:total|for\s+(?:the\s+)?(?:whole\s+)?(?:trip|family|group))\b", re.IGNORECASE)
 
@@ -219,9 +240,11 @@ _PAST_TRIP_INDICATORS_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Hedging words (maybe, perhaps, etc.)
+# Hedging words (maybe, perhaps, etc.) — "thinking about X" and the bare
+# colloquial "thinking X" form. The captured span is only accepted when it
+# validates as a known destination, so "thinking about the budget" stays clean.
 _HEDGING_RE = re.compile(
-    r"\b(?:maybe|perhaps|considering|looking\s+at|thinking\s+about)\s+(\w+)",
+    r"\b(?:maybe|perhaps|considering|looking\s+at|thinking\s+about|thinking)\s+(\w+)",
     re.IGNORECASE,
 )
 
@@ -258,7 +281,30 @@ _MULTI_AGE_RE = re.compile(r"(\d+)\s*(?:,|and)\s*(\d+)\s*(?:,|and)?\s*(\d+)?\s*(
 
 # Family/group patterns
 _FAMILY_RE = re.compile(r"(?:family|they|customer)\s+(?:always\s+)?(?:prefers?|likes?)\s+([^.,]+)", re.IGNORECASE)
-_GROUP_SIZE_RE = re.compile(rf"(?:family|group)\s+(?:\w+\s*)?(?:of\s+)?({_COUNT_TOKEN_RE})", re.IGNORECASE)
+_GROUP_SIZE_RE = re.compile(rf"(?:family|group|party)\s+(?:\w+\s*)?(?:of\s+)?({_COUNT_TOKEN_RE})", re.IGNORECASE)
+
+# Colloquial group-size phrasing (DEMO-02): "me and 3 friends", "4 of us",
+# "the four of us", bare "2 friends". Companion counts add to adults; a
+# whole-group count is evaluated as a max-fallback like the family/group path.
+_SELF_PLUS_FRIENDS_RE = re.compile(
+    rf"\b(?P<self>me|us)\s+(?:and|plus)\s+(?P<count>{_COUNT_TOKEN_RE})\s+friends?\b",
+    re.IGNORECASE,
+)
+_FRIENDS_RE = re.compile(rf"\b(?P<count>{_COUNT_TOKEN_RE})\s+friends?\b", re.IGNORECASE)
+_OF_US_RE = re.compile(
+    rf"\b(?:the\s+)?(?P<count>{_COUNT_TOKEN_RE})\s+of\s+us\b",
+    re.IGNORECASE,
+)
+# Group phrasings that imply a group exists but may carry no convertible
+# count ("one of us is terrified", "3 buddies"). Matched phrases are carried
+# as group_signals so validation can warn instead of silently mis-sizing.
+_PARTY_GROUP_SIGNAL_RE = re.compile(
+    r"\b\d+\s+(?:friends?|buddies?|mates?|colleagues?)\b"
+    r"|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+of\s+us\b"
+    r"|\bparty\s+of\s+\w+"
+    r"|\bcouple\s+of\s+friends\b",
+    re.IGNORECASE,
+)
 
 # Food preference patterns
 _FOOD_PREFERENCE_RE = re.compile(
@@ -311,11 +357,34 @@ _PACE_PATTERNS = [
 # This prevents false positives like "got" in "I got your number".
 
 # Pattern 1: English travel verbs followed by destination.
-# "go to singapore", "want to go singapore", "travel to singapore", etc.
+# "go to singapore", "want to go singapore", "travel to singapore", plus the
+# colloquial verb-object forms ("want to do japan", "hitting bali",
+# "covering tokyo", "check out seoul"). Longest alternations first so
+# "wanna do"/"hitting"/"covering" win over their prefixes.
 _TRAVEL_VERB_DEST_RE = re.compile(
     r"(?:want to go|go to|travel to|visit|flying to|trip to|holiday in|vacation in"
-    r"|planning to go to|planning to visit|head to|going to)\s+"
+    r"|planning to go to|planning to visit|head to|going to"
+    r"|wanna do|do|hitting|hit|covering|cover|check out|keen on|down for)\s+"
     r"([a-z]+(?:\s+[a-z]+)*)",
+)
+
+# Colloquial city-set separator: "tokyo + kyoto + osaka", "tokyo, kyoto and
+# osaka". Every element must independently validate as a known destination,
+# so activity phrases like "a cooking class" can never slip through.
+# (Splitting lives in _extract_city_set, which keeps "or" runs separate.)
+_CITY_SET_ELEMENT_RE = re.compile(r"^[a-z]+(?:\s+[a-z]+){0,2}$")
+
+# "somewhere" counts as open destination intent only in a destination-ish
+# position — directly after a travel verb/marker, or followed by a place
+# qualifier. A bare "somewhere" inside an activity clause ("do a cooking
+# class somewhere") must not open the destination status.
+_SOMEWHERE_OPEN_RE = re.compile(
+    r"\b(?:go|going|goes|travel|traveling|travelling|trip|visit|visiting"
+    r"|head|heading|flying|fly|getaway|holiday|vacation|tour)s?"
+    r"\s+(?:to\s+|out\s+)?somewhere\b"
+    r"|\bsomewhere\s+(?:warm|tropical|beachy|sunny|cool|cold|nice|safe"
+    r"|exotic|quiet|different|new|far|close)\b",
+    re.IGNORECASE,
 )
 
 # Pattern 2: Destination before Hinglish/Odia travel verbs.
@@ -556,6 +625,101 @@ def _is_valid_destination_candidate(span: str, context: str) -> bool:
     return False
 
 
+# A city-set element ending in "... for safari" / "... in Singapore" is a
+# sentence fragment, not a set member; the final city only counts when the
+# word before it is not a preposition/stop guard.
+_CITY_SET_PRE_GUARD_WORDS = frozenset({
+    "for", "with", "in", "at", "from", "to", "into", "near", "by", "of",
+    "on", "through", "around", "about", "over", "under",
+})
+
+
+def _last_word_destination(element: str) -> Optional[str]:
+    """Resolve a separator element to a destination via its final word.
+
+    Handles verb-led elements like "thinking tokyo" or "covering tokyo" where
+    only the trailing token is the place name. Fragments like "kenya for
+    safari" or "interested in singapore" are rejected via the preposition
+    guard so prose endings can't form city sets.
+    """
+    words = element.split()
+    if not words:
+        return None
+    last = words[-1]
+    if not last.isalpha():
+        return None
+    if len(words) >= 2 and words[-2].lower() in _CITY_SET_PRE_GUARD_WORDS:
+        return None
+    title = last.title()
+    if not _is_valid_destination_candidate(title, element):
+        return None
+    return title
+
+
+def _is_origin_candidate(full_text: str, dest: str) -> bool:
+    """True when a resolved destination candidate is actually the trip origin.
+
+    Uses the trailing from-pattern ("...flying from London") — covering
+    mid-text origins in destination enumerations. Deliberately excludes
+    _is_likely_origin's leading-city heuristic, which misreads pure
+    destination lists ("Bali or Thailand?") as "origin + content".
+    """
+    return bool(re.search(rf"\bfrom\s+{re.escape(dest.lower())}\b", full_text, re.IGNORECASE))
+
+
+def _extract_city_set(text_lower: str, full_text: str) -> Optional[Tuple[List[str], str]]:
+    """Find a run of 2+ known destinations joined by ``+``, ``,`` or ``and``.
+
+    "or" breaks a run — option semantics stay with the semi-open or-pattern.
+    Every element must independently resolve to a known destination (bare
+    1-3 word lowercase span, or via its final word), so activity clauses like
+    "do a cooking class somewhere" can never form a set. Past-trip mentions
+    are excluded like every other destination pass.
+    """
+    parts = re.split(r"(\+|,|\band\b|\bor\b)", text_lower, flags=re.IGNORECASE)
+    best: List[str] = []
+    best_raw: List[str] = []
+    current: List[str] = []
+    current_raw: List[str] = []
+    for part in parts:
+        sep = part.strip().lower()
+        if sep in ("+", ",", "and", "or"):
+            if sep == "or":
+                if len(current) > len(best):
+                    best, best_raw = current, current_raw
+                current, current_raw = [], []
+            continue
+        element = part.strip()
+        if not element:
+            continue
+        dest: Optional[str] = None
+        if _CITY_SET_ELEMENT_RE.match(element):
+            title = element.title()
+            if _is_valid_destination_candidate(title, element):
+                dest = title
+        if dest is None:
+            dest = _last_word_destination(element)
+        if dest is not None and _is_past_trip_mention(full_text, element):
+            dest = None
+        if dest is not None and _is_origin_candidate(full_text, dest):
+            # Origin protection, same as the verb pass: a set member that is
+            # actually the trip's origin city ("friends in London and Paris,
+            # flying from London") must not become a destination candidate.
+            dest = None
+        if dest is None:
+            if len(current) > len(best):
+                best, best_raw = current, current_raw
+            current, current_raw = [], []
+        elif dest not in current:
+            current.append(dest)
+            current_raw.append(element)
+    if len(current) > len(best):
+        best, best_raw = current, current_raw
+    if len(best) >= 2:
+        return best, ", ".join(best_raw)
+    return None
+
+
 def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional[str]]:
     """
     Returns (candidates, status, raw_match).
@@ -570,20 +734,25 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     """
     # Remove call-log metadata lines that frequently contain capitalized labels
     # (Caller, Referral, Pace, Budget, etc.) and pollute destination extraction.
+    # Also strip leading salutations/greetings (Hi Sam, Dear Marcus, etc.)
     destination_text = "\n".join(
         line for line in text.splitlines()
         if not _DESTINATION_METADATA_LABELS_RE.match(line)
     )
-    destination_text = "\n".join(
-        line for line in text.splitlines()
-        if not _DESTINATION_METADATA_LABELS_RE.match(line)
-    )
+    destination_text = _SALUTATION_RE.sub("", destination_text)
     if not destination_text.strip():
         destination_text = text
 
     text_lower = destination_text.lower()
     candidates: List[str] = []
     excluded_by_past_trip: List[str] = []
+
+    # City-set separator pass: "tokyo + kyoto + osaka", "tokyo, kyoto and
+    # osaka", "covering tokyo and kyoto". Every element must resolve to a
+    # known destination, so this stays quiet on prose and activity clauses.
+    city_set = _extract_city_set(text_lower, destination_text)
+    if city_set:
+        return city_set[0], "semi_open", city_set[1]
 
     # Check for "or" pattern (semi-open)
     or_match = _OR_DESTINATION_RE.search(destination_text)
@@ -593,6 +762,12 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
         c1_ok = _is_valid_destination_candidate(c1, text)
         c2_ok = _is_valid_destination_candidate(c2, text)
         if (c1_ok or c2_ok) and not _is_past_trip_mention(destination_text, or_match.group(0)):
+            # Origin protection: "London and Paris, flying from London" must
+            # not list the origin as a destination option.
+            if c1_ok and _is_origin_candidate(text, c1):
+                c1_ok = False
+            if c2_ok and _is_origin_candidate(text, c2):
+                c2_ok = False
             valid = []
             if c1_ok:
                 valid.append(c1)
@@ -671,7 +846,7 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
                 if title in seen:
                     start = end
                     continue
-                if title.lower() in {"caller", "referral", "party", "pace", "budget", "interests", "follow-up", "follow_up", "toddler", "elderly", "promised", "not"}:
+                if title.lower() in {"caller", "referral", "party", "pace", "budget", "interests", "follow-up", "follow_up", "toddler", "elderly", "promised", "not", "date", "dates", "schengen", "visa", "visas", "passport", "passports", "booking", "bookings", "purpose", "purposes", "adult", "adults", "child", "children"}:
                     start = end
                     continue
                 if _is_likely_origin(destination_text, candidate):
@@ -694,6 +869,28 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     # travel terms. Prevents false positives like "got" in "I got your number".
     if not candidates:
         seen_lower: Set[str] = set()
+
+        def _verb_span_candidates(span: str) -> List[str]:
+            """Candidate spans for a verb capture: the whole span, then its lead word.
+
+            Verb-object captures over-terminate ("bali next month" from
+            "hitting bali next month"); the leading word is retried because the
+            destination directly follows the verb. Articles and stop heads are
+            never promoted, so "a cooking class somewhere" stays clean.
+            """
+            spans = [span]
+            words = span.split()
+            first = words[0] if words else ""
+            if (
+                first
+                and first != span
+                and first.lower() not in _STOP_WORDS
+                and first.lower() not in _MONTH_NAMES
+                and first.lower() not in ("a", "an")
+            ):
+                spans.append(first)
+            return spans
+
         for pattern in (_TRAVEL_VERB_DEST_RE, _HINGLISH_DEST_RE, _ORIGIN_DEST_RE):
             for match in pattern.finditer(text):
                 dest = match.group(1)
@@ -707,18 +904,28 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
                 if dest_lower in _STOP_WORDS or dest_lower in _MONTH_NAMES:
                     seen_lower.add(dest_lower)
                     continue
-                if (is_known_destination(title)
-                    and _is_valid_destination_candidate(title, destination_text)
-                    and not _is_likely_origin(destination_text, dest)
-                    and not _is_past_trip_mention(destination_text, dest)):
-                    candidates.append(title)
-                    raw_matches.append(dest)
-                    seen_lower.add(dest_lower)
+                for span in _verb_span_candidates(dest):
+                    span_title = span.title()
+                    if (is_known_destination(span_title)
+                        and _is_valid_destination_candidate(span_title, destination_text)
+                        and not _is_likely_origin(destination_text, span)
+                        and not _is_past_trip_mention(destination_text, span)):
+                        candidates.append(span_title)
+                        raw_matches.append(span)
+                        seen_lower.add(dest_lower)
+                        break
         if len(candidates) >= 1:
             status = "definite" if len(candidates) == 1 else "semi_open"
             return candidates, status, ", ".join(raw_matches)
 
-    return [], "open" if ("somewhere" in text_lower or "any" in text_lower) else "undecided", None
+    # Open intent only when "somewhere" sits in a destination-ish position
+    # (after a travel verb, or followed by a place qualifier). A bare
+    # "somewhere" inside an activity clause ("do a cooking class somewhere")
+    # must not open the destination status.
+    open_intent = bool(
+        _SOMEWHERE_DEST_RE.search(text_lower) or _SOMEWHERE_OPEN_RE.search(text_lower)
+    )
+    return [], "open" if (open_intent or "any" in text_lower) else "undecided", None
 
 
 # =============================================================================
@@ -811,6 +1018,25 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
         raw = fuzzy.group(0)
         return raw, None, None, "flexible"
 
+    # Season window: "next spring", "this winter", "in fall" (qualifier
+    # required — bare season words are prose too often). A late/early/mid
+    # month refinement in the same text is folded into the window
+    # ("next spring (Mar-May), late march").
+    season_match = _SEASON_RE.search(text_lower)
+    if season_match:
+        season = season_match.group(1).lower()
+        start_abbr, end_abbr = _SEASON_MONTHS[season]
+        window = f"{season_match.group(0).strip()} ({start_abbr}-{end_abbr})"
+        month_refinement = _MODIFIER_MONTH_RE.search(text_lower)
+        if month_refinement:
+            window += f", {month_refinement.group(0).strip()}"
+        return window, None, None, "flexible"
+
+    # "late march" / "early june" / "mid september" without a preposition.
+    modifier_month = _MODIFIER_MONTH_RE.search(text_lower)
+    if modifier_month:
+        return modifier_month.group(0).strip(), None, None, "flexible"
+
     return None
 
 
@@ -829,8 +1055,14 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
         currency_map = {
             "$": "USD",
             "usd": "USD",
+            "dollar": "USD",
+            "dollars": "USD",
+            "buck": "USD",
+            "bucks": "USD",
             "€": "EUR",
             "eur": "EUR",
+            "euro": "EUR",
+            "euros": "EUR",
             "£": "GBP",
             "gbp": "GBP",
             "₹": "INR",
@@ -858,7 +1090,17 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             "cad": "CAD",
             "sgd": "SGD",
         }
-        return currency_map.get(normalized, "INR")
+        if normalized in currency_map:
+            return currency_map[normalized]
+        # D1 (RQ-01): unmarked amounts default to USD. Lakh/crore units are an
+        # Indian-market signal and resolve to INR via _defaulted_currency,
+        # which sees the matched region rather than the whole text.
+        return "USD"
+
+    def _defaulted_currency(unit_text: str) -> str:
+        if re.search(r"\b(?:l|lac|lakh|lakhs|cr|crore|crores)\b", (unit_text or "").strip().lower()):
+            return "INR"
+        return "USD"
 
     def _looks_like_date_token(raw_val: str) -> bool:
         token = raw_val.strip()
@@ -868,7 +1110,17 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
         )
 
     currency_token_pattern = (
-        r"(usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|₹|\$|€|£|₦|R)"
+        r"(usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|dollars?|bucks?|euros?|rupees?|₹|\$|€|£|₦|R)"
+    )
+    # Word-only token set for positions AFTER the amount: requires word
+    # boundaries so "auditing"/"insist" can't be read as AUD/INR.
+    currency_word_pattern = (
+        r"(usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|dollars?|bucks?|euros?|rupees?)"
+    )
+    # S1 (RQ-01): natural phrasing stacks connectives ("budget is around $3000",
+    # "budget is only 3000") — accept any number of them, not exactly one.
+    budget_connective = (
+        r"(?:\s+(?:of|is|was|only|around|about|approx(?:imately)?|roughly|up\s+to|under|at\s+most|no\s+more\s+than|maximum|max(?:imum)?|exactly|between))*"
     )
     trailing_budget_match = re.search(
         r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
@@ -899,12 +1151,13 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             }
 
     range_budget_match = re.search(
-        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*"
+        rf"\bbudget\b{budget_connective}\s*[:\-]?\s*"
         r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
-        r"(?P<low>\d[\d,]*(?:\.\d+)?)\s*(?:-|–|—|\bto\b)\s*"
+        r"(?P<low>\d[\d,]*(?:\.\d+)?)\s*(?:-|–|—|\bto\b|\band\b)\s*"
         r"(?P<low_unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\s*"
         r"(?P<high>\d[\d,]*(?:\.\d+)?)\s*"
-        r"(?P<high_unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b",
+        r"(?P<high_unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b"
+        r"(?:\s+(?P<currency_after>" + currency_word_pattern + r")\b)?",
         text_lower,
     )
     if range_budget_match:
@@ -933,13 +1186,18 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
                 "raw_text": range_budget_match.group(0).strip(),
                 "min": int(low_value),
                 "max": int(high_value),
-                "currency": _currency_code(range_budget_match.group("currency")),
+                "currency": (
+                    _currency_code(range_budget_match.group("currency") or range_budget_match.group("currency_after"))
+                    if (range_budget_match.group("currency") or range_budget_match.group("currency_after"))
+                    else _defaulted_currency(unit)
+                ),
             }
 
     explicit_label_match = re.search(
-        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*"
+        rf"\bbudget\b{budget_connective}\s*[:\-]?\s*"
         r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
-        r"(?P<amount>\d[\d,]*(?:\.\d+)?)\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b",
+        r"(?P<amount>\d[\d,]*(?:\.\d+)?)\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b"
+        r"(?:\s+(?P<currency_after>" + currency_word_pattern + r")\b)?",
         text_lower,
     )
     if explicit_label_match:
@@ -961,19 +1219,23 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
                 "raw_text": explicit_label_match.group(0).strip(),
                 "min": int(parsed_value),
                 "max": int(parsed_value),
-                "currency": _currency_code(explicit_label_match.group("currency")),
+                "currency": (
+                    _currency_code(explicit_label_match.group("currency") or explicit_label_match.group("currency_after"))
+                    if (explicit_label_match.group("currency") or explicit_label_match.group("currency_after"))
+                    else _defaulted_currency(unit)
+                ),
             }
 
     # Look for budget-like patterns
     patterns = [
         # Explicit budget with numeric range and optional unit suffix.
-        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:-|–|—|\bto\b)\s*\d+(?:\.\d+)?\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?)\b",
+        rf"\bbudget\b{budget_connective}\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:-|–|—|\bto\b)\s*\d+(?:\.\d+)?\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?)\b",
         # Explicit budget with single value + unit.
-        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand))\b",
+        rf"\bbudget\b{budget_connective}\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand))\b",
         # Budget-like value with unit when budget keyword may be omitted.
         r"\b(?:around|about|approx(?:imately)?)\s+(\d+(?:\.\d+)?\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand))\b",
         # Plain number only accepted with explicit budget keyword.
-        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d{4,})\b",
+        rf"\bbudget\b{budget_connective}\s*[:\-]?\s*(\d{4,})\b",
         # Bare number with L/K suffix (no keyword needed).
         r"\b((?:\d+(?:\.\d+)?)\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand))\b",
     ]
@@ -984,12 +1246,64 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             if _looks_like_date_token(raw):
                 continue
             parsed = Normalizer.parse_budget(raw)
+            # D1 (RQ-01): parse_budget defaults INR; unmarked non-lakh amounts
+            # are USD. Lakh/crore-shaped raws keep INR (Indian-market signal).
+            if parsed.get("currency") == "INR" and not re.search(
+                r"\d(?:\.\d+)?\s*(?:l|lac|lakh|lakhs|crore|crores|cr)\b", raw
+            ):
+                parsed["currency"] = "USD"
             parsed["raw_text"] = raw
             return parsed
 
+    # S3 (RQ-01): keyword-free anchors — "have 3500 to spend", "between 4000
+    # and 6000", "spend about 200 bucks a day". Deliberately NO bare "of"
+    # anchor: it false-positives on "family of 4". Amounts under 100 are
+    # rejected — "have 2 kids" is not a budget.
+    anchor_match = re.search(
+        r"(?:\bbetween\b|\bhave\b|\bspend(?:ing)?\b)"
+        r"(?:\s+(?:about|around|roughly))?"
+        r"\s*[:\-]?\s*"
+        r"(?P<amount>\d[\d,]*(?:\.\d+)?)"
+        r"(?:\s+(?:and|to|-|\u2013|\u2014)\s+(?P<high>\d[\d,]*(?:\.\d+)?))?"
+        r"\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b"
+        r"(?:\s+(?P<currency_after>" + currency_word_pattern + r")\b)?",
+        text_lower,
+    )
+    if anchor_match:
+        raw_amount = anchor_match.group("amount").replace(",", "").strip()
+        unit = (anchor_match.group("unit") or "").strip().lower()
+        if not _looks_like_date_token(raw_amount) and float(raw_amount) >= 100:
+            parsed_value = float(raw_amount)
+            max_value = parsed_value
+            if unit in ("l", "lac", "lakh", "lakhs"):
+                parsed_value *= 100000
+                max_value = parsed_value
+            elif unit in ("k", "thousand"):
+                parsed_value *= 1000
+                max_value = parsed_value
+            elif unit in ("m", "mn", "million", "millions"):
+                parsed_value *= 1000000
+                max_value = parsed_value
+            elif unit in ("cr", "crore", "crores"):
+                parsed_value *= 10000000
+                max_value = parsed_value
+            elif unit in ("b", "bn", "billion", "billions"):
+                parsed_value *= 1000000000
+                max_value = parsed_value
+            high = anchor_match.group("high")
+            if high:
+                max_value = float(high.replace(",", "").strip())
+            cur_token = anchor_match.group("currency_after")
+            return {
+                "raw_text": anchor_match.group(0).strip(),
+                "min": int(parsed_value),
+                "max": int(max_value),
+                "currency": _currency_code(cur_token) if cur_token else _defaulted_currency(unit),
+            }
+
     # "flexible" budget
     if _FLEXIBLE_BUDGET_RE.search(text_lower):
-        return {"raw_text": "flexible", "min": None, "max": None, "currency": "INR"}
+        return {"raw_text": "flexible", "min": None, "max": None, "currency": "USD"}
 
     return None
 
@@ -1004,8 +1318,9 @@ def _extract_date_flexibility(text: str) -> Optional[str]:
         return "firm"
     if any(phrase in text_lower for phrase in [
         "flexible dates", "dates are flexible", "date flexible",
-        "flexible on date", "anytime in", "flexible within",
-        "can shift", "+/-", "+-", "plus minus", "give or take",
+        "dates flexible", "flexible on date", "anytime in", "flexible within",
+        "can shift", "+/-", "flexible +/-", "+-", "plus minus",
+        "plus or minus", "give or take",
         "approximately", "roughly around", "some flexibility",
     ]):
         return "flexible"
@@ -1022,6 +1337,9 @@ def _extract_budget_flexibility(text: str) -> str:
         "if it's good", "can go higher", "flexible on budget",
     ]):
         return "stretch"
+    # S5 (RQ-01): firm-budget markers (golden convention).
+    if re.search(r"\b(?:max(?:imum)?|only|no\s+more\s+than|exactly|at\s+most)\b", text.lower()):
+        return "firm"
     return "unknown"
 
 
@@ -1031,8 +1349,22 @@ def _extract_budget_scope(text: str) -> str:
         return "per_person"
     if "per night" in text_lower:
         return "per_night"
+    if re.search(r"\b(?:a|per)\s+day\b", text_lower):
+        return "daily"
+    # Explicit trip-total markers outrank a stray "each" elsewhere in the
+    # sentence: "5000 total, breakfast each morning" is a trip total, not
+    # per-person (inverting the silent-wrong-scope class this fix targets).
     if _TOTAL_GROUP_RE.search(text_lower):
         return "total"
+    # "each"/"apiece" mean per-person only when tied to the amount
+    # ("3.5k USD each", "$500 each", "each person") — a bare "each" in
+    # prose must not flip the scope.
+    if re.search(
+        r"(?:usd|eur|gbp|inr|chf|sgd|aud|cad|[$€£₹]|\d[\d,.]*\s*k?)\s*each\b"
+        r"|\beach\s+(?:person|traveler|adult|guest)\b",
+        text_lower,
+    ):
+        return "per_person"
     return "unknown"
 
 
@@ -1144,12 +1476,18 @@ def _extract_budget_stretch_max(text: str) -> Optional[int]:
 
 def _extract_party(text: str) -> Dict[str, Any]:
     """
-    Returns {party_size, party_composition, child_ages}.
+    Returns {party_size, party_composition, child_ages, group_signals}.
+    group_signals carries raw group phrasings seen in the text (converted or
+    not) so validation can warn when the headcount looks underdetected.
     """
     composition: Dict[str, int] = {}
     child_ages: List[float] = []
+    group_signals: List[str] = []
     text_lower = text.lower()
     family_group_size = 0
+
+    for signal_match in _PARTY_GROUP_SIGNAL_RE.finditer(text_lower):
+        group_signals.append(signal_match.group(0))
 
     # Family composition from natural language
     _FAMILY_PATTERNS = [
@@ -1163,12 +1501,39 @@ def _extract_party(text: str) -> Dict[str, Any]:
         if re.search(pattern, text_lower):
             composition[group] = composition.get(group, 0) + count
 
+    # "me and 3 friends" → self + N companions. The bare-friends variant only
+    # runs when the self-joined phrasing is absent, so the same companions are
+    # never double-counted ("me and my wife and 2 friends" → wife +1, friends +2).
+    self_plus_friends = _SELF_PLUS_FRIENDS_RE.search(text_lower)
+    if self_plus_friends:
+        companions = _count_token_to_int(self_plus_friends.group("count")) or 0
+        if self_plus_friends.group("self") == "us":
+            # The me/myself/I self pattern above doesn't match "us" — count
+            # the speaker once (conservative: the size of "us" is unknown).
+            # "one of us" member references stay signals, never party_size=1.
+            composition["adults"] = composition.get("adults", 0) + 1
+        composition["adults"] = composition.get("adults", 0) + companions
+    else:
+        friends_match = _FRIENDS_RE.search(text_lower)
+        if friends_match:
+            companions = _count_token_to_int(friends_match.group("count")) or 0
+            composition["adults"] = composition.get("adults", 0) + companions
+
     family_size_match = re.search(
-        rf"\b(?:family|group)\s+(?:of\s+)?(?P<count>{_COUNT_TOKEN_RE})",
+        rf"\b(?:family|group|party)\s+(?:of\s+)?(?P<count>{_COUNT_TOKEN_RE})",
         text_lower,
     )
     if family_size_match:
         family_group_size = _count_token_to_int(family_size_match.group("count")) or 0
+
+    # Whole-group colloquial counts: "4 of us", "the four of us".
+    # "one of us" references a single member (implies a group without a size),
+    # so it stays a signal and never becomes party_size=1.
+    of_us_match = _OF_US_RE.search(text_lower)
+    if of_us_match:
+        of_us_size = _count_token_to_int(of_us_match.group("count")) or 0
+        if of_us_size > 1:
+            family_group_size = max(family_group_size, of_us_size)
 
     # Couple / pair / duo phrasing is a common shorthand for two adults.
     # Only infer this when no other party composition has already been stated,
@@ -1261,6 +1626,7 @@ def _extract_party(text: str) -> Dict[str, Any]:
         "party_size": party_size,
         "party_composition": composition,
         "child_ages": child_ages,
+        "group_signals": group_signals,
     }
 
 
@@ -1891,6 +2257,10 @@ class ExtractionPipeline:
             ))
 
         budget_flex = _extract_budget_flexibility(text)
+        explicit_budget_flex = budget_flex
+        if explicit_budget_flex == "unknown" and budget_result is not None:
+            # D2 (RQ-01): golden convention — an unmarked budget is negotiable.
+            budget_flex = "soft"
         if budget_flex != "unknown":
             packet.set_fact("budget_flexibility", self._make_slot(
                 budget_flex, 0.85, AuthorityLevel.EXPLICIT_USER,
@@ -1898,6 +2268,10 @@ class ExtractionPipeline:
             ))
 
         budget_scope = _extract_budget_scope(text)
+        if budget_scope == "unknown" and budget_result is not None:
+            # Golden convention (RQ-01): a budget without a scope marker is
+            # trip-total. Without a budget, scope stays unset.
+            budget_scope = "total"
         if budget_scope != "unknown":
             packet.set_fact("budget_scope", self._make_slot(
                 budget_scope, 0.7, AuthorityLevel.EXPLICIT_USER,
@@ -1918,7 +2292,7 @@ class ExtractionPipeline:
         # Check for budget stretch ambiguity and extract explicit max if present.
         # Only run this when the text actually signals budget flexibility, not
         # when "flexible" refers to dates or other non-budget constraints.
-        if budget_flex != "unknown":
+        if explicit_budget_flex != "unknown":
             # Use full text for stretch extraction (don't truncate at punctuation)
             stretch_text = text_lower
             
@@ -1936,11 +2310,25 @@ class ExtractionPipeline:
 
         # --- PARTY ---
         party = _extract_party(text)
+        group_signals = party.get("group_signals") or []
         if party["party_size"] > 0:
             packet.set_fact("party_size", self._make_slot(
                 party["party_size"], 0.9, AuthorityLevel.EXPLICIT_USER,
                 str(party["party_size"]), eid,
+                notes=(
+                    "group_signals: " + "; ".join(group_signals)
+                    if group_signals else None
+                ),
             ))
+        elif group_signals:
+            # Group phrasing present but no convertible headcount — record it
+            # so validation can raise PARTY_UNPARSED_GROUP_PHRASING instead of
+            # silently dropping the group signal (data-loss prevention).
+            packet.add_unknown(
+                "party_size",
+                "not_extracted_yet",
+                notes="unparsed_group_phrasing: " + "; ".join(group_signals),
+            )
         if party["party_composition"]:
             packet.set_fact("party_composition", self._make_slot(
                 party["party_composition"], 0.85, AuthorityLevel.EXPLICIT_USER,
@@ -2454,6 +2842,10 @@ class ExtractionPipeline:
             "destination_candidates", "origin_city", "date_window",
             "party_size", "budget_raw_text", "trip_purpose",
         ]
+        existing_unknown_fields = {u.field_name for u in packet.unknowns}
         for field_name in discovery_mvb:
-            if field_name not in packet.facts:
+            if (
+                field_name not in packet.facts
+                and field_name not in existing_unknown_fields
+            ):
                 packet.add_unknown(field_name, "not_present_in_source")

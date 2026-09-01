@@ -8,8 +8,8 @@ optimization and client presentation.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from src.schemas.constraints import (
     ConstraintCategory,
@@ -21,25 +21,129 @@ from src.schemas.journey_graph import JourneyDependencyGraph, NodeType
 
 # Recognised Schengen area countries and major gateway destinations
 SCHENGEN_DESTINATIONS = {
-    "france", "paris", "nice", "lyon",
-    "italy", "rome", "florence", "venice", "milan", "amalfi",
-    "spain", "barcelona", "madrid", "seville", "mallorca",
-    "germany", "berlin", "munich", "frankfurt",
-    "greece", "athens", "santorini", "mykonos", "crete",
-    "switzerland", "zurich", "geneva", "interlaken",
-    "austria", "vienna", "salzburg",
-    "portugal", "lisbon", "porto",
-    "netherlands", "amsterdam",
-    "belgium", "brussels", "bruges",
+    "france", "paris", "nice", "lyon", "mrs", "nce", "cdg", "ory",
+    "italy", "rome", "florence", "venice", "milan", "amalfi", "fco", "mxp", "vce",
+    "spain", "barcelona", "madrid", "seville", "mallorca", "bcn", "mad",
+    "germany", "berlin", "munich", "frankfurt", "fra", "muc", "ber",
+    "greece", "athens", "santorini", "mykonos", "crete", "ath", "jtr", "jmz",
+    "switzerland", "zurich", "geneva", "interlaken", "zrh", "gva",
+    "austria", "vienna", "salzburg", "vie",
+    "portugal", "lisbon", "porto", "lis", "opo",
+    "netherlands", "amsterdam", "ams",
+    "belgium", "brussels", "bruges", "bru",
     "norway", "oslo", "sweden", "stockholm", "denmark", "copenhagen",
     "finland", "helsinki", "iceland", "reykjavik",
     "czech republic", "prague", "hungary", "budapest",
     "poland", "warsaw", "krakow",
 }
 
+# Granular Airport Terminal-to-Terminal MCT Matrix (in minutes)
+TERMINAL_MCT_MATRIX: Dict[Tuple[str, str, str], int] = {
+    # LHR (London Heathrow)
+    ("LHR", "T2", "T2"): 45,
+    ("LHR", "T3", "T3"): 45,
+    ("LHR", "T4", "T4"): 45,
+    ("LHR", "T5", "T5"): 60,
+    ("LHR", "T2", "T3"): 60,
+    ("LHR", "T3", "T2"): 60,
+    ("LHR", "T2", "T5"): 90,
+    ("LHR", "T5", "T2"): 90,
+    ("LHR", "T3", "T5"): 90,
+    ("LHR", "T5", "T3"): 90,
+    ("LHR", "T4", "T5"): 105,
+    ("LHR", "T5", "T4"): 105,
+    # CDG (Paris Charles de Gaulle)
+    ("CDG", "2E", "2F"): 75,
+    ("CDG", "2F", "2E"): 75,
+    ("CDG", "2E", "2E"): 45,
+    ("CDG", "2F", "2F"): 45,
+    ("CDG", "1", "2E"): 90,
+    ("CDG", "2E", "1"): 90,
+    # JFK (New York John F. Kennedy)
+    ("JFK", "T4", "T4"): 45,
+    ("JFK", "T8", "T8"): 45,
+    ("JFK", "T4", "T8"): 90,
+    ("JFK", "T8", "T4"): 90,
+    ("JFK", "T4", "T7"): 75,
+    # NRT (Tokyo Narita)
+    ("NRT", "T1", "T2"): 60,
+    ("NRT", "T2", "T1"): 60,
+}
+
 
 class ConstraintEngine:
     """Deterministic Constraint Satisfaction Engine for Travel Itineraries."""
+
+    @classmethod
+    def calculate_schengen_rolling_90_180(
+        cls,
+        historical_stays: List[Tuple[date, date]],
+        planned_stay: Tuple[date, date],
+    ) -> Dict[str, Any]:
+        """
+        Calculates exact day-by-day Schengen stay count over a sliding 180-day rolling window.
+        Returns whether stay is compliant, maximum days accumulated in any 180-day window,
+        and the earliest date of violation if any.
+        """
+        # Collect all individual historical Schengen stay dates
+        schengen_dates: Set[date] = set()
+        for start_d, end_d in historical_stays:
+            curr = start_d
+            while curr <= end_d:
+                schengen_dates.add(curr)
+                curr += timedelta(days=1)
+
+        # Iterate through each day of the planned stay
+        plan_start, plan_end = planned_stay
+        max_accumulated = 0
+        violation_date: Optional[date] = None
+        violation_count = 0
+
+        curr_plan = plan_start
+        while curr_plan <= plan_end:
+            schengen_dates.add(curr_plan)
+            # Count how many days in [curr_plan - 179 days, curr_plan] are in schengen_dates
+            window_start = curr_plan - timedelta(days=179)
+            days_in_window = sum(1 for d in range(180) if (window_start + timedelta(days=d)) in schengen_dates)
+
+            if days_in_window > max_accumulated:
+                max_accumulated = days_in_window
+
+            if days_in_window > 90 and violation_date is None:
+                violation_date = curr_plan
+                violation_count = days_in_window
+
+            curr_plan += timedelta(days=1)
+
+        is_valid = max_accumulated <= 90
+        return {
+            "is_valid": is_valid,
+            "max_days_in_any_180_window": max_accumulated,
+            "max_allowed_days": 90,
+            "overstay_days": max(0, max_accumulated - 90),
+            "earliest_violation_date": violation_date.isoformat() if violation_date else None,
+            "recommendation": (
+                "Compliant with Schengen 90/180-day short-stay rule."
+                if is_valid
+                else f"Overstay detected on {violation_date}: {violation_count} days in 180-day window. Reduce planned stay by {max_accumulated - 90} days or obtain Type-D Visa."
+            ),
+        }
+
+    @classmethod
+    def get_terminal_mct(
+        cls,
+        airport_code: str,
+        from_terminal: Optional[str],
+        to_terminal: Optional[str],
+        is_international: bool = True,
+    ) -> int:
+        """Returns exact terminal-to-terminal minimum connect time in minutes."""
+        if from_terminal and to_terminal:
+            key = (airport_code.upper(), from_terminal.upper(), to_terminal.upper())
+            if key in TERMINAL_MCT_MATRIX:
+                return TERMINAL_MCT_MATRIX[key]
+        # Default standard fallback
+        return 90 if is_international else 45
 
     @classmethod
     def evaluate_itinerary_graph(
@@ -69,7 +173,12 @@ class ConstraintEngine:
             if curr_node.node_type == NodeType.FLIGHT and next_node.node_type in (NodeType.FLIGHT, NodeType.TRANSFER):
                 buffer_minutes = int((next_node.start_time - curr_node.end_time).total_seconds() / 60.0)
                 is_international = "international" in curr_node.title.lower() or "international" in next_node.title.lower()
-                min_mct = 90 if is_international else 45
+
+                # Check for granular terminal MCT if available
+                airport = curr_node.location[:3].upper() if len(curr_node.location) >= 3 else "LHR"
+                from_term = curr_node.metadata.get("terminal")
+                to_term = next_node.metadata.get("terminal")
+                min_mct = cls.get_terminal_mct(airport, from_term, to_term, is_international=is_international)
 
                 if buffer_minutes < 0:
                     # Impossible overlap (teleportation)
@@ -215,23 +324,34 @@ class ConstraintEngine:
                         )
                     )
 
-        # 5. Synthesize Relaxation Hierarchy
+        # 5. Synthesize 4-Tier Relaxation Hierarchy
+        # Priority 0: HARD_SAFETY (Never relaxed)
+        # Priority 1: REGULATORY (Passport / Visa / Schengen)
+        # Priority 2: COMMERCIAL (Supplier policies / rooming)
+        # Priority 3: SOFT_PREFERENCE (Pacing / tight buffers)
         for hv in hard_violations:
+            tier_num = 0 if hv.category in (ConstraintCategory.SPATIAL_CONTINUITY, ConstraintCategory.REGULATORY_HEALTH_VACCINATION) else 1
             if hv.relaxation_option:
                 relaxation_hierarchy.append({
-                    "priority": 1,
+                    "priority_tier": tier_num,
+                    "tier_name": "HARD_SAFETY" if tier_num == 0 else "REGULATORY",
                     "constraint_id": hv.constraint_id,
                     "violation": hv.name,
                     "action": hv.relaxation_option,
                 })
         for sv in soft_violations:
+            tier_num = 2 if sv.category in (ConstraintCategory.COMMERCIAL_SUPPLIER_POLICY, ConstraintCategory.CAPACITY_ROOMING) else 3
             if sv.relaxation_option:
                 relaxation_hierarchy.append({
-                    "priority": 2,
+                    "priority_tier": tier_num,
+                    "tier_name": "COMMERCIAL" if tier_num == 2 else "SOFT_PREFERENCE",
                     "constraint_id": sv.constraint_id,
                     "violation": sv.name,
                     "action": sv.relaxation_option,
                 })
+
+        # Sort hierarchy by priority_tier ascending (Tier 0 first, Tier 3 last)
+        relaxation_hierarchy.sort(key=lambda item: item["priority_tier"])
 
         is_feasible = len(hard_violations) == 0
 

@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 264,
+  "openapi_path_count": 267,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -111,7 +111,10 @@
     "/api/v1/concierge/disruptions",
     "/api/v1/concierge/monitor/{trip_id}",
     "/api/v1/constraints/evaluate/{trip_id}",
+    "/api/v1/constraints/passport-validity/check",
     "/api/v1/constraints/rules",
+    "/api/v1/constraints/schengen/rolling-eval",
+    "/api/v1/constraints/terminal-mct/lookup",
     "/api/v1/corporate/approve-policy-override/{trip_id}",
     "/api/v1/corporate/audit-policy/{trip_id}",
     "/api/v1/corporate/duty-of-care/cockpit",

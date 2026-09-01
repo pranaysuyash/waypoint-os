@@ -5,8 +5,6 @@ import {
   Brain,
   ShieldCheck,
   UserCheck,
-  Sparkles,
-  CheckCircle2,
   AlertCircle,
   Plus,
   Plane,
@@ -14,24 +12,31 @@ import {
   Fingerprint,
 } from 'lucide-react';
 
-interface RepeatTravelerRecallCardProps {
-  customerMessage: string;
-  onApplyPreferences?: (preferences: Record<string, any>) => void;
-}
-
-export function RepeatTravelerRecallCard({
-  customerMessage,
-  onApplyPreferences,
-}: RepeatTravelerRecallCardProps) {
-  const [isApplied, setIsApplied] = useState(false);
+/**
+ * IMP-03 (DEMO-04/DEMO-08, Option B+): this card is a static sample of the
+ * repeat-traveler memory panel. It deliberately takes no props and writes
+ * nothing to the pipeline:
+ *
+ * - The former `customerMessage` prop was never read — dead input removed.
+ * - The former `onApplyPreferences` callback injected fabricated preferences
+ *   (vegan/aisle/loyalty numbers) into the real Agent Notes store, which feeds
+ *   pipeline runs — removed entirely rather than disabled, because the card is
+ *   sample content and must never mutate real state.
+ * - Loyalty numbers are obviously fake (#000000000 / #00000000) and every
+ *   provenance source is marked "Sample:" so nothing reads as tenant-scoped.
+ *
+ * Real recall wiring (GET /api/v1/customers/memory) is the later Option A
+ * slice — see Docs/exploration/DEMO04_SAMPLE_PROFILE_PROVENANCE_2026-08-31.md.
+ */
+export function RepeatTravelerRecallCard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newPreference, setNewPreference] = useState('');
   const [isPermanentSafety, setIsPermanentSafety] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
-  // Simulated repeat traveler memory match
+  // Sample content only — badged "Sample data", no real tenant data anywhere.
   const traveler = {
-    id: 'cust_alex_m',
+    id: 'cust_sample_demo',
     name: 'Alex Morgan',
     tripsCount: 3,
     vipStatus: 'Delta Diamond Medallion',
@@ -42,7 +47,7 @@ export function RepeatTravelerRecallCard({
         summary: 'Strict Vegan Meals on all flights and dining',
         isPermanent: true,
         freshness: 100,
-        source: 'Direct Message (Trip #9842)',
+        source: 'Sample: Direct Message',
       },
       {
         id: 'pref_2',
@@ -50,39 +55,24 @@ export function RepeatTravelerRecallCard({
         summary: 'Aisle seat preferred on long-haul transatlantic sectors',
         isPermanent: false,
         freshness: 88,
-        source: 'Verified Ticket Scan',
+        source: 'Sample: Ticket Scan',
       },
       {
         id: 'pref_3',
         category: 'Loyalty Credentials',
-        summary: 'Delta SkyMiles #928410294 · Marriott Bonvoy #48192041',
+        summary: 'Delta SkyMiles #000000000 · Marriott Bonvoy #00000000',
         isPermanent: false,
         freshness: 95,
-        source: 'Passport & Loyalty Sync',
+        source: 'Sample: Loyalty Sync',
       },
     ],
   };
 
-  const handleApply = () => {
-    setIsApplied(true);
-    if (onApplyPreferences) {
-      onApplyPreferences({
-        dietary: 'Strict Vegan',
-        seating: 'Aisle',
-        loyalty_delta: '928410294',
-        loyalty_marriott: '48192041',
-      });
-    }
-  };
-
   const handleSaveNew = () => {
     if (!newPreference.trim()) return;
-    setSaveStatus('Saving to permanent traveler profile...');
-    setTimeout(() => {
-      setSaveStatus('✅ Saved: Added to Alex Morgan’s permanent profile memory.');
-      setNewPreference('');
-      setShowAddForm(false);
-    }, 400);
+    setSaveStatus('Sample only — nothing was saved. Real memories are stored by the memory engine.');
+    setNewPreference('');
+    setShowAddForm(false);
   };
 
   return (
@@ -104,40 +94,26 @@ export function RepeatTravelerRecallCard({
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
-              Verified historical profile recalled from agency memory.
+              Sample of the repeat-traveler memory panel — real recalls appear here once your agency has booking history.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* IMP-03: visible honesty badge — this is illustrative content, not a recall. */}
+          <span
+            data-testid="sample-data-badge"
+            className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 text-[10px] font-semibold uppercase tracking-wide border border-amber-500/30"
+          >
+            Sample data
+          </span>
+
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors flex items-center gap-1 border border-slate-700"
           >
             <Plus className="h-3 w-3" />
             {showAddForm ? 'Cancel' : 'Add Note'}
-          </button>
-
-          <button
-            onClick={handleApply}
-            disabled={isApplied}
-            className={`px-3.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 shadow-md ${
-              isApplied
-                ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 cursor-default'
-                : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
-            }`}
-          >
-            {isApplied ? (
-              <>
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                Applied to Quote
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-3.5 w-3.5" />
-                Apply to Proposal
-              </>
-            )}
           </button>
         </div>
       </div>
@@ -163,11 +139,11 @@ export function RepeatTravelerRecallCard({
         ))}
       </div>
 
-      {/* Add New Preference Form */}
+      {/* Add New Preference Form (sample demonstration — saves nothing) */}
       {showAddForm && (
         <div className="p-3 rounded-lg bg-slate-950 border border-indigo-500/30 space-y-2.5">
           <div className="flex items-center justify-between text-xs text-slate-300 font-medium">
-            <span>Log New Persistent Preference for Alex Morgan</span>
+            <span>Log New Persistent Preference for {traveler.name} (Sample)</span>
             <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-400">
               <input
                 type="checkbox"
@@ -197,7 +173,7 @@ export function RepeatTravelerRecallCard({
       )}
 
       {saveStatus && (
-        <div className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300 font-medium">
+        <div className="p-2 rounded-lg bg-amber-950/40 border border-amber-500/30 text-xs text-amber-300 font-medium">
           {saveStatus}
         </div>
       )}

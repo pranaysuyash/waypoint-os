@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from .constants import DecisionState
 from .packet_models import CanonicalPacket
+from .action_contract import ActionContract, derive_action_contract
 
 
 def _safe_get_fact(packet: CanonicalPacket, field_name: str) -> Any:
@@ -143,6 +144,9 @@ class PlanCandidate:
     readiness: Literal["blocked", "internal_draft", "traveler_safe"] = "blocked"
     missing_inputs: List[str] = field(default_factory=list)
     next_action: DecisionState = field(default="ASK_FOLLOWUP")  # type: ignore[arg-type]
+    action_contract: ActionContract = field(
+        default_factory=lambda: derive_action_contract("ASK_FOLLOWUP")
+    )
 
     created_at: str = ""
     schema_version: str = "0.1"
@@ -165,6 +169,7 @@ class PlanCandidate:
             "readiness": self.readiness,
             "missing_inputs": self.missing_inputs,
             "next_action": self.next_action,
+            "action_contract": self.action_contract.to_dict(),
             "created_at": self.created_at,
             "schema_version": self.schema_version,
         }
@@ -240,6 +245,7 @@ def build_plan_candidate(
     decision: Any,  # DecisionResult
     strategy: Any,  # SessionStrategy
     fees: Optional[Dict[str, Any]] = None,
+    autonomy_outcome: Optional[Any] = None,
 ) -> PlanCandidate:
     party_composition = _safe_get_fact(packet, "party_composition")
     if not isinstance(party_composition, dict):
@@ -342,6 +348,10 @@ def build_plan_candidate(
 
     decision_state: DecisionState = getattr(decision, "decision_state", "ASK_FOLLOWUP")
     readiness = _READINESS_MAP.get(decision_state, "blocked")
+    action_contract = derive_action_contract(
+        decision_state,
+        effective_action=getattr(autonomy_outcome, "effective_action", None),
+    )
 
     missing_inputs: List[str] = []
     for field_name in ("origin_city", "destination_candidates",
@@ -379,5 +389,6 @@ def build_plan_candidate(
         readiness=readiness,
         missing_inputs=missing_inputs,
         next_action=decision_state,
+        action_contract=action_contract,
         created_at=datetime.now(timezone.utc).isoformat(),
     )

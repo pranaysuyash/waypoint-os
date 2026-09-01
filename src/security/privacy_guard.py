@@ -1,28 +1,38 @@
 """
-security.privacy_guard — PII guardrails for dogfood mode.
+security.privacy_guard — PII guardrails for untrusted / plaintext stores.
 
 Purpose:
-Block real user PII from being stored in plaintext JSON in dogfood mode.
+Block real user PII from being stored in plaintext JSON when the persistence
+layer cannot be trusted to protect it.
 
 Layer 1 (always active): Regex-based heuristics for emails, India phone numbers,
 Aadhaar-pattern numbers, medical keywords, and freeform field detection.
 
-Layer 2 (optional, enabled by default): SpaCy NER for PERSON, ORG, GPE entities.
-Detects names like "Priya Sharma" and contact references in freeform WhatsApp text
-that regex patterns cannot catch. Requires `spacy` + `en_core_web_sm` to be installed
-(via `bash scripts/setup_nlp_models.sh`). Fails-open gracefully if not available.
+Layer 2 (optional, enabled by default): SpaCy NER for PERSON entities. Detects
+names like "Priya Sharma" in freeform text that regex cannot catch. Requires
+`spacy` + `en_core_web_sm` (via `bash scripts/setup_nlp_models.sh`). This layer
+is a best-effort enhancement and FAILS OPEN: if the model is unavailable the
+guard degrades to Layer 1 only and never raises. It is never the boundary
+control — see the mode matrix below.
 
-When DATA_PRIVACY_MODE=dogfood (default):
-  - Any trip data that looks like real user input is blocked
-  - Known fixtures are allowed
-  - Saves to TripStore raise PrivacyGuardError for real-looking data
-
-When DATA_PRIVACY_MODE=beta or production:
-  - Guard is relaxed (still logs warnings, but allows persistence)
-  - Encryption/PostgreSQL is expected to be in place before real users
+Mode matrix (see check_trip_data for the authoritative behaviour):
+  dogfood (default):
+    - Plaintext JSON store, no encryption/RLS. FAIL-CLOSED: real-user PII is
+      blocked; known fixtures and synthetic data are allowed.
+    - Layer 2 (SpaCy) runs and contributes to the block decision.
+  beta / production:
+    - The guard is NOT the production encryption boundary; PostgreSQL + RLS is.
+    - If the active store is the PLAINTEXT FILE STORE (TRIPSTORE_BACKEND in
+      {file, json}), the boundary is absent, so the guard FAILS CLOSED and
+      blocks real-user PII exactly as in dogfood.
+    - If the store is SQL/Postgres (TRIPSTORE_BACKEND in {sql, postgres,
+      postgresql}), the guard FAILS OPEN but runs a non-blocking Layer 1 audit
+      scan and logs findings. It does not block (avoids false-positive outages);
+      encryption/RLS is the real control.
 
 Environment variables:
   DATA_PRIVACY_MODE — dogfood | beta | production (default: dogfood)
+  TRIPSTORE_BACKEND — sql | postgres | postgresql (safe) | file | json (plaintext)
   NLP_PII_GUARD_ENABLED — 1|true|yes or 0|false|no (default: 1)
     Set to 0 to disable SpaCy NLP layer (e.g. in unit tests without the model)
 """
@@ -282,29 +292,24 @@ def _get_nested_value(data: Dict[str, Any], path: str) -> Any:
     return data
 
 
-def _is_likely_real_user_data(data: Dict[str, Any]) -> Optional[str]:
+def _scan_layer1(trip_data: Dict[str, Any]) -> Optional[str]:
     """
-    Return a human-readable reason string if data appears to be real user PII.
-    Return None if clean (or if from a known fixture without PII in raw input).
+    Layer 1 (always-active regex heuristics). Returns a human-readable reason
+    string if the data looks like real-user PII, else None.
 
-    Check order:
-    1. Email and phone in raw user-input fields (raw_input, raw_note) are always
-       blocked — even inside known fixtures — because a fixture's raw input may
-       be accidentally updated with real contact info. Structured output fields
-       (traveler_bundle, extracted, analytics) are excluded from this pre-check
-       since they are processed results, not raw user text.
-    2. Known fixtures bypass all remaining checks (freeform text and medical
-       keywords are expected in synthetic scenario data).
-    3. Non-fixtures get a full scan for email, phone, freeform, and medical.
-    4. Layer 2 NLP scan (SpaCy): runs on freeform field values only to catch
-       PERSON entities (names) that regex patterns cannot detect. Fail-open
-       if SpaCy is not installed.
+    No model dependency — safe to run on any write path, including the
+    non-blocking production audit scan. Checks:
+      1. Email/phone in raw user-input fields (raw_input, raw_note) — even for
+         known fixtures, because a fixture's raw input may carry real contacts.
+      2. Known fixtures bypass the remaining checks (synthetic scenario data).
+      3. Full scan for email, phone, freeform user input, and medical/mobility
+         indicators.
     """
     # Always check raw user-input fields for email/phone — even for known fixtures.
     raw_input_scope: Dict[str, Any] = {}
     for field in ("raw_input", "raw_note"):
-        if field in data:
-            raw_input_scope[field] = data[field]
+        if field in trip_data:
+            raw_input_scope[field] = trip_data[field]
 
     if raw_input_scope:
         email_str = _has_email(raw_input_scope)
@@ -316,27 +321,49 @@ def _is_likely_real_user_data(data: Dict[str, Any]) -> Optional[str]:
 
     # Known fixtures are allowed to contain freeform text and medical content
     # (synthetic/scenario data) in structured output fields.
-    if _is_known_fixture(data):
+    if _is_known_fixture(trip_data):
         return None
 
     # Full scan for non-fixture trips.
-    email_str = _has_email(data)
+    email_str = _has_email(trip_data)
     if email_str:
         return f"Detected email address: '{email_str[:50]}...'"
 
-    phone_str = _has_phone(data)
+    phone_str = _has_phone(trip_data)
     if phone_str:
         return f"Detected phone number: '{phone_str[:50]}...'"
 
     # Check for freeform user input
-    freeform = _has_freeform_user_input(data)
+    freeform = _has_freeform_user_input(trip_data)
     if freeform:
         return f"Detected freeform user input in field: '{freeform}'"
 
     # Check for medical/health indicators (high-signal for sensitive PII)
-    medical = _has_medical_indicator(data)
+    medical = _has_medical_indicator(trip_data)
     if medical:
         return f"Detected health/mobility indicator: '{medical}'"
+
+    return None
+
+
+def _is_likely_real_user_data(data: Dict[str, Any]) -> Optional[str]:
+    """
+    Return a human-readable reason string if data appears to be real user PII.
+    Return None if clean (or if from a known fixture without PII in raw input).
+
+    Combines Layer 1 (regex, always active) with Layer 2 (SpaCy NER for PERSON,
+    fail-open). Layer 2 only runs when NLP_PII_GUARD_ENABLED and the model is
+    available; if it is not, the function degrades to Layer 1 and never raises.
+    """
+    reason = _scan_layer1(data)
+    if reason:
+        return reason
+
+    # Layer 1 has already checked raw fixture input for email and phone. Once
+    # those boundary checks pass, synthetic fixtures remain exempt from the
+    # freeform and NLP heuristics just as they were before the layer split.
+    if _is_known_fixture(data):
+        return None
 
     # Layer 2: SpaCy NLP NER scan on freeform field values only.
     # Detects PERSON entities that regex cannot catch (e.g. "My name is Priya Sharma").
@@ -395,6 +422,13 @@ def _get_nlp_model():
     Thread-safe in CPython (GIL protects module-level assignment).
     Only attempts load once per process — failure is cached to avoid
     repeated import overhead on every request.
+
+    FAILS OPEN: Layer 2 is a best-effort enhancement, not the boundary control.
+    If spacy or en_core_web_sm are unavailable the function returns None and the
+    guard degrades to Layer 1. It never raises — raising here would crash
+    legitimate writes on boxes without the optional model installed, and the
+    previous production fail-closed branch was unreachable dead code that only
+    created a false sense of protection (see R-15).
     """
     global _nlp_model, _nlp_load_attempted
     if _nlp_load_attempted:
@@ -409,26 +443,14 @@ def _get_nlp_model():
         _nlp_model = spacy.load("en_core_web_sm")
         log.info("privacy_guard: SpaCy NLP Layer 2 loaded (en_core_web_sm)")
     except ImportError:
-        if _data_privacy_mode() == "production":
-            raise RuntimeError(
-                "privacy_guard: spacy is not installed in production. "
-                "NLP Layer 2 is required for fail-closed PII scanning; "
-                "install it or disable production mode."
-            )
         log.warning(
-            "privacy_guard: spacy not installed — NLP Layer 2 disabled. "
-            "Run: bash scripts/setup_nlp_models.sh to enable."
+            "privacy_guard: spacy not installed — NLP Layer 2 disabled (fail-open). "
+            "Run: bash scripts/setup_nlp_models.sh to enable PERSON NER."
         )
     except OSError:
-        if _data_privacy_mode() == "production":
-            raise RuntimeError(
-                "privacy_guard: en_core_web_sm model not found in production. "
-                "NLP Layer 2 is required for fail-closed PII scanning; "
-                "run: python -m spacy download en_core_web_sm"
-            )
         log.warning(
-            "privacy_guard: en_core_web_sm model not found — NLP Layer 2 disabled. "
-            "Run: python -m spacy download en_core_web_sm"
+            "privacy_guard: en_core_web_sm model not found — NLP Layer 2 disabled "
+            "(fail-open). Run: python -m spacy download en_core_web_sm"
         )
     return _nlp_model
 
@@ -474,24 +496,79 @@ def get_privacy_mode() -> str:
     return _data_privacy_mode()
 
 
-def check_trip_data(trip_data: Dict[str, Any]) -> None:
+# Backends that represent the plaintext file store. Mirrors the unsafe branch of
+# TripStore._backend() (must stay in sync). Safe backends are {sql, postgres,
+# postgresql}; see the mode matrix in the module docstring.
+_PLAINTEXT_BACKENDS = {"file", "json"}
+
+
+def _uses_plaintext_store() -> bool:
+    """True when TripStore persists to the plaintext file store.
+
+    Only explicit plaintext backends (file/json) count. An unset backend is left
+    to TripStore._backend()'s own environment enforcement (it fails closed in
+    production/staging), so we do not block legitimate dev/test runs that leave
+    it unset. See R-15.
     """
-    Check trip data before persistence.
+    raw = os.getenv("TRIPSTORE_BACKEND", "").strip().lower()
+    return raw in _PLAINTEXT_BACKENDS
+
+
+def _block_message(reason: str) -> str:
+    return (
+        f"Real user trip data cannot be persisted in plaintext in this mode. "
+        f"Detected: {reason}. "
+        f"Enable encryption/migration (TRIPSTORE_BACKEND=sql|postgres and "
+        f"ENCRYPTION_KEY) before storing real user data."
+    )
+
+
+def check_trip_data(trip_data: Dict[str, Any]) -> None:
+    """Check trip data before persistence.
+
+    Mode matrix (R-15):
+      - dogfood:           FAIL-CLOSED. Block real-user PII in the plaintext store.
+      - beta / production:
+          * If the store is the PLAINTEXT FILE STORE, the encryption/RLS boundary
+            is absent → FAIL-CLOSED (block), matching dogfood.
+          * If the store is SQL/Postgres, the guard is NOT the boundary. It FAILS
+            OPEN but runs a non-blocking Layer 1 audit scan and logs findings. It
+            never blocks (avoids false-positive outages); encryption/RLS is the
+            real control.
 
     Raises:
-        PrivacyGuardError: In dogfood mode if real-user PII is detected.
+        PrivacyGuardError: when it fails closed and real-user PII is detected.
     """
-    if not is_dogfood_mode():
-        # In beta/production, do not block (but encryption should be active)
+    if is_dogfood_mode():
+        reason = _is_likely_real_user_data(trip_data)
+        if reason:
+            raise PrivacyGuardError(_block_message(reason))
         return
 
-    reason = _is_likely_real_user_data(trip_data)
+    # beta / production.
+    if _data_privacy_mode() == "production" and _uses_plaintext_store():
+        # Misconfiguration: we claim to be safe but the store is plaintext. Real
+        # PII would land in plaintext JSON — exactly what this guard exists to
+        # prevent — so fail closed.
+        reason = _is_likely_real_user_data(trip_data)
+        if reason:
+            log.error(
+                "privacy_guard: DATA_PRIVACY_MODE=production but TRIPSTORE_BACKEND "
+                "is a plaintext file store. Refusing to persist real-user PII "
+                "(fail-closed)."
+            )
+            raise PrivacyGuardError(_block_message(reason))
+        return
+
+    # Intended safe configuration (prod + SQL/Postgres, or beta): observable,
+    # non-blocking audit. Layer 1 only (no model) to keep the write path fast
+    # and deterministic; Layer 2 NER is dogfood-only where blocking matters.
+    reason = _scan_layer1(trip_data)
     if reason:
-        raise PrivacyGuardError(
-            f"Real user trip data cannot be persisted in plaintext JSON in dogfood mode. "
-            f"Detected: {reason}. "
-            f"Enable encryption/migration before storing real user data. "
-            f"Set DATA_PRIVACY_MODE=beta or production only after encryption is configured."
+        log.warning(
+            "privacy_guard: AUDIT — real-PII-shaped data persisted in %s mode "
+            "(not blocked; encryption/RLS is the boundary): %s",
+            _data_privacy_mode(), reason,
         )
 
 

@@ -1,9 +1,12 @@
 import type { RunStatusResponse, ValidationReport } from '@/types/spine';
+import { FIELD_LABELS, labelOrTitle } from '@/lib/label-maps';
 
 export type WorkbenchBlockCopy = {
   title: string;
   summary: string;
   details: string[];
+  /** Machine-named missing fields (e.g. date_window) for "Missing: …" display. */
+  missingFields: string[];
   actionLabel: string;
 };
 
@@ -73,6 +76,7 @@ function needsTripDetailsLanguage(validation?: ValidationReport | null, reasons:
 export function getWorkbenchBlockCopy(args: {
   validation?: ValidationReport | null;
   runState?: RunStatusResponse | null;
+  packet?: { unknowns?: Array<{ field_name?: string }> } | null;
 }): WorkbenchBlockCopy {
   const reasons = collectReasons(args.validation, args.runState);
   const hasReasons = reasons.length > 0;
@@ -90,12 +94,27 @@ export function getWorkbenchBlockCopy(args: {
       ? 'This run is blocked until the missing trip details are filled in.'
       : 'This run is blocked until the next issue is resolved.';
 
+  // Same source PacketTab uses for its "Missing fields:" line, so the banner
+  // and the repair tab never disagree about what is missing.
+  const missingFields = (args.packet?.unknowns ?? [])
+    .map((unknown) => (typeof unknown.field_name === 'string' ? unknown.field_name : ''))
+    .filter(Boolean);
+
   return {
     title,
     summary,
     details: hasReasons ? reasons : [],
+    missingFields,
     actionLabel: 'Open Trip Details',
   };
+}
+
+/** Human labels for missing fields, capped at 3 with an overflow suffix. */
+export function formatWorkbenchMissingFields(missingFields: string[] = []): string {
+  if (missingFields.length === 0) return '';
+  const visible = missingFields.slice(0, 3).map((field) => labelOrTitle(FIELD_LABELS, field));
+  const hidden = missingFields.length - visible.length;
+  return visible.join(', ') + (hidden > 0 ? ` +${hidden} more` : '');
 }
 
 export function formatWorkbenchBlockReasonList(reasons: string[] = []): string {

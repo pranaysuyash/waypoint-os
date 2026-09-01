@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 os.environ["RUNNING_TESTS"] = "1"
@@ -7,7 +8,6 @@ os.environ["RUNNING_TESTS"] = "1"
 @pytest.fixture(autouse=True)
 def setup_test_env(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
-    monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
     monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 

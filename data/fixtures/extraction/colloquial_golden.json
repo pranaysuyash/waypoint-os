@@ -1,0 +1,224 @@
+[
+  {
+    "fixture_id": "colloq_dest_verb_object_001",
+    "description": "Verb-object destination 'do X' with fully lowercase text (DEMO-02 D1)",
+    "difficulty": "hard",
+    "raw_input": "want to do japan",
+    "expected_extracted_fields": {
+      "destination_candidates": ["Japan"],
+      "destination_status": "definite"
+    },
+    "expected_field_count": 2,
+    "tags": ["colloquial", "verb_object", "lowercase_text", "destination"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_dest_hitting_001",
+    "description": "Verb-object destination 'hitting X' with trailing context (DEMO-02 D2)",
+    "difficulty": "hard",
+    "raw_input": "hitting bali next month",
+    "expected_extracted_fields": {
+      "destination_candidates": ["Bali"],
+      "destination_status": "definite"
+    },
+    "expected_field_count": 2,
+    "tags": ["colloquial", "verb_object", "destination"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_dest_covering_001",
+    "description": "Verb-object destination 'covering X and Y' — two-city route (DEMO-02 D3)",
+    "difficulty": "hard",
+    "raw_input": "covering tokyo and kyoto",
+    "expected_extracted_fields": {
+      "destination_candidates": ["Tokyo", "Kyoto"],
+      "destination_status": "semi_open"
+    },
+    "expected_field_count": 2,
+    "tags": ["colloquial", "verb_object", "city_set", "destination"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_dest_city_set_001",
+    "description": "Plus-separated city set with hedged verb 'thinking X + Y + Z' (DEMO-02 D4)",
+    "difficulty": "hard",
+    "raw_input": "thinking tokyo + kyoto + osaka, 10-12 days",
+    "expected_extracted_fields": {
+      "destination_candidates": ["Tokyo", "Kyoto", "Osaka"],
+      "destination_status": "semi_open"
+    },
+    "expected_field_count": 2,
+    "tags": ["colloquial", "city_set", "destination"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_party_friends_001",
+    "description": "Group size via 'me and N friends' — self + companions (DEMO-02 P1)",
+    "difficulty": "hard",
+    "raw_input": "me and 3 friends want a beach trip",
+    "expected_extracted_fields": {
+      "destination_candidates": null,
+      "destination_status": "undecided",
+      "party_size": 4,
+      "party_composition": {"adults": 4}
+    },
+    "expected_field_count": 2,
+    "tags": ["colloquial", "group_size", "party"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_party_of_us_001",
+    "description": "Group size via 'N of us' (DEMO-02 P2)",
+    "difficulty": "hard",
+    "raw_input": "4 of us want a beach trip",
+    "expected_extracted_fields": {
+      "destination_candidates": null,
+      "destination_status": "undecided",
+      "party_size": 4
+    },
+    "expected_field_count": 1,
+    "tags": ["colloquial", "group_size", "party"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_party_the_four_001",
+    "description": "Group size via word number 'the four of us' (DEMO-02 P3)",
+    "difficulty": "hard",
+    "raw_input": "the four of us are going somewhere",
+    "expected_extracted_fields": {
+      "destination_candidates": null,
+      "destination_status": "open",
+      "party_size": 4
+    },
+    "expected_field_count": 1,
+    "tags": ["colloquial", "group_size", "party"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_party_of_n_001",
+    "description": "Group size via 'party of N' (DEMO-02 P4)",
+    "difficulty": "hard",
+    "raw_input": "party of 4 to japan",
+    "expected_extracted_fields": {
+      "destination_candidates": null,
+      "destination_status": "undecided",
+      "party_size": 4
+    },
+    "expected_field_count": 1,
+    "tags": ["colloquial", "group_size", "party"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_party_mixed_001",
+    "description": "Self + spouse + friends must count every named companion (DEMO-02 P5)",
+    "difficulty": "hard",
+    "raw_input": "me and my wife and 2 friends want to do japan",
+    "expected_extracted_fields": {
+      "destination_candidates": ["Japan"],
+      "destination_status": "definite",
+      "party_size": 4,
+      "party_composition": {"adults": 4}
+    },
+    "expected_field_count": 4,
+    "tags": ["colloquial", "group_size", "mixed_composition", "party"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_party_member_ref_001",
+    "description": "'one of us' is a member reference, never party_size=1 (DEMO-02 P6 field-level guard)",
+    "difficulty": "hard",
+    "raw_input": "one of us is terrified of heights",
+    "expected_extracted_fields": {
+      "destination_candidates": null,
+      "destination_status": "undecided",
+      "party_size": null
+    },
+    "expected_field_count": 0,
+    "tags": ["colloquial", "group_signals", "party", "negative"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_dates_season_001",
+    "description": "Season window folding the late-month refinement (DEMO-02 T1+T2+T5)",
+    "difficulty": "hard",
+    "raw_input": "want to do japan next spring, maybe late march for the cherry blossoms",
+    "expected_extracted_fields": {
+      "destination_candidates": ["Japan"],
+      "destination_status": "definite",
+      "date_window": "next spring (Mar-May), late march",
+      "date_confidence": "flexible"
+    },
+    "expected_field_count": 4,
+    "tags": ["colloquial", "relative_dates", "season", "dates"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_dates_late_month_001",
+    "description": "'late <month>' without an in/during/for preposition (DEMO-02 T2)",
+    "difficulty": "hard",
+    "raw_input": "maybe late march",
+    "expected_extracted_fields": {
+      "destination_candidates": null,
+      "destination_status": "undecided",
+      "date_window": "late march",
+      "date_confidence": "flexible"
+    },
+    "expected_field_count": 2,
+    "tags": ["colloquial", "relative_dates", "dates"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_dates_flex_001",
+    "description": "Spelled-out flexibility 'plus or minus' with inverted word order (DEMO-02 T4)",
+    "difficulty": "medium",
+    "raw_input": "dates flexible plus or minus a week",
+    "expected_extracted_fields": {
+      "destination_candidates": null,
+      "destination_status": "undecided",
+      "date_flexibility": "flexible"
+    },
+    "expected_field_count": 1,
+    "tags": ["colloquial", "flexibility_marker", "dates"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_budget_each_001",
+    "description": "Per-person budget via 'each' — never silently coerced to trip-total (DEMO-02 B1)",
+    "difficulty": "medium",
+    "raw_input": "budget around 3.5k USD each, not sure if that includes flights",
+    "expected_extracted_fields": {
+      "destination_candidates": null,
+      "destination_status": "undecided",
+      "budget_min": 3500,
+      "budget_max": 3500,
+      "budget_currency": "USD",
+      "budget_scope": "per_person"
+    },
+    "expected_field_count": 4,
+    "tags": ["colloquial", "budget_scope", "budget"],
+    "document_type": "freeform_note"
+  },
+  {
+    "fixture_id": "colloq_full_note_001",
+    "description": "Exact Tool-Taster demo note — end-to-end regression anchor (DEMO-02 colloq_full_note_001)",
+    "difficulty": "hard",
+    "raw_input": "hey! me and 3 friends want to do japan next spring, maybe late march for the cherry blossoms. flying from SF. we are all pretty active, one friend is vegetarian. budget around 3.5k USD each, not sure if that includes flights. thinking tokyo + kyoto + osaka, 10-12 days. one of us is terrified of heights so no cable cars please. we saw this amazing ryokan on tiktok, no idea of the name. dates flexible plus or minus a week. we also wanna do a cooking class somewhere. thx!!",
+    "expected_extracted_fields": {
+      "destination_candidates": ["Tokyo", "Kyoto", "Osaka"],
+      "destination_status": "semi_open",
+      "party_size": 4,
+      "party_composition": {"adults": 4},
+      "budget_min": 3500,
+      "budget_max": 3500,
+      "budget_currency": "USD",
+      "budget_scope": "per_person",
+      "date_window": "next spring (Mar-May), late march",
+      "date_confidence": "flexible",
+      "date_flexibility": "flexible",
+      "meal_preferences": "vegetarian"
+    },
+    "expected_field_count": 12,
+    "tags": ["colloquial", "end_to_end", "demo_regression", "full_note"],
+    "document_type": "freeform_note"
+  }
+]

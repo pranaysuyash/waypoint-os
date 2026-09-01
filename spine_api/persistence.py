@@ -356,17 +356,23 @@ class FileTripStore:
         return None
 
     @staticmethod
-    def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
+    def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         """List trips, optionally filtered by status and/or agency.
-        
+
         status accepts a single status (e.g. 'new') or a comma-separated list
         (e.g. 'new,incomplete,needs_followup') for inbox-style multi-status filters.
+
+        `offset` is applied in-process so that paginating callers behave
+        identically on the file and SQL backends. The file store previously
+        ignored offset, which made every paginated scan loop forever (R-03).
         """
         allowed_statuses = (
             set(status.split(",")) if status else None
         )
         trips = []
-        
+        # Collect through the end of the requested window so it can be sliced.
+        wanted = offset + limit
+
         for filepath in sorted(TRIPS_DIR.glob("trip_*.json"), reverse=True):
             try:
                 with open(filepath) as f:
@@ -378,11 +384,11 @@ class FileTripStore:
                 
                 if allowed_statuses is None or trip.get("status") in allowed_statuses:
                     trips.append(trip)
-                if len(trips) >= limit:
+                if len(trips) >= wanted:
                     break
             except (OSError, ValueError):
                 continue
-        return trips
+        return trips[offset:offset + limit]
 
     @staticmethod
     def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
@@ -949,8 +955,19 @@ class SQLTripStore:
         """List trips, optionally filtered by status and/or agency.
 
         status accepts single status or comma-separated statuses (e.g., 'new,incomplete').
+
+        When an explicit agency_id is supplied the RLS context is set from that
+        argument, so the call also works when the auth ContextVar is unset
+        (background tasks, sync facade calls, tests). It previously always used
+        the ContextVar session and silently returned an empty list in exactly
+        those contexts (R-03).
         """
-        async with SQLTripStore._rls_session() as session:
+        session_ctx = (
+            SQLTripStore._rls_session_for_agency(agency_id)
+            if agency_id
+            else SQLTripStore._rls_session()
+        )
+        async with session_ctx as session:
             query = select(Trip).order_by(Trip.created_at.desc())
             if status:
                 statuses = [s.strip() for s in status.split(",") if s.strip()]
@@ -1518,13 +1535,39 @@ class TripStore:
         }
 
     @staticmethod
+    def _iter_all_trips(page_size: int = 1000):
+        """Yield every trip across all agencies by paging through the backend.
+
+        Token lookups are inherently a full scan until `proposal_token_hash` /
+        group invite tokens get a dedicated indexed column (see R-03). Paging
+        keeps a single query bounded while guaranteeing the whole corpus is
+        visited, so lookups degrade in speed rather than failing silently.
+
+        Both branches of `list_trips` honour `offset`, so this terminates on
+        the file store as well as SQL.
+        """
+        offset = 0
+        while True:
+            page = TripStore.list_trips(limit=page_size, offset=offset)
+            if not page:
+                return
+            yield from page
+            if len(page) < page_size:
+                return
+            offset += page_size
+
+    @staticmethod
     def get_trip_by_proposal_token(token: str) -> Optional[dict]:
-        """Lookup a trip by proposal link token (or its SHA256 hash) across all agencies."""
+        """Lookup a trip by proposal link token (or its SHA256 hash) across all agencies.
+
+        Scans the whole corpus by paging. The previous implementation fetched a
+        single fixed page of 1000 trips, so a token belonging to any trip past
+        the first 1000 silently failed to resolve (R-03).
+        """
         if not token:
             return None
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-        all_trips = TripStore.list_trips(limit=1000)
-        for trip in all_trips:
+        for trip in TripStore._iter_all_trips():
             if trip.get("proposal_token_hash") == token_hash:
                 return trip
             if trip.get("proposal_link_token") == token:
@@ -1551,14 +1594,24 @@ class TripStore:
                 except Exception:
                     continue
             return None
-        all_trips = _run_async_blocking(SQLTripStore.list_trips(limit=1000))
-        for trip in all_trips:
-            gb = trip.get("group_booking", {}) or {}
-            invites = gb.get("invites", [])
-            for inv in invites:
-                if inv.get("token_hash") == token_hash or inv.get("raw_token") == token:
-                    return trip
-        return None
+        # SQL branch: page through the corpus. A single capped page silently
+        # failed to resolve group tokens belonging to trips past the first 1000
+        # (same defect as get_trip_by_proposal_token, R-03).
+        offset = 0
+        page_size = 1000
+        while True:
+            page = _run_async_blocking(
+                SQLTripStore.list_trips(limit=page_size, offset=offset)
+            )
+            for trip in page:
+                gb = trip.get("group_booking", {}) or {}
+                invites = gb.get("invites", [])
+                for inv in invites:
+                    if inv.get("token_hash") == token_hash or inv.get("raw_token") == token:
+                        return trip
+            if len(page) < page_size:
+                return None
+            offset += page_size
 
     @staticmethod
     def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
@@ -1583,9 +1636,9 @@ class TripStore:
     def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         backend = TripStore._backend()
         if backend is FileTripStore:
-            # File store doesn't support offset natively;
-            # callers that need DB-level pagination should use SQL backend.
-            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+            return FileTripStore.list_trips(
+                status=status, limit=limit, agency_id=agency_id, offset=offset
+            )
         return _run_async_blocking(SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset))
 
     @staticmethod

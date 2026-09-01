@@ -23,7 +23,7 @@ import { useSpineRun } from '@/hooks/useSpineRun';
 import { useSSEStream } from '@/hooks/useSSEStream';
 
 import { useUpdateTrip } from '@/hooks/useTrips';
-import { getWorkbenchBlockCopy, formatWorkbenchBlockReasonList } from '@/lib/workbench-blocking-copy';
+import { getWorkbenchBlockCopy, formatWorkbenchBlockReasonList, formatWorkbenchMissingFields } from '@/lib/workbench-blocking-copy';
 import { normalizeSafetyResult } from '@/lib/bff-trip-adapters';
 import type {
   SpineRunRequest,
@@ -211,6 +211,12 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
   ]);
 }
 
+// IMP-05 (DEMO-06): shared styling for the blocked-banner "Review Missing Fields"
+// control, which renders as a Link to the editable repair surface when a trip
+// exists and as a tab-switch button when only a draft exists (pre-persistence).
+const REVIEW_MISSING_FIELDS_CONTROL_CLASSES =
+  'px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 text-[#f85149] text-ui-xs font-medium rounded-md hover:bg-[#f85149]/20 transition-colors';
+
 // react-doctor-disable-next-line react-doctor/prefer-useReducer — too many independent state slices to consolidate meaningfully
 function WorkbenchContent() {
   const searchParams = useSearchParams();
@@ -279,7 +285,8 @@ function WorkbenchContent() {
   const runFrontier = spineRunState?.frontier_result;
   const showFrontier = Boolean(trip?.frontier_result) || Boolean(store.result_frontier) || Boolean(runFrontier);
   const tripRepairHref = trip?.id ? getTripRepairRoute(trip.id) : null;
-  const blockCopy = getWorkbenchBlockCopy({ validation: store.result_validation });
+  const blockCopy = getWorkbenchBlockCopy({ validation: store.result_validation, packet: store.result_packet ?? trip?.packet ?? null });
+  const missingFieldsLabel = formatWorkbenchMissingFields(blockCopy.missingFields);
 
   const visibleTabs = workspaceTabs.filter((tab) => {
     if (tab.id === 'packet') return showPacket;
@@ -992,6 +999,11 @@ function WorkbenchContent() {
                           ))}
                         </span>
                       ) : null}
+                      {missingFieldsLabel ? (
+                        <span className='block mt-1 font-medium text-[#e6edf3]'>
+                          Missing: {missingFieldsLabel}
+                        </span>
+                      ) : null}
                       <span className='block mt-1'>
                         Open the Trip Details repair surface to fix the missing fields, then process the trip again.
                       </span>
@@ -999,12 +1011,30 @@ function WorkbenchContent() {
                   </>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => handleTabChange('packet')}
-                    className="px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 text-[#f85149] text-ui-xs font-medium rounded-md hover:bg-[#f85149]/20 transition-colors"
-                  >
-                    Review Missing Fields
-                  </button>
+                  {/*
+                    IMP-05 (DEMO-06): when a persisted trip exists for this workbench
+                    context, route the operator to the editable repair surface
+                    (/trips/{tripId}/intake, IntakePanel) instead of re-setting the
+                    identical ?tab=packet URL — a visual no-op when the blocked run
+                    auto-switches to the packet tab. With no trip yet (fresh draft,
+                    pre-persistence), fall back to the packet tab, which now carries
+                    the validation context and self-resolves once the run persists.
+                  */}
+                  {tripRepairHref ? (
+                    <Link
+                      href={tripRepairHref}
+                      className={REVIEW_MISSING_FIELDS_CONTROL_CLASSES}
+                    >
+                      Review Missing Fields
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => handleTabChange('packet')}
+                      className={REVIEW_MISSING_FIELDS_CONTROL_CLASSES}
+                    >
+                      Review Missing Fields
+                    </button>
+                  )}
                   {tripRepairHref && (
                     <Link
                       href={tripRepairHref}

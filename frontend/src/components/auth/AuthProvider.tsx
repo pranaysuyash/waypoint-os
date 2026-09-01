@@ -132,7 +132,7 @@ export function AuthProvider(
                 autoComplete="email"
                 required
                 className="w-full rounded-lg bg-[#080a0c] border border-[#1f2630] text-[#e6edf3] px-3 py-2 text-sm outline-none focus:border-[#58a6ff] focus:ring-2 focus:ring-[#58a6ff]/20"
-                placeholder="you@agency.com"
+                placeholder="you@example.com"
                 autoFocus
               />
             </div>

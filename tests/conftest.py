@@ -330,7 +330,22 @@ def reset_global_singletons():
         # Without this, a leaked TRIPS_DIR from test A causes test B to fail.
         _default_data_dir = Path(_persistence.__file__).parent.parent / "data"
         _persistence.DATA_DIR = _default_data_dir
-        _persistence.TRIPS_DIR = _default_data_dir / "trips"
+        # TRIPS_DIR is deliberately NOT pointed at the real data/trips.
+        # The suite used to write ~1,600 throwaway trip JSON files into the
+        # repo's data directory, which then looked like stale production data
+        # to anyone running the file backend (R-03). Tests now default to a
+        # gitignored scratch dir; tests needing their own location still
+        # monkeypatch TRIPS_DIR (usually to pytest's tmp_path).
+        #
+        # Kept inside the repo rather than tempfile.mkdtemp(): system temp dirs
+        # are blocked in some sandboxed/CI setups, which turns every trip
+        # write into a PermissionError.
+        _test_trips_dir = _default_data_dir / "test_trips"
+        try:
+            _test_trips_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+        _persistence.TRIPS_DIR = _test_trips_dir
         _persistence.ASSIGNMENTS_DIR = _default_data_dir / "assignments"
         _persistence.AUDIT_DIR = _default_data_dir / "audit"
         _persistence.PUBLIC_CHECKER_DIR = _default_data_dir / "public_checker"

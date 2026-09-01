@@ -313,6 +313,33 @@ describe('WorkbenchPage', () => {
       'href',
       '/trips/trip_bali_blocked/intake',
     );
+    // IMP-05 (DEMO-06): with a persisted trip, the banner CTA navigates to the
+    // editable repair surface instead of re-setting the identical ?tab=packet URL.
+    expect(screen.getByRole('link', { name: /review missing fields/i })).toHaveAttribute(
+      'href',
+      '/trips/trip_bali_blocked/intake',
+    );
+  });
+
+  it('falls back to the packet-tab switch when the blocked state has no persisted trip yet', async () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=packet') as never);
+    mockWorkbenchStore = {
+      ...mockWorkbenchStore,
+      result_validation: {
+        is_valid: false,
+        status: 'BLOCKED',
+        gate: 'NB01',
+        stage: 'intake_completion',
+        reasons: ['MVB_MISSING'],
+      },
+    };
+
+    render(<WorkbenchPage />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /review missing fields/i }));
+
+    expect(mockReplace).toHaveBeenCalledWith('/workbench?tab=packet', { scroll: false });
   });
 
   it('preserves an existing draft id for fast-capture entry instead of resetting to draft=new', () => {

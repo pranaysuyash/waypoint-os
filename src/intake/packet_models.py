@@ -574,8 +574,8 @@ class CanonicalPacket:
             "ambiguity_type": ambiguity.ambiguity_type,
         })
 
-    def add_unknown(self, field_name: str, reason: str) -> None:
-        self.unknowns.append(UnknownField(field_name=field_name, reason=reason))
+    def add_unknown(self, field_name: str, reason: str, notes: Optional[str] = None) -> None:
+        self.unknowns.append(UnknownField(field_name=field_name, reason=reason, notes=notes))
         self._emit_event("unknown_added", {"field_name": field_name, "reason": reason})
 
     def add_contradiction(

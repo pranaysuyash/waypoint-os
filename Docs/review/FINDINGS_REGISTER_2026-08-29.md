@@ -21,7 +21,7 @@ Status column is **this audit's live re-verification**, not the original claim.
 |---|---|---|---|---|---|---|---|---|
 | R-01 | E | Canonical | 4 stale `v6.1` doctrine copies w/ wrong canonical path | ✅ **FIXED** — all 4 now identical 1,357 B "Mirror Pointer" stubs (md5 `6c9d18a1…`) declaring canonical path, v8.0, SHA-256, gen date, "NOT authoritative" | ✅ | ✅ | ✅ | — |
 | R-02 | E | Security | Client `X-Agency-ID` trusted on 5 routers | ✅ **FIXED** (uncommitted) — `core/auth.py:170-185` honors header only under `PYTEST_CURRENT_TEST`/`SPINE_API_DISABLE_AUTH` | ✅ | ✅ | ✅ | — |
-| R-03 | E | Security | File-store split-brain (1,635 JSON ∥ SQL) | ⚠️ **PARTIAL** — header trust fixed; split-brain remains (`persistence.py:110-114`) | ⚠️ | ❌ | ❌ | P0 |
+| R-03 | E | Security *(mis-scoped)* | File-store split-brain (1,635 JSON ∥ SQL) | ✅ **FIXED 2026-08-30** — original P0 premise **wrong**; reframed as test-hygiene (P3) + `list_trips` RLS/offset correctness (P2). See **§5**. | ✅ | ✅ | ⚠️ | — |
 | R-04 | E | Integrity | `commission.py` fabricated ₹3000 | ✅ **FIXED** (uncommitted) — `commission.py:88` `if gross_cents <= 0: continue` | ✅ | ✅ | ✅ | — |
 | R-05 | E | Integrity | `/send` returned `SENT` with no dispatch | ✅ **FIXED** (uncommitted) — returns `QUEUED` + honest docstring (`messaging.py:76-88`) | ✅ | ✅ | ✅ | — |
 | R-06 | E | Epistemic | `EpistemicStatus`/`AssumptionRegister`/`CONNECTIVITY_TIER` absent | ⚠️ **PARTIAL** (uncommitted) — `EpistemicStatus` ✅ `packet_models.py:91`; `AssumptionRecord` ✅ `:101`; mapping ✅ `extractors.py:1738-1749`; **`CONNECTIVITY_TIER` still absent** (grep → 0) | ✅ | ✅ | ⚠️ | P1 |
@@ -33,7 +33,7 @@ Status column is **this audit's live re-verification**, not the original claim.
 | R-12 | E | Domain | No Journey Dependency Graph for IROPS ripple | ❌ **OPEN** — genuine opportunity | ✅ | ✅ | ➖ | P2 |
 | R-13 | E | Navigation | Nav rollout-gate drift | ❌ **OPEN** — `nav-modules.ts:60,64,68,73` all `complete: false`; "14/14 active" claim false | ❌ | ⚠️ | ❌ | P2 |
 | R-14 | E | UX | Two-generation styling (literal-hex ∥ primitives) | ❌ **OPEN** | ⚠️ | ❌ | ⚠️ | P3 |
-| R-15 | E | Security | PII guard fail-open in production | ❌ **OPEN** — `privacy_guard.py:484-486` returns **silently** when not dogfood; Layer 2 is fail-closed (disagreement) | ❌ | ❌ | ❌ | P1 |
+| R-15 | E | Security | PII guard fail-open in production — contradictory defaults | ✅ **FIXED 2026-08-31** — investigated: the Layer 2 "fail-closed" `RuntimeError` was **unreachable dead code** (the gate bailed at `:484` before Layer 2 loaded), so real behavior was fail-open at every level. Reconciled at the gate: **dogfood + production+plaintext → fail-closed; production+SQL / beta → fail-open-but-audited** (Layer 1 scan, no block). See `R-15_PII_GUARD_DEFAULT_2026-08-31.md`. | ✅ | ✅ | ✅ | P1 |
 | R-16 | E | Observability | No trace-correlation reader; no CI event-flow assertion | ❌ **OPEN** — OTel spans real, no consumer | ⚠️ | ⚠️ | ⚠️ | P2 |
 
 **Carry-forward score: 5 fixed · 4 partial · 8 open · 2 prior-audit errors corrected.**
@@ -343,3 +343,132 @@ Status column is **this audit's live re-verification**, not the original claim.
 | 7 | Frontend tests pass at all (never executed) | **High** | `cd frontend && npm test -- --run` |
 
 **Assumption 7 is the largest evidence hole in this audit.**
+
+---
+
+## Part 5 — R-03 reframe and remediation (2026-08-30)
+
+R-03 was re-investigated against live code and `.env` after the audit was filed.
+The **original finding was wrong**; the reframe is recorded here rather than
+silently amended (doctrine §1 — the reasoning survives; the claim did not).
+
+### 5.1 Why the P0 premise was wrong
+
+- `TRIPSTORE_BACKEND=sql` **is set** in `.env`. `TripStore._backend()`
+  (`spine_api/persistence.py:1408-1447`) is **fail-closed**: in production/staging an
+  unset or non-SQL backend raises `RuntimeError`.
+- Every production read/write dispatches through the facade; **all** direct
+  `FileTripStore.save_trip` call sites are inside `tests/`.
+- `get_trip_by_group_token` was initially suspected of bypassing the backend — it does
+  **not** (`:1540-1541` honors `_backend()`). Recorded as a self-correction.
+- `data/trips/*.json` is **gitignored** (`.gitignore:115`); 1,602 of 1,646 files were
+  **test-generated**. The "1,635 JSON ∥ SQL" were test effluent, not a production
+  split-brain.
+
+**Verdict: not a P0 security defect.** Downgraded to test-hygiene (P3) + one
+correctness defect (P2).
+
+### 5.2 The two real defects, both fixed
+
+| # | Defect | Fix |
+|---|---|---|
+| 1 | `get_trip_by_proposal_token` fetched a **single page of 1000** trips, so any token belonging to a trip past the first 1000 **silently failed to resolve**. Same cap in `get_trip_by_group_token`. | New `TripStore._iter_all_trips()` paging helper (`:1520+`); both token lookups now page the full corpus. |
+| 2 | `FileTripStore.list_trips` **ignored `offset`**, and `SQLTripStore.list_trips` set RLS from the **auth ContextVar even when an explicit `agency_id` was passed** — so it returned an empty list in any context without auth (background tasks, sync facade, tests). | `FileTripStore.list_trips` now slices `offset`; facade passes offset to both branches; `SQLTripStore.list_trips` uses `_rls_session_for_agency(agency_id)` when an agency is supplied, matching its sibling methods. |
+
+Also fixed the cause of the 1,600-file litter: the conftest autouse fixture reset
+`TRIPS_DIR` to the **real** `data/trips`; it now points at an isolated session temp dir.
+
+### 5.3 New findings surfaced by the fix
+
+| ID | Finding | Sev |
+|---|---|---|
+| A-22 | **Cross-tenant token lookups need a deliberate read path.** Proposal/group tokens are resolved with **no** `agency_id`, so they rely on the ContextVar session. Via the sync facade the ContextVar is on a different task, so the lookup returns `None`. Public proposal links have no agency context by definition — the pagination fix is necessary but **not sufficient**. | **P1** |
+| A-23 | **Token fields are not Trip columns.** `proposal_link_token`, `proposal_token_hash`, `group_booking` are absent from `models/trips.py`; they ride in `analytics._extra` (restored by `_to_dict`). Works, but `_to_summary_dict` does **not** restore `_extra`, so summary projections silently lack tokens. | P2 |
+
+### 5.4 Evidence
+
+- New `tests/test_trip_store_sql_coverage.py` — **4 passed** against live Postgres:
+  pagination regression (DB-free, always runs), SQL round-trip + tenant isolation,
+  `offset` paging, proposal-token `_extra` round-trip.
+- Regression check: `test_booking_data.py` + `test_state_contract_parity.py` +
+  `test_public_checker_path_safety.py` → **102 passed**.
+- Pollution check: `data/trips` count **unchanged** (1,934) across a trip-writing run.
+
+**Full re-baseline (fresh `--basetemp`, 47 GiB free, 290.61 s):**
+**355 failed · 2,893 passed · 9 skipped · 13 errors** vs the recorded baseline of
+358 failed · 2,803 passed · 19 errors · 8 skipped.
+
+> **Self-correction (PER-0164).** An earlier draft of this section claimed the
+> `TRIPS_DIR` isolation had fixed "a share of the 358-failure baseline", inferred from
+> `test_trip_canonical_roundtrip.py` passing **53/53 standalone** where the register
+> recorded 49 failures. The full run does **not** support that: failures moved only
+> 358 → 355. That file passes in isolation and fails in the full run, i.e. it is
+> **order-dependent**, but the isolated `TRIPS_DIR` was not the cause. The claim was
+> an inference from a single file, recorded before the suite-wide evidence existed.
+
+**Order-dependence is the real story.** `test_trip_canonical_roundtrip.py` passes alone
+and fails within the full suite. Only `TRIPS_DIR` was isolated; `AUDIT_DIR`,
+`ASSIGNMENTS_DIR`, `OVERRIDES_DIR` and friends still reset to the shared real `data/`
+tree in the autouse fixture (`tests/conftest.py`), so cross-test leakage persists by
+another route. Isolating the remaining directories is the natural next step and the
+honest way to test whether order-dependence explains the 355.
+
+### 5.5 Open
+
+- Re-run the full backend suite to quantify the new failure baseline. The 358 figure
+  was recorded while the volume was at 100% (ENOSPC) **and** with cross-test
+  `TRIPS_DIR` leakage present, so it is likely inflated.
+- A-22 needs a product decision: a public/system read path for token resolution.
+
+### 5.6 Environment confound — pytest `tmp_path` fails under the sandbox shim
+
+An initial re-baseline reported **167 errors** that looked like a regression. They are
+**not**. The environment's `sitecustomize.py` broker raises on `mkdir(exist_ok=True)`
+when the target already exists:
+
+```
+PermissionError: EEXIST: file already exists,
+    mkdir '/private/var/folders/.../T/pytest-of-pranay'
+```
+
+Every test using the `tmp_path` fixture errors **at setup**, before any application code
+runs. Running with a fresh temp root (`--basetemp=<new dir>`) clears it completely —
+the same three files went from *66 passed / 33 errors* to **99 passed / 0 errors**.
+
+**Any failure count produced without a fresh `--basetemp` is unreliable.** Use
+`--basetemp=/tmp/wp-<timestamp>` when re-baselining. This is a second, independent
+confound on the 358 baseline alongside ENOSPC and the `.env` divergence.
+
+---
+
+## Part 6 — R-15 PII guard default reconciliation (2026-08-31)
+
+The R-15 framing ("fail-open in prod; Layer 2 fail-closed") was **partly wrong**.
+Investigation (`src/security/privacy_guard.py`, full read) showed the Layer 2
+fail-closed `RuntimeError` in `_get_nlp_model()` is **unreachable dead code** — the
+gate returned at the old `:484` before Layer 2 loaded, so production was fail-open at
+*every* level. The real defect: a contradiction between two defaults (one dead) plus a
+**silent no-op** that abandons PII protection on misconfiguration.
+
+**Fix (three parts, all in `privacy_guard.py`):**
+1. Layer 2 (`_get_nlp_model`) now **consistently fail-open** — removed the dead prod
+   `RuntimeError`; degrades to Layer 1 when the model is absent.
+2. `check_trip_data` is **observable, not silent** — safe config (prod+SQL / beta) runs
+   a non-blocking Layer 1 `AUDIT` scan and logs findings (closes plan item 2.5).
+3. **Misconfiguration failsafe** — `production` + plaintext store (`file`/`json`) now
+   **fails closed** (blocks real PII), mirroring `TripStore._backend()`'s unsafe branch;
+   an unset backend is left to that module's own enforcement.
+
+**Posture matrix:** dogfood → fail-closed · prod+plaintext → fail-closed · prod+SQL/beta
+→ fail-open-but-audited. First-principles: the guard is the safety net for the *plaintext
+store*, not the production encryption boundary; it substitutes (fail-closed) only when that
+boundary is absent.
+
+**Tests:** new `tests/test_privacy_guard.py::TestR15ProductionDefaults` (7 tests) covering
+each posture; full file **55 passed**. `test_real_data_save_blocked` assertion updated from
+the old `"dogfood mode"` string to `"plaintext"`.
+
+**Evidence:** verified by read + test. **Self-correction:** initially repeated the
+"Layer 2 fail-closed" premise; call-graph read disproved it before implementing.
+
+**Full record:** `Docs/review/R-15_PII_GUARD_DEFAULT_2026-08-31.md`.

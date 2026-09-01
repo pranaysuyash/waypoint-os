@@ -1,0 +1,403 @@
+{
+  "path": "/insights",
+  "tokens": {
+    "--bg-canvas": "#0d1117",
+    "--bg-surface": "#161b22",
+    "--bg-elevated": "#1c2128",
+    "--bg-highlight": "#222833",
+    "--bg-input": "#0e1116",
+    "--bg-count-badge": "#30363d",
+    "--bg-rationale": "#0a0d12",
+    "--text-primary": "#e6edf3",
+    "--text-secondary": "#a8b3c1",
+    "--text-tertiary": "#8b949e",
+    "--text-muted": "#6e7681",
+    "--text-placeholder": "#484f58",
+    "--text-on-accent": "#0d1117",
+    "--text-rationale": "#c9d1d9",
+    "--accent-blue": "#58a6ff",
+    "--accent-blue-hover": "#79b8ff",
+    "--accent-blue-rgb": "88, 166, 255",
+    "--accent-green": "#3fb950",
+    "--accent-green-rgb": "63, 185, 80",
+    "--accent-amber": "#d29922",
+    "--accent-amber-rgb": "210, 153, 34",
+    "--accent-red": "#f85149",
+    "--accent-red-rgb": "248, 81, 73",
+    "--accent-purple": "#a371f7",
+    "--accent-purple-rgb": "163, 113, 247",
+    "--accent-cyan": "#39d0d8",
+    "--border-default": "#30363d",
+    "--border-hover": "#8b949e",
+    "--border-active": "#58a6ff",
+    "--space-1": "4px",
+    "--space-2": "8px",
+    "--space-3": "12px",
+    "--space-4": "16px",
+    "--space-5": "20px",
+    "--space-6": "24px",
+    "--space-8": "32px",
+    "--font-display": "\"Sora\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+    "--font-body": "\"Rubik\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+    "--font-code": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+    "--font-data": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+    "--text-xs": ".75rem",
+    "--text-sm": ".875rem",
+    "--text-base": "1rem",
+    "--text-lg": "1.125rem",
+    "--text-xl": "1.25rem",
+    "--text-2xl": "1.5rem",
+    "--ui-text-2xs": "10px",
+    "--ui-text-xs": "11px",
+    "--ui-text-sm": "12px",
+    "--ui-text-base": "13px",
+    "--ui-text-lg": "14px",
+    "--ui-text-xl": "16px",
+    "--ui-text-2xl": "18px",
+    "--ui-text-3xl": "24px",
+    "--ui-text-4xl": "32px",
+    "--radius-sm": "4px",
+    "--radius-md": "6px",
+    "--radius-lg": "8px"
+  },
+  "body": {
+    "background": "rgb(13, 17, 23)",
+    "backgroundImage": "none",
+    "color": "rgb(230, 237, 243)",
+    "fontFamily": "Rubik, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "14px",
+    "lineHeight": "22.4px"
+  },
+  "html": {
+    "background": "rgba(0, 0, 0, 0)",
+    "fontFamily": "ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+    "colorScheme": "dark"
+  },
+  "outline": [
+    {
+      "tag": "H1",
+      "text": "Insights & Analytics"
+    },
+    {
+      "tag": "H2",
+      "text": "Average Time to Complete"
+    },
+    {
+      "tag": "H2",
+      "text": "Stage Breakdown"
+    },
+    {
+      "tag": "H2",
+      "text": "Conversion Funnel"
+    },
+    {
+      "tag": "H3",
+      "text": "Stage Conversion Rates"
+    },
+    {
+      "tag": "H2",
+      "text": "Monthly Trend"
+    },
+    {
+      "tag": "H2",
+      "text": "Agent Performance Metrics"
+    },
+    {
+      "tag": "H3",
+      "text": "New User"
+    },
+    {
+      "tag": "H3",
+      "text": "Agent User"
+    },
+    {
+      "tag": "H2",
+      "text": "Team Performance"
+    },
+    {
+      "tag": "H2",
+      "text": "Bottleneck Analysis"
+    },
+    {
+      "tag": "H3",
+      "text": "Bottleneck: Feasibility & Decision"
+    }
+  ],
+  "nav": [
+    [
+      "New Inquiry",
+      "Overview",
+      "Lead Inbox",
+      "Quote Review",
+      "Trips in Planning",
+      "Quotes",
+      "Bookings",
+      "Documents",
+      "Payments",
+      "Suppliers",
+      "Insights",
+      "Audit",
+      "Knowledge Base",
+      "Settings",
+      "Seasonal Campaigns"
+    ],
+    [
+      "Overview",
+      "Lead Inbox",
+      "Quote Review",
+      "Trips in Planning",
+      "Quotes",
+      "Bookings",
+      "Documents",
+      "Payments",
+      "Suppliers",
+      "Insights",
+      "Audit",
+      "Knowledge Base",
+      "Settings",
+      "Seasonal Campaigns"
+    ],
+    [
+      "Waypoint OS"
+    ],
+    [
+      "Inbox",
+      "Trips",
+      "New",
+      "Docs",
+      "Settings"
+    ]
+  ],
+  "painted": {
+    "backgrounds": {
+      "rgb(22,27,34)": 22,
+      "rgb(15,17,21)": 19,
+      "rgb(88,166,255)": 8,
+      "rgb(13,17,23)": 3,
+      "rgb(28,33,40)": 2,
+      "rgb(63,185,80)": 2,
+      "rgba(88,166,255,0.2)": 2,
+      "rgba(210,153,34,0.05)": 1,
+      "rgba(210,153,34,0.2)": 1
+    },
+    "textColors": {
+      "rgb(230,237,243)": 76,
+      "rgb(139,148,158)": 58,
+      "rgb(110,118,129)": 21,
+      "rgb(63,185,80)": 5,
+      "rgb(88,166,255)": 5,
+      "rgb(72,79,88)": 2,
+      "rgb(248,81,73)": 2,
+      "rgb(48,54,61)": 1,
+      "rgb(255,255,255)": 1,
+      "rgb(210,153,34)": 1
+    },
+    "fonts": {
+      "Rubik": 163,
+      "JetBrains Mono": 9
+    },
+    "radii": {
+      "9999px": 31,
+      "6px": 16,
+      "12px": 12,
+      "8px": 10,
+      "4px": 9,
+      "2px": 1
+    }
+  },
+  "smells": {
+    "backdropFilterElements": 0,
+    "gradientElements": 1,
+    "glowShadowElements": 0,
+    "smilAnimationElements": 0,
+    "infiniteCssAnimations": [
+      {
+        "name": "pulse-dot",
+        "dur": "2s",
+        "iter": "infinite"
+      }
+    ]
+  },
+  "ctas": [
+    {
+      "text": "New Inquiry",
+      "bg": "rgb(28,33,40)",
+      "color": "rgb(230,237,243)",
+      "radius": "8px",
+      "h": 33
+    },
+    {
+      "text": "Overview",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Lead Inbox",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Quote Review",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Trips in Planning",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Quotes",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Bookings",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Documents",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Payments",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Suppliers",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Insights",
+      "bg": "rgb(28,33,40)",
+      "color": "rgb(230,237,243)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Audit",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Knowledge Base",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Settings",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "Seasonal Campaigns",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(110,118,129)",
+      "radius": "6px",
+      "h": 37
+    },
+    {
+      "text": "NU",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(230,237,243)",
+      "radius": "6px",
+      "h": 28
+    },
+    {
+      "text": "Export",
+      "bg": "rgb(22,27,34)",
+      "color": "rgb(230,237,243)",
+      "radius": "8px",
+      "h": 37
+    },
+    {
+      "text": "Conversion 0%",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(230,237,243)",
+      "radius": "4px",
+      "h": 48
+    },
+    {
+      "text": "Response N/A",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(230,237,243)",
+      "radius": "4px",
+      "h": 48
+    },
+    {
+      "text": "CSAT 4.5/5",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(230,237,243)",
+      "radius": "4px",
+      "h": 48
+    },
+    {
+      "text": "Workload 0%",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(230,237,243)",
+      "radius": "4px",
+      "h": 48
+    },
+    {
+      "text": "Conversion 0%",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(230,237,243)",
+      "radius": "4px",
+      "h": 48
+    },
+    {
+      "text": "Response N/A",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(230,237,243)",
+      "radius": "4px",
+      "h": 48
+    },
+    {
+      "text": "CSAT 4.5/5",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(230,237,243)",
+      "radius": "4px",
+      "h": 48
+    },
+    {
+      "text": "Workload 0%",
+      "bg": "rgba(0,0,0,0)",
+      "color": "rgb(230,237,243)",
+      "radius": "4px",
+      "h": 48
+    }
+  ],
+  "meta": {
+    "title": "Waypoint OS \u2014 Insights",
+    "url": "/insights",
+    "scrollH": 1471
+  }
+}

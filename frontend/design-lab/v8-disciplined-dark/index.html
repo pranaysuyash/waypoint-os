@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="en" data-theme="disciplined-dark" data-page-node-id="QvEaLW9NKQNBBi80mfmTlP">
+<head data-page-node-id="HduFs15DtJgDnLT6YheiWl">
+<meta charset="utf-8" data-page-node-id="yIMrtc392FL4UbeqrI9yj0">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="4qaXASZkEgnICyRDnHhfuy">
+<title>Waypoint OS — Quote-Ready Travel Requests</title>
+<meta name="description" content="Turn raw trip notes into quote-ready briefs. Waypoint reads the threads you already have and tells you exactly what's still missing." data-page-node-id="dllDEjCGRIcE9HZjCBMNsK">
+
+<!--
+  v8 "Disciplined Dark" — parallel build. Does NOT touch the live page.
+
+  Direction, and why: the running product is dark on 11/11 authenticated routes
+  (measured, see ../PROD_FINDINGS.md). The 2020s feel lives on the marketing page
+  ALONE — 55% of the app's gradients, 79% of its glow shadows, 100% of its
+  backdrop-filter and SMIL. So this build applies Theme B's RULES (no gradients,
+  no glass, no glow, 8px radius, no infinite motion, generous type) to Theme A's
+  PALETTE (the one actually shipping). Same visual language as the app, none of
+  the decoration.
+
+  Palette below is MEASURED from the live app's :root, not copied from DESIGN.md §2,
+  which has drifted on all five background tokens.
+
+  Content is grounded in strings the product actually renders:
+    "Trip details incomplete" · "Missing customer details" · "Suggested Follow-up"
+    routes: Lead Inbox · Quote Review · Trips in Planning · Bookings · Documents
+  No invented metrics. The epistemic tiers (FACT/INFERRED/ASSUMED/UNKNOWN) exist in
+  the backend but have NO UI, so this page does not claim them.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com" data-page-node-id="a8RD9Kq2bV5hpx4r8dI7co">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin data-page-node-id="aN1riDjpcBdadPEYUz0VTj">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Rubik:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" data-page-node-id="Shl6tCRYSH8yILSjFoIiET">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOKENS — measured from the running app (inspect-app-dna.py, 2026-08-31)
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  /* surfaces — LIVE values, not DESIGN.md §2 (see PROD_FINDINGS §3) */
+  --canvas:#0d1117;      /* §2 says #080a0c — drifted */
+  --surface:#161b22;     /* §2 says #0f1115 — drifted */
+  --elevated:#1c2128;    /* §2 says #161b22 — drifted */
+  --highlight:#222833;   /* §2 says #1c2128 — drifted */
+  --input:#0e1116;       /* §2 says #111318 — drifted */
+
+  /* text */
+  --ink:#e6edf3;         /* 14.6:1 on surface */
+  --ink-2:#a8b3c1;       /*  8.1:1 on surface */
+  --ink-3:#8b949e;       /*  5.6:1 on surface  <- lowest SAFE text tier */
+  --ink-none:#6e7681;    /*  3.8:1 on surface  <- NON-TEXT ONLY (icons, rules) */
+
+  /* accents — all >= 6.4:1 on --surface */
+  --blue:#58a6ff;
+  --blue-hi:#79b8ff;
+  --green:#3fb950;
+  --amber:#d29922;
+  --red:#f85149;
+  --cyan:#39d0d8;
+
+  /* borders */
+  --rule:#30363d;
+  --rule-hi:#8b949e;
+  --rule-active:#58a6ff;
+
+  /* accent washes — alpha over --surface. Accent text stays >= 4.5:1 on all. */
+  --wash-blue:rgba(88,166,255,.08);
+  --wash-green:rgba(63,185,80,.08);
+  --wash-amber:rgba(210,153,34,.10);
+  --wash-red:rgba(248,81,73,.08);
+  --wash-neutral:rgba(139,148,158,.08);
+
+  /* type — prod loads Sora + Rubik; §3's IBM Plex Sans is never loaded (0 elements) */
+  --display:"Sora",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  /* geometry — Theme B rule: one radius, no pills */
+  --r:8px;
+
+  /* elevation — Theme B rule: a single subtle layer. No glow. */
+  --shadow:0 2px 8px rgba(0,0,0,.4);
+
+  --shell:1100px;
+  --measure:800px;
+  --ease:cubic-bezier(.2,.6,.2,1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESET
+   ═══════════════════════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;
+  background:var(--canvas);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:18px;          /* marketing scale — live landing runs the app's 14px */
+  line-height:1.75;        /* §8.4 Theme B editorial */
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+h1,h2,h3,h4{margin:0;font-family:var(--display);font-weight:600;line-height:1.2;letter-spacing:-.02em}
+p{margin:0}
+ul,ol{margin:0;padding:0;list-style:none}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--rule-active);outline-offset:3px;border-radius:4px}
+::selection{background:rgba(88,166,255,.28);color:#fff}
+
+.shell{width:100%;max-width:var(--shell);margin-inline:auto;padding-inline:24px}
+.measure{max-width:var(--measure)}
+
+.skip{
+  position:absolute;left:-9999px;top:0;z-index:100;
+  background:var(--elevated);color:var(--ink);
+  padding:12px 20px;border:1px solid var(--rule);border-radius:var(--r);
+}
+.skip:focus{left:16px;top:16px}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER — solid, hairline, NO backdrop-filter. Replaces the one glass bar
+   that accounted for 100% of the app's blur.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.hdr{
+  position:sticky;top:0;z-index:50;
+  background:var(--canvas);
+  border-bottom:1px solid var(--rule);
+}
+.hdr__in{display:flex;align-items:center;gap:32px;height:64px}
+.brand{
+  font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:-.01em;
+  display:flex;align-items:center;gap:10px;white-space:nowrap;
+}
+.brand__mark{
+  width:20px;height:20px;border-radius:5px;
+  background:var(--blue);position:relative;flex:none;
+}
+.brand__mark::after{
+  content:"";position:absolute;inset:5px;border-radius:2px;
+  border:2px solid var(--canvas);
+}
+.hdr__nav{display:flex;gap:4px;margin-right:auto}
+.hdr__nav a{
+  padding:8px 12px;border-radius:var(--r);font-size:14px;color:var(--ink-3);
+  transition:color .15s var(--ease),background-color .15s var(--ease);
+}
+.hdr__nav a:hover{color:var(--ink);background:var(--wash-neutral)}
+.hdr__act{display:flex;align-items:center;gap:8px}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTONS — 8px, solid fills, no gradients, no pills
+   ═══════════════════════════════════════════════════════════════════════════ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  height:44px;padding:0 20px;border-radius:var(--r);
+  font-size:15px;font-weight:500;white-space:nowrap;
+  border:1px solid transparent;
+  transition:background-color .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease);
+}
+.btn--primary{background:var(--blue);color:#0d1117;font-weight:600}
+.btn--primary:hover{background:var(--blue-hi)}
+.btn--ghost{color:var(--ink-2)}
+.btn--ghost:hover{color:var(--ink);background:var(--wash-neutral)}
+.btn--outline{border-color:var(--rule);color:var(--ink);background:var(--surface)}
+.btn--outline:hover{border-color:var(--rule-hi);background:var(--elevated)}
+.btn--sm{height:36px;padding:0 14px;font-size:14px}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO
+   ═══════════════════════════════════════════════════════════════════════════ */
+.hero{position:relative;padding:96px 0 72px;overflow:hidden}
+.hero__art{
+  position:absolute;inset:0;pointer-events:none;
+  color:var(--rule);opacity:.34;
+  /* Fade is per-path stroke-opacity in the SVG, deliberately NOT a CSS mask-image
+     gradient — so the "zero gradients" invariant holds under a plain grep. */
+}
+.hero__art svg{width:100%;height:100%;display:block}
+.hero__in{position:relative}
+.eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:20px;
+}
+.hero h1{font-size:clamp(38px,5.4vw,62px);margin-bottom:24px;text-wrap:balance}
+.hero__lede{font-size:20px;color:var(--ink-2);max-width:640px;margin-bottom:36px;text-wrap:pretty}
+.hero__cta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.hero__note{font-size:14px;color:var(--ink-3)}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sec{padding:96px 0;border-top:1px solid var(--rule)}
+.sec__head{max-width:var(--measure);margin-bottom:56px}
+.sec__head h2{font-size:clamp(28px,3.4vw,40px);margin-bottom:16px;text-wrap:balance}
+.sec__head p{font-size:18px;color:var(--ink-2);text-wrap:pretty}
+
+/* ── specimen ───────────────────────────────────────────────────────────── */
+.card{
+  background:var(--surface);border:1px solid var(--rule);
+  border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;
+}
+.card__top{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:20px 24px;border-bottom:1px solid var(--rule);
+}
+.card__id{font-family:var(--mono);font-size:14px;font-weight:500}
+.card__sub{font-size:14px;color:var(--ink-3);margin-right:auto}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  height:24px;padding:0 10px;border-radius:var(--r);
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid transparent;
+}
+.chip--amber{background:var(--wash-amber);border-color:rgba(210,153,34,.3);color:var(--amber)}
+.chip--green{background:var(--wash-green);border-color:rgba(63,185,80,.3);color:var(--green)}
+.chip--blue{background:var(--wash-blue);border-color:rgba(88,166,255,.3);color:var(--blue)}
+.chip--red{background:var(--wash-red);border-color:rgba(248,81,73,.3);color:var(--red)}
+
+.block{padding:24px}
+.block + .block{border-top:1px solid var(--rule)}
+.block__label{
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:16px;display:flex;align-items:center;gap:10px;
+}
+.block__count{
+  background:var(--wash-neutral);color:var(--ink-2);
+  border-radius:var(--r);padding:1px 7px;font-size:11px;
+}
+
+.src{display:grid;grid-template-columns:112px 1fr;gap:14px;padding:12px 0}
+.src + .src{border-top:1px solid var(--rule)}
+.src__meta{display:flex;flex-direction:column;gap:2px}
+.src__ch{font-size:13px;color:var(--ink-2);font-weight:500}
+.src__t{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.src__txt{font-size:15px;color:var(--ink-2);line-height:1.6}
+.src__txt b{color:var(--ink);font-weight:500}
+
+/* accordion */
+.gap{border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.gap + .gap{margin-top:8px}
+.gap__btn{
+  width:100%;display:flex;align-items:center;gap:12px;
+  padding:14px 16px;text-align:left;
+  transition:background-color .15s var(--ease);
+}
+.gap__btn:hover{background:var(--wash-neutral)}
+.gap__btn[aria-expanded="true"]{background:var(--wash-neutral)}
+.gap__name{font-size:15px;font-weight:500;color:var(--ink);margin-right:auto}
+/* Non-text. --ink-none is 3.8:1 on --surface: fine for an icon (needs 3:1),
+   NOT fine for text (needs 4.5:1). verify.mjs enforces that distinction. */
+.gap__chev{flex:none;color:var(--ink-none);transition:transform .2s var(--ease)}
+.gap__btn[aria-expanded="true"] .gap__chev{transform:rotate(90deg)}
+.gap__panel{padding:0 16px 16px 44px;border-top:1px solid var(--rule);margin-top:0;padding-top:14px}
+.gap__panel[hidden]{display:none}
+.gap__q{font-size:14px;color:var(--ink-2);margin-bottom:12px}
+.gap__q em{color:var(--ink);font-style:normal;font-weight:500}
+.gap__row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+.copy{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;
+  border:1px solid var(--rule);border-radius:var(--r);
+  font-size:13px;color:var(--ink-2);
+  transition:border-color .15s var(--ease),color .15s var(--ease),background-color .15s var(--ease);
+}
+.copy:hover{border-color:var(--rule-hi);color:var(--ink);background:var(--wash-neutral)}
+.copy[data-done="1"]{border-color:rgba(63,185,80,.4);color:var(--green)}
+
+.prog{display:flex;align-items:center;gap:14px;padding:16px 24px;border-top:1px solid var(--rule);background:var(--elevated)}
+.prog__bar{flex:1;height:4px;background:var(--highlight);border-radius:2px;overflow:hidden}
+.prog__fill{height:100%;background:var(--green);border-radius:2px;width:55.6%} /* 5/9 */
+.prog__txt{font-family:var(--mono);font-size:12px;color:var(--ink-3);white-space:nowrap}
+
+/* ── three columns ──────────────────────────────────────────────────────── */
+.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.card--plain{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:28px}
+.card--plain h3{font-size:19px;margin-bottom:10px}
+.card--plain p{font-size:16px;color:var(--ink-2);line-height:1.7}
+.num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:var(--r);
+  background:var(--wash-blue);color:var(--blue);
+  font-family:var(--mono);font-size:13px;font-weight:500;margin-bottom:16px;
+}
+
+/* ── steps ──────────────────────────────────────────────────────────────── */
+.steps{border-top:1px solid var(--rule)}
+.step{
+  display:grid;grid-template-columns:64px 260px 1fr;gap:24px;align-items:start;
+  padding:28px 0;border-bottom:1px solid var(--rule);
+}
+.step__n{font-family:var(--mono);font-size:13px;color:var(--ink-3);padding-top:4px}
+.step__t{font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:-.01em}
+.step__t span{display:block;font-family:var(--mono);font-size:12px;font-weight:400;color:var(--ink-3);margin-top:6px;letter-spacing:0}
+.step__d{font-size:16px;color:var(--ink-2);line-height:1.7}
+
+/* ── fit ────────────────────────────────────────────────────────────────── */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.fit{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:28px}
+.fit h3{font-size:17px;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.fit__dot{width:8px;height:8px;border-radius:2px;flex:none}
+.fit li{position:relative;padding-left:24px;font-size:16px;color:var(--ink-2);line-height:1.65}
+.fit li + li{margin-top:12px}
+.fit li::before{
+  content:"";position:absolute;left:0;top:11px;
+  width:10px;height:1px;background:var(--rule-hi);
+}
+
+/* ── close ──────────────────────────────────────────────────────────────── */
+.close{text-align:left}
+.close h2{font-size:clamp(28px,3.4vw,40px);margin-bottom:16px;text-wrap:balance}
+.close p{font-size:18px;color:var(--ink-2);margin-bottom:32px;max-width:600px}
+
+/* ── footer ─────────────────────────────────────────────────────────────── */
+.ft{border-top:1px solid var(--rule);padding:48px 0;margin-top:0}
+.ft__in{display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start}
+.ft__brand{margin-right:auto;max-width:280px}
+.ft__brand p{font-size:14px;color:var(--ink-3);margin-top:12px;line-height:1.6}
+.ft__col h3{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px;font-weight:500}
+.ft__col li + li{margin-top:10px}
+.ft__col a{font-size:14px;color:var(--ink-2)}
+.ft__col a:hover{color:var(--ink)}
+.ft__bar{
+  margin-top:40px;padding-top:24px;border-top:1px solid var(--rule);
+  display:flex;gap:16px;flex-wrap:wrap;
+  font-size:13px;color:var(--ink-3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOTION — Theme B rule: no infinite animations. One-shot reveals only,
+   gated by IntersectionObserver, unobserved after firing, torn down on pagehide.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.reveal{opacity:0;transform:translateY(8px)}
+.reveal.is-in{
+  opacity:1;transform:none;
+  transition:opacity .2s var(--ease),transform .2s var(--ease);
+}
+@media (prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .reveal.is-in{transition:none}
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width:1000px){
+  .cols3{grid-template-columns:1fr}
+  .cols2{grid-template-columns:1fr}
+  .step{grid-template-columns:48px 1fr;gap:16px}
+  .step__d{grid-column:2}
+  .hero{padding:64px 0 48px}
+  .sec{padding:64px 0}
+}
+@media (max-width:720px){
+  .hdr__nav{display:none}
+  .hdr__act .btn--ghost{display:none}
+  body{font-size:17px}
+  .src{grid-template-columns:1fr;gap:6px}
+  .src__meta{flex-direction:row;gap:10px;align-items:baseline}
+  .gap__panel{padding-left:16px}
+}
+</style>
+</head>
+
+<body data-page-node-id="BasK51m1IdMWYEaB7DCdhn">
+<a class="skip" href="#main" data-page-node-id="GHugv9UETvylyBC4QmNtP2">Skip to content</a>
+
+<header class="hdr" data-page-node-id="3seqo6mV6iBEYk2b919w6s">
+  <div class="shell hdr__in" data-page-node-id="aZFGBOxGEZsyOuDeNHX3mm">
+    <a class="brand" href="#main" aria-label="Waypoint OS, home" data-page-node-id="GBz3wA24WLDmH88fPmfsRl">
+      <span class="brand__mark" aria-hidden="true" data-page-node-id="fcQUbhLma6H7wD2cDLrMiD"></span>Waypoint OS
+    </a>
+    <nav class="hdr__nav" aria-label="Primary" data-page-node-id="hFdFB9f7xczmAUxpZyyeTU">
+      <a href="#specimen" data-page-node-id="SNhHCxockfJsh0vUKoFT8j">Product</a>
+      <a href="#flow" data-page-node-id="EuHk8j2cz46aTexoAWMqDH">Workflow</a>
+      <a href="#fit" data-page-node-id="ZGXwZqHVWg4i8b5o0Wb6wN">For agencies</a>
+      <a href="#pricing" data-page-node-id="x7sJVitzVp8JUiIyGw1Ow1">Pricing</a>
+    </nav>
+    <div class="hdr__act" data-page-node-id="Jy9Fv3aojOhDyshmjDApyU">
+      <a class="btn btn--ghost btn--sm" href="#signin" data-page-node-id="2PVxWKZdezTVFLbRLBh9Pa">Sign in</a>
+      <a class="btn btn--primary btn--sm" href="#create" data-page-node-id="QTgX0roEQ0XjmKuKPqaWaH">Create workspace</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" data-page-node-id="YNIqTBdQBZDtUQWQKV8Hou">
+
+  <!-- ══ HERO ══════════════════════════════════════════════════════════ -->
+  <section class="hero" data-page-node-id="HnkfDIuwXBoZGDuEqhERsk">
+    <!-- 1px geometric line art, drawn once, no animation. Stands in for the
+         4 radial glow blobs + 92px grid overlay that DOMINATED the old hero. -->
+    <div class="hero__art" aria-hidden="true" data-page-node-id="6pzbnNBF19e8hDafZzqSlC">
+      <svg viewBox="0 0 1200 620" preserveAspectRatio="xMidYMid slice" fill="none" data-page-node-id="evPWX71eZJHF79g07Rmok2">
+        <g stroke="currentColor" stroke-width="1" data-page-node-id="UiJUnUT5PRUrbtsXTb0DI7">
+          <path stroke-opacity=".9"  d="M-40 120 C 220 60, 420 190, 640 130 S 1040 40, 1260 96" data-page-node-id="TFjeQl2jSpwFDRyIM3B52r"/>
+          <path stroke-opacity=".7"  d="M-40 200 C 240 150, 460 268, 680 210 S 1060 128, 1260 178" data-page-node-id="6H2JGsfHefM5NyrnU0VneF"/>
+          <path stroke-opacity=".5"  d="M-40 286 C 260 244, 500 350, 720 300 S 1080 224, 1260 266" data-page-node-id="j2kcRBJodHHDubJoFhjIni"/>
+          <path stroke-opacity=".32" d="M-40 372 C 280 340, 540 430, 760 388 S 1100 322, 1260 356" data-page-node-id="RkO2CgaOMF7TCHcFs4H1mX"/>
+          <path stroke-opacity=".18" d="M-40 458 C 300 436, 580 508, 800 476 S 1120 420, 1260 446" data-page-node-id="Rc8iGBb3GEN2QO4Z74qDcC"/>
+          <path stroke-opacity=".9"  d="M120 620 L 300 300 L 520 420 L 760 200 L 980 340 L 1140 250" data-page-node-id="cNKkhcsAs3Rhfh8RPz03CH"/>
+        </g>
+        <g fill="currentColor" data-page-node-id="tGoOgqdZXPQNPzxvPwnDJw">
+          <circle cx="300" cy="300" r="3.5" fill-opacity=".5" data-page-node-id="qmE7ypCQDHNDTRClWlRs1B"/>
+          <circle cx="760" cy="200" r="3.5" fill-opacity=".7" data-page-node-id="jiBGyw34QJkbKnP09xO6f2"/>
+          <circle cx="1140" cy="250" r="3.5" fill-opacity=".6" data-page-node-id="x94frcdwoq61H1E4M4HdjP"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="shell hero__in" data-page-node-id="aEFlZOHIsut4OcGMiELK9C">
+      <div class="measure" data-page-node-id="NdcBhHMdF13DVyVTSD3CgO">
+        <p class="eyebrow" data-page-node-id="1w8EsyJhMfSw4evROKiL0c">For boutique travel agencies</p>
+        <h1 data-page-node-id="vuawHkamdETgDPxIlLUOz9">Turn raw trip notes into quote-ready briefs.</h1>
+        <p class="hero__lede" data-page-node-id="VaFQz7sBpSwbk7rciuAPBr">
+          Requests arrive as WhatsApp threads, forwarded PDFs and half-remembered
+          phone calls. Waypoint reads what you already have, then tells you
+          precisely which fields are still missing — and the question to ask to
+          fill each one.
+        </p>
+        <div class="hero__cta" data-page-node-id="81tKYqRqrp4ZIGUCzIoEVl">
+          <a class="btn btn--primary" href="#create" data-page-node-id="qZL7pcRH7Vo2uBiXFfwF3U">Create workspace</a>
+          <a class="btn btn--outline" href="#specimen" data-page-node-id="6ERWUD58dGRDNh3JWcxxDB">See how it works</a>
+        </div>
+        <p class="hero__note" data-page-node-id="hg7OrF46PmXyKEfbVUBxHz">No credit card. Bring the threads you already have.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ SPECIMEN — the real intake surface ═════════════════════════════ -->
+  <!-- Every label here is a string the running product actually renders:
+       "Trip details incomplete", "Missing customer details",
+       "Suggested Follow-up". Nothing invented. -->
+  <section class="sec" id="specimen" style="border-top:0;padding-top:0" data-page-node-id="b8Pz1FHqCIcU12tGoigKAz">
+    <div class="shell" data-page-node-id="Nj7tTzj368G6jr6LBzYJDx">
+      <div class="card reveal" data-page-node-id="sf2PU3WgCmca1ok9PaiJIk">
+        <div class="card__top" data-page-node-id="ChcMbQDgDajM3UwcwjBUC6">
+          <span class="card__id" data-page-node-id="WnjjGHglOLkAmVYpiUmlCe">WP-2291</span>
+          <span class="card__sub" data-page-node-id="pCGvWBdDTVSj5SuUsfa9WT">Anniversary · Kerala</span>
+          <span class="chip chip--amber" data-page-node-id="apLtpfLZyoG49x7BoK3Is0">Trip details incomplete</span>
+        </div>
+
+        <!-- sources -->
+        <div class="block" data-page-node-id="KMHY8BN0WOT6Z5cu8Ocip0">
+          <div class="block__label" data-page-node-id="WHlLQEqsKXJuuDH2I0mujW">Sources <span class="block__count" data-page-node-id="PTzxsVBDHLhbHGaxwEnIyr">3</span></div>
+          <div class="src" data-page-node-id="W9Qo0CWHLduE01sWHF6cBG">
+            <div class="src__meta" data-page-node-id="9zdVIE6YUUyznqZc9m1OP4">
+              <span class="src__ch" data-page-node-id="XjUpcSA9EzBmdL9Sw2ZEae">WhatsApp</span>
+              <span class="src__t" data-page-node-id="QIuAsVJpoXFVSZr233jDMa">09:14</span>
+            </div>
+            <p class="src__txt" data-page-node-id="BPHH1LH4Tk2VmPahy3nvnW">
+              “Kerala backwaters for our anniversary — second week of March, we’d fly
+              from <b data-page-node-id="s3DXMUW4tCIpVj8W54nRBU">Mumbai</b>. Same kind of place we stayed last time.”
+            </p>
+          </div>
+          <div class="src" data-page-node-id="z88h1HobNNofArEnlyYkDu">
+            <div class="src__meta" data-page-node-id="UFHuManxixUpEEY0ewUa8T">
+              <span class="src__ch" data-page-node-id="CwLh48b1jb4FuQP3ODNjPo">Email</span>
+              <span class="src__t" data-page-node-id="3CMUCBObObwOREeASseWJW">11:02</span>
+            </div>
+            <p class="src__txt" data-page-node-id="IJIEMtmf57EVAGckt7kHrP">
+              Forwarded a 2024 itinerary — <b data-page-node-id="HvAml1fL2701G2DdOwAoc3">kumarakom-4n.pdf</b>. “Something like
+              this but three nights instead of four.”
+            </p>
+          </div>
+          <div class="src" data-page-node-id="xDVH2Fv96miOQxbfG2APqp">
+            <div class="src__meta" data-page-node-id="ZmzIvAqZCG3WFVJPykHBMa">
+              <span class="src__ch" data-page-node-id="XJMYlpohSIxsNknAFeCsXj">Call note</span>
+              <span class="src__t" data-page-node-id="OYbNnsFDiFWOR2kWIcypNe">14:30</span>
+            </div>
+            <p class="src__txt" data-page-node-id="Bri5B6Cze1DceWnJVZ7JLX">
+              <b data-page-node-id="AOfX2JvYuprt47FtCkVRFg">Vegetarian.</b> Mentioned on the phone — it never came up in writing
+              anywhere.
+            </p>
+          </div>
+        </div>
+
+        <!-- gaps -->
+        <div class="block" data-page-node-id="1FlfUT1pv8ASNdJ8rXE6NP">
+          <div class="block__label" data-page-node-id="6lDUbI1pM4XPXEPYcUlPqt">Missing customer details <span class="block__count" data-page-node-id="RK0Jk3u6YwXAZe6mE699aB">4</span></div>
+          <div id="gaps" data-page-node-id="D7M7GJccBwruHAWpYBJeqB">
+            <div class="gap" data-page-node-id="H31ip880rycvpBVTwiJY5N">
+              <button class="gap__btn" aria-expanded="false" aria-controls="g1" data-page-node-id="CFhWCxFOfd74pY8zg05xia">
+                <svg class="gap__chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" data-page-node-id="Hf2eZqS416g2dAOdiufce5">
+                  <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="vsSDb2cVNUcfkOWy26yaXp"/>
+                </svg>
+                <span class="gap__name" data-page-node-id="97GnbJ4AyjLdXfVBDoCQeO">Return date</span>
+                <span class="chip chip--red" data-page-node-id="MemiMRiZXJ2eaADF8wKJ5y">Blocking</span>
+              </button>
+              <div class="gap__panel" id="g1" hidden data-page-node-id="fIkPeYQEHSAJPj4OBa2WeR">
+                <p class="gap__q" data-page-node-id="8LZFS2ysZgQOEudZngheyU">Suggested follow-up — <em data-page-node-id="lduVZGCb4rF2PTtS2dI2E5">“Arriving 8 March. What date works for flying back to Mumbai?”</em></p>
+                <div class="gap__row" data-page-node-id="FQLBef9RdfqFuov0p0FXNZ">
+                  <button class="copy" data-copy="Arriving 8 March. What date works for flying back to Mumbai?" data-page-node-id="X7uTb9ZSjnWBq5W2wi3MOI">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="UZlhxBMGbMWo1PoFCeIobt">
+                      <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3" data-page-node-id="FA91XOBSuWZvAvLaHfjyVR"/>
+                      <path d="M10.5 3.5H4A1.5 1.5 0 002.5 5v6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" data-page-node-id="AchbdwMF3NmVysiARx277P"/>
+                    </svg>
+                    <span data-page-node-id="7CuvT62ADIvWSYBQwoWpGD">Copy question</span>
+                  </button>
+                  <span style="font-size:13px;color:var(--ink-3)" data-page-node-id="l7GX2esMx0Dass7dYf8cNJ">Can’t quote flights or hotel nights without it.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="gap" data-page-node-id="at7wq1LpPa4loUymtMPQej">
+              <button class="gap__btn" aria-expanded="false" aria-controls="g2" data-page-node-id="S6CM0WfNjWk5HJavGojUZF">
+                <svg class="gap__chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" data-page-node-id="Pnypm3O6X8sly4as7DO1xC">
+                  <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="i9s0wV3nhvdBh6zUQHHd3X"/>
+                </svg>
+                <span class="gap__name" data-page-node-id="dd0X9DJGvIr0nhOW4aVxAx">Passenger count</span>
+                <span class="chip chip--red" data-page-node-id="ktjt1OyMUiCKJDa8dA524l">Blocking</span>
+              </button>
+              <div class="gap__panel" id="g2" hidden data-page-node-id="2oHrIEFyRtm1lp3qOOi4ru">
+                <p class="gap__q" data-page-node-id="H7bAgf0OwbgtXC3AG8dY1D">Suggested follow-up — <em data-page-node-id="btZYJXNdCTlOpuC5q2sjiU">“Just the two of you, or is anyone else joining?”</em></p>
+                <div class="gap__row" data-page-node-id="CTY0p5gScVwHK8UyRqeOKM">
+                  <button class="copy" data-copy="Just the two of you, or is anyone else joining?" data-page-node-id="mjyieXgvBxZHFadDpPlFfG">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="OyhRuvMtqAgd5ZREpBF0oq">
+                      <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3" data-page-node-id="a03n9VRxsF6fOkUS3wEyvN"/>
+                      <path d="M10.5 3.5H4A1.5 1.5 0 002.5 5v6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" data-page-node-id="ncegcMVeDfv94IFvhROya6"/>
+                    </svg>
+                    <span data-page-node-id="8HgYVNNQb6AIZB73Q0lZN9">Copy question</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="gap" data-page-node-id="RVcKmVWUxg9svMUIGEzTFb">
+              <button class="gap__btn" aria-expanded="false" aria-controls="g3" data-page-node-id="CZyxBZaeAvA8ldusUVCCXO">
+                <svg class="gap__chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" data-page-node-id="IMbqcT1hKqr8gtnwKsEpLx">
+                  <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="Z3DsZWevpORmsuiB4vCqxL"/>
+                </svg>
+                <span class="gap__name" data-page-node-id="ZuHEB0U12Em3fhzalzkYHh">Budget range</span>
+                <span class="chip chip--amber" data-page-node-id="jEBVnbNY9UH7imPII1vpt0">Needed to quote</span>
+              </button>
+              <div class="gap__panel" id="g3" hidden data-page-node-id="Es5oNOVGzB9COj1wJNHtt8">
+                <p class="gap__q" data-page-node-id="N7rDCGKIJGw1aD4g1h5tLB">Suggested follow-up — <em data-page-node-id="yMCx4uDrxFGfp5GAbexBo9">“To pitch the right properties — should I work to around ₹1.8L, or is there room above that?”</em></p>
+                <div class="gap__row" data-page-node-id="g8XemlwzPHB6Dfet6eQ54G">
+                  <button class="copy" data-copy="To pitch the right properties — should I work to around ₹1.8L, or is there room above that?" data-page-node-id="2AAFeIRf9dfzmKn1smpHpI">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="8qHK5ZNfbNP4kyf7iPemFj">
+                      <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3" data-page-node-id="eEKsTINZef2r2tS0GELkiO"/>
+                      <path d="M10.5 3.5H4A1.5 1.5 0 002.5 5v6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" data-page-node-id="4hxYA4sphlgAa3XE4NclAq"/>
+                    </svg>
+                    <span data-page-node-id="j8V7KlIMssJEIOMEmyJFth">Copy question</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="gap" data-page-node-id="XdVVhibL7FdccQSpSMExqC">
+              <button class="gap__btn" aria-expanded="false" aria-controls="g4" data-page-node-id="gKX7Af1foktMH4LkbULokS">
+                <svg class="gap__chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" data-page-node-id="o32wGmMMCHwNxSFNpTjGut">
+                  <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="oRpnbvSzqw1CvsnQKTKpX8"/>
+                </svg>
+                <span class="gap__name" data-page-node-id="KyWJKnAtB2psozAjgWGWU3">Dietary requirements</span>
+                <span class="chip chip--green" data-page-node-id="lqLMksrffHtMwEeofwZlHa">Captured on call</span>
+              </button>
+              <div class="gap__panel" id="g4" hidden data-page-node-id="irivDBfGUXAfdcDOBhljSk">
+                <p class="gap__q" data-page-node-id="NmrxhTAAyfp0Ay47WZQJlD">Captured from the <em data-page-node-id="dxZZ8UpCnDyGteqDzBk5yO">call note at 14:30</em> — it appears in no written message. Confirm before it reaches a supplier.</p>
+                <div class="gap__row" data-page-node-id="vM5baPmplhNHpHvhrTzfOf">
+                  <button class="copy" data-copy="Confirming — vegetarian for both travellers, is that right? I'll pass it to the properties." data-page-node-id="2bfr1s1YgGtLmnS5lVm9qM">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="SBVptgm4rbCrJeRn2zGNPx">
+                      <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3" data-page-node-id="POGvWy3E7tErGydttW14Ym"/>
+                      <path d="M10.5 3.5H4A1.5 1.5 0 002.5 5v6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" data-page-node-id="IDu8y63sM5HH5psIwGjnzO"/>
+                    </svg>
+                    <span data-page-node-id="Cpkp6p4XHTkkH065xpSVI9">Copy question</span>
+                  </button>
+                  <span style="font-size:13px;color:var(--ink-3)" data-page-node-id="JfF0ScH7ElBf6tfZYDEWLd">Only in the call note — nothing in writing.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prog" data-page-node-id="RiwJvUaXBpH1CCOViHK5Gm">
+          <div class="prog__bar" role="img" aria-label="5 of 9 fields complete" data-page-node-id="aVkHSL3OBdbKAGPTvkCV3a">
+            <div class="prog__fill" data-page-node-id="O4As7UUQc7mCnVnUMcAN7a"></div>
+          </div>
+          <span class="prog__txt" data-page-node-id="L2FvMHOJe5jQCEW1EV1Wvy">5 of 9 fields complete</span>
+        </div>
+      </div>
+
+      <p style="margin-top:16px;font-size:14px;color:var(--ink-3);max-width:var(--measure)" data-page-node-id="kemiyGI50mhXtI8hnGBzTA">
+        The intake surface above is Waypoint’s — those are the labels it ships with.
+        Expand a row to see the follow-up it drafts.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══ PROBLEM ═══════════════════════════════════════════════════════ -->
+  <section class="sec" id="problem" data-page-node-id="ABbCTb55nxng9bsEyzQvhR">
+    <div class="shell" data-page-node-id="EDzTb5ndDl2CCX8qqvuq0Z">
+      <div class="sec__head reveal" data-page-node-id="DgGs1jXdDRZ2zxzXb8LTwP">
+        <h2 data-page-node-id="GuyUUonylzUZm57Qomv8BL">Not a prettier CRM. A faster intake and quoting surface.</h2>
+        <p data-page-node-id="NKvwnAQRuDy7nRSsXMCEmn">
+          Most tools ask you to re-type what the client already sent. Waypoint reads
+          the threads you have, marks what’s genuinely missing, and hands quoting a
+          brief instead of a transcript.
+        </p>
+      </div>
+      <div class="cols3" data-page-node-id="XHnG0359lSwlAjWXvFMohE">
+        <div class="card--plain reveal" data-page-node-id="QJMn7CPH50GxTcH4SdvPYy">
+          <span class="num" data-page-node-id="h7fr42aJcloC4DxKzMEwSg">01</span>
+          <h3 data-page-node-id="py7oYiiaSAHWOBwRMQ4181">Reads what you already have</h3>
+          <p data-page-node-id="uoO9y87ApA0jGaiTCHT33p">WhatsApp threads, forwarded PDFs, call notes. No re-typing, no copy-paste between windows.</p>
+        </div>
+        <div class="card--plain reveal" data-page-node-id="TQtAbWPgY4gDvjp34O3mze">
+          <span class="num" data-page-node-id="Z6YBVIZycAiX9MZiRGsCRA">02</span>
+          <h3 data-page-node-id="eQkFPSbQXhFeJahf7meOzD">Names what’s missing</h3>
+          <p data-page-node-id="F9gEKMfrOyryRFV67B2GsA">Every incomplete field, ranked by whether it actually blocks the quote — with the question to ask.</p>
+        </div>
+        <div class="card--plain reveal" data-page-node-id="Ux586skG1ILjO3hFHZXuBh">
+          <span class="num" data-page-node-id="59EgMSyEUM5bDc2ze2P56X">03</span>
+          <h3 data-page-node-id="ucwtmIyBMelEbxtfAvVG5Y">Hands over a clean brief</h3>
+          <p data-page-node-id="XN6Qomrx98uiegTnYEqj6g">Quoting starts from a structured request, not a scroll-back through eleven messages.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FLOW — route names are the product's real ones ════════════════ -->
+  <section class="sec" id="flow" data-page-node-id="9ZBoRkgOheVgD1BUaWTHQE">
+    <div class="shell" data-page-node-id="cSBGJgrUHalqtiMVcQyWoE">
+      <div class="sec__head reveal" data-page-node-id="9nvSzvT6D1MZnsF5YYxOF7">
+        <h2 data-page-node-id="6H9oPRbP6XuQYK98nZ6qMx">Less copy-paste. More quoting.</h2>
+        <p data-page-node-id="EOlFPdn5I4XAdp6XRcVRu9">Four surfaces, in the order your team already works.</p>
+      </div>
+      <ol class="steps" data-page-node-id="wuvGEhMNNBUubPhCMCjTd7">
+        <li class="step reveal" data-page-node-id="ShFoFR6lI9fUY8xlILD9L4">
+          <span class="step__n" data-page-node-id="Azr5Nnvvf5rvkBWlpGRV6a">01</span>
+          <span class="step__t" data-page-node-id="ZxRPr98RNamtEjGRGj5ehu">Lead Inbox<span data-page-node-id="3EbeazUuINuzM2HvDyBojR">route: /inbox</span></span>
+          <p class="step__d" data-page-node-id="LKz43yLOfqjU5LBXEwoNER">Threads land and get attached to a trip. Nothing gets lost in a personal phone.</p>
+        </li>
+        <li class="step reveal" data-page-node-id="WAJFNpzChhBeVe5tnpVJ1W">
+          <span class="step__n" data-page-node-id="HHAuAYvZfBym4cupmECdaC">02</span>
+          <span class="step__t" data-page-node-id="ZcGzyHzzRT8CQYHJihQdxl">Intake<span data-page-node-id="wjeQJs0nO8j8A4eufAgfqg">“Missing customer details” · “Suggested Follow-up”</span></span>
+          <p class="step__d" data-page-node-id="OgmQ6wHIc7h9aSivFLzjv9">Waypoint lists every field still empty and drafts the follow-up for each one. You copy, send, done.</p>
+        </li>
+        <li class="step reveal" data-page-node-id="Z5JikYwolVdchC1wqsB82c">
+          <span class="step__n" data-page-node-id="mDv3d4SFHRVOACthiwtVvB">03</span>
+          <span class="step__t" data-page-node-id="Cln9bu9OVRxqVCkqmb1dOI">Quote Review<span data-page-node-id="fBK9EJrepW2EznCuhr8AlH">route: /quotes</span></span>
+          <p class="step__d" data-page-node-id="cA5BKgZsWeJiK1fBl9FDbn">Quote from a complete brief. No more asking the client twice for the same date.</p>
+        </li>
+        <li class="step reveal" data-page-node-id="oosCQCjtvdPgj5Kg1vYxWE">
+          <span class="step__n" data-page-node-id="GeylLIipriGQHqrqsTKR7P">04</span>
+          <span class="step__t" data-page-node-id="tX4RRyXx8RpN44RFHD2AqB">Bookings &amp; Documents<span data-page-node-id="owSYwK0ae3Fu6PHsEtoHEl">routes: /bookings · /documents</span></span>
+          <p class="step__d" data-page-node-id="uufKPm8msWyz4z82exJXB4">Confirmed details carry forward — the client never re-answers a question they already answered.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ══ FIT ═══════════════════════════════════════════════════════════ -->
+  <section class="sec" id="fit" data-page-node-id="FZGAeHTTtQfvRq9xLRb2Br">
+    <div class="shell" data-page-node-id="rD0PQj7hYmHNFsjBiS6Hjx">
+      <div class="sec__head reveal" data-page-node-id="M2TXzXZm9oBYJzrdyZksUl">
+        <h2 data-page-node-id="zHfFhwg6rpBAeS9VG8HS9C">Where it fits</h2>
+        <p data-page-node-id="xSWsh8ghldHeMCZzEBt1R9">Being specific here saves us both time.</p>
+      </div>
+      <div class="cols2" data-page-node-id="WyT19yGOEiEAz5UFy9v7Md">
+        <div class="fit reveal" data-page-node-id="qTANWmSBLTyn4rCDNTzEin">
+          <h3 data-page-node-id="Suxr626u3zEvodEVpaCfGV"><span class="fit__dot" style="background:var(--green)" data-page-node-id="58HmreHcCo73xqd1lIzXe0"></span>A good fit if</h3>
+          <ul data-page-node-id="wHZrT4Az2QDaQ56iWgvV2m">
+            <li data-page-node-id="VxmHUph2DWpUOuO01WmRbF">You run a boutique or specialist agency, not a call centre.</li>
+            <li data-page-node-id="778nTOpKHuRc2bLwPD9ZdE">Requests arrive as messy threads across WhatsApp, email and calls.</li>
+            <li data-page-node-id="cmGKuV6B0sKaVWzWTHeKgB">Two to twenty people need the same context on the same trip.</li>
+            <li data-page-node-id="8OwWKkaoXIYg8LcEfYJZZF">You re-type the same details into proposals, supplier emails and vouchers.</li>
+          </ul>
+        </div>
+        <div class="fit reveal" data-page-node-id="ULTivOMGYrkEjhkONUsDzl">
+          <h3 data-page-node-id="mB9CpJ7L6PptGdTnzh1kDY"><span class="fit__dot" style="background:var(--amber)" data-page-node-id="PvgZhhDRdGnUF6DOWxgfEe"></span>Not a good fit if</h3>
+          <ul data-page-node-id="3GURCrhIIPJOQxrF2W67XD">
+            <li data-page-node-id="xW19too7lGQaldPr6lhYAp">You need a consumer-facing booking engine.</li>
+            <li data-page-node-id="l7cgTCC1Hilfgn8OE1touC">You want a CRM-first pipeline with marketing automation attached.</li>
+            <li data-page-node-id="5ndqquhBFypOAsFFfQMOG6">Your requests already arrive structured and complete.</li>
+            <li data-page-node-id="EVmGqAsD3LmYWzIlqYoUcF">You’re looking for an AI that quotes on your behalf without review.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ CLOSE ═════════════════════════════════════════════════════════ -->
+  <section class="sec close" id="pricing" data-page-node-id="fT6AFYIH2c57jDYdGNJAcS">
+    <div class="shell" data-page-node-id="S1iAOBlPcpGeyasVVUeLsR">
+      <div class="measure reveal" data-page-node-id="Cm6ozLEPiFWi5rjZtiwv3A">
+        <h2 data-page-node-id="FJgjONap28qenpJCKaw93h">See how it turns messy requests into clean quotes.</h2>
+        <p data-page-node-id="P7dLJiskzFryaTS4Z6vZ0d">Bring one real enquiry — the messier the better — and watch it come out the other side.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap" data-page-node-id="IPVu85lBGKtE8ICNMPbHF4">
+          <a class="btn btn--primary" href="#create" data-page-node-id="NhQAjywGp9PfwPMPtulgQq">Create workspace</a>
+          <a class="btn btn--outline" href="#specimen" data-page-node-id="zbrGfFV8ysLkJFs17ShAtB">See the intake surface</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="ft" data-page-node-id="fm81XQLJZV6fm3y8gRHQK6">
+  <div class="shell" data-page-node-id="kwwoAAbt4bXdVtnWEeO7rO">
+    <div class="ft__in" data-page-node-id="BRX5K1i0JdZjnYUzi5VT9e">
+      <div class="ft__brand" data-page-node-id="HVJbZSsFt9DrHBg0jJj0VC">
+        <a class="brand" href="#main" data-page-node-id="q6IiUCTJtwVtWJVCt4Qa0W">
+          <span class="brand__mark" aria-hidden="true" data-page-node-id="6k5y9uyOWDCzqdK7V71YNQ"></span>Waypoint OS
+        </a>
+        <p data-page-node-id="HLeWBD1fL345sinSC91JTO">An intake and quoting surface for boutique travel agencies.</p>
+      </div>
+      <div class="ft__col" data-page-node-id="GvnrUqjaPRrA8PcXjE98mx">
+        <h3 data-page-node-id="OVI5b6MIzOGfdMejgc6Jn9">Product</h3>
+        <ul data-page-node-id="s271XtG3pk1gcK40FUxX5q">
+          <li data-page-node-id="TCCvePfxd43DfM53EeSjgA"><a href="#specimen" data-page-node-id="tNdV9TmaLHgXHhXOBzXiTB">Intake</a></li>
+          <li data-page-node-id="xrRJzRMG9zGV2N008hjHMq"><a href="#flow" data-page-node-id="6f6ZYt3NXB7X2STAXdRp9S">Workflow</a></li>
+          <li data-page-node-id="D8auApeSqWRYbGFu2bJEDA"><a href="#fit" data-page-node-id="U9EUEHqRuBj0S2Hr1531n9">For agencies</a></li>
+          <li data-page-node-id="XqSizachy8O4oRdObqJu01"><a href="#pricing" data-page-node-id="L1mriZA5XMC2xjEAb7kSuJ">Pricing</a></li>
+        </ul>
+      </div>
+      <div class="ft__col" data-page-node-id="8wUKsOhWBjQoKrbCnSGUx3">
+        <h3 data-page-node-id="GWttEpoNi5PZixDIaRCT0k">Workspace</h3>
+        <ul data-page-node-id="c7E9UmOYiPELFxI26TFxKq">
+          <li data-page-node-id="18pW9oSgdOGqVFbIjKQFCy"><a href="#signin" data-page-node-id="Jz8iF5GBPzYzFI7QxwE1MJ">Sign in</a></li>
+          <li data-page-node-id="EDzJNiwOoxgwJMEZXNZFsf"><a href="#create" data-page-node-id="0Iy8vhZVmF6wlI7jE4UQ58">Create workspace</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ft__bar" data-page-node-id="5pCLTDG8rlCm1LwL6sP1Vp">
+      <span data-page-node-id="TfMFCzNNTXSjY3Hucm2KmG">© 2026 Waypoint OS</span>
+      <span data-page-node-id="xGufm7amBPO9JXUf8M1jH6">·</span>
+      <span data-page-node-id="JdElGZ9nSzU5jUhzfVqNz6">Parallel build — does not touch the live page</span>
+    </div>
+  </div>
+</footer>
+
+<div id="live" role="status" aria-live="polite" style="position:absolute;left:-9999px" data-page-node-id="QlUg8fZVn8YE75OElQ87yA"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var live = document.getElementById('live');
+  var teardown = [];
+
+  /* ── accordion: one open at a time, real ARIA ───────────────────────── */
+  var gaps = Array.prototype.slice.call(document.querySelectorAll('.gap__btn'));
+  gaps.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var open = btn.getAttribute('aria-expanded') === 'true';
+      gaps.forEach(function (b) {
+        b.setAttribute('aria-expanded', 'false');
+        var p = document.getElementById(b.getAttribute('aria-controls'));
+        if (p) p.hidden = true;
+      });
+      if (!open) {
+        btn.setAttribute('aria-expanded', 'true');
+        var panel = document.getElementById(btn.getAttribute('aria-controls'));
+        if (panel) panel.hidden = false;
+      }
+    });
+  });
+
+  /* ── copy: never silently fail, always announce ─────────────────────── */
+  var copyBtns = Array.prototype.slice.call(document.querySelectorAll('.copy'));
+  copyBtns.forEach(function (btn) {
+    var label = btn.querySelector('span');
+    var original = label ? label.textContent : '';
+    btn.addEventListener('click', function () {
+      var text = btn.getAttribute('data-copy') || '';
+      var done = function (ok) {
+        btn.setAttribute('data-done', ok ? '1' : '0');
+        if (label) label.textContent = ok ? 'Copied' : 'Press ⌘C';
+        if (live) live.textContent = ok ? 'Question copied to clipboard.' : 'Copy failed — select the text and press Command-C.';
+        window.setTimeout(function () {
+          btn.removeAttribute('data-done');
+          if (label) label.textContent = original;
+        }, 2200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      } else {
+        done(false);
+      }
+    });
+  });
+
+  /* ── reveal: one-shot, unobserved after firing ──────────────────────── */
+  var targets = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  if (reduce || !('IntersectionObserver' in window)) {
+    targets.forEach(function (el) { el.classList.add('is-in'); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        e.target.classList.add('is-in');
+        io.unobserve(e.target);            // fire once, then stop watching
+      });
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.15 });
+    targets.forEach(function (el) { io.observe(el); });
+    teardown.push(function () { io.disconnect(); });
+  }
+
+  /* ── teardown: no listeners or observers outlive the page ───────────── */
+  window.addEventListener('pagehide', function () {
+    teardown.forEach(function (fn) { try { fn(); } catch (e) {} });
+    teardown.length = 0;
+  });
+})();
+</script>
+</body>
+</html>

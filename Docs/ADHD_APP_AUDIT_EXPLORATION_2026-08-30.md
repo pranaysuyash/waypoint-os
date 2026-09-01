@@ -145,3 +145,13 @@ If none of the above lands: **the repo's deepest un-owned primitive is time itse
 - Shortlist owner decision: pick 1–3 branches for implementation sequencing (recommend O6 first — it forces the `strategy.version`/idempotency discipline that Cluster B also needs, making C1/C2 cheaper afterward).
 - Backend test-suite debt (358 failed / 2803 passed per Persona Council Audit 2026-08-29) is the standing precondition for any of these; new contract surfaces (revert endpoint, quarantine API, event-vocabulary extension) should land with their own tests regardless.
 - Cross-reference: `Docs/review/EXPLORATION_RESEARCH_BACKLOG_2026-08-29.md` (research questions with falsifiers) — this audit's Cluster D (C3) overlaps that backlog's suitability-signal-mining thread and should be reconciled before implementing.
+
+## 6. Register mapping — all 30 ideas tracked (2026-08-30)
+
+Every candidate in the wide set above now lives in the canonical register `Docs/review/FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md` with a lifecycle ID and status — per doctrine §9 (discovery does not imply implementation, but discovery must be documented; rejected directions are recorded with reasons) and the findings lifecycle (`Docs/review/FINDINGS_LIFECYCLE_2026-08-30.md`):
+
+- **Defect findings:** F-01←O6+C2 · F-02←C1+R6 · F-03←R2 · F-04←R5 · F-05←R3 · F-06←R1+C4 · F-07←O2 · F-08←O3 · F-09←O1 · F-10←O4 · F-11←O5+C6 · F-12←C5 · F-13←C3 · F-14←L2 · F-15←L6 · F-16←L3
+- **Candidates:** EX-07←L1 · EX-08←L5 · EX-09←R4 · EX-10←O2-children · EX-11←A2 (conditional) · EX-12←A3 · EX-13←A4 · EX-14←provocation (TemporalObligation)
+- **Tracked no-gos:** NG-01←A1 · NG-02←A5 · NG-03←L4 · NG-04←A6 (each with a re-open condition)
+
+Coverage: **30/30.** Closure status as of 2026-08-30: F-18 (RQ-01 exit) is closed — the budget gate is green; the top open P1s are the money/token-integrity spine (F-01…F-06), the poison-quarantine drain (F-07), and the cold-chain sweep (F-14).

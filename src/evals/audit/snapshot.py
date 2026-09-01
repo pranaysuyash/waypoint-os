@@ -34,6 +34,41 @@ DEFAULT_SNAPSHOT_PATH = Path("data/evals/d6_audit_gate_snapshot.json")
 DEFAULT_GOLDEN_DATASET_PATH = Path("data/fixtures/extraction/golden_dataset.json")
 DEFAULT_PIPELINE_FIXTURE_PATH = Path("data/fixtures/pipeline/pipeline_golden.json")
 DEFAULT_BUDGET_GOLDEN_DATASET_PATH = Path("data/fixtures/budget/golden_dataset.json")
+DEFAULT_COLLOQUIAL_GOLDEN_DATASET_PATH = Path(
+    "data/fixtures/extraction/colloquial_golden.json"
+)
+
+# Colloquial extraction field mapping: golden field name -> pipeline fact name
+# (identity mapping — the colloquial golden dataset speaks packet-fact names
+# directly).  Fields outside this whitelist are not gated by the colloquial
+# category; the list matches the packet facts exercised by the DEMO-02
+# colloquial fixture catalog (destination / party / dates / budget / meals).
+_COLLOQUIAL_FIELD_MAP = {
+    "destination_candidates": "destination_candidates",
+    "destination_status": "destination_status",
+    "party_size": "party_size",
+    "party_composition": "party_composition",
+    "budget_min": "budget_min",
+    "budget_max": "budget_max",
+    "budget_currency": "budget_currency",
+    "budget_scope": "budget_scope",
+    "date_window": "date_window",
+    "date_confidence": "date_confidence",
+    "date_flexibility": "date_flexibility",
+    "meal_preferences": "meal_preferences",
+}
+
+
+def _normalise_fact_value(value: Any) -> Any:
+    """Collapse empty captures to ``None``.
+
+    An empty list/dict from the pipeline means "field not captured"; treating
+    it as ``None`` lets the extraction eval count a regression-to-empty as a
+    false negative (recall hit) instead of a silent value mismatch.
+    """
+    if isinstance(value, (list, dict)) and len(value) == 0:
+        return None
+    return value
 
 # Budget field mapping: pipeline fact name -> golden dataset field name.
 # The extraction pipeline stores budget data as budget_max, budget_currency,
@@ -79,9 +114,25 @@ def _collect_live_budget_results(
             actor="agent",
         )
         packet = pipeline.extract([envelope])
-        # Map pipeline fact names to golden dataset field names.
+        # Map pipeline fact names to golden dataset field names. The golden
+        # dataset expresses budget_amount as a composite string — "4000-6000"
+        # for a range, "200/day" for a daily scope — composed here from the
+        # pipeline's structured min/max/scope facts.
+        min_slot = packet.facts.get("budget_min")
+        max_slot = packet.facts.get("budget_max")
+        scope_slot = packet.facts.get("budget_scope")
+        amount_str: str | None = None
+        if max_slot is not None and max_slot.value is not None:
+            hi = str(max_slot.value)
+            lo = str(min_slot.value) if min_slot is not None and min_slot.value is not None else hi
+            amount_str = hi if lo == hi else f"{lo}-{hi}"
+            if scope_slot is not None and scope_slot.value == "daily":
+                amount_str = f"{hi}/day"
         extracted: dict[str, str | None] = {}
         for golden_field, pipeline_fact in _BUDGET_FIELD_MAP.items():
+            if golden_field == "budget_amount":
+                extracted[golden_field] = amount_str
+                continue
             slot = packet.facts.get(pipeline_fact)
             if slot is not None and slot.value is not None:
                 extracted[golden_field] = str(slot.value)
@@ -98,6 +149,55 @@ def _collect_live_budget_results(
 EXPECTED_PIPELINE_BASELINE_ACCURACY = 1.0
 EXPECTED_EXTRACTION_BASELINE_F1 = 1.0
 EXPECTED_BUDGET_BASELINE_F1 = 1.0
+EXPECTED_COLLOQUIAL_BASELINE_F1 = 1.0
+
+
+def _collect_live_colloquial_results(
+    golden_dataset_path: Path = DEFAULT_COLLOQUIAL_GOLDEN_DATASET_PATH,
+) -> dict[str, dict[str, Any | None]]:
+    """Run the real extraction pipeline on colloquial golden fixtures.
+
+    Mirrors :func:`_collect_live_budget_results` (the F-18 budget gate): the
+    raw JSON is loaded directly (which retains ``raw_input`` not captured by
+    ``ExtractionFixture``), each fixture's ``raw_input`` is fed through
+    ``ExtractionPipeline``, and the resulting CanonicalPacket facts are mapped
+    onto the golden-dataset field names via ``_COLLOQUIAL_FIELD_MAP`` so
+    ``run_extraction_eval`` can compare them against
+    ``expected_extracted_fields``.
+
+    Unlike the budget map (composite amount strings), the colloquial map is an
+    identity mapping onto packet facts — list/dict/int values are compared
+    structurally through the shared ``normalise`` comparison helpers.
+
+    Returns a dict keyed by ``fixture_id`` with the mapped extracted fields.
+    Returns an empty dict when the intake pipeline is not importable or the
+    colloquial golden dataset is missing.
+    """
+    if not _HAS_INTAKE_PIPELINE or not golden_dataset_path.exists():
+        return {}
+    raw_data = json.loads(golden_dataset_path.read_text())
+    pipeline = ExtractionPipeline()
+    results: dict[str, dict[str, Any | None]] = {}
+    for item in raw_data:
+        fixture_id = item["fixture_id"]
+        raw_input = item.get("raw_input", "")
+        if not raw_input:
+            continue
+        envelope = SourceEnvelope.from_freeform(
+            raw_input,
+            source="agency_notes",
+            actor="agent",
+        )
+        packet = pipeline.extract([envelope])
+        extracted: dict[str, Any | None] = {}
+        for golden_field, pipeline_fact in _COLLOQUIAL_FIELD_MAP.items():
+            slot = packet.facts.get(pipeline_fact)
+            if slot is not None and slot.value is not None:
+                extracted[golden_field] = _normalise_fact_value(slot.value)
+            else:
+                extracted[golden_field] = None
+        results[fixture_id] = extracted
+    return results
 
 
 def _rule_dispatch(fixture: AuditFixture):
@@ -307,6 +407,74 @@ def _run_budget_baseline(
     }
 
 
+def _run_colloquial_baseline(
+    *,
+    golden_dataset_path: Path = DEFAULT_COLLOQUIAL_GOLDEN_DATASET_PATH,
+    live_results: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Run colloquial extraction eval against the golden dataset.
+
+    Live-pipeline gate for the DEMO-02 colloquial fixture set (destination
+    verb-object/city sets, party group phrasings, season/flexibility dates,
+    per-person budget "each", and the full demo note).  Mirrors
+    :func:`_run_budget_baseline`: with no ``live_results`` the real pipeline
+    is executed via :func:`_collect_live_colloquial_results`; when the intake
+    pipeline is not importable the comparison falls back to a self-consistent
+    baseline (expected as actuals) so CI without full dependencies still
+    validates comparison logic.
+    """
+    if not golden_dataset_path.exists():
+        return {
+            "status": "unavailable",
+            "reason": "colloquial_golden_dataset_missing",
+            "total_fixtures": 0,
+            "overall_f1": 0.0,
+            "blocks_ci": False,
+        }
+    fixtures = load_golden_dataset(golden_dataset_path)
+    if live_results is not None:
+        report = run_extraction_eval(fixtures, saved_results=live_results)
+        note = "Live colloquial results used for F1 evaluation."
+    else:
+        # Attempt to collect live results from the real extraction pipeline.
+        live = _collect_live_colloquial_results(golden_dataset_path)
+        if live:
+            report = run_extraction_eval(fixtures, saved_results=live)
+            note = "Live pipeline extraction results used for colloquial F1 evaluation."
+        else:
+            # Fallback: self-consistent baseline (expected as actuals).
+            # This validates comparison logic when the intake pipeline is not
+            # importable (e.g. in CI without full dependencies).
+            saved_results = {
+                fixture.fixture_id: fixture.expected_extracted_fields
+                for fixture in fixtures
+            }
+            report = run_extraction_eval(fixtures, saved_results=saved_results)
+            note = "Baseline using expected outputs as actuals (intake pipeline unavailable)."
+    summary = report.summary()
+    overall_f1 = summary["overall"]["f1"]
+    if overall_f1 >= 0.95:
+        status = "passing"
+    elif overall_f1 >= 0.80:
+        status = "warning"
+    else:
+        status = "failing"
+    return {
+        "status": status,
+        "overall_f1": overall_f1,
+        "overall_precision": summary["overall"]["precision"],
+        "overall_recall": summary["overall"]["recall"],
+        "total_fixtures": summary["total_fixtures"],
+        "fixture_accuracy": summary["overall"]["fixture_accuracy"],
+        "by_document_type": summary["by_document_type"],
+        "by_difficulty": summary["by_difficulty"],
+        "blocks_ci": status == "failing",
+        "expected_baseline_f1": EXPECTED_COLLOQUIAL_BASELINE_F1,
+        "baseline_drifted": overall_f1 != EXPECTED_COLLOQUIAL_BASELINE_F1,
+        "note": note,
+    }
+
+
 def build_gate_snapshot(
     *,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
@@ -314,6 +482,7 @@ def build_gate_snapshot(
     extraction_live_results: dict[str, Any] | None = None,
     pipeline_live_results: dict[str, dict[str, Any]] | None = None,
     budget_live_results: dict[str, Any] | None = None,
+    colloquial_live_results: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     fixtures = load_fixtures(fixture_root)
     manifest = load_manifest()
@@ -339,6 +508,11 @@ def build_gate_snapshot(
         live_results=budget_live_results,
     )
 
+    # --- colloquial extraction eval gate (DEMO-02 / IMP-07) ---
+    colloquial_health = _run_colloquial_baseline(
+        live_results=colloquial_live_results,
+    )
+
     # --- manifest gate evaluation ---
     # Pass per-category accuracy values for categories that use
     # min_accuracy thresholds instead of the standard precision/recall/
@@ -353,6 +527,9 @@ def build_gate_snapshot(
     budget_f1 = budget_health.get("overall_f1")
     if budget_f1 is not None:
         category_accuracy["budget"] = budget_f1
+    colloquial_f1 = colloquial_health.get("overall_f1")
+    if colloquial_f1 is not None:
+        category_accuracy["colloquial"] = colloquial_f1
     gate = evaluate_report_against_manifest(
         report, manifest, category_accuracy=category_accuracy,
     )
@@ -385,6 +562,7 @@ def build_gate_snapshot(
         "extraction_health": extraction_eval_report,
         "pipeline_health": pipeline_health,
         "budget_health": budget_health,
+        "colloquial_health": colloquial_health,
     }
 
 
@@ -396,6 +574,7 @@ def write_gate_snapshot(
     extraction_live_results: dict[str, Any] | None = None,
     pipeline_live_results: dict[str, dict[str, Any]] | None = None,
     budget_live_results: dict[str, Any] | None = None,
+    colloquial_live_results: dict[str, Any] | None = None,
 ) -> Path:
     snapshot = build_gate_snapshot(
         fixture_root=fixture_root,
@@ -403,6 +582,7 @@ def write_gate_snapshot(
         extraction_live_results=extraction_live_results,
         pipeline_live_results=pipeline_live_results,
         budget_live_results=budget_live_results,
+        colloquial_live_results=colloquial_live_results,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(snapshot, indent=2, sort_keys=True))
@@ -460,6 +640,25 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
             "total_fixtures": budget_health.get("total_fixtures"),
             "blocks_ci": budget_health.get("blocks_ci"),
         }
+    colloquial_health = snapshot.get("colloquial_health")
+    stable_colloquial: dict[str, Any] | None = None
+    if isinstance(colloquial_health, dict):
+        stable_colloquial = {
+            "status": colloquial_health.get("status"),
+            "overall_f1": colloquial_health.get("overall_f1"),
+            "expected_baseline_f1": colloquial_health.get("expected_baseline_f1"),
+            "baseline_drifted": colloquial_health.get("baseline_drifted"),
+            "overall_precision": colloquial_health.get("overall_precision"),
+            "overall_recall": colloquial_health.get("overall_recall"),
+            "total_fixtures": colloquial_health.get("total_fixtures"),
+            "blocks_ci": colloquial_health.get("blocks_ci"),
+            # by_document_type / by_difficulty carry fixture_accuracy; a pure
+            # value mismatch (expected X, actual Y) moves fixture accuracy
+            # without moving precision/recall, so it must be part of the
+            # comparable view for drift detection to catch it.
+            "by_document_type": colloquial_health.get("by_document_type"),
+            "by_difficulty": colloquial_health.get("by_difficulty"),
+        }
     return {
         "manifest_version": snapshot.get("manifest_version"),
         "fixture_root": snapshot.get("fixture_root"),
@@ -469,6 +668,7 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
         "extraction_health": stable_extraction,
         "pipeline_health": stable_pipeline,
         "budget_health": stable_budget,
+        "colloquial_health": stable_colloquial,
     }
 
 
@@ -480,6 +680,7 @@ def verify_gate_snapshot_file(
     extraction_live_results: dict[str, Any] | None = None,
     pipeline_live_results: dict[str, dict[str, Any]] | None = None,
     budget_live_results: dict[str, Any] | None = None,
+    colloquial_live_results: dict[str, Any] | None = None,
 ) -> tuple[bool, dict[str, Any], dict[str, Any] | None]:
     expected = build_gate_snapshot(
         fixture_root=fixture_root,
@@ -487,6 +688,7 @@ def verify_gate_snapshot_file(
         extraction_live_results=extraction_live_results,
         pipeline_live_results=pipeline_live_results,
         budget_live_results=budget_live_results,
+        colloquial_live_results=colloquial_live_results,
     )
     if not snapshot_path.exists():
         return False, expected, None

@@ -8,10 +8,11 @@ Endpoints:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import List
+from datetime import date, datetime, timezone
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from spine_api.contract import (
     ConstraintEvaluationResponse,
@@ -191,3 +192,74 @@ def evaluate_trip_constraints(
         relaxation_hierarchy=report.relaxation_hierarchy,
         evaluated_at=report.evaluated_at or datetime.now(timezone.utc).isoformat(),
     )
+
+
+class SchengenRollingRequest(BaseModel):
+    historical_stays: List[Tuple[date, date]] = Field(default_factory=list, description="Past Schengen trips (start_date, end_date)")
+    planned_stay: Tuple[date, date] = Field(..., description="Upcoming Schengen trip (start_date, end_date)")
+
+
+class TerminalMCTRequest(BaseModel):
+    airport_code: str = Field("LHR", description="3-letter IATA airport code")
+    from_terminal: Optional[str] = Field("T2", description="Inbound arrival terminal")
+    to_terminal: Optional[str] = Field("T5", description="Outbound departure terminal")
+    is_international: bool = True
+
+
+class PassportValidityRequest(BaseModel):
+    passport_expiry: date
+    trip_return_date: date
+    destination_country: str = "GLOBAL"
+    blank_pages: int = 2
+
+
+SchengenRollingRequest.model_rebuild()
+TerminalMCTRequest.model_rebuild()
+PassportValidityRequest.model_rebuild()
+
+
+@router.post("/schengen/rolling-eval")
+def evaluate_schengen_rolling_window(payload: SchengenRollingRequest):
+    """Calculates day-by-day rolling 90/180 Schengen stay accumulation."""
+    return ConstraintEngine.calculate_schengen_rolling_90_180(
+        historical_stays=payload.historical_stays,
+        planned_stay=payload.planned_stay,
+    )
+
+
+@router.post("/terminal-mct/lookup")
+def lookup_terminal_mct(payload: TerminalMCTRequest):
+    """Looks up exact terminal-to-terminal minimum connect time in minutes."""
+    mct = ConstraintEngine.get_terminal_mct(
+        airport_code=payload.airport_code,
+        from_terminal=payload.from_terminal,
+        to_terminal=payload.to_terminal,
+        is_international=payload.is_international,
+    )
+    return {
+        "airport_code": payload.airport_code,
+        "from_terminal": payload.from_terminal,
+        "to_terminal": payload.to_terminal,
+        "min_connect_time_minutes": mct,
+        "is_terminal_change": payload.from_terminal != payload.to_terminal,
+    }
+
+
+@router.post("/passport-validity/check")
+def check_passport_validity(payload: PassportValidityRequest):
+    """Validates passport 6-month validity and blank visa pages against return date."""
+    days_remaining = (payload.passport_expiry - payload.trip_return_date).days
+    is_valid = days_remaining >= 180 and payload.blank_pages >= 2
+    return {
+        "is_valid": is_valid,
+        "days_remaining_post_return": days_remaining,
+        "required_days": 180,
+        "blank_pages_available": payload.blank_pages,
+        "required_blank_pages": 2,
+        "status": "VALID" if is_valid else "NON_COMPLIANT",
+        "action_required": (
+            "Passport meets all international entry rules."
+            if is_valid
+            else "Passport renewal or emergency booklet required prior to international departure."
+        ),
+    }

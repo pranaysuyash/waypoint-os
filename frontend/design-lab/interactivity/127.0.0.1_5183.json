@@ -1,0 +1,127 @@
+{
+  "url": "http://127.0.0.1:5183/",
+  "slug": "127.0.0.1_5183",
+  "domNodes": 1144,
+  "domDepth": 15,
+  "keyframeBlocks": 3,
+  "cssRules": 83,
+  "infiniteCssRules": [
+    {
+      "name": "sc-shine",
+      "dur": "1.4s",
+      "iter": "infinite"
+    }
+  ],
+  "transitionRules": 1,
+  "elementsAnimating": 2,
+  "animationNames": [
+    "fcPulse"
+  ],
+  "elementsTransformed": 16,
+  "elementsWillChange": 1,
+  "elementsStickyOrFixed": 3,
+  "elementsBackdropFilter": 3,
+  "elementsBlendMode": 0,
+  "elementsGradient": 7,
+  "elementsHidden": 125,
+  "videos": 0,
+  "canvasEls": 9,
+  "svgs": 0,
+  "smil": 0,
+  "lottie": 0,
+  "webgl": 0,
+  "canvasTypes": [
+    {
+      "type": "2d",
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "type": "2d",
+      "w": 510,
+      "h": 383
+    },
+    {
+      "type": "2d",
+      "w": 517,
+      "h": 356
+    },
+    {
+      "type": "2d",
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "type": "2d",
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "type": "2d",
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "type": "2d",
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "type": "2d",
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "type": "2d",
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "type": "2d",
+      "w": 1440,
+      "h": 900
+    }
+  ],
+  "buttons": 57,
+  "links": 49,
+  "inputs": 6,
+  "ariaExpanded": 0,
+  "ariaControls": 0,
+  "tabIndexEls": 5,
+  "dialogs": 0,
+  "rafCalls": 1060,
+  "listeners": {
+    "invalid": 7,
+    "scroll": 5,
+    "pointermove": 4,
+    "pointerdown": 3,
+    "pointerup": 3,
+    "message": 2,
+    "close": 2,
+    "auxclick": 2,
+    "click": 2,
+    "contextmenu": 2,
+    "copy": 2,
+    "cut": 2,
+    "drag": 2,
+    "dragend": 2
+  },
+  "listenerTotal": 155,
+  "intersectionObservers": 1,
+  "resizeObservers": 0,
+  "mutationObservers": 2,
+  "hasReducedMotionQuery": true,
+  "docHeight": 15381,
+  "viewportH": 900,
+  "screensOfScroll": 17.1,
+  "title": "FieldCanvas \u2014 paint space, pull structure. The spatial canvas for anyone who works on space.",
+  "headings": 13,
+  "rafPerSec_idle": 125.0,
+  "rafPerSec_scroll": 683.8,
+  "rafPerSec_hover": 1631.0,
+  "hoverTargetsProbed": 12,
+  "transferKB": 912,
+  "requests": 21,
+  "measureSeconds": 72.3,
+  "screenshot": "/Users/pranay/Projects/travel_agency_agent/frontend/design-lab/interactivity/127.0.0.1_5183.png"
+}

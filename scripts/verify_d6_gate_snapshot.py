@@ -62,6 +62,14 @@ def _check_blocks_ci(snapshot: dict) -> list[dict]:
             "reason": f"budget_health.blocks_ci is true (f1={budget_health.get('overall_f1', 0)})",
         })
 
+    colloquial_health = snapshot.get("colloquial_health")
+    if isinstance(colloquial_health, dict) and colloquial_health.get("blocks_ci"):
+        blockers.append({
+            "gate": "colloquial_health",
+            "status": colloquial_health.get("status", "unknown"),
+            "reason": f"colloquial_health.blocks_ci is true (f1={colloquial_health.get('overall_f1', 0)})",
+        })
+
     categories = snapshot.get("categories")
     if isinstance(categories, dict):
         for cat_name, cat_data in categories.items():

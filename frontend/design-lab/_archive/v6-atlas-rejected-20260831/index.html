@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en" data-page-node-id="sPu4S9E6FnG02MKtJGwVAr">
+<head data-page-node-id="yRvgNqScBSwxClEFFeVlx6">
+<meta charset="utf-8" data-page-node-id="GulT4hwcicXyxODT8Ibppt">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" data-page-node-id="d4MmSIiJHVyuiKQYltbh3A">
+<meta name="theme-color" content="#F7F4ED" data-page-node-id="syosXusYA4jyoxLkqfMeVG">
+<title>Waypoint — Trip requests arrive messy. Your quote shouldn't.</title>
+<meta name="description" content="Waypoint reads the calls, emails and WhatsApp threads you already get, pulls out the facts, and shows you exactly what is still missing before you commit to a number." data-page-node-id="NyddUyBHsjuF9ucA0XpHNi">
+
+<link rel="preconnect" href="https://fonts.googleapis.com" data-page-node-id="ckhgJi60AxeCW4HifMx3qt">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin data-page-node-id="i7pQux8ehmxC0suHrv4eBw">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,SOFT,WONK,wght@9..144,0..100,0..1,400..700&family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" data-page-node-id="WDWIweJSQv0PvRYKuzBv2s">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,SOFT,WONK,wght@9..144,0..100,0..1,400..700&family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" data-page-node-id="UHyDx7guaryhYB78mi8r1T">
+
+<style>
+/* ============================================================
+   WAYPOINT ATLAS — design tokens
+   Light, print-cartography editorial system.
+   No glow, no glass, no gradient meshes, no infinite motion.
+   ============================================================ */
+:root{
+  /* Surfaces — warm bone paper stock */
+  --paper:        #F7F4ED;
+  --paper-card:   #FFFDF8;
+  --paper-sunk:   #F0EBE0;
+  --paper-deep:   #E7E0D2;
+
+  /* Ink */
+  --ink:          #16191C;
+  --ink-2:        #41494F;
+  --ink-3:        #5A636A;   /* AA on every surface: 5.58 paper / 6.03 card / 5.15 sunk / 4.67 deep */
+
+  /* Rules — printed hairlines, not borders.
+     --rule / --rule-2 are decorative dividers (exempt from 1.4.11).
+     --rule-3 is for interactive borders, which need 3:1 non-text contrast. */
+  --rule:         #DCD5C7;
+  --rule-2:       #C7BEAB;
+  --rule-3:       #8A8778;   /* 3.29:1 on paper */
+
+  /* Accents — one sharp accent, one confirm colour */
+  --vermilion:      #BE4225;  /* 4.78:1 on paper, 5.17:1 under white text */
+  --vermilion-ink:  #9E3419;
+  --vermilion-tint: #F7E4DD;
+  --teal:           #1F5C58;
+  --teal-tint:      #DDEAE7;
+  --amber:          #8A5A0B;
+  --amber-tint:     #F6E7CC;
+  --slate-tint:     #E4E1D9;
+
+  /* Type */
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body:    "Schibsted Grotesk", "Archivo", system-ui, sans-serif;
+  --mono:    "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* Space — 4px base */
+  --s1:4px;  --s2:8px;  --s3:12px; --s4:16px;
+  --s5:24px; --s6:32px; --s7:48px; --s8:64px;
+  --s9:96px; --s10:128px;
+
+  --measure: 1180px;
+  --radius: 3px;          /* print corners are nearly square */
+  --radius-lg: 5px;
+
+  --ease: cubic-bezier(.22,.61,.36,1);
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+html{
+  -webkit-text-size-adjust:100%;
+  scroll-behavior:smooth;
+  background:var(--paper);
+}
+@media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
+
+body{
+  margin:0;
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.6;
+  color:var(--ink);
+  background:var(--paper);
+  -webkit-font-smoothing:antialiased;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  overflow-x:hidden;
+}
+
+/* Paper grain — static data-URI, no repaint cost, no animation */
+body::after{
+  content:"";
+  position:fixed; inset:0;
+  pointer-events:none;
+  z-index:9;
+  opacity:.038;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:180px 180px;
+}
+
+img,svg{ display:block; max-width:100%; }
+button{ font:inherit; color:inherit; }
+
+/* ---------- Layout ---------- */
+.wrap{
+  width:100%;
+  max-width:var(--measure);
+  margin-inline:auto;
+  padding-inline:var(--s5);
+  padding-left:max(var(--s5), env(safe-area-inset-left));
+  padding-right:max(var(--s5), env(safe-area-inset-right));
+}
+@media (max-width:640px){ .wrap{ padding-inline:var(--s4); } }
+
+/* ---------- Scroll progress (CSS-only, zero JS) ---------- */
+.progress{
+  position:fixed; top:0; left:0; right:0; height:2px;
+  background:var(--vermilion);
+  transform:scaleX(0); transform-origin:0 50%;
+  z-index:60;
+  animation:grow linear both;
+  animation-timeline:scroll(root block);
+  will-change:transform;
+}
+@keyframes grow{ to{ transform:scaleX(1); } }
+@supports not (animation-timeline: scroll(root block)){ .progress{ display:none; } }
+
+/* ---------- Skip link ---------- */
+.skip{
+  position:absolute; left:var(--s4); top:-100px;
+  z-index:100;
+  background:var(--ink); color:var(--paper);
+  padding:10px 16px; border-radius:var(--radius);
+  font-size:14px; font-weight:600; text-decoration:none;
+}
+.skip:focus{ top:var(--s4); }
+
+/* ---------- Focus ---------- */
+:focus-visible{
+  outline:2px solid var(--vermilion);
+  outline-offset:3px;
+  border-radius:2px;
+}
+
+/* ---------- Type ---------- */
+h1,h2,h3{
+  font-family:var(--display);
+  font-variation-settings:'SOFT' 30,'WONK' 1,'opsz' 96;
+  font-weight:600;
+  letter-spacing:-.022em;
+  line-height:1.06;
+  text-wrap:balance;
+  margin:0;
+  color:var(--ink);
+}
+h1{ font-size:clamp(2.6rem,6.4vw,4.35rem); font-variation-settings:'SOFT' 24,'WONK' 1,'opsz' 144; line-height:1.02; }
+h2{ font-size:clamp(1.85rem,3.6vw,2.85rem); }
+h3{ font-size:clamp(1.15rem,1.8vw,1.4rem); line-height:1.22; }
+p{ margin:0; }
+
+.lede{
+  font-size:clamp(1.0625rem,1.35vw,1.1875rem);
+  line-height:1.62;
+  color:var(--ink-2);
+  text-wrap:pretty;
+  max-width:58ch;
+}
+
+/* Mono marginalia — the document rail. Lowercase, no letterspaced shouting. */
+.mark{
+  font-family:var(--mono);
+  font-size:11.5px;
+  font-weight:500;
+  letter-spacing:.02em;
+  color:var(--ink-3);
+  text-transform:lowercase;
+  display:inline-flex; align-items:center; gap:var(--s2);
+}
+.mark::before{
+  content:""; width:18px; height:1px; background:var(--rule-2); flex:none;
+}
+.mark--bare::before{ display:none; }
+
+/* ============================================================
+   Header
+   ============================================================ */
+.site-head{
+  position:sticky; top:0; z-index:50;
+  background:var(--paper);
+  border-bottom:1px solid var(--rule);
+}
+.head-in{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:var(--s5);
+  min-height:66px;
+}
+.brand{
+  display:inline-flex; align-items:center; gap:10px;
+  text-decoration:none; color:var(--ink);
+  font-family:var(--display); font-weight:600; font-size:19px;
+  letter-spacing:-.02em;
+  padding:8px 2px;                 /* touch target */
+}
+.brand svg{ flex:none; }
+.nav{ display:flex; align-items:center; gap:var(--s1); }
+.nav a{
+  font-size:14.5px; font-weight:500; color:var(--ink-2);
+  text-decoration:none;
+  padding:10px 12px; border-radius:var(--radius);
+  min-height:44px; display:inline-flex; align-items:center;
+  transition:color 160ms var(--ease), background-color 160ms var(--ease);
+}
+.nav a:hover{ color:var(--ink); background:var(--paper-sunk); }
+.nav a.is-cta{
+  color:var(--ink); font-weight:600;
+  border:1px solid var(--rule-3);
+  margin-left:var(--s2);
+}
+.nav a.is-cta:hover{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+@media (max-width:900px){ .nav a:not(.is-cta){ display:none; } }
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:10px;
+  min-height:48px; padding:13px 22px;
+  border-radius:var(--radius);
+  font-size:15px; font-weight:600; letter-spacing:-.005em;
+  text-decoration:none; cursor:pointer;
+  border:1px solid transparent;
+  transition:transform 160ms var(--ease), background-color 160ms var(--ease),
+             border-color 160ms var(--ease), box-shadow 160ms var(--ease), color 160ms var(--ease);
+}
+.btn--primary{
+  background:var(--vermilion); color:#FFFDF8;
+  box-shadow:0 1px 0 rgba(22,25,28,.14);
+}
+.btn--primary:hover{ background:var(--vermilion-ink); transform:translateY(-1px); }
+.btn--primary:active{ transform:translateY(0); }
+.btn--ghost{
+  background:transparent; color:var(--ink);
+  border-color:var(--rule-3);
+}
+.btn--ghost:hover{ background:var(--paper-sunk); border-color:var(--ink); }
+.btn svg{ flex:none; }
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{ padding:clamp(var(--s7),7vw,var(--s10)) 0 var(--s8); }
+
+.hero-grid{
+  display:grid;
+  grid-template-columns:minmax(0,5fr) minmax(0,6.4fr);
+  gap:clamp(var(--s6),4vw,var(--s8));
+  align-items:start;
+}
+@media (max-width:1040px){
+  .hero-grid{ grid-template-columns:1fr; gap:var(--s7); }
+}
+
+.hero-copy > * + *{ margin-top:var(--s5); }
+.hero-copy h1{ margin-top:var(--s4); }
+.hero-actions{
+  display:flex; flex-wrap:wrap; gap:var(--s3); margin-top:var(--s6);
+}
+.hero-note{
+  font-size:13.5px; color:var(--ink-3);
+  display:flex; align-items:flex-start; gap:9px;
+  max-width:44ch; line-height:1.5;
+}
+.hero-note svg{ flex:none; margin-top:2px; }
+
+/* Channel strip — the messy inputs, named honestly */
+.channels{ margin-top:var(--s7); padding-top:var(--s5); border-top:1px solid var(--rule); }
+.channels-row{
+  display:flex; flex-wrap:wrap; gap:var(--s2) var(--s5);
+  margin-top:var(--s3);
+}
+.channels-row span{
+  font-family:var(--mono); font-size:12px; color:var(--ink-3);
+  display:inline-flex; align-items:center; gap:7px;
+}
+.channels-row span::before{
+  content:""; width:5px; height:5px; border-radius:50%;
+  background:var(--rule-2);
+}
+
+/* ============================================================
+   Specimen — the interactive core
+   ============================================================ */
+.spec{
+  background:var(--paper-card);
+  border:1px solid var(--rule-2);
+  border-radius:var(--radius-lg);
+  box-shadow:
+    0 1px 2px rgba(22,25,28,.05),
+    0 12px 34px -18px rgba(22,25,28,.24);
+  overflow:hidden;
+}
+.spec-bar{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:var(--s3);
+  padding:10px 12px 10px 14px;
+  border-bottom:1px solid var(--rule);
+  background:var(--paper-sunk);
+  flex-wrap:wrap;
+}
+.tabs{ display:flex; gap:2px; flex-wrap:wrap; }
+.tab{
+  appearance:none; border:1px solid transparent; background:transparent;
+  font-family:var(--mono); font-size:11.5px; font-weight:500;
+  letter-spacing:.02em; color:var(--ink-3);
+  padding:8px 11px; min-height:36px; border-radius:var(--radius);
+  cursor:pointer;
+  transition:color 140ms var(--ease), background-color 140ms var(--ease), border-color 140ms var(--ease);
+}
+.tab:hover{ color:var(--ink); background:var(--paper-deep); }
+.tab[aria-selected="true"]{
+  color:var(--ink); background:var(--paper-card);
+  border-color:var(--rule-3);
+  box-shadow:0 1px 0 rgba(22,25,28,.06);
+}
+.spec-id{ font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+
+.spec-body{
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.06fr);
+}
+@media (max-width:760px){ .spec-body{ grid-template-columns:1fr; } }
+.spec-col{ padding:var(--s5); min-width:0; }
+.spec-col + .spec-col{ border-left:1px solid var(--rule); }
+@media (max-width:760px){
+  .spec-col + .spec-col{ border-left:0; border-top:1px solid var(--rule); }
+}
+
+.col-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--s3); margin-bottom:var(--s4);
+}
+.col-title{
+  font-family:var(--mono); font-size:11px; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3);
+}
+.col-meta{ font-family:var(--mono); font-size:11px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+
+/* Raw source panel — like a transcript pasted into a notebook */
+.raw{
+  background:var(--paper-sunk);
+  border:1px solid var(--rule);
+  border-radius:var(--radius);
+  padding:var(--s4);
+  font-size:14px; line-height:1.62; color:var(--ink-2);
+}
+.raw-msg{ display:flex; flex-direction:column; gap:var(--s3); }
+.raw-msg p{
+  background:var(--paper-card);
+  border:1px solid var(--rule);
+  border-left:2px solid var(--rule-2);
+  border-radius:2px var(--radius) var(--radius) 2px;
+  padding:10px 12px;
+  max-width:94%;
+  overflow-wrap:anywhere;
+}
+.raw-msg p.self{
+  align-self:flex-end;
+  background:var(--teal-tint);
+  border-color:#C6DAD5;
+  border-left-color:var(--teal);
+}
+.raw-time{
+  display:block; margin-top:5px;
+  font-family:var(--mono); font-size:10.5px; color:var(--ink-3);
+}
+
+.extract-row{ margin-top:var(--s4); display:flex; align-items:center; gap:var(--s3); flex-wrap:wrap; }
+.btn--extract{
+  min-height:42px; padding:10px 16px; font-size:14px;
+  background:var(--ink); color:var(--paper);
+}
+.btn--extract:hover{ background:#2A3138; transform:translateY(-1px); }
+.extract-hint{ font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+
+/* Extracted brief table */
+.brief{ border-top:1px solid var(--rule); }
+.brief-row{
+  display:grid;
+  grid-template-columns:minmax(0,.85fr) minmax(0,1fr) auto;
+  gap:var(--s3); align-items:center;
+  padding:11px 0;
+  border-bottom:1px solid var(--rule);
+  opacity:0; transform:translateY(5px);
+}
+.brief-row.is-in{
+  animation:rowIn 420ms var(--ease) forwards;
+  animation-delay:calc(var(--i) * 55ms);
+}
+@keyframes rowIn{ to{ opacity:1; transform:none; } }
+.brief-row.is-idle{ opacity:.28; transform:none; animation:none; }
+
+.brief-k{
+  font-family:var(--mono); font-size:11.5px; color:var(--ink-3);
+  overflow-wrap:anywhere;
+}
+.brief-v{
+  font-size:14.5px; font-weight:500; color:var(--ink);
+  overflow-wrap:anywhere;
+}
+.brief-v.is-empty{ color:var(--ink-3); font-weight:400; }
+
+/* Epistemic chips — mirrors EpistemicStatus in src/intake/packet_models.py */
+.chip{
+  font-family:var(--mono); font-size:9.5px; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase;
+  padding:4px 7px; border-radius:2px; white-space:nowrap;
+  border:1px solid transparent;
+}
+.chip--fact     { color:var(--teal);      background:var(--teal-tint);      border-color:#C6DAD5; }
+.chip--inferred { color:var(--amber);     background:var(--amber-tint);     border-color:#EBD5AA; }
+.chip--assumed  { color:var(--ink-2);     background:var(--slate-tint);     border-color:#D3CFC5; }
+.chip--unknown  { color:var(--vermilion-ink); background:var(--vermilion-tint); border-color:#EDC6B9; }
+
+.legend{
+  display:flex; flex-wrap:wrap; gap:var(--s2) var(--s4);
+  margin-top:var(--s4); padding-top:var(--s4);
+  border-top:1px solid var(--rule);
+}
+.legend-item{
+  font-family:var(--mono); font-size:10.5px; color:var(--ink-3);
+  display:inline-flex; align-items:center; gap:6px;
+}
+
+/* Gap callout */
+.gap{
+  margin-top:var(--s4);
+  border:1px solid #EDC6B9;
+  background:var(--vermilion-tint);
+  border-radius:var(--radius);
+  padding:var(--s4);
+}
+.gap-top{
+  display:flex; align-items:center; gap:9px;
+  color:var(--vermilion-ink);
+  font-size:13.5px; font-weight:600;
+}
+.gap-top svg{ flex:none; }
+.gap ul{
+  margin:var(--s3) 0 0; padding:0; list-style:none;
+  display:flex; flex-wrap:wrap; gap:6px;
+}
+.gap li{
+  font-family:var(--mono); font-size:11px;
+  background:var(--paper-card);
+  border:1px solid #EDC6B9;
+  border-radius:2px; padding:4px 8px; color:var(--vermilion-ink);
+}
+
+.question{
+  margin-top:var(--s4);
+  border:1px solid var(--rule-2);
+  border-radius:var(--radius);
+  background:var(--paper-sunk);
+  padding:var(--s4);
+}
+.q-label{
+  font-family:var(--mono); font-size:10.5px; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3);
+  display:block; margin-bottom:9px;
+}
+.q-text{
+  font-family:var(--display);
+  font-variation-settings:'SOFT' 40,'WONK' 1,'opsz' 24;
+  font-size:16px; line-height:1.5; color:var(--ink);
+  text-wrap:pretty;
+}
+.q-foot{
+  margin-top:var(--s3); display:flex; align-items:center; gap:var(--s3); flex-wrap:wrap;
+}
+.btn--copy{
+  min-height:38px; padding:8px 14px; font-size:13px;
+  border-color:var(--rule-3); background:var(--paper-card);
+}
+.btn--copy:hover{ background:var(--paper-deep); }
+.q-state{
+  font-family:var(--mono); font-size:11px; color:var(--teal);
+  opacity:0; transition:opacity 200ms var(--ease);
+}
+.q-state.is-on{ opacity:1; }
+
+/* ============================================================
+   Sections
+   ============================================================ */
+.section{
+  padding:clamp(var(--s8),8vw,var(--s10)) 0;
+  border-top:1px solid var(--rule);
+}
+.sec-head{ max-width:66ch; }
+.sec-head > * + *{ margin-top:var(--s4); }
+.sec-head h2{ margin-top:var(--s3); }
+
+/* Two-column editorial: marginalia rail + body */
+.split{
+  display:grid; grid-template-columns:minmax(0,3fr) minmax(0,8fr);
+  gap:clamp(var(--s5),4vw,var(--s8));
+  align-items:start;
+}
+@media (max-width:900px){ .split{ grid-template-columns:1fr; gap:var(--s5); } }
+.rail{ position:sticky; top:96px; }
+@media (max-width:900px){ .rail{ position:static; } }
+
+/* ============================================================
+   Gap classes
+   ============================================================ */
+.gaps{
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:var(--s4);
+  margin-top:var(--s7);
+}
+@media (max-width:900px){ .gaps{ grid-template-columns:1fr; } }
+.gap-card{
+  background:var(--paper-card);
+  border:1px solid var(--rule);
+  border-radius:var(--radius);
+  padding:var(--s5);
+  border-top:2px solid var(--ink);
+}
+.gap-card--block{ border-top-color:var(--vermilion); }
+.gap-card--quote{ border-top-color:var(--amber); }
+.gap-card--pref { border-top-color:var(--rule-2); }
+.gap-card h3{ font-size:1.0625rem; margin-bottom:var(--s3); }
+.gap-card p{ font-size:14px; color:var(--ink-2); line-height:1.6; }
+.gap-card ul{
+  margin:var(--s4) 0 0; padding:0; list-style:none;
+  display:flex; flex-direction:column; gap:7px;
+}
+.gap-card li{
+  font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
+  display:flex; gap:8px; align-items:flex-start;
+}
+.gap-card li::before{ content:"—"; color:var(--rule-2); flex:none; }
+
+/* ============================================================
+   Steps
+   ============================================================ */
+.steps{ margin-top:var(--s7); }
+.step{
+  display:grid; grid-template-columns:auto minmax(0,1fr);
+  gap:clamp(var(--s4),3vw,var(--s7));
+  padding:var(--s6) 0;
+  border-top:1px solid var(--rule);
+}
+.step:last-child{ border-bottom:1px solid var(--rule); }
+.step-n{
+  font-family:var(--mono); font-size:12px; font-weight:600;
+  color:var(--vermilion-ink);
+  padding-top:6px;
+  font-variant-numeric:tabular-nums;
+}
+.step-body h3{ margin-bottom:var(--s3); }
+.step-body p{ color:var(--ink-2); font-size:15px; max-width:62ch; }
+
+/* Route line — drawn once on entry. Never loops. */
+.route{
+  margin-top:var(--s7);
+  border:1px solid var(--rule);
+  border-radius:var(--radius);
+  background:var(--paper-sunk);
+  padding:var(--s5) var(--s5) var(--s4);
+}
+.route svg{ width:100%; height:auto; }
+.route-track{
+  fill:none; stroke:var(--rule-2); stroke-width:1.5;
+  stroke-linecap:round;
+}
+.route-line{
+  fill:none; stroke:var(--vermilion); stroke-width:1.5;
+  stroke-linecap:round;
+  stroke-dasharray:var(--len) var(--len);
+  stroke-dashoffset:var(--len);
+  transition:stroke-dashoffset 1400ms var(--ease);
+}
+.route.is-drawn .route-line{ stroke-dashoffset:0; }
+.route-node{
+  fill:var(--paper-card); stroke:var(--rule-2); stroke-width:1.5;
+  opacity:0; transition:opacity 400ms var(--ease);
+}
+.route.is-drawn .route-node{ opacity:1; transition-delay:calc(var(--i) * 220ms + 200ms); }
+.route-label{
+  font-family:var(--mono); font-size:9.5px; fill:var(--ink-3);
+  opacity:0; transition:opacity 400ms var(--ease);
+}
+.route.is-drawn .route-label{ opacity:1; transition-delay:calc(var(--i) * 220ms + 260ms); }
+
+/* ============================================================
+   Honest positioning list
+   ============================================================ */
+.fit{
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:clamp(var(--s5),4vw,var(--s8));
+  margin-top:var(--s7);
+}
+@media (max-width:900px){ .fit{ grid-template-columns:1fr; } }
+.fit-col h3{
+  font-family:var(--mono); font-size:11px; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-3); margin-bottom:var(--s4);
+}
+.fit-col ul{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:var(--s3); }
+.fit-col li{
+  display:grid; grid-template-columns:auto minmax(0,1fr);
+  gap:12px; align-items:flex-start;
+  font-size:15px; line-height:1.55; color:var(--ink-2);
+}
+.fit-yes{ color:var(--teal); }
+.fit-no{ color:var(--ink-3); }
+.fit-col li svg{ flex:none; margin-top:3px; }
+
+/* ============================================================
+   CTA
+   ============================================================ */
+.cta{
+  border-top:1px solid var(--rule);
+  padding:clamp(var(--s8),8vw,var(--s10)) 0;
+}
+.cta-in{
+  background:var(--ink);
+  color:var(--paper);
+  border-radius:var(--radius-lg);
+  padding:clamp(var(--s6),5vw,var(--s8));
+  display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
+  gap:var(--s7); align-items:center;
+}
+@media (max-width:900px){ .cta-in{ grid-template-columns:1fr; gap:var(--s6); } }
+.cta-in h2{ color:var(--paper); font-size:clamp(1.75rem,3.4vw,2.6rem); }
+.cta-in p{ color:#B9C0C4; margin-top:var(--s4); max-width:52ch; }
+.cta-actions{ display:flex; flex-direction:column; gap:var(--s3); }
+.cta-in .btn--primary{ background:var(--vermilion); }
+.cta-in .btn--primary:hover{ background:#A0351A; }
+.cta-in .btn--ghost{ color:var(--paper); border-color:#5C666E; }
+.cta-in .btn--ghost:hover{ background:#242B31; border-color:#9AA3AA; }
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.site-foot{
+  border-top:1px solid var(--rule);
+  padding:var(--s7) 0 var(--s8);
+}
+.foot-grid{
+  display:flex; flex-wrap:wrap; gap:var(--s5) var(--s8);
+  justify-content:space-between; align-items:flex-start;
+}
+.foot-brand{ display:flex; align-items:center; gap:10px;
+  font-family:var(--display); font-weight:600; font-size:17px; letter-spacing:-.02em; }
+.foot-links{ display:flex; flex-wrap:wrap; gap:var(--s2) var(--s5); }
+.foot-links a{
+  font-size:14px; color:var(--ink-2); text-decoration:none;
+  padding:9px 2px; min-height:44px; display:inline-flex; align-items:center;
+  transition:color 160ms var(--ease);
+}
+.foot-links a:hover{ color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
+.foot-note{
+  margin-top:var(--s6); padding-top:var(--s5);
+  border-top:1px solid var(--rule);
+  font-size:13px; color:var(--ink-3);
+  display:flex; flex-wrap:wrap; gap:var(--s2) var(--s5); justify-content:space-between;
+}
+
+/* ============================================================
+   Reveal — one-shot, IntersectionObserver-gated
+   ============================================================ */
+.rise{ opacity:0; transform:translateY(14px); }
+.rise.is-in{
+  animation:rise 620ms var(--ease) forwards;
+  animation-delay:calc(var(--d,0) * 1ms);
+}
+@keyframes rise{ to{ opacity:1; transform:none; } }
+
+.sr-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+
+/* ============================================================
+   Reduced motion — kill transforms, keep everything readable
+   ============================================================ */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+  }
+  .rise{ opacity:1 !important; transform:none !important; }
+  .brief-row{ opacity:1 !important; transform:none !important; animation:none !important; }
+  .route-line{ stroke-dashoffset:0 !important; }
+  .route-node,.route-label{ opacity:1 !important; }
+  .progress{ display:none; }
+}
+</style>
+</head>
+<body data-page-node-id="AhlZlPkROl3LpIDYm25i45">
+
+<div class="progress" aria-hidden="true" data-page-node-id="tPy84aGAMbdHH9csUxBKcp"></div>
+
+<a class="skip" href="#main" data-page-node-id="KDzKZ9494H66PbVfBNjMZn">Skip to content</a>
+
+<!-- ========================= HEADER ========================= -->
+<header class="site-head" data-page-node-id="TtI66kN3PMiezOiOTwKOnt">
+  <div class="wrap head-in" data-page-node-id="xQuoYuYxfNDsJyYBv1zkJV">
+    <a class="brand" href="/" aria-label="Waypoint — home" data-page-node-id="Q0bpAAfIDlWdTUBZTa4893">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false" data-page-node-id="NFFHL8IaoRjIBlVH58jvQP">
+        <path d="M10 1.4 18.6 10 10 18.6 1.4 10Z" fill="none" stroke="#16191C" stroke-width="1.5" data-page-node-id="oGdf9FIvDxhnNAmjM6A4p4"/>
+        <path d="M10 6.1 13.9 10 10 13.9 6.1 10Z" fill="#C8462A" data-page-node-id="7WKou2KrMjsin6EF1Slopr"/>
+      </svg>
+      Waypoint
+    </a>
+    <nav class="nav" aria-label="Primary" data-page-node-id="uhKDWSpMuNTSHwgnPN18eK">
+      <a href="#specimen" data-page-node-id="AuUWcRMtc4yBBts7zZGEMN">Product</a>
+      <a href="#gaps" data-page-node-id="sejCA4JIhHQxrCG8Numk9M">What it catches</a>
+      <a href="#how" data-page-node-id="LeWrrPX2qlTskGUlWDwF2t">How it works</a>
+      <a href="#fit" data-page-node-id="dEXupY8ILYEc7kEWDIS0Oe">For agencies</a>
+      <a href="/pricing" data-page-node-id="6P4O1jDaTSL2lGZQywHNsa">Pricing</a>
+      <a href="/login" data-page-node-id="EuGvQHdTDWHcHfLyxn5fi5">Sign in</a>
+      <a class="is-cta" href="/signup" data-page-node-id="Pb76AzEBkLUzVA9wtAeVJe">Create a workspace</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" data-page-node-id="dwlS9nAcB7Neq4KglEAJxR">
+
+  <!-- ========================= HERO ========================= -->
+  <section class="hero" data-page-node-id="Xa1CYy0dufife2FAUxPE6Q">
+    <div class="wrap hero-grid" data-page-node-id="QJ1dvzNEpOG5JIaUqSIxGV">
+
+      <div class="hero-copy" data-page-node-id="uW4p6pMrEgLX4PoPq5uvzu">
+        <span class="mark" data-page-node-id="rTEF1aMRE8uPRz2tIFpqCK">intake for boutique travel agencies</span>
+        <h1 class="rise" data-page-node-id="rt9B0063oGDV8HX285n4oe">Trip requests arrive messy. Your quote shouldn&rsquo;t.</h1>
+        <p class="lede rise" style="--d:70" data-page-node-id="M9b8ZnRE6iP16N1d2CCvdL">
+          Waypoint reads the calls, emails and WhatsApp threads you already
+          receive, pulls out the facts, and shows you exactly what is still
+          missing&nbsp;&mdash; before you commit to a number.
+        </p>
+
+        <div class="hero-actions rise" style="--d:140" data-page-node-id="vMyBNKo2oY08khZpSmebNp">
+          <a class="btn btn--primary" href="/signup" data-page-node-id="1Jp6wpFXSgpDGqASWZObrO">
+            Create a workspace
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="HOXCzvC9PEFmuKvtEzCOBE">
+              <path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="1TcdFduLX2y6rcTRilciOK"/>
+            </svg>
+          </a>
+          <a class="btn btn--ghost" href="#specimen" data-page-node-id="WnVMNW5uYMgjHA7Qsy1ds3">Run it on a real request</a>
+        </div>
+
+        <p class="hero-note rise" style="--d:200" data-page-node-id="cDQRe7INNasfgc1uFVkYYa">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="0Dy1C43FxywBxV1K0HnYtA">
+            <circle cx="8" cy="8" r="6.6" stroke="#5E676E" stroke-width="1.3" data-page-node-id="5UOGsqQmWLD10ZDjlQ5Ham"/>
+            <path d="M5.3 8.2 7.1 10l3.6-4" stroke="#1F5C58" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="AmulGCQVcCBxRTpCKfUv2w"/>
+          </svg>
+          No client portal to roll out and no app for travellers to install.
+          It works on the messages you already get.
+        </p>
+
+        <div class="channels rise" style="--d:260" data-page-node-id="yBSDYhkU6qTQKcA4hTkmtB">
+          <span class="mark" data-page-node-id="Zw0bvzAuFxFSpmj2bVXhxW">reads</span>
+          <div class="channels-row" data-page-node-id="u3TE4cdcoOyitidYnB3tXN">
+            <span data-page-node-id="FkZILcNomQ3AUOdTW9eky1">WhatsApp threads</span>
+            <span data-page-node-id="U8IpVz01G1XeWGfFehkpKb">email chains</span>
+            <span data-page-node-id="1DNpez8rVH1AfOjUs2TSGY">call notes</span>
+            <span data-page-node-id="44MwNE3Jh9TGTylnVQAovk">forwarded PDFs</span>
+            <span data-page-node-id="YQRuNAASryZKfxVvFUlPUa">copied itineraries</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- SPECIMEN: interactive core ---------- -->
+      <div class="spec rise" id="specimen" style="--d:120" data-page-node-id="0i224shTMIYelmKC1qiDg7">
+        <div class="spec-bar" data-page-node-id="LTEcOW4UfjyRPpuO5k750p">
+          <div class="tabs" role="tablist" aria-label="Choose a source message" data-page-node-id="bWBbjuJGK5n29mQJFIdvkU">
+            <button class="tab" role="tab" id="tab-whatsapp"  aria-selected="true"  aria-controls="panel-source" data-src="whatsapp" data-page-node-id="FEMjBMXlccu7bdD03xOCxS">WhatsApp</button>
+            <button class="tab" role="tab" id="tab-email"     aria-selected="false" aria-controls="panel-source" data-src="email" data-page-node-id="hT2sAkPEvAJxiyQJj5KJ3y">Email</button>
+            <button class="tab" role="tab" id="tab-call"      aria-selected="false" aria-controls="panel-source" data-src="call" data-page-node-id="zRLNGVrJvG6S9UDXpxbp1h">Call notes</button>
+          </div>
+          <span class="spec-id" data-page-node-id="oYPjb5RtPhXFHoPCRC9kwG">request&nbsp;#0417</span>
+        </div>
+
+        <div class="spec-body" data-page-node-id="UCINT3H4L4khZJQzZQufGu">
+          <!-- Source -->
+          <div class="spec-col" data-page-node-id="DzVYAyfFNWjaYhIqSeoVHu">
+            <div class="col-head" data-page-node-id="FRpax3TLIj1WJSV1V7ImrT">
+              <span class="col-title" data-page-node-id="6Pl8I1jLZGCOcNxSmEMiIR">Source</span>
+              <span class="col-meta" id="src-meta" data-page-node-id="buE3sj7E6jykyypwwc1knm"></span>
+            </div>
+
+            <div class="raw" id="panel-source" role="tabpanel" aria-labelledby="tab-whatsapp" aria-live="polite" data-page-node-id="KDs4xUNtCmnXuP4Z4IQPn1">
+              <div class="raw-msg" id="raw-msgs" data-page-node-id="ujz2jxTdzFDccThTcDvX65"></div>
+            </div>
+
+            <div class="extract-row" data-page-node-id="3A9hj2ZKQv3L2DgFEVDo9M">
+              <button class="btn btn--extract" id="extract" type="button" data-page-node-id="g2lCu7cwYryZHDB7ro4Rin">
+                Extract brief
+              </button>
+              <span class="extract-hint" id="hint" data-page-node-id="Ou8DTlDjqoXWWRmNR5K1Jw">runs on the raw text &mdash; no template</span>
+            </div>
+          </div>
+
+          <!-- Brief -->
+          <div class="spec-col" data-page-node-id="4myxT06agiv6CMmIS6K84t">
+            <div class="col-head" data-page-node-id="4fvjiNJBRBtgtOrUJ9jYbs">
+              <span class="col-title" data-page-node-id="XljPqBCKG5QbSAcQRrkBJH">Extracted brief</span>
+              <span class="col-meta" id="brief-count" data-page-node-id="Zz8Bf8vz32DxpiBJX9PrDI"></span>
+            </div>
+
+            <div class="brief" id="brief" aria-live="polite" data-page-node-id="NsVCMTq4ve3dJrMAEw0G7W"></div>
+
+            <div class="legend" aria-hidden="true" data-page-node-id="YWc8JeYGW444rLdCOE5JCW">
+              <span class="legend-item" data-page-node-id="m5pKKRpD1cf5Hba1O38srg"><span class="chip chip--fact" data-page-node-id="AskSTxW2zTan9YaI28YIvG">Fact</span> stated</span>
+              <span class="legend-item" data-page-node-id="4c7pIO33KcW2YBEIo4koBF"><span class="chip chip--inferred" data-page-node-id="eLEzJgxuIC0GAiO5R6TEgB">Inferred</span> derived</span>
+              <span class="legend-item" data-page-node-id="GBjpGDQsFa0JaPlynArjJ9"><span class="chip chip--assumed" data-page-node-id="bPVPax4VMK4B9sMwJBGMO8">Assumed</span> defaulted</span>
+              <span class="legend-item" data-page-node-id="cwZMCF9i3ZoNEO5alXZI5c"><span class="chip chip--unknown" data-page-node-id="TKjskpuJVHrVZ7b4ow0DgA">Unknown</span> missing</span>
+            </div>
+
+            <div class="gap" id="gap" hidden data-page-node-id="GV71qhX47lvY5H3eCIYTd1">
+              <div class="gap-top" data-page-node-id="23PtY81ckxavLLnPF8gmzn">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="OFGQeAIFdJyqBTEIfBDODQ">
+                  <path d="M8 2.2 14.6 13.4H1.4L8 2.2Z" stroke="#9E3419" stroke-width="1.3" stroke-linejoin="round" data-page-node-id="AGJIyXcZrywsO9Mr2JgoNj"/>
+                  <path d="M8 6.3v3.1" stroke="#9E3419" stroke-width="1.4" stroke-linecap="round" data-page-node-id="k3z0A7rPTAaMajcWL4BKcu"/>
+                  <circle cx="8" cy="11.3" r=".85" fill="#9E3419" data-page-node-id="JfBeFVaDu7ePZ0n0owS8wo"/>
+                </svg>
+                <span id="gap-text" data-page-node-id="xvY7VYoRXOgzc3PDnt6KLE">3 gaps block the quote</span>
+              </div>
+              <ul id="gap-list" data-page-node-id="CFt8wlz4PTZPEFPmxEx3Dp"></ul>
+            </div>
+
+            <div class="question" id="question" hidden data-page-node-id="22YfV6uyK2YkClW8SKPkqL">
+              <span class="q-label" data-page-node-id="MsEbHRG6a7lExeRGavat2w">Suggested question</span>
+              <p class="q-text" id="q-text" data-page-node-id="3wdkP1aXUQDBGaX3Dada1h"></p>
+              <div class="q-foot" data-page-node-id="zQwjzGijGCHk6Dqv5v2iAy">
+                <button class="btn btn--copy" id="copy" type="button" data-page-node-id="oUGeQp8KVdhpOPxRdti1RU">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="4yjmhdkKXnrrwsfLiWyzax">
+                    <rect x="5.4" y="5.4" width="8.2" height="8.2" rx="1.4" stroke="currentColor" stroke-width="1.3" data-page-node-id="Cg4Kpf9jvKhRorH4VRlHtM"/>
+                    <path d="M10.6 5.4V3.9c0-.77-.63-1.4-1.4-1.4H3.9c-.77 0-1.4.63-1.4 1.4v5.3c0 .77.63 1.4 1.4 1.4h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" data-page-node-id="gtYIFqzIzc6rApR8FbPTGY"/>
+                  </svg>
+                  Copy to reply
+                </button>
+                <span class="q-state" id="q-state" role="status" data-page-node-id="fxpyZvfpT6HZvXPgxo6GiC">Copied</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========================= GAPS ========================= -->
+  <section class="section" id="gaps" data-page-node-id="5EAciaaNWzxnnsZJljGUpG">
+    <div class="wrap" data-page-node-id="0D8RxGDC3IWLocPjd7UtDd">
+      <div class="split" data-page-node-id="o2XhgOtMrqtiUGkMZigRuC">
+        <div class="rail" data-page-node-id="VZmxLlbDXVYw8BhGMztGWb">
+          <span class="mark" data-page-node-id="l76cvrVUClQzVnrOQMXUxx">what it catches</span>
+        </div>
+        <div data-page-node-id="wbx0j2j6kIeAhEDKoqc54X">
+          <div class="sec-head" data-page-node-id="vGddHve9DQodw9CK48GOl8">
+            <h2 class="rise" data-page-node-id="qfqb8s8PB1lNjkb4GCja6U">What&rsquo;s missing matters more than what&rsquo;s there.</h2>
+            <p class="lede rise" style="--d:60" data-page-node-id="uFjoFfTa6mpxfGvbo9PXr1">
+              Any tool can lift the destination out of a message. The expensive
+              mistakes are the blanks&nbsp;&mdash; the room type nobody mentioned,
+              the passport that expires mid-trip, the budget nobody wants to say
+              out loud. Waypoint separates them by consequence, so you know what
+              to chase and what to stop worrying about.
+            </p>
+          </div>
+
+          <div class="gaps" data-page-node-id="EeDXoJUwpHy5v2YtE06SwT">
+            <article class="gap-card gap-card--block rise" style="--d:0" data-page-node-id="UWKJEq2xYjrnG77InxjHlw">
+              <h3 data-page-node-id="fUMcea8IHBtLwPLy3MxpdV">Blocks the trip</h3>
+              <p data-page-node-id="kAhPHpp95cI2hrr9EgKSC8">Missing these means the itinerary cannot be booked or is actively risky.</p>
+              <ul data-page-node-id="WdKwZETLnUqr6monlQ5QVe">
+                <li data-page-node-id="1B7ANjZzDkkQR0cvI5fJ1W">passport validity vs. travel dates</li>
+                <li data-page-node-id="7GIKjJFA71nMpEXpygheId">visa lead time for the destination</li>
+                <li data-page-node-id="DhCMTpgYb1FQBITJ9syO6f">minimum connection windows</li>
+                <li data-page-node-id="X39ZvlNyF0WzFK0jp3Hlpm">traveller names as printed</li>
+              </ul>
+            </article>
+
+            <article class="gap-card gap-card--quote rise" style="--d:70" data-page-node-id="JCmYK2Mx52SG9ZXttEqJPB">
+              <h3 data-page-node-id="qT5HCZQqu81AyZaSs9Z5zL">Changes the quote</h3>
+              <p data-page-node-id="qeFO0NwjPtlw57pTJVklAQ">The number you send moves materially depending on these.</p>
+              <ul data-page-node-id="SNodjE0isQ4KiZ9PiPl9Fp">
+                <li data-page-node-id="0n6FC4DeoUmta59PjgYVYJ">budget ceiling and currency</li>
+                <li data-page-node-id="XQhGEwhY6Lps6HRyE5ec6K">room category and bed setup</li>
+                <li data-page-node-id="ykLDBbvHew3kJ4fug7P08h">arrival and departure city</li>
+                <li data-page-node-id="cYtVsgkPLcQnR2mec8GRe8">internal transport class</li>
+              </ul>
+            </article>
+
+            <article class="gap-card gap-card--pref rise" style="--d:140" data-page-node-id="2CGwYvI02xN82REfec9YHB">
+              <h3 data-page-node-id="d4gKk807FCQkKEda53fXVz">Shapes the plan</h3>
+              <p data-page-node-id="uWLu7sh7ZwGHbbNrtKyx7h">Nice to know. Worth asking, never worth blocking a quote on.</p>
+              <ul data-page-node-id="wQDmKB3tP2gwJdcD7NAqKQ">
+                <li data-page-node-id="P1yMCvFo94mAwG9oFDFBm2">pace preference</li>
+                <li data-page-node-id="HK86FpkA69YAMTDQwIP7Ch">dietary requirements</li>
+                <li data-page-node-id="5rzMog9lPNrCYhaSwyiMio">accessibility needs</li>
+                <li data-page-node-id="hBP95Zy4wHSJnP4MkP2QO3">celebration moments</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= HOW ========================= -->
+  <section class="section" id="how" data-page-node-id="aC8hwDDQ5kBNTpdBblxF7N">
+    <div class="wrap" data-page-node-id="qrUAaneYYiRAlLpjZHERXs">
+      <div class="split" data-page-node-id="F3f7ffABqoA1SstYh8Ao6F">
+        <div class="rail" data-page-node-id="6QzopSVnwqIcZZbyIeQg0Z">
+          <span class="mark" data-page-node-id="GvwLQWMosT928OvmEi6rxb">how it works</span>
+        </div>
+        <div data-page-node-id="D6tYNgxO37SwC3KUxDfndc">
+          <div class="sec-head" data-page-node-id="VN4LpNHZCYDcrkyEgDuWn2">
+            <h2 class="rise" data-page-node-id="RM9GbK6cRb0TxoJssgkXxG">Four steps, one brief, no retyping.</h2>
+            <p class="lede rise" style="--d:60" data-page-node-id="fjTevF9b7FbjcnAkn4E2OX">
+              The whole point is that the request never has to be read twice.
+              It arrives unstructured and leaves as something you can price.
+            </p>
+          </div>
+
+          <div class="steps" data-page-node-id="DdkIgLqBUj4dcArqG5oiUF">
+            <div class="step rise" data-page-node-id="9Au1FGqzIqcGHPOgAaP9LG">
+              <span class="step-n" data-page-node-id="5uWCPZwPjyceiou0bp9aTE">01</span>
+              <div class="step-body" data-page-node-id="XlkWY3yOQzc1wtk0XmVWXr">
+                <h3 data-page-node-id="fcXQMmjRzpG6WvazqbM3ix">The request lands however it lands</h3>
+                <p data-page-node-id="yidM8BlDgmUh4SjbwoqBKa">
+                  Forward the thread, paste the notes, or drop in the transcript.
+                  There is no form for the client to fill in and no new tool for
+                  your team to learn first.
+                </p>
+              </div>
+            </div>
+
+            <div class="step rise" style="--d:60" data-page-node-id="PnjvEu4pjF5y9pT7mbnrk4">
+              <span class="step-n" data-page-node-id="gTkqdGl3gY8mK6gnBq3vao">02</span>
+              <div class="step-body" data-page-node-id="B7fg6s6noak3AG0AlOt09E">
+                <h3 data-page-node-id="aKCQT3CRwgxBCMhmxYIzSo">Fields come out labelled by confidence</h3>
+                <p data-page-node-id="z009u9hjLWvSKuAHypKahN">
+                  Every value lands as fact, inferred, assumed, or unknown. You
+                  can see which lines the system is sure about and which ones it
+                  guessed&nbsp;&mdash; before that guess reaches a client.
+                </p>
+              </div>
+            </div>
+
+            <div class="step rise" style="--d:120" data-page-node-id="obwEUFzE50zISXc2GDn9DR">
+              <span class="step-n" data-page-node-id="3aTbqG7A7ZNjDXNQZ61KsK">03</span>
+              <div class="step-body" data-page-node-id="GIP33jKXH3XIYMeHFyYbPA">
+                <h3 data-page-node-id="AfWGDWVPwkh69euKd80Zjw">Gaps get ranked, then asked</h3>
+                <p data-page-node-id="dj8AFMNthSfnyppYVcsin9">
+                  Waypoint hands you the questions worth sending, ordered by how
+                  much they change the quote. Copy the reply draft and send it,
+                  or edit it first.
+                </p>
+              </div>
+            </div>
+
+            <div class="step rise" style="--d:180" data-page-node-id="wqEtEzAYIoy3rJLeJat89Q">
+              <span class="step-n" data-page-node-id="cQoO7hK3M5dFK7kTpKiGQm">04</span>
+              <div class="step-body" data-page-node-id="MnBG7VGowg55OMGN8mSLOX">
+                <h3 data-page-node-id="Z6MEAvbNYh5CViK3ZhCdNm">The brief goes to quote with the record attached</h3>
+                <p data-page-node-id="qDx05HqhH9OUnGS34K04bq">
+                  What came from the client, what the system assumed, and what is
+                  still open travels with the brief. When someone asks why a trip
+                  was priced that way, the answer is already written down.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Route: drawn once on entry. No looping dash, no infinite pulse. -->
+          <div class="route" id="route" aria-hidden="true" data-page-node-id="uZHa4w9O3Gz2vwe9KD96yl">
+            <svg viewBox="0 0 900 96" role="presentation" focusable="false" data-page-node-id="NwmqppRWvtSK1KWuDxiYqP">
+              <path id="routePath"
+                    class="route-track"
+                    d="M22 68 C 150 68, 170 24, 300 24 S 470 68, 600 44 S 790 20, 878 34" data-page-node-id="XQFCTpZSyObLbNLe1XuIoM"/>
+              <path class="route-line" pathLength="1000" style="--len:1000"
+                    d="M22 68 C 150 68, 170 24, 300 24 S 470 68, 600 44 S 790 20, 878 34" data-page-node-id="kw9cN96QDZouEzRcDB3Auy"/>
+              <g data-page-node-id="bfhMxFk4QHxR192YCNSJBW">
+                <circle class="route-node" style="--i:0" cx="22"  cy="68" r="6" data-page-node-id="NWX44NcAWYANWYL9A1EvXQ"/>
+                <text   class="route-label" style="--i:0" x="22"  y="88" text-anchor="middle" data-page-node-id="jR0tODxF56RrwggXSZD0xe">raw</text>
+              </g>
+              <g data-page-node-id="Uh8ZfTCAMGaeAdyCHyryEk">
+                <circle class="route-node" style="--i:1" cx="300" cy="24" r="6" data-page-node-id="tia9LijuFwmmDTHBHjb1XJ"/>
+                <text   class="route-label" style="--i:1" x="300" y="14" text-anchor="middle" data-page-node-id="RVkgbDA0HvAADQlGriPjvj">extracted</text>
+              </g>
+              <g data-page-node-id="ZqZhIGAwwq1vQ5Z5iq3Obn">
+                <circle class="route-node" style="--i:2" cx="600" cy="44" r="6" data-page-node-id="oM3Sw659NIl7CQSHsRtuxC"/>
+                <text   class="route-label" style="--i:2" x="600" y="66" text-anchor="middle" data-page-node-id="7er17d2RjLe76vCL4Wph2k">gaps ranked</text>
+              </g>
+              <g data-page-node-id="IGqXjR33KsCECdgM856eSM">
+                <circle class="route-node" style="--i:3" cx="878" cy="34" r="7.5" data-page-node-id="TiyzDVJmCYKDU8yJJGySjA"/>
+                <text   class="route-label" style="--i:3" x="866" y="16" text-anchor="middle" data-page-node-id="ojDBJGzwpFIyOLgpLQQHkZ">quote-ready</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= FIT ========================= -->
+  <section class="section" id="fit" data-page-node-id="EBWDCBwuwkZa8jwcypyBe9">
+    <div class="wrap" data-page-node-id="sO3v1gBpeDaECVqhC4SjaH">
+      <div class="split" data-page-node-id="PA14Qt8q2QNG4fYeJBpOHw">
+        <div class="rail" data-page-node-id="KY4GIFoLyGmEk4dBJUw4aD">
+          <span class="mark" data-page-node-id="tMzEbY61Nl345jSUjqoFq4">for agencies</span>
+        </div>
+        <div data-page-node-id="jyB3o9lEaMovkoMxpPwYku">
+          <div class="sec-head" data-page-node-id="D1M7FaGT5A50DjMDJUh1aW">
+            <h2 class="rise" data-page-node-id="6wYDZ8SmoAZn4ljyuD1oDw">Built for small teams doing careful work.</h2>
+            <p class="lede rise" style="--d:60" data-page-node-id="IpsGbMtUGnAB4j4DERMkOd">
+              Waypoint assumes a handful of advisors, a queue of enquiries, and an
+              owner who reviews anything risky. If that is not your shop, this is
+              probably not your tool&nbsp;&mdash; and that is a fair thing to know
+              before you sign up.
+            </p>
+          </div>
+
+          <div class="fit" data-page-node-id="t514c0R2nW7Y2VR2k98DQs">
+            <div class="fit-col rise" data-page-node-id="qjQD5nai8QsNBWA59IdzbZ">
+              <h3 data-page-node-id="BFExYDHEy2FIgFXaZDndHR">A good fit if</h3>
+              <ul data-page-node-id="9yD51Y1kKJgRdWztDxRFmc">
+                <li data-page-node-id="sATr4YSLG8cMy6gqWxcBIc">
+                  <svg class="fit-yes" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="7J8Cx3oH0ZNoH69PmTJDYe">
+                    <circle cx="8" cy="8" r="6.7" stroke="currentColor" stroke-width="1.3" data-page-node-id="104Ade7EF9Ut1hEkL8kZ23"/>
+                    <path d="M5.1 8.2 7 10.1l4-4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="mueIMQQbTlfEjzUOpS9VBk"/>
+                  </svg>
+                  <span data-page-node-id="yfWYIDbpaI7VldfgrXWqG4">Enquiries arrive as free text across several channels.</span>
+                </li>
+                <li data-page-node-id="7uOf6bfefGb0LQQSD9WexE">
+                  <svg class="fit-yes" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="ds4pirYoBLWW54B8S49BrB">
+                    <circle cx="8" cy="8" r="6.7" stroke="currentColor" stroke-width="1.3" data-page-node-id="RqStuMQDw4mzJIWF36qXYx"/>
+                    <path d="M5.1 8.2 7 10.1l4-4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="g1Zg4qFtDZLU2qgMrT7kMH"/>
+                  </svg>
+                  <span data-page-node-id="JPUKVDnXQYqyOZGIiWrbJg">Someone re-reads the same thread to build the same brief.</span>
+                </li>
+                <li data-page-node-id="IdzM1iSaCC5jimUPpOdxLP">
+                  <svg class="fit-yes" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="l4LDZ6eMdsJSudDc9ypFMb">
+                    <circle cx="8" cy="8" r="6.7" stroke="currentColor" stroke-width="1.3" data-page-node-id="XlSDJUcwcPGZuePjUuuhmW"/>
+                    <path d="M5.1 8.2 7 10.1l4-4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="K33ZBF7dyFudTeTmqBpwNQ"/>
+                  </svg>
+                  <span data-page-node-id="Go7JPDKqFBCpUwklvAHXyk">Quotes have gone out with a detail nobody confirmed.</span>
+                </li>
+                <li data-page-node-id="ZlHLtsTvEiLICU3JpFfeGg">
+                  <svg class="fit-yes" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="G6GLrT4hnDQNRGsIQLmBBh">
+                    <circle cx="8" cy="8" r="6.7" stroke="currentColor" stroke-width="1.3" data-page-node-id="dJZWASe5LwDAjnOzyVo891"/>
+                    <path d="M5.1 8.2 7 10.1l4-4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="0FEgkoHNelXCrXYZ5ogWA9"/>
+                  </svg>
+                  <span data-page-node-id="HEwqUXEYb6ScKZbxLNLTfE">You want the reasoning written down, not just the output.</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="fit-col rise" style="--d:70" data-page-node-id="EnwIvCY6hxBA3pMraXhE99">
+              <h3 data-page-node-id="pK10Hgl9goSHvWSvI1MD8M">Not a good fit if</h3>
+              <ul data-page-node-id="To3f20PMKYpCxa7B327eM2">
+                <li data-page-node-id="Hx30vNNzKmrXclkpmOfHMJ">
+                  <svg class="fit-no" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="NF0iW9G8RTdZEqEBQcOJO7">
+                    <circle cx="8" cy="8" r="6.7" stroke="currentColor" stroke-width="1.3" data-page-node-id="tzINQaF44YTxkVQcrYeowG"/>
+                    <path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-page-node-id="8QwtF709LhVVGVFCTSjXRa"/>
+                  </svg>
+                  <span data-page-node-id="NcjCbJrdnRixOfK0UqSt2I">You need a client-facing booking portal out of the box.</span>
+                </li>
+                <li data-page-node-id="87pTIvYd8fQyK7JKA47SC5">
+                  <svg class="fit-no" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="7euWVoUEtGx0HwUVJMrHCx">
+                    <circle cx="8" cy="8" r="6.7" stroke="currentColor" stroke-width="1.3" data-page-node-id="PLXBnNMwP8YBLy6wRoYbNW"/>
+                    <path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-page-node-id="t7SUspbiCX8dVnvOgQEIkt"/>
+                  </svg>
+                  <span data-page-node-id="YCfgCyR4CHLquETGN6DMMR">Your enquiries already arrive in a fixed structured form.</span>
+                </li>
+                <li data-page-node-id="HeXThtij9nhnuDckBtc4XN">
+                  <svg class="fit-no" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="C6aNnsMpPnc49EnDHT1FmS">
+                    <circle cx="8" cy="8" r="6.7" stroke="currentColor" stroke-width="1.3" data-page-node-id="sVtA6GAGNf6SGORCN4SfIH"/>
+                    <path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-page-node-id="3SGyvepPqHvETB3jBgjgY5"/>
+                  </svg>
+                  <span data-page-node-id="GbXlHK4UOkdaYeGVcr3Usm">You want fully automated quoting with no human review.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= CTA ========================= -->
+  <section class="cta" data-page-node-id="PVHvXVzx2S2FeXDn5zvM4w">
+    <div class="wrap" data-page-node-id="93JH3yzdWD1Vh5sf1RUmy2">
+      <div class="cta-in" data-page-node-id="2qU6ykJVeP63zbiyh1KVni">
+        <div data-page-node-id="fziwHAH7jA2c0tnxKTPJRD">
+          <span class="mark" style="color:#9AA3AA" data-page-node-id="xsTYaotnrWvyeiWvfjLZv2">start where you already are</span>
+          <h2 style="margin-top:16px" data-page-node-id="eQFrMv6l0Rw0qFDJDW5SzS">Bring your messiest thread. See what comes out.</h2>
+          <p data-page-node-id="SQGS7k1y5qvAkNoZFGdUHO">
+            Paste a real enquiry on the first run. If Waypoint cannot pull a
+            usable brief out of it, you will know in about ninety seconds and it
+            will not have cost you a rollout.
+          </p>
+        </div>
+        <div class="cta-actions" data-page-node-id="zqNgzQkkDyfF2qkzZzdTTR">
+          <a class="btn btn--primary" href="/signup" data-page-node-id="BgPVHkZDOBq6UqbDCtHYbG">
+            Create a workspace
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="EnObN2oWsTRHiYV0GEPCFH">
+              <path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="vKFWDSnNhFNDTUD0xywVj3"/>
+            </svg>
+          </a>
+          <a class="btn btn--ghost" href="/pricing" data-page-node-id="AWWkeYaC2Zd35B7XyLGWij">See pricing</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ========================= FOOTER ========================= -->
+<footer class="site-foot" data-page-node-id="gXAIFkUTs5GvMprNaV7jOA">
+  <div class="wrap" data-page-node-id="EF9RNQHodNuL63IHxxzIPJ">
+    <div class="foot-grid" data-page-node-id="W84GSk71U2Pou4YDeGtDpm">
+      <div data-page-node-id="ZzC5pJG0a1HcjWWaQPf4MH">
+        <div class="foot-brand" data-page-node-id="Oc57kZSKr4RmBtjNcF3Wxd">
+          <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false" data-page-node-id="jJhXtJxs7HmYR90HU82OER">
+            <path d="M10 1.4 18.6 10 10 18.6 1.4 10Z" fill="none" stroke="#16191C" stroke-width="1.5" data-page-node-id="M5i0SsDFiycR8rbDGimup9"/>
+            <path d="M10 6.1 13.9 10 10 13.9 6.1 10Z" fill="#BE4225" data-page-node-id="YoztGfvM53FYtRm0RNnieP"/>
+          </svg>
+          Waypoint
+        </div>
+        <p style="margin-top:12px;font-size:14px;color:var(--ink-3);max-width:34ch" data-page-node-id="eDtxDto84TzpxgBMSF7lSY">
+          Intake and quoting for boutique travel agencies.
+        </p>
+      </div>
+      <nav class="foot-links" aria-label="Footer" data-page-node-id="ZVjXudzaZlpt5CfGWUFsEW">
+        <a href="#specimen" data-page-node-id="TvdVpaM2PkxJuFo1ZuP82P">Product</a>
+        <a href="#how" data-page-node-id="Cl0p4Qog03pTt749oulNhF">How it works</a>
+        <a href="/pricing" data-page-node-id="gBZOEwsZoUwbvhL6SaeXug">Pricing</a>
+        <a href="/login" data-page-node-id="FGfin3xA37npwnVqOR5CvS">Sign in</a>
+        <a href="/signup" data-page-node-id="trbAXV5ap7B35ECzv1GMjP">Create a workspace</a>
+      </nav>
+    </div>
+    <div class="foot-note" data-page-node-id="fzQGgvTmzIt6PyZKDj4Zpq">
+      <span data-page-node-id="vs9RknLDRU9uk9esw5SzWt">&copy; 2026 Waypoint</span>
+      <span data-page-node-id="32GYacOzrqhQVwhSOB2Eez">Prototype &mdash; design lab build, not yet wired to live intake.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==========================================================
+     Specimen data — one realistic enquiry per channel.
+     Field states mirror EpistemicStatus in
+     src/intake/packet_models.py (FACT / INFERRED / ASSUMED / UNKNOWN).
+     ========================================================== */
+  var SOURCES = {
+    whatsapp: {
+      meta: 'Priya · 2 messages · 09:14',
+      msgs: [
+        { t: 'hey! me and Rohan are thinking Italy for the honeymoon, sometime in sept, maybe 10–12 days', time: '09:14', self: false },
+        { t: 'we’re flexible on budget-ish but nothing crazy lol. Amalfi looks amazing?? also Rome obvs', time: '09:15', self: false }
+      ],
+      fields: [
+        { k: 'Destination',    v: 'Italy',        s: 'FACT' },
+        { k: 'Trip type',      v: 'Honeymoon',    s: 'FACT' },
+        { k: 'Travellers',     v: '2 adults',     s: 'INFERRED' },
+        { k: 'Window',         v: 'September',    s: 'FACT' },
+        { k: 'Duration',       v: '10–12 days',   s: 'INFERRED' },
+        { k: 'Regions',        v: 'Amalfi, Rome', s: 'INFERRED' },
+        { k: 'Arrival city',   v: null,           s: 'UNKNOWN' },
+        { k: 'Budget ceiling', v: null,           s: 'UNKNOWN' },
+        { k: 'Room category',  v: null,           s: 'UNKNOWN' },
+        { k: 'Passport valid', v: null,           s: 'UNKNOWN' }
+      ],
+      gaps: ['arrival city', 'budget ceiling', 'room category', 'passport validity'],
+      q: 'Which city should you fly into — and is ₹4–6L per person workable for 11 days? Also, could you check both passports are valid past March 2027?'
+    },
+    email: {
+      meta: 'Ferreira · forwarded chain · 3 replies',
+      msgs: [
+        { t: 'Hi — picking up this thread. We are a family of four (kids 9 and 12) looking at Japan next spring. Roughly two weeks. Cherry blossom if possible.', time: 'Mon 16:02', self: false },
+        { t: 'Budget is around 18–20k USD all in but we can flex for the right itinerary. Tokyo and Kyoto for sure, open on the rest.', time: 'Mon 16:04', self: false }
+      ],
+      fields: [
+        { k: 'Destination',    v: 'Japan',            s: 'FACT' },
+        { k: 'Travellers',     v: '2 adults, 2 children', s: 'FACT' },
+        { k: 'Children ages',  v: '9, 12',            s: 'FACT' },
+        { k: 'Window',         v: 'Spring (next yr)', s: 'FACT' },
+        { k: 'Duration',       v: '~14 days',         s: 'INFERRED' },
+        { k: 'Budget ceiling', v: 'USD 18–20k',       s: 'FACT' },
+        { k: 'Regions',        v: 'Tokyo, Kyoto',     s: 'FACT' },
+        { k: 'Season target',  v: 'Cherry blossom',   s: 'FACT' },
+        { k: 'Room category',  v: '2 rooms',          s: 'ASSUMED' },
+        { k: 'Exact dates',    v: null,               s: 'UNKNOWN' },
+        { k: 'Passport valid', v: null,               s: 'UNKNOWN' }
+      ],
+      gaps: ['exact dates', 'room configuration', 'passport validity'],
+      q: 'Do you have firm dates yet? Blossom weeks book out early — and should we plan on one family room or two connecting rooms?'
+    },
+    call: {
+      meta: 'Okonkwo · call notes · 6 min',
+      msgs: [
+        { t: 'Called re: 40th birthday trip. Group of 6 friends, wants somewhere warm in November, was thinking Portugal or Morocco. “Not a party holiday, nice dinners.”', time: 'Thu 11:30', self: false },
+        { t: 'Will confirm numbers next week once everyone checks leave. Wants a rough idea of cost before then.', time: 'Thu 11:36', self: false }
+      ],
+      fields: [
+        { k: 'Occasion',       v: '40th birthday',      s: 'FACT' },
+        { k: 'Travellers',     v: '6 adults',           s: 'INFERRED' },
+        { k: 'Window',         v: 'November',           s: 'FACT' },
+        { k: 'Climate',        v: 'Warm',               s: 'FACT' },
+        { k: 'Candidates',     v: 'Portugal / Morocco', s: 'FACT' },
+        { k: 'Style',          v: 'Not nightlife',      s: 'FACT' },
+        { k: 'Group confirmed',v: null,                 s: 'UNKNOWN' },
+        { k: 'Destination',    v: null,                 s: 'UNKNOWN' },
+        { k: 'Budget ceiling', v: null,                 s: 'UNKNOWN' },
+        { k: 'Duration',       v: null,                 s: 'UNKNOWN' }
+      ],
+      gaps: ['final destination', 'headcount confirmation', 'budget ceiling', 'duration'],
+      q: 'Should I cost both Portugal and Morocco so you can compare? And even a rough per-person ceiling would help me pick the right tier.'
+    }
+  };
+
+  var STATE_LABEL = { FACT: 'Fact', INFERRED: 'Inferred', ASSUMED: 'Assumed', UNKNOWN: 'Unknown' };
+
+  var el = {
+    tabs:     Array.prototype.slice.call(document.querySelectorAll('.tab')),
+    srcMeta:  document.getElementById('src-meta'),
+    rawMsgs:  document.getElementById('raw-msgs'),
+    brief:    document.getElementById('brief'),
+    count:    document.getElementById('brief-count'),
+    extract:  document.getElementById('extract'),
+    hint:     document.getElementById('hint'),
+    gap:      document.getElementById('gap'),
+    gapText:  document.getElementById('gap-text'),
+    gapList:  document.getElementById('gap-list'),
+    question: document.getElementById('question'),
+    qText:    document.getElementById('q-text'),
+    copy:     document.getElementById('copy'),
+    qState:   document.getElementById('q-state')
+  };
+
+  var current = 'whatsapp';
+  var extracted = false;
+  var copyTimer = null;
+
+  function chip(state) {
+    return '<span class="chip chip--' + state.toLowerCase() + '">' + STATE_LABEL[state] + '</span>';
+  }
+
+  function renderSource() {
+    var src = SOURCES[current];
+    el.srcMeta.textContent = src.meta;
+    el.rawMsgs.innerHTML = src.msgs.map(function (m) {
+      return '<p class="' + (m.self ? 'self' : '') + '">' +
+             escapeHtml(m.t) +
+             '<span class="raw-time">' + escapeHtml(m.time) + '</span></p>';
+    }).join('');
+  }
+
+  function renderBriefIdle() {
+    var src = SOURCES[current];
+    el.brief.innerHTML = src.fields.map(function (f, i) {
+      return '<div class="brief-row is-idle" style="--i:' + i + '">' +
+             '<span class="brief-k">' + escapeHtml(f.k) + '</span>' +
+             '<span class="brief-v is-empty">not extracted</span>' +
+             '<span>' + chip('UNKNOWN') + '</span></div>';
+    }).join('');
+    el.count.textContent = src.fields.length + ' fields';
+    el.gap.hidden = true;
+    el.question.hidden = true;
+    extracted = false;
+    el.hint.textContent = 'runs on the raw text — no template';
+  }
+
+  function renderBriefFull() {
+    var src = SOURCES[current];
+    el.brief.innerHTML = src.fields.map(function (f, i) {
+      var val = f.v === null
+        ? '<span class="brief-v is-empty">—</span>'
+        : '<span class="brief-v">' + escapeHtml(f.v) + '</span>';
+      return '<div class="brief-row is-in" style="--i:' + i + '">' +
+             '<span class="brief-k">' + escapeHtml(f.k) + '</span>' + val +
+             '<span>' + chip(f.s) + '</span></div>';
+    }).join('');
+
+    var unknowns = src.fields.filter(function (f) { return f.s === 'UNKNOWN'; }).length;
+    var known = src.fields.length - unknowns;
+    el.count.textContent = known + ' of ' + src.fields.length + ' resolved';
+
+    el.gapText.textContent = src.gaps.length + ' gaps still decide the quote';
+    el.gapList.innerHTML = src.gaps.map(function (g) {
+      return '<li>' + escapeHtml(g) + '</li>';
+    }).join('');
+    el.gap.hidden = false;
+
+    el.qText.textContent = src.q;
+    el.question.hidden = false;
+    extracted = true;
+    el.hint.textContent = 'labelled by confidence, not guessed silently';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function selectSource(key) {
+    current = key;
+    el.tabs.forEach(function (t) {
+      t.setAttribute('aria-selected', String(t.dataset.src === key));
+    });
+    document.getElementById('panel-source')
+      .setAttribute('aria-labelledby', 'tab-' + key);
+    renderSource();
+    renderBriefIdle();
+  }
+
+  /* Tabs — click + arrow keys for keyboard parity */
+  el.tabs.forEach(function (tab, i) {
+    tab.addEventListener('click', function () { selectSource(tab.dataset.src); });
+    tab.addEventListener('keydown', function (e) {
+      var dir = e.key === 'ArrowRight' ? 1 : (e.key === 'ArrowLeft' ? -1 : 0);
+      if (!dir) return;
+      e.preventDefault();
+      var next = el.tabs[(i + dir + el.tabs.length) % el.tabs.length];
+      next.focus();
+      selectSource(next.dataset.src);
+    });
+  });
+
+  el.extract.addEventListener('click', function () {
+    renderBriefFull();
+  });
+
+  el.copy.addEventListener('click', function () {
+    var text = SOURCES[current].q;
+    var done = function () {
+      el.qState.classList.add('is-on');
+      if (copyTimer) clearTimeout(copyTimer);
+      copyTimer = setTimeout(function () { el.qState.classList.remove('is-on'); }, 2200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+    function fallbackCopy() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:absolute;left:-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (err) { /* no-op */ }
+      document.body.removeChild(ta);
+    }
+  });
+
+  renderSource();
+  renderBriefIdle();
+
+  /* ==========================================================
+     One-shot reveals. Elements are unobserved after firing.
+     No infinite animation anywhere on this page.
+     ========================================================== */
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function showAll() {
+    document.querySelectorAll('.rise').forEach(function (n) { n.classList.add('is-in'); });
+    document.getElementById('route').classList.add('is-drawn');
+    renderBriefFull();
+  }
+
+  if (!('IntersectionObserver' in window) || reduce.matches) {
+    showAll();
+  } else {
+    var revealObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-in');
+        revealObs.unobserve(entry.target);
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+    document.querySelectorAll('.rise').forEach(function (n) { revealObs.observe(n); });
+
+    /* Draw the route once when it scrolls in */
+    var route = document.getElementById('route');
+    var routeObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        route.classList.add('is-drawn');
+        routeObs.unobserve(entry.target);
+      });
+    }, { threshold: 0.3 });
+    routeObs.observe(route);
+
+    /* Auto-run the extraction the first time the specimen is seen */
+    var specObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting || extracted) return;
+        setTimeout(renderBriefFull, 420);
+        specObs.unobserve(entry.target);
+      });
+    }, { threshold: 0.35 });
+    specObs.observe(document.getElementById('specimen'));
+  }
+})();
+</script>
+</body>
+</html>

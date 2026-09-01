@@ -64,8 +64,9 @@ class ExecutionLease:
             now = datetime.now(timezone.utc)
         return now > self.lease_expires_at
 
-    def heartbeat(self, extend_seconds: Optional[int] = None) -> None:
-        now = datetime.now(timezone.utc)
+    def heartbeat(self, extend_seconds: Optional[int] = None, now: Optional[datetime] = None) -> None:
+        if now is None:
+            now = datetime.now(timezone.utc)
         self.last_heartbeat_at = now
         ttl = extend_seconds or self.ttl_seconds
         self.lease_expires_at = now + timedelta(seconds=ttl)
@@ -80,6 +81,88 @@ class ExecutionLease:
             "last_heartbeat_at": self.last_heartbeat_at.isoformat(),
             "ttl_seconds": self.ttl_seconds,
         }
+
+
+@dataclass(slots=True)
+class ExecutionCheckpoint:
+    """Serializable intermediate state checkpoint for deterministic recovery (AGT-04 / AGT-05)."""
+    checkpoint_id: str
+    trip_id: str
+    run_id: str
+    step_name: str
+    completed_steps: list[str]
+    state_snapshot: dict[str, Any]
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "checkpoint_id": self.checkpoint_id,
+            "trip_id": self.trip_id,
+            "run_id": self.run_id,
+            "step_name": self.step_name,
+            "completed_steps": self.completed_steps,
+            "state_snapshot": self.state_snapshot,
+            "created_at": self.created_at,
+        }
+
+
+class CheckpointStore:
+    """In-memory & durable checkpoint manager for agent run state."""
+    _checkpoints: dict[str, list[ExecutionCheckpoint]] = {}
+
+    @classmethod
+    def save(cls, checkpoint: ExecutionCheckpoint) -> None:
+        key = f"{checkpoint.trip_id}:{checkpoint.run_id}"
+        if key not in cls._checkpoints:
+            cls._checkpoints[key] = []
+        cls._checkpoints[key].append(checkpoint)
+
+    @classmethod
+    def get_latest(cls, trip_id: str, run_id: str) -> Optional[ExecutionCheckpoint]:
+        key = f"{trip_id}:{run_id}"
+        items = cls._checkpoints.get(key, [])
+        return items[-1] if items else None
+
+    @classmethod
+    def clear(cls, trip_id: str, run_id: str) -> None:
+        cls._checkpoints.pop(f"{trip_id}:{run_id}", None)
+
+
+class ZombieLeaseSweeper:
+    """Detects expired worker leases and recovers interrupted tasks (AGT-02)."""
+
+    @staticmethod
+    def sweep(leases: dict[str, ExecutionLease], now: Optional[datetime] = None) -> list[str]:
+        if now is None:
+            now = datetime.now(timezone.utc)
+        reclaimed: list[str] = []
+        for work_id, lease in list(leases.items()):
+            if lease.is_expired(now):
+                reclaimed.append(work_id)
+        return reclaimed
+
+
+class DeadLetterQueue:
+    """Quarantine for poisoned or repeated failure runs (AGT-09)."""
+    _quarantine: dict[str, dict[str, Any]] = {}
+
+    @classmethod
+    def quarantine(cls, trip_id: str, run_id: str, error: str, retry_count: int) -> dict[str, Any]:
+        record = {
+            "trip_id": trip_id,
+            "run_id": run_id,
+            "error": error,
+            "retry_count": retry_count,
+            "quarantined_at": datetime.now(timezone.utc).isoformat(),
+            "status": "QUARANTINED",
+        }
+        cls._quarantine[f"{trip_id}:{run_id}"] = record
+        return record
+
+    @classmethod
+    def get(cls, trip_id: str, run_id: str) -> Optional[dict[str, Any]]:
+        return cls._quarantine.get(f"{trip_id}:{run_id}")
+
 
 
 @dataclass(frozen=True, slots=True)

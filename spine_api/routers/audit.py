@@ -20,7 +20,7 @@ from sqlalchemy import select, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.core.auth import require_permission
-from spine_api.core.database import get_db
+from spine_api.core.rls import get_rls_db
 from spine_api.models.audit import AuditLog
 from spine_api.models.tenant import Membership
 
@@ -56,7 +56,7 @@ async def list_audit_logs(
     since: Optional[str] = Query(default=None, description="ISO timestamp for filtering logs after this date"),
     limit: int = Query(default=50, ge=1, le=200),
     membership: Membership = require_permission("audit:read"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     """List audit log entries for the current agency.
 

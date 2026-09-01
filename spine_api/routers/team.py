@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.contract import InviteTeamMemberRequest
 from spine_api.core.auth import get_current_agency, get_current_user, require_permission
-from spine_api.core.database import get_db
+from spine_api.core.rls import get_rls_db
 from spine_api.models.tenant import Agency, User
 from spine_api.services import membership_service
 
@@ -37,7 +37,7 @@ router = APIRouter()
 @router.get("/api/team/members", response_model=dict)
 async def list_team_members(
     agency: Agency = Depends(get_current_agency),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     """List all team members for the current agency."""
     members = await membership_service.list_members(db, agency_id=agency.id)
@@ -49,7 +49,7 @@ async def get_team_member(
     member_id: str,
     agency: Agency = Depends(get_current_agency),
     _user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     """Get a single team member by membership ID."""
     member = await membership_service.get_member(db, member_id, agency.id)
@@ -64,7 +64,7 @@ async def invite_team_member(
     agency: Agency = Depends(get_current_agency),
     user: User = Depends(get_current_user),
     _perm=require_permission("team:manage"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     """Invite a new team member (creates User + Membership)."""
     try:
@@ -89,7 +89,7 @@ async def update_team_member(
     request: InviteTeamMemberRequest,
     agency: Agency = Depends(get_current_agency),
     _perm=require_permission("team:manage"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     """Update a team member's role, capacity, or specializations."""
     updates = request.model_dump(exclude_none=True, include={"role", "capacity", "specializations"})
@@ -104,7 +104,7 @@ async def deactivate_team_member(
     member_id: str,
     agency: Agency = Depends(get_current_agency),
     _perm=require_permission("team:manage"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     """Deactivate a team member."""
     success = await membership_service.deactivate_member(db, member_id, agency.id)
@@ -116,7 +116,7 @@ async def deactivate_team_member(
 @router.get("/api/team/workload")
 async def get_workload_distribution(
     agency: Agency = Depends(get_current_agency),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     """Get workload distribution across active team members."""
     members = await membership_service.list_members(db, agency_id=agency.id, active_only=True)

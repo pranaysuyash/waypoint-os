@@ -214,5 +214,149 @@
       "default_usd"
     ],
     "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_neg_001",
+    "description": "Date-range distractor \u2014 'between March and June' is months, not money",
+    "difficulty": "medium",
+    "raw_input": "We can travel any time between March and June for 10 days.",
+    "expected_extracted_fields": {
+      "budget_amount": null,
+      "budget_currency": null,
+      "budget_scope": null,
+      "budget_flexibility": null
+    },
+    "expected_field_count": 0,
+    "tags": [
+      "negative",
+      "precision_trap"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_neg_002",
+    "description": "Headcount distractor \u2014 'family of 4' is people, not a budget",
+    "difficulty": "medium",
+    "raw_input": "Family of 4 with two kids wants a beach trip.",
+    "expected_extracted_fields": {
+      "budget_amount": null,
+      "budget_currency": null,
+      "budget_scope": null,
+      "budget_flexibility": null
+    },
+    "expected_field_count": 0,
+    "tags": [
+      "negative",
+      "precision_trap"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_neg_003",
+    "description": "Other-thing price + 'budget' keyword without an amount",
+    "difficulty": "medium",
+    "raw_input": "Flights cost around 800 these days but we have not set a budget yet.",
+    "expected_extracted_fields": {
+      "budget_amount": null,
+      "budget_currency": null,
+      "budget_scope": null,
+      "budget_flexibility": null
+    },
+    "expected_field_count": 0,
+    "tags": [
+      "negative",
+      "precision_trap"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_neg_004",
+    "description": "Hotel stars and room count are not budgets",
+    "difficulty": "medium",
+    "raw_input": "The hotel is 4 stars and we need 2 rooms.",
+    "expected_extracted_fields": {
+      "budget_amount": null,
+      "budget_currency": null,
+      "budget_scope": null,
+      "budget_flexibility": null
+    },
+    "expected_field_count": 0,
+    "tags": [
+      "negative",
+      "precision_trap"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_neg_005",
+    "description": "'We have 2 kids' \u2014 anchored 'have' with sub-100 amount is not a budget",
+    "difficulty": "medium",
+    "raw_input": "We have 2 kids and want a resort with a pool.",
+    "expected_extracted_fields": {
+      "budget_amount": null,
+      "budget_currency": null,
+      "budget_scope": null,
+      "budget_flexibility": null
+    },
+    "expected_field_count": 0,
+    "tags": [
+      "negative",
+      "precision_trap"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_neg_006",
+    "description": "'family of 4' \u2014 guards against bare 'of' anchors (prototype false-positive)",
+    "difficulty": "medium",
+    "raw_input": "A trip for a family of 4 to visit Costa Rica.",
+    "expected_extracted_fields": {
+      "budget_amount": null,
+      "budget_currency": null,
+      "budget_scope": null,
+      "budget_flexibility": null
+    },
+    "expected_field_count": 0,
+    "tags": [
+      "negative",
+      "precision_trap"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_neg_007",
+    "description": "Year number is not a budget",
+    "difficulty": "medium",
+    "raw_input": "We went in 2019 and loved Italy; planning to return next year.",
+    "expected_extracted_fields": {
+      "budget_amount": null,
+      "budget_currency": null,
+      "budget_scope": null,
+      "budget_flexibility": null
+    },
+    "expected_field_count": 0,
+    "tags": [
+      "negative",
+      "precision_trap"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_neg_008",
+    "description": "Hotel star rating is not a budget",
+    "difficulty": "medium",
+    "raw_input": "Thinking of Singapore, maybe 5-star hotels.",
+    "expected_extracted_fields": {
+      "budget_amount": null,
+      "budget_currency": null,
+      "budget_scope": null,
+      "budget_flexibility": null
+    },
+    "expected_field_count": 0,
+    "tags": [
+      "negative",
+      "precision_trap"
+    ],
+    "document_type": "budget"
   }
 ]

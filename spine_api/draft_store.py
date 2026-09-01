@@ -392,10 +392,14 @@ class FileDraftStore:
         run_id: str,
         run_state: str,
         run_snapshot: Optional[dict] = None,
+        linked_trip_id: Optional[str] = None,
     ) -> Optional[Draft]:
         """
         Update draft with latest run state.
         Also appends run snapshot to run_snapshots array (capped).
+
+        When linked_trip_id is provided, records the draft → trip linkage so
+        reprocesses update the same trip (ADR_ESCALATE_LEAD_PERSISTENCE).
         """
         draft = FileDraftStore.get(draft_id)
         if not draft:
@@ -404,6 +408,10 @@ class FileDraftStore:
             "last_run_id": run_id,
             "last_run_state": run_state,
         }
+        if linked_trip_id:
+            linked = [t for t in (draft.linked_trip_ids or []) if t != linked_trip_id]
+            linked.append(linked_trip_id)
+            updates["linked_trip_ids"] = linked[-25:]
         if run_state in ("completed", "failed", "blocked"):
             updates["last_run_completed_at"] = _now_iso()
         # Update status based on run state
@@ -493,8 +501,9 @@ class DraftStore:
         run_id: str,
         run_state: str,
         run_snapshot: Optional[dict] = None,
+        linked_trip_id: Optional[str] = None,
     ) -> Optional[Draft]:
-        return DraftStore._backend.update_run_state(draft_id, run_id, run_state, run_snapshot=run_snapshot)
+        return DraftStore._backend.update_run_state(draft_id, run_id, run_state, run_snapshot=run_snapshot, linked_trip_id=linked_trip_id)
 
     @staticmethod
     def rebuild_index() -> dict:

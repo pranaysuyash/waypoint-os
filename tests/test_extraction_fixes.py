@@ -28,6 +28,7 @@ from src.intake.extractors import (
     _normalize_constraint,
     _extract_party,
     _extract_budget,
+    _extract_budget_scope,
     _extract_destination_candidates,
     _extract_dates,
     _extract_trip_intent,
@@ -1104,7 +1105,13 @@ class TestRuntimeInquiryRegressionCoverage:
         packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
 
         assert packet.facts.get("date_flexibility") is not None
-        assert packet.facts.get("budget_flexibility") is None
+        # D2 (RQ-01 golden convention): an unmarked budget defaults to "soft".
+        # The invariant protected here is that DATE flexibility must not leak
+        # into the budget signal — the budget value may be the "soft" default
+        # but must never become "stretch", and no flexibility ambiguity events
+        # may be created from date language.
+        budget_flex_fact = packet.facts.get("budget_flexibility")
+        assert budget_flex_fact is None or budget_flex_fact.value != "stretch"
         assert not any(
             amb.field_name == "budget_flexibility"
             and amb.ambiguity_type == "unresolved_alternatives"
@@ -1573,3 +1580,359 @@ class TestPrioritiesFlexibilityInPipeline:
         packet = pipeline.extract([env])
         facts = packet.facts
         assert "date_flexibility" not in facts
+
+
+# ---------------------------------------------------------------------------
+# DEMO-02 colloquial extraction gaps — destination verb-object phrasing +
+# city sets. Source:
+# Docs/exploration/DEMO02_COLLOQUIAL_EXTRACTION_GAPS_2026-08-31.md §4 (D1–D6)
+# ---------------------------------------------------------------------------
+
+DEMO02_FULL_NOTE = (
+    "hey! me and 3 friends want to do japan next spring, maybe late march for the "
+    "cherry blossoms. flying from SF. we are all pretty active, one friend is "
+    "vegetarian. budget around 3.5k USD each, not sure if that includes flights. "
+    "thinking tokyo + kyoto + osaka, 10-12 days. one of us is terrified of heights "
+    "so no cable cars please. we saw this amazing ryokan on tiktok, no idea of the "
+    "name. dates flexible plus or minus a week. we also wanna do a cooking class "
+    "somewhere. thx!!"
+)
+
+
+class TestColloquialDestination:
+    """Lowercase verb-object destinations and city-set separators."""
+
+    # --- D1: "do X" with fully lowercase text ---
+    def test_verb_object_do_japan(self):
+        candidates, status, raw = _extract_destination_candidates("want to do japan")
+        assert candidates == ["Japan"], candidates
+        assert status == "definite"
+        assert raw == "japan"
+
+    # --- D2: "hitting X" with trailing context words ---
+    def test_hitting_bali_with_trailing_context(self):
+        candidates, status, raw = _extract_destination_candidates("hitting bali next month")
+        assert candidates == ["Bali"], candidates
+        assert status == "definite"
+        assert raw == "bali"
+
+    # --- D3: "covering X and Y" ---
+    def test_covering_two_cities(self):
+        candidates, status, _ = _extract_destination_candidates("covering tokyo and kyoto")
+        assert candidates == ["Tokyo", "Kyoto"], candidates
+        assert status == "semi_open"
+
+    # --- D4: plus-separated city set with implied hedge verb ---
+    def test_plus_separated_city_set(self):
+        candidates, _, _ = _extract_destination_candidates("thinking tokyo + kyoto + osaka")
+        assert candidates == ["Tokyo", "Kyoto", "Osaka"], candidates
+
+    def test_comma_and_city_set(self):
+        candidates, _, _ = _extract_destination_candidates("tokyo, kyoto and osaka")
+        assert candidates == ["Tokyo", "Kyoto", "Osaka"], candidates
+
+    # --- D6: "check out X" ---
+    def test_check_out_seoul(self):
+        candidates, status, _ = _extract_destination_candidates("we wanna check out seoul")
+        assert candidates == ["Seoul"], candidates
+        assert status == "definite"
+
+    # --- bare "thinking X" hedge (without "about") ---
+    def test_bare_thinking_hedge(self):
+        candidates, status, _ = _extract_destination_candidates("thinking bali for the trip")
+        assert candidates == ["Bali"], candidates
+        assert status == "semi_open"
+
+    # --- D5 (negative): activity clause must not create a destination ---
+    def test_cooking_class_somewhere_no_destination_no_open(self):
+        candidates, status, _ = _extract_destination_candidates(
+            "we also wanna do a cooking class somewhere"
+        )
+        assert candidates == [], candidates
+        assert status != "open", status
+
+    # --- negative: activity verbs capture prose, not places ---
+    def test_activity_prose_not_promoted(self):
+        for text in ["check out the ryokan on tiktok", "want to visit family in india"]:
+            candidates, _, _ = _extract_destination_candidates(text)
+            assert candidates == [], f"'{text}' should yield no destination, got {candidates}"
+
+    # --- negative: "or" is option semantics, never a committed city set ---
+    def test_lowercase_or_pair_not_a_city_set(self):
+        candidates, _, _ = _extract_destination_candidates("japan or korea next year")
+        assert len(candidates) < 2, candidates
+
+    # --- negative: past-trip mentions never form a city set ---
+    def test_past_trip_city_set_excluded(self):
+        candidates, _, _ = _extract_destination_candidates(
+            "we went to japan, korea last year and loved it"
+        )
+        assert candidates == [], candidates
+
+    # --- full demo note: city set wins, activity "somewhere" does not open ---
+    def test_full_demo_note_city_set_wins_over_somewhere(self):
+        candidates, status, _ = _extract_destination_candidates(DEMO02_FULL_NOTE)
+        assert candidates == ["Tokyo", "Kyoto", "Osaka"], candidates
+        assert status == "semi_open", status
+
+    # --- Review P2-5: city sets honor origin protection like the verb pass ---
+    def test_city_set_excludes_origin_cities(self):
+        candidates, _, _ = _extract_destination_candidates(
+            "we have friends in London and Paris, but flying from London so want somewhere new"
+        )
+        assert "London" not in candidates, candidates
+
+    # --- regression: capitalized or-pattern and travel verbs unchanged ---
+    def test_capitalized_or_pattern_unchanged(self):
+        candidates, status, _ = _extract_destination_candidates("Bali or Thailand?")
+        assert "Bali" in candidates and "Thailand" in candidates
+        assert status == "semi_open"
+
+
+# ---------------------------------------------------------------------------
+# DEMO-02 §4 (P1–P6): colloquial group sizes
+# ---------------------------------------------------------------------------
+
+class TestColloquialParty:
+    """Group-size phrasing: 'me and N friends', 'N of us', 'party of N'."""
+
+    # --- P1 ---
+    def test_me_and_n_friends(self):
+        result = _extract_party("me and 3 friends want a beach trip")
+        assert result["party_size"] == 4, result
+        assert result["party_composition"]["adults"] == 4
+
+    # --- P2 ---
+    def test_n_of_us(self):
+        result = _extract_party("4 of us want a beach trip")
+        assert result["party_size"] == 4, result
+
+    def test_word_number_of_us(self):
+        result = _extract_party("two of us are planning greece")
+        assert result["party_size"] == 2, result
+
+    # --- P3 ---
+    def test_the_four_of_us(self):
+        result = _extract_party("the four of us are going somewhere")
+        assert result["party_size"] == 4, result
+
+    # --- P4 ---
+    def test_party_of_n(self):
+        result = _extract_party("party of 4 to japan")
+        assert result["party_size"] == 4, result
+
+    def test_bare_n_friends_counts_companions(self):
+        result = _extract_party("3 friends want a beach trip")
+        assert result["party_size"] == 3, result
+
+    # --- P5: self + spouse + friends must count everyone ---
+    def test_self_wife_and_friends(self):
+        result = _extract_party("me and my wife and 2 friends want to do japan")
+        assert result["party_size"] == 4, result
+        assert result["party_composition"]["adults"] == 4
+
+    # --- negative: "one of us" is a member reference, never party_size=1 ---
+    def test_one_of_us_is_not_group_size(self):
+        result = _extract_party("one of us is terrified of heights")
+        assert result["party_size"] == 0, result
+        assert result["group_signals"] == ["one of us"], result
+
+    def test_signals_always_collected(self):
+        result = _extract_party("me and 3 friends want a beach trip")
+        assert result["group_signals"] == ["3 friends"], result
+
+    # --- Review P2-3 / P2-4 ---
+    def test_us_and_n_friends_includes_the_party(self):
+        # "us" is the speaker's own party; "2 friends" are companions on top.
+        result = _extract_party("us and 2 friends want to visit japan")
+        assert result["party_size"] >= 3, result
+
+    def test_prose_of_us_is_not_a_group_signal(self):
+        # "ahead of us" / "because of us" are prepositions, not group phrasing.
+        result = _extract_party("the road ahead of us is beautiful. trip to japan in july.")
+        assert result["group_signals"] == [], result
+
+
+class TestColloquialPartyWarnings:
+    """Group phrasing must never silently collapse to a solo traveler.
+
+    Data-loss-prevention doctrine: warn, never skip silently.
+    """
+
+    def _party_warning_codes(self, text):
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "demo02")])
+        report = validate_packet(packet, stage="discovery")
+        return packet, {w.code for w in report.warnings}
+
+    # --- P6: phrasing seen, headcount underdetected ---
+    def test_party_underdetected_warning(self):
+        packet, codes = self._party_warning_codes("me and 3 buddies want a beach trip")
+        assert packet.facts["party_size"].value == 1
+        assert "PARTY_UNDERDETECTED" in codes, codes
+
+    def test_no_party_warning_when_group_parsed(self):
+        packet, codes = self._party_warning_codes("me and 3 friends want a beach trip")
+        assert packet.facts["party_size"].value == 4
+        party_codes = {c for c in codes if c.startswith("PARTY_")}
+        assert not party_codes, codes
+
+    def test_party_unparsed_group_phrasing_warning(self):
+        packet, codes = self._party_warning_codes("one of us is terrified of heights")
+        assert "party_size" not in packet.facts
+        assert "PARTY_UNPARSED_GROUP_PHRASING" in codes, codes
+
+    def test_full_demo_note_no_party_warning(self):
+        packet, codes = self._party_warning_codes(DEMO02_FULL_NOTE)
+        assert packet.facts["party_size"].value == 4
+        party_codes = {c for c in codes if c.startswith("PARTY_")}
+        assert not party_codes, codes
+
+
+# ---------------------------------------------------------------------------
+# DEMO-02 §4 (T1, T2, T4, T5): season windows, late/early/mid month,
+# spelled-out flexibility
+# ---------------------------------------------------------------------------
+
+class TestColloquialDates:
+    """Season parsing and 'late/early/mid <month>' without a preposition."""
+
+    # --- T1 ---
+    def test_next_spring_season_window(self):
+        result = _extract_dates("want to do japan next spring")
+        assert result is not None, "season phrasing should produce a date window"
+        window, _, _, confidence = result
+        assert window == "next spring (Mar-May)", window
+        assert confidence == "flexible"
+
+    def test_bare_season_window(self):
+        # "in the fall" — preposition-qualified seasons still parse.
+        result = _extract_dates("we want to go in the fall")
+        assert result is not None
+        window, _, _, _ = result
+        assert "fall" in window and "Sep" in window, window
+
+    # --- Review P1-1: bare season words are prose too often to invent dates ---
+    def test_bare_season_without_qualifier_yields_no_window(self):
+        assert _extract_dates("a spring in her step") is None
+        assert _extract_dates("spring has arrived early this year") is None
+
+    def test_prose_fall_verb_yields_no_window(self):
+        assert _extract_dates("we will fall in love with italy") is None
+        assert _extract_dates("prices might fall next year") is None
+
+    def test_prose_winter_negation_yields_no_window(self):
+        assert _extract_dates("don't want winter, hate the cold") is None
+
+    def test_qualified_seasons_still_parse(self):
+        for text in ("next spring sounds good", "this winter maybe", "in autumn perhaps"):
+            result = _extract_dates(text)
+            assert result is not None, text
+            window, _, _, _ = result
+            assert "Mar" in window or "Dec" in window or "Sep" in window, (text, window)
+
+    # --- T2 + T5: season window folds the late-month refinement ---
+    def test_season_folds_late_month(self):
+        result = _extract_dates(
+            "want to do japan next spring, maybe late march for the cherry blossoms"
+        )
+        assert result is not None
+        window, _, _, confidence = result
+        assert "next spring" in window
+        assert "late march" in window
+        assert confidence == "flexible"
+
+    # --- T2 standalone ---
+    def test_late_month_without_preposition(self):
+        result = _extract_dates("maybe late march")
+        assert result is not None
+        window, _, _, confidence = result
+        assert window == "late march", window
+        assert confidence == "flexible"
+
+    def test_early_and_mid_month(self):
+        for phrase in ["early june", "mid september"]:
+            result = _extract_dates(phrase)
+            assert result is not None, phrase
+            assert result[0] == phrase, result
+
+    # --- T4: spelled-out flexibility ---
+    def test_flexibility_plus_or_minus(self):
+        assert _extract_date_flexibility("dates flexible plus or minus a week") == "flexible"
+        assert _extract_date_flexibility("flexible +/- one week") == "flexible"
+
+    # --- regression: precise dates still outrank casual season words ---
+    def test_precise_dates_outrank_season_words(self):
+        result = _extract_dates("march 10 to march 20 with spring weather")
+        assert result is not None
+        _, start, end, _ = result
+        assert start is not None and end is not None, result
+
+    def test_existing_month_forms_unchanged(self):
+        assert _extract_dates("in march 2027") == ("in march 2027", None, None, "flexible")
+        assert _extract_dates("9th to 14th feb") is not None
+
+
+class TestBudgetScopeEach:
+    """'each' / 'apiece' are per-person budget markers (DEMO-02 §2.4 / B1)."""
+
+    def test_each_is_per_person(self):
+        assert _extract_budget_scope("budget around 3.5k USD each") == "per_person"
+
+    def test_unmarked_still_unknown(self):
+        assert _extract_budget_scope("budget 3L") == "unknown"
+
+    # --- Review P1-2: explicit totals outrank a stray "each"; bare prose
+    # "each" no longer flips the scope ---
+    def test_explicit_total_outranks_stray_each(self):
+        assert _extract_budget_scope("budget 5000 total, we want breakfast each morning") == "total"
+        assert _extract_budget_scope("5000 USD for the whole trip, dinner reservations each night") == "total"
+
+    def test_each_adjacent_to_amount_is_per_person(self):
+        assert _extract_budget_scope("around $500 each for hotels") == "per_person"
+        assert _extract_budget_scope("1000 each person for flights") == "per_person"
+
+    def test_bare_each_in_prose_is_unknown(self):
+        assert _extract_budget_scope("we could each pick a city, budget is open") == "unknown"
+
+
+# ---------------------------------------------------------------------------
+# DEMO-02 §5 fixture colloq_full_note_001 — end-to-end demo regression anchor
+# ---------------------------------------------------------------------------
+
+class TestDemoNoteEndToEnd:
+    """The exact Tool-Taster demo note, asserted end-to-end."""
+
+    @pytest.fixture(scope="class")
+    def demo_packet(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(DEMO02_FULL_NOTE, "demo02")
+        return pipeline.extract([env])
+
+    def test_destination_captured_from_city_set(self, demo_packet):
+        dest = demo_packet.facts["destination_candidates"]
+        assert dest.value == ["Tokyo", "Kyoto", "Osaka"], dest.value
+        assert demo_packet.facts["destination_status"].value == "semi_open"
+
+    def test_party_size_counts_friends(self, demo_packet):
+        assert demo_packet.facts["party_size"].value == 4
+
+    def test_origin_and_budget(self, demo_packet):
+        assert demo_packet.facts["origin_city"].value == "SF"
+        assert demo_packet.facts["budget_min"].value == 3500
+        assert demo_packet.facts["budget_currency"].value == "USD"
+        # "3.5k USD each" is per-person money — never silently trip-total.
+        assert demo_packet.facts["budget_scope"].value == "per_person"
+
+    def test_dates_and_flexibility(self, demo_packet):
+        window = demo_packet.facts["date_window"].value
+        assert "next spring" in window, window
+        assert "late march" in window, window
+        assert demo_packet.facts["date_flexibility"].value == "flexible"
+
+    def test_meal_preference(self, demo_packet):
+        assert "vegetarian" in str(demo_packet.facts["meal_preferences"].value)
+
+    def test_intake_minimum_valid_no_errors(self, demo_packet):
+        report = validate_packet(demo_packet, stage="discovery")
+        assert report.is_valid, [(e.code, e.field) for e in report.errors]
+        assert not any(w.code.startswith("PARTY_") for w in report.warnings)

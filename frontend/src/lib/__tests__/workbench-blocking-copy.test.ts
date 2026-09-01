@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RunStatusResponse } from '@/types/spine';
-import { getWorkbenchBlockCopy } from '../workbench-blocking-copy';
+import { getWorkbenchBlockCopy, formatWorkbenchMissingFields } from '../workbench-blocking-copy';
 
 describe('getWorkbenchBlockCopy', () => {
   it('turns validation blockers into clear trip-detail copy', () => {
@@ -75,5 +75,38 @@ describe('getWorkbenchBlockCopy', () => {
     expect(copy.title).toContain('Trip Details');
     expect(copy.summary).toBe('Some key trip details are missing');
     expect(copy.details).toEqual(['Some key trip details are missing']);
+  });
+});
+
+describe('formatWorkbenchMissingFields', () => {
+  it('derives missing fields from packet unknowns for the banner', () => {
+    const copy = getWorkbenchBlockCopy({
+      validation: { status: 'ESCALATED', reasons: ['Trip details are incomplete'] },
+      packet: {
+        unknowns: [
+          { field_name: 'date_window' },
+          { field_name: 'trip_purpose' },
+        ],
+      },
+    });
+
+    expect(copy.missingFields).toEqual(['date_window', 'trip_purpose']);
+  });
+
+  it('returns no missing fields without a packet', () => {
+    const copy = getWorkbenchBlockCopy({
+      validation: { status: 'ESCALATED', reasons: ['Trip details are incomplete'] },
+    });
+    expect(copy.missingFields).toEqual([]);
+  });
+});
+
+describe('formatWorkbenchMissingFields', () => {
+  it('labels fields and caps at 3 with overflow', () => {
+    expect(formatWorkbenchMissingFields(['date_window', 'trip_purpose'])).toBe('Travel Dates, Trip Purpose');
+    expect(formatWorkbenchMissingFields(['date_window', 'trip_purpose', 'party_size', 'origin_city'])).toBe(
+      'Travel Dates, Trip Purpose, Party Size +1 more',
+    );
+    expect(formatWorkbenchMissingFields([])).toBe('');
   });
 });

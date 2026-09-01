@@ -2,6 +2,7 @@ version: 1
 categories:
   budget:
     status: gating
+    min_accuracy: 0.85
     min_precision: 0.95
     min_recall: 0.95
     min_severity_accuracy: 0.90
@@ -51,3 +52,16 @@ categories:
   pipeline:
     status: gating
     min_accuracy: 0.80
+  # Colloquial extraction accuracy (DEMO-02 verb-object destinations, city
+  # sets, party group phrasings, season/flexibility dates, per-person budget
+  # "each") is evaluated via _run_colloquial_baseline() in snapshot.py using
+  # data/fixtures/extraction/colloquial_golden.json as the reference and the
+  # live intake pipeline for actuals.  overall_f1 feeds into min_accuracy;
+  # precision/recall/severity_accuracy are reference-only.
+  # blocks_ci when F1 falls below the threshold.
+  colloquial:
+    status: gating
+    min_precision: 0.95
+    min_recall: 0.95
+    min_severity_accuracy: 0.90
+    min_accuracy: 0.85

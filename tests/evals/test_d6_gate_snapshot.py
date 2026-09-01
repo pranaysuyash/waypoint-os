@@ -518,3 +518,122 @@ def test_pipeline_baseline_accuracy_constant_matches():
     """EXPECTED_PIPELINE_BASELINE_ACCURACY should equal 1.0."""
     from src.evals.audit.snapshot import EXPECTED_PIPELINE_BASELINE_ACCURACY
     assert EXPECTED_PIPELINE_BASELINE_ACCURACY == 1.0
+
+
+# --- colloquial_health gate tests (DEMO-02 / IMP-07) ---
+
+
+def test_build_gate_snapshot_includes_colloquial_health():
+    """Colloquial gate runs the live intake pipeline on colloquial_golden.json."""
+    snapshot = build_gate_snapshot()
+    ch = snapshot["colloquial_health"]
+    assert isinstance(ch, dict)
+    assert ch["total_fixtures"] == 15
+    # Live pipeline path: expected fixtures fully matched by the real extractor
+    assert ch["note"].startswith("Live pipeline extraction results")
+    assert ch["status"] == "passing"
+    assert ch["overall_f1"] == 1.0
+    assert ch["baseline_drifted"] is False
+    assert ch["blocks_ci"] is False
+
+
+def test_stable_snapshot_view_strips_colloquial_health_volatile_fields():
+    snapshot = build_gate_snapshot()
+    stable = stable_snapshot_view(snapshot)
+    ch = stable["colloquial_health"]
+    assert isinstance(ch, dict)
+    assert "status" in ch
+    assert "overall_f1" in ch
+    assert "baseline_drifted" in ch
+    assert "blocks_ci" in ch
+    # Volatile note field must not be present
+    assert "note" not in ch
+    # fixture_accuracy lives in the grouping metrics — pure value mismatches
+    # move fixture accuracy without moving precision/recall, so the
+    # comparable view must include them for drift detection.
+    assert "by_document_type" in ch
+    assert "by_difficulty" in ch
+
+
+def test_write_gate_snapshot_includes_colloquial_health(tmp_path: Path):
+    output = tmp_path / "d6_gate_snapshot.json"
+    write_gate_snapshot(output_path=output)
+    payload = json.loads(output.read_text())
+    assert "colloquial_health" in payload
+    assert payload["colloquial_health"]["total_fixtures"] == 15
+
+
+def test_verify_gate_snapshot_detects_colloquial_health_drift(tmp_path: Path):
+    output = tmp_path / "d6_gate_snapshot.json"
+    write_gate_snapshot(output_path=output)
+
+    payload = json.loads(output.read_text())
+    payload["colloquial_health"]["overall_f1"] = 0.99
+    output.write_text(json.dumps(payload, indent=2))
+
+    ok, _, _ = verify_gate_snapshot_file(snapshot_path=output)
+    assert ok is False
+
+
+def test_colloquial_manifest_category_present():
+    snapshot = build_gate_snapshot()
+    assert "colloquial" in snapshot["categories"]
+    cat = snapshot["categories"]["colloquial"]
+    assert cat["status"] == "gating"
+    assert cat["meets_thresholds"] is True
+    assert cat["blocks_ci"] is False
+
+
+def test_colloquial_manifest_category_min_accuracy_threshold():
+    from src.evals.audit.manifest import load_manifest
+    manifest = load_manifest()
+    config = manifest.categories["colloquial"]
+    assert config.min_accuracy == 0.85
+    assert config.status == "gating"
+
+
+def test_colloquial_baseline_drift_detected_with_empty_live_results():
+    """Empty live results that diverge from expected should trigger drift + block CI."""
+    snapshot = build_gate_snapshot(colloquial_live_results={})
+    ch = snapshot["colloquial_health"]
+    assert ch["baseline_drifted"] is True
+    assert ch["overall_f1"] < ch["expected_baseline_f1"]
+    assert ch["status"] == "failing"
+    assert ch["blocks_ci"] is True
+    cat = snapshot["categories"]["colloquial"]
+    assert cat["meets_thresholds"] is False
+    assert cat["blocks_ci"] is True
+
+
+def test_colloquial_single_field_regression_trips_drift():
+    """Dropping one extracted field on one fixture must be detectable."""
+    from src.evals.audit.rules.extraction import load_golden_dataset
+    fixtures = load_golden_dataset(
+        Path("data/fixtures/extraction/colloquial_golden.json")
+    )
+    target = next(f for f in fixtures if f.fixture_id == "colloq_dest_verb_object_001")
+    degraded = {target.fixture_id: {"destination_status": target.expected_extracted_fields["destination_status"]}}
+    # All other fixtures keep their expected values; only D1 loses fields.
+    live_results = {
+        f.fixture_id: (degraded.get(f.fixture_id) or f.expected_extracted_fields)
+        for f in fixtures
+    }
+    snapshot = build_gate_snapshot(colloquial_live_results=live_results)
+    ch = snapshot["colloquial_health"]
+    assert ch["overall_f1"] < 1.0
+    assert ch["baseline_drifted"] is True
+
+
+def test_colloquial_live_collector_covers_every_fixture():
+    """The live collector must produce results for all colloquial fixture ids."""
+    from src.evals.audit.rules.extraction import load_golden_dataset
+    from src.evals.audit.snapshot import _collect_live_colloquial_results
+    fixtures = load_golden_dataset(
+        Path("data/fixtures/extraction/colloquial_golden.json")
+    )
+    live = _collect_live_colloquial_results()
+    assert {f.fixture_id for f in fixtures} <= set(live)
+    # Whitelist fields are always present in each mapped result.
+    first = next(iter(live.values()))
+    assert "destination_candidates" in first
+    assert "party_size" in first

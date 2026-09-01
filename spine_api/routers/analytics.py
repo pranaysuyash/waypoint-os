@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.contract import ExportRequest, ExportResponse
 from spine_api.core.auth import get_current_agency
-from spine_api.core.database import get_db
+from spine_api.core.rls import get_rls_db
 from spine_api.models.tenant import Agency
 from spine_api.services import membership_service
 from src.analytics.metrics import (
@@ -72,7 +72,7 @@ def get_analytics_pipeline(
 async def get_analytics_team(
     range: str = "30d",
     agency: Agency = Depends(get_current_agency),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     members = await membership_service.list_members(db, agency_id=agency.id)

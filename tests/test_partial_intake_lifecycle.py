@@ -211,8 +211,10 @@ class TestBlockedRun:
         assert status["state"] == "blocked", (
             f"Expected blocked, got {status['state']}"
         )
-        assert status.get("trip_id") is None, (
-            "Blocked runs must not produce a trip_id"
+        # ADR_ESCALATE_LEAD_PERSISTENCE: a blocked new inquiry persists as an
+        # incomplete lead, and the run exposes its trip_id.
+        assert status.get("trip_id"), (
+            "Blocked runs must expose the persisted incomplete lead's trip_id"
         )
 
     def test_blocked_run_has_blocked_event(self, api_health):

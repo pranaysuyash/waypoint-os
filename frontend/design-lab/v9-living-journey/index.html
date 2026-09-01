@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en" data-theme="living-journey" data-page-node-id="KB6uaWF2v10zBiARHRQuj0">
+<head data-page-node-id="WbfhdSPuYy9TdkaEEYkixp">
+  <meta charset="utf-8" data-page-node-id="JDloH5jWD02FNHpIAgCZHV">
+  <meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="TpSQuMItO9ELXHsDiiMI6j">
+  <meta name="theme-color" content="#0a1012" data-page-node-id="A0AISgKbBjTBzVRFb4sa3j">
+  <title>Waypoint OS — Keep the whole journey in view</title>
+  <meta name="description" content="Waypoint turns scattered travel conversations into one living journey: places, decisions, disagreements, and updates in view." data-page-node-id="9sOyeRSewSCWE7UGedje2j">
+  <link rel="preconnect" href="https://fonts.googleapis.com" data-page-node-id="lsOqUH20IEOwoL3PmzCNY0">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin data-page-node-id="ORw07OLsAlpIbmLqBUU5aa">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet" data-page-node-id="yeOOpSeERH9i4fFDzTSMJt">
+  <style>
+    :root {
+      --ink: #f1f3ee;
+      --muted: #a7b0ad;
+      --faint: #6e7978;
+      --canvas: #0a1012;
+      --surface: #10191b;
+      --surface-2: #142124;
+      --surface-3: #1b2d30;
+      --rule: #2a3a3b;
+      --route: #79d1bd;
+      --route-dim: #3f766d;
+      --amber: #f0bf77;
+      --coral: #e98676;
+      --blue: #8fb4e5;
+      --green: #8dc99d;
+      --r: 10px;
+      --shell: 1180px;
+      --display: "Newsreader", Georgia, serif;
+      --body: "IBM Plex Sans", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(.2,.72,.2,1);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--canvas); color-scheme: dark; }
+    .section, #journey, #contact { scroll-margin-top: 84px; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .11; z-index: 20; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E"); mix-blend-mode: soft-light; }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--route); outline-offset: 4px; border-radius: 4px; }
+    ::selection { background: rgba(121,209,189,.28); color: var(--ink); }
+    .shell { width: min(var(--shell), calc(100% - 48px)); margin-inline: auto; }
+    .skip { position: absolute; left: -9999px; top: 12px; z-index: 100; padding: 10px 14px; color: var(--canvas); background: var(--route); border-radius: 6px; }
+    .skip:focus { left: 18px; }
+    .mono { font-family: var(--mono); }
+    .eyebrow { font: 500 11px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--route); }
+    .site-header { position: sticky; top: 0; z-index: 10; background: rgba(10,16,18,.92); border-bottom: 1px solid var(--rule); }
+    .header-inner { height: 66px; display: flex; align-items: center; gap: 28px; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font: 600 17px/1 var(--body); letter-spacing: -.02em; }
+    .brand-mark { width: 22px; height: 22px; position: relative; border: 1px solid var(--route); border-radius: 50%; }
+    .brand-mark::before, .brand-mark::after { content: ""; position: absolute; background: var(--route); }
+    .brand-mark::before { width: 1px; height: 100%; left: 10px; top: 0; }
+    .brand-mark::after { height: 1px; width: 100%; left: 0; top: 10px; }
+    .header-nav { display: flex; gap: 4px; margin-right: auto; }
+    .header-nav a { padding: 7px 10px; color: var(--muted); font-size: 14px; border-radius: 6px; }
+    .header-nav a:hover { color: var(--ink); background: var(--surface-2); }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+    .button { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; border: 1px solid var(--rule); border-radius: 6px; font-size: 14px; transition: background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease); }
+    .button:hover { transform: translateY(-1px); border-color: #587171; }
+    .button--quiet { color: var(--muted); border-color: transparent; }
+    .button--quiet:hover { color: var(--ink); background: var(--surface-2); }
+    .button--primary { color: #06110f; background: var(--route); border-color: var(--route); font-weight: 600; }
+    .button--primary:hover { background: #9de2d0; border-color: #9de2d0; }
+    .button--small { min-height: 34px; padding-inline: 11px; font-size: 12px; }
+
+    .hero { padding: 84px 0 42px; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, .92fr) minmax(480px, 1.08fr); align-items: center; gap: 56px; }
+    .hero-copy { padding-bottom: 16px; }
+    h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 500; letter-spacing: -.035em; line-height: 1.04; }
+    h1 { max-width: 650px; margin-top: 20px; font-size: clamp(48px, 6vw, 82px); }
+    .hero-lede { max-width: 560px; margin: 26px 0 30px; color: var(--muted); font-size: 19px; line-height: 1.65; }
+    .hero-cta { display: flex; flex-wrap: wrap; gap: 10px; }
+    .hero-note { margin-top: 16px; color: var(--faint); font: 12px/1.5 var(--mono); }
+    .hero-aside { margin-top: 58px; display: flex; gap: 18px; align-items: center; color: var(--muted); font-size: 13px; }
+    .hero-aside strong { color: var(--ink); font-weight: 500; }
+    .signal { width: 8px; height: 8px; border-radius: 50%; background: var(--route); box-shadow: 0 0 0 5px rgba(121,209,189,.12); }
+
+    .journey-card { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r); box-shadow: 0 22px 70px rgba(0,0,0,.32); }
+    .journey-toolbar { min-height: 62px; display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 18px; border-bottom: 1px solid var(--rule); }
+    .journey-toolbar__title { margin-right: auto; }
+    .journey-toolbar__title strong { display: block; font-size: 14px; font-weight: 600; }
+    .journey-toolbar__title span { display: block; margin-top: 2px; color: var(--faint); font: 11px var(--mono); }
+    .live-dot { display: inline-flex; align-items: center; gap: 6px; margin-right: 10px; color: var(--route); font: 11px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+    .live-dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--route); }
+    .map-stage { position: relative; min-height: 448px; background: #0d1719; }
+    #journey-map { width: 100%; height: 448px; display: block; }
+    .map-legend { position: absolute; left: 18px; bottom: 16px; display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 8px 10px; color: var(--muted); background: rgba(13,23,25,.88); border: 1px solid rgba(85,111,110,.38); border-radius: 5px; font: 10px var(--mono); }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-item i { display: block; width: 7px; height: 7px; border-radius: 50%; }
+    .legend-item--intake i { background: var(--blue); }
+    .legend-item--decision i { background: var(--route); }
+    .legend-item--conflict i { background: var(--coral); }
+    .legend-item--update i { background: var(--amber); }
+    .map-hint { position: absolute; top: 15px; left: 18px; color: var(--faint); font: 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+    .map-status { position: absolute; top: 15px; right: 18px; color: var(--route); font: 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+    .journey-stages { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--rule); }
+    .stage-tab { position: relative; min-height: 78px; padding: 13px 15px 12px; text-align: left; background: var(--surface); border-right: 1px solid var(--rule); transition: background .18s var(--ease); }
+    .stage-tab:last-child { border-right: 0; }
+    .stage-tab:hover, .stage-tab[aria-selected="true"] { background: var(--surface-2); }
+    .stage-tab[aria-selected="true"]::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--route); }
+    .stage-tab__num { color: var(--faint); font: 10px var(--mono); }
+    .stage-tab__name { display: block; margin-top: 7px; font-size: 13px; font-weight: 500; }
+    .stage-tab__count { display: block; margin-top: 2px; color: var(--faint); font: 10px var(--mono); }
+    .journey-foot { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 16px; border-top: 1px solid var(--rule); background: var(--surface-2); }
+    .journey-foot__text { margin-right: auto; color: var(--muted); font-size: 12px; }
+    .journey-foot__text strong { color: var(--ink); font-weight: 500; }
+
+    .section { padding: 118px 0; border-top: 1px solid var(--rule); }
+    .section-heading { max-width: 710px; margin-bottom: 48px; }
+    .section-heading h2 { margin-top: 16px; font-size: clamp(36px, 4.5vw, 58px); }
+    .section-heading p { margin-top: 20px; color: var(--muted); font-size: 18px; line-height: 1.65; }
+    .journey-principles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+    .principle { min-height: 210px; padding: 24px; background: var(--surface); }
+    .principle__num { color: var(--route); font: 11px var(--mono); }
+    .principle h3 { margin-top: 44px; font: 500 22px/1.1 var(--body); letter-spacing: -.02em; }
+    .principle p { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+    .story-section { background: #0c1517; }
+    .story-grid { display: grid; grid-template-columns: minmax(260px,.8fr) minmax(0,1.2fr); gap: 76px; align-items: start; }
+    .story-copy { position: sticky; top: 106px; }
+    .story-copy h2 { margin-top: 16px; font-size: clamp(38px, 4vw, 56px); }
+    .story-copy p { margin-top: 22px; color: var(--muted); font-size: 17px; }
+    .story-rail { position: relative; padding-left: 52px; }
+    .story-rail::before { content: ""; position: absolute; top: 12px; bottom: 12px; left: 12px; width: 1px; background: var(--rule); }
+    .story-step { position: relative; padding: 0 0 58px; }
+    .story-step:last-child { padding-bottom: 0; }
+    .story-step::before { content: ""; position: absolute; left: -45px; top: 9px; width: 9px; height: 9px; border: 2px solid var(--route); border-radius: 50%; background: var(--canvas); }
+    .story-step[data-tone="conflict"]::before { border-color: var(--coral); }
+    .story-step[data-tone="update"]::before { border-color: var(--amber); }
+    .story-step__meta { color: var(--faint); font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .story-step h3 { margin-top: 8px; font: 500 26px/1.15 var(--body); letter-spacing: -.02em; }
+    .story-step p { max-width: 550px; margin-top: 10px; color: var(--muted); font-size: 15px; }
+    .story-step__card { display: inline-flex; margin-top: 17px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--rule); border-left: 2px solid var(--route); border-radius: 6px; color: var(--ink); font-size: 13px; }
+    .story-step[data-tone="conflict"] .story-step__card { border-left-color: var(--coral); }
+    .story-step[data-tone="update"] .story-step__card { border-left-color: var(--amber); }
+
+    .cta-section { padding: 92px 0 112px; }
+    .cta-panel { display: grid; grid-template-columns: 1fr auto; gap: 36px; align-items: end; padding: 42px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r); }
+    .cta-panel h2 { max-width: 680px; font-size: clamp(38px, 4.6vw, 60px); }
+    .cta-panel p { max-width: 580px; margin-top: 16px; color: var(--muted); font-size: 17px; }
+    footer { padding: 32px 0 48px; border-top: 1px solid var(--rule); color: var(--faint); font: 12px var(--mono); }
+    .footer-inner { display: flex; gap: 20px; flex-wrap: wrap; }
+    .footer-inner span:last-child { margin-left: auto; }
+
+    .reveal { opacity: 1; transform: none; }
+    .reveal.is-visible { opacity: 1; transform: none; transition: opacity .48s var(--ease), transform .48s var(--ease); }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal, .reveal.is-visible { opacity: 1; transform: none; transition: none; }
+      .button:hover { transform: none; }
+    }
+    @media (max-width: 980px) {
+      .hero-grid, .story-grid { grid-template-columns: 1fr; gap: 42px; }
+      .hero-aside { margin-top: 36px; }
+      .story-copy { position: static; }
+      .journey-principles { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .shell { width: min(var(--shell), calc(100% - 32px)); }
+      .hero { padding-top: 58px; }
+      .header-inner { height: 58px; gap: 12px; }
+      .header-nav { display: none; }
+      .header-actions .button--quiet { display: none; }
+      h1 { font-size: clamp(44px, 13vw, 65px); }
+      .hero-lede { font-size: 17px; }
+      .journey-toolbar { align-items: flex-start; flex-wrap: wrap; }
+      .live-dot { order: 3; width: 100%; margin: 0; }
+      .map-stage, #journey-map { min-height: 360px; height: 360px; }
+      .journey-stages { grid-template-columns: repeat(2, 1fr); }
+      .stage-tab:nth-child(2) { border-right: 0; }
+      .stage-tab:nth-child(-n+2) { border-bottom: 1px solid var(--rule); }
+      .journey-foot { align-items: flex-start; flex-wrap: wrap; }
+      .journey-foot__text { width: 100%; }
+      .journey-foot .button { flex: 1; }
+      .section { padding: 80px 0; }
+      .journey-principles { grid-template-columns: 1fr; }
+      .principle { min-height: 0; }
+      .principle h3 { margin-top: 26px; }
+      .story-rail { padding-left: 38px; }
+      .story-rail::before { left: 8px; }
+      .story-step::before { left: -34px; }
+      .cta-panel { grid-template-columns: 1fr; padding: 28px; }
+      .cta-panel .button { width: 100%; }
+      .footer-inner span:last-child { margin-left: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body data-page-node-id="uOQx7DQk8SNCwqWlHtjCeL">
+  <a class="skip" href="#main" data-page-node-id="y3wTCr07Iz5WFNC4Be3kR4">Skip to content</a>
+  <header class="site-header" data-page-node-id="tUHFR4QZ1WKVIVBYgACcGh">
+    <div class="shell header-inner" data-page-node-id="zA86a71RBM3DcgONgFAOe5">
+      <a class="brand" href="#top" aria-label="Waypoint OS home" data-page-node-id="v1dBmrOarLErvzWmxlwQSM"><span class="brand-mark" aria-hidden="true" data-page-node-id="uQFVGQRhTmu5vu0gXS4ltX"></span>Waypoint OS</a>
+      <nav class="header-nav" aria-label="Primary navigation" data-page-node-id="A8sZ7AyXCNEdhel524Pc7s">
+        <a href="#journey" data-page-node-id="D23rL24lbaEdzuC0YwweEb">The journey</a>
+        <a href="#method" data-page-node-id="LH294Y0WYPEhd7eo8NY6OX">How it works</a>
+        <a href="#agency" data-page-node-id="AAtAkFH0xKWGl64bdIVozu">For agencies</a>
+      </nav>
+      <div class="header-actions" data-page-node-id="Jk46R4wgFBKhkewc70QdHD">
+        <a class="button button--quiet button--small" href="#contact" data-page-node-id="A2HQco0ju2exmAcmOIsc9h">Sign in</a>
+        <a class="button button--primary button--small" href="#contact" data-page-node-id="CMatYcfh4NpKyZbkFaF6Tl">Create workspace</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" data-page-node-id="C4ekWtRnHrYkROM6xA3cQB">
+    <section class="hero" id="top" data-page-node-id="1aQTFEUIuw0v9oI6itxZ6R">
+      <div class="shell hero-grid" data-page-node-id="nFaGFsSW1jROf9Mtqgq0QD">
+        <div class="hero-copy" data-page-node-id="vd6hAUjKjYWUEt6Px0BhlI">
+          <div class="eyebrow" data-page-node-id="zDNnT0oR00a0ivhLt9J8Ca">The operating map for thoughtful travel teams</div>
+          <h1 data-page-node-id="1IudUKfAb075cUyMPnSS9x">Keep the whole journey in view.</h1>
+          <p class="hero-lede" data-page-node-id="c2FiNzmZtz0KB3PdKlzdXi">From the first half-formed message to the final confirmed room, Waypoint keeps places, decisions, disagreements, and updates in one living brief.</p>
+          <div class="hero-cta" data-page-node-id="vHFtdQ7QLKde4O0wQkEfL6">
+            <a class="button button--primary" href="#journey" data-page-node-id="6CjT1Fa3EY2ZsmZ6KCjpsr">Explore the journey <span aria-hidden="true" data-page-node-id="sWs4ziQTha66gU7xNpcslk">→</span></a>
+            <a class="button" href="#contact" data-page-node-id="7XtszshC4toKy2CQFnLcty">Create a workspace</a>
+          </div>
+          <div class="hero-note" data-page-node-id="oMCJlVXg7FheoOKGViQrkl">No re-typing. No lost context. No quote built on an assumption.</div>
+          <div class="hero-aside" data-page-node-id="EqNEDBwFYNZwzif61u1YhC"><span class="signal" aria-hidden="true" data-page-node-id="Xt5HLCHc0083jUaOXWXktj"></span><span data-page-node-id="NNlAbIZhBvbNTrbJfLRIr9"><strong data-page-node-id="t1s5Ry7EAFBjI2VrfJwflo">WP-2291</strong> · Anniversary in Kerala · <span class="mono" data-page-node-id="j9nnxD1dWQzChE4JQ8bDjw">5 of 9</span> fields resolved</span></div>
+        </div>
+
+        <div class="journey-card" id="journey" aria-label="Interactive journey map demo" data-page-node-id="Lk8FdBArEkvRg1YLe7eywz">
+          <div class="journey-toolbar" data-page-node-id="mEjs8S2pLIPUb0db2ceoVV">
+            <div class="journey-toolbar__title" data-page-node-id="EN2aG8qZZzHI77UFM0kPv0"><strong data-page-node-id="kpqu9WpmfYVg6zAZVytgkB">Arun &amp; Mira · Kerala, March</strong><span data-page-node-id="IvFlPmutGvv5hvEv8Vds74">living brief / updated 2m ago</span></div>
+            <span class="live-dot" id="map-live-state" data-page-node-id="wcG5JHUHidJx87uVE8lSHu">journey moving</span>
+            <button class="button button--quiet button--small" id="motion-toggle" type="button" aria-pressed="true" data-page-node-id="iTDSU66yP5Kac8ZjLhF437">Pause motion</button>
+          </div>
+          <div class="map-stage" id="map-stage" data-page-node-id="VIHX9x0ZfsHh3ylzhNqFBO">
+            <canvas id="journey-map" aria-label="Animated map showing a Kerala trip from Mumbai through Kochi, Kumarakom and Marari" data-page-node-id="ukUmLFObsFe1seEhZryV2O"></canvas>
+            <div class="map-hint" data-page-node-id="Zq4ayNWWqaPXHEOFqbc2gb">Select a state to read the journey</div>
+            <div class="map-status" id="map-status" aria-live="polite" data-page-node-id="wTHegcwTO9R9F2MtU4V1Hb">01 / intake</div>
+            <div class="map-legend" aria-label="Journey state legend" data-page-node-id="txCZP5VSrh9bsCVGtG4rlv">
+              <span class="legend-item legend-item--intake" data-page-node-id="cS4MfXl4GSn0dK7fgK9Yi1"><i aria-hidden="true" data-page-node-id="b7PviB00BhjFWkSYUPcgzk"></i>intake</span>
+              <span class="legend-item legend-item--decision" data-page-node-id="Wttz1uONWOa2GCIprlZZCY"><i aria-hidden="true" data-page-node-id="zysf0gteJMISNhvHCUEsVK"></i>decision</span>
+              <span class="legend-item legend-item--conflict" data-page-node-id="ZzUdQiY2kAl3bnMV7ZvZIi"><i aria-hidden="true" data-page-node-id="BgQ1tGEeWGm2Lr1LT4qUgd"></i>disagreement</span>
+              <span class="legend-item legend-item--update" data-page-node-id="3CJX3O4QEEdRDcEAJjR0ec"><i aria-hidden="true" data-page-node-id="HOgNjMGrSYp92TTB7hVoBQ"></i>update</span>
+            </div>
+          </div>
+          <div class="journey-stages" role="tablist" aria-label="Journey states" data-page-node-id="mlATLWQbYVSrFaoAknOFnw">
+            <button class="stage-tab" type="button" role="tab" aria-selected="true" data-stage="intake" data-page-node-id="TKS82XzKExU05l61q8PSD5"><span class="stage-tab__num" data-page-node-id="aDUUdluJu1TlMavFceCDHo">01</span><span class="stage-tab__name" data-page-node-id="hOPxtYtoho1ud75sAbNaue">Intake</span><span class="stage-tab__count" data-page-node-id="2pYtoODHP8Oh9JlQHZXb3w">3 sources</span></button>
+            <button class="stage-tab" type="button" role="tab" aria-selected="false" data-stage="decision" data-page-node-id="uRbTAuYfeeCTRwiFnI2JQH"><span class="stage-tab__num" data-page-node-id="kXaBKTZaJvU7YJkXCnbE5p">02</span><span class="stage-tab__name" data-page-node-id="UV5wteyoM4klEg14o4i2E2">Decisions</span><span class="stage-tab__count" data-page-node-id="hPZuU3juGFtDQPFZMLbMns">4 resolved</span></button>
+            <button class="stage-tab" type="button" role="tab" aria-selected="false" data-stage="conflict" data-page-node-id="pkvzYD6Qy4UOsBuTXEQo7t"><span class="stage-tab__num" data-page-node-id="j7tlcl8D5udE64Y7lGPQ18">03</span><span class="stage-tab__name" data-page-node-id="B4h5Wa3IrkfPFUFbHHmvfs">Disagreements</span><span class="stage-tab__count" data-page-node-id="BdXe1DZwq1s50YMp6pGLU5">1 needs a call</span></button>
+            <button class="stage-tab" type="button" role="tab" aria-selected="false" data-stage="update" data-page-node-id="xYHFG4slbMPchQ7c9AVuGz"><span class="stage-tab__num" data-page-node-id="SWfeTGTQyMdeIqsScmqQTA">04</span><span class="stage-tab__name" data-page-node-id="uH4GyEvMND7aeE85r4zWzx">Updates</span><span class="stage-tab__count" data-page-node-id="Frxwc6sfdhCZGi73f7msLP">2m ago</span></button>
+          </div>
+          <div class="journey-foot" data-page-node-id="kzIYgZzhJSl3l21hduUA61"><div class="journey-foot__text" id="journey-caption" data-page-node-id="cSuqH5EAXBje8POdEF4V2L"><strong data-page-node-id="zEptFRdNhU1Y7L4GvrRBES">Intake</strong> — three fragments become four anchored places.</div><button class="button button--quiet button--small" id="replay-journey" type="button" data-page-node-id="CBnFqeqMnVGRZa5mWjjCUE">Replay journey <span aria-hidden="true" data-page-node-id="LFvAibo9FmvNO9gzyqwrhR">↻</span></button><a class="button button--small" href="#method" data-page-node-id="hplzVMYLFuOwlKcm73PfCA">See the method</a></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="method" data-page-node-id="wPPqEywMAp0KcW83zDm4Av">
+      <div class="shell" data-page-node-id="QN6FuUU6xaYDsC8llsHyJt">
+        <div class="section-heading reveal" data-page-node-id="OjdCmwzECrdl4yWBtsnsfr">
+          <div class="eyebrow" data-page-node-id="2qQBd7Idmgf7a3A8bWVBTB">One model, four moments</div>
+          <h2 data-page-node-id="vBau0aDSWfgEXNamcAmJ4s">It is not a dashboard of stages. It is one journey becoming clearer.</h2>
+          <p data-page-node-id="vMMhyV1vltWNysAf0zMuif">Every new message changes the same living brief. Waypoint makes the change visible — what arrived, what was decided, what still disagrees, and what needs to move next.</p>
+        </div>
+        <div class="journey-principles" data-page-node-id="SFlPbAQF5P9kBWvx9ChmIz">
+          <article class="principle reveal" data-page-node-id="yEzm8e9iPsQ0opZGisBzYf"><span class="principle__num" data-page-node-id="HCC2SnjDngjBmegWIDUJgR">01 / intake</span><h3 data-page-node-id="oOzTLYERV7WkGBph5MHUqB">Catch the fragments</h3><p data-page-node-id="1Y8WJKIAuesvveAsO4DAOT">WhatsApp threads, PDFs, call notes — anchored to the place and moment they describe.</p></article>
+          <article class="principle reveal" data-page-node-id="zWyFs1aZ8OoMBUYQCt3WIj"><span class="principle__num" data-page-node-id="2PwttzmQMLQhrrZnxHyXB8">02 / decisions</span><h3 data-page-node-id="WcpSGbjOUuKE9eO7WjpA9C">Make the route legible</h3><p data-page-node-id="UTrecGmCmuWEZ9Ogq4aDmx">Dates, nights, transfers, and preferences resolve into a brief your team can quote from.</p></article>
+          <article class="principle reveal" data-page-node-id="OOHYTWevfRCJNfKC7nA7EJ"><span class="principle__num" data-page-node-id="tGgY625F3B6yjHFX7x8eX4">03 / disagreement</span><h3 data-page-node-id="drBygvC2dsfkz9LhcOdbOd">Show the tension</h3><p data-page-node-id="0Fc1jIdIQ4SJ1ZFE9qeEwC">Budget versus room type. More coast versus less driving. The unresolved part stays visible.</p></article>
+          <article class="principle reveal" data-page-node-id="Ko3sy5HK2XQ9QMREuM8ipD"><span class="principle__num" data-page-node-id="3jcJYfdAT3QSI7Lqa9riDt">04 / updates</span><h3 data-page-node-id="ZQ25yoMCBmkKlKSJqC2pdz">Keep the change</h3><p data-page-node-id="k0ck9y0wxHVbP3e4W4n6Ct">New context redraws the journey without erasing why the previous version existed.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section story-section" id="agency" data-page-node-id="oJCyEYqSz44YNT4BVarYQn">
+      <div class="shell story-grid" data-page-node-id="hRADQDt4yFL9ZdSY24h7Jc">
+        <div class="story-copy reveal" data-page-node-id="QEUlpiohInENiVjivo2jPp"><div class="eyebrow" data-page-node-id="xe58GOATrrknKZ1whTucLy">A real working day</div><h2 data-page-node-id="bcgpKur3ZDnOZKgd6wjrxB">From “something like last time” to a brief you can trust.</h2><p data-page-node-id="6WCcm1OntSkp1lz2sW45bq">Waypoint is the connective tissue between the conversation and the quote — not another place to re-enter it.</p></div>
+        <div class="story-rail" data-page-node-id="qMgWYrQ9v43yg1JBxpCZid">
+          <article class="story-step reveal" data-tone="intake" data-page-node-id="Zm7J0lD7K7Pp1Y2bBJQW40"><div class="story-step__meta" data-page-node-id="zmRrmoAtnTx8PaIM7LfoGD">09:14 · WhatsApp</div><h3 data-page-node-id="CWGh1mXxfrqETKUcaJlVsz">“Kerala for our anniversary. Same kind of place as last time.”</h3><p data-page-node-id="mE0aYbSsrocHZbrSoDqFyA">The request is attached to a route, a departure city, and a real customer record — without pretending the missing dates are known.</p><div class="story-step__card" data-page-node-id="hmkYElRBk0vDroU3dcO4Wv">Mumbai → Kochi · <span class="mono" data-page-node-id="ilUUImIYLlc1FLgmdDFDDz">inferred</span></div></article>
+          <article class="story-step reveal" data-tone="decision" data-page-node-id="dPgwADkkYZhJbSqgiMZ6rc"><div class="story-step__meta" data-page-node-id="CfG9VqFxAeRHBSrWxKBTUf">11:02 · forwarded itinerary</div><h3 data-page-node-id="BKaNImRN15ZfEFgCWx3GjW">Four nights becomes three. The old PDF remains context, not truth.</h3><p data-page-node-id="0AdFDCHorv95yB54AnbC7Q">Waypoint separates what the customer said now from what the previous itinerary suggests.</p><div class="story-step__card" data-page-node-id="uU2y7aeMbcgBiELtIo2hcg">Kumarakom · 3 nights · <span class="mono" data-page-node-id="t5pwWta5Ag2j4qkUle5sGD">confirmed</span></div></article>
+          <article class="story-step reveal" data-tone="conflict" data-page-node-id="kY7ZObYYa54hhulAZWQBaN"><div class="story-step__meta" data-page-node-id="cgwGegItiH9uomDX17G42a">13:20 · team review</div><h3 data-page-node-id="SotRGK7gyVH74nQo9DImLC">More time by the water, but no room above ₹1.8L.</h3><p data-page-node-id="BwimE6psjDBYJr7Kw1RduK">The disagreement is not buried in a thread. It becomes the next question before a supplier is briefed.</p><div class="story-step__card" data-page-node-id="4liflAax5YBq31srlAH68I">Budget ↔ room type · <span class="mono" data-page-node-id="1BHocTEt1CtjsWkUvqiNPW">needs a call</span></div></article>
+          <article class="story-step reveal" data-tone="update" data-page-node-id="J4NJbwruLFArt9kcNqyLAI"><div class="story-step__meta" data-page-node-id="B6gNA31m6hZO4zIowRKrCP">14:30 · call note</div><h3 data-page-node-id="O6R0GhKzl0pAuailKbkl5D">Vegetarian for both travellers. The route updates without losing the source.</h3><p data-page-node-id="OUXuURqfefpS8kdievS6NH">A late detail is carried forward to the right places, with its origin and confidence intact.</p><div class="story-step__card" data-page-node-id="3bSOKCrKchnQa0VzRpURNq">Dietary requirement · <span class="mono" data-page-node-id="nAcWKx7EIOrqGP8n06zoHU">captured on call</span></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-section" id="contact" data-page-node-id="uQGrbe8cEDGdcVqRklT6xF">
+      <div class="shell" data-page-node-id="ZAJjDuNCdqlrIVBU7Reeug">
+        <div class="cta-panel reveal" data-page-node-id="95ERZrFKtwSW0EzDQTheVh"><div data-page-node-id="WVNpwY0QHRJza4cLm9VqVP"><div class="eyebrow" data-page-node-id="AFpYbJJV4JtpajTGhhhfTE">Ready when the next message lands</div><h2 data-page-node-id="a88bk4SUQctMZhgl3VzMW4">Build the quote from the journey, not from memory.</h2><p data-page-node-id="JofkDruMVCQkmPCwIAB8Th">See what Waypoint can make visible for your agency — with the conversations you already have.</p></div><a class="button button--primary" href="mailto:hello@waypoint.local" data-page-node-id="QvTeUtP9CNuFFyjuiFCPrO">Create workspace <span aria-hidden="true" data-page-node-id="I7eypRtAGhupArAyUvLAEU">→</span></a></div>
+      </div>
+    </section>
+  </main>
+  <footer data-page-node-id="dmh19DE4Z595LHVqGn7pmv"><div class="shell footer-inner" data-page-node-id="P2l8ZCJr6XeIzHUj3EcsBx"><span data-page-node-id="7ZvkqUfK9SMQ1a5umugaIS">Waypoint OS / living journey prototype</span><span data-page-node-id="gk9LvtZ0jfs2jsAnZCSp5X">Designed around intake, decisions, disagreements, and updates.</span></div></footer>
+
+  <script>
+    (() => {
+      document.documentElement.classList.add('has-motion');
+      const canvas = document.getElementById('journey-map');
+      const stage = document.getElementById('map-stage');
+      const ctx = canvas.getContext('2d');
+      const motionButton = document.getElementById('motion-toggle');
+      const replayButton = document.getElementById('replay-journey');
+      const status = document.getElementById('map-status');
+      const caption = document.getElementById('journey-caption');
+      const liveState = document.getElementById('map-live-state');
+      const tabs = [...document.querySelectorAll('.stage-tab')];
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const colors = { ink: '#f1f3ee', muted: '#a7b0ad', faint: '#6e7978', grid: '#223638', route: '#79d1bd', routeDim: '#3f766d', intake: '#8fb4e5', decision: '#79d1bd', conflict: '#e98676', update: '#f0bf77' };
+      const stageData = {
+        intake: { label: '01 / intake', caption: '<strong>Intake</strong> — three fragments become four anchored places.', focus: 0, progress: .18 },
+        decision: { label: '02 / decisions', caption: '<strong>Decisions</strong> — dates, nights, and transfers resolve into one route.', focus: 1, progress: .52 },
+        conflict: { label: '03 / disagreement', caption: '<strong>Disagreement</strong> — the budget tension stays visible before a quote goes out.', focus: 2, progress: .72 },
+        update: { label: '04 / update', caption: '<strong>Update</strong> — a late call note redraws the brief without erasing context.', focus: 3, progress: 1 }
+      };
+      const nodes = [
+        { id: 'mumbai', name: 'Mumbai', lat: .58, lon: .15, type: 'intake', note: 'departure / source city' },
+        { id: 'kochi', name: 'Kochi', lat: .67, lon: .48, type: 'decision', note: 'arrival / transfer resolved' },
+        { id: 'kumarakom', name: 'Kumarakom', lat: .61, lon: .62, type: 'decision', note: 'backwaters / 3 nights' },
+        { id: 'marari', name: 'Marari', lat: .74, lon: .72, type: 'update', note: 'coast / preference updated' }
+      ];
+      const events = [
+        { stage: 'intake', lat: .43, lon: .37, type: 'intake', label: 'first message' },
+        { stage: 'decision', lat: .58, lon: .62, type: 'decision', label: 'route resolved' },
+        { stage: 'conflict', lat: .64, lon: .68, type: 'conflict', label: 'budget tension' },
+        { stage: 'update', lat: .75, lon: .76, type: 'update', label: 'call note' }
+      ];
+      let width = 0, height = 0, dpr = 1, time = 0, raf = 0, running = false, playing = true, activeStage = 'intake', replayStart = 0, hoverNode = -1;
+      const stateIsReduced = () => reducedMotion.matches;
+      const resize = () => { const rect = canvas.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, 2); width = rect.width; height = rect.height; canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw(); };
+      const xy = (node) => ({ x: 34 + node.lon * (width - 68), y: 34 + node.lat * (height - 68) });
+      const plot = (lat, lon) => ({ x: 34 + lon * (width - 68), y: 34 + lat * (height - 68) });
+      const drawGrid = () => { ctx.save(); ctx.strokeStyle = colors.grid; ctx.lineWidth = 1; ctx.globalAlpha = .72; for (let i = 1; i < 7; i++) { const x = 34 + ((width - 68) * i / 7); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 40, height); ctx.stroke(); } for (let i = 1; i < 6; i++) { const y = 28 + ((height - 56) * i / 6); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y + 22); ctx.stroke(); } ctx.restore(); };
+      const drawLand = () => { ctx.save(); ctx.strokeStyle = '#2d4a49'; ctx.lineWidth = 1; ctx.globalAlpha = .8; const shapes = [ [[.10,.12],[.18,.16],[.21,.25],[.17,.34],[.10,.32],[.07,.23]], [[.27,.07],[.35,.12],[.40,.23],[.36,.32],[.29,.28],[.24,.18]], [[.47,.24],[.57,.27],[.67,.36],[.75,.45],[.72,.56],[.63,.58],[.55,.49],[.48,.43],[.43,.33]], [[.80,.17],[.90,.23],[.94,.34],[.90,.46],[.82,.43],[.78,.32]] ]; shapes.forEach((shape) => { ctx.beginPath(); shape.forEach(([x,y], i) => { const p = plot(y, x); i ? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y); }); ctx.closePath(); ctx.stroke(); }); ctx.restore(); };
+      const drawRoute = (progress) => { const points = nodes.map(xy); ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = colors.routeDim; ctx.lineWidth = 2; ctx.setLineDash([3, 7]); ctx.beginPath(); points.forEach((p, i) => i ? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y)); ctx.stroke(); ctx.setLineDash([]); ctx.strokeStyle = colors.route; ctx.lineWidth = 2.6; ctx.beginPath(); const end = Math.max(1, Math.min(points.length, Math.ceil(progress * points.length))); for (let i = 0; i < end; i++) { const p = points[i]; i ? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y); } if (end < points.length && progress > 0) { const a = points[end - 1], b = points[end]; const t = progress * points.length - (end - 1); ctx.lineTo(a.x + (b.x-a.x)*t, a.y + (b.y-a.y)*t); } ctx.stroke(); ctx.restore(); };
+      const drawArcs = () => { ctx.save(); ctx.globalAlpha = .34; ctx.strokeStyle = colors.route; ctx.lineWidth = 1; nodes.slice(0, -1).forEach((node, i) => { const a = xy(node), b = xy(nodes[i+1]); const cx = (a.x+b.x)/2, cy = Math.min(a.y,b.y)-34; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.quadraticCurveTo(cx,cy,b.x,b.y); ctx.stroke(); }); ctx.restore(); };
+      const drawNode = (node, i) => { const p = xy(node); const isActive = i === stageData[activeStage].focus || hoverNode === i; const radius = isActive ? 7 : 5; ctx.save(); ctx.globalAlpha = i <= stageData[activeStage].focus ? 1 : .48; ctx.fillStyle = colors[node.type]; ctx.strokeStyle = '#0d1719'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x,p.y,radius,0,Math.PI*2); ctx.fill(); ctx.stroke(); if (isActive) { ctx.strokeStyle = colors[node.type]; ctx.globalAlpha = .28; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x,p.y,16 + Math.sin(time/500+i)*2,0,Math.PI*2); ctx.stroke(); } ctx.fillStyle = isActive ? colors.ink : colors.muted; ctx.font = (isActive ? '500 12px "IBM Plex Sans"' : '11px "IBM Plex Sans"'); ctx.fillText(node.name, p.x + 12, p.y - 8); ctx.fillStyle = colors.faint; ctx.font = '10px "IBM Plex Mono"'; if (isActive) ctx.fillText(node.note, p.x + 12, p.y + 8); ctx.restore(); };
+      const drawEvent = (event, i) => { const p = plot(event.lat, event.lon); const active = event.stage === activeStage; const pulse = 1 + Math.sin(time / 320 + i) * .08; ctx.save(); ctx.globalAlpha = active ? .95 : .34; ctx.strokeStyle = colors[event.type]; ctx.fillStyle = colors[event.type]; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.arc(p.x,p.y,active ? 20*pulse : 12,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fill(); if (active) { ctx.font = '10px "IBM Plex Mono"'; ctx.fillText(event.label, p.x + 12, p.y + 4); } ctx.restore(); };
+      const draw = () => { if (!width || !height) return; ctx.clearRect(0,0,width,height); ctx.fillStyle = '#0d1719'; ctx.fillRect(0,0,width,height); drawGrid(); drawLand(); drawRoute(stageData[activeStage].progress); drawArcs(); events.forEach(drawEvent); nodes.forEach(drawNode); };
+      const loop = (now) => { if (!running) return; time = now; draw(); raf = requestAnimationFrame(loop); };
+      const start = () => { if (stateIsReduced() || !playing || running) return; running = true; liveState.textContent = 'journey moving'; raf = requestAnimationFrame(loop); };
+      const stop = () => { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; liveState.textContent = 'journey paused'; draw(); };
+      const setStage = (next) => { activeStage = next; const item = stageData[next]; tabs.forEach((tab) => { const selected = tab.dataset.stage === next; tab.setAttribute('aria-selected', String(selected)); }); status.textContent = item.label; caption.innerHTML = item.caption; draw(); if (!stateIsReduced() && playing) start(); };
+      const replay = () => { const sequence = ['intake','decision','conflict','update']; let i = 0; playing = true; motionButton.setAttribute('aria-pressed','true'); motionButton.textContent = 'Pause motion'; replayStart = performance.now(); const next = () => { setStage(sequence[i]); i += 1; if (i < sequence.length) window.setTimeout(next, 850); }; next(); start(); };
+      const pointer = (event) => { const rect = canvas.getBoundingClientRect(); const x = event.clientX - rect.left, y = event.clientY - rect.top; hoverNode = nodes.findIndex((node) => { const p = xy(node); return Math.hypot(p.x-x,p.y-y) < 18; }); canvas.style.cursor = hoverNode >= 0 ? 'pointer' : 'default'; draw(); };
+      const click = (event) => { const rect = canvas.getBoundingClientRect(); const x = event.clientX - rect.left, y = event.clientY - rect.top; const idx = nodes.findIndex((node) => { const p = xy(node); return Math.hypot(p.x-x,p.y-y) < 20; }); if (idx >= 0) { const stageForNode = nodes[idx].type === 'intake' ? 'intake' : nodes[idx].type === 'update' ? 'update' : 'decision'; setStage(stageForNode); } };
+      tabs.forEach((tab) => tab.addEventListener('click', () => setStage(tab.dataset.stage)));
+      motionButton.addEventListener('click', () => { playing = !playing; motionButton.setAttribute('aria-pressed', String(playing)); motionButton.textContent = playing ? 'Pause motion' : 'Play motion'; playing ? start() : stop(); });
+      replayButton.addEventListener('click', replay);
+      canvas.addEventListener('pointermove', pointer, { passive: true });
+      canvas.addEventListener('pointerleave', () => { hoverNode = -1; draw(); });
+      canvas.addEventListener('click', click);
+      window.addEventListener('resize', resize, { passive: true });
+      reducedMotion.addEventListener?.('change', () => { if (reducedMotion.matches) stop(); else if (playing) start(); });
+      const visibility = new IntersectionObserver((entries) => { const visible = entries[0]?.isIntersecting; if (visible && playing && !stateIsReduced()) start(); else stop(); }, { threshold: .12 });
+      visibility.observe(stage);
+      document.querySelectorAll('.reveal').forEach((el) => { const observer = new IntersectionObserver((entries, obs) => { if (entries[0].isIntersecting) { el.classList.add('is-visible'); obs.disconnect(); } }, { threshold: .12 }); observer.observe(el); });
+      resize();
+      if (!stateIsReduced()) start(); else { playing = false; motionButton.textContent = 'Play motion'; motionButton.setAttribute('aria-pressed','false'); }
+    })();
+  </script>
+</body>
+</html>

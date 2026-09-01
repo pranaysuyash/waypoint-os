@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en" style="color-scheme: light;" data-page-node-id="F3Dzk2r9waroDTv1gs8eM4">
+<head data-page-node-id="dbbHe63zyDr2RItm8ftBjJ">
+<meta charset="utf-8" data-page-node-id="aJALiXGzTFkwNZ1SFIyLgu">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="gEgWDbfYDcwSc78ae1PJUL">
+<title>Waypoint OS — AI operating workspace for boutique travel agencies</title>
+<meta name="description" content="Waypoint turns the notes you already have — WhatsApp threads, email, call recollections — into a trip brief that shows exactly what it knows, what it assumed, and what is still missing." data-page-node-id="O5aseD6fRqXp8j8XvZWuMN">
+<meta name="theme-color" content="#f7f5f2" data-page-node-id="hYyKrR9rTUSVC2lqXKSSQU">
+<link rel="preconnect" href="https://fonts.googleapis.com" data-page-node-id="ai0y87PbD1GjwFrbPsxqsB">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin data-page-node-id="5gTX1AMsxU0eAQuhMh5Wt8">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" data-page-node-id="oaHZWN2xxiyCNrxyG3Weei">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" data-page-node-id="n4zBO0FrGTIwNsE6Pplv0K">
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   Waypoint OS — Landing, Theme B "Minimalist Document"
+   Tokens are canonical: frontend/DESIGN.md §2 (Theme B), §8.4, §11.
+   Four tokens are DERIVED to fix AA failures in the spec — see
+   RATIONALE.md § Contrast. Do not "correct" them back.
+   ═══════════════════════════════════════════════════════════════════ */
+:root{
+  /* Surfaces — DESIGN.md §2 "The Paper Layers" */
+  --archive:#f7f5f2;      /* Archive White — page */
+  --card:#ffffff;         /* Card Stock — surfaces */
+  --hovered:#f0eeea;      /* Hovered Sheet */
+  --selected:#e8e5e0;     /* Selected Sheet */
+  --input:#ffffff;        /* Input Field */
+
+  /* Ink — DESIGN.md §2 "The Type Hierarchy" */
+  --ink:#1a1a1a;          /* 15.99:1 on archive */
+  --graphite:#4a4a4a;     /* 8.14:1 — body */
+  --lead:#6b6b6b;         /* 4.90:1 — captions (see --ink-muted) */
+  --silver:#9a9a9a;       /* 2.59:1 — DECORATIVE ONLY, never text */
+
+  /* Accents — reduced to three, DESIGN.md §2 */
+  --royal:#2563eb;        /* Royal Blue — primary action */
+  --royal-dark:#1d4ed8;   /* hover */
+  --amber:#d97706;        /* Warm Amber — fills/borders only (3.19:1) */
+  --forest:#059669;       /* Forest Green — fills/borders only (3.77:1) */
+  --error:#dc2626;
+
+  /* Rules — DESIGN.md §2 "Hairline Precision" */
+  --rule:#e5e2dd;         /* Hairline — decorative structure */
+  --rule-hover:#c4c0b8;   /* Hover Line — decorative only (1.81:1) */
+  --rule-focus:#2563eb;   /* Focus Line */
+
+  /* ── Derived AA fixes (canonical values FAIL — see RATIONALE) ── */
+  --ink-muted:#666666;    /* replaces #6b6b6b as text: 4.57:1 worst case vs 4.24 */
+  --amber-ink:#a35a04;    /* #d97706 as text = 3.19:1 FAIL → 4.80:1 */
+  --forest-ink:#047857;   /* #059669 as text = 3.77:1 FAIL → 5.04:1 */
+  --error-ink:#b91c1c;    /* #dc2626 on red wash = 4.07:1 FAIL → 5.45:1
+                             (this is DESIGN.md §4's own destructive-hover value) */
+  --rule-strong:#8f8b82;  /* interactive borders need 3:1 → 3.40:1 on white */
+
+  /* CONSTRAINT (enforced by verify.mjs): accent-coloured TEXT may sit only on
+     --archive, --card, or a --wash-* over those two. --hovered and --selected
+     are 4.11–4.46:1 against the accents — safe for --ink, never for accents. */
+
+  /* State washes — DESIGN.md §2; ink stays --ink (15.8:1+ on all) */
+  --wash-blue:rgba(37,99,235,.06);
+  --wash-amber:rgba(217,119,6,.08);
+  --wash-green:rgba(5,150,105,.08);
+  --wash-red:rgba(220,38,38,.06);
+
+  /* Type — DESIGN.md §3 */
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  /* Space — 4px base, DESIGN.md §5 */
+  --s1:4px;  --s2:8px;  --s3:12px; --s4:16px; --s5:20px;
+  --s6:24px; --s8:32px; --s10:40px; --s12:48px; --s16:64px; --s20:80px;
+
+  /* Shape — DESIGN.md §11: marketing radius == app radius (8px) */
+  --r:8px;
+  --shadow:0 2px 8px rgba(0,0,0,.06);
+
+  --shell:1100px;         /* DESIGN.md § maxWidth.marketing-light */
+  --measure:800px;        /* hero text column */
+  --ease:cubic-bezier(.2,.6,.2,1);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--archive);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:18px;
+  line-height:1.75;
+  font-weight:400;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+  /* Guidelines: touch + tap */
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(37,99,235,.12);
+}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.02em;line-height:1.2;text-wrap:balance}
+h1{font-size:clamp(38px,5.4vw,62px);line-height:1.12;letter-spacing:-.028em}
+h2{font-size:clamp(28px,3.4vw,40px)}
+h3{font-size:20px;line-height:1.4;letter-spacing:-.01em}
+p{margin:0}
+a{color:var(--royal);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+:focus-visible{outline:2px solid var(--rule-focus);outline-offset:2px;border-radius:2px}
+[id]{scroll-margin-top:88px}
+
+.shell{max-width:var(--shell);margin:0 auto;padding-inline:var(--s6)}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+.skip{
+  position:absolute;left:var(--s4);top:-100px;z-index:100;
+  background:var(--card);color:var(--ink);border:1px solid var(--rule-strong);
+  border-radius:var(--r);padding:10px 16px;font-size:14px;font-weight:500;
+  transition:top 150ms var(--ease);
+}
+.skip:focus{top:var(--s4)}
+
+/* Label — DESIGN.md §3 Theme B: 11px, uppercase, 0.05em tracking */
+.label{
+  font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink-muted);line-height:1.4;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ── Header — §8.4 Theme B: solid Card Stock, Hairline bottom, no blur ── */
+.head{
+  position:sticky;top:0;z-index:20;
+  background:var(--card);
+  border-bottom:1px solid var(--rule);
+  padding-top:env(safe-area-inset-top);
+}
+.head-in{display:flex;align-items:center;gap:var(--s8);height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:16px;color:var(--ink);letter-spacing:-.01em}
+.brand:hover{text-decoration:none}
+.mark{width:24px;height:24px;border-radius:5px;background:var(--royal);flex:none;display:grid;place-items:center}
+.mark svg{display:block}
+.nav{display:none;margin-left:auto;gap:var(--s8)}
+.nav a{color:var(--graphite);font-size:15px;font-weight:450}
+.nav a:hover{color:var(--ink);text-decoration:none}
+.head-act{margin-left:auto;display:flex;align-items:center;gap:var(--s3)}
+@media(min-width:900px){.nav{display:flex}.head-act{margin-left:0}}
+
+/* ── Buttons — §4 Theme B: rounded-md 6px… §11 radius unified to 8px ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:inherit;font-size:15px;font-weight:500;line-height:1;
+  padding:0 20px;height:44px;border-radius:var(--r);border:1px solid transparent;
+  cursor:pointer;white-space:nowrap;
+  transition:background-color 150ms var(--ease),border-color 150ms var(--ease),color 150ms var(--ease);
+}
+.btn-primary{background:var(--royal);color:#fff}
+.btn-primary:hover{background:var(--royal-dark);text-decoration:none}
+.btn-secondary{background:var(--card);color:var(--ink);border-color:var(--rule-strong)}
+.btn-secondary:hover{background:var(--hovered);text-decoration:none}
+.btn-sm{height:36px;padding:0 14px;font-size:14px}
+
+/* ── Hero ── */
+.hero{position:relative;padding-block:var(--s20) var(--s16);overflow:hidden}
+@media(min-width:900px){.hero{padding-block:120px 96px}}
+.hero-art{
+  position:absolute;top:-40px;right:-120px;width:620px;height:520px;
+  pointer-events:none;opacity:.9;
+}
+@media(max-width:899px){.hero-art{opacity:.35;right:-200px}}
+.hero-art .stroke{fill:none;stroke:var(--rule);stroke-width:1}
+.hero-art .route{fill:none;stroke:var(--royal);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;opacity:.5}
+.hero-art .wp{fill:var(--card);stroke:var(--royal);stroke-width:1.5}
+
+.hero-in{position:relative;max-width:var(--measure)}
+.hero h1{margin-top:var(--s5)}
+.hero-sub{margin-top:var(--s6);color:var(--graphite);font-size:18px;line-height:1.75;max-width:640px}
+.hero-cta{margin-top:var(--s8);display:flex;flex-wrap:wrap;gap:var(--s3)}
+.hero-note{margin-top:var(--s5);color:var(--ink-muted);font-size:15px}
+
+/* ── Section frame ── */
+.sec{padding-block:var(--s16);border-top:1px solid var(--rule)}
+@media(min-width:900px){.sec{padding-block:120px}}
+.sec-head{max-width:640px}
+.sec-head h2{margin-top:var(--s4)}
+.sec-head p{margin-top:var(--s5);color:var(--graphite)}
+
+/* ═══ THE SPECIMEN — the product's differentiator, rendered for real ═══ */
+.spec{
+  margin-top:var(--s12);
+  background:var(--card);
+  border:1px solid var(--rule);
+  border-radius:var(--r);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.spec-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--s4);
+  padding:12px var(--s5);border-bottom:1px solid var(--rule);
+  background:var(--archive);
+}
+.spec-bar .trip{font-family:var(--mono);font-size:12px;color:var(--ink-muted);letter-spacing:0}
+.replay{
+  font:inherit;font-size:13px;font-weight:500;color:var(--graphite);
+  background:transparent;border:1px solid var(--rule-strong);border-radius:6px;
+  height:30px;padding:0 12px;cursor:pointer;
+  transition:background-color 150ms var(--ease),color 150ms var(--ease);
+}
+.replay:hover{background:var(--hovered);color:var(--ink)}
+
+.src-list{list-style:none;margin:0;padding:0;border-bottom:1px solid var(--rule)}
+.src{display:flex;gap:var(--s4);padding:var(--s5);border-bottom:1px solid var(--rule)}
+.src:last-child{border-bottom:0}
+.src-ico{
+  width:32px;height:32px;flex:none;border-radius:6px;
+  background:var(--archive);border:1px solid var(--rule);
+  display:grid;place-items:center;color:var(--graphite);
+}
+.src-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+.src-from{font-size:14px;font-weight:600;color:var(--ink)}
+.src-time{font-family:var(--mono);font-size:11px;color:var(--ink-muted)}
+.src-body{font-size:15px;line-height:1.6;color:var(--graphite)}
+
+.brief{padding:var(--s5)}
+.brief-head{
+  display:flex;align-items:baseline;justify-content:space-between;gap:var(--s4);
+  margin-bottom:var(--s4);
+}
+.brief-count{font-family:var(--mono);font-size:11px;color:var(--ink-muted)}
+
+.fields{list-style:none;margin:0;padding:0}
+.field{border-top:1px solid var(--rule)}
+.field:first-child{border-top:0}
+.field-btn{
+  display:grid;grid-template-columns:auto 1fr;gap:var(--s2) var(--s4);
+  width:100%;padding:14px 0;background:none;border:0;cursor:pointer;
+  font:inherit;text-align:left;align-items:center;
+  transition:opacity 150ms var(--ease);
+}
+.field-btn:hover .field-name{color:var(--ink)}
+.field-row{display:flex;align-items:center;gap:var(--s3);min-width:0}
+.field-name{font-size:14px;font-weight:500;color:var(--graphite);transition:color 150ms var(--ease)}
+.field-val{font-size:15px;font-weight:500;color:var(--ink);min-width:0}
+.field-val--empty{color:var(--ink-muted);font-weight:400;font-style:italic}
+.chev{margin-left:auto;flex:none;color:var(--ink-muted);transition:transform 200ms var(--ease)}
+.field-btn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+
+/* Chips — the four real EpistemicStatus values (src/intake/packet_models.py) */
+.chip{
+  flex:none;display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;
+  line-height:1;padding:5px 9px;border-radius:6px;border:1px solid;
+  white-space:nowrap;
+}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.chip--fact{background:var(--wash-green);color:var(--forest-ink);border-color:rgba(5,150,105,.2)}
+.chip--inferred{background:var(--wash-blue);color:var(--royal);border-color:rgba(37,99,235,.15)}
+.chip--assumed{background:var(--wash-amber);color:var(--amber-ink);border-color:rgba(217,119,6,.2)}
+.chip--unknown{background:var(--wash-amber);color:var(--amber-ink);border-color:rgba(217,119,6,.2)}
+
+.field-detail{
+  padding:0 0 var(--s5);
+  border-top:1px dashed var(--rule);
+  margin-top:-1px;
+}
+.field-detail[hidden]{display:none}
+.fd-grid{display:grid;gap:var(--s4);padding-top:var(--s4)}
+@media(min-width:700px){.fd-grid{grid-template-columns:1fr 1fr}}
+.fd-block p{font-size:14px;line-height:1.65;color:var(--graphite);margin-top:6px}
+.fd-quote{
+  font-size:14px;line-height:1.6;color:var(--ink);
+  border-left:2px solid var(--rule-strong);padding-left:var(--s3);margin-top:6px;
+}
+.crit{
+  display:inline-flex;align-items:center;font-family:var(--mono);font-size:11px;
+  letter-spacing:.04em;text-transform:uppercase;margin-top:6px;
+  padding:3px 8px;border-radius:4px;background:var(--archive);
+  border:1px solid var(--rule);color:var(--graphite);
+}
+.crit--critical{color:var(--error-ink);border-color:rgba(220,38,38,.25);background:var(--wash-red)}
+
+/* The gap — UNKNOWN fields carry a suggested question */
+.gap{
+  grid-column:1/-1;background:var(--archive);border:1px solid var(--rule);
+  border-radius:6px;padding:var(--s4);
+}
+.gap-q{font-size:15px;line-height:1.6;color:var(--ink);margin:var(--s2) 0 var(--s3);font-weight:450}
+.gap-act{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+.copy{
+  display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;font-weight:500;
+  background:var(--card);color:var(--ink);border:1px solid var(--rule-strong);
+  border-radius:6px;height:32px;padding:0 12px;cursor:pointer;
+  transition:background-color 150ms var(--ease);
+}
+.copy:hover{background:var(--hovered)}
+.copy-done{font-size:13px;color:var(--forest-ink);font-weight:500}
+
+/* ── Two-column editorial rows (§8.5: row, not card) ── */
+.rows{list-style:none;margin:0;padding:0}
+.row{
+  display:grid;grid-template-columns:auto 1fr;gap:var(--s3) var(--s6);
+  padding:var(--s6) 0;border-top:1px solid var(--rule);align-items:start;
+}
+.row:first-child{border-top:0}
+.row-n{
+  font-family:var(--mono);font-size:13px;font-weight:500;color:var(--royal-dark);
+  width:28px;height:28px;border-radius:6px;background:var(--wash-blue);
+  border:1px solid rgba(37,99,235,.15);display:grid;place-items:center;flex:none;
+}
+.row h3{margin-bottom:6px}
+.row p{color:var(--graphite);font-size:16px;line-height:1.7;max-width:60ch}
+
+/* ── Columns ── */
+.cols{display:grid;gap:var(--s8);margin-top:var(--s10)}
+@media(min-width:820px){.cols{grid-template-columns:1fr 1fr;gap:var(--s12)}}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);padding:var(--s6)}
+.card--plain{background:transparent;border-style:dashed}
+.card h3{margin-bottom:var(--s3)}
+.card p{color:var(--graphite);font-size:16px;line-height:1.7}
+.list{list-style:none;margin:var(--s4) 0 0;padding:0;display:grid;gap:var(--s3)}
+.list li{display:grid;grid-template-columns:auto 1fr;gap:var(--s3);font-size:16px;line-height:1.65;color:var(--graphite)}
+.list svg{flex:none;margin-top:5px}
+
+/* ── Closing CTA ── */
+.close{background:var(--card);border-top:1px solid var(--rule);padding-block:var(--s16)}
+.close-in{display:grid;gap:var(--s8)}
+@media(min-width:900px){.close-in{grid-template-columns:1fr auto;align-items:end;gap:var(--s12)}}
+.close h2{max-width:15ch}
+.close p{margin-top:var(--s5);color:var(--graphite);max-width:52ch}
+
+/* ── Footer ── */
+.foot{border-top:1px solid var(--rule);padding-block:var(--s10);font-size:14px;color:var(--ink-muted)}
+.foot-in{display:flex;flex-wrap:wrap;gap:var(--s6);justify-content:space-between;align-items:center}
+
+/* ── Reveal — transform/opacity only, once, interruptible ── */
+.rv{opacity:0;transform:translateY(12px);transition:opacity 300ms var(--ease),transform 300ms var(--ease)}
+.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  .rv{opacity:1;transform:none}
+  .hero-art .route,.hero-art .contour{stroke-dasharray:none!important;opacity:.5}
+}
+</style>
+</head>
+<body data-page-node-id="m45pwzdW1VM7eSTdRdJxsJ">
+<a class="skip" href="#main" data-page-node-id="g5ucZyd2ROXezU0txApJgh">Skip to main content</a>
+
+<header class="head" data-page-node-id="wmwCZVGiG2MFUCFIi3V6FF">
+  <div class="shell head-in" data-page-node-id="63WNXT5auwG5KhUNVBRCnR">
+    <a class="brand" href="#main" data-page-node-id="AawOYGODCXI60pvjg15IMH">
+      <span class="mark" aria-hidden="true" data-page-node-id="ByUET3jb8APBi8K9JaKfrY">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-page-node-id="DerAKrf5w5q3QAK0ZafjSc">
+          <circle cx="3" cy="11" r="2" stroke="#fff" stroke-width="1.5" data-page-node-id="9jbYLREIXRltFbwnqIo4SI"/>
+          <circle cx="11" cy="3" r="2" stroke="#fff" stroke-width="1.5" data-page-node-id="BRhPTAHgkDK4xxGcLnhpyw"/>
+          <path d="M4.6 9.6 9.4 4.4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" data-page-node-id="BhXlCMDKdM0ED1hMiblEiZ"/>
+        </svg>
+      </span>
+      Waypoint OS
+    </a>
+    <nav class="nav" aria-label="Primary" data-page-node-id="WmDhfci3fiDEOcdmvsCGiu">
+      <a href="#specimen" data-page-node-id="Jte4TOVg1f3av0aAQyBBRT">How it reads</a>
+      <a href="#how" data-page-node-id="4wHPZOP6B53nvsjgBACbMd">How it works</a>
+      <a href="#fit" data-page-node-id="jw7b9lo3QfokM8QwQXXEsv">Who it's for</a>
+    </nav>
+    <div class="head-act" data-page-node-id="K5VE6sCPY4gsqnOYRnu9Uc">
+      <a class="btn btn-secondary btn-sm" href="#main" data-page-node-id="Gkg8jiDZVQMh7Byf50MgBG">Sign in</a>
+      <a class="btn btn-primary btn-sm" href="#start" data-page-node-id="hQi2mtCoAPTiyJPnG5qswV">Request access</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" data-page-node-id="42p2thn9Fw47qtrZIJNrbG">
+
+  <!-- ══ HERO ══ -->
+  <section class="hero" data-page-node-id="jynFeyOZCYQKJxWHuKcQoP">
+    <svg class="hero-art" viewBox="0 0 620 520" aria-hidden="true" focusable="false" data-page-node-id="FPnWCmkKYowm9JcUV1fiNg">
+      <g class="contour" data-page-node-id="IBRCBug8Rz829zoIcgpnDZ">
+        <path class="stroke" d="M60 300c60-70 150-96 232-84s150 52 196 118" pathLength="1000" data-page-node-id="F1NmEbB3im1f7AfYgKZpQk"/>
+        <path class="stroke" d="M40 356c70-78 168-108 258-95s166 58 216 130" pathLength="1000" data-page-node-id="ySXcfFk20z0u9nOSD91xL6"/>
+        <path class="stroke" d="M22 412c80-86 186-120 284-106s182 64 236 142" pathLength="1000" data-page-node-id="GPir3C6stbcezWAxWaUg7J"/>
+        <path class="stroke" d="M6 468c90-94 204-132 310-117s198 70 256 154" pathLength="1000" data-page-node-id="Y44lGIK9XT0Ozj23dRhf2J"/>
+        <path class="stroke" d="M96 244c52-62 130-86 200-75s128 46 168 104" pathLength="1000" data-page-node-id="0ApjzoJA224ZgABcFRK1DV"/>
+        <path class="stroke" d="M136 190c44-54 110-74 170-64s110 40 144 90" pathLength="1000" data-page-node-id="kZLzbSYc68vBWJVDLgvzNY"/>
+      </g>
+      <path class="route" d="M120 438c74-46 96-118 168-146s118-64 196-118" pathLength="1000" data-page-node-id="UaDSi3Q82uLt5Ntv0y97Xp"/>
+      <circle class="wp" cx="120" cy="438" r="6" data-page-node-id="CxC3n92pjNU1rFoJ40gloa"/>
+      <circle class="wp" cx="484" cy="174" r="6" data-page-node-id="USWu8Dc5zZpc0hmBOhjHuW"/>
+    </svg>
+
+    <div class="shell hero-in" data-page-node-id="pSC2AwmrH1LXIx7zm5uSaU">
+      <p class="label rv" data-page-node-id="2goQqMm3GaJJPMHmWWizlP">For boutique travel agencies</p>
+      <h1 class="rv" data-page-node-id="esNQMkDhkZNwmcLP4jR2Ck">Your next trip brief already exists. It's spread across six threads.</h1>
+      <p class="hero-sub rv" data-page-node-id="1wvXaE1alKxesSaLlGKlHG">
+        Waypoint reads the notes you already have — WhatsApp messages, reply-all email chains,
+        half-remembered phone calls — and turns them into one brief that states plainly what it
+        knows, what it assumed, and what is still missing.
+      </p>
+      <div class="hero-cta rv" data-page-node-id="wpvQAL3bp1RgSBG6Y21Cdg">
+        <a class="btn btn-primary" href="#start" data-page-node-id="OnFquRVi3jeb8NuLitm5M9">Request access</a>
+        <a class="btn btn-secondary" href="#specimen" data-page-node-id="J3o4njK1HEMA5w9vIjDXO5">See it read a real request</a>
+      </div>
+      <p class="hero-note rv" data-page-node-id="vlTh9qhOaRMYeRtSxBW0FB">Currently onboarding a small number of agencies. No credit card, no demo script.</p>
+    </div>
+
+    <!-- ══ SPECIMEN ══ -->
+    <div class="shell" data-page-node-id="estF80XuSlc1RxGD7dijlu">
+      <section class="spec rv" id="specimen" aria-labelledby="spec-h" data-page-node-id="QeKVQxw6UT2lDEcxMZPgwF">
+        <div class="spec-bar" data-page-node-id="t25shLGA1TWNpL8GjKmBdk">
+          <span class="label" id="spec-h" data-page-node-id="bQd0P4e7EycbaFhGbXXAhX">Intake · Trip&nbsp;<span class="num" data-page-node-id="tEpP41J4EeqgHIYzGCxT4g">WP-2291</span></span>
+          <button class="replay" type="button" id="replay" data-page-node-id="LAmUkvnlEffMXfojfQjlYi">Replay extraction</button>
+        </div>
+
+        <ol class="src-list" data-page-node-id="8G8dwPuL4GtN0ArHjO9a3J">
+          <li class="src" data-page-node-id="LHFtDTnvLqbmUKAeekqSU0">
+            <span class="src-ico" aria-hidden="true" data-page-node-id="NPdpQUF7Y7NkfmusL6yuAG">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" data-page-node-id="UrmNbMBK2MC59vHOpHnI99">
+                <path d="M2.5 13.5 4 10M13.5 13.5 12 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" data-page-node-id="wzkv8aAtuHfo1BqErjg2hd"/>
+                <rect x="3.5" y="2.5" width="9" height="7" rx="3.5" stroke="currentColor" stroke-width="1.4" data-page-node-id="iDIKqUtZvcttmMjI11eHFf"/>
+              </svg>
+            </span>
+            <div data-page-node-id="htM9u8UwfCIq4JF9hkhEbE">
+              <div class="src-top" data-page-node-id="OhwWers6rE1FsY3yFvYiIT">
+                <span class="src-from" data-page-node-id="eTRbS75gHWBAT2RYC1b9o1">WhatsApp</span>
+                <span class="src-time num" data-page-node-id="YociAa53KRuAhN8v4xNAaA">09:14</span>
+              </div>
+              <p class="src-body" data-page-node-id="aJz3jdTUap7IneIvsAPDMf">“Kerala backwaters for our anniversary — second week of March, we'd fly from Mumbai. Same kind of place we stayed last time.”</p>
+            </div>
+          </li>
+          <li class="src" data-page-node-id="9POTNy1J6VDSY7Yr8hIDsO">
+            <span class="src-ico" aria-hidden="true" data-page-node-id="ngmnX5JsiIwewEUgVLKx39">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" data-page-node-id="aAvWg5v85YS3G48BLRFKRd">
+                <rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4" data-page-node-id="qi5dCfYXZNX2EGhdIA31RT"/>
+                <path d="m2.5 4.5 5.5 4 5.5-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" data-page-node-id="iMXQ5mFaUysb7qoAxGlFbH"/>
+              </svg>
+            </span>
+            <div data-page-node-id="RdkamxAtDBfYmIxA1GJBEm">
+              <div class="src-top" data-page-node-id="XtsKcAtd9huIGvj2UE8yow">
+                <span class="src-from" data-page-node-id="pKx5xy3Hss9srQXaNJfsI1">Email</span>
+                <span class="src-time num" data-page-node-id="2lIfvAAnCL5TeskFX8Cyyl">11:02</span>
+              </div>
+              <p class="src-body" data-page-node-id="2S3ZlJ1wi6SorxN6j8AZCU">Forwarded a 2024 itinerary: “Something like this but three nights instead of four.”</p>
+            </div>
+          </li>
+          <li class="src" data-page-node-id="9R9Ow9Jq9cnERmIjHZHvBr">
+            <span class="src-ico" aria-hidden="true" data-page-node-id="XNydqxVdSYlPIQFwzMo4MS">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" data-page-node-id="y7Ie515XaY7GGp6i1gtSIy">
+                <path d="M5 2.5h-.8A1.7 1.7 0 0 0 2.5 4.2c0 3.6 1.9 6.8 4.8 8.6l.8.4.8-.4c2.9-1.8 4.8-5 4.8-8.6a1.7 1.7 0 0 0-1.7-1.7H11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" data-page-node-id="5CjnrIp73DJIfJtxy82spl"/>
+              </svg>
+            </span>
+            <div data-page-node-id="IheDNjD7KfVjuCPiF2ip2G">
+              <div class="src-top" data-page-node-id="6haijcq8W5I3SGQ5YHEaAu">
+                <span class="src-from" data-page-node-id="kCWsHH1c4p7TpJCEXXGnMN">Call note</span>
+                <span class="src-time num" data-page-node-id="io2LAFfZgZimHcMHa03p3I">14:30</span>
+              </div>
+              <p class="src-body" data-page-node-id="EKf4KwAAIYER8ElUadN65O">“She's vegetarian. Mentioned it on the phone — didn't come up in writing anywhere.”</p>
+            </div>
+          </li>
+        </ol>
+
+        <div class="brief" data-page-node-id="WzjsQ20n67y62pvMej7mzi">
+          <div class="brief-head" data-page-node-id="mACn4pxQ9PYQ0bFQLYw2VY">
+            <span class="label" data-page-node-id="JDFvveTZ3lSKO2ycoztnWF">Extracted brief</span>
+            <span class="brief-count num" id="brief-count" data-page-node-id="qAOFYUcRci6ARrMei2BB6V">4 fact · 1 inferred · 1 assumed · 1 unknown</span>
+          </div>
+
+          <ul class="fields" id="fields" data-page-node-id="XFJpvlbWKMbDLKEHtOI614">
+            <li class="field" data-page-node-id="FSs7ef6rqMA0s2SCoYnWED">
+              <button class="field-btn" type="button" aria-expanded="false" aria-controls="fd-1" data-page-node-id="l7DaoFNp7dR0bBRk0FE37x">
+                <span class="chip chip--fact" data-page-node-id="MIaxSdjReyZEzA9Mhaoq1Q">Fact</span>
+                <span class="field-row" data-page-node-id="kQv5uxsmwCJDbAzADVxnOk">
+                  <span class="field-name" data-page-node-id="nHTJfFmBTxkY4rjsOMkBXS">Destination</span>
+                  <span class="field-val" data-page-node-id="MBP8v0B99Fd8HEeaxjxVQM">Kerala backwaters</span>
+                  <svg class="chev" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" data-page-node-id="m56v6dDoyH07JLRdJi6pNB">
+                    <path d="m3 5.5 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="dxDHSl84IJgaL6nPrtzW4Y"/>
+                  </svg>
+                </span>
+              </button>
+              <div class="field-detail" id="fd-1" hidden data-page-node-id="1h8JzZNykiXHrNQWYEXJFl">
+                <div class="fd-grid" data-page-node-id="4hCvanTRE3Q7iLkt9scpOE">
+                  <div class="fd-block" data-page-node-id="ZaC3SGR3hDIqkdbAvBVTID">
+                    <span class="label" data-page-node-id="1TwcIAtrxBl5ZDiQMDni3m">Stated in</span>
+                    <p class="fd-quote" data-page-node-id="UcBsjonAFSIGLDtQfqEh0C">“Kerala backwaters for our anniversary”</p>
+                  </div>
+                  <div class="fd-block" data-page-node-id="z9RvdmI0yfQzn2mzrI3JYn">
+                    <span class="label" data-page-node-id="bl6lhchwTYF8e5K7kyOM44">Why this is a fact</span>
+                    <p data-page-node-id="lE9Jbzo2ldBrw3SgbkLhzI">Named directly by the traveller in writing. No inference step.</p>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li class="field" data-page-node-id="r8YRUwTk8ET26z0Ccv2KBQ">
+              <button class="field-btn" type="button" aria-expanded="false" aria-controls="fd-2" data-page-node-id="9yd3LmuXpagNbiWCj3bIzy">
+                <span class="chip chip--fact" data-page-node-id="gTRFcpd2frPjGja7siS152">Fact</span>
+                <span class="field-row" data-page-node-id="HHFgYLAaHPpOB6FNhiDNsT">
+                  <span class="field-name" data-page-node-id="auDfLfSl4A99OSonC4yPX4">Travel window</span>
+                  <span class="field-val num" data-page-node-id="HFmjbZRy2BZBd0KiqBpMKV">8–15 March</span>
+                  <svg class="chev" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" data-page-node-id="sa4ULg1PASNagvDEMg4KAA">
+                    <path d="m3 5.5 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="pDSXSbj31nFV1TuBdoIEPs"/>
+                  </svg>
+                </span>
+              </button>
+              <div class="field-detail" id="fd-2" hidden data-page-node-id="63bQH1UBpEFYeGjXedDGmd">
+                <div class="fd-grid" data-page-node-id="38FeffT2C7dQX4zMYo4LZb">
+                  <div class="fd-block" data-page-node-id="2RcXfBB3Hkto3PxQs0ZZmV">
+                    <span class="label" data-page-node-id="BpdBzOyDhlZy72RGTeIX4B">Stated in</span>
+                    <p class="fd-quote" data-page-node-id="NMpiBZqgpOUxT0qyI49DnW">“Second week of March”</p>
+                  </div>
+                  <div class="fd-block" data-page-node-id="iUprqzh7qf2njRFofBWg6R">
+                    <span class="label" data-page-node-id="yL5ewzn9xqj1QEEtZjy4lw">Resolved to</span>
+                    <p data-page-node-id="vTj3EHiDouHKockHeaTCBj"><span class="num" data-page-node-id="Nm9BYjzpwEBFOHyTpEZneS">8–15 March</span> — the second full week. Confirm before quoting.</p>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li class="field" data-page-node-id="8iYGR93BxNXF8XdIvpsAp8">
+              <button class="field-btn" type="button" aria-expanded="false" aria-controls="fd-3" data-page-node-id="ACHGYFqDX0jHos8iWosedl">
+                <span class="chip chip--inferred" data-page-node-id="5UfGFwY53SFWiBMOtVbfsI">Inferred</span>
+                <span class="field-row" data-page-node-id="XE0wq4TVHBF6v9I3kILjAB">
+                  <span class="field-name" data-page-node-id="idiRZ36AOlU1NAGk2d1hrG">Budget</span>
+                  <span class="field-val num" data-page-node-id="pbbsxBGuSlWQeLgmu9b78r">₹1,80,000</span>
+                  <svg class="chev" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" data-page-node-id="9UhWEspDrQbwuAiYpHKIr7">
+                    <path d="m3 5.5 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="vFcTIOZvRvSW54tFB3yHaH"/>
+                  </svg>
+                </span>
+              </button>
+              <div class="field-detail" id="fd-3" hidden data-page-node-id="7KpHNsEA0ogweO1aj0cyr9">
+                <div class="fd-grid" data-page-node-id="Gml9vdLp7A8Lkz3I4F8KEK">
+                  <div class="fd-block" data-page-node-id="uqB8AU6vDqZq5xTpAP0AIJ">
+                    <span class="label" data-page-node-id="xZVzxS57nnvZTSXU7kYy5X">Derived from</span>
+                    <p data-page-node-id="tkomH9x3AwcCB6YM3EhmpU">The <span class="num" data-page-node-id="USdE3eTQgDSYYzzcy1lFr7">₹2.1L</span> quote they accepted in 2024, less the flights they'll book themselves. Never stated for this trip.</p>
+                  </div>
+                  <div class="fd-block" data-page-node-id="aASRgkmXUuFRpxGURyyjm8">
+                    <span class="label" data-page-node-id="GujHEWsSEBvm8EVPme1ecu">If this is wrong</span>
+                    <p data-page-node-id="EjU30kpYSENo7CoEVcTN0F">Every quote built on it is wrong. Confirm before you price anything.</p>
+                    <span class="crit crit--critical" data-page-node-id="nI0Cij7TR5EPFxJOJvoO6m">Critical</span>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li class="field" data-page-node-id="I14OcdB0t3R31W4BBgW0nI">
+              <button class="field-btn" type="button" aria-expanded="false" aria-controls="fd-4" data-page-node-id="dM3HrhpqxhtshsrEPh9pmm">
+                <span class="chip chip--assumed" data-page-node-id="wisVuNvSPPT0ZblsAKYVWi">Assumed</span>
+                <span class="field-row" data-page-node-id="38LmZY44aCKzJAhke44nrM">
+                  <span class="field-name" data-page-node-id="RobZM7Tp1caIggC5fMKsDR">Hotel tier</span>
+                  <span class="field-val" data-page-node-id="5aUyVl5nGRAWECNPlejybP">Boutique, not chain</span>
+                  <svg class="chev" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" data-page-node-id="CuDCA1lEucAt1i50uvFlnJ">
+                    <path d="m3 5.5 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="zLgI7LBcjf5QqYJ8XraFkZ"/>
+                  </svg>
+                </span>
+              </button>
+              <div class="field-detail" id="fd-4" hidden data-page-node-id="qyE14vUmTPVCEah7Dup4jk">
+                <div class="fd-grid" data-page-node-id="DGLPdQy7FEMywcD7YRYSAU">
+                  <div class="fd-block" data-page-node-id="Y2IuBP76o67bvG4cJu6hg4">
+                    <span class="label" data-page-node-id="zIJhwDfXEX7kJoe2hKwPQr">Assumed because</span>
+                    <p data-page-node-id="L2Ej7tfDJ9ZKlg1Q7RRFBs">Both prior bookings were boutique properties. They said “same kind of place,” which is close but not explicit.</p>
+                  </div>
+                  <div class="fd-block" data-page-node-id="QOXGpsS7punMjlfnFTxoHw">
+                    <span class="label" data-page-node-id="j4F6F7y3etumYqR2548TgQ">Change it if</span>
+                    <p data-page-node-id="GSWvCG3hOAASIVj97fEUan">They'd take a chain for the right rate — worth one line in your reply.</p>
+                    <span class="crit" data-page-node-id="SJkh1Owm0wXcgR9MrTVsex">Preference</span>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li class="field" data-page-node-id="26A3LnwuLyiCAOi2Q7ehMt">
+              <button class="field-btn" type="button" aria-expanded="false" aria-controls="fd-5" data-page-node-id="Z7npCC8OiXXGxXFl3AgCsr">
+                <span class="chip chip--unknown" data-page-node-id="Vc0ur4FPR55a5BNoQ8WJ34">Unknown</span>
+                <span class="field-row" data-page-node-id="3M7AJQlIjLGWMZvGnJGJ4p">
+                  <span class="field-name" data-page-node-id="X22Q9qEQUAZddMQWLDci7s">Dietary</span>
+                  <span class="field-val field-val--empty" data-page-node-id="HxUGjl1t1zrsl7OmHAUBbe">Not captured</span>
+                  <svg class="chev" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" data-page-node-id="1Qaf7yKYzOT15bFGoApk2N">
+                    <path d="m3 5.5 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="A6dEe88yjc5qpCJtalgsXx"/>
+                  </svg>
+                </span>
+              </button>
+              <div class="field-detail" id="fd-5" hidden data-page-node-id="LkW39uORIiFrKeFuKD2Ruj">
+                <div class="fd-grid" data-page-node-id="lJySGHkkAb9VUGEHxghoy9">
+                  <div class="fd-block" data-page-node-id="zYV2VNuIJBYJ2QFqPbvsVZ">
+                    <span class="label" data-page-node-id="U1EZ63qFwH3bqGe9X4F0Ox">Why it's empty</span>
+                    <p data-page-node-id="o3e7BFdYAJL8sO6V6a3g5B">Mentioned once on a phone call. Nothing in writing, so Waypoint will not present it as a fact.</p>
+                  </div>
+                  <div class="fd-block" data-page-node-id="CHaFsqoy0gyOsRujOBeJM9">
+                    <span class="label" data-page-node-id="1vckZeay4GQPrsuu4s0gZk">What it blocks</span>
+                    <p data-page-node-id="YfUUG4pUwKCKhRi1EfFBNA">Meal plans and any houseboat or homestay that pre-sets its menu.</p>
+                  </div>
+                  <div class="gap" data-page-node-id="xFQ4ZZA5Pcyxe3J3EkjmPc">
+                    <span class="label" data-page-node-id="FoKVdIZYLjWrrQ69KDjdBk">Suggested question</span>
+                    <p class="gap-q" data-page-node-id="JrG6y7r4h9uscWmGXoeFI7">“You mentioned being vegetarian on the phone — is that for both of you, and are there any other dietary requirements we should plan around?”</p>
+                    <div class="gap-act" data-page-node-id="SxmFUyC8bvSwvGdY48A7AT">
+                      <button class="copy" type="button" data-copy="You mentioned being vegetarian on the phone — is that for both of you, and are there any other dietary requirements we should plan around?" data-page-node-id="riQlzFrofaq95vBBEIMBMD">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="rQcJDe9FWgHmJ8YaPjBKCp">
+                          <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4" data-page-node-id="8XF1jAE2IPPupYDDxMit4N"/>
+                          <path d="M10.5 5.5v-1a1.5 1.5 0 0 0-1.5-1.5H4a1.5 1.5 0 0 0-1.5 1.5v5A1.5 1.5 0 0 0 4 11h1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" data-page-node-id="bRQHDHz31UjcleCCqd0rbI"/>
+                        </svg>
+                        Copy question
+                      </button>
+                      <span class="copy-done" role="status" aria-live="polite" data-page-node-id="Fqe8ovrYAqEVUKfJrfQAGO"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ══ THE GAP ══ -->
+  <section class="sec" id="why" data-page-node-id="c07CDlk1fsApj4xJ8RwBYK">
+    <div class="shell" data-page-node-id="Upcg7djdglC7tWOAlxQ7zi">
+      <div class="sec-head rv" data-page-node-id="rHimamBCzmBmXvyJgPtB8J">
+        <p class="label" data-page-node-id="Ug6whWLHySdn4JBDhNGK3f">The actual problem</p>
+        <h2 data-page-node-id="KaVyX3AclZbD5lOCCKkzTq">The work isn't planning the trip. It's finding out what you don't know yet.</h2>
+        <p data-page-node-id="kAEasLd3cmoH2JebjIhLkF">
+          A request arrives as three messages and a forwarded PDF. Somewhere in there is a
+          destination, a window, a budget you had to guess at, and a dietary requirement nobody
+          wrote down. That gap is where quotes go wrong — and it's invisible until a traveller
+          asks why the invoice changed.
+        </p>
+      </div>
+      <div class="cols rv" data-page-node-id="akSVwr2bxH1wYICPLmh6Ov">
+        <div class="card" data-page-node-id="SBxoX4380mDWAHSpdqUFrR">
+          <h3 data-page-node-id="6oWFuc2a4fWPlfmorBrONK">Generic AI fills the gap</h3>
+          <p data-page-node-id="6CBk3vbHmDdBVWeGAGR8jU">
+            Ask a chatbot to summarise that thread and you get a confident paragraph. It reads
+            well and it is wrong in the places that cost you money — because the model cannot
+            tell the difference between what was said and what it made up.
+          </p>
+        </div>
+        <div class="card" data-page-node-id="cwO6eEMg1V6GVLX9F5ubB3">
+          <h3 data-page-node-id="zSMAgVjIXEZg9LxE7MIio2">Waypoint marks the gap</h3>
+          <p data-page-node-id="4hK0QYnIDWKifBZxYqRuoF">
+            Every field carries its own status: <b data-page-node-id="I74bogDHSrfbCivybz77Ht">fact</b>, <b data-page-node-id="8T7FnWktsMhqeKDgQVRpjR">inferred</b>, <b data-page-node-id="Id1WCg9ClNvneFd0g2ZPif">assumed</b>, or
+            <b data-page-node-id="W1TzB5OkWWGDTb72Ji7343">unknown</b>. Unknowns stay empty and generate the question you'd have asked anyway.
+            You can see the seams before you commit to a number.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ HOW IT WORKS ══ -->
+  <section class="sec" id="how" data-page-node-id="JKf64SkSmXuOLhkzdl9LIo">
+    <div class="shell" data-page-node-id="gJsmvpgeVJuSuUHtCv94GI">
+      <div class="sec-head rv" data-page-node-id="IZG4ON40PvLlay6BSCGMJb">
+        <p class="label" data-page-node-id="78pQvV4wzfMsQEG9TIrnWJ">How it works</p>
+        <h2 data-page-node-id="PH6meUcIHzsSmCCtU9oHoE">Four steps, and you can stop at any of them.</h2>
+      </div>
+      <ol class="rows" style="margin-top:var(--s10)" data-page-node-id="g4BIZtE83fdVdI3O68mhbY">
+        <li class="row rv" data-page-node-id="XnDoUo9x0ASMnKt5qZH5GJ">
+          <span class="row-n num" data-page-node-id="tlkOxKhsjmI25jAUookPdt">01</span>
+          <div data-page-node-id="nxUiex1XPzbXZLjRSeGEZU">
+            <h3 data-page-node-id="rgjRDwfh8FnEdRNpAVPPqD">Forward what you already have</h3>
+            <p data-page-node-id="BNGVD0k95XADDvAmYhpW3K">WhatsApp exports, email threads, call notes, a PDF from another agency. No new forms, no structured intake to fill in first.</p>
+          </div>
+        </li>
+        <li class="row rv" data-page-node-id="IGTKUr74AFZ7SYq70hzqN1">
+          <span class="row-n num" data-page-node-id="8Qx2QLcIyrr0KOOrD00s3X">02</span>
+          <div data-page-node-id="Ggld7XXtEzWd6FbUx8EyQn">
+            <h3 data-page-node-id="0ofcDUDNpPrOodhbYa9CrH">Read the brief it builds</h3>
+            <p data-page-node-id="F1VtwlQ1YDdJ45CnT8LYUw">Every extracted field is labelled by how it was arrived at. Open any field to see the source line it came from and what happens if it's wrong.</p>
+          </div>
+        </li>
+        <li class="row rv" data-page-node-id="DEhrchZ66jOHnnJ0PmZZZI">
+          <span class="row-n num" data-page-node-id="RzfUGhBGyBLTpepP0pkyGK">03</span>
+          <div data-page-node-id="LV58BwZncq4q0YQ6Q0lsun">
+            <h3 data-page-node-id="0DBoNDW51F4vJbCw3Y8Lw3">Answer only what's actually missing</h3>
+            <p data-page-node-id="94RqvgCS5Z36AT2pvtb0IN">Unknowns become drafted questions you can send as-is. You're not re-checking forty fields — you're closing three.</p>
+          </div>
+        </li>
+        <li class="row rv" data-page-node-id="nmm9uXI5Cx8oYIA1C7QV5C">
+          <span class="row-n num" data-page-node-id="B7BsrvXnjz6G6gTJAErubS">04</span>
+          <div data-page-node-id="0LjJ71eKAExtQy2ZjbhQUJ">
+            <h3 data-page-node-id="TK8FzdBOeaD2QBoWYjqdiL">Work the trip from there</h3>
+            <p data-page-node-id="Gx1dFDIbtfThPxjWXIHu6u">Proposal, supplier chases, and client updates carry the same provenance forward, so nothing silently becomes a fact on the way out.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ══ FIT ══ -->
+  <section class="sec" id="fit" data-page-node-id="Q0je9fzAeWukCK2DzLpuWr">
+    <div class="shell" data-page-node-id="PAWk4RcuTQnfRA35d5Lhnp">
+      <div class="sec-head rv" data-page-node-id="fjBJkWqNpWHSk8I1u21IB1">
+        <p class="label" data-page-node-id="tdRfDaBKQHW4tdZw83kwFk">Fit</p>
+        <h2 data-page-node-id="BIlkqgMzbjcRP40tLS4UkA">We'd rather you find out now.</h2>
+      </div>
+      <div class="cols rv" data-page-node-id="AWcsAmZaVYddBazzRduEG7">
+        <div class="card" data-page-node-id="LnMenBvyVMFGxC8i2MDTY1">
+          <h3 data-page-node-id="nVUB4FD6GQx5CRDg3Lwkd2">A good fit if</h3>
+          <ul class="list" data-page-node-id="VZWsc0Gno5i0gpuicyTq3c">
+            <li data-page-node-id="dHgGPNmsFwv3D77S9dlwSm"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="8rA5B76bCnTY1Q95k3yWhx"><circle cx="8" cy="8" r="6.2" stroke="var(--forest-ink)" stroke-width="1.4" data-page-node-id="H5t63cWHFoh0isqsHgLijA"/><path d="m5.2 8.2 2 2 3.6-4.2" stroke="var(--forest-ink)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="onTYPhGhCBjzfMs8JZ33WV"/></svg><span data-page-node-id="5FfRKau9wFVDsCn9JVPhF2">You handle bespoke trips where every request is genuinely different.</span></li>
+            <li data-page-node-id="HOYqkjDZlulx5VRNVbYIRj"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="Z4F12RlT2LUxbF8l8tFF6a"><circle cx="8" cy="8" r="6.2" stroke="var(--forest-ink)" stroke-width="1.4" data-page-node-id="REr3TezWQmPTheCdMoSyMQ"/><path d="m5.2 8.2 2 2 3.6-4.2" stroke="var(--forest-ink)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="7GwXyWzpMQYP3F6DBAPSii"/></svg><span data-page-node-id="n8gYcbJg59QTsc3KOJxRjy">Requests arrive as messages, not forms — and that isn't going to change.</span></li>
+            <li data-page-node-id="UmAds71baDFdRKZO8rzSn8"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="KijvTRbkmmAKf3q5kKrn7D"><circle cx="8" cy="8" r="6.2" stroke="var(--forest-ink)" stroke-width="1.4" data-page-node-id="4I4MrpVaNn9Xye45fW3MbY"/><path d="m5.2 8.2 2 2 3.6-4.2" stroke="var(--forest-ink)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="YAVpyaFmWYV5NSPwpYze1S"/></svg><span data-page-node-id="TRlqCBTHqr3X7SLLTxB7ir">You have lost money on an assumption someone thought was confirmed.</span></li>
+          </ul>
+        </div>
+        <div class="card card--plain" data-page-node-id="g9Yfau3NGbRO9qXvk4ajuz">
+          <h3 data-page-node-id="ORafsx9H2ooofa54bYB9EF">Not a good fit if</h3>
+          <ul class="list" data-page-node-id="cgJpnNyBXHywnaW1TCx2Kg">
+            <li data-page-node-id="oEvzjiqLi0pxK716kH2nXL"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="qvFCa4DwKBsBmvB55u2TZU"><circle cx="8" cy="8" r="6.2" stroke="var(--ink-muted)" stroke-width="1.4" data-page-node-id="5hEKqTLdfHd9k2aX5maqJl"/><path d="M5.8 5.8l4.4 4.4M10.2 5.8l-4.4 4.4" stroke="var(--ink-muted)" stroke-width="1.5" stroke-linecap="round" data-page-node-id="e7G3wjVZkmQ0Vm27lUt6dp"/></svg><span data-page-node-id="PXxSqmzgRq6u0i3JYkmRSc">You sell fixed packages with no per-trip variation.</span></li>
+            <li data-page-node-id="U6MPTuda0dFi425KF9oPWk"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="jr5loLBtUEsKpSzyXIoDyY"><circle cx="8" cy="8" r="6.2" stroke="var(--ink-muted)" stroke-width="1.4" data-page-node-id="TLJ28JatzPEbKTOQ1IZlC4"/><path d="M5.8 5.8l4.4 4.4M10.2 5.8l-4.4 4.4" stroke="var(--ink-muted)" stroke-width="1.5" stroke-linecap="round" data-page-node-id="dlRDg5u466ratpeJb0n6HG"/></svg><span data-page-node-id="ktke6CvJqoVrkMOzHM1B2K">You want the agent to talk to clients for you. It doesn't.</span></li>
+            <li data-page-node-id="oixbdrZflZR3GmLAjDMMU7"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" data-page-node-id="QmE65n7ahyLaGGFBX087xh"><circle cx="8" cy="8" r="6.2" stroke="var(--ink-muted)" stroke-width="1.4" data-page-node-id="IGOSEVHzcweOG7iZhTdbSs"/><path d="M5.8 5.8l4.4 4.4M10.2 5.8l-4.4 4.4" stroke="var(--ink-muted)" stroke-width="1.5" stroke-linecap="round" data-page-node-id="z7rYYKw4B7yHOiuXb3L1RZ"/></svg><span data-page-node-id="6LCUnGrrEHOQGwVvLh9sUF">You need supplier booking and payments in the same tool today.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ CLOSE ══ -->
+  <section class="close" id="start" data-page-node-id="m4qP8hG8WHlsFXyLWiqCSB">
+    <div class="shell close-in" data-page-node-id="7fOI7usQdHdtrKoQqKuMLY">
+      <div data-page-node-id="g8EfJjVTHFSDSXvwW0vA8s">
+        <h2 class="rv" data-page-node-id="UD6wT506kUcPotlB8YPANz">Bring us your messiest thread.</h2>
+        <p class="rv" data-page-node-id="hmV1aPLGMAoFkAQPUEzQqR">
+          Onboarding starts with a real request you've already handled. We'll run it through
+          Waypoint and show you exactly what came out — including the parts it refused to guess.
+        </p>
+      </div>
+      <div class="rv" data-page-node-id="a5lq2CL92FRiZ8LO9AMV2g">
+        <a class="btn btn-primary" href="#start" data-page-node-id="GG44LqYeeCr6xzVHjo7Jox">Request access</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot" data-page-node-id="QakG8PwkGGkwlrN3QxSONR">
+  <div class="shell foot-in" data-page-node-id="ZUCzeGFvyvbdlRJD79uraM">
+    <p data-page-node-id="32MTkM61CEo3tPSGDliHh3">Waypoint OS — AI operating workspace for boutique travel agencies.</p>
+    <p data-page-node-id="iQsdgANGArVDiiHbAFZuVe"><span translate="no" data-page-node-id="yZzv1iGqlg6nomeop305Gd">Waypoint OS</span> · Built in the open</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var reduce = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : { matches: false };
+
+  /* ── 1. Accordion — one open panel per field, keyboard-native ───────── */
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('.field-btn'));
+  var cleanups = [];
+
+  function closeAllExcept(except) {
+    buttons.forEach(function (btn) {
+      if (btn === except) return;
+      btn.setAttribute('aria-expanded', 'false');
+      var panel = document.getElementById(btn.getAttribute('aria-controls'));
+      if (panel) panel.hidden = true;
+    });
+  }
+
+  buttons.forEach(function (btn) {
+    function onClick() {
+      var open = btn.getAttribute('aria-expanded') === 'true';
+      var panel = document.getElementById(btn.getAttribute('aria-controls'));
+      closeAllExcept(btn);
+      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+      if (panel) panel.hidden = open;
+    }
+    btn.addEventListener('click', onClick);
+    cleanups.push(function () { btn.removeEventListener('click', onClick); });
+  });
+
+  /* ── 2. Copy suggested question ─────────────────────────────────────── */
+  var timers = [];
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    var status = btn.parentElement.querySelector('.copy-done');
+    function onClick() {
+      var text = btn.getAttribute('data-copy') || '';
+      function done(ok) {
+        if (!status) return;
+        status.textContent = ok ? 'Copied' : 'Press ⌘C to copy';
+        timers.push(setTimeout(function () { status.textContent = ''; }, 2400));
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        done(ok);
+      }
+    }
+    btn.addEventListener('click', onClick);
+    cleanups.push(function () { btn.removeEventListener('click', onClick); });
+  });
+
+  /* ── 3. Replay — re-runs the reveal without an infinite loop ────────── */
+  var replay = document.getElementById('replay');
+  if (replay) {
+    var onReplay = function () {
+      document.querySelectorAll('#specimen .field-btn').forEach(function (b, i) {
+        b.setAttribute('aria-expanded', 'false');
+        var p = document.getElementById(b.getAttribute('aria-controls'));
+        if (p) p.hidden = true;
+        if (!reduce.matches) {
+          b.style.transition = 'none';
+          b.style.opacity = '0';
+          timers.push(setTimeout(function () {
+            b.style.transition = 'opacity 200ms cubic-bezier(.2,.6,.2,1)';
+            b.style.opacity = '1';
+          }, 60 + i * 45));
+        }
+      });
+    };
+    replay.addEventListener('click', onReplay);
+    cleanups.push(function () { replay.removeEventListener('click', onReplay); });
+  }
+
+  /* ── 4. Scroll reveal — IntersectionObserver, one-shot, unobserve ───── */
+  var targets = document.querySelectorAll('.rv');
+  var io = null;
+
+  if (!('IntersectionObserver' in window) || reduce.matches) {
+    // Graceful degradation: everything visible, nothing runs.
+    targets.forEach(function (el) { el.classList.add('in'); });
+  } else {
+    io = new IntersectionObserver(function (entries, obs) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('in');
+        obs.unobserve(entry.target); // fire once, then release
+      });
+    }, { threshold: 0.01, rootMargin: '0px 0px -8% 0px' });
+    targets.forEach(function (el) { io.observe(el); });
+  }
+
+  /* ── 5. Hero line art — drawn once on entry, never loops ────────────── */
+  if (!reduce.matches && 'IntersectionObserver' in window) {
+    var art = document.querySelector('.hero-art');
+    if (art) {
+      var paths = art.querySelectorAll('.stroke, .route');
+      paths.forEach(function (p) {
+        var len = 1000;
+        p.style.strokeDasharray = len;
+        p.style.strokeDashoffset = len;
+      });
+      var artIO = new IntersectionObserver(function (entries, obs) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          paths.forEach(function (p, i) {
+            p.style.transition = 'stroke-dashoffset 900ms cubic-bezier(.2,.6,.2,1) ' + (i * 70) + 'ms';
+            p.style.strokeDashoffset = '0';
+          });
+          obs.unobserve(entry.target);
+          obs.disconnect();
+        });
+      }, { threshold: 0.01 });
+      artIO.observe(art);
+      cleanups.push(function () { artIO.disconnect(); });
+    }
+  }
+
+  /* ── 6. Release everything on unload ────────────────────────────────── */
+  function teardown() {
+    if (io) io.disconnect();
+    cleanups.forEach(function (fn) { fn(); });
+    cleanups.length = 0;
+    timers.forEach(clearTimeout);
+    timers.length = 0;
+  }
+  window.addEventListener('pagehide', teardown, { once: true });
+})();
+</script>
+</body>
+</html>

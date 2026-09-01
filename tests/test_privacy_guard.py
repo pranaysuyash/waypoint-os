@@ -301,7 +301,8 @@ class TestGuardOnTripStore:
         }
         with pytest.raises(PrivacyGuardError) as exc:
             TripStore.save_trip(trip)
-        assert "dogfood mode" in str(exc.value).lower()
+        # Guard refuses to persist real PII to a plaintext store (mode-agnostic).
+        assert "plaintext" in str(exc.value).lower()
 
     def test_tripstore_update_with_real_data_blocked(self):
         from spine_api.persistence import TripStore
@@ -482,3 +483,86 @@ class TestKnownFixtureWithPII:
         with pytest.raises(PrivacyGuardError) as exc:
             check_trip_data(trip)
         assert "email" in str(exc.value).lower()
+
+
+# =============================================================================
+# R-15: PII guard default posture (fail-open vs fail-closed) by mode/backend.
+# =============================================================================
+
+
+class TestR15ProductionDefaults:
+    """The guard's default must be coherent across modes (R-15 fix).
+
+    - dogfood:                          FAIL-CLOSED (block real PII)
+    - production + plaintext store:     FAIL-CLOSED (block — boundary absent)
+    - production + SQL/Postgres store:  FAIL-OPEN but AUDITED (no block)
+    - beta (any store):                 FAIL-OPEN but AUDITED (no block)
+    - production + unset backend:       treated as non-plaintext -> AUDITED
+    """
+
+    def test_production_with_plaintext_store_blocks_real_pii(self, monkeypatch):
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "production")
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+        trip = {"raw_note": "Contact me at test@example.com"}
+        # Plaintext store in prod mode => boundary absent => fail-closed.
+        with pytest.raises(PrivacyGuardError):
+            check_trip_data(trip)
+
+    def test_production_with_json_store_blocks_real_pii(self, monkeypatch):
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "production")
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "json")
+        trip = {"raw_note": "Call +91 98765 43210 for details"}
+        with pytest.raises(PrivacyGuardError):
+            check_trip_data(trip)
+
+    def test_production_with_sql_store_audit_only(self, monkeypatch, caplog):
+        import logging
+
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "production")
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+        trip = {"raw_note": "Contact me at test@example.com"}
+        with caplog.at_level(logging.WARNING):
+            check_trip_data(trip)  # Must NOT raise in the safe config.
+        assert any("AUDIT" in r.message for r in caplog.records), caplog.text
+
+    def test_production_with_postgres_store_audit_only(self, monkeypatch, caplog):
+        import logging
+
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "production")
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "postgres")
+        trip = {"raw_note": "Contact me at test@example.com"}
+        with caplog.at_level(logging.WARNING):
+            check_trip_data(trip)
+        assert any("AUDIT" in r.message for r in caplog.records), caplog.text
+
+    def test_production_with_unset_backend_audit_only(self, monkeypatch, caplog):
+        import logging
+
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "production")
+        monkeypatch.delenv("TRIPSTORE_BACKEND", raising=False)
+        trip = {"raw_note": "Contact me at test@example.com"}
+        with caplog.at_level(logging.WARNING):
+            check_trip_data(trip)  # Unset is left to TripStore._backend() enforcement.
+        assert any("AUDIT" in r.message for r in caplog.records), caplog.text
+
+    def test_beta_with_plaintext_store_audit_only(self, monkeypatch, caplog):
+        import logging
+
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+        trip = {"raw_note": "Contact me at test@example.com"}
+        with caplog.at_level(logging.WARNING):
+            check_trip_data(trip)  # beta stays observability-only (no block).
+        assert any("AUDIT" in r.message for r in caplog.records), caplog.text
+
+    def test_nlp_loader_never_raises_in_production(self, monkeypatch):
+        """Layer 2 must fail OPEN in production (R-15): never raise on missing model."""
+        import src.security.privacy_guard as pg
+
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "production")
+        monkeypatch.setenv("NLP_PII_GUARD_ENABLED", "1")
+        pg._nlp_model = None
+        pg._nlp_load_attempted = False
+        # If spacy/model is missing this must NOT raise RuntimeError; it returns None.
+        result = pg._get_nlp_model()
+        assert result is None or hasattr(result, "pipe")

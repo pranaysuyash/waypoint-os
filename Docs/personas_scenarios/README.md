@@ -1,15 +1,15 @@
 # Persona-Based Scenario Documentation
 
-**Approach**: User-centered design starting from real stakeholders  
-**Core Mapped Scenarios**: 20 (P1, P2, P3, S1/S2) — mapped to the N01/N02 pipeline  
-**Total Scenario Exploration Files**: 340+ (including additional, frontier, and deep-dive scenarios)  
+**Approach**: User-centered design starting from real stakeholders
+**Core Mapped Scenarios**: 20 (P1, P2, P3, S1/S2) — mapped to the N01/N02 pipeline
+**Total Scenario Exploration Files**: 340+ (including additional, frontier, and deep-dive scenarios)
 **Coverage**: 5 personas, 5 anti-personas
 
-> **Agent Note**: The additional scenario files (ADDITIONAL_SCENARIOS_*.md, numbered 21–329+) are  
-> product explorations, customer research inputs, and future-domain ideas. They are **not** all  
-> mapped to the pipeline or implemented in code. Treat them as research artifacts unless they  
-> have an explicit entry in `SCENARIOS_TO_PIPELINE_MAPPING.md`. Do **not** assume a scenario  
-> described in any additional scenario file is already implemented. Always verify against the  
+> **Agent Note**: The additional scenario files (ADDITIONAL_SCENARIOS_*.md, numbered 21–329+) are
+> product explorations, customer research inputs, and future-domain ideas. They are **not** all
+> mapped to the pipeline or implemented in code. Treat them as research artifacts unless they
+> have an explicit entry in `SCENARIOS_TO_PIPELINE_MAPPING.md`. Do **not** assume a scenario
+> described in any additional scenario file is already implemented. Always verify against the
 > current codebase before building.
 
 ---
@@ -199,16 +199,17 @@ Each scenario prevents a specific failure:
 
 ```
 personas_scenarios/
-├── README.md                          # This file
-├── STAKEHOLDER_MAP.md                 # Persona definitions
-├── P1_SOLO_AGENT_SCENARIOS.md         # 5 scenarios
-├── P2_AGENCY_OWNER_SCENARIOS.md       # 5 scenarios  
-├── P3_JUNIOR_AGENT_SCENARIOS.md       # 5 scenarios
-└── S1S2_CUSTOMER_SCENARIOS.md         # 5 scenarios
-
-Total: 6 documents, 20 scenarios
+├── README.md                                                        # This file
+├── STAKEHOLDER_MAP.md                                               # Persona definitions
+├── MASTER_PRODUCT_DEMO_SIMULATION_CHRONICLE_2026-09-01.md           # Master end-to-end computer-use simulation log (Sam & Marcus)
+├── CASE_STUDY_SIMULATION_HOBBYIST_PRODUCT_DEMO_2026-08-30.md        # Live walkthrough case study: Sam Rivera (Hobbyist)
+├── CASE_STUDY_SIMULATION_JUNIOR_AGENT_PRODUCT_DEMO_2026-09-01.md    # Live walkthrough case study: Marcus Chen (Junior Agent)
+├── P1_SOLO_AGENT_SCENARIOS.md                                       # 5 scenarios
+├── P2_AGENCY_OWNER_SCENARIOS.md                                     # 5 scenarios
+├── P3_JUNIOR_AGENT_SCENARIOS.md                                     # 5 scenarios
+└── S1S2_CUSTOMER_SCENARIOS.md                                       # 5 scenarios
 ```
 
 ---
 
-*Method: User-centered design starting from stakeholder reality, not system capability.*
+*Method: User-centered design starting from stakeholder reality, validated via live computer-use browser simulations.*

@@ -42,7 +42,11 @@ DERIVED_ONLY_FIELDS = frozenset({
     "budget_verdict",
 })
 
-# Fields that MUST be present to even save an intake trip
+# Fields that MUST be present before the packet is treated as intake-complete.
+# Missing these ESCALATEs the run: the inquiry is still persisted as an
+# incomplete lead (ADR_ESCALATE_LEAD_PERSISTENCE_2026-08-31) — a customer
+# contact exists regardless of packet completeness. These fields gate the
+# packet's completeness, never the record's existence.
 INTAKE_MINIMUM = [
     "destination_candidates",
     "date_window",
@@ -236,6 +240,37 @@ def validate_packet(packet: CanonicalPacket, stage: str = "discovery") -> Packet
             code="MANY_STUBS",
             message=f"Packet has {stub_count} stub signals — downstream logic should respect maturity",
         ))
+
+    # 11. Party underdetection guards (DEMO-02). Group phrasing must never
+    # silently collapse to a solo traveler or vanish — warn, never skip
+    # (data-loss prevention). The extractor carries raw group phrases either
+    # on the party_size slot notes ("group_signals: ...") or, when no headcount
+    # could be parsed at all, on the party_size unknown notes
+    # ("unparsed_group_phrasing: ...").
+    party_slot = packet.facts.get("party_size")
+    if party_slot is not None:
+        party_value = party_slot.value if isinstance(party_slot.value, int) else None
+        party_notes = party_slot.notes or ""
+        if party_value is not None and party_value <= 1 and "group_signals:" in party_notes:
+            signals = party_notes.split("group_signals:", 1)[1].strip()
+            warnings.append(ValidationIssue(
+                severity="warning",
+                code="PARTY_UNDERDETECTED",
+                message=f"party_size={party_value} but group phrasing was present in the "
+                        f"source ({signals}) — confirm the traveler count with the customer",
+                field="party_size",
+            ))
+    for unknown in packet.unknowns:
+        if unknown.field_name == "party_size" and (unknown.notes or "").startswith(
+            "unparsed_group_phrasing"
+        ):
+            warnings.append(ValidationIssue(
+                severity="warning",
+                code="PARTY_UNPARSED_GROUP_PHRASING",
+                message=f"Group phrasing present but no party size could be parsed "
+                        f"({unknown.notes}) — confirm the traveler count with the customer",
+                field="party_size",
+            ))
 
     # ------------------------------------------------------------------
     # Collect reports (not errors, just data)

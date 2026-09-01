@@ -24,11 +24,11 @@
 |----|------|------|------|----------|
 | A-14 | I | Commit the uncommitted P0 remediation (R-02/R-04/R-05 fixes, epistemic primitives, R-03 guard) as one atomic unit — **requires Pranay's explicit authorization in-session** | 0.2 | **P0** |
 | A-13 | I | ~~Triage 358 backend test failures~~ **RESOLVED 2026-08-30** — 358 were an env artifact (audit ran without CI env vars); true CI-identical baseline **3,206 passed / 10 skipped / 0 failed**. 2 real defects fixed (audit-store test pollution, brittle integration polling). Runner: `scripts/run_backend_tests.sh`. Evidence: `review/A13_TEST_BASELINE_RESOLUTION_2026-08-30.md`. Remaining Wave 4.5–4.9 items stay open | 4.1–4.4 done | **closed** |
-| A-01 / R-07 | I | Un-mute the honest quality gate: `budget_health` into `_check_blocks_ci()`, `min_accuracy` into manifest, rewrite the 3 `blocks_ci is False` assertions, regenerate stale snapshot, wire real pipeline results into gates | 1.1–1.5 | **P0** |
-| A-19 | I | RLS coverage: convert 6 routers from `get_db` → `get_rls_db`; audit the 4 RLS-exempt tables for agency filters | 2.2–2.3 | **P0/P1** |
+| A-01 / R-07 | I | ~~Un-mute the honest quality gate~~ **RESOLVED 2026-08-30** — implemented by parallel agent (`8ece02e` + unstaged manifest/snapshot), verified end-to-end: 43/43 eval tests pass; guard exits 1 with real blockers (budget F1 0.2857, blocks_ci true). CI now honestly red until F1 improves (RQ-01 unblocked). Residual 1.5: live-results params exist, no producer wired. Evidence: `review/WAVE1_A01_RQ06_EX06_OUTCOMES_2026-08-30.md` | 1.1–1.5 | **closed** |
+| A-19 | I | ~~RLS coverage~~ **RESOLVED 2026-08-30** — 5 routers converted (12 deps; integrations' hand-rolled session-scoped set_config retired), auth.py documented deviation; RQ-03 verdicts: all 4 exempt tables safe (filtered / write-only / unwired). Probe suite added. Evidence: `review/A19_RLS_COVERAGE_RESOLUTION_2026-08-30.md` | 2.2–2.3 done | **closed** |
 | A-18 | I | Rotate live `OPENAI_API_KEY`; remove committed `DATABASE_URL` default password; make `SPINE_API_DISABLE_AUTH` hard-fail outside test | 2.7–2.8 | **P1** |
 | R-15 | E | PII guard posture: audit-event on fail-open no-op; reconcile Layer-1 fail-open vs Layer-2 fail-closed in an ADR | 2.5–2.6 | **P1** |
-| A-20 | I | Migrations drift gate (`alembic check` in CI); quantify the 4 unmigrated frontier tables | 2.4 | P2 |
+| A-20 | I | Migrations drift: 4 frontier tables had NO migrations (endpoints runtime-broken — probe caught `relation does not exist`); **fixed 2026-08-30** with additive migration `add_frontier_tables` (applied, DB at new head). **Still open:** CI drift gate (`alembic check`) so the class cannot recur | 2.4 | P2 |
 | A-04 | I | Consolidate 9 duplicate/shadow systems (audit stores, dual auth decode, audit_bridge deletion, membership, scoring, vision clients, config → one `BaseSettings`) — each with a deletion date | 3.1–3.7 | **P1** |
 | A-05 | I | One frontend API client; migrate 104 raw `fetch(` sites / 30 ad-hoc files; ESLint ban bare `fetch(`, CI-blocking | 3.8 | **P1** |
 | A-06 | I | Generated TS types as single contract; CI drift gate (regenerate → diff → fail) | 3.9 | **P1** |
@@ -41,8 +41,7 @@
 | A-16 | I | Ratcheting vitest coverage thresholds; first booking-path smoke e2e (zero e2e exist) | 4.5–4.6 | P2 |
 | A-15 | I | Reduce 65 `any` in prod code (hotspot `DecisionTab.tsx`); justify the 4 `eslint-disable`s | 4.7 | P2 |
 | A-17 | I | Fix `WelcomeModal` a11y (no `role="dialog"`/`aria-modal`; hand-rolled toast-sheet) | 6.7 | P3 |
-| R-06 / A-03 | E/I | Implement `CONNECTIVITY_TIER` (design exists, `LIVE_CONNECTIVITY_INTEGRATION_2026-08-29.md` §3); unify all agent-tool mock/live switches behind it; fail loud on mock outside dev | 5.1, 6.9 | **P1** |
-| R-06 | E | Wire `EpistemicStatus` onto every TripPacket slot; populate `AssumptionRecord` from intake; epistemic UI surface; `assert_tier_capability` on every financial-claim endpoint | 5.2–5.5 | **P1** |
+| R-06 / A-03 | E/I | Implement `CONNECTIVITY_TIER` (design exists, `LIVE_CONNECTIVITY_INTEGRATION_2026-08-29.md` §3); unify all agent-tool mock/live switches behind it; fail loud on mock outside dev — **and** wire `EpistemicStatus` onto every TripPacket slot, populate `AssumptionRecord` from intake, epistemic UI surface, `assert_tier_capability` on every financial-claim endpoint | 5.1–5.5, 6.9 | **P1** |
 | R-11 | E | Implement durable agent lease per design: heartbeat refresh, fencing token, STALE sweep, agency scoping (`ExecutionLease` is dead code; >60s tasks re-acquirable → double-execution risk) | 6.1 | P2 |
 | R-16 | E | OTel trace-correlation reader + CI event-flow assertion (spans exist, no consumer) | 6.3 | P2 |
 | R-14 | E | Frontend styling unification per design doc | 6.4 | P3 |
@@ -51,6 +50,8 @@
 | A-21 | I | Track the 6 untracked in-flight artifacts (JDG design+code, connectivity, lease, decomposition, styling plans) in this register with owners | 6.8 | P2 |
 
 ### 1b. New implicit defect findings from the 2026-08-30 ADHD audit (not previously registered — proposed IDs F-01…F-16)
+
+**Source-frame mapping (every idea from the 2026-08-30 wide set is tracked here):** F-01←O6+C2 · F-02←C1+R6 · F-03←R2 · F-04←R5 · F-05←R3 · F-06←R1+C4 · F-07←O2 · F-08←O3 · F-09←O1 · F-10←O4 · F-11←O5+C6 · F-12←C5 · F-13←C3 · F-14←L2 · F-15←L6 · F-16←L3 · EX-07←L1 · EX-08←L5 · EX-09←R4 · EX-10←O2-children · EX-11←A2 · EX-12←A3 · EX-13←A4 · EX-14←provocation · NG-01←A1 · NG-02←A5 · NG-03←L4 · NG-04←A6. Coverage: **30/30 wide-set ideas.**
 
 | ID | Type | Finding (evidence file) | Implement task | Priority |
 |----|------|------------------------|----------------|----------|
@@ -73,12 +74,12 @@
 
 ### 1c. Capability implementations (opportunities, not defects — from ADHD audit, post-Wave-1)
 
-| Task | Source | Notes |
-|------|--------|-------|
-| Cross-dock EDIFACT/NDC payloads straight into trip documents (skip agent re-handling) | L1 | Parsers exist in `src/distribution/`; requires connectivity tier ≥ SANDBOX to be honest |
-| Forward-loaded capacity planning (departure-date demand vs lease capacity) | L5 | Extends `agent_work_coordinator.py` + `sla_service.py` |
-| AI-decision explanation dossier (replayable hashed evidence bundle per trip) | R4 | Best after Wave 5 epistemic wiring + F-06 chain coverage |
-| Auto-quarantine classifier + unified quarantine ledger + dry-run replay + batch replay | O2 children | Follow-ons to F-07 |
+| ID | Type | Candidate (src) | Notes / sequencing | Priority |
+|----|------|-----------------|--------------------|----------|
+| EX-07 | E | Cross-dock EDIFACT/NDC payloads straight into trip documents (src: L1) | Parsers exist in `src/distribution/`; requires connectivity tier ≥ SANDBOX to be honest | P3 |
+| EX-08 | E | Forward-loaded capacity planning: departure-date demand vs lease capacity (src: L5) | Extends `agent_work_coordinator.py` + `sla_service.py` | P3 |
+| EX-09 | E | AI-decision explanation dossier: replayable hashed evidence bundle per trip (src: R4) | Best after Wave 5 epistemic wiring + F-06 chain coverage | P3 |
+| EX-10 | E | Quarantine follow-ons: auto-classifier, unified ledger, dry-run + batch replay (src: O2 children) | Follow-ons to F-07 | P3 |
 
 ---
 
@@ -86,19 +87,26 @@
 
 | ID | Type | Question / exploration | Method → exit | Priority |
 |----|------|------------------------|---------------|----------|
-| RQ-06 | I | **Frontend real state** — 161 Vitest files never executed in any audit; biggest evidence hole | `npm run typecheck && lint && test --run` → real numbers may reclassify A-15/A-16 | **1st (cheap)** |
-| EX-06 | I | **Findings lifecycle state machine** — ~25 audits, zero cross-closure, false completion claims; findings have no open/fixed/wontfix/superseded state, owner, or re-verification date | Design register template + CI re-verification cadence → becomes the standard for this very doc | **2nd (near-zero cost)** |
-| RQ-01 | I | **Is deterministic extraction the right ceiling?** (budget F1 0.2857, recall 0.1667) — tuning vs rule-coverage vs paradigm problem | Error taxonomy on failing fixtures: tunable / needs-LLM / ambiguous → go/no-go on gated hybrid | **3rd** |
-| RQ-03 | I | Are the 4 RLS-exempt tables cross-tenant reachable? (potential P0) | Read every query site for agency filters → per-table verdict (pairs with Wave 2.3) | 4th |
+| RQ-06 | I | ~~Frontend real state~~ **EXECUTED 2026-08-30**: typecheck PASS · tests 896/897 (1 TimelinePanel race) · 49 unhandled vitest errors · lint 4 errors/17 warnings. Audit Assumption 7 closed. Evidence: `review/WAVE1_A01_RQ06_EX06_OUTCOMES_2026-08-30.md`; defects → F-17 | — | **closed** |
+| EX-06 | I | ~~Findings lifecycle~~ **DELIVERED 2026-08-30**: 4-state machine + `scripts/check_findings_register.py` (CI-ready, ruff-clean); both registers validate; spec + D-02 amendment text at `review/FINDINGS_LIFECYCLE_2026-08-30.md`. CI wiring deferred (coordination) | — | **closed** |
+| F-17 | I | Frontend suite debt (from RQ-06): TimelinePanel test races its async fetch (asserts before `Loading timeline…` resolves); 49 unhandled vitest errors unexamined; 4 lint errors (2 setState-in-effect, 1 refs-during-render, 1 unescaped entity) + 17 exhaustive-deps warnings | Fix the race (waitFor), triage unhandled errors, clear lint errors, then add ratcheting coverage thresholds (A-16) | P2 |
+| F-18 | I | ~~Budget extraction rule package (RQ-01 exit)~~ **RESOLVED 2026-08-30** — S1–S6 implemented in `_extract_budget` (+ eval-side amount composition, 8 negative precision traps added: 12→20 fixtures, 0 FP). Budget gate **passing: F1 0.9524, P 1.0, R 0.9091, blocks_ci False; guard exit 0 — CI green**. Decisions D1 (unmarked currency → USD, lakh/crore stay INR) and D2 (unmarked flexibility → soft, scope → total) implemented per RQ-01 recommendation — ratification pending. H1 (hard_004 revision resolution) deferred. Full suite 3,215 passed / 0 failed. Evidence: `exploration/F18_BUDGET_RULE_PACKAGE_IMPLEMENTATION_2026-08-30.md` | — | **closed** |
+| F-19 | I | Full-suite phantom failures under live-server contention: with the dev server up on :8000, integration tests run mid-suite against the shared DB — three consecutive full runs produced three different failure sets (1/4/13), 25-min runtime vs ~70s clean; every failing test passes in isolation. Runner now warns; clean baselines require the server stopped | Systemic fix: default-exclude integration tests (opt-in flag) or per-test DB namespacing | P2 |
+| RQ-01 | I | ~~Is deterministic extraction the right ceiling?~~ **CLOSED 2026-08-30 — verdict: rule-coverage problem, falsifier NOT triggered** (1/12 fixtures = 8% needs-LLM, far under the 50% threshold). Prototype rules: 2/12 → 11/12 fixtures. Deterministic boundary survives; no hybrid redesign needed. Path to green CI = implement F-18, not threshold re-baseline. Evidence: `exploration/RQ01_BUDGET_EXTRACTION_CEILING_2026-08-30.md` | — | **closed** |
+| RQ-03 | I | ~~Are the 4 RLS-exempt tables cross-tenant reachable?~~ **CLOSED 2026-08-30 — verdict: none reachable cross-tenant.** audit_logs: single read agency-filtered · ghost_workflows: id+agency 404 probe · emotional_state_logs: write-only JWT-scoped · legacy_aspirations: no endpoints at all. Evidence: `review/A19_RLS_COVERAGE_RESOLUTION_2026-08-30.md` | — | **closed** |
 | EX-01 | E | **JDG IROPS trigger (narrowed)** — design + schema exist with 4 importers; only the trigger is open. Which real disruption signal mutates a JDG node, and what is its source of truth? (Mock-tool caveat: no live disruption source is connected — A-03) | Measure segment-count distribution first (falsifier: single-segment trips ⇒ low value) → trigger design + go/no-go | 5th |
 | EX-02 | I | **Epistemic status as product surface** — what does the UI do when a belief is ASSUMED/UNKNOWN; operator experience of uncertainty | Interaction proposal + operator observation (Tier 4); depends on Wave 5 | 6th |
 | EX-03 | I | **Retirement as a first-class primitive** — the repo's dominant failure mode is "built the replacement, never retired the original" (9 duplicate pairs, 4 marketing generations, 2 doc trees) | Design retirement state (target + deletion date + CI enforcer) → becomes Wave 3 retirement gate | 7th |
 | EX-05 | E | **Negative-space map** — deliberately absent capabilities: payment execution, ticketing/GDS, supplier contracts, refund/chargeback flows, multi-currency settlement, PCI scope, APIS data, WCAG, i18n | Reconcile vs existing readiness contracts (2026-05-17) → each absence classified deliberate/oversight/unknown | 8th |
 | D-01…D-05 | I | **Doctrine amendments** (Pranay's decision): D-01 absence claims need executed evidence; D-02 finding lifecycle; D-03 generated-mirror placement guard; D-04 deleting doctrine requires re-homing dependents same-change; D-05 completion claims must cite verification command + date | Write amendments into doctrine family; record per §16.9 | 9th |
-| F-NEW-1 | I | **`TemporalObligation` primitive** (ADHD provocation) — every deadline in the system (visa, price lock, payment, insurance, ticketing, SLA, 72h re-shop window) is an independent timer; no first-class "obligation with a deadline" exists. Would subsume F-14 + half of Cluster A as special cases | Design doc: table, sweep, escalation policy → decide whether to build before or instead of F-14 standalone | high-leverage design |
-| F-NEW-2 | I | **Veto-window governance** (A2) — dispatch-then-veto inside a time-boxed window feeding the override learner | Only as an additive per-agency opt-in mode; must not replace D1 signoff gates. Design + falsifier first | conditional |
-| F-NEW-3 | I | Standing travel-intent subscriptions (A3) / itinerary branch-and-merge (A4) | Market-fit + data-model sketches; materialize only after foundation waves | later |
-| — | — | **Recorded as no-go-for-now (do not re-propose without new evidence):** event-log-as-SSOT rewrite (A1: premature, contradicts canonical-path-first; F-09 dual-write serves the real need) · A2A negotiation endpoint (A5: no supplier adapter exists — demo, not product) · JIT ticketing (L4: no fulfillment/PNR path until connectivity tier 1) · programmable supplier RFQ rounds (A6: same blocker) | Reason recorded per doctrine §9 (rejected directions are part of the record) | — |
+| EX-14 | I | **`TemporalObligation` primitive** (ADHD provocation) — every deadline in the system (visa, price lock, payment, insurance, ticketing, SLA, 72h re-shop window) is an independent timer; no first-class "obligation with a deadline" exists. Would subsume F-14 + half of Cluster A as special cases | Design doc: table, sweep, escalation policy → decide whether to build before or instead of F-14 standalone | high-leverage design |
+| EX-11 | I | **Veto-window governance** (src: A2) — dispatch-then-veto inside a time-boxed window feeding the override learner | Only as an additive per-agency opt-in mode; must not replace D1 signoff gates. Design + falsifier first | conditional |
+| EX-12 | I | Standing travel-intent subscriptions: warm plan shelf, trips materialize on trigger (src: A3) | Market-fit + data-model sketches; materialize only after foundation waves | later |
+| EX-13 | I | Git-like itinerary branch-and-merge with constraint re-validation on merge (src: A4) | Design sketch; materialize only after foundation waves | later |
+| NG-01 | I | **No-go-for-now: event-log-as-SSOT rewrite** (src: A1) — premature architecture rewrite, contradicts canonical-path-first doctrine; F-09 dual-write serves the real need | Re-open only if F-09 proves insufficient | deferred |
+| NG-02 | I | **No-go-for-now: A2A negotiation endpoint** (src: A5) — no supplier adapter exists; a negotiation surface without supply-side connectivity is a demo, not a product | Re-open after connectivity tier 1 | deferred |
+| NG-03 | I | **No-go-for-now: JIT ticketing scheduler** (src: L4) — autonomous deferred issuance has no real fulfillment/PNR path | Re-open after connectivity tier 1 | deferred |
+| NG-04 | I | **No-go-for-now: programmable supplier RFQ rounds** (src: A6) — same blocker as NG-02; `bargaining_engine.py` has no structured counterparty to bargain with | Re-open after connectivity tier 1 | deferred |
 
 **Closed since backlog was written:** RQ-02 (motto_v4 content recovered → folded into Wave 4.8 reference hygiene) · RQ-04 (resolved by `R03_SPLIT_BRAIN_RESOLUTION_2026-08-30.md`; remaining action is committing the guard, see A-14) · RQ-05 (folded into Wave 3.11 decision).
 
@@ -117,7 +125,8 @@
 
 ## Counts
 
-- **Implement:** 27 scheduled wave items (1a) + 16 new implicit defect findings (1b) + 4 capability implementations (1c) = **47**
-- **Explore:** 9 backlog items + 3 new design questions + 5 doctrine amendments ≈ **17**
-- **Recorded no-go-for-now:** 4
-- **Closed since 2026-08-29:** 3 (RQ-02, RQ-04, RQ-05)
+- **Implement:** 27 scheduled wave items (1a) + 16 new implicit defect findings (1b) + 4 capability candidates (1c, EX-07…10) = **47**
+- **Explore:** backlog items (RQ/EX/D, 2 closed, rest open) + 4 ADHD design candidates (EX-11…14)
+- **Recorded no-go-for-now:** 4 (NG-01…04, tracked rows with re-open conditions)
+- **Closed since 2026-08-29:** RQ-02, RQ-04, RQ-05, A-01, A-13, RQ-06, EX-06, RQ-01, F-18 (see rows)
+- **ADHD wide-set coverage: 30/30 ideas tracked** (16 defect findings, 8 candidates, 4 no-gos, 2 already covered by F-rows)

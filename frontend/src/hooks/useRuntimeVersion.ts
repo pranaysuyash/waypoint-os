@@ -22,6 +22,19 @@ function shortSha(sha: string | null): string {
   return sha.slice(0, 7);
 }
 
+/**
+ * Ops metadata (environment name + git SHA) is engineering chrome, not
+ * end-user information (DEMO-07). It is hidden by default and only rendered
+ * when NEXT_PUBLIC_SHOW_RUNTIME_META is set to a truthy value ('1' or 'true')
+ * in the local/dev environment. The "Operations live" indicator in the Shell
+ * status footer stays visible for everyone. Read inline (not module-level)
+ * so test env stubbing takes effect per call.
+ */
+function shouldShowRuntimeMeta(): boolean {
+  const flag = process.env.NEXT_PUBLIC_SHOW_RUNTIME_META;
+  return flag === "1" || flag === "true";
+}
+
 export function useRuntimeVersion(): RuntimeVersionState {
   const query = useQuery({
     queryKey: ["runtime-version"],
@@ -57,9 +70,11 @@ export function useRuntimeVersion(): RuntimeVersionState {
       versionLabel: payload.version
         ? `v${payload.version}`
         : FALLBACK_VERSION_LABEL,
-      detailsLabel: sha
-        ? `runtime · ${payload.environment} · ${sha}`
-        : `runtime · ${payload.environment}`,
+      detailsLabel: shouldShowRuntimeMeta()
+        ? sha
+          ? `runtime · ${payload.environment} · ${sha}`
+          : `runtime · ${payload.environment}`
+        : FALLBACK_DETAILS_LABEL,
     };
   }, [query.data]);
 }

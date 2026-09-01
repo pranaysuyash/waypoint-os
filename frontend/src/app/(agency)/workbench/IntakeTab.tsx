@@ -50,7 +50,7 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
   const getSearchParam = searchParams.get.bind(searchParams);
   const { replace } = useRouter();
   const pathname = usePathname();
-  const { input_raw_note, input_owner_note, setInputRawNote, setInputOwnerNote } = useWorkbenchStore();
+  const { input_raw_note, input_owner_note, draft_status, setInputRawNote, setInputOwnerNote } = useWorkbenchStore();
   const id1 = useId();
   const id2 = useId();
   const id3 = useId();
@@ -131,6 +131,21 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
               <p className='text-ui-sm text-[#e6edf3] font-mono mt-0.5'>{trip.id}</p>
             </div>
           </div>
+        ) : draft_status === 'blocked' ? (
+          /* IMP-03 (DEMO-08): after a blocked run the page-level blocked banner
+             already names what is missing — do not duplicate the "will appear
+             here" copy, which reads stale alongside it. */
+          <p className='text-ui-sm text-[#8b949e]'>
+            Processing stopped before any details were captured — the blocked banner above lists what this inquiry is missing.
+          </p>
+        ) : draft_status === 'processing' ? (
+          <p className='text-ui-sm text-[#8b949e]'>
+            Processing the inquiry — captured details will appear here.
+          </p>
+        ) : draft_status === 'failed' ? (
+          <p className='text-ui-sm text-[#8b949e]'>
+            Processing failed before details could be captured — try processing the inquiry again.
+          </p>
         ) : (
           <p className='text-ui-sm text-[#8b949e]'>
             Captured details will appear here after processing the inquiry.
@@ -138,18 +153,10 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
         )}
       </div>
 
-      {/* Repeat Traveler Auto-Recall Memory Card */}
-      <RepeatTravelerRecallCard
-        customerMessage={input_raw_note}
-        onApplyPreferences={(prefs) => {
-          const prefSummary = `[Verified Profile Memory Applied]: Dietary: ${prefs.dietary || '-'} | Seating: ${prefs.seating || '-'} | Delta SkyMiles: ${prefs.loyalty_delta || '-'}`;
-          if (input_owner_note && !input_owner_note.includes('[Verified Profile Memory Applied]')) {
-            setInputOwnerNote(`${input_owner_note}\n\n${prefSummary}`);
-          } else if (!input_owner_note) {
-            setInputOwnerNote(prefSummary);
-          }
-        }}
-      />
+      {/* Repeat Traveler Auto-Recall Memory Card (IMP-03, Option B+): sample-only
+          panel, gated to workspaces with no captured trip. Real recall wiring is
+          the later Option A slice (Docs/exploration/DEMO04_SAMPLE_PROFILE_PROVENANCE_2026-08-31.md). */}
+      {!trip && <RepeatTravelerRecallCard />}
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>

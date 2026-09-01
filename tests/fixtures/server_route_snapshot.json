@@ -1,5 +1,5 @@
 {
-  "route_count": 294,
+  "route_count": 297,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1058,10 +1058,34 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/constraints/passport-validity/check",
+      "name": "check_passport_validity",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/constraints/rules",
       "name": "list_constraint_rules",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/constraints/schengen/rolling-eval",
+      "name": "evaluate_schengen_rolling_window",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/constraints/terminal-mct/lookup",
+      "name": "lookup_terminal_mct",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },

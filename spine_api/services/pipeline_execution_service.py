@@ -24,9 +24,9 @@ def _update_draft_for_terminal_state(
     """Update the draft linked to this run with its final state.
 
     Looks up draft_id from RunLedger meta and calls DraftStore.update_run_state.
-    No-ops if no draft is linked.
+    No-ops if no draft is linked. When trip_id is provided, the draft records the
+    linkage so draft-scoped reprocesses update the same trip instead of duplicating.
     """
-    _ = trip_id
     try:
         meta = run_ledger.get_meta(run_id)
         if not meta:
@@ -39,12 +39,49 @@ def _update_draft_for_terminal_state(
             run_id=run_id,
             run_state=run_state,
             run_snapshot=snapshot,
+            linked_trip_id=trip_id,
         )
     except Exception as exc:
         # Broad catch is intentional: draft state update is an observability
         # side-effect that must never crash the pipeline. Covers asyncpg,
         # serialization, and any DB transient errors.
         logger.debug("Draft state update skipped for run %s: %s", run_id, exc)
+
+
+def _resolve_draft_reprocess_target(
+    draft_store: Any,
+    run_ledger: Any,
+    trip_store: Any,
+    run_id: str,
+    logger: Any,
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve an existing trip for a draft-scoped reprocess (draft → trip is 1:1).
+
+    Returns (trip_id, current_status) so a re-run updates the lead in place via
+    ``preserve_trip_id`` instead of duplicating it, preserving the trip's current
+    lifecycle status. See ADR_ESCALATE_LEAD_PERSISTENCE_2026-08-31.
+    """
+    try:
+        meta = run_ledger.get_meta(run_id)
+        draft_id = (meta or {}).get("draft_id")
+        if not draft_id:
+            return None, None
+        draft = draft_store.get(draft_id)
+        if not draft:
+            return None, None
+        trip_id = getattr(draft, "promoted_trip_id", None) or (getattr(draft, "linked_trip_ids", None) or [None])[-1]
+        if not trip_id:
+            return None, None
+        existing = trip_store.get_trip(trip_id) or {}
+        if not existing:
+            # Linked trip no longer exists — never resurrect a dead id.
+            return None, None
+        return trip_id, (existing.get("status") or None)
+    except Exception as exc:
+        # Broad catch is intentional: reprocess resolution is a safety
+        # optimization; falling back to create-new must never crash the run.
+        logger.warning("Draft trip resolution skipped for run %s: %s", run_id, exc)
+        return None, None
 
 
 def _serialize_traveler_bundle_for_persistence(bundle: Any, to_dict: Callable[[Any], Any]) -> Any:
@@ -283,21 +320,96 @@ def execute_spine_pipeline(
                     result.early_exit_reason,
                     execution_ms,
                 )
+
+                # ESCALATE persists the inquiry as an incomplete lead
+                # (ADR_ESCALATE_LEAD_PERSISTENCE_2026-08-31): a customer contact
+                # exists regardless of packet completeness. Gates still refuse
+                # quote generation; the lead surfaces in the inbox for follow-up.
+                # An existing trip is NEVER overwritten here: the early-exit
+                # packet is definitionally incomplete, so when this run belongs
+                # to a trip that already has a record (auto-reassess-on-edit,
+                # draft reprocess), the save is skipped and the record stands.
+                reprocess_trip_id, _reprocess_status_unused = _resolve_draft_reprocess_target(
+                    draft_store, run_ledger, trip_store, run_id, logger,
+                )
+                preserve_id = target_trip_id or reprocess_trip_id
+                trip_id_saved: Optional[str] = None
+                if preserve_id:
+                    trip_id_saved = preserve_id
+                    logger.info(
+                        "ESCALATE skipped lead save for run %s: existing trip %s preserved",
+                        run_id,
+                        preserve_id,
+                    )
+                else:
+                    try:
+                        trip_id_saved = save_processed_trip(
+                            {
+                                "run_id": run_id,
+                                "packet": to_dict(result.packet) if hasattr(result, "packet") else None,
+                                "validation": to_dict(result.validation) if hasattr(result, "validation") else None,
+                                "decision": to_dict(result.decision) if hasattr(result, "decision") else None,
+                                "strategy": to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                                "plan_candidate": to_dict(result.plan_candidate) if hasattr(result, "plan_candidate") and result.plan_candidate else None,
+                                "traveler_bundle": _serialize_traveler_bundle_for_persistence(
+                                    result.traveler_bundle,
+                                    to_dict,
+                                ) if hasattr(result, "traveler_bundle") else None,
+                                "internal_bundle": to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
+                                "safety": to_dict(result.safety) if hasattr(result, "safety") else None,
+                                "fees": to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
+                                "frontier_result": to_dict(result.frontier_result) if hasattr(result, "frontier_result") and result.frontier_result else None,
+                                "meta": {
+                                    **meta.model_dump(),
+                                    "submission": consented_submission,
+                                    "retention_consent": request.retention_consent,
+                                    "blocked": True,
+                                    "early_exit_reason": result.early_exit_reason,
+                                },
+                            },
+                            source="spine_api",
+                            agency_id=agency_id,
+                            user_id=user_id,
+                            trip_status=existing_trip_status or "incomplete",
+                            preserve_trip_id=None,
+                            audit_event_type=audit_event_type,
+                        )
+                        logger.info("Blocked lead saved (ESCALATE): %s", trip_id_saved)
+                    except Exception as save_err:
+                        # Broad catch is intentional: lead persistence must not crash
+                        # the block path, but a failure here is loud — it means a
+                        # customer inquiry is at risk of being lost.
+                        logger.error(
+                            "ESCALATE lead persistence failed for run %s: %s",
+                            run_id,
+                            save_err,
+                        )
+                if trip_id_saved:
+                    try:
+                        run_ledger.update_meta(run_id, trip_id=trip_id_saved)
+                    except Exception as meta_err:
+                        logger.warning(
+                            "ESCALATE run meta update failed for run %s: %s",
+                            run_id,
+                            meta_err,
+                        )
+
                 run_ledger.save_step(run_id, "blocked_result", {
                     "packet": to_dict(result.packet) if hasattr(result, "packet") else None,
                     "validation": to_dict(result.validation) if hasattr(result, "validation") else None,
                     "decision": to_dict(result.decision) if hasattr(result, "decision") else None,
                     "early_exit_reason": result.early_exit_reason,
+                    "trip_id": trip_id_saved,
                     "meta": meta.model_dump(),
                 })
                 block_reason = result.early_exit_reason or "Pipeline blocked"
                 run_ledger.block(run_id, block_reason=block_reason)
-                _update_draft_for_terminal_state(run_id, "blocked", logger, run_ledger, draft_store, snapshot={"block_reason": block_reason, "stage_at_block": current_stage})
+                _update_draft_for_terminal_state(run_id, "blocked", logger, run_ledger, draft_store, trip_id=trip_id_saved, snapshot={"block_reason": block_reason, "stage_at_block": current_stage, "trip_id": trip_id_saved})
                 emit_run_blocked_fn(
                     run_id=run_id,
                     block_reason=block_reason,
                     stage_at_block=current_stage,
-                    trip_id=None,
+                    trip_id=trip_id_saved,
                 )
                 return
 
@@ -310,6 +422,9 @@ def execute_spine_pipeline(
                 )
                 # Save the partial trip with incomplete status
                 # (packet is valid but missing quote-ready fields)
+                reprocess_trip_id, reprocess_status = _resolve_draft_reprocess_target(
+                    draft_store, run_ledger, trip_store, run_id, logger,
+                )
                 trip_id_saved = save_processed_trip(
                     {
                         "run_id": run_id,
@@ -335,8 +450,8 @@ def execute_spine_pipeline(
                     source="spine_api",
                     agency_id=agency_id,
                     user_id=user_id,
-                    trip_status=existing_trip_status or "incomplete",
-                    preserve_trip_id=target_trip_id,
+                    trip_status=existing_trip_status or reprocess_status or "incomplete",
+                    preserve_trip_id=target_trip_id or reprocess_trip_id,
                     audit_event_type=audit_event_type,
                 )
                 if not trip_id_saved:
@@ -383,6 +498,9 @@ def execute_spine_pipeline(
             )
 
             # Save the trip to persistence scoped to the user's agency
+            reprocess_trip_id, reprocess_status = _resolve_draft_reprocess_target(
+                draft_store, run_ledger, trip_store, run_id, logger,
+            )
             trip_id_saved = save_processed_trip(
                 {
                     "run_id": run_id,
@@ -408,8 +526,8 @@ def execute_spine_pipeline(
                 source="spine_api",
                 agency_id=agency_id,
                 user_id=user_id,
-                trip_status=existing_trip_status or "new",
-                preserve_trip_id=target_trip_id,
+                trip_status=existing_trip_status or reprocess_status or "new",
+                preserve_trip_id=target_trip_id or reprocess_trip_id,
                 audit_event_type=audit_event_type,
             )
             if not trip_id_saved:

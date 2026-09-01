@@ -81,7 +81,7 @@ function LoginPageInner() {
               type='email'
               value={formState.email}
               onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'email', value: e.target.value })}
-              placeholder='you@agency.com'
+              placeholder='you@example.com'
               required
               autoComplete='email'
             />
