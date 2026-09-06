@@ -14,7 +14,8 @@
 # =============================================================================
 
 # ---- Stage 1: Dependencies ----
-FROM node:20-alpine AS deps
+# Digest resolved from Docker Hub on 2026-09-04 (multi-architecture manifest).
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS deps
 
 WORKDIR /app
 
@@ -25,7 +26,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # ---- Stage 2: Build ----
-FROM node:20-alpine AS builder
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS builder
 
 WORKDIR /app
 
@@ -39,7 +40,7 @@ COPY . .
 RUN npm run build
 
 # ---- Stage 3: Production runtime ----
-FROM node:20-alpine AS runner
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS runner
 
 WORKDIR /app
 
@@ -50,11 +51,13 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy built output from builder
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-USER nextjs
+USER nextjs:nodejs
+
+STOPSIGNAL SIGTERM
 
 EXPOSE 3000
 

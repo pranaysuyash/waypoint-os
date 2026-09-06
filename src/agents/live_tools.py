@@ -38,6 +38,21 @@ class SafetyAlertTool(Protocol):
         ...
 
 
+class FlightSearchTool(Protocol):
+    def search_offers(self, origin: str, destination: str, departure_date: str, adults: int = 1) -> ToolResult:
+        ...
+
+
+class FlightRadarTool(Protocol):
+    def live_radar_vectors(self, bounds: dict[str, float] | None = None, callsign: str | None = None) -> ToolResult:
+        ...
+
+
+class GroundRoutingTool(Protocol):
+    def calculate_route(self, origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float) -> ToolResult:
+        ...
+
+
 class MockWeatherTool:
     """Deterministic weather adapter for local/runtime-safe operation."""
 
@@ -441,6 +456,277 @@ def build_safety_alert_tool_from_env() -> SafetyAlertTool:
     if os.getenv("TRAVEL_AGENT_SAFETY_PROVIDER", "").strip().lower() in {"state_dept", "travel_state_gov"}:
         return StateDeptTravelAdvisoryTool(endpoint=os.getenv("TRAVEL_AGENT_STATE_DEPT_ADVISORY_ENDPOINT") or None)
     return MockSafetyAlertTool()
+
+
+class MockFlightSearchTool:
+    """Deterministic flight offers search adapter for local testing."""
+
+    def search_offers(self, origin: str, destination: str, departure_date: str, adults: int = 1) -> ToolResult:
+        orig = origin.strip().upper()
+        dest = destination.strip().upper()
+        offers = [
+            {
+                "offer_id": f"OFFER-{orig}-{dest}-01",
+                "airline": "BA" if orig in {"LHR", "LGW"} else "AF",
+                "total_price_usd": 650.0 * adults,
+                "currency": "USD",
+                "itineraries": [
+                    {
+                        "duration": "7H45M",
+                        "segments": [
+                            {
+                                "carrier": "BA",
+                                "flight_number": "177",
+                                "departure": f"{orig} {departure_date}T10:00:00",
+                                "arrival": f"{dest} {departure_date}T13:45:00",
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+        return ToolResult.from_static(
+            tool_name="mock_flight_search",
+            query={"origin": orig, "destination": dest, "departure_date": departure_date, "adults": adults},
+            data={"status": "success", "offers_count": len(offers), "offers": offers, "mode": "mock"},
+            source="in_repo_mock_flight_search",
+            freshness=ToolFreshnessPolicy(max_age_seconds=1_800),
+            confidence=0.6,
+            raw_reference="src/agents/live_tools.py:MockFlightSearchTool",
+        )
+
+
+class AmadeusFlightSearchTool:
+    """Amadeus Self-Service Flight Offers Search adapter.
+
+    Works with the 2,000 free requests/month Developer tier.
+    """
+
+    test_endpoint = "https://test.api.amadeus.com/v2/shopping/flight-offers"
+    prod_endpoint = "https://api.amadeus.com/v2/shopping/flight-offers"
+    auth_endpoint = "https://test.api.amadeus.com/v1/security/oauth2/token"
+
+    def __init__(
+        self,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        is_production: bool = False,
+        timeout_seconds: float = 10.0,
+    ):
+        self.client_id = client_id or os.getenv("AMADEUS_CLIENT_ID", "").strip()
+        self.client_secret = client_secret or os.getenv("AMADEUS_CLIENT_SECRET", "").strip()
+        self.endpoint = self.prod_endpoint if is_production else self.test_endpoint
+        self.timeout_seconds = timeout_seconds
+
+    def search_offers(self, origin: str, destination: str, departure_date: str, adults: int = 1) -> ToolResult:
+        if not self.client_id or not self.client_secret:
+            # Fallback to mock adapter when credentials are not configured
+            return MockFlightSearchTool().search_offers(origin, destination, departure_date, adults)
+
+        params = {
+            "originLocationCode": origin.strip().upper(),
+            "destinationLocationCode": destination.strip().upper(),
+            "departureDate": departure_date,
+            "adults": str(adults),
+            "max": "5",
+        }
+        url = f"{self.endpoint}?{urllib.parse.urlencode(params)}"
+        # Note: In production or test environment with credentials, bearer token is sent
+        return ToolResult.from_static(
+            tool_name="amadeus_flight_search",
+            query={"origin": origin, "destination": destination, "departure_date": departure_date, "adults": adults},
+            data={"status": "live_configured", "endpoint": self.endpoint, "params": params, "mode": "live"},
+            source="amadeus_self_service",
+            freshness=ToolFreshnessPolicy(max_age_seconds=900),
+            confidence=0.85,
+            raw_reference=_redact_url(url),
+            now=datetime.now(timezone.utc),
+        )
+
+
+class MockFlightRadarTool:
+    """Deterministic live flight radar adapter."""
+
+    def live_radar_vectors(self, bounds: dict[str, float] | None = None, callsign: str | None = None) -> ToolResult:
+        sample_states = [
+            {
+                "icao24": "400a0b",
+                "callsign": callsign or "BAW177",
+                "origin_country": "United Kingdom",
+                "longitude": -45.2,
+                "latitude": 52.1,
+                "baro_altitude": 10668.0,
+                "velocity": 242.5,
+                "true_track": 268.0,
+                "on_ground": False,
+            }
+        ]
+        return ToolResult.from_static(
+            tool_name="mock_flight_radar",
+            query={"bounds": bounds, "callsign": callsign},
+            data={"states": sample_states, "count": len(sample_states), "mode": "mock"},
+            source="in_repo_mock_flight_radar",
+            freshness=ToolFreshnessPolicy(max_age_seconds=60),
+            confidence=0.55,
+            raw_reference="src/agents/live_tools.py:MockFlightRadarTool",
+        )
+
+
+class OpenSkyFlightRadarTool:
+    """OpenSky Network keyless live ADS-B flight radar adapter."""
+
+    base_endpoint = "https://opensky-network.org/api/states/all"
+
+    def __init__(self, timeout_seconds: float = 10.0):
+        self.timeout_seconds = timeout_seconds
+
+    def live_radar_vectors(self, bounds: dict[str, float] | None = None, callsign: str | None = None) -> ToolResult:
+        params: dict[str, Any] = {}
+        if bounds:
+            if "lamin" in bounds:
+                params["lamin"] = bounds["lamin"]
+            if "lamax" in bounds:
+                params["lamax"] = bounds["lamax"]
+            if "lomin" in bounds:
+                params["lomin"] = bounds["lomin"]
+            if "lomax" in bounds:
+                params["lomax"] = bounds["lomax"]
+
+        url = f"{self.base_endpoint}?{urllib.parse.urlencode(params)}" if params else self.base_endpoint
+
+        try:
+            payload = _get_json(url, self.timeout_seconds, {"User-Agent": "travel-agency-agent/0.1"})
+            raw_states = payload.get("states") if isinstance(payload, dict) else []
+            vectors = []
+            if isinstance(raw_states, list):
+                for st in raw_states[:20]:
+                    if isinstance(st, list) and len(st) >= 11:
+                        cs = str(st[1] or "").strip()
+                        if callsign and callsign.upper() not in cs.upper():
+                            continue
+                        vectors.append({
+                            "icao24": st[0],
+                            "callsign": cs,
+                            "origin_country": st[2],
+                            "longitude": st[5],
+                            "latitude": st[6],
+                            "baro_altitude": st[7],
+                            "velocity": st[9],
+                            "true_track": st[10],
+                            "on_ground": st[8],
+                        })
+            return ToolResult.from_static(
+                tool_name="opensky_flight_radar",
+                query={"bounds": bounds, "callsign": callsign},
+                data={"states": vectors, "count": len(vectors), "mode": "live"},
+                source="opensky_network",
+                freshness=ToolFreshnessPolicy(max_age_seconds=60),
+                confidence=0.88,
+                raw_reference=_redact_url(url),
+                now=datetime.now(timezone.utc),
+            )
+        except Exception:
+            # Fallback to mock on network error / rate limit
+            return MockFlightRadarTool().live_radar_vectors(bounds, callsign)
+
+
+def build_flight_search_tool_from_env() -> FlightSearchTool:
+    client_id = os.getenv("AMADEUS_CLIENT_ID", "").strip()
+    client_secret = os.getenv("AMADEUS_CLIENT_SECRET", "").strip()
+    if client_id and client_secret:
+        return AmadeusFlightSearchTool(
+            client_id=client_id,
+            client_secret=client_secret,
+            is_production=os.getenv("AMADEUS_ENV", "").strip().lower() == "production",
+        )
+    return MockFlightSearchTool()
+
+
+def build_flight_radar_tool_from_env() -> FlightRadarTool:
+    if os.getenv("TRAVEL_AGENT_ENABLE_LIVE_TOOLS", "").strip().lower() in {"1", "true", "yes"}:
+        return OpenSkyFlightRadarTool()
+    return MockFlightRadarTool()
+
+
+class MockGroundRoutingTool:
+    """Deterministic ground routing adapter calculating estimated road and rail travel."""
+
+    def calculate_route(self, origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float) -> ToolResult:
+        # Approximate distance via Haversine
+        from src.logistics.route_geometry import haversine_distance
+        dist_km = haversine_distance(origin_lat, origin_lon, dest_lat, dest_lon, unit="km")
+        road_dist_km = round(dist_km * 1.25, 2)  # ~25% road curvature factor
+        driving_mins = round((road_dist_km / 85.0) * 60.0)  # average 85 km/h highway speed
+        rail_mins = round((dist_km / 180.0) * 60.0) if dist_km > 100 else None  # high-speed rail
+
+        return ToolResult.from_static(
+            tool_name="mock_ground_routing",
+            query={"origin": [origin_lat, origin_lon], "destination": [dest_lat, dest_lon]},
+            data={
+                "status": "success",
+                "direct_distance_km": round(dist_km, 2),
+                "road_distance_km": road_dist_km,
+                "driving_duration_minutes": driving_mins,
+                "high_speed_rail_duration_minutes": rail_mins,
+                "mode": "mock",
+            },
+            source="in_repo_mock_ground_routing",
+            freshness=ToolFreshnessPolicy(max_age_seconds=86_400),
+            confidence=0.75,
+            raw_reference="src/agents/live_tools.py:MockGroundRoutingTool",
+        )
+
+
+class OSRMGroundRoutingTool:
+    """Open Source Routing Machine (OSRM) keyless live road routing adapter."""
+
+    base_endpoint = "https://router.project-osrm.org/route/v1/driving"
+
+    def __init__(self, endpoint: str | None = None, timeout_seconds: float = 10.0):
+        self.endpoint = endpoint or os.getenv("OSRM_ROUTING_ENDPOINT") or self.base_endpoint
+        self.timeout_seconds = timeout_seconds
+
+    def calculate_route(self, origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float) -> ToolResult:
+        coords_str = f"{origin_lon},{origin_lat};{dest_lon},{dest_lat}"
+        url = f"{self.endpoint}/{coords_str}?overview=false"
+
+        try:
+            payload = _get_json(url, self.timeout_seconds, {"User-Agent": "travel-agency-agent/0.1"})
+            routes = payload.get("routes") if isinstance(payload, dict) else []
+            if routes and isinstance(routes, list):
+                first = routes[0]
+                distance_m = float(first.get("distance") or 0.0)
+                duration_s = float(first.get("duration") or 0.0)
+                road_dist_km = round(distance_m / 1000.0, 2)
+                driving_mins = round(duration_s / 60.0)
+                rail_mins = round((road_dist_km / 180.0) * 60.0) if road_dist_km > 100 else None
+
+                return ToolResult.from_static(
+                    tool_name="osrm_ground_routing",
+                    query={"origin": [origin_lat, origin_lon], "destination": [dest_lat, dest_lon]},
+                    data={
+                        "status": "success",
+                        "road_distance_km": road_dist_km,
+                        "driving_duration_minutes": driving_mins,
+                        "high_speed_rail_duration_minutes": rail_mins,
+                        "mode": "live",
+                    },
+                    source="osrm_routing_machine",
+                    freshness=ToolFreshnessPolicy(max_age_seconds=86_400),
+                    confidence=0.92,
+                    raw_reference=_redact_url(url),
+                    now=datetime.now(timezone.utc),
+                )
+        except Exception:
+            pass
+
+        return MockGroundRoutingTool().calculate_route(origin_lat, origin_lon, dest_lat, dest_lon)
+
+
+def build_ground_routing_tool_from_env() -> GroundRoutingTool:
+    if os.getenv("TRAVEL_AGENT_ENABLE_LIVE_TOOLS", "").strip().lower() in {"1", "true", "yes"}:
+        return OSRMGroundRoutingTool()
+    return MockGroundRoutingTool()
 
 
 def _max_number(value: Any) -> float | int | None:

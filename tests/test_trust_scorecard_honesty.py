@@ -116,3 +116,48 @@ class TestTrustScorecardEndpoints:
             with pytest.raises(HTTPException) as exc_info:
                 await accept_proposal_by_token("prop_unknown_token_456")
             assert exc_info.value.status_code == 404
+
+    async def test_public_proposal_preserves_unknown_facts_instead_of_defaults(self):
+        """A persisted token cannot manufacture destination/date/party metadata."""
+        raw_trip = {
+            "id": "trip_incomplete_public",
+            "agency_id": "agency_1",
+            "proposal_token_expires_at": "2030-01-01T00:00:00+00:00",
+        }
+        safe_trip = {
+            "id": raw_trip["id"],
+            "packet": {"destination": "Kyoto"},
+            "strategy": {},
+        }
+        with patch.object(TripStore, "get_trip_by_proposal_token", return_value=raw_trip), patch.object(
+            TripStore, "get_trip_for_public_access", return_value=safe_trip
+        ):
+            response = await get_proposal_by_token("prop_persisted_incomplete")
+
+        assert response["destination"] == "Kyoto"
+        assert response["dates"] is None
+        assert response["party_size"] is None
+        assert response["created_at"] is None
+        assert response["recommended_option"] is None
+
+    async def test_public_proposal_malformed_expiry_fails_closed(self):
+        raw_trip = {
+            "id": "trip_malformed_expiry",
+            "agency_id": "agency_1",
+            "proposal_token_expires_at": "not-an-iso-date",
+        }
+        with patch.object(TripStore, "get_trip_by_proposal_token", return_value=raw_trip):
+            with pytest.raises(HTTPException) as exc_info:
+                await get_proposal_by_token("prop_malformed_expiry")
+        assert exc_info.value.status_code == 404
+
+    async def test_public_proposal_accept_malformed_expiry_fails_closed(self):
+        raw_trip = {
+            "id": "trip_malformed_accept_expiry",
+            "agency_id": "agency_1",
+            "proposal_token_expires_at": "not-an-iso-date",
+        }
+        with patch.object(TripStore, "get_trip_by_proposal_token", return_value=raw_trip):
+            with pytest.raises(HTTPException) as exc_info:
+                await accept_proposal_by_token("prop_malformed_accept_expiry")
+        assert exc_info.value.status_code == 404

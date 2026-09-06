@@ -7,6 +7,8 @@ import pytest
 
 os.environ["RUNNING_TESTS"] = "1"
 
+from spine_api.persistence import TripStore
+
 
 
 @pytest.fixture(autouse=True)
@@ -79,3 +81,10 @@ def test_generate_proposal_link(session_client):
     assert data["proposal_token"].startswith("prop_")
     assert "/proposals/prop_" in data["web_url"]
     assert "select_room_upgrades" in data["interactive_capabilities"]
+
+    # The issuance response is not enough: the capability must resolve to the
+    # same persisted trip and agency that requested it.
+    persisted = TripStore.get_trip_by_proposal_token(data["proposal_token"])
+    assert persisted is not None
+    assert persisted["id"] == trip_id
+    assert persisted["agency_id"] == "agency_link_test"

@@ -4,6 +4,7 @@ tests/test_strategic_phases_6_to_9.py — Unit & Integration tests for Phases 6,
 
 import os
 import pytest
+from spine_api.persistence import TripStore
 
 os.environ["RUNNING_TESTS"] = "1"
 
@@ -49,9 +50,34 @@ def test_strategic_phases_6_to_9_lifecycle_end_to_end(session_client):
         headers={"X-Agency-ID": "agency_phase69_test"},
     )
     assert lock_fx_res.status_code == 200
-    assert lock_fx_res.json()["ok"] is True
+    lock_fx_data = lock_fx_res.json()
+    assert lock_fx_data["ok"] is False
+    assert lock_fx_data["status"] == "PREVIEW_ONLY"
+    assert lock_fx_data["lock_applied"] is False
+    assert lock_fx_data["locked_at"] is None
+    assert lock_fx_data["provider_connected"] is False
 
     # --- PHASE 7: Disruption Radar ---
+    # F-38: the radar surfaces only STORED disruption data (the per-trip
+    # fabricated CRITICAL alert is gone), so seed one on the trip first.
+    phase69_trip = TripStore.get_trip_for_agency(trip_id, "agency_phase69_test")
+    phase69_trip["active_disruption"] = {
+        "disruption_id": f"dis_{trip_id[:8]}",
+        "trip_id": trip_id,
+        "destination": "Tokyo",
+        "flight_number": "JL711",
+        "disruption_type": "DELAYED",
+        "urgency_level": "WARNING",
+        "delay_minutes": 90,
+        "impact_summary": "Typhoon delay — stored preview data",
+        "status": "ACTIVE",
+        "created_at": "2026-09-05T00:00:00+00:00",
+        "reality_tier": "deterministic_preview",
+        "provider_connected": False,
+        "effects": [],
+    }
+    TripStore.save_trip(phase69_trip, agency_id="agency_phase69_test")
+
     alerts_res = session_client.get(
         "/api/v1/disruptions/alerts",
         headers={"X-Agency-ID": "agency_phase69_test"},
@@ -67,6 +93,7 @@ def test_strategic_phases_6_to_9_lifecycle_end_to_end(session_client):
     assert rebook_opts_res.status_code == 200
     assert len(rebook_opts_res.json()) >= 2
 
+    trip_before_rebook = TripStore.get_trip_for_agency(trip_id, "agency_phase69_test")
     rebook_exec_res = session_client.post(
         f"/api/v1/disruptions/{trip_id}/rebook",
         json={
@@ -77,8 +104,10 @@ def test_strategic_phases_6_to_9_lifecycle_end_to_end(session_client):
         },
         headers={"X-Agency-ID": "agency_phase69_test"},
     )
-    assert rebook_exec_res.status_code == 200
-    assert rebook_exec_res.json()["new_flight_number"] == "BA182"
+    assert rebook_exec_res.status_code == 403
+    assert "can_mutate_booking_state" in rebook_exec_res.json()["detail"]
+    trip_after_rebook = TripStore.get_trip_for_agency(trip_id, "agency_phase69_test")
+    assert trip_after_rebook == trip_before_rebook
 
     # --- PHASE 8: Corporate Policy Compliance ---
     policy_rules_res = session_client.get("/api/v1/corporate/policy-rules")

@@ -408,6 +408,12 @@ class TestScenarios:
                 "date_window": Slot(value="2026-05-01 to 2026-05-07", confidence=1.0, authority_level="manual_override"),
                 "party_size": Slot(value=2, confidence=1.0, authority_level="manual_override"),
                 "budget_min": Slot(value="luxury", confidence=1.0, authority_level="manual_override"),
+                # Budget raw text and discovery context complete the logical
+                # soft-blocker set; budget_min alone is sufficient for the
+                # budget OR-group, but this fixture claims traveler-safe.
+                "budget_raw_text": Slot(value="luxury", confidence=1.0, authority_level="manual_override"),
+                "trip_purpose": Slot(value="leisure", confidence=1.0, authority_level="manual_override"),
+                "soft_preferences": Slot(value="none", confidence=1.0, authority_level="manual_override"),
             }
         )
     
@@ -576,6 +582,7 @@ class TestScenarios:
                     authority_level="explicit_user"
                 ),
                 "payment_method": Slot(value="credit_card", confidence=0.95, authority_level="explicit_user"),
+                "visa_status": Slot(value="not_required", confidence=0.95, authority_level="explicit_user"),
             }
         )
 
@@ -722,6 +729,10 @@ class TestScenarios:
                 ),
                 "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
                 "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "budget_raw_text": Slot(value="mid-range", confidence=0.90, authority_level="imported_structured"),
+                "budget_min": Slot(value="mid-range", confidence=0.90, authority_level="imported_structured"),
+                "trip_purpose": Slot(value="leisure", confidence=0.90, authority_level="imported_structured"),
+                "soft_preferences": Slot(value="none", confidence=0.90, authority_level="imported_structured"),
             }
         )
     
@@ -738,6 +749,10 @@ class TestScenarios:
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
                 "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
                 "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "budget_raw_text": Slot(value="mid-range", confidence=0.90, authority_level="explicit_user"),
+                "budget_min": Slot(value="mid-range", confidence=0.90, authority_level="explicit_user"),
+                "trip_purpose": Slot(value="leisure", confidence=0.90, authority_level="explicit_user"),
+                "soft_preferences": Slot(value="none", confidence=0.90, authority_level="explicit_user"),
             },
             derived_signals={
                 "destination_candidates": Slot(value="Thailand", confidence=0.70, authority_level="derived_signal"),
@@ -881,7 +896,7 @@ class TestScenarios:
             # Stage Progression
             "stage_discovery_to_shortlist": {"decision_state": "ASK_FOLLOWUP", "hard_blockers": 1},
             "stage_shortlist_to_proposal": {"decision_state": "ASK_FOLLOWUP", "hard_blockers": 1},
-            "stage_proposal_to_booking": {"decision_state": "ASK_FOLLOWUP", "hard_blockers": 2},
+            "stage_proposal_to_booking": {"decision_state": "ASK_FOLLOWUP", "hard_blockers": 3},
             "stage_booking_complete": {"decision_state": "PROCEED_TRAVELER_SAFE", "hard_blockers": 0},
             
             # Edge Cases
@@ -892,7 +907,7 @@ class TestScenarios:
             "edge_unknown_stage": {"decision_state": "ASK_FOLLOWUP", "hard_blockers": 2},
             
             # Complex Hybrid
-            "hybrid_multi_source": {"decision_state": "PROCEED_INTERNAL_DRAFT", "has_contradictions": True},
+            "hybrid_multi_source": {"decision_state": "ASK_FOLLOWUP", "has_contradictions": True},
             "hybrid_normalized": {"decision_state": "PROCEED_TRAVELER_SAFE", "hard_blockers": 0},
             "hybrid_cross_layer": {"decision_state": "PROCEED_TRAVELER_SAFE", "hard_blockers": 0},
             "hybrid_confidence_boundary": {"decision_state": "PROCEED_INTERNAL_DRAFT", "hard_blockers": 0},

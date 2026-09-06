@@ -396,6 +396,13 @@
       "score": 0
     },
     {
+      "id": "doc:Docs/INDEX.md",
+      "kind": "doc",
+      "label": "Documentation Index",
+      "path": "Docs/INDEX.md",
+      "score": 0
+    },
+    {
       "id": "doc:Docs/product_features/SEMANTIC_TASTE_GRAPH_DISCOVERY.md",
       "kind": "doc",
       "label": "Feature: Semantic Taste Graph Discovery",
@@ -449,13 +456,6 @@
       "kind": "doc",
       "label": "The Exploration Frontier",
       "path": "Docs/EXPLORATION_FRONTIER.md",
-      "score": 0
-    },
-    {
-      "id": "doc:Docs/INDEX.md",
-      "kind": "doc",
-      "label": "Validation and Testing (2026-04-17)",
-      "path": "Docs/INDEX.md",
       "score": 0
     }
   ],

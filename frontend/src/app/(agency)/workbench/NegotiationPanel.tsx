@@ -13,6 +13,15 @@ import {
   Mail,
   Zap,
 } from 'lucide-react';
+import SimulatedBadge from '@/components/ui/SimulatedBadge';
+
+/**
+ * GM-01 honesty fix: every number in this panel is illustrative. The margin
+ * curve is a local client-side calculator (no pricing engine), the bargaining
+ * log is a hardcoded sample array with no counterparty, and the waiver letter
+ * is a template string that is never dispatched. Nothing here contacts a
+ * supplier.
+ */
 
 type NegSubTab = 'bargaining' | 'margins' | 'waivers';
 
@@ -33,17 +42,17 @@ export function NegotiationPanel() {
   const [negotiationRounds, setNegotiationRounds] = useState<Array<Record<string, any>>>([
     {
       round: 1,
-      actor: 'Waypoint AI Negotiator',
+      actor: 'Waypoint AI Negotiator (sample)',
       offer: 7360,
       note: 'Volume leverage applied (Platinum Tier: $500k annual volume)',
-      status: 'Countered by Supplier ($7,500)',
+      status: 'Sample supplier counter ($7,500)',
     },
     {
       round: 2,
-      actor: 'Waypoint AI Negotiator',
+      actor: 'Waypoint AI Negotiator (sample)',
       offer: 7420,
       note: 'Split gap + requested complimentary airport transfer',
-      status: 'Accepted by Supplier ✅ ($7,420 + Transfer Included)',
+      status: 'Supplier response: simulated acceptance ✅ ($7,420 + Transfer Included) — no real supplier was contacted',
     },
   ]);
 
@@ -85,19 +94,22 @@ export function NegotiationPanel() {
             </div>
             <div>
               <h2 className="text-ui-base font-bold text-white flex items-center gap-2">
-                Autonomous Negotiation & Dynamic Margin Optimizer
+                Negotiation Sandbox & Margin Calculator
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium border border-emerald-500/30">
                   PER-950888 / PER-20690
                 </span>
               </h2>
               <p className="text-ui-xs text-[#8b949e]">
-                B2B multi-round concession bargaining, demand elasticity margin curve optimization, and automated fee waiver bots.
+                Illustrative take-rate calculator, sample concession-bargaining transcript (no supplier connectivity), and a draft fee-waiver letter template. Nothing is sent.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0f1115] border border-[#30363d] text-ui-xs text-[#3fb950]">
-            <Zap className="h-3.5 w-3.5" />
-            <span>Volume Leverage: Platinum ($500k)</span>
+          <div className="flex flex-col items-end gap-2">
+            <SimulatedBadge label="Sample data" />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0f1115] border border-[#30363d] text-ui-xs text-[#8b949e]">
+              <Zap className="h-3.5 w-3.5" />
+              <span>Sample Leverage Assumption: Platinum ($500k)</span>
+            </div>
           </div>
         </div>
       </div>
@@ -212,13 +224,13 @@ export function NegotiationPanel() {
       {/* Bargaining Tab */}
       {activeSubTab === 'bargaining' && (
         <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-5 space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-2">
             <h3 className="text-ui-sm font-semibold text-white flex items-center gap-2">
               <Sliders className="h-4 w-4 text-emerald-400" />
-              Live Multi-Round Bargaining Log
+              Sample Bargaining Transcript (Simulated)
             </h3>
-            <span className="text-[11px] text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">
-              Autonomous Session Completed
+            <span className="text-[11px] text-amber-300 bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+              Sample session — no supplier connected
             </span>
           </div>
 
@@ -244,7 +256,7 @@ export function NegotiationPanel() {
         <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-5 space-y-4">
           <h3 className="text-ui-sm font-semibold text-white flex items-center gap-2">
             <Mail className="h-4 w-4 text-[#58a6ff]" />
-            Automated Supplier Fee Waiver Request
+            Supplier Fee Waiver Letter (Draft Template — Not Dispatched)
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-ui-xs">

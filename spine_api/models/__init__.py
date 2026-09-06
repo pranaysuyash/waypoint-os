@@ -9,6 +9,9 @@ from spine_api.models.tenant import Agency, User, Membership, WorkspaceCode, Age
 from spine_api.models.frontier import GhostWorkflow, EmotionalStateLog, IntelligencePoolRecord, LegacyAspiration
 from spine_api.models.trips import Trip
 from spine_api.models.agent_work import AgentWorkLease
+from spine_api.models.idempotency import IdempotencyKey
+from spine_api.models.audit import AuditLog
+from spine_api.models.routing import TripRoutingState
 
 __all__ = [
     "Base", 
@@ -23,4 +26,7 @@ __all__ = [
     "LegacyAspiration",
     "Trip",
     "AgentWorkLease",
+    "IdempotencyKey",
+    "AuditLog",
+    "TripRoutingState",
 ]

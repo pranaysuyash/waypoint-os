@@ -1,11 +1,15 @@
 'use client';
 
 /**
- * WelcomeModal - shown to the user on their first login.
+ * WelcomeCard - shown to the user on their first login.
  *
  * Persists dismissal in localStorage so it only shows once.
  * Displays a brief overview of the app's key workflows with
  * actionable links to the most important pages.
+ *
+ * This is intentionally a non-modal card: it does not block the underlying
+ * application, trap focus, lock scrolling, or consume Escape. The historical
+ * `WelcomeModal` export remains as a compatibility alias for AuthProvider.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -19,7 +23,7 @@ export interface WelcomeModalProps {
   isAuthenticated: boolean;
 }
 
-export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
+export function WelcomeCard({ isAuthenticated }: WelcomeModalProps) {
   const [hasSeenWelcome, setHasSeenWelcome] = useState(() => {
     try {
       return localStorage.getItem(WELCOME_SEEN_KEY) === '1';
@@ -31,8 +35,6 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const { push } = useRouter();
   const pathname = usePathname();
-
-  const isOpen = isAuthenticated && !hasSeenWelcome;
 
   useEffect(() => {
     const updateViewport = () => setIsCompactViewport(window.innerWidth < 640);
@@ -67,7 +69,10 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
         background: 'rgba(13,17,23,0.94)',
         borderColor: 'rgba(48,54,61,0.95)',
       }}
-      aria-label="Welcome to Waypoint"
+      role="region"
+      aria-labelledby="welcome-card-title"
+      aria-describedby="welcome-card-description"
+      data-testid="welcome-card"
     >
       <div className="flex items-start gap-3 p-3 border-b" style={{ borderColor: 'rgba(48,54,61,0.85)' }}>
         <div className="size-9 rounded-xl flex items-center justify-center shrink-0"
@@ -76,8 +81,8 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
           <Sparkles className="size-4" style={{ color: 'var(--accent-blue)' }} />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-[14px] font-semibold text-[#e6edf3] truncate">Welcome to Waypoint</h2>
-          <p className="mt-0.5 text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          <h2 id="welcome-card-title" className="text-[14px] font-semibold text-[#e6edf3] truncate">Welcome to Waypoint</h2>
+          <p id="welcome-card-description" className="mt-0.5 text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             Your workspace is ready. These shortcuts won&apos;t block the app.
           </p>
         </div>
@@ -124,7 +129,10 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
         background: 'rgba(13,17,23,0.94)',
         borderColor: 'rgba(48,54,61,0.95)',
       }}
-      aria-label="Welcome to Waypoint"
+      role="region"
+      aria-labelledby="welcome-card-title"
+      aria-describedby="welcome-card-description"
+      data-testid="welcome-card"
     >
         <div className="flex items-start gap-3 p-4 border-b" style={{ borderColor: 'rgba(48,54,61,0.85)' }}>
           <div className="size-10 rounded-xl flex items-center justify-center shrink-0"
@@ -133,8 +141,8 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
             <Sparkles className="size-5" style={{ color: 'var(--accent-blue)' }} />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-[15px] font-semibold text-[#e6edf3] truncate">Welcome to Waypoint</h2>
-            <p className="mt-1 text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            <h2 id="welcome-card-title" className="text-[15px] font-semibold text-[#e6edf3] truncate">Welcome to Waypoint</h2>
+            <p id="welcome-card-description" className="mt-1 text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               Your workspace is ready. These shortcuts won&apos;t block the rest of the app.
             </p>
           </div>
@@ -258,3 +266,9 @@ export function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
     </div>
   );
 }
+
+/**
+ * Compatibility export retained for existing consumers. Despite its legacy
+ * name, this component is a non-modal `WelcomeCard`; see the contract above.
+ */
+export const WelcomeModal = WelcomeCard;

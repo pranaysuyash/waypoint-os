@@ -154,4 +154,85 @@ describe("resolveBackendPath", () => {
       "api/trips/trip_abc/execution-timeline"
     );
   });
+
+  it("maps workbench v1 panel fetches through the canonical BFF proxy (D-10)", () => {
+    // FinancialSettlementPanel (VCC) — the original D-10 hardcoded-URL revert.
+    expect(resolveBackendPath(["v1", "settlement", "vcc", "issue"])).toBe(
+      "api/v1/settlement/vcc/issue"
+    );
+    // GDSSandboxPanel
+    expect(resolveBackendPath(["v1", "gds-sandbox", "search"])).toBe(
+      "api/v1/gds-sandbox/search"
+    );
+    expect(resolveBackendPath(["v1", "gds-sandbox", "book"])).toBe(
+      "api/v1/gds-sandbox/book"
+    );
+    // IVRBypassPanel
+    expect(resolveBackendPath(["v1", "ivr-bypass", "calls", "dispatch"])).toBe(
+      "api/v1/ivr-bypass/calls/dispatch"
+    );
+    expect(resolveBackendPath(["v1", "ivr-bypass", "calls", "bridge"])).toBe(
+      "api/v1/ivr-bypass/calls/bridge"
+    );
+    // IROPSAutoHealerPanel / DocumentMRZPanel / PersonaCouncilPanel
+    expect(resolveBackendPath(["v1", "irops-healer", "heal"])).toBe(
+      "api/v1/irops-healer/heal"
+    );
+    expect(resolveBackendPath(["v1", "documents", "mrz", "parse-td3"])).toBe(
+      "api/v1/documents/mrz/parse-td3"
+    );
+    expect(resolveBackendPath(["v1", "passenger-rights", "evaluate"])).toBe(
+      "api/v1/passenger-rights/evaluate"
+    );
+    expect(resolveBackendPath(["v1", "financial-ops", "convert-currency"])).toBe(
+      "api/v1/financial-ops/convert-currency"
+    );
+    expect(resolveBackendPath(["v1", "counterfactual", "replan-disruption"])).toBe(
+      "api/v1/counterfactual/replan-disruption"
+    );
+    expect(resolveBackendPath(["v1", "counterfactual", "group-consensus"])).toBe(
+      "api/v1/counterfactual/group-consensus"
+    );
+    expect(resolveBackendPath(["v1", "boundaries", "tokens", "issue"])).toBe(
+      "api/v1/boundaries/tokens/issue"
+    );
+    // DutyOfCareRadar / Charter / Compiler / Logistics / Epistemic
+    expect(resolveBackendPath(["v1", "duty-of-care-radar", "cockpit", "summary"])).toBe(
+      "api/v1/duty-of-care-radar/cockpit/summary"
+    );
+    expect(resolveBackendPath(["v1", "charter-aviation", "quotes", "calculate"])).toBe(
+      "api/v1/charter-aviation/quotes/calculate"
+    );
+    expect(resolveBackendPath(["v1", "proposal-compiler", "compile"])).toBe(
+      "api/v1/proposal-compiler/compile"
+    );
+    expect(resolveBackendPath(["v1", "logistics", "connection-risk"])).toBe(
+      "api/v1/logistics/connection-risk"
+    );
+    expect(resolveBackendPath(["v1", "logistics", "route-geometry", "evaluate"])).toBe(
+      "api/v1/logistics/route-geometry/evaluate"
+    );
+    expect(resolveBackendPath(["v1", "logistics", "route-geometry", "open-jaw"])).toBe(
+      "api/v1/logistics/route-geometry/open-jaw"
+    );
+    expect(resolveBackendPath(["v1", "epistemic", "constraints", "extract-implicit"])).toBe(
+      "api/v1/epistemic/constraints/extract-implicit"
+    );
+    // Stress benchmark is long-running and keeps its extended timeout policy.
+    expect(resolveBackendRoute(["v1", "benchmarking", "stress-test"])).toEqual({
+      backendPath: "api/v1/benchmarking/stress-test",
+      timeoutMs: 60_000,
+    });
+  });
+
+  it("maps the canonical agency-scoped yield contract and denies invented paths", () => {
+    expect(resolveBackendPath(["v1", "yield", "arbitrage", "trip_123"])).toBe(
+      "api/v1/yield/arbitrage/trip_123"
+    );
+    expect(resolveBackendPath(["v1", "yield", "swap-supplier"])).toBe(
+      "api/v1/yield/swap-supplier"
+    );
+    expect(resolveBackendPath(["v1", "yield-arbitrage", "rates", "compare"])).toBeNull();
+    expect(resolveBackendPath(["v1", "yield-arbitrage", "reticket", "execute"])).toBeNull();
+  });
 });

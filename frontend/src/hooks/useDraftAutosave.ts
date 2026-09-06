@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { startTransition, useEffect, useState, useCallback, useRef } from 'react';
 
 export interface UseDraftAutosaveOptions<T> {
   key: string;
@@ -37,8 +37,10 @@ export function useDraftAutosave<T extends Record<string, unknown>>({
           });
 
           if (hasContent) {
-            setHasSavedDraft(true);
-            setSavedDraft(parsed.data);
+            startTransition(() => {
+              setHasSavedDraft(true);
+              setSavedDraft(parsed.data);
+            });
           }
         }
       }

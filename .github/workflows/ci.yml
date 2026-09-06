@@ -91,12 +91,40 @@ jobs:
       - name: Tenant isolation unscoped access gate
         run: bash scripts/check_unscoped_trip_access.sh
 
+      # ──────────────────────────────────────────────
+      # Findings register lifecycle gate (G-12 / NEW-05)
+      # Enforces the findings state machine on the consolidated registers:
+      # duplicate IDs are errors; open findings must carry a recent
+      # last-verified date. Keeps the authoritative register from silently
+      # going stale (the 2026-08-31 audit found it listed shipped fixes as
+      # open). Findings-gate CI wiring was deferred at EX-06 delivery
+      # (FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md §2) — wired here 2026-09-02.
+      # ──────────────────────────────────────────────
+      - name: Findings register lifecycle gate
+        run: |-
+          uv run python scripts/check_findings_register.py \
+            Docs/review/FINDINGS_REGISTER_2026-08-31.md \
+            Docs/review/FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md
+
+      # Generated API types are a contract, not a best-effort artifact. Run
+      # the canonical generator in CI and fail if the checked-in mirror drifts
+      # from spine_api/contract.py.
+      - name: Generated API type drift gate
+        run: |-
+          uv run python scripts/generate_types.py
+          git diff --exit-code -- frontend/src/types/generated/spine-api.ts
+
 
   # ──────────────────────────────────────────────
   # Backend tests (with PostgreSQL service)
   # ──────────────────────────────────────────────
   backend-tests:
     runs-on: ubuntu-latest
+    # D6 and the backend test suite must exercise the same explicitly
+    # configured hybrid mode as the serving images. The evaluator still
+    # grades deterministic authority axes and never authorizes provider calls.
+    env:
+      USE_HYBRID_DECISION_ENGINE: "1"
     services:
       postgres:
         image: postgres:16-alpine
@@ -132,6 +160,7 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os
           TRIPSTORE_BACKEND: sql
           JWT_SECRET: test-jwt-secret-for-ci-only-32bytes!
+          PROPOSAL_SIGNING_KEY: test-proposal-signing-key-ci-only-32bytes!
           PUBLIC_CHECKER_AGENCY_ID: d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b
       - name: Run all tests (with PostgreSQL)
         run: >-
@@ -142,6 +171,7 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os
           TRIPSTORE_BACKEND: sql
           JWT_SECRET: test-jwt-secret-for-ci-only-32bytes!
+          PROPOSAL_SIGNING_KEY: test-proposal-signing-key-ci-only-32bytes!
           PUBLIC_CHECKER_AGENCY_ID: d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b
       - name: D6 gate snapshot guard
         run: uv run python scripts/verify_d6_gate_snapshot.py
@@ -149,6 +179,7 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os
           TRIPSTORE_BACKEND: sql
           JWT_SECRET: test-jwt-secret-for-ci-only-32bytes!
+          PROPOSAL_SIGNING_KEY: test-proposal-signing-key-ci-only-32bytes!
           PUBLIC_CHECKER_AGENCY_ID: d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b
 
   # ──────────────────────────────────────────────

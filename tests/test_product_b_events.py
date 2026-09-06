@@ -70,6 +70,29 @@ def test_log_event_accepts_and_deduplicates(isolated_product_b_store):
     assert rows[0]["event_id"] == "evt_1"
 
 
+def test_list_events_and_kpis_scope_by_workspace(isolated_product_b_store):
+    store = isolated_product_b_store
+    for workspace_id, suffix in (("agency_a", "a"), ("agency_b", "b")):
+        intake = _base_event(store)
+        intake["event_id"] = f"evt_{suffix}_intake"
+        intake["inquiry_id"] = f"inq_{suffix}"
+        intake["trip_id"] = f"trip_{suffix}"
+        intake["workspace_id"] = workspace_id
+        store.log_event(intake)
+
+    assert {event["workspace_id"] for event in store.list_events(window_days=365, workspace_id="agency_a")} == {"agency_a"}
+    assert store.compute_kpis(window_days=365, workspace_id="agency_a")["sample"]["inquiries_total"] == 1
+    assert store.compute_kpis(window_days=365, workspace_id="agency_b")["sample"]["inquiries_total"] == 1
+    assert store.compute_kpis(window_days=365)["sample"]["inquiries_total"] == 2
+
+
+def test_empty_workspace_id_cannot_broaden_scope(isolated_product_b_store):
+    with pytest.raises(ValueError, match="workspace_id must be non-empty"):
+        isolated_product_b_store.list_events(window_days=30, workspace_id=" ")
+    with pytest.raises(ValueError, match="workspace_id must be non-empty"):
+        isolated_product_b_store.compute_kpis(window_days=30, workspace_id="")
+
+
 def test_first_credible_requires_evidence_true(isolated_product_b_store):
     store = isolated_product_b_store
     payload = _base_event(store, "first_credible_finding_shown")
@@ -536,11 +559,16 @@ def test_product_b_kpis_endpoint_returns_payload(session_client, monkeypatch):
     monkeypatch.setattr(
         server.ProductBEventStore,
         "compute_kpis",
-        lambda window_days, qualified_only: {
+        lambda window_days, qualified_only, workspace_id: {
+            "scope": {"type": "agency", "workspace_id": workspace_id, "workspace_count": 1},
             "window_days": window_days,
             "qualified_only": qualified_only,
             "kpis": {"product_a_pull_through": 0.3},
             "sample": {"qualified_inquiries": 5},
+            "confidence_tiers": {},
+            "counts": {},
+            "definitions": {},
+            "provenance": {"data_source": "test", "generated_at": "2026-09-03T00:00:00+00:00"},
         },
     )
 

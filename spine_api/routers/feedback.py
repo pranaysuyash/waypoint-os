@@ -45,6 +45,10 @@ class SupplierScorecardResponse(BaseModel):
     total_feedback_submissions: int
     average_agency_nps: int
     suppliers: List[SupplierRatingEntry] = Field(default_factory=list)
+    data_source: str = Field(
+        "demo_static",
+        description="'demo_static' until survey-response ingestion exists (F-36): these rows are hardcoded demo data, not aggregates.",
+    )
 
 
 @router.post("/{trip_id}/trigger-survey", response_model=TriggerSurveyResponse)
@@ -53,7 +57,14 @@ def trigger_post_trip_survey(
     body: TriggerSurveyRequest,
     x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
-    """Auto-dispatch post-trip NPS & quality feedback survey to traveler."""
+    """Stage a post-trip NPS & quality feedback survey for the traveler.
+
+    Honesty note (F-36): NO dispatch backend exists yet — the survey is staged
+    on the trip record with status STAGED and the URL is a deterministic
+    placeholder, not a delivered link. The docstring's former "auto-dispatch"
+    claim was fiction; a real trigger (window-end derived, per E-9/E-10) is
+    unbuilt.
+    """
     agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
@@ -61,13 +72,15 @@ def trigger_post_trip_survey(
 
     now_iso = datetime.now(timezone.utc).isoformat()
     survey_id = f"srv_{trip_id[:8]}_{datetime.now().strftime('%M%S')}"
-    survey_url = f"https://feedback.waypointos.com/s/{survey_id}"
+    survey_url = f"https://feedback.waypointos.com/s/{survey_id}"  # placeholder — no dispatch backend
 
     trip["post_trip_feedback"] = {
         "survey_id": survey_id,
-        "status": "DISPATCHED",
+        "status": "STAGED",
+        "dispatched": False,
         "delivery_channel": body.delivery_channel,
-        "dispatched_at": now_iso,
+        "dispatched_at": None,
+        "staged_at": now_iso,
     }
 
     TripStore.save_trip(trip, agency_id=agency_id)
@@ -137,4 +150,5 @@ def get_supplier_scorecard(
         total_feedback_submissions=156,
         average_agency_nps=89,
         suppliers=suppliers,
+        data_source="demo_static",
     )

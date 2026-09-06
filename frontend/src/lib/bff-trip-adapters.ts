@@ -9,6 +9,9 @@ type TripLifecycleStatus = NonNullable<Trip["status"]>;
 
 const STATUS_TO_STATE: Record<string, TripState> = {
   new: "blue",
+  // "active" = intake-complete, pre-routing (F-33): was absent from both
+  // workspace and inbox maps so those trips vanished from operator views.
+  active: "blue",
   incomplete: "blue",
   needs_followup: "blue",
   awaiting_customer_details: "blue",
@@ -20,15 +23,21 @@ const STATUS_TO_STATE: Record<string, TripState> = {
   ready_to_book: "green",
   blocked: "red",
 
+  // "delivered" = review-approved terminal state (src/analytics/review.py:101);
+  // previously only "completed" was recognized (F-34) so approved trips
+  // rendered as intake.
   completed: "green",
+  delivered: "green",
   cancelled: "red",
 };
 
 const STATUS_TO_INBOX_STAGE: Record<string, string> = {
   new: "intake",
+  active: "intake",
   assigned: "options",
   in_progress: "details",
   completed: "booking",
+  delivered: "booking",
   cancelled: "completed",
 };
 

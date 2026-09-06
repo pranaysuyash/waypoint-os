@@ -13,16 +13,27 @@ import {
   ChevronDown,
   Download,
 } from 'lucide-react';
-import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis, useRevenueMetrics, useOperationalAlerts } from '@/hooks/useGovernance';
+import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis, useRevenueMetrics, useOperationalAlerts, useProductBKpis } from '@/hooks/useGovernance';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
+import { useAuthStore } from '@/stores/auth';
 import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis, OperationalAlert } from '@/types/governance';
 import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components/visual';
 import type { DrillDownMetric } from '@/components/visual/TeamPerformanceChart';
 import { MetricDrillDownDrawer } from '@/components/workspace/panels/MetricDrillDownDrawer';
 import { AnalyticsEmptyState } from '@/components/visual/AnalyticsEmptyState';
+import { ProductBKpiPanel } from '@/components/insights/ProductBKpiPanel';
 import { getWorkbenchTripHref } from '@/lib/routes';
 
 const VALID_TIME_RANGES = new Set<TimeRange>(['7d', '30d', '90d', 'mtd', 'ytd', 'custom']);
+
+const PRODUCT_B_WINDOW_DAYS: Record<TimeRange, number> = {
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+  mtd: 31,
+  ytd: 365,
+  custom: 30,
+};
 
 // MOCK DATA REMOVED - Using live telemetry
 
@@ -311,9 +322,16 @@ export default function OwnerInsightsPage() {
   const { data: bottlenecks, isLoading: isBottlenecksLoading, error: bottlenecksError } = useBottleneckAnalysis(timeRange);
   const { data: revenueData, isLoading: isRevenueLoading, error: revenueError } = useRevenueMetrics(timeRange);
   const { data: alertsData, dismiss: dismissAlert } = useOperationalAlerts();
+  const {
+    data: productBKpis,
+    isLoading: isProductBKpisLoading,
+    error: productBKpisError,
+    refetch: refetchProductBKpis,
+  } = useProductBKpis(PRODUCT_B_WINDOW_DAYS[timeRange], true);
+  const platformRole = useAuthStore((state) => state.user?.platform_role ?? 'none');
   const { state: unifiedState } = useUnifiedState();
 
-  const safePipelineMetrics = pipelineMetrics ?? [];
+  const safePipelineMetrics = useMemo(() => pipelineMetrics ?? [], [pipelineMetrics]);
   const safeTeamMetrics = teamMetrics ?? [];
   const safeBottlenecks = bottlenecks ?? [];
   const safeAlerts = alertsData ?? [];
@@ -379,6 +397,14 @@ export default function OwnerInsightsPage() {
       <CriticalAlertBanner 
         alerts={safeAlerts} 
         onDismiss={dismissAlert} 
+      />
+
+      <ProductBKpiPanel
+        data={productBKpis}
+        isLoading={isProductBKpisLoading}
+        error={productBKpisError}
+        onRetry={() => void refetchProductBKpis()}
+        showPlatformLink={platformRole === 'super_admin'}
       />
 
       {isLoading && (

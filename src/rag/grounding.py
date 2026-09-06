@@ -1,7 +1,9 @@
-"""Groundedness evaluation and citation provenance engine for Waypoint OS.
+"""Heuristic groundedness evaluation and citation provenance engine.
 
-Prevents AI hallucinations by evaluating answer support against retrieved chunks
-and generating explicit document citations and operator confirmation flags.
+Evaluates answer overlap and retrieval scores against retrieved chunks, then
+generates document citations and operator confirmation flags.  The evaluator
+can flag likely unsupported answers; it cannot prove truth or prevent
+hallucinations, especially when a caller supplies an external generator.
 """
 
 import uuid
@@ -19,7 +21,12 @@ class GroundednessEvaluator:
         answer: str,
         citations: List[RAGSearchResult],
     ) -> GroundedAnswer:
-        """Evaluate if the generated answer is grounded in the retrieved citations."""
+        """Estimate support from retrieved citations using local heuristics.
+
+        The score is not calibrated confidence or a claim-level entailment
+        proof.  A passing result still requires domain-appropriate source and
+        operator review for high-stakes facts.
+        """
         telemetry_id = f"rag_eval_{uuid.uuid4().hex[:8]}"
 
         if not citations:

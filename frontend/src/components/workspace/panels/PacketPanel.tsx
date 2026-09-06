@@ -38,10 +38,17 @@ function _normalizeTripDisplayValue(value?: string | number | null): string | nu
 }
 
 function _makeCanonicalSlot(value: unknown): SlotValue {
+  // F-37 slice (F-22 UI class): these slots are synthesized from derived
+  // trip-level fields, NOT stated by the user. Stamping them
+  // explicit_user/confidence 1 laundered derived values into "user-stated
+  // fact" at the UI layer. Honest labels: derived authority, modest
+  // confidence, derived extraction mode.
   return {
     value,
-    confidence: 1,
-    authority_level: "explicit_user",
+    confidence: 0.6,
+    authority_level: "derived_signal",
+    extraction_mode: "derived",
+    derived_from: ["trip_fields"],
   } as SlotValue;
 }
 
@@ -519,7 +526,7 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
                   </dd>
                   <div className="mt-2 flex items-center gap-2">
                     <Link
-                      href={`${intakeHref}?field=${detail.field}`}
+                      href={`${intakeHref}?repair=${detail.field}`}
                       className="text-[12px] font-medium hover:underline transition-colors"
                       style={{ color: 'var(--accent-blue)' }}
                     >
@@ -552,16 +559,16 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
                 </ul>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {requiredFields.includes("Budget range") && (
-                    <Link href={`${intakeHref}?field=budget`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add budget</Link>
+                    <Link href={`${intakeHref}?repair=budget`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add budget</Link>
                   )}
                   {requiredFields.includes("Origin city") && (
-                    <Link href={`${intakeHref}?field=origin`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add origin</Link>
+                    <Link href={`${intakeHref}?repair=origin`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add origin</Link>
                   )}
                   {requiredFields.includes("Travel window") && (
-                    <Link href={`${intakeHref}?field=dateWindow`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add dates</Link>
+                    <Link href={`${intakeHref}?repair=dateWindow`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add dates</Link>
                   )}
                   {requiredFields.includes("Traveler count") && (
-                    <Link href={`${intakeHref}?field=party`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add travelers</Link>
+                    <Link href={`${intakeHref}?repair=party`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add travelers</Link>
                   )}
                   <Link href={intakeHref} className="inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]">Open Trip Details</Link>
                 </div>
@@ -581,12 +588,12 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
             {hasCustomerName(trip.rawInput, trip.agentNotes, trip.contactName) ? (
               <>
                 <p className="mt-2 text-ui-sm text-text-primary">{trip.contactName || readCustomerName(trip.agentNotes)}</p>
-                <Link href={`${intakeHref}?field=customerName`} className="mt-2 inline-flex items-center text-[12px] font-medium hover:underline transition-colors" style={{ color: 'var(--accent-blue)' }}>Edit contact name</Link>
+                <Link href={`${intakeHref}?repair=customerName`} className="mt-2 inline-flex items-center text-[12px] font-medium hover:underline transition-colors" style={{ color: 'var(--accent-blue)' }}>Edit contact name</Link>
               </>
             ) : (
               <>
                 <p className="mt-2 text-ui-sm text-text-muted">Contact name missing</p>
-                <Link href={`${intakeHref}?field=customerName`} className="mt-3 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add contact name</Link>
+                <Link href={`${intakeHref}?repair=customerName`} className="mt-3 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add contact name</Link>
               </>
             )}
           </div>

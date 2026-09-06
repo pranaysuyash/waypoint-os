@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
+import { SimulatedBadge } from '@/components/ui/SimulatedBadge';
 import { useTrip, useTrips } from '@/hooks/useTrips';
 import { formatTripPickerLabel } from '@/lib/trip-picker-label';
 import {
@@ -27,13 +28,16 @@ interface BookingRecord {
   type: 'flight' | 'hotel' | 'transfer' | 'activity' | 'insurance';
   title: string;
   supplierName: string;
-  confirmationCode: string;
-  encryptedRef: string;
+  referenceCode: string | null;
   dates: string;
   guestCount: number;
-  status: 'confirmed' | 'hold_active' | 'ticketing_pending' | 'voucher_issued';
-  value: number;
-  deadlineText?: string;
+  status: 'sample_preview';
+  value: number | null;
+  sourceLabel: string;
+}
+
+interface ExtractedPreview extends Omit<BookingRecord, 'id'> {
+  confidenceLabel: string;
 }
 
 interface OperationalTask {
@@ -42,7 +46,6 @@ interface OperationalTask {
   deadline: string;
   priority: 'critical' | 'medium' | 'low';
   assignedTo: string;
-  isComplete: boolean;
 }
 
 export default function BookingsPageClient() {
@@ -61,11 +64,10 @@ export default function BookingsPageClient() {
   const effectiveSelectedTripId = selectedTripExists ? urlTripId : trips[0]?.id ?? '';
   const { data: selectedTrip } = useTrip(effectiveSelectedTripId || null);
 
-  const [revealedKeyId, setRevealedKeyId] = useState<string | null>(null);
   const [isExtractModalOpen, setIsExtractModalOpen] = useState<boolean>(false);
   const [extractText, setExtractText] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
-  const [extractedResult, setExtractedResult] = useState<any>(null);
+  const [extractedResult, setExtractedResult] = useState<ExtractedPreview | null>(null);
   const [customBookings, setCustomBookings] = useState<BookingRecord[]>([]);
 
   const handleTripChange = useCallback(
@@ -88,53 +90,50 @@ export default function BookingsPageClient() {
       {
         id: 'bk_01',
         type: 'flight',
-        title: 'Emirates EK-501 (BOM -> DXB -> CPT)',
-        supplierName: 'Emirates Airlines (GDS Sabre)',
-        confirmationCode: '6X9ZPL',
-        encryptedRef: 'gAAAAABm...89KqL2',
+        title: 'Sample Emirates EK-501 (BOM -> DXB -> CPT)',
+        supplierName: 'Emirates (illustrative provider label)',
+        referenceCode: null,
         dates: '15 Nov 2026 - 28 Nov 2026',
         guestCount: selectedTrip.party || 2,
-        status: 'voucher_issued',
+        status: 'sample_preview',
         value: 1850,
-        deadlineText: 'Tickets e-issued on GDS',
+        sourceLabel: 'Sample itinerary fixture',
       },
       {
         id: 'bk_02',
         type: 'hotel',
-        title: 'The Silo Hotel (Deluxe Harbour Suite)',
-        supplierName: 'The Royal Portfolio Luxury Direct',
-        confirmationCode: 'SILO-2026-9942',
-        encryptedRef: 'gAAAAABm...41VvP9',
+        title: 'Sample Silo Hotel (Deluxe Harbour Suite)',
+        supplierName: 'Sample hotel provider (illustrative)',
+        referenceCode: null,
         dates: '16 Nov 2026 - 22 Nov 2026 (6 Nights)',
         guestCount: selectedTrip.party || 2,
-        status: 'confirmed',
+        status: 'sample_preview',
         value: 3400,
-        deadlineText: 'Cancellation deadline: 01 Nov 2026',
+        sourceLabel: 'Sample itinerary fixture',
       },
       {
         id: 'bk_03',
         type: 'transfer',
-        title: 'Private Airport VIP Chauffeur & Armored Transfer',
-        supplierName: 'Cape Executive VIP Logistics',
-        confirmationCode: 'CE-VIP-881',
-        encryptedRef: 'gAAAAABm...01MmX4',
+        title: 'Sample Private Airport VIP Chauffeur & Transfer',
+        supplierName: 'Sample transfer provider (illustrative)',
+        referenceCode: null,
         dates: '16 Nov & 28 Nov 2026',
         guestCount: selectedTrip.party || 2,
-        status: 'voucher_issued',
+        status: 'sample_preview',
         value: 450,
+        sourceLabel: 'Sample itinerary fixture',
       },
       {
         id: 'bk_04',
         type: 'activity',
-        title: 'Exclusive Table Mountain Helicopter & Wine Safari',
-        supplierName: 'NAC Helicopters Cape Town',
-        confirmationCode: 'NAC-HL-5520',
-        encryptedRef: 'gAAAAABm...77ZzQ8',
+        title: 'Sample Table Mountain Helicopter & Wine Safari',
+        supplierName: 'Sample activity provider (illustrative)',
+        referenceCode: null,
         dates: '19 Nov 2026',
         guestCount: selectedTrip.party || 2,
-        status: 'hold_active',
+        status: 'sample_preview',
         value: 620,
-        deadlineText: '48h Zero-Cost Hold (Expires in 22h)',
+        sourceLabel: 'Sample itinerary fixture',
       },
     ];
   }, [selectedTrip]);
@@ -151,7 +150,6 @@ export default function BookingsPageClient() {
         deadline: 'Complete by 15 Oct 2026',
         priority: 'critical',
         assignedTo: 'Senior Ops Lead',
-        isComplete: true,
       },
       {
         id: 't2',
@@ -159,7 +157,6 @@ export default function BookingsPageClient() {
         deadline: 'Due in 3 days',
         priority: 'medium',
         assignedTo: 'Bespoke Concierge Agent',
-        isComplete: false,
       },
       {
         id: 't3',
@@ -167,12 +164,11 @@ export default function BookingsPageClient() {
         deadline: 'Due 48h before flight',
         priority: 'low',
         assignedTo: 'DMC Logistics Coordinator',
-        isComplete: false,
       },
     ];
   }, []);
 
-  const totalFulfilled = allBookings.reduce((sum, b) => sum + b.value, 0);
+  const totalIllustrativeValue = allBookings.reduce((sum, b) => sum + (b.value ?? 0), 0);
 
   const renderIcon = (type: BookingRecord['type']) => {
     switch (type) {
@@ -196,31 +192,32 @@ export default function BookingsPageClient() {
     setTimeout(() => {
       const lower = extractText.toLowerCase();
       let type: BookingRecord['type'] = 'hotel';
-      let title = 'Confirmed Accommodation Reservation';
-      let supplier = 'Preferred Hospitality Partner';
-      let pnr = 'CONF-' + Math.floor(100000 + Math.random() * 900000);
-      let dates = '18 Nov 2026 - 24 Nov 2026';
+      let title = 'Sample Accommodation Record';
+      let supplier = 'Sample hospitality provider (illustrative)';
       let value = 1450;
+      let dates = '18 Nov 2026 - 24 Nov 2026';
+
+      const referenceMatch = extractText.match(
+        /(?:pnr|booking(?:\s+reference)?|confirmation)(?:\s*(?:number|#|code|:))?\s*([A-Z0-9-]{5,})/i,
+      );
+      const referenceCode = referenceMatch?.[1]?.toUpperCase() ?? null;
 
       if (lower.includes('flight') || lower.includes('airline') || lower.includes('pnr')) {
         type = 'flight';
-        title = 'Air France Flight AF-842 (CDG -> CPT)';
-        supplier = 'Air France (GDS Amadeus)';
-        pnr = 'AF79KZ';
+        title = 'Sample Air France Flight AF-842 (CDG -> CPT)';
+        supplier = 'Air France (illustrative provider label)';
         dates = '15 Nov 2026';
         value = 1680;
       } else if (lower.includes('safari') || lower.includes('helicopter') || lower.includes('tour')) {
         type = 'activity';
-        title = 'Private Kruger Leopard Tracking Safari';
-        supplier = 'Wilderness Safaris Luxury';
-        pnr = 'WS-SAF-8831';
+        title = 'Sample Kruger Leopard Tracking Safari';
+        supplier = 'Sample safari operator (illustrative)';
         dates = '21 Nov 2026';
         value = 890;
       } else if (lower.includes('silo') || lower.includes('hotel') || lower.includes('villa') || lower.includes('belmond')) {
         type = 'hotel';
-        title = 'Belmond Mount Nelson Luxury Garden Villa';
-        supplier = 'Belmond Collection';
-        pnr = 'BMN-2026-441';
+        title = 'Sample Mount Nelson Luxury Garden Villa';
+        supplier = 'Sample hotel provider (illustrative)';
         dates = '22 Nov 2026 - 26 Nov 2026';
         value = 2800;
       }
@@ -229,13 +226,13 @@ export default function BookingsPageClient() {
         type,
         title,
         supplierName: supplier,
-        confirmationCode: pnr,
-        encryptedRef: 'gAAAAABm...' + Math.random().toString(36).substring(2, 8),
+        referenceCode,
         dates,
         guestCount: 2,
-        status: 'confirmed',
+        status: 'sample_preview',
         value,
-        confidence: 0.96,
+        sourceLabel: 'Local browser parse preview',
+        confidenceLabel: 'Preview only — not independently verified',
       });
       setIsExtracting(false);
     }, 400);
@@ -265,7 +262,7 @@ export default function BookingsPageClient() {
             Bookings & Fulfillment Command
           </h1>
           <p className='text-ui-sm text-[#8b949e] mt-1'>
-            Confirmed supplier PNRs, voucher vault, encrypted confirmation codes, and operational fulfillment tracker.
+            Sample booking records and a local document-parse preview. No supplier, GDS, voucher, hold, payment, or booking state is connected.
           </p>
         </div>
 
@@ -276,7 +273,7 @@ export default function BookingsPageClient() {
             className='px-3.5 py-2 bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-sm'
           >
             <Sparkles className='size-3.5' />
-            Auto-Extract Booking Voucher
+            Preview Booking Document
           </button>
 
           {effectiveSelectedTripId && (
@@ -298,6 +295,14 @@ export default function BookingsPageClient() {
             </>
           )}
         </div>
+      </div>
+
+      <div className='flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-100'>
+        <SimulatedBadge label='Sample data' />
+        <span>
+          This route is a visual planning sandbox. Records, references, amounts, and task states below are illustrative and are not
+          provider-verified or persisted.
+        </span>
       </div>
 
       {/* Trip Picker Selector */}
@@ -345,40 +350,38 @@ export default function BookingsPageClient() {
       <div className='grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'>
         <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
           <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Confirmed Services</span>
+            <span>Sample Service Records</span>
             <CalendarCheck className='size-4 text-[#3fb950]' />
           </div>
-          <div className='text-2xl font-bold text-[#e6edf3]'>{allBookings.length} Bookings</div>
-          <div className='text-xs text-[#8b949e]'>Flights, Hotels, Transfers, VIP Tours</div>
+          <div className='text-2xl font-bold text-[#e6edf3]'>{allBookings.length} Samples</div>
+          <div className='text-xs text-[#8b949e]'>Illustrative flights, hotels, transfers, and tours</div>
         </div>
 
         <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
           <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Total Fulfilled Value</span>
+            <span>Illustrative Itinerary Value</span>
             <CheckCircle2 className='size-4 text-[#58a6ff]' />
           </div>
-          <div className='text-2xl font-bold text-[#58a6ff]'>${totalFulfilled.toLocaleString()}</div>
-          <div className='text-xs text-[#8b949e]'>Backed by supplier voucher contracts</div>
+          <div className='text-2xl font-bold text-[#58a6ff]'>${totalIllustrativeValue.toLocaleString()}</div>
+          <div className='text-xs text-[#8b949e]'>Sample amounts only — no charges or supplier contracts</div>
         </div>
 
         <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
           <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Active Supplier Holds</span>
+            <span>Supplier Holds</span>
             <Clock className='size-4 text-[#d29922]' />
           </div>
-          <div className='text-2xl font-bold text-[#d29922]'>
-            {allBookings.filter((b) => b.status === 'hold_active').length} Pending
-          </div>
-          <div className='text-xs text-[#8b949e]'>48h zero-cost hold active</div>
+          <div className='text-2xl font-bold text-[#d29922]'>Unavailable</div>
+          <div className='text-xs text-[#8b949e]'>Provider connection required to retrieve live holds</div>
         </div>
 
         <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
           <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Voucher Security</span>
+            <span>Provider Artifacts</span>
             <Key className='size-4 text-[#a371f7]' />
           </div>
-          <div className='text-2xl font-bold text-[#a371f7]'>Fernet Encrypted</div>
-          <div className='text-xs text-[#8b949e]'>Zero credential leakage guarantee</div>
+          <div className='text-2xl font-bold text-[#a371f7]'>Not connected</div>
+          <div className='text-xs text-[#8b949e]'>Secure artifacts appear after a real booking integration</div>
         </div>
       </div>
 
@@ -391,9 +394,9 @@ export default function BookingsPageClient() {
               <div className='p-4 border-b border-[#30363d] flex items-center justify-between bg-[#161b22]'>
                 <div className='flex items-center gap-2 font-semibold text-sm text-[#e6edf3]'>
                   <FileCheck className='size-4 text-[#3fb950]' />
-                  <span>Confirmed Supplier Bookings & PNR Ledger</span>
+                  <span>Sample Booking Records</span>
                 </div>
-                <span className='text-xs text-[#8b949e]'>Live GDS & DMC Direct Sync</span>
+                <span className='text-xs text-[#d29922]'>No live GDS/DMC connection</span>
               </div>
 
               <div className='overflow-x-auto'>
@@ -401,7 +404,7 @@ export default function BookingsPageClient() {
                   <thead>
                     <tr className='border-b border-[#30363d] bg-[#0d1117] text-xs font-semibold text-[#8b949e] uppercase tracking-wider'>
                       <th className='p-3.5'>Service / Supplier</th>
-                      <th className='p-3.5'>PNR / Confirmation</th>
+                      <th className='p-3.5'>Source Reference</th>
                       <th className='p-3.5'>Schedule</th>
                       <th className='p-3.5'>Status</th>
                       <th className='p-3.5 text-right'>Value</th>
@@ -425,12 +428,10 @@ export default function BookingsPageClient() {
                         <td className='p-3.5'>
                           <div className='flex items-center gap-1.5'>
                             <span className='font-mono font-semibold text-xs text-[#58a6ff] bg-[#1f6feb]/10 px-2 py-0.5 rounded border border-[#1f6feb]/30'>
-                              {b.confirmationCode}
+                              {b.referenceCode ?? 'Not verified'}
                             </span>
                           </div>
-                          {b.deadlineText && (
-                            <div className='text-[11px] text-[#d29922] mt-0.5'>{b.deadlineText}</div>
-                          )}
+                          <div className='text-[11px] text-[#d29922] mt-0.5'>{b.sourceLabel}</div>
                         </td>
 
                         <td className='p-3.5 text-xs text-[#8b949e]'>{b.dates}</td>
@@ -438,19 +439,15 @@ export default function BookingsPageClient() {
                         <td className='p-3.5'>
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              b.status === 'voucher_issued'
-                                ? 'bg-[#238636]/20 text-[#3fb950] border border-[#238636]/40'
-                                : b.status === 'confirmed'
-                                ? 'bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/40'
-                                : 'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/40'
+                              'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/40'
                             }`}
                           >
-                            {b.status.replace('_', ' ')}
+                            Sample / unverified
                           </span>
                         </td>
 
                         <td className='p-3.5 text-right font-mono font-semibold text-[#e6edf3]'>
-                          ${b.value.toLocaleString()}
+                          {b.value === null ? 'Not available' : `~$${b.value.toLocaleString()} sample`}
                         </td>
                       </tr>
                     ))}
@@ -466,9 +463,9 @@ export default function BookingsPageClient() {
               <div className='flex items-center justify-between border-b border-[#30363d] pb-3'>
                 <div className='font-semibold text-sm text-[#e6edf3] flex items-center gap-2'>
                   <Clock className='size-4 text-[#d29922]' />
-                  <span>Operational Task Deadlines</span>
+                  <span>Sample Operational Checklist</span>
                 </div>
-                <span className='text-xs text-[#8b949e]'>Task Engine</span>
+                <span className='text-xs text-[#d29922]'>Not connected</span>
               </div>
 
               <div className='space-y-3'>
@@ -479,15 +476,9 @@ export default function BookingsPageClient() {
                   >
                     <div className='flex items-start justify-between gap-2'>
                       <div className='text-xs font-medium text-[#e6edf3]'>{task.title}</div>
-                      {task.isComplete ? (
-                        <span className='px-1.5 py-0.5 text-[10px] font-semibold bg-[#238636]/20 text-[#3fb950] rounded border border-[#238636]/30 shrink-0'>
-                          DONE
-                        </span>
-                      ) : (
-                        <span className='px-1.5 py-0.5 text-[10px] font-semibold bg-[#d29922]/20 text-[#d29922] rounded border border-[#d29922]/30 shrink-0'>
-                          PENDING
-                        </span>
-                      )}
+                      <span className='px-1.5 py-0.5 text-[10px] font-semibold bg-[#d29922]/20 text-[#d29922] rounded border border-[#d29922]/30 shrink-0'>
+                        SAMPLE
+                      </span>
                     </div>
                     <div className='flex items-center justify-between text-[11px] text-[#8b949e]'>
                       <span>{task.deadline}</span>
@@ -518,11 +509,16 @@ export default function BookingsPageClient() {
       {/* Auto-Extract Voucher Modal */}
       {isExtractModalOpen && (
         <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4'>
-          <div className='w-full max-w-lg bg-[#0d1117] border border-[#30363d] rounded-lg shadow-xl p-6 space-y-4'>
+          <div
+            role='dialog'
+            aria-modal='true'
+            aria-labelledby='booking-preview-dialog-title'
+            className='w-full max-w-lg bg-[#0d1117] border border-[#30363d] rounded-lg shadow-xl p-6 space-y-4'
+          >
             <div className='flex items-center justify-between border-b border-[#30363d] pb-3'>
               <div className='flex items-center gap-2 font-semibold text-base text-[#e6edf3]'>
                 <Sparkles className='size-5 text-[#3fb950]' />
-                <span>Auto-Extract Voucher & PNR</span>
+                <span id='booking-preview-dialog-title'>Preview Booking Document</span>
               </div>
               <button
                 type='button'
@@ -552,7 +548,7 @@ export default function BookingsPageClient() {
 
               {/* Sample Quick Pastes */}
               <div className='flex items-center gap-2 pt-1'>
-                <span className='text-[11px] text-[#8b949e]'>Quick Sample:</span>
+                <span className='text-[11px] text-[#8b949e]'>Sample input:</span>
                 <button
                   type='button'
                   onClick={() => setExtractText('Booking Confirmation # BM-9942 from Belmond Mount Nelson Luxury Villa. Dates: 22 Nov 2026 to 26 Nov 2026. Total: USD 2,800. Guests: 2.')}
@@ -578,11 +574,11 @@ export default function BookingsPageClient() {
                   className='w-full py-2 bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white rounded font-semibold flex items-center justify-center gap-1.5 transition-colors'
                 >
                   {isExtracting ? (
-                    <span>Parsing Confirmation via Regex & AI Extraction…</span>
+                    <span>Parsing locally for preview…</span>
                   ) : (
                     <>
                       <Sparkles className='size-3.5' />
-                      <span>Parse Confirmation Details</span>
+                      <span>Preview Parsed Details</span>
                     </>
                   )}
                 </button>
@@ -593,8 +589,8 @@ export default function BookingsPageClient() {
                 <div className='p-3.5 bg-[#161b22] border border-[#238636]/40 rounded-lg space-y-2'>
                   <div className='flex items-center justify-between'>
                     <span className='text-xs font-semibold text-[#3fb950] flex items-center gap-1'>
-                      <CheckCircle2 className='size-3.5' />
-                      Extraction Successful (96% Confidence)
+                      <Sparkles className='size-3.5' />
+                      Local parse preview — not independently verified
                     </span>
                     <span className='text-[10px] uppercase font-mono px-1.5 py-0.5 bg-[#238636]/20 text-[#3fb950] rounded border border-[#238636]/30'>
                       {extractedResult.type}
@@ -604,9 +600,10 @@ export default function BookingsPageClient() {
                   <div className='space-y-1 text-xs pt-1'>
                     <div className='font-semibold text-[#e6edf3]'>{extractedResult.title}</div>
                     <div className='text-[#8b949e]'>Supplier: <span className='text-[#c9d1d9]'>{extractedResult.supplierName}</span></div>
-                    <div className='text-[#8b949e]'>PNR / Code: <span className='font-mono font-bold text-[#58a6ff]'>{extractedResult.confirmationCode}</span></div>
+                    <div className='text-[#8b949e]'>Source reference (unverified): <span className='font-mono font-bold text-[#58a6ff]'>{extractedResult.referenceCode ?? 'Not detected'}</span></div>
                     <div className='text-[#8b949e]'>Dates: <span className='text-[#c9d1d9]'>{extractedResult.dates}</span></div>
-                    <div className='text-[#8b949e]'>Value: <span className='font-mono font-bold text-[#3fb950]'>${extractedResult.value.toLocaleString()}</span></div>
+                    <div className='text-[#8b949e]'>Illustrative value: <span className='font-mono font-bold text-[#3fb950]'>${extractedResult.value?.toLocaleString() ?? 'Not available'}</span></div>
+                    <div className='text-[#d29922]'>{extractedResult.confidenceLabel}</div>
                   </div>
                 </div>
               )}
@@ -630,7 +627,7 @@ export default function BookingsPageClient() {
                   className='px-3.5 py-1.5 bg-[#238636] text-white rounded text-xs font-semibold hover:bg-[#2ea043] flex items-center gap-1.5'
                 >
                   <Check className='size-3.5' />
-                  Record & Add to Ledger
+                  Add Sample to This View
                 </button>
               )}
             </div>

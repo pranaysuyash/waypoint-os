@@ -526,13 +526,13 @@ async function extractTextFromFile(file: File): Promise<string> {
 
   if (type === 'application/pdf' || lowerName.endsWith('.pdf')) {
     const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url,
-    ).toString();
 
     const data = await file.arrayBuffer();
-    const doc = await pdfjs.getDocument({ data }).promise;
+    // Keep the public checker self-contained. pdfjs-dist v5 ships an ESM
+    // worker that Next/Terser cannot safely bundle as a classic script;
+    // bounded checker uploads are intentionally parsed on the main thread
+    // until a first-class, version-pinned worker asset is hosted.
+    const doc = await pdfjs.getDocument({ data, disableWorker: true }).promise;
 
     const pages = await Promise.all(
       Array.from({ length: doc.numPages }, (_, i) => doc.getPage(i + 1))

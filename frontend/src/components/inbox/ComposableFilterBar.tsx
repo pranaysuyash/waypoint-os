@@ -434,7 +434,7 @@ const QuickPresets = memo(function QuickPresets({ onApply }: QuickPresetsProps) 
       default:
         break;
     }
-  }, [activePreset, close, movePreset, open]);
+  }, [activePreset, close, movePreset, onApply, open]);
 
   return (
     <div className='relative' ref={ref}>

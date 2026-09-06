@@ -9,6 +9,10 @@ os.environ["RUNNING_TESTS"] = "1"
 def setup_test_env(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
     monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+    # /api/v1/tax-compliance routes are agency-scoped (PT-09: explicit
+    # _auth_or_skip at the include site). These API tests exercise engine
+    # behavior, not auth, and send no JWT — run with the dev auth bypass.
+    monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
 
 
 from src.fees.tax_compliance import (  # noqa: E402
@@ -156,63 +160,66 @@ def test_commercial_invoice_compilation():
     assert invoice.grand_total_payable_inr == 318622.50
 
 
-def test_tax_compliance_api_endpoints(session_client):
+def test_tax_compliance_api_endpoints():
     """Verify REST API endpoints for TCS, GST, and invoice compilation."""
+    from fastapi.testclient import TestClient
+    from spine_api.server import app
+
     headers = {"X-Agency-ID": "agency_tax_test"}
+    with TestClient(app) as test_c:
+        # Test TCS Endpoint
+        tcs_resp = test_c.post(
+            "/api/v1/tax-compliance/calculate-tcs",
+            json={
+                "current_amount_inr": 500000.0,
+                "is_overseas_trip": True,
+                "pan_number": "ABCDE1234F",
+                "cumulative_fy_spend_inr": 0.0,
+            },
+            headers=headers,
+        )
+        assert tcs_resp.status_code == 200
+        assert tcs_resp.json()["total_tcs_amount_inr"] == 25000.0
 
-    # Test TCS Endpoint
-    tcs_resp = session_client.post(
-        "/api/v1/tax-compliance/calculate-tcs",
-        json={
-            "current_amount_inr": 500000.0,
-            "is_overseas_trip": True,
-            "pan_number": "ABCDE1234F",
-            "cumulative_fy_spend_inr": 0.0,
-        },
-        headers=headers,
-    )
-    assert tcs_resp.status_code == 200
-    assert tcs_resp.json()["total_tcs_amount_inr"] == 25000.0
+        # Test GST Endpoint
+        gst_resp = test_c.post(
+            "/api/v1/tax-compliance/calculate-gst",
+            json={
+                "taxable_base_inr": 50000.0,
+                "scheme": "SERVICE_FEE_18PCT",
+                "is_inter_state": True,
+            },
+            headers=headers,
+        )
+        assert gst_resp.status_code == 200
+        assert gst_resp.json()["total_gst_amount_inr"] == 9000.0
 
-    # Test GST Endpoint
-    gst_resp = session_client.post(
-        "/api/v1/tax-compliance/calculate-gst",
-        json={
-            "taxable_base_inr": 50000.0,
-            "scheme": "SERVICE_FEE_18PCT",
-            "is_inter_state": True,
-        },
-        headers=headers,
-    )
-    assert gst_resp.status_code == 200
-    assert gst_resp.json()["total_gst_amount_inr"] == 9000.0
-
-    # Test Invoice Compilation Endpoint
-    inv_resp = session_client.post(
-        "/api/v1/tax-compliance/compile-invoice",
-        json={
-            "trip_id": "trip_api_test",
-            "line_items": [
-                {
-                    "item_id": "item_1",
-                    "service_type": "transfer",
-                    "title": "VIP Airport Chauffeur",
-                    "supplier_name": "Rome Chauffeurs",
-                    "sourcing_channel": "DIRECT_DMC",
-                    "currency": "USD",
-                    "supplier_net_amount": 200.0,
-                    "fx_rate_to_inr": 85.0,
-                    "agency_markup_pct": 20.0,
-                    "gst_scheme": "TOUR_PACKAGE_5PCT",
-                }
-            ],
-            "is_overseas_trip": True,
-            "pan_number": "ABCDE1234F",
-        },
-        headers=headers,
-    )
-    assert inv_resp.status_code == 200
-    data = inv_resp.json()
-    assert data["trip_id"] == "trip_api_test"
-    assert data["item_count"] == 1
-    assert data["grand_total_payable_inr"] > 0
+        # Test Invoice Compilation Endpoint
+        inv_resp = test_c.post(
+            "/api/v1/tax-compliance/compile-invoice",
+            json={
+                "trip_id": "trip_api_test",
+                "line_items": [
+                    {
+                        "item_id": "item_1",
+                        "service_type": "transfer",
+                        "title": "VIP Airport Chauffeur",
+                        "supplier_name": "Rome Chauffeurs",
+                        "sourcing_channel": "DIRECT_DMC",
+                        "currency": "USD",
+                        "supplier_net_amount": 200.0,
+                        "fx_rate_to_inr": 85.0,
+                        "agency_markup_pct": 20.0,
+                        "gst_scheme": "TOUR_PACKAGE_5PCT",
+                    }
+                ],
+                "is_overseas_trip": True,
+                "pan_number": "ABCDE1234F",
+            },
+            headers=headers,
+        )
+        assert inv_resp.status_code == 200
+        data = inv_resp.json()
+        assert data["trip_id"] == "trip_api_test"
+        assert data["item_count"] == 1
+        assert data["grand_total_payable_inr"] > 0

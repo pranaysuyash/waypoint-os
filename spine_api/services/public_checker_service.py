@@ -23,6 +23,100 @@ _DECISION_BASELINE_CATEGORY_COST = ("price", "budget", "cost", "fare", "expensiv
 _DECISION_BASELINE_CATEGORY_POLICY = ("visa", "policy", "entry", "insurance", "passport")
 _DECISION_BASELINE_CATEGORY_LOGISTICS = ("timing", "transfer", "connection", "delay", "distance", "weather")
 
+# ---------------------------------------------------------------------------
+# S-07 (audit RT-04/RT-05) — unauthenticated endpoint resource caps.
+#
+# /api/public-checker/run is rate-limited (12/min/IP) but runs the full
+# pipeline synchronously. PUBLIC_CHECKER_MAX_BYTES / RequestBodySizeMiddleware
+# only bound the raw HTTP body — they do not bound per-field text lengths or
+# the shape of structured_json. These caps close that gap:
+#   - text fields (raw_note / owner_note / itinerary_text) each and combined
+#     are capped at PUBLIC_CHECKER_MAX_TEXT_CHARS -> 413;
+#   - structured_json nesting depth and total node count are bounded -> 422,
+#     so a 100k-deep document can never reach the serializer (RecursionError)
+#     or drive superlinear extraction.
+# ---------------------------------------------------------------------------
+
+PUBLIC_CHECKER_MAX_TEXT_CHARS = 32_000
+PUBLIC_CHECKER_MAX_JSON_DEPTH = 10
+PUBLIC_CHECKER_MAX_JSON_NODES = 2_000
+
+_TEXT_INPUT_FIELDS = ("raw_note", "owner_note", "itinerary_text")
+
+
+def scan_structured_json_limits(
+    value: Any,
+    *,
+    max_depth: int = PUBLIC_CHECKER_MAX_JSON_DEPTH,
+    max_nodes: int = PUBLIC_CHECKER_MAX_JSON_NODES,
+    max_string_chars: int = PUBLIC_CHECKER_MAX_TEXT_CHARS,
+) -> tuple[int, int]:
+    """Return (max_depth, node_count) of a JSON-like structure.
+
+    Pure helper. Implemented iteratively (explicit stack) so hostile input can
+    never hit Python's recursion limit; the node-count bound also guarantees
+    termination on self-referential structures. Raises ValueError as soon as
+    any bound (depth, nodes, individual string length) is exceeded.
+    """
+    max_seen_depth = 0
+    nodes = 0
+    stack: list[tuple[Any, int]] = [(value, 1)]
+    while stack:
+        node, depth = stack.pop()
+        nodes += 1
+        if nodes > max_nodes:
+            raise ValueError(
+                f"structured_json exceeds maximum node count ({max_nodes})"
+            )
+        if depth > max_seen_depth:
+            max_seen_depth = depth
+        if depth > max_depth:
+            raise ValueError(
+                f"structured_json exceeds maximum nesting depth ({max_depth})"
+            )
+        if isinstance(node, str) and len(node) > max_string_chars:
+            # P3 closure (review 2026-09-02): depth/node bounds alone allowed a
+            # single multi-megabyte string through to the pipeline.
+            raise ValueError(
+                f"structured_json contains a string longer than {max_string_chars} characters"
+            )
+        if isinstance(node, dict):
+            stack.extend((child, depth + 1) for child in node.values())
+        elif isinstance(node, (list, tuple)):
+            stack.extend((child, depth + 1) for child in node)
+    return max_seen_depth, nodes
+
+
+def enforce_public_checker_payload_limits(request_dict: dict[str, Any]) -> None:
+    """Reject oversized text (413) or over-complex structured_json (422).
+
+    Must run before any pipeline work on the unauthenticated path.
+    """
+    combined_chars = 0
+    for field in _TEXT_INPUT_FIELDS:
+        text = request_dict.get(field)
+        if not isinstance(text, str):
+            continue
+        combined_chars += len(text)
+        if len(text) > PUBLIC_CHECKER_MAX_TEXT_CHARS:
+            raise HTTPException(
+                status_code=413,
+                detail=f"{field} exceeds {PUBLIC_CHECKER_MAX_TEXT_CHARS} characters",
+            )
+    if combined_chars > PUBLIC_CHECKER_MAX_TEXT_CHARS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Combined text input exceeds {PUBLIC_CHECKER_MAX_TEXT_CHARS} characters",
+        )
+
+    structured_json = request_dict.get("structured_json")
+    if structured_json is None:
+        return
+    try:
+        scan_structured_json_limits(structured_json)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
 
 def _derive_product_b_finding_category(finding_text: str) -> str:
     text = finding_text.lower()
@@ -54,6 +148,8 @@ def run_public_checker_submission(
 ) -> RunStatusResponse:
     """Run the public checker synchronously and return a result payload."""
     t0 = time.perf_counter()
+    # S-07: bound untrusted input before any pipeline work (see constants above).
+    enforce_public_checker_payload_limits(request_dict)
     request = SpineRunRequest(**request_dict)
     consented_submission = build_consented_submission(
         request_dict=request_dict,

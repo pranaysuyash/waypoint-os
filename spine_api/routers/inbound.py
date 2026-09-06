@@ -40,12 +40,20 @@ except (ImportError, ValueError):
 AuditStore = persistence.AuditStore
 TripStore = persistence.TripStore
 
+from src.agents.idempotency import IdempotencyRegistry, IdempotencyStatus  # noqa: E402
 from src.intake.packet_models import SourceEnvelope  # noqa: E402
 from src.intake.orchestration import run_spine_once  # noqa: E402
+from spine_api.core.trip_status import SYNC_PROMOTABLE_FROM_STATUSES  # noqa: E402
+from spine_api.services.field_merge import normalize_actor_role, resolve_field_merge  # noqa: E402
 
 logger = logging.getLogger("spine_api.inbound")
 
 router = APIRouter(prefix="/api/v1/inbound", tags=["inbound"])
+
+# Idempotency for intake-boundary mutations (register N-1): provider retries on any
+# channel must not mint duplicate trips. In-process backend — see IdempotencyRegistry
+# docstring for the multi-worker seam.
+_IDEMPOTENCY = IdempotencyRegistry.get_instance()
 
 # In-memory pub/sub queues for SSE trip state listeners
 _TRIP_EVENT_LISTENERS: Dict[str, List[asyncio.Queue]] = {}
@@ -79,7 +87,48 @@ def parse_inbound_inquiry(
 
     Runs NB01 Intake -> NB02 Decision -> NB03 Strategy, creates/persists trip packet,
     logs audit trail, and returns instant actionable packet + draft follow-up prompt.
+
+    Idempotent (register N-1): an identical retry of the same channel+text+customer
+    payload replays the original trip instead of minting a duplicate. A concurrent
+    duplicate while the first is still processing is rejected with 409.
     """
+    idem_payload = {
+        "channel": body.channel,
+        "raw_text": body.raw_text,
+        "customer_name": body.customer_name,
+        "customer_contact": body.customer_contact,
+        "agent_notes": body.agent_notes,
+        "strict_leakage": body.strict_leakage,
+    }
+    idem_key = IdempotencyRegistry.generate_key(
+        f"agency:{agency_id}", "inbound_parse", idem_payload
+    )
+    acquired, existing = _IDEMPOTENCY.try_acquire(
+        idem_key,
+        trip_id=f"agency:{agency_id}",
+        action_name="inbound_parse",
+        payload=idem_payload,
+    )
+    # Keep the acquisition generation with this request. A slow owner whose
+    # lease is reclaimed must not complete a newer owner's pending row.
+    fencing_token = existing.fencing_token if acquired and existing is not None else None
+    if not acquired:
+        if (
+            existing is not None
+            and existing.status == IdempotencyStatus.COMPLETED
+            and existing.response_payload
+        ):
+            logger.info(
+                "Inbound parse duplicate replayed idempotently agency=%s key=%s",
+                agency_id,
+                idem_key,
+            )
+            return InboundInquiryResponse.model_validate(existing.response_payload)
+        raise HTTPException(
+            status_code=409,
+            detail={"reason": "duplicate_intake_in_flight", "idempotency_key": idem_key},
+        )
+
     try:
         source_name = f"channel_{body.channel}"
         envelope = SourceEnvelope.from_freeform(
@@ -126,32 +175,6 @@ def parse_inbound_inquiry(
             "updated_at": now_str,
         }
 
-        TripStore.save_trip(trip_record, agency_id=agency_id)
-
-        AuditStore.log_event(
-            event_type="inbound_parse",
-            user_id=agency_id,
-            details={
-                "trip_id": trip_id,
-                "agency_id": agency_id,
-                "stage": "inbound",
-                "status": "success",
-                "state_snapshot": decision_state,
-                "actor": "chrome_extension" if body.channel == "chrome_extension" else "agency_agent",
-                "reason": f"Multi-channel ingestion via {body.channel}",
-            },
-        )
-
-        _broadcast_trip_event(
-            trip_id=trip_id,
-            event_type="TRIP_CREATED",
-            payload={
-                "trip_id": trip_id,
-                "decision_state": decision_state,
-                "missing_fields": missing_fields,
-            },
-        )
-
         leakage_dict = getattr(spine_result, "leakage_result", {}) or {}
         safety_res = SafetyResult(
             strict_leakage=body.strict_leakage,
@@ -159,7 +182,7 @@ def parse_inbound_inquiry(
             leakage_errors=leakage_dict.get("leaks", []),
         )
 
-        return InboundInquiryResponse(
+        response = InboundInquiryResponse(
             ok=True,
             trip_id=trip_id,
             channel=body.channel,
@@ -172,7 +195,50 @@ def parse_inbound_inquiry(
             safety=safety_res,
             created_at=now_str,
         )
+
+        TripStore.save_trip(trip_record, agency_id=agency_id)
+
+        # The trip is persisted and the idempotency key is closed atomically with
+        # that fact: post-save side effects are best-effort, because a failure
+        # after save_trip must never un-complete the key (a retry would then
+        # mint a duplicate trip — the exact defect N-1 exists to prevent).
+        _IDEMPOTENCY.mark_completed(
+            idem_key,
+            response.model_dump(mode="json"),
+            fencing_token=fencing_token,
+        )
+
+        try:
+            AuditStore.log_event(
+                event_type="inbound_parse",
+                user_id=agency_id,
+                details={
+                    "trip_id": trip_id,
+                    "agency_id": agency_id,
+                    "stage": "inbound",
+                    "status": "success",
+                    "state_snapshot": decision_state,
+                    "actor": "chrome_extension" if body.channel == "chrome_extension" else "agency_agent",
+                    "reason": f"Multi-channel ingestion via {body.channel}",
+                },
+            )
+            _broadcast_trip_event(
+                trip_id=trip_id,
+                event_type="TRIP_CREATED",
+                payload={
+                    "trip_id": trip_id,
+                    "decision_state": decision_state,
+                    "missing_fields": missing_fields,
+                },
+            )
+        except Exception:
+            logger.exception(
+                "Post-save side effects failed for trip %s (trip persisted, key completed)", trip_id
+            )
+
+        return response
     except Exception as e:
+        _IDEMPOTENCY.mark_failed(idem_key, str(e), fencing_token=fencing_token)
         logger.exception(f"Error during inbound parsing for agency {agency_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Inbound inquiry parsing failed: {str(e)}")
 
@@ -184,20 +250,59 @@ def optimistic_sync_trip_fields(
     agency_id: str = Depends(get_current_agency_id),
 ) -> OptimisticSyncResponse:
     """
-    Optimistically reconcile client-side field updates (budget, dates, preferences) directly
-    into trip storage and recalculate state transitions instantly.
+    Optimistically reconcile client-side field updates (budget, dates, preferences) into
+    trip storage under the canonical merge-precedence contract, and recalculate state
+    transitions instantly.
+
+    Guarantees (register N-3):
+    - Merge precedence: preference fields customer>operator, commercial fields
+      operator>customer; precedence rejections are returned as `conflicts` with the
+      kept value — no silent clobbering in either direction.
+    - Provenance: every applied overwrite records who set it, when, and what it
+      superseded (packet `_field_provenance`).
+    - Optimistic concurrency: if `expected_packet_version` is supplied and stale,
+      returns 409 instead of last-write-wins corruption.
+    - No silent state regression: a shallow missing-field re-check can never demote
+      READY_FOR_STRATEGY unless this update itself cleared a required field.
     """
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    previous_state = trip.get("decision_state", "UNKNOWN")
-    packet = trip.get("packet", {})
+    # packet_version is canonical at top level on the file store and inside
+    # analytics._extra on the SQL store (not a Trip column) — read both.
+    def _stored_packet_version() -> int:
+        top = trip.get("packet_version")
+        if top:
+            return int(top)
+        analytics = trip.get("analytics")
+        if isinstance(analytics, dict):
+            return int((analytics.get("_extra") or {}).get("packet_version") or 0)
+        return 0
 
-    reconciled_fields: List[str] = []
-    for key, value in body.field_updates.items():
-        packet[key] = value
-        reconciled_fields.append(key)
+    packet_version = _stored_packet_version()
+    if body.expected_packet_version is not None and body.expected_packet_version != packet_version:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "reason": "stale_packet_version",
+                "expected": body.expected_packet_version,
+                "current": packet_version,
+            },
+        )
+
+    previous_state = trip.get("decision_state", "UNKNOWN")
+    previous_packet = dict(trip.get("packet") or {})
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    merge = resolve_field_merge(
+        packet=previous_packet,
+        updates=body.field_updates,
+        actor_role=body.actor_role,
+        actor_id=body.actor_id,
+        now_iso=now_str,
+    )
+    packet = merge.merged_packet
 
     # Re-evaluate missing fields and state
     missing = []
@@ -208,42 +313,109 @@ def optimistic_sync_trip_fields(
     if not packet.get("destination"):
         missing.append("destination")
 
-    new_state = "NEEDS_INFO" if missing else "READY_FOR_STRATEGY"
-    now_str = datetime.now(timezone.utc).isoformat()
+    # Required fields present before this sync but absent after it — i.e. THIS
+    # update cleared them. Only then may the shallow re-check demote the state.
+    # (Labels map to packet keys: 'budget' → budget_scope/budget_max, 'dates' → start_date/dates.)
+    was_present = {
+        "budget": bool(previous_packet.get("budget_scope") or previous_packet.get("budget_max")),
+        "dates": bool(previous_packet.get("start_date") or previous_packet.get("dates")),
+        "destination": bool(previous_packet.get("destination")),
+    }
+    newly_missing = [field for field in missing if was_present.get(field)] if missing else []
+    if missing and not newly_missing and previous_state == "READY_FOR_STRATEGY":
+        # Historical gap (e.g. pipeline stored budget under a different key shape):
+        # keep the advanced state, carry the gaps informationally for follow-ups.
+        new_state = previous_state
+        state_regression = False
+    elif missing:
+        new_state = "NEEDS_INFO"
+        state_regression = previous_state == "READY_FOR_STRATEGY"
+    else:
+        new_state = "READY_FOR_STRATEGY"
+        state_regression = False
 
-    trip["packet"] = packet
-    trip["decision_state"] = new_state
-    trip["missing_fields"] = missing
-    trip["status"] = "new" if missing else "active"
-    trip["updated_at"] = now_str
+    reconciled_fields = merge.applied_fields
+    conflict_dicts = [c.to_dict() for c in merge.conflicts]
 
-    TripStore.save_trip(trip)
+    current_status = (trip.get("status") or "new").lower()
+    if not missing:
+        new_status = "active" if current_status in SYNC_PROMOTABLE_FROM_STATUSES else current_status
+    elif newly_missing and previous_state == "READY_FOR_STRATEGY":
+        new_status = "new" if current_status in SYNC_PROMOTABLE_FROM_STATUSES else current_status
+    else:
+        new_status = current_status
 
-    AuditStore.log_event(
-        event_type="optimistic_sync",
-        user_id=agency_id,
-        details={
-            "trip_id": trip_id,
-            "agency_id": agency_id,
-            "stage": "optimistic_sync",
-            "status": "success",
-            "state_snapshot": new_state,
-            "actor": body.actor_id or "agency_agent",
-            "reason": f"Optimistic field sync: {', '.join(reconciled_fields)}",
-        },
+    # Atomic compare-and-swap on updated_at (review cycle 1, P1): the version
+    # check above is advisory for clients; this store-level CAS makes the
+    # read-merge-write race-safe, so two concurrent syncs can never both win
+    # and silently drop one writer's fields.
+    base_analytics = dict(trip.get("analytics") or {})  # seeded: CAS failure → no wipe
+    analytics_extra = dict(base_analytics.get("_extra") or {})
+    analytics_extra["packet_version"] = packet_version + 1
+    base_analytics["_extra"] = analytics_extra
+
+    updates = {
+        "packet": packet,
+        "decision_state": new_state,
+        "missing_fields": missing,
+        "status": new_status,
+        "packet_version": packet_version + 1,
+        "analytics": base_analytics,
+        "updated_at": now_str,
+    }
+    updated_trip = TripStore.update_trip_if_version_for_agency(
+        trip_id, agency_id, updates, expected_updated_at=trip.get("updated_at")
     )
+    if updated_trip is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "reason": "concurrent_update",
+                "expected_packet_version": packet_version,
+                "detail": "Trip was modified concurrently; re-read and retry with the fresh packet_version.",
+            },
+        )
 
-    _broadcast_trip_event(
-        trip_id=trip_id,
-        event_type="TRIP_STATE_UPDATED",
-        payload={
-            "trip_id": trip_id,
-            "previous_state": previous_state,
-            "new_state": new_state,
-            "reconciled_fields": reconciled_fields,
-            "missing_fields": missing,
-        },
-    )
+    # Post-CAS side effects are best-effort, mirroring /parse: the sync is
+    # persisted and the version advanced — an audit/SSE failure must not
+    # surface a 500 that would make the client retry into a 409.
+    try:
+        AuditStore.log_event(
+            event_type="optimistic_sync",
+            user_id=agency_id,
+            details={
+                "trip_id": trip_id,
+                "agency_id": agency_id,
+                "stage": "optimistic_sync",
+                "status": "success",
+                "state_snapshot": new_state,
+                "actor": body.actor_id or "agency_agent",
+                "actor_role": normalize_actor_role(body.actor_role),
+                "reason": f"Optimistic field sync: {', '.join(reconciled_fields) or '(no fields applied)'}",
+                "packet_version": packet_version + 1,
+                "applied_fields": reconciled_fields,
+                "conflict_count": len(conflict_dicts),
+                "conflicts": conflict_dicts,
+                "state_regression": state_regression,
+            },
+        )
+        _broadcast_trip_event(
+            trip_id=trip_id,
+            event_type="TRIP_STATE_UPDATED",
+            payload={
+                "trip_id": trip_id,
+                "previous_state": previous_state,
+                "new_state": new_state,
+                "reconciled_fields": reconciled_fields,
+                "missing_fields": missing,
+                "conflicts": conflict_dicts,
+                "packet_version": packet_version + 1,
+            },
+        )
+    except Exception:
+        logger.exception(
+            "Post-CAS side effects failed for trip %s (sync persisted)", trip_id
+        )
 
     return OptimisticSyncResponse(
         ok=True,
@@ -253,6 +425,8 @@ def optimistic_sync_trip_fields(
         packet=packet,
         reconciled_fields=reconciled_fields,
         missing_fields=missing,
+        conflicts=conflict_dicts,
+        packet_version=packet_version + 1,
         synced_at=now_str,
     )
 

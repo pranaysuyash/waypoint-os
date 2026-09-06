@@ -12,7 +12,8 @@
 #   scripts/run_backend_tests.sh tests/test_run_lifecycle.py -x   # any pytest args
 #
 # Env overrides are respected: if DATABASE_URL / TRIPSTORE_BACKEND /
-# JWT_SECRET / PUBLIC_CHECKER_AGENCY_ID are already set, they are kept.
+# JWT_SECRET / PROPOSAL_SIGNING_KEY / PUBLIC_CHECKER_AGENCY_ID are already
+# set, they are kept.
 #
 # IMPORTANT (2026-08-30): if the dev server is running on :8000, the
 # integration tests execute against it mid-suite and contend with the shared
@@ -34,14 +35,16 @@ fi
 export DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os}"
 export TRIPSTORE_BACKEND="${TRIPSTORE_BACKEND:-sql}"
 export JWT_SECRET="${JWT_SECRET:-test-jwt-secret-for-ci-only-32bytes!}"
+# PROPOSAL_SIGNING_KEY is required at import by spine_api/routers/public_proposals.py
+# (PT-01 hardening: no hardcoded signing-secret fallback). Dev/CI-only value.
+export PROPOSAL_SIGNING_KEY="${PROPOSAL_SIGNING_KEY:-test-proposal-signing-key-ci-only-32bytes!}"
 export PUBLIC_CHECKER_AGENCY_ID="${PUBLIC_CHECKER_AGENCY_ID:-d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b}"
 
 # CI parity: these two files require an OPENAI_API_KEY (optional deps) and are
 # excluded from the CI run — mirror that locally so counts are comparable.
 DEFAULT_ARGS=(tests/ --ignore=tests/test_vision_extraction.py --ignore=tests/test_extraction_fallback.py)
 
-if [ "$#" -eq 0 ]; then
-    exec .venv/bin/python -m pytest -q "${DEFAULT_ARGS[@]}"
-else
-    exec .venv/bin/python -m pytest -q "$@"
-fi
+# Extra args are appended AFTER the default target/ignores so they never
+# drop CI parity (this bug previously made arg-mode runs collect the whole
+# tree, including OPENAI-key-dependent files CI ignores).
+exec .venv/bin/python -m pytest -q "${DEFAULT_ARGS[@]}" "$@"

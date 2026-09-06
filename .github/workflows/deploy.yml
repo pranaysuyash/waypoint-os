@@ -26,10 +26,10 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       # First-principles post-deploy verification check
-      - name: Verify Deployment Health
+      - name: Verify Deployment Readiness
         run: |
-          echo "Starting post-deploy health check..."
-          DEPLOYED_URL="https://spine-api.fly.dev/health" # Adjust to match production URL
+          echo "Starting post-deploy readiness check..."
+          DEPLOYED_URL="https://spine-api.fly.dev/ready" # Must match the platform healthcheck path
           MAX_ATTEMPTS=6
           ATTEMPT=1
           SUCCESS=false
@@ -39,18 +39,18 @@ jobs:
             STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOYED_URL" || echo "000")
             
             if [ "$STATUS_CODE" = "200" ]; then
-              echo "Health check passed with HTTP 200!"
+              echo "Readiness check passed with HTTP 200!"
               SUCCESS=true
               break
             fi
             
-            echo "Health check returned status code $STATUS_CODE. Waiting 10s before retry..."
+            echo "Readiness check returned status code $STATUS_CODE. Waiting 10s before retry..."
             sleep 10
             ATTEMPT=$((ATTEMPT + 1))
           done
 
           if [ "$SUCCESS" = "false" ]; then
-            echo "Error: Deployment health check failed after $MAX_ATTEMPTS attempts."
+            echo "Error: Deployment readiness check failed after $MAX_ATTEMPTS attempts."
             echo "Initiating automated deployment rollback..."
             flyctl rollback -a spine-api
             exit 1

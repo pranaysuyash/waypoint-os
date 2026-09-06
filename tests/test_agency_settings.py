@@ -56,6 +56,20 @@ def test_save_and_load(tmp_path, monkeypatch):
     assert loaded.brand_tone == "direct"
     assert loaded.operating_hours_end == "18:00"
 
+
+def test_checker_model_round_trips_as_reserved_configuration(tmp_path, monkeypatch):
+    """The model selector is persisted, but persistence is not runtime wiring."""
+    mod = mod_agency_settings
+    monkeypatch.setattr(mod, "_DATA_ROOT", str(tmp_path))
+
+    settings = AgencySettingsStore.defaults("checker-model-agency")
+    settings.ai_agent.checker_model = "test-model-not-called"
+    AgencySettingsStore.save(settings)
+
+    loaded = AgencySettingsStore.load("checker-model-agency")
+
+    assert loaded.ai_agent.checker_model == "test-model-not-called"
+
 def test_load_ignores_unknown_keys(tmp_path, monkeypatch):
     mod = mod_agency_settings
     monkeypatch.setattr(mod, "_DATA_ROOT", str(tmp_path))

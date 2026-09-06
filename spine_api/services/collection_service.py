@@ -60,8 +60,13 @@ async def generate_token(
         created_by=created_by,
     )
     db.add(record)
-    await db.commit()
+    # Refresh BEFORE commit: commit ends the transaction and releases the
+    # connection, and a re-checkout (NullPool, pool recycle, overflow churn)
+    # arrives without the RLS session context — under FORCE RLS the refresh
+    # then finds nothing and raises InvalidRequestError.
+    await db.flush()
     await db.refresh(record)
+    await db.commit()
 
     logger.info("Collection token generated: trip=%s token_id=%s", trip_id, record.id)
     return plain_token, record

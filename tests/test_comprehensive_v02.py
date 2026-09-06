@@ -87,7 +87,8 @@ class TestBlockerResolution:
 
         assert set(r.hard_blockers) == {"destination_candidates", "origin_city", "date_window", "party_size"}, \
             f"Expected 4 blockers, got {r.hard_blockers}"
-        assert len(r.soft_blockers) == 4, f"Expected 4 soft blockers, got {r.soft_blockers}"
+        # Budget raw text and normalized budget are one logical OR-group.
+        assert len(r.soft_blockers) == 3, f"Expected 3 logical soft blockers, got {r.soft_blockers}"
         assert r.decision_state == "ASK_FOLLOWUP"
 
     def test_one_fact_fills_one_blocker(self):

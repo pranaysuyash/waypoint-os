@@ -33,6 +33,9 @@ Usage
 from __future__ import annotations
 
 import json
+import os
+import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -44,7 +47,11 @@ from spine_api.run_state import RunState, assert_can_transition
 # ---------------------------------------------------------------------------
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-RUNS_DIR = DATA_DIR / "runs"
+# ``WAYPOINT_RUNS_DIR`` is the deployment seam for a mounted durable volume.
+# Keep the repository-local default for development and tests, but do not bake
+# the package path into a deployment where a machine restart can discard the
+# operational record.
+RUNS_DIR = Path(os.environ.get("WAYPOINT_RUNS_DIR", str(DATA_DIR / "runs"))).expanduser()
 
 KNOWN_STEPS = ("packet", "validation", "decision", "strategy", "safety", "output", "blocked_result")
 
@@ -65,6 +72,67 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+@contextmanager
+def _file_lock(path: Path):
+    """Serialize writes to one ledger file across local worker processes.
+
+    The lock is deliberately next to the file so a mounted ``RUNS_DIR`` carries
+    the synchronization primitive with the data. ``fcntl`` is available on the
+    supported Linux deployment targets; the no-op fallback keeps the pure file
+    backend importable on platforms without it, while atomic replacement still
+    prevents readers from observing partially written JSON.
+    """
+    lock_path = path.with_name(path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = lock_path.open("a+", encoding="utf-8")
+    try:
+        try:
+            import fcntl
+        except ImportError:  # pragma: no cover - Windows uses the SQL backend.
+            fcntl = None
+        if fcntl is not None:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        if fcntl is not None:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        lock_file.close()
+
+
+def _atomic_write_json(path: Path, payload: Any) -> None:
+    """Replace one JSON artifact atomically and flush it before publication."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(
+        f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+    )
+    try:
+        with temp_path.open("w", encoding="utf-8") as fh:
+            # ``save_step`` historically accepted arbitrary pipeline objects
+            # and stringified non-JSON values; keep that contract while making
+            # publication atomic.
+            json.dump(payload, fh, indent=2, default=str)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temp_path, path)
+        # The file is now atomically visible. Flush the containing directory
+        # where the platform permits it so a host crash cannot lose the rename.
+        try:
+            dir_fd = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        except OSError:
+            # Windows and some network filesystems do not permit directory
+            # fsync; the atomic replace remains the relevant safety property.
+            pass
+    finally:
+        try:
+            temp_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
 # ---------------------------------------------------------------------------
 # RunLedger
 # ---------------------------------------------------------------------------
@@ -73,7 +141,9 @@ def _now_iso() -> str:
 class RunLedger:
     """
     Static interface for reading and writing the run ledger.
-    All file I/O is synchronous; safe for single-worker uvicorn.
+    All file I/O is synchronous; artifact writes are safe across local workers
+    sharing the same filesystem. Replica-wide durability still requires a
+    shared durable volume or a database-backed ledger.
     """
 
     # ------------------------------------------------------------------
@@ -112,9 +182,9 @@ class RunLedger:
         }
 
         path = _meta_path(run_id)
-        if not path.exists():
-            with path.open("w", encoding="utf-8") as fh:
-                json.dump(meta, fh, indent=2)
+        with _file_lock(path):
+            if not path.exists():
+                _atomic_write_json(path, meta)
 
         # Idempotency policy (explicit, documented):
         # create() is idempotent — calling it again with the same run_id is a no-op.
@@ -139,13 +209,19 @@ class RunLedger:
         current = RunState(meta["state"])
         assert_can_transition(current, state)  # raises ValueError on invalid
 
-        meta["state"] = state.value
-
-        if state == RunState.RUNNING and meta.get("started_at") is None:
-            meta["started_at"] = _now_iso()
-
-        with _meta_path(run_id).open("w", encoding="utf-8") as fh:
-            json.dump(meta, fh, indent=2)
+        path = _meta_path(run_id)
+        with _file_lock(path):
+            # Re-read under the lock so two workers cannot both validate and
+            # publish conflicting lifecycle transitions from the same snapshot.
+            locked_meta = RunLedger.get_meta(run_id)
+            if locked_meta is None:
+                raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+            locked_current = RunState(locked_meta["state"])
+            assert_can_transition(locked_current, state)
+            locked_meta["state"] = state.value
+            if state == RunState.RUNNING and locked_meta.get("started_at") is None:
+                locked_meta["started_at"] = _now_iso()
+            _atomic_write_json(path, locked_meta)
 
     @staticmethod
     def save_step(
@@ -173,8 +249,8 @@ class RunLedger:
         }
 
         step_path = _steps_dir(run_id) / f"{step_name}.json"
-        with step_path.open("w", encoding="utf-8") as fh:
-            json.dump(checkpoint, fh, indent=2, default=str)
+        with _file_lock(step_path):
+            _atomic_write_json(step_path, checkpoint)
 
     @staticmethod
     def complete(run_id: str, total_ms: float) -> None:
@@ -186,12 +262,16 @@ class RunLedger:
         current = RunState(meta["state"])
         assert_can_transition(current, RunState.COMPLETED)
 
-        meta["state"]        = RunState.COMPLETED.value
-        meta["completed_at"] = _now_iso()
-        meta["total_ms"]     = round(total_ms, 2)
-
-        with _meta_path(run_id).open("w", encoding="utf-8") as fh:
-            json.dump(meta, fh, indent=2)
+        path = _meta_path(run_id)
+        with _file_lock(path):
+            locked_meta = RunLedger.get_meta(run_id)
+            if locked_meta is None:
+                raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+            assert_can_transition(RunState(locked_meta["state"]), RunState.COMPLETED)
+            locked_meta["state"] = RunState.COMPLETED.value
+            locked_meta["completed_at"] = _now_iso()
+            locked_meta["total_ms"] = round(total_ms, 2)
+            _atomic_write_json(path, locked_meta)
 
     @staticmethod
     def fail(run_id: str, error_type: str, error_message: str) -> None:
@@ -203,13 +283,17 @@ class RunLedger:
         current = RunState(meta["state"])
         assert_can_transition(current, RunState.FAILED)
 
-        meta["state"]         = RunState.FAILED.value
-        meta["completed_at"]  = _now_iso()
-        meta["error_type"]    = error_type
-        meta["error_message"] = error_message
-
-        with _meta_path(run_id).open("w", encoding="utf-8") as fh:
-            json.dump(meta, fh, indent=2)
+        path = _meta_path(run_id)
+        with _file_lock(path):
+            locked_meta = RunLedger.get_meta(run_id)
+            if locked_meta is None:
+                raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+            assert_can_transition(RunState(locked_meta["state"]), RunState.FAILED)
+            locked_meta["state"] = RunState.FAILED.value
+            locked_meta["completed_at"] = _now_iso()
+            locked_meta["error_type"] = error_type
+            locked_meta["error_message"] = error_message
+            _atomic_write_json(path, locked_meta)
 
     @staticmethod
     def block(run_id: str, block_reason: str) -> None:
@@ -221,12 +305,16 @@ class RunLedger:
         current = RunState(meta["state"])
         assert_can_transition(current, RunState.BLOCKED)
 
-        meta["state"]        = RunState.BLOCKED.value
-        meta["completed_at"] = _now_iso()
-        meta["block_reason"] = block_reason
-
-        with _meta_path(run_id).open("w", encoding="utf-8") as fh:
-            json.dump(meta, fh, indent=2)
+        path = _meta_path(run_id)
+        with _file_lock(path):
+            locked_meta = RunLedger.get_meta(run_id)
+            if locked_meta is None:
+                raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+            assert_can_transition(RunState(locked_meta["state"]), RunState.BLOCKED)
+            locked_meta["state"] = RunState.BLOCKED.value
+            locked_meta["completed_at"] = _now_iso()
+            locked_meta["block_reason"] = block_reason
+            _atomic_write_json(path, locked_meta)
 
     @staticmethod
     def update_meta(run_id: str, **kwargs: Any) -> None:
@@ -239,9 +327,13 @@ class RunLedger:
         meta = RunLedger.get_meta(run_id)
         if meta is None:
             raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
-        meta.update(kwargs)
-        with _meta_path(run_id).open("w", encoding="utf-8") as fh:
-            json.dump(meta, fh, indent=2)
+        path = _meta_path(run_id)
+        with _file_lock(path):
+            locked_meta = RunLedger.get_meta(run_id)
+            if locked_meta is None:
+                raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+            locked_meta.update(kwargs)
+            _atomic_write_json(path, locked_meta)
 
     # ------------------------------------------------------------------
     # Read operations

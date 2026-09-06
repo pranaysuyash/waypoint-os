@@ -57,6 +57,7 @@ const mockUseRevenueMetrics = vi.fn(() => ({
 }));
 const mockUseUnifiedState = vi.fn(() => ({ canonical_total: 0 }));
 const mockDismissAlert = vi.fn();
+const mockRefetchProductBKpis = vi.fn();
 
 vi.mock('@/hooks/useGovernance', () => ({
   useInsightsSummary: () => ({
@@ -84,6 +85,12 @@ vi.mock('@/hooks/useGovernance', () => ({
     isLoading: false,
     error: null,
   }),
+  useProductBKpis: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+    refetch: mockRefetchProductBKpis,
+  }),
   useOperationalAlerts: () => ({
     data: [
       {
@@ -109,6 +116,11 @@ vi.mock('@/hooks/useUnifiedState', () => ({
   useUnifiedState: () => ({
     state: mockUseUnifiedState(),
   }),
+}));
+
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: (selector: (state: { user: { platform_role: 'none' } }) => unknown) =>
+    selector({ user: { platform_role: 'none' } }),
 }));
 
 describe('Insights PageClient', () => {

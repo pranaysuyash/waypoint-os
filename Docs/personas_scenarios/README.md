@@ -30,7 +30,7 @@
 
 ### By Persona
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ P1: SOLO AGENT (The One-Person Show)                                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
@@ -129,18 +129,21 @@ Each scenario prevents a specific failure:
 ## Design Principles (Derived)
 
 ### For Agents
+
 1. **Don't make me remember** - System is my memory
 2. **Don't let me break things** - Hard blockers for disasters
 3. **Teach me as I work** - Just-in-time guidance
 4. **Protect my time** - Flag time-wasters
 
 ### For Owners
+
 1. **See without micromanaging** - Dashboards, not meetings
 2. **Knowledge stays when people leave** - Persistent profiles
 3. **Standardize without killing flexibility** - Templates + judgment
 4. **Know before it breaks** - Alerts, not surprises
 
 ### For Customers
+
 1. **Fast beats perfect** - Respond quickly, refine later
 2. **Show your work** - Transparent pricing
 3. **Be there when I panic** - 24/7 crisis support
@@ -151,6 +154,7 @@ Each scenario prevents a specific failure:
 ## Usage Guide
 
 ### For Product Decisions
+
 1. Pick a persona (e.g., P1 Solo Agent)
 2. Read their 5 scenarios
 3. Identify their top 3 pain points
@@ -158,12 +162,14 @@ Each scenario prevents a specific failure:
 5. Prioritize by frequency × severity
 
 ### For Design Reviews
+
 1. Take a feature (e.g., "Quote Builder")
 2. Check against all scenarios
 3. Ask: "Does this help P1-S3? P2-S1? P3-S1?"
 4. If no, feature may be wrong
 
 ### For Testing
+
 1. Take a scenario (e.g., "P1-S1: 11 PM WhatsApp")
 2. Build that exact situation
 3. Does system produce desired output?
@@ -197,13 +203,22 @@ Each scenario prevents a specific failure:
 
 ## Files in This Directory
 
-```
+```text
 personas_scenarios/
 ├── README.md                                                        # This file
 ├── STAKEHOLDER_MAP.md                                               # Persona definitions
-├── MASTER_PRODUCT_DEMO_SIMULATION_CHRONICLE_2026-09-01.md           # Master end-to-end computer-use simulation log (Sam & Marcus)
-├── CASE_STUDY_SIMULATION_HOBBYIST_PRODUCT_DEMO_2026-08-30.md        # Live walkthrough case study: Sam Rivera (Hobbyist)
-├── CASE_STUDY_SIMULATION_JUNIOR_AGENT_PRODUCT_DEMO_2026-09-01.md    # Live walkthrough case study: Marcus Chen (Junior Agent)
+├── MASTER_PRODUCT_DEMO_SIMULATION_CHRONICLE_2026-09-01.md           # Master end-to-end computer-use simulation log (Sam, Marcus, Elena, Rachel, Chloe, Tariq, Alexander, Mateo, Siddharth, Fiona)
+├── CASE_STUDY_SIMULATION_HOBBYIST_PRODUCT_DEMO_2026-08-30.md        # Live walkthrough case study: Sam Rivera (Hobbyist P1)
+├── CASE_STUDY_SIMULATION_JUNIOR_AGENT_PRODUCT_DEMO_2026-09-01.md    # Live walkthrough case study: Marcus Chen (Junior Agent P3)
+├── CASE_STUDY_SIMULATION_AGENCY_OWNER_ELENA_2026-09-01.md           # Live walkthrough case study: Elena Rostova (Agency Owner P2)
+├── CASE_STUDY_SIMULATION_CORPORATE_EA_RACHEL_2026-09-01.md          # Live walkthrough case study: Rachel Vance (Corporate Travel Manager P4)
+├── CASE_STUDY_SIMULATION_GROUP_MICE_CHLOE_2026-09-01.md             # Live walkthrough case study: Chloe Bennett (Group MICE Specialist P5)
+├── CASE_STUDY_SIMULATION_VISA_EXPEDITION_TARIQ_2026-09-01.md        # Live walkthrough case study: Tariq Al-Mansoor (Visa Concierge P6)
+├── CASE_STUDY_SIMULATION_PRIVATE_AVIATION_ALEXANDER_2026-09-01.md   # Live walkthrough case study: Alexander Hayes (Private Aviation Broker P7)
+├── CASE_STUDY_SIMULATION_RATE_PARITY_MATEO_2026-09-01.md            # Live walkthrough case study: Mateo Rossi (Rate Parity Arbitrageur P8)
+├── CASE_STUDY_SIMULATION_LOAD_BENCHMARK_SIDDHARTH_2026-09-01.md     # Live walkthrough case study: Siddharth Mehta (Platform Reliability Lead P9)
+├── CASE_STUDY_SIMULATION_DUAL_GDS_FIONA_2026-09-01.md               # Live walkthrough case study: Fiona Gallagher (Dual GDS & NDC Lead P10)
+├── CASE_STUDY_SIMULATION_HAPHAZARD_LAST_MINUTE_INTAKE_2026-09-01.md # Ingestion stress test: Structured vs Haphazard Last-Minute Panic Note
 ├── P1_SOLO_AGENT_SCENARIOS.md                                       # 5 scenarios
 ├── P2_AGENCY_OWNER_SCENARIOS.md                                     # 5 scenarios
 ├── P3_JUNIOR_AGENT_SCENARIOS.md                                     # 5 scenarios

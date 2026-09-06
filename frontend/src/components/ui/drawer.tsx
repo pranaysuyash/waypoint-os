@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,7 +37,7 @@ export function Drawer({
   useEffect(() => {
     onCloseRef.current = onClose;
   });
-  const onCloseEvent = () => onCloseRef.current();
+  const onCloseEvent = useCallback(() => onCloseRef.current(), []);
 
   useEffect(() => {
     if (!isOpen) {

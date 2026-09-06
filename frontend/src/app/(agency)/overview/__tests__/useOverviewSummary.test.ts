@@ -25,6 +25,7 @@ import { useTrips, usePipeline } from '@/hooks/useTrips';
 import { useInboxStats, useInboxTrips, useReviews } from '@/hooks/useGovernance';
 import { useIntegrityIssues } from '@/hooks/useIntegrityIssues';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
+import type { UnifiedState } from '@/hooks/useUnifiedState';
 
 describe('useOverviewSummary', () => {
   beforeEach(() => {
@@ -374,6 +375,86 @@ describe('useOverviewSummary', () => {
       'trip',
       'lead',
     ]);
+  });
+
+  it('refreshes grouped enquiry counts when unified-state inbox count changes', () => {
+    const unifiedState = {
+      state: {
+        canonical_total: 0,
+        stages: {},
+        sla_breached: 0,
+        orphans: [],
+        integrity_meta: { sum_stages: 0, orphan_count: 0, consistent: true },
+      } as UnifiedState,
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      isConsistent: true,
+    };
+    vi.mocked(useUnifiedState).mockImplementation(() => unifiedState);
+
+    vi.mocked(useTrips).mockReturnValue({
+      data: [],
+      total: 0,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useInboxTrips).mockReturnValue({
+      data: [
+        {
+          id: 'lead_1',
+          destination: 'Singapore',
+          tripType: 'leisure',
+          stage: 'new',
+          submittedAt: '2026-05-17T00:00:00Z',
+          customerName: 'Asha Rao',
+        },
+        {
+          id: 'lead_2',
+          destination: 'Singapore',
+          tripType: 'leisure',
+          stage: 'new',
+          submittedAt: '2026-05-17T00:00:00Z',
+          customerName: 'Ravi Rao',
+        },
+      ] as any,
+      total: 2,
+      hasMore: false,
+      filterCounts: {},
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      assignTrips: vi.fn(),
+      bulkAction: vi.fn(),
+      snoozeTrip: vi.fn(),
+    });
+    vi.mocked(useReviews).mockReturnValue({
+      data: [] as any,
+      total: 0,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      submitAction: vi.fn(),
+      bulkAction: vi.fn(),
+    });
+    vi.mocked(useIntegrityIssues).mockReturnValue({
+      data: [],
+      total: 0,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    const { result, rerender } = renderHook(() => useOverviewSummary());
+    const initialLeadGroup = result.current.actionRequiredItems.find((item) => item.source === 'lead');
+    expect(initialLeadGroup?.itemCount).toBe(2);
+
+    unifiedState.state = { ...unifiedState.state!, inbox_lead_count: 9 };
+    rerender();
+
+    const refreshedLeadGroup = result.current.actionRequiredItems.find((item) => item.source === 'lead');
+    expect(refreshedLeadGroup?.itemCount).toBe(9);
   });
 
   it('derives action required loading/error state from the four source queries', () => {

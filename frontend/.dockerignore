@@ -1,0 +1,35 @@
+# The frontend has its own build context when `frontend/Dockerfile` is used;
+# root .dockerignore is therefore not consulted by Docker.
+
+# Build-time secrets and local environment files.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+
+# Dependencies/build output are installed or produced inside the image.
+node_modules/
+.next/
+out/
+coverage/
+dist/
+
+# Local-only tooling and artifacts.
+.git/
+.mimosa/
+.playwright-mcp/
+.playwright-profile*/
+.runtime/
+*.log
+*.local
+*.bak
+
+# Source-control and documentation are not needed in the runtime image.
+.gitignore
+Docs/
+Archive/
+*.md

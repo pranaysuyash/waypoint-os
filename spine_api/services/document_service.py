@@ -191,8 +191,11 @@ async def upload_document(
     )
 
     db.add(doc)
-    await db.commit()
+    # Refresh before commit — see collection_service.generate_token for the
+    # connection-release rationale (FORCE RLS + fresh re-checkout).
+    await db.flush()
     await db.refresh(doc)
+    await db.commit()
 
     logger.info(
         "Document uploaded: id=%s trip=%s type=%s uploaded_by=%s scan=%s",
@@ -269,8 +272,11 @@ async def accept_document(
     doc.reviewed_by = reviewed_by
     doc.reviewed_at = datetime.now(timezone.utc)
     doc.review_notes_present = notes_present
-    await db.commit()
+    # Refresh before commit — see collection_service.generate_token for the
+    # connection-release rationale (FORCE RLS + fresh re-checkout).
+    await db.flush()
     await db.refresh(doc)
+    await db.commit()
 
     logger.info("Document accepted: id=%s reviewed_by=%s", document_id, reviewed_by)
 
@@ -307,8 +313,11 @@ async def reject_document(
     doc.reviewed_by = reviewed_by
     doc.reviewed_at = datetime.now(timezone.utc)
     doc.review_notes_present = notes_present
-    await db.commit()
+    # Refresh before commit — see collection_service.generate_token for the
+    # connection-release rationale (FORCE RLS + fresh re-checkout).
+    await db.flush()
     await db.refresh(doc)
+    await db.commit()
 
     logger.info("Document rejected: id=%s reviewed_by=%s", document_id, reviewed_by)
 
@@ -348,8 +357,11 @@ async def soft_delete_document(
     doc.deleted_at = datetime.now(timezone.utc)
     doc.deleted_by = deleted_by
     doc.storage_delete_status = "retained"
-    await db.commit()
+    # Refresh before commit — see collection_service.generate_token for the
+    # connection-release rationale (FORCE RLS + fresh re-checkout).
+    await db.flush()
     await db.refresh(doc)
+    await db.commit()
 
     logger.info("Document soft-deleted: id=%s deleted_by=%s", document_id, deleted_by)
 

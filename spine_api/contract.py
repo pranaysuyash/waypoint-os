@@ -1342,6 +1342,17 @@ class OptimisticSyncRequest(BaseModel):
     field_updates: Dict[str, Any] = Field(..., description="Field-level updates (budget, dates, party, preferences)")
     actor_id: Optional[str] = None
     client_timestamp: Optional[str] = None
+    actor_role: Optional[str] = Field(
+        None,
+        description=(
+            "'operator' or 'customer' — drives merge precedence "
+            "(commercial fields: operator>customer; preference fields: customer>operator). Defaults to operator."
+        ),
+    )
+    expected_packet_version: Optional[int] = Field(
+        None,
+        description="Optimistic concurrency check: reject with 409 if the stored packet_version is newer.",
+    )
 
 
 class OptimisticSyncResponse(BaseModel):
@@ -1352,6 +1363,11 @@ class OptimisticSyncResponse(BaseModel):
     packet: Dict[str, Any]
     reconciled_fields: List[str]
     missing_fields: List[str] = Field(default_factory=list)
+    conflicts: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Requested updates rejected by merge precedence, with the kept value — nothing silently lost.",
+    )
+    packet_version: int = Field(0, description="Monotonic version of the trip packet after this sync.")
     synced_at: str
 
 

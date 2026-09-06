@@ -4,10 +4,13 @@
 *Method: 6 skills loaded + 6 personas applied + 4 parallel deep-exploration agents + full chat process documented (§1). Every claim in the four source docs is file:line-cited; this synthesis unifies them.*
 
 **Source explorations (companion docs, each persona-framed):**
+
 1. `AGENTIC_FLOW_DEEP_MAP_2026-08-31.md` — PER-0700 Agentic Systems Architect: the real pipeline map
 2. `BROWSER_LLM_SLM_RESEARCH_2026-08-31.md` — PER-0882 Model-Routing Optimization Engineer: browser/on-device inference research
 3. `DOCS_CORPUS_SHADOW_AUDIT_2026-08-31.md` — PER-0930 Shadow-System Investigator: docs-vs-reality audit
 4. `EVAL_ARCHITECTURE_AND_RED_TEAM_AUDIT_2026-08-31.md` — PER-0897/PER-PDEV-0425/PER-0902: eval architecture + confirmed red-team findings
+5. `GEMINI_WAVE_MODULE_AUDIT_2026-09-01.md` — audit of the parallel Gemini wave (~30 new modules): genuine hardening stack vs simulated-capability expansion (GM-01…GM-09)
+6. `SIM_VS_REALITY_RECONCILIATION_2026-09-01.md` — chronicle/case-study claims vs code reality: 30 claims adjudicated (7 VERIFIED / 5 PARTIAL / 17 SIMULATED)
 
 ---
 
@@ -22,6 +25,25 @@
 | Exploration C | PER-0930 docs-corpus shadow audit — 43 calls, 23-entry claims ledger | Doc 3 |
 | Exploration D | Eval + red-team audit — 115 calls, all red-team claims probe-confirmed | Doc 4 |
 | Prior session context (same day) | IMP-01 ADR + implementation (2 review cycles, APPROVE), Wave 2 (IMP-02/03/05/06/07, APPROVE P0:0 P1:0), 4-part demo exploration (DEMO01–06 docs), tool-taster demo report | Handoffs + exploration docs, all INDEX-linked |
+
+## 2.5 Gemini Wave Integration (added 2026-09-02)
+
+A large parallel wave (dated 2026-09-01) landed after this synthesis: 4 live computer-use simulations with BUY verdicts (chronicle + 16 case studies), 12 persona docs, ~30 new src/ modules, ~20 new test files (116/116 green), Dockerfiles, and register updates. Audited in companion docs 5–6 (GEMINI_WAVE_MODULE_AUDIT_2026-09-01.md; SIM_VS_REALITY_RECONCILIATION_2026-09-01.md). Integration into this inventory:
+
+| ID | Finding | Sev | Disposition |
+|---|---|---|---|
+| GM-01 | Wave = two interleaved bodies: **(A) genuine hardening to land** (intake idempotency+409, optimistic concurrency, merge precedence, status machine in both stores, RLS flush/commit, staging auth kill-switch, credential purge, truthful route snapshots) | ok | Split-commit: land (A) separately from (B) |
+| GM-02 | "Production … Adapter" provider modules: zero callers, zero network calls; Amadeus docstring claims "live OAuth2" vs in-process simulator | P1 | Rename to sandbox/simulated or gate; never "Production" without network |
+| GM-03 | Stripe `verify_webhook_signature` returns True unconditionally — fake security control | P0-adj | Replace with real verification or remove the control surface |
+| GM-04 | New HMAC proposal tokens: hardcoded default secret, ≥16-char "legacy" bypass, test-agency UUID in verify loop | P0-adj | Close bypasses before any public surface |
+| G-01-amp | 12 NEW unlabeled simulated panels; GDSSandboxPanel says "Live" for uuid-fabricated offers | P1 | Label-or-gate per the never-both-and-hidden rule |
+| SIM-REC | 30 chronicle claims adjudicated: extraction claims VERIFY (post-IMP-02: dates, party, wheelchair, urgency — warm 3–7ms); 17 SIMULATED incl. "ACCEPTED BY SUPPLIER" (React array) and "transmitted to U.S. Embassy" (zero network calls) | P1 (record) | Annotate chronicle + 16 case studies with simulator caveat; fix the 5 worst "Live/transmitted/issued" copy strings |
+| REC-2 | Audit findings G-01…G-19 + GM-01…GM-09 captured NOWHERE in review/status registers; BUILD_QUEUE records shadow modules as "Completed"; A-18 has opposite statuses in the two registers | P1 (record) | Register-integration pass (expands G-19) + resolve the A-18 split |
+| REC-3 | Positive: extraction sim claims verify against the real pipeline post-fixes — the deterministic core's record is strengthening | ok | Keep anchoring simulations to the deterministic core |
+
+**Plan impact:** Phase 1 (honest eval core) unchanged and more urgent — the simulated surface grew ~5x. Phase 2 gains GM-03/GM-04 (same immediate-hotfix class as G-08/G-09). Phase 3 gains chronicle annotation, the A-18 split resolution, and BUILD_QUEUE truthfulness. The commit-split recommendation (land hardening (A) separately from simulator expansion (B)) is Phase-0 ratification material.
+
+---
 
 ## 2. The Headline Discoveries
 
@@ -41,7 +63,7 @@ Severity: P0 security/data-loss · P1 product-correctness/economics · P2 qualit
 | ID | Finding / Task | Sev | FP¹ | LT² | Doc³ | Disposition |
 |---|---|---|---|---|---|---|
 | G-01 | Simulated subsystems (Frontier OS, Persona Council) render fabricated data behind dashboards while honest concierge engine is orphaned | P1 | ✗ (epistemic-integrity doctrine: traceable decisions) | ✗ | [1] | Decide: wire honest engine OR clearly label simulated; never both-and-hidden |
-| G-02 | No runtime model router exists; routing_health metrics measure nothing real | P1 | ✓ concept ✗ reality | ✓ | [1][4] | Either build the router (post-eval) or re-scope the metrics honestly until then |
+| G-02 | No runtime model router exists; routing_health metrics measure nothing real | P1 | ✓ concept ✗ reality | ✓ | [1], [4] | Either build the router (post-eval) or re-scope the metrics honestly until then |
 | G-03 | Orphaned LLM assets: hybrid decision engine + suitability Tier-3 scorer built, unwired, untested-in-prod | P2 | ? | ✓ | [1] | Ratify: wire behind gates with eval evidence, or archive per supersession |
 | G-04 | RAG doc claims false (hash-vector ≠ dense; substring ≠ graph); doc-vs-code schism | P1 | ✗ (no-dummy-fallbacks; traceable decisions) | ✗ | [3] | Rewrite RAG doc to reality; decide RAG's real roadmap separately |
 | G-05 | Eval: extraction/pipeline lanes "expected as actual" (grade nothing); 30-scenario corpus unwired | P1 | ✗ | ✓ | [4] | Phase 1 of eval architecture: live collectors + scenario wiring |
@@ -69,12 +91,15 @@ Severity: P0 security/data-loss · P1 product-correctness/economics · P2 qualit
 ## 4. Cross-Cutting Assessment
 
 ### 4.1 Is the agentic flow first-principles-aligned?
+
 **The deterministic core: yes — more than the marketing implies.** The pipeline's honesty (explicit gates, blocked-as-first-class, epistemics/existence split from the ADR) is textbook PER-0700: "first ask whether deterministic workflow… is sufficient" — it is, and it is. **The agentic theater: no.** Simulated dashboards (G-01), metrics for a nonexistent router (G-02), and self-grading eval lanes (G-05) violate the same doctrines the deterministic core honors. The pattern is consistent: *where the code is honest, it is excellent; where the record or dashboard outruns the code, doctrine is violated.*
 
 ### 4.2 Long-term coherence risks
+
 The eval architecture (Doc 4's 6 phases) is the single highest-leverage investment: every other wave's correctness becomes checkable only when evals grade reality. Second: the record consolidation (G-12/13/15) — parallel registers and stale "authoritative" docs are how the next agent repeats yesterday's mistakes. Third: wiring decisions (G-01/G-03) should follow, not precede, the eval work — wire only what evaluation can judge.
 
 ### 4.3 What else can be improved/added (net-new, doctrine-derived)
+
 - **Failure-becomes-fixture rule** as doctrine: every confirmed real-world failure merges a fixture before/with its fix (already practiced informally in Wave 2).
 - **Journey smoke in CI** (signup → intake → blocked → inbox), closing the manual-E2E gap.
 - **Agent runtime documentation**: Doc 1 found an 18-agent production runtime with SQL leases that no exploration doc had ever mapped — give it a first-class architecture doc.
@@ -82,6 +107,7 @@ The eval architecture (Doc 4's 6 phases) is the single highest-leverage investme
 - **Decision-rights register**: G-01/G-03/G-16 are ratification-class; capture them in one place with recommended dispositions (done in §5).
 
 ### 4.5 Skills assessment (per request)
+
 - `agentic-workflow` / `agent-orchestration` / `Agent Development`: patterns already embedded in how we run subagents (parallel, file-artifact handoffs, read-only reviewers); no change needed.
 - `agent-evaluation`: its anti-pattern list (single-run testing, happy-path only, aggregate scores hiding slices) is now effectively our eval-lane design rationale — worth citing in the eval ADR.
 - `agent-memory-mcp`: concept duplicates what Docs + findings register + auto-memory already provide; not adopting the MCP server.
@@ -92,6 +118,7 @@ The eval architecture (Doc 4's 6 phases) is the single highest-leverage investme
 **Phase 0 — Ratification block (Pranay):** G-01 disposition (label vs wire), G-03 (wire vs archive), G-16 posture, DEC-01 signup posture, eval-phase ordering, register IDs. Nothing below needs these except where marked.
 
 **Phase 1 — Honest eval core (est. 3.5–6.5 days; highest leverage):**
+
 1. Live collectors + 30-scenario wiring for extraction/pipeline lanes (G-05).
 2. Hidden-holdout directory + development-visibility policy (G-06).
 3. Journey smoke tests into CI (G-07, ADR §5).
@@ -114,6 +141,7 @@ The eval architecture (Doc 4's 6 phases) is the single highest-leverage investme
 **Ongoing:** failure-becomes-fixture rule; register integration (G-19); IMP-01 visual check; P2-6/P2-7 slices; contract decisions (trip_duration/flights/country).
 
 ## 6. Open Questions for Pranay
+
 1. G-01: label Frontier/Persona Council as simulated now, and decide wire-vs-archive when? (Recommend: label now, decide post-Phase-1.)
 2. G-09/G-10 severity: treat cross-tenant promote + public-checker DoS as immediate hotfixes (pre-Phase-2) or fold into Phase 2? (Recommend: immediate — they're small diffs.)
 3. Holdout governance: who may add holdout fixtures, and do dev-visible mirrors exist at all? (Recommend: fixtures dir 0700-equivalent = evals/audits lane only.)

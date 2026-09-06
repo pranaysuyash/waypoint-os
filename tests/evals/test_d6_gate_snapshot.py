@@ -188,8 +188,9 @@ def test_extraction_health_manifest_category_present():
     snapshot = build_gate_snapshot()
     assert "extraction" in snapshot["categories"]
     extraction_cat = snapshot["categories"]["extraction"]
-    assert extraction_cat["status"] == "gating"
+    assert extraction_cat["status"] == "shadow"
     assert extraction_cat["blocks_ci"] is False
+    assert extraction_cat["authoritative_for_public_surface"] is False
 
 
 def test_extraction_manifest_category_evaluated_with_accuracy():
@@ -197,9 +198,10 @@ def test_extraction_manifest_category_evaluated_with_accuracy():
     snapshot = build_gate_snapshot()
     extraction_cat = snapshot["categories"]["extraction"]
     # Self-consistent baseline: f1=1.0, meets min_accuracy=0.85
-    assert extraction_cat["status"] == "gating"
+    assert extraction_cat["status"] == "shadow"
     assert extraction_cat["meets_thresholds"] is True
     assert extraction_cat["blocks_ci"] is False
+    assert "actual_source_not_independent" in extraction_cat["reasons"]
 
 
 def test_extraction_manifest_category_min_accuracy_threshold():
@@ -208,7 +210,7 @@ def test_extraction_manifest_category_min_accuracy_threshold():
     manifest = load_manifest()
     extraction_config = manifest.categories["extraction"]
     assert extraction_config.min_accuracy == 0.85
-    assert extraction_config.status == "gating"
+    assert extraction_config.status == "shadow"
 
 
 def test_extraction_baseline_drift_fields_present():
@@ -226,6 +228,15 @@ def test_extraction_baseline_no_drift_by_default():
     eh = snapshot["extraction_health"]
     assert eh["baseline_drifted"] is False
     assert eh["overall_f1"] == eh["expected_baseline_f1"]
+
+
+def test_extraction_mirror_is_explicitly_calibration_only():
+    """Expected-vs-expected scores carry zero evidence for product quality."""
+    snapshot = build_gate_snapshot()
+    eh = snapshot["extraction_health"]
+    assert eh["actual_source"] == "expected_fixture_mirror"
+    assert eh["live_grading"] is False
+    assert eh["evidence_tier"] == 0
 
 
 def test_extraction_baseline_drift_detected_with_live_results():
@@ -251,9 +262,9 @@ def test_extraction_live_results_blocks_ci_when_below_threshold():
     """Low F1 with gating status should block CI via manifest category."""
     snapshot = build_gate_snapshot(extraction_live_results={})
     extraction_cat = snapshot["categories"]["extraction"]
-    assert extraction_cat["status"] == "gating"
+    assert extraction_cat["status"] == "shadow"
     assert extraction_cat["meets_thresholds"] is False
-    assert extraction_cat["blocks_ci"] is True
+    assert extraction_cat["blocks_ci"] is False
 
 
 def test_extraction_baseline_f1_constant_matches():
@@ -325,8 +336,9 @@ def test_pipeline_manifest_category_present():
     snapshot = build_gate_snapshot()
     assert "pipeline" in snapshot["categories"]
     pipeline_cat = snapshot["categories"]["pipeline"]
-    assert pipeline_cat["status"] == "gating"
+    assert pipeline_cat["status"] == "shadow"
     assert pipeline_cat["blocks_ci"] is False
+    assert pipeline_cat["authoritative_for_public_surface"] is False
 
 
 def test_pipeline_manifest_category_evaluated_with_accuracy():
@@ -336,9 +348,10 @@ def test_pipeline_manifest_category_evaluated_with_accuracy():
     snapshot["pipeline_health"]
     # Self-consistent baseline: expected outputs as actuals → 100% accuracy
     # Pipeline category is gating, and accuracy meets the 0.80 threshold
-    assert pipeline_cat["status"] == "gating"
+    assert pipeline_cat["status"] == "shadow"
     assert pipeline_cat["meets_thresholds"] is True
     assert pipeline_cat["blocks_ci"] is False
+    assert "actual_source_not_independent" in pipeline_cat["reasons"]
 
 
 def test_pipeline_manifest_category_min_accuracy_threshold():
@@ -347,7 +360,7 @@ def test_pipeline_manifest_category_min_accuracy_threshold():
     manifest = load_manifest()
     pipeline_config = manifest.categories["pipeline"]
     assert pipeline_config.min_accuracy == 0.80
-    assert pipeline_config.status == "gating"
+    assert pipeline_config.status == "shadow"
 
 
 def test_pipeline_category_blocks_ci_when_accuracy_below_threshold():
@@ -437,9 +450,9 @@ def test_pipeline_live_results_blocks_ci_when_below_threshold():
     """Low accuracy with gating status should block CI via manifest category."""
     snapshot = build_gate_snapshot(pipeline_live_results={})
     pipeline_cat = snapshot["categories"]["pipeline"]
-    assert pipeline_cat["status"] == "gating"
+    assert pipeline_cat["status"] == "shadow"
     assert pipeline_cat["meets_thresholds"] is False
-    assert pipeline_cat["blocks_ci"] is True
+    assert pipeline_cat["blocks_ci"] is False
 
 
 def test_write_gate_snapshot_with_live_results(tmp_path: Path):
@@ -479,6 +492,15 @@ def test_pipeline_baseline_no_drift_by_default():
     ph = snapshot["pipeline_health"]
     assert ph["baseline_drifted"] is False
     assert ph["overall_accuracy"] == ph["expected_baseline_accuracy"]
+
+
+def test_pipeline_mirror_is_explicitly_calibration_only():
+    """Pipeline fixture mirrors cannot be mistaken for runtime actuals."""
+    snapshot = build_gate_snapshot()
+    ph = snapshot["pipeline_health"]
+    assert ph["actual_source"] == "expected_fixture_mirror"
+    assert ph["live_grading"] is False
+    assert ph["evidence_tier"] == 0
 
 
 def test_pipeline_baseline_drift_detected_with_live_results():

@@ -1,5 +1,5 @@
 {
-  "route_count": 297,
+  "route_count": 342,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -954,6 +954,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/benchmarking/stress-test",
+      "name": "execute_stress_test",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/boundaries/authority-matrix",
       "name": "get_authority_matrix",
       "methods": [
@@ -982,6 +990,22 @@
       "name": "verify_capability_token",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/charter-aviation/empty-legs/available",
+      "name": "get_available_empty_legs",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/charter-aviation/quotes/calculate",
+      "name": "calculate_charter_quote",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },
@@ -1314,6 +1338,54 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/documents/mrz/parse-td3",
+      "name": "parse_td3_mrz",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/documents/vouchers/extract",
+      "name": "extract_vouchers_and_tickets",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/duty-of-care-radar/cockpit/summary",
+      "name": "get_duty_of_care_summary",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/epistemic/conflicts/detect",
+      "name": "detect_conversational_conflicts",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/epistemic/constraints/extract-implicit",
+      "name": "extract_implicit_constraints",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/epistemic/proof-graph/generate",
+      "name": "generate_proof_graph",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/feedback/supplier-scorecard",
       "name": "get_supplier_scorecard",
       "methods": [
@@ -1358,6 +1430,38 @@
       "name": "get_live_fx_rates",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/gds-sandbox/book",
+      "name": "book_gds_order",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/gds-sandbox/search",
+      "name": "search_gds_offers",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/group-pareto/consensus/solve",
+      "name": "solve_group_consensus",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/group-pareto/ledger/build",
+      "name": "build_split_ledger",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },
@@ -1458,6 +1562,118 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/irops-healer/heal",
+      "name": "heal_disrupted_journey",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/ivr-bypass/calls/bridge",
+      "name": "bridge_call_to_advisor",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/ivr-bypass/calls/dispatch",
+      "name": "dispatch_ivr_call",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/ivr-bypass/carriers/supported",
+      "name": "get_supported_carriers",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/journey-graph/co-terminal-buffers",
+      "name": "get_co_terminal_transfer_buffers",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/journey-graph/evaluate",
+      "name": "evaluate_journey_disruption",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/logistics/accessibility-plan",
+      "name": "create_accessibility_plan_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/logistics/connection-risk",
+      "name": "evaluate_connection_risk_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/logistics/fleet-allocation",
+      "name": "allocate_fleet_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/logistics/ground-transit",
+      "name": "evaluate_ground_transit_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/logistics/rooming-list",
+      "name": "generate_rooming_list_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/logistics/route-geometry/evaluate",
+      "name": "evaluate_route_geometry_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/logistics/route-geometry/open-jaw",
+      "name": "evaluate_open_jaw_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/logistics/timed-entry-audit",
+      "name": "audit_timed_entry_endpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/loyalty/award-search",
       "name": "search_award_availability",
       "methods": [
@@ -1546,6 +1762,46 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/orchestration/leases/acquire",
+      "name": "acquire_trip_lease",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/orchestration/leases/release",
+      "name": "release_trip_lease",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/orchestration/leases/renew",
+      "name": "renew_trip_lease",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/orchestration/leases/verify-fencing",
+      "name": "verify_fencing_token",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/orchestration/leases/{trip_id}",
+      "name": "inspect_trip_lease",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/passenger-rights/evaluate",
       "name": "evaluate_passenger_rights_claim",
       "methods": [
@@ -1580,6 +1836,14 @@
     {
       "path": "/api/v1/price-lock/{trip_id}/re-lock",
       "name": "re_lock_lower_rate",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/proposal-compiler/compile",
+      "name": "compile_autonomous_proposal",
       "methods": [
         "POST"
       ],
@@ -1666,6 +1930,38 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/settlement/commission/split",
+      "name": "calculate_commission_split",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/settlement/fx/calculate-quote",
+      "name": "calculate_fx_quote",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/settlement/schedules/build",
+      "name": "build_payment_schedule",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/settlement/vcc/issue",
+      "name": "issue_virtual_credit_card",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/subagent-payouts/{advisor_id}/ledger",
       "name": "get_advisor_ledger",
       "methods": [
@@ -1746,6 +2042,46 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/trips/{trip_id}/export/html",
+      "name": "export_trip_itinerary_html",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/history",
+      "name": "get_trip_history",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/history/checkpoint",
+      "name": "create_checkpoint",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/history/redo",
+      "name": "redo_trip_mutation",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/history/undo",
+      "name": "undo_trip_mutation",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/trips/{trip_id}/stage",
       "name": "transition_trip_stage",
       "methods": [
@@ -1764,6 +2100,14 @@
     {
       "path": "/api/v1/visa-radar/{trip_id}/requirements",
       "name": "get_trip_visa_requirements",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/yield-arbitrage/benchmark/simulate",
+      "name": "run_yield_benchmark_simulation",
       "methods": [
         "GET"
       ],
@@ -2034,6 +2378,14 @@
       "operation_id": null
     },
     {
+      "path": "/platform/admin/analytics/product-b/kpis",
+      "name": "get_platform_product_b_kpis",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/ready",
       "name": "ready",
       "methods": [
@@ -2076,6 +2428,14 @@
     {
       "path": "/runs/{run_id}/steps/{step_name}",
       "name": "get_run_step",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/stats",
+      "name": "trip_stats",
       "methods": [
         "GET"
       ],

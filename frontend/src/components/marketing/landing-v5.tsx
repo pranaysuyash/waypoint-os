@@ -20,9 +20,9 @@ const intakeRows = [
 ];
 
 const operatorProof = [
-  { value: '2m 14s', label: 'From inquiry to usable brief' },
-  { value: '3', label: 'Questions before quote' },
-  { value: '18%', label: 'Owner reviews routed' },
+  { value: 'Fact-first', label: 'Briefs start from evidence' },
+  { value: 'Human-gated', label: 'Decisions stay reviewable' },
+  { value: 'No theater', label: 'Simulated steps stay labeled' },
 ];
 
 const workflowNotes = [

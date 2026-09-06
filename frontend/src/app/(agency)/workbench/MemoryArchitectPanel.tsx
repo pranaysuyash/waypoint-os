@@ -18,12 +18,20 @@ import {
   Calendar,
   UserCheck,
 } from 'lucide-react';
+import SimulatedBadge from '@/components/ui/SimulatedBadge';
+
+/**
+ * GM-01 honesty fix: this console renders sample content only. The ingest is
+ * a client-side simulation (nothing is stored), the search results are a
+ * hardcoded fixture, and the GDPR certificate is fabricated in the browser —
+ * no memory API is called from this surface.
+ */
 
 export function MemoryArchitectPanel() {
   const [activeTier, setActiveTier] = useState<'all' | 'working' | 'episodic' | 'semantic' | 'procedural' | 'preference'>('all');
-  
+
   // Ingest form state
-  const [entityId, setEntityId] = useState('Alex Morgan (cust_alex_m)');
+  const [entityId, setEntityId] = useState('Sample Traveler (cust_sample_demo)');
   const [rawText, setRawText] = useState('Traveler strictly requires vegan meals and prefers aisle seating on transatlantic flights.');
   const [sourceType, setSourceType] = useState('traveler_direct');
   const [isSafetyCritical, setIsSafetyCritical] = useState(true);
@@ -34,7 +42,7 @@ export function MemoryArchitectPanel() {
   const [elapsedMonths, setElapsedMonths] = useState<number>(3); // 3 months ago
 
   // GDPR state
-  const [gdprTarget, setGdprTarget] = useState('Alex Morgan (cust_alex_m)');
+  const [gdprTarget, setGdprTarget] = useState('Sample Traveler (cust_sample_demo)');
   const [gdprCert, setGdprCert] = useState<any | null>(null);
 
   // Search state
@@ -88,17 +96,18 @@ export function MemoryArchitectPanel() {
   const handleSimulateIngest = () => {
     setIngestStatus('Evaluating source authority and verifying signal...');
     setTimeout(() => {
-      setIngestStatus('✅ Verified & Saved: Categorized as Dietary Safety & Seating Preference. Assigned SHA-256 Provenance Hash.');
+      setIngestStatus('Simulated ingest: categorized as Dietary Safety & Seating Preference (demo only — nothing was stored).');
     }, 500);
   };
 
   const handleExecuteGDPR = () => {
     setGdprCert({
-      certificate_id: 'GDPR-ERASURE-2026-98A7',
+      certificate_id: 'GDPR-ERASURE-SAMPLE',
       customer_id: gdprTarget,
-      records_purged: 2,
+      records_purged: 0,
       erased_at: new Date().toUTCString(),
       verification_signature: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+      is_simulated: true,
     });
   };
 
@@ -113,19 +122,22 @@ export function MemoryArchitectPanel() {
                 <Brain className="h-4 w-4" />
               </div>
               <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                Customer Profile Memory & Intelligence
+                Customer Profile Memory & Intelligence (Sample)
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/30 font-medium">
-                  Autonomous Curation
+                  Autonomous Curation (Demo)
                 </span>
               </h2>
             </div>
             <p className="text-sm text-slate-400 max-w-2xl">
-              Persistent memory across bookings with automatic noise filtering, safety guarantees, preference freshness tracking, and one-click GDPR erasure.
+              Sample console for persistent memory across bookings — freshness tracking and erasure concepts shown with sample data. This surface does not call the memory backend.
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800 text-xs text-slate-300">
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
-            <span>Multi-Tenant Isolation: <strong>Agency Secure</strong></span>
+          <div className="flex flex-col items-end gap-2">
+            <SimulatedBadge label="Sample data" />
+            <div className="flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800 text-xs text-slate-300">
+              <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              <span>Multi-Tenant Isolation: <strong>design placeholder</strong> (not runtime-verified)</span>
+            </div>
           </div>
         </div>
       </div>
@@ -162,19 +174,19 @@ export function MemoryArchitectPanel() {
       {/* Main Grid: Intake & Smart Search */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Module 1: Verified Preference Intake */}
+        {/* Module 1: Preference Intake Preview */}
         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 space-y-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-blue-400" />
-              Verified Preference Intake
+              Preference Intake Preview
             </h3>
             <span className="text-[11px] text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">
-              Auto-Curation Active
+              Sample classification only
             </span>
           </div>
           <p className="text-xs text-slate-400">
-            Captures traveler preferences, checks signal authenticity, and links them to the traveler profile.
+            Illustrates how a future intake flow could classify a traveler preference. This sample does not verify a source, write a profile, or affect a booking.
           </p>
 
           <div className="space-y-3 text-xs">
@@ -206,10 +218,10 @@ export function MemoryArchitectPanel() {
                   onChange={(e) => setSourceType(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
                 >
-                  <option value="traveler_direct">Direct Message / Email (100% Authority)</option>
-                  <option value="verified_document">Verified Passport / Booking Scan (95%)</option>
-                  <option value="agent_manual">Agent Confirmed (90%)</option>
-                  <option value="system_inferred">AI Extracted from Notes (75%)</option>
+                  <option value="traveler_direct">Direct Message / Email (sample source)</option>
+                  <option value="verified_document">Passport / Booking Scan (sample source)</option>
+                  <option value="agent_manual">Agent Confirmation (sample source)</option>
+                  <option value="system_inferred">AI Note Extraction (sample source)</option>
                 </select>
               </div>
 
@@ -221,7 +233,7 @@ export function MemoryArchitectPanel() {
                     onChange={(e) => setIsSafetyCritical(e.target.checked)}
                     className="rounded border-slate-700 bg-slate-950 text-blue-500 focus:ring-0"
                   />
-                  <span className="text-slate-300 font-medium">🛡️ Medical / Allergy (Never Expires)</span>
+                  <span className="text-slate-300 font-medium">🛡️ Medical / Allergy (sample safety flag)</span>
                 </label>
               </div>
             </div>
@@ -231,7 +243,7 @@ export function MemoryArchitectPanel() {
               className="w-full mt-2 py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
             >
               <UserCheck className="h-3.5 w-3.5" />
-              Save to Traveler Profile
+              Preview Ingest (No Save)
             </button>
 
             {ingestStatus && (
@@ -242,17 +254,17 @@ export function MemoryArchitectPanel() {
           </div>
         </div>
 
-        {/* Module 2: Smart Profile Search & Recall */}
+        {/* Module 2: Smart Profile Search & Recall Preview */}
         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 space-y-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
               <Search className="h-4 w-4 text-indigo-400" />
-              Smart Profile Search & Recall
+              Smart Profile Search & Recall (Sample)
             </h3>
-            <span className="text-[11px] text-slate-400 font-medium">Safety Filter: Active</span>
+            <span className="text-[11px] text-slate-400 font-medium">Safety filter (illustrative)</span>
           </div>
           <p className="text-xs text-slate-400">
-            Quickly query traveler habits, seating preferences, and loyalty details for upcoming trip proposals.
+            Hardcoded sample records illustrate a future search experience. No backend query runs and no result is used in a trip proposal.
           </p>
 
           <div className="flex gap-2">
@@ -264,7 +276,7 @@ export function MemoryArchitectPanel() {
               className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
             />
             <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition-colors">
-              Search
+              Search Sample Records
             </button>
           </div>
 
@@ -277,12 +289,12 @@ export function MemoryArchitectPanel() {
                     {res.category}
                   </span>
                   <span className="text-emerald-400 font-medium text-[11px]">
-                    {res.isPermanent ? 'Permanent Safety' : `${res.freshness}% Fresh`}
+                    {res.isPermanent ? 'Sample safety rule' : `${res.freshness}% sample freshness`}
                   </span>
                 </div>
                 <p className="text-xs text-slate-200">{res.summary}</p>
                 <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-900">
-                  <span>Source: {res.provenance}</span>
+                  <span>Sample source: {res.provenance}</span>
                   <span className="text-slate-500 font-mono text-[10px]">ID: {res.id}</span>
                 </div>
               </div>
@@ -300,7 +312,7 @@ export function MemoryArchitectPanel() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
               <Calendar className="h-4 w-4 text-amber-400" />
-              Traveler Preference Freshness & Expiry
+              Traveler Preference Freshness & Expiry (Preview)
             </h3>
             <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
               isFresh
@@ -314,7 +326,7 @@ export function MemoryArchitectPanel() {
           </div>
 
           <p className="text-xs text-slate-400">
-            Preferences naturally change over time. Waypoint OS tracks age and prompts agents to reconfirm stale preferences before quoting.
+            Conceptual freshness math only. This sample does not track a traveler, prompt an agent, or apply a preference to a quote.
           </p>
 
           <div className="space-y-4 text-xs">
@@ -376,21 +388,21 @@ export function MemoryArchitectPanel() {
                   <>
                     <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
                     <span className="text-slate-200">
-                      <strong>Permanent Safety Constraint:</strong> Will always apply to quotes and bookings without expiring.
+                      <strong>Sample safety rule:</strong> Illustrative only; it is not applied to quotes or bookings.
                     </span>
                   </>
                 ) : isFresh ? (
                   <>
                     <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
                     <span className="text-slate-200">
-                      <strong>Fresh & Active:</strong> Automatically included in new trip proposals.
+                      <strong>Sample freshness:</strong> Illustrative only; it is not automatically included in trip proposals.
                     </span>
                   </>
                 ) : (
                   <>
                     <AlertCircle className="h-4 w-4 text-amber-400 flex-shrink-0" />
                     <span className="text-slate-200">
-                      <strong>Needs Reconfirmation:</strong> Older than expected lifetime. The agent will prompt traveler to confirm on next quote.
+                      <strong>Sample reconfirmation state:</strong> Illustrative only; no traveler prompt is sent.
                     </span>
                   </>
                 )}
@@ -404,13 +416,13 @@ export function MemoryArchitectPanel() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
               <Trash2 className="h-4 w-4 text-rose-400" />
-              Customer Privacy & Data Erasure (GDPR)
+              Customer Privacy & Data Erasure (GDPR Preview)
             </h3>
-            <span className="text-[11px] text-rose-400 font-medium">One-Click Compliance</span>
+            <span className="text-[11px] text-rose-400 font-medium">Not connected — design only</span>
           </div>
 
           <p className="text-xs text-slate-400">
-            Permanently purges a customer's personal data upon request, replaces records with anonymous receipts, and issues a formal Certificate of Erasure.
+            Preview of a future erasure workflow. No customer records are reachable from this surface, so no data is purged and no compliance certificate is issued.
           </p>
 
           <div className="space-y-3 text-xs">
@@ -428,7 +440,7 @@ export function MemoryArchitectPanel() {
                   className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-medium text-xs transition-colors flex items-center gap-1.5 shadow-lg shadow-rose-600/20"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Forget Customer
+                  Preview Erasure (No Deletion)
                 </button>
               </div>
             </div>
@@ -437,16 +449,16 @@ export function MemoryArchitectPanel() {
               <div className="p-3.5 rounded-lg bg-rose-950/30 border border-rose-500/30 space-y-1.5 text-xs">
                 <div className="text-rose-300 font-bold flex items-center gap-1.5">
                   <CheckCircle2 className="h-4 w-4 text-rose-400" />
-                  Official Certificate of Erasure: {gdprCert.certificate_id}
+                  Simulated Certificate of Erasure: {gdprCert.certificate_id} (demo — no records were purged)
                 </div>
                 <div className="text-slate-300">
                   Customer ID: <span className="text-white font-medium">{gdprCert.customer_id}</span>
                 </div>
                 <div className="text-slate-400">
-                  Status: All personal records purged & replaced with anonymous tombstone receipts.
+                  Status: simulated — in the real product this would purge records and issue anonymous tombstone receipts. Nothing was erased in this demo.
                 </div>
                 <div className="text-[10px] text-slate-500 font-mono pt-1 border-t border-rose-900/40 break-all">
-                  Verification Signature: {gdprCert.verification_signature}
+                  Verification Signature (sample): {gdprCert.verification_signature}
                 </div>
               </div>
             )}

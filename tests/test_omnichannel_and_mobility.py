@@ -27,8 +27,13 @@ def test_messaging_webhook_flight_query():
         msg,
         active_trip_lookup={"+14155552671": "trip_italy_99"},
     )
-    assert reply.action_taken == "flight_status_dispatched"
-    assert "Gate B28" in reply.reply_text
+    # I-6 honesty rule: live flight status is not connected — the concierge
+    # logs the request for the advisor instead of fabricating gate/terminal
+    # facts (the old expectation "flight_status_dispatched" + "Gate B28"
+    # asserted fabricated Rome itinerary data).
+    assert reply.action_taken == "logged_for_advisor"
+    assert "trip_italy_99" in reply.reply_text
+    assert "Gate B28" not in reply.reply_text
     assert reply.trip_id == "trip_italy_99"
 
 

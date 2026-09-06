@@ -24,6 +24,7 @@ class TestAuditActionEnum:
     def test_all_action_values(self):
         expected = {
             "create", "update", "delete",
+            "read",
             "login", "logout", "login_failed",
             "password_reset_request", "password_reset_confirm",
             "run_start", "run_complete", "run_failed", "run_blocked",

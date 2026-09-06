@@ -25,6 +25,7 @@ import {
   Share2,
   Plus,
 } from 'lucide-react';
+import SimulatedBadge from '@/components/ui/SimulatedBadge';
 
 interface ItineraryDay {
   day: number;
@@ -169,7 +170,7 @@ export default function InteractiveProposalPage() {
       <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] flex items-center justify-center p-6">
         <div className="flex items-center gap-3 text-sm text-[#8b949e]">
           <Loader2 className="w-5 h-5 animate-spin text-[#58a6ff]" />
-          <span>Loading verified proposal...</span>
+          <span>Loading sample proposal preview...</span>
         </div>
       </div>
     );
@@ -200,13 +201,29 @@ export default function InteractiveProposalPage() {
               <span>{copied ? 'Link Copied' : 'Share'}</span>
             </button>
 
-            <div className="flex items-center gap-2 text-xs text-[#58a6ff] bg-[#1f6feb]/10 border border-[#1f6feb]/30 px-3 py-1.5 rounded-full font-medium">
+            <div className="flex items-center gap-2 text-xs text-[#8b949e] bg-[#30363d]/30 border border-[#30363d] px-3 py-1.5 rounded-full font-medium">
               <Clock className="w-3.5 h-3.5" />
-              <span>48h Price Lock Active</span>
+              <span>Illustrative pricing · no hold active</span>
             </div>
           </div>
         </div>
       </header>
+
+      <section
+        aria-label="Sample proposal notice"
+        className="max-w-5xl mx-auto mt-6 px-6"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+          <SimulatedBadge label="Sample proposal" />
+          <div className="text-xs text-[#f0e6c8] leading-relaxed">
+            <p className="font-semibold">Demonstration itinerary — not a supplier-backed booking</p>
+            <p className="text-[#d8cda9]">
+              This page is a local fixture for proposal review. Supplier availability, DMC verification,
+              pricing holds, bookings, and acceptance are not connected to an external system.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Main Container */}
       <main className="max-w-5xl mx-auto px-6 pt-8 space-y-8">
@@ -222,7 +239,7 @@ export default function InteractiveProposalPage() {
           </h1>
 
           <p className="text-[#8b949e] text-sm max-w-2xl leading-relaxed">
-            Tailor-made for your November 2026 journey with exclusive 5-star suite accommodation, private vehicle logistics, and direct bush safari charter flights.
+            Illustrative November 2026 journey with proposed 5-star suite accommodation, private vehicle logistics, and bush safari charter options. All details require supplier confirmation.
           </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-[#30363d] text-xs">
@@ -253,8 +270,8 @@ export default function InteractiveProposalPage() {
             <div className="flex items-center gap-2.5 text-[#c9d1d9]">
               <ShieldCheck className="w-4 h-4 text-[#d29922]" />
               <div>
-                <span className="text-[#8b949e] block text-[10px]">Operator Protection</span>
-                <span className="font-semibold text-[#3fb950]">Direct DMC Verified</span>
+                <span className="text-[#8b949e] block text-[10px]">Supplier status</span>
+                <span className="font-semibold text-[#d8cda9]">Sample details — confirm availability</span>
               </div>
             </div>
           </div>
@@ -267,7 +284,7 @@ export default function InteractiveProposalPage() {
               <h2 className="text-lg font-bold text-[#e6edf3]">Select Your Preferred Proposal Tier</h2>
               <p className="text-xs text-[#8b949e]">Toggle options to view differences in accommodation and logistics.</p>
             </div>
-            <span className="text-xs font-mono text-[#58a6ff]">Live Pricing Updated</span>
+            <span className="text-xs font-mono text-[#8b949e]">Illustrative pricing · not refreshed</span>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-4">
@@ -436,13 +453,13 @@ export default function InteractiveProposalPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#30363d] pb-6">
             <div>
               <span className="text-xs text-[#58a6ff] font-semibold uppercase tracking-wider">
-                Total Proposal Investment
+                Illustrative Proposal Total
               </span>
               <h3 className="text-xl font-bold text-[#e6edf3] mt-1">
                 Tier: {activeTier === 'saver' ? 'Essential Saver' : activeTier === 'curated' ? 'Signature Curator' : 'Ultra Prestige'}
               </h3>
               <p className="text-xs text-[#8b949e]">
-                Includes base accommodations, private transfers, domestic charter flight & {addOns.filter((a) => a.selected).length} add-ons.
+                Illustrative accommodation, transfer, charter, and add-on options ({addOns.filter((a) => a.selected).length} selected).
               </p>
             </div>
 
@@ -450,7 +467,7 @@ export default function InteractiveProposalPage() {
               <div className="text-3xl sm:text-4xl font-extrabold text-[#3fb950] font-mono">
                 ${grandTotal.toLocaleString()}
               </div>
-              <span className="text-xs text-[#8b949e]">Fully inclusive of local taxes & concierge fees</span>
+              <span className="text-xs text-[#8b949e]">Illustrative total; taxes and fees require confirmation</span>
             </div>
           </div>
 
@@ -458,9 +475,9 @@ export default function InteractiveProposalPage() {
           {accepted ? (
             <div className="bg-[#238636]/10 border border-[#238636]/40 rounded-xl p-6 text-center space-y-2">
               <CheckCircle2 className="w-8 h-8 text-[#3fb950] mx-auto" />
-              <h3 className="text-base font-bold text-[#3fb950]">Proposal Accepted & Hold Confirmed!</h3>
+              <h3 className="text-base font-bold text-[#3fb950]">Acceptance Preview Complete (Demo)</h3>
               <p className="text-xs text-[#c9d1d9] max-w-md mx-auto leading-relaxed">
-                Your dedicated travel curator has received your confirmation. 48-hour zero-cost DMC inventory holds have been locked in for your dates.
+                This demo rendered an acceptance result locally. A sample hold request is shown for review — nothing was submitted and no inventory hold has actually been placed.
               </p>
             </div>
           ) : (
@@ -472,16 +489,16 @@ export default function InteractiveProposalPage() {
                 className="w-full py-4 bg-[#238636] hover:bg-[#2ea043] text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-[#238636]/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {accepting ? (
-                  <span>Securing 48h Inventory Hold…</span>
+                  <span>Simulating acceptance preview…</span>
                 ) : (
                   <>
-                    <span>Accept Proposal & Lock in 48-Hour Price Hold</span>
+                    <span>Simulate Proposal Acceptance</span>
                     <ChevronRight className="w-4 h-4" />
                   </>
                 )}
               </button>
               <div className="text-center text-[11px] text-[#8b949e]">
-                Zero obligation • Holds accommodation & charter slots for 48 hours without upfront card charge
+                Demo only • no acceptance is submitted and no accommodation or charter slots are held
               </div>
             </div>
           )}

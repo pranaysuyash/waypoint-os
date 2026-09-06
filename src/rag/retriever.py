@@ -1,7 +1,9 @@
-"""Hybrid Vector + BM25 + Knowledge Graph Retriever for Waypoint OS.
+"""Hybrid local-vector + lexical + entity-boost retriever for Waypoint OS.
 
-Uses Reciprocal Rank Fusion (RRF) to merge dense semantic search,
-sparse lexical BM25 matching, and entity graph traversal with strict tenant isolation.
+Uses Reciprocal Rank Fusion (RRF) to merge deterministic hash-bucket vector
+similarity and substring lexical matching, with an optional node-label boost
+under strict tenant isolation.  This module does not yet perform semantic
+embedding retrieval or multi-hop graph traversal.
 """
 
 from typing import List, Dict
@@ -20,7 +22,11 @@ class HybridGraphVectorRetriever:
         self.rrf_k = rrf_k
 
     def retrieve(self, search_query: HybridSearchQuery) -> List[RAGSearchResult]:
-        """Perform hybrid retrieval with dense, sparse, and graph search fused via RRF."""
+        """Perform local-vector/lexical retrieval fused via RRF.
+
+        ``include_graph`` currently enables a node-label/entity-reference
+        boost; edges are persisted by the store but are not traversed here.
+        """
         agency_id = search_query.agency_id
         query_text = search_query.query
         top_k = search_query.top_k
@@ -31,7 +37,7 @@ class HybridGraphVectorRetriever:
             else None
         )
 
-        # 1. Dense Vector Search
+        # 1. Local hash-vector similarity search (not semantic embeddings).
         query_vector = generate_local_embedding(query_text)
         dense_results = self.store.search_dense(
             query_vector=query_vector,
@@ -40,7 +46,7 @@ class HybridGraphVectorRetriever:
             source_types=source_type_filter,
         )
 
-        # 2. Sparse Lexical BM25 Search
+        # 2. Sparse substring lexical heuristic (not standards-compliant BM25).
         sparse_results = self.store.search_sparse_bm25(
             query_text=query_text,
             agency_id=agency_id,
@@ -71,12 +77,12 @@ class HybridGraphVectorRetriever:
         for chunk_id in all_chunk_ids:
             score = 0.0
             if chunk_id in dense_ranks:
-                score += (1.0 - search_query.alpha) * (1.0 / (self.rrf_k + dense_ranks[chunk_id]))
+                score += search_query.alpha * (1.0 / (self.rrf_k + dense_ranks[chunk_id]))
             if chunk_id in sparse_ranks:
-                score += search_query.alpha * (1.0 / (self.rrf_k + sparse_ranks[chunk_id]))
+                score += (1.0 - search_query.alpha) * (1.0 / (self.rrf_k + sparse_ranks[chunk_id]))
             rrf_scores[chunk_id] = score
 
-        # 4. Optional Knowledge Graph Boosting
+        # 4. Optional node-label/entity-reference boost (no edge traversal).
         if search_query.include_graph:
             graph_nodes = self.store.get_nodes(agency_id)
             query_lower = query_text.lower()

@@ -21,6 +21,7 @@ from spine_api.core.database import get_db
 from spine_api.core.security import decode_token_safe
 from spine_api.models.tenant import User, Membership, Agency
 from spine_api.core.rls import set_rls_agency
+from spine_api.core.startup_assertions import auth_bypass_enabled
 
 # Security scheme for Swagger docs
 security_bearer = HTTPBearer(auto_error=False)
@@ -58,7 +59,7 @@ async def get_current_user(
         token = request.cookies.get("access_token")
 
     if not token:
-        if os.environ.get("SPINE_API_DISABLE_AUTH"):
+        if auth_bypass_enabled():
             return User(id="test_user", email="test_user@test.com", is_active=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -68,7 +69,7 @@ async def get_current_user(
 
     payload = decode_token_safe(token)
     if not payload:
-        if os.environ.get("SPINE_API_DISABLE_AUTH"):
+        if auth_bypass_enabled():
             return User(id="test_user", email="test_user@test.com", is_active=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -93,7 +94,7 @@ async def get_current_user(
     except Exception:
         user = None
 
-    if not user and os.environ.get("SPINE_API_DISABLE_AUTH"):
+    if not user and auth_bypass_enabled():
         user = User(id=user_id, email=f"{user_id}@test.com", is_active=True)
 
     if not user or not user.is_active:
@@ -149,7 +150,7 @@ async def get_current_membership(
     except Exception:
         membership = None
 
-    if not membership and os.environ.get("SPINE_API_DISABLE_AUTH"):
+    if not membership and auth_bypass_enabled():
         agency_id = jwt_agency_id or "default_agency"
         membership = Membership(user_id=user.id, agency_id=agency_id, role="owner", is_primary=True)
         set_rls_agency(agency_id)
@@ -178,7 +179,7 @@ async def get_current_agency_id(
     in production would let a caller read or write another agency's trips.
     In automated pytest scenarios, explicit X-Agency-ID headers are respected for test isolation.
     """
-    if request is not None and (os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("SPINE_API_DISABLE_AUTH")):
+    if request is not None and (os.environ.get("PYTEST_CURRENT_TEST") or auth_bypass_enabled()):
         header_agency = request.headers.get("X-Agency-ID")
         if header_agency:
             return header_agency

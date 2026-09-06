@@ -493,6 +493,91 @@ def is_known_destination(name: str) -> bool:
 
 
 # =============================================================================
+# COUNTRY TO GATEWAY CITIES HIERARCHY (D-03)
+# =============================================================================
+
+COUNTRY_GATEWAYS: Dict[str, Dict[str, Any]] = {
+    "italy": {
+        "country_code": "IT",
+        "canonical_name": "Italy",
+        "primary_hubs": ["FCO", "MXP", "VCE", "FLR"],
+        "recommended_cities": ["Rome", "Florence", "Venice", "Milan"],
+        "is_country_level": True,
+    },
+    "japan": {
+        "country_code": "JP",
+        "canonical_name": "Japan",
+        "primary_hubs": ["HND", "NRT", "KIX"],
+        "recommended_cities": ["Tokyo", "Kyoto", "Osaka"],
+        "is_country_level": True,
+    },
+    "france": {
+        "country_code": "FR",
+        "canonical_name": "France",
+        "primary_hubs": ["CDG", "ORY", "NCE"],
+        "recommended_cities": ["Paris", "Nice", "Lyon"],
+        "is_country_level": True,
+    },
+    "switzerland": {
+        "country_code": "CH",
+        "canonical_name": "Switzerland",
+        "primary_hubs": ["ZRH", "GVA", "BSL"],
+        "recommended_cities": ["Zurich", "Geneva", "Lucerne", "Zermatt"],
+        "is_country_level": True,
+    },
+    "united kingdom": {
+        "country_code": "GB",
+        "canonical_name": "United Kingdom",
+        "primary_hubs": ["LHR", "LGW", "EDI"],
+        "recommended_cities": ["London", "Edinburgh"],
+        "is_country_level": True,
+    },
+    "uk": {
+        "country_code": "GB",
+        "canonical_name": "United Kingdom",
+        "primary_hubs": ["LHR", "LGW", "EDI"],
+        "recommended_cities": ["London", "Edinburgh"],
+        "is_country_level": True,
+    },
+    "spain": {
+        "country_code": "ES",
+        "canonical_name": "Spain",
+        "primary_hubs": ["MAD", "BCN", "AGP"],
+        "recommended_cities": ["Madrid", "Barcelona", "Seville"],
+        "is_country_level": True,
+    },
+    "greece": {
+        "country_code": "GR",
+        "canonical_name": "Greece",
+        "primary_hubs": ["ATH", "JMK", "JTR"],
+        "recommended_cities": ["Athens", "Santorini", "Mykonos"],
+        "is_country_level": True,
+    },
+}
+
+
+def resolve_destination_hierarchy(destination_name: str) -> Dict[str, Any]:
+    """
+    Resolves whether a destination query is a high-level country vs specific city.
+    If country-level, provides recommended committed gateway cities and hubs.
+    """
+    clean = (destination_name or "").strip().lower()
+    if clean in COUNTRY_GATEWAYS:
+        return {
+            "type": "country",
+            "name": clean,
+            **COUNTRY_GATEWAYS[clean],
+        }
+
+    return {
+        "type": "city",
+        "name": destination_name,
+        "is_country_level": False,
+        "country": get_city_country(destination_name) if is_known_city(destination_name) else None,
+    }
+
+
+# =============================================================================
 # EXPORTS
 # =============================================================================
 
@@ -505,6 +590,8 @@ __all__ = [
     "get_attribution_notice",
     "clear_cache",
     "get_city_country",
+    "resolve_destination_hierarchy",
+    "COUNTRY_GATEWAYS",
     "_BLACKLIST",
     "_MIN_POPULATION",
 ]

@@ -1,0 +1,34 @@
+with open('frontend/src/app/(agency)/workbench/PersonaCouncilPanel.tsx', 'r') as f:
+    code = f.read()
+
+# 1. Add imports
+import_stmt = """import { JourneyGraphVisualizer } from './JourneyGraphVisualizer';
+import { TimeTravelScrubber } from './TimeTravelScrubber';
+import { History, GitFork } from 'lucide-react';
+"""
+code = import_stmt + code
+
+# 2. Update CouncilViewType
+code = code.replace(
+    "type CouncilViewType = 'all' | 'route'",
+    "type CouncilViewType = 'all' | 'journeygraph' | 'timetravel' | 'route'"
+)
+
+# 3. Add buttons to selector
+selector_target = "{ key: 'all', label: 'All Operational Engines', icon: Layers },"
+selector_addition = """{ key: 'all', label: 'All Operational Engines', icon: Layers },
+          { key: 'journeygraph', label: 'Journey Graph (JDG) Simulator', icon: GitFork },
+          { key: 'timetravel', label: 'Time-Travel & Rollback Stack', icon: History },"""
+code = code.replace(selector_target, selector_addition)
+
+# 4. Add conditional renders
+render_target = "{activeCouncilView === 'route' && <RouteLogisticsPanel />}"
+render_addition = """{activeCouncilView === 'journeygraph' && <JourneyGraphVisualizer />}
+      {activeCouncilView === 'timetravel' && <TimeTravelScrubber />}
+      {activeCouncilView === 'route' && <RouteLogisticsPanel />}"""
+code = code.replace(render_target, render_addition)
+
+with open('frontend/src/app/(agency)/workbench/PersonaCouncilPanel.tsx', 'w') as f:
+    f.write(code)
+
+print("Updated PersonaCouncilPanel.tsx with JourneyGraphVisualizer and TimeTravelScrubber")

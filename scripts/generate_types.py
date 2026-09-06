@@ -53,6 +53,10 @@ try:
     with open(OUTPUT_FILE, "r") as f:
         body = f.read()
 
+    # The generated output is lint-clean; avoid a blanket eslint disable that
+    # triggers `reportUnusedDisableDirectives` in the repository gate.
+    body = body.replace("/* eslint-disable */\n", "")
+
     with open(OUTPUT_FILE, "w") as f:
         f.write(HEADER + body)
 

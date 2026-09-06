@@ -15,6 +15,7 @@ import pytest
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from spine_api.core.database import DATABASE_URL
 from spine_api.core.rls import (
@@ -182,6 +183,123 @@ async def test_trips_rls_hides_cross_tenant_rows_for_runtime_role():
         )
 
     assert visible_ids == [trip_a]
+
+
+@pytest.mark.asyncio
+async def test_trips_rls_blocks_cross_tenant_writes_for_runtime_role():
+    """RLS must protect writes, not only hide rows from SELECT.
+
+    Agency A may not update or delete agency B's row, and a session scoped to
+    agency A may not insert a row carrying agency B's agency_id. The final
+    assertion exercises the policy's WITH CHECK clause; without it, an
+    application bug could create an inaccessible row under the wrong tenant.
+    The whole probe is rolled back and uses an explicit savepoint around the
+    expected PostgreSQL policy violation so one rejected INSERT does not abort
+    the rest of the transaction.
+    """
+    probe = uuid4().hex[:12]
+    agency_a = f"rls-write-a-{probe}"
+    agency_b = f"rls-write-b-{probe}"
+    trip_a = f"trip-write-a-{probe}"
+    trip_b = f"trip-write-b-{probe}"
+    forged_trip = f"trip-write-forged-{probe}"
+    now = datetime.now(timezone.utc)
+
+    test_engine = _make_test_engine()
+    try:
+        async with test_engine.connect() as conn:
+            posture = await inspect_rls_runtime_posture(conn)
+            await conn.rollback()
+            if posture.risks:
+                pytest.xfail(
+                    "Runtime role can bypass RLS: " + "; ".join(posture.risks)
+                )
+
+            trans = await conn.begin()
+            try:
+                agency_insert = text(
+                    """
+                    INSERT INTO agencies (
+                        id, name, slug, plan, settings, created_at, jurisdiction, is_test
+                    ) VALUES (
+                        :id, :name, :slug, 'probe', '{}'::json, :created_at, 'other', true
+                    )
+                    """
+                )
+                await conn.execute(
+                    agency_insert,
+                    {"id": agency_a, "name": "RLS Write Probe A", "slug": f"rls-write-a-{probe}", "created_at": now},
+                )
+                await conn.execute(
+                    agency_insert,
+                    {"id": agency_b, "name": "RLS Write Probe B", "slug": f"rls-write-b-{probe}", "created_at": now},
+                )
+
+                trip_insert = text(
+                    """
+                    INSERT INTO trips (
+                        id, agency_id, source, status, stage, extracted, validation,
+                        decision, safety, raw_input, created_at
+                    ) VALUES (
+                        :id, :agency_id, 'probe', 'new', 'discovery', '{}'::json,
+                        '{}'::json, '{}'::json, '{}'::json, '{}'::json, :created_at
+                    )
+                    """
+                )
+                await conn.execute(
+                    text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
+                    {"agency_id": agency_a},
+                )
+                await conn.execute(
+                    trip_insert,
+                    {"id": trip_a, "agency_id": agency_a, "created_at": now},
+                )
+                await conn.execute(
+                    text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
+                    {"agency_id": agency_b},
+                )
+                await conn.execute(
+                    trip_insert,
+                    {"id": trip_b, "agency_id": agency_b, "created_at": now},
+                )
+
+                await conn.execute(
+                    text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
+                    {"agency_id": agency_a},
+                )
+                update_result = await conn.execute(
+                    text("UPDATE trips SET status = 'tampered' WHERE id = :trip_id"),
+                    {"trip_id": trip_b},
+                )
+                delete_result = await conn.execute(
+                    text("DELETE FROM trips WHERE id = :trip_id"),
+                    {"trip_id": trip_b},
+                )
+                assert update_result.rowcount == 0
+                assert delete_result.rowcount == 0
+
+                # A mismatched agency_id must be rejected by WITH CHECK. Use a
+                # savepoint because PostgreSQL aborts the surrounding
+                # transaction after a policy violation.
+                nested = await conn.begin_nested()
+                try:
+                    await conn.execute(
+                        trip_insert,
+                        {"id": forged_trip, "agency_id": agency_b, "created_at": now},
+                    )
+                except DBAPIError as exc:
+                    sqlstate = getattr(exc.orig, "sqlstate", None) or getattr(exc.orig, "pgcode", None)
+                    assert sqlstate == "42501" or "row-level security" in str(exc).lower()
+                    await nested.rollback()
+                    insert_blocked = True
+                else:
+                    await nested.rollback()
+                    insert_blocked = False
+                assert insert_blocked is True
+            finally:
+                await trans.rollback()
+    finally:
+        await test_engine.dispose()
 
 
 @pytest.mark.asyncio

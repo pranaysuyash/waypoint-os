@@ -48,6 +48,8 @@ class ReLockRequest(BaseModel):
     new_net_rate_cents: int
     supplier_name: Optional[str] = None
     advisor_note: Optional[str] = None
+    expected_version: Optional[int] = None
+    idempotency_key: Optional[str] = None
 
 
 class ReLockResponse(BaseModel):
@@ -57,17 +59,29 @@ class ReLockResponse(BaseModel):
     new_net_rate_cents: int
     margin_saved_cents: int
     updated_at: str
+    version: int = 1
 
 
 def _get_price_lock_expires_at(trip: dict) -> datetime:
-    """Calculate price lock expiration timestamp (default 72 hours from saved_at or created_at)."""
+    """Calculate price lock expiration timestamp (default 72 hours from saved_at or created_at).
+
+    Reads BOTH write locations (F-32 split-brain): `strategy.price_lock_expires_at`
+    and the trip top-level key written by the social-inbound path
+    (`social_inbound.py` writes `trip["price_lock_expires_at"]`). Either source
+    wins over the recomputed fallback so the sentinel sees what was written.
+    """
+    raw_candidates = []
     strategy = trip.get("strategy", {}) or {}
-    raw_exp = strategy.get("price_lock_expires_at")
-    if raw_exp:
+    if strategy.get("price_lock_expires_at"):
+        raw_candidates.append(strategy["price_lock_expires_at"])
+    if trip.get("price_lock_expires_at"):
+        raw_candidates.append(trip["price_lock_expires_at"])
+
+    for raw_exp in raw_candidates:
         try:
-            return datetime.fromisoformat(raw_exp.replace("Z", "+00:00"))
+            return datetime.fromisoformat(str(raw_exp).replace("Z", "+00:00"))
         except (ValueError, TypeError):
-            pass
+            continue
 
     base_time_str = trip.get("saved_at") or trip.get("created_at")
     if base_time_str:
@@ -187,12 +201,36 @@ async def re_lock_lower_rate(
     body: ReLockRequest,
     agency_id: str = Depends(get_current_agency_id),
 ):
-    """Re-lock a lower net rate quote, updating trip strategy and logging margin savings."""
+    """Re-lock a lower net rate quote, updating trip strategy and logging margin savings with optimistic locking."""
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
+    current_version = int(trip.get("version") or 1)
+
+    # Optimistic locking guard (F-01)
+    if body.expected_version is not None and body.expected_version != current_version:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Conflict: trip version mismatch (expected {body.expected_version}, current {current_version}). Re-lock aborted to prevent race condition.",
+        )
+
     strategy = trip.setdefault("strategy", {})
+    applied_idempotency_keys = strategy.setdefault("price_lock_idempotency_keys", {})
+
+    # Idempotent re-entry check (F-01)
+    if body.idempotency_key and body.idempotency_key in applied_idempotency_keys:
+        cached = applied_idempotency_keys[body.idempotency_key]
+        return ReLockResponse(
+            ok=True,
+            trip_id=trip_id,
+            previous_net_rate_cents=cached["previous_net_rate_cents"],
+            new_net_rate_cents=cached["new_net_rate_cents"],
+            margin_saved_cents=cached["margin_saved_cents"],
+            updated_at=cached["updated_at"],
+            version=current_version,
+        )
+
     rec_option = strategy.setdefault("recommended_option", {})
 
     cost = rec_option.get("cost") or 0
@@ -209,6 +247,15 @@ async def re_lock_lower_rate(
     now_iso = datetime.now(timezone.utc).isoformat()
     strategy["price_lock_re_locked_at"] = now_iso
     strategy["price_lock_margin_saved_cents"] = margin_saved_cents
+    trip["version"] = current_version + 1
+
+    if body.idempotency_key:
+        applied_idempotency_keys[body.idempotency_key] = {
+            "previous_net_rate_cents": prev_net_cents,
+            "new_net_rate_cents": new_net_cents,
+            "margin_saved_cents": margin_saved_cents,
+            "updated_at": now_iso,
+        }
 
     TripStore.save_trip(trip, agency_id=agency_id)
 
@@ -222,6 +269,8 @@ async def re_lock_lower_rate(
             "margin_saved_cents": margin_saved_cents,
             "supplier_name": body.supplier_name or rec_option.get("name"),
             "advisor_note": body.advisor_note,
+            "version": trip["version"],
+            "idempotency_key": body.idempotency_key,
         },
     )
 
@@ -232,4 +281,5 @@ async def re_lock_lower_rate(
         new_net_rate_cents=new_net_cents,
         margin_saved_cents=margin_saved_cents,
         updated_at=now_iso,
+        version=trip["version"],
     )

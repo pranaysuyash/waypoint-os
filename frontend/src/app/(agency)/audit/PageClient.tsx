@@ -499,11 +499,13 @@ export default function AuditPage() {
   const tripEvents = sources?.tripEvents ?? [];
   const routingHealthAlerts = sources?.routingHealthAlerts ?? [];
   const routingHealthPagingAlerts = sources?.routingHealthPagingAlerts ?? [];
-  const routingHealthAlertTriages = sources?.routingHealthAlertTriages ?? [];
+  // Keep the optional source reference stable; construct the empty fallback
+  // only inside the memo so exhaustive-deps tracks the actual source value.
+  const routingHealthAlertTriages = sources?.routingHealthAlertTriages;
   const routingHealthPagingSuppressions = sources?.routingHealthPagingSuppressions ?? [];
 
   const triageByAlert = useMemo(() => {
-    const base = readTriageEvents(routingHealthAlertTriages);
+    const base = readTriageEvents(routingHealthAlertTriages ?? []);
     for (const [key, override] of Object.entries(triageOverrides)) {
       const existing = base[key];
       const details = override.details ?? {};

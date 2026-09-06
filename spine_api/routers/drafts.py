@@ -276,6 +276,28 @@ def promote_draft(
     if draft.status == "promoted":
         raise HTTPException(status_code=409, detail="Draft already promoted")
 
+    # S-05 (RT-03): the caller-supplied trip_id must resolve within the caller's
+    # agency before promotion. An unchecked cross-tenant trip_id poisons the
+    # draft -> trip link (downstream reprocess resolves it via an unscoped
+    # get_trip) and fails the save (or silently forks a duplicate trip).
+    # The agency-scoped lookup returns 404 without leaking foreign-trip existence.
+    trip = persistence.TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
+        # Keep the client response indistinguishable from a missing trip while
+        # retaining an internal, metadata-only denial record for security
+        # operations and incident review. Never include foreign-trip contents.
+        AuditStore.log_event(
+            "draft_promote_denied",
+            user.id,
+            {
+                "draft_id": draft_id,
+                "trip_id": trip_id,
+                "agency_id": agency.id,
+                "reason": "trip_not_in_agency",
+            },
+        )
+        raise HTTPException(status_code=404, detail="Trip not found in your agency")
+
     promoted = DraftStore.promote(draft_id, trip_id)
     if promoted:
         AuditStore.log_event("draft_promoted", user.id, {

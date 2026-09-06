@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Dict, List, Literal, Optional, Tuple
@@ -318,6 +319,12 @@ MVB_BY_STAGE = {
     },
 }
 
+# ``budget_raw_text`` is the provenance-preserving form of the same budget
+# constraint represented numerically/semantically by ``budget_min``.  They are
+# an OR-group, not two independent requirements.  Keep the public MVB lists
+# backwards-compatible, but evaluate this group as one logical blocker below.
+BUDGET_SOFT_BLOCKER_GROUP = ("budget_raw_text", "budget_min")
+
 # Legacy aliases for backward compat with existing fixtures.
 # DEPRECATED: These will be removed in a future version.
 # All code should use canonical v0.2 field names directly.
@@ -374,6 +381,13 @@ CONTRADICTION_ACTIONS = {
     "document_conflict":    {"decision": "STOP_NEEDS_REVIEW",  "priority": "critical"},
     "general_conflict":     {"decision": "ASK_FOLLOWUP",       "priority": "medium"},
 }
+
+# High-priority conflicts that must be user-confirmed before any quote path.
+# ``budget_feasibility`` is intentionally excluded: its action is stage-gated
+# below and the discovery/shortlist policy represents it as a soft blocker,
+# not an immediate escalation.  Critical STOP actions remain universally
+# actionable through the action table.
+HIGH_PRIORITY_ESCALATION_TYPES = frozenset({"party_conflict", "origin_conflict"})
 
 
 def classify_contradiction(field_name: str) -> str:
@@ -497,6 +511,14 @@ def field_fills_blocker(
     CRITICAL: hypotheses do NOT fill blockers.
     """
     if slot is None or slot.value is None:
+        return False
+    # Empty values are not evidence.  This guard intentionally lives at the
+    # decision boundary as defense-in-depth for imported/structured packets
+    # that bypass normalizer-level cleanup.
+    if isinstance(slot.value, str):
+        if not slot.value.strip():
+            return False
+    elif isinstance(slot.value, Collection) and not slot.value:
         return False
     # Must be fact or derived_signal authority
     if not AuthorityLevel.is_fact(slot.authority_level) and \
@@ -1997,7 +2019,30 @@ def run_gap_and_decision(
             if field_name not in hard_blockers:
                 hard_blockers.append(field_name)
 
+    evaluated_soft_fields: set[str] = set()
     for field_name in mvb["soft_blockers"]:
+        if field_name in evaluated_soft_fields:
+            continue
+
+        # Budget raw text and normalized minimum are two representations of
+        # one constraint.  Evaluate them atomically so structured/CRM input
+        # that carries only the normalized value does not get demoted merely
+        # because it lacks a conversational echo (and vice versa).
+        if field_name in BUDGET_SOFT_BLOCKER_GROUP:
+            budget_fields = tuple(
+                field for field in BUDGET_SOFT_BLOCKER_GROUP
+                if field in mvb["soft_blockers"]
+            )
+            evaluated_soft_fields.update(budget_fields)
+            if not any(
+                field_fills_blocker(resolve_field(packet, budget_field), ambiguities, budget_field)
+                for budget_field in budget_fields
+            ):
+                # Emit one canonical blocker for the logical budget dimension.
+                soft_blockers.append("budget_min")
+            continue
+
+        evaluated_soft_fields.add(field_name)
         slot = resolve_field(packet, field_name)
         if not field_fills_blocker(slot, ambiguities, field_name):
             soft_blockers.append(field_name)
@@ -2032,12 +2077,24 @@ def run_gap_and_decision(
             soft_blockers = apply_urgency(urgency.value, soft_blockers)
 
     # --- Phase 7: Contradiction evaluation ---
-    critical_contradictions = []
+    actionable_contradictions = []
     for c in contradictions:
         ctype = classify_contradiction(c.get("field_name", ""))
         action = get_contradiction_action(ctype)
-        if action["priority"] == "critical":
-            critical_contradictions.append({**c, "action": action, "type": ctype})
+        # The action table is the policy source of truth.  Previously this
+        # phase selected only ``priority == critical`` and silently discarded
+        # high-priority ASK actions such as party/origin conflicts.  Keep the
+        # stage-gated budget-feasibility branch below independent from this
+        # immediate conflict escalation path.
+        is_stop = action.get("decision") == "STOP_NEEDS_REVIEW"
+        is_critical_escalation = action.get("priority") == "critical"
+        is_high_priority_escalation = (
+            action.get("decision") == "ASK_FOLLOWUP"
+            and action.get("priority") == "high"
+            and ctype in HIGH_PRIORITY_ESCALATION_TYPES
+        )
+        if is_stop or is_critical_escalation or is_high_priority_escalation:
+            actionable_contradictions.append({**c, "action": action, "type": ctype})
 
     # --- Phase 8: Confidence ---
     confidence_scorecard = calculate_confidence(packet, feasibility=feasibility)
@@ -2049,19 +2106,21 @@ def run_gap_and_decision(
     decision_state: Optional[str] = forced_decision
 
     if decision_state is None:
-        # Critical contradictions → STOP or ASK
-        if critical_contradictions:
-            for cc in critical_contradictions:
+        # Policy-action contradictions → STOP or ASK.  STOP always wins over
+        # ASK when multiple independent conflicts are present.
+        if actionable_contradictions:
+            for cc in actionable_contradictions:
                 follow_up_questions.append({
                     "field_name": cc["field_name"],
                     "question": generate_question(cc["field_name"]),
-                    "priority": "critical",
+                    "priority": cc["action"].get("priority", "high"),
                     "can_infer": False,
                     "inference_confidence": 0.0,
                 })
-            has_date_conflict = any(cc["type"] == "date_conflict" for cc in critical_contradictions)
-            has_document_conflict = any(cc["type"] == "document_conflict" for cc in critical_contradictions)
-            if has_date_conflict or has_document_conflict:
+            if any(
+                cc["action"].get("decision") == "STOP_NEEDS_REVIEW"
+                for cc in actionable_contradictions
+            ):
                 decision_state = "STOP_NEEDS_REVIEW"
             else:
                 decision_state = "ASK_FOLLOWUP"

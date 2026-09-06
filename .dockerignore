@@ -2,6 +2,20 @@
 .git
 .gitignore
 
+# Build-time secrets and credentials. Docker's build context is independent of
+# Git's ignore rules; keep every dotenv/certificate/key artifact out of every
+# root-context image build (including local examples).
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+
 # Python
 __pycache__
 *.py[cod]
@@ -32,6 +46,43 @@ specs/
 tests/
 tools/
 *.log
+
+# Runtime/user state. Production compose uses SQL and external/shared storage;
+# these paths are created by the process when needed and must never be baked
+# from a developer checkout into an image layer.
+data/*
+!data/
+!data/cities.json
+!data/cities5000.txt
+!data/config/
+!data/config/seasonal_campaigns.json
+
+# Keep the broad rule above as a default-deny guard, and name the high-risk
+# runtime directories explicitly so policy review catches future relocations.
+data/runs/
+data/documents/
+data/audit/
+data/trips/
+data/test_trips/
+data/drafts/
+data/memory/
+data/product_b_events/
+data/proposals/
+data/guard/
+data/overrides/
+data/assignments/
+data/logs/
+data/kdd/
+
+# Evaluation, fixtures, and local team/demo state are not production inputs.
+data/fixtures/
+data/evals/
+data/shadow/
+data/team/
+data/workflows.json
+data/accumulated_cities.json
+data/accumulated_cities.lock
+data/test.db
 
 # IDE
 .vscode

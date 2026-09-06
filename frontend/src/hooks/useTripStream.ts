@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { startTransition, useEffect, useState, useRef, useCallback } from 'react';
 
 export interface TripStreamEvent {
   event_id?: string;
@@ -23,7 +23,10 @@ export function useTripStream(tripId: string | null | undefined, options: UseTri
   const [error, setError] = useState<Error | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   const clearEvents = useCallback(() => {
     setEvents([]);
@@ -31,7 +34,7 @@ export function useTripStream(tripId: string | null | undefined, options: UseTri
 
   useEffect(() => {
     if (!tripId || !enabled || typeof window === 'undefined') {
-      setIsConnected(false);
+      startTransition(() => setIsConnected(false));
       return;
     }
 
@@ -71,8 +74,10 @@ export function useTripStream(tripId: string | null | undefined, options: UseTri
       };
     } catch (err) {
       if (!isUnmounted) {
-        setIsConnected(false);
-        setError(err instanceof Error ? err : new Error('Failed to create EventSource'));
+        startTransition(() => {
+          setIsConnected(false);
+          setError(err instanceof Error ? err : new Error('Failed to create EventSource'));
+        });
       }
     }
 
@@ -82,7 +87,7 @@ export function useTripStream(tripId: string | null | undefined, options: UseTri
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
-      setIsConnected(false);
+      startTransition(() => setIsConnected(false));
     };
   }, [tripId, enabled]);
 

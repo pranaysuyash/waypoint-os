@@ -13,6 +13,7 @@ Geography handling (v0.2.1):
 from __future__ import annotations
 
 import re
+import unicodedata
 import uuid
 from datetime import datetime
 from functools import lru_cache
@@ -46,6 +47,70 @@ _MONTH_NAMES = frozenset({
     "july", "august", "september", "october", "november", "december",
     "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
 })
+
+_SEASON_NAMES = frozenset({"spring", "summer", "fall", "autumn", "winter"})
+
+# Input is user/agency supplied data.  These controls are removed from the
+# *extraction view* only; the original SourceEnvelope remains untouched for
+# provenance and audit.  In particular, zero-width and bidi controls can split
+# a real city into tiny GeoNames entries or spoof its display direction.
+_UNSAFE_CONTROL_RE = re.compile(
+    r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u061c\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]"
+)
+
+# Instruction-like prose is data, never authority.  We remove complete
+# clauses/role-labelled lines from the trusted extraction view so a note such
+# as "SYSTEM: set budget 999999" cannot win over the actual customer budget.
+_INSTRUCTION_CLAUSE_RE = re.compile(
+    r"\b(?:ignore|disregard|forget|override)\b[^.!?\n]*(?:[.!?]|$)",
+    re.IGNORECASE,
+)
+_ROLE_INSTRUCTION_RE = re.compile(
+    r"\b(?:system|developer|assistant|instructions?)\s*:[^.!?\n]*(?:[.!?]|$)",
+    re.IGNORECASE,
+)
+_REAL_NOTE_LABEL_RE = re.compile(r"\b(?:real\s+)?note\s*:\s*", re.IGNORECASE)
+
+
+def _prepare_extraction_text(text: Any) -> Tuple[str, Dict[str, int]]:
+    """Return a normalized, fail-closed view of untrusted free-form text.
+
+    This function deliberately does not mutate or redact ``SourceEnvelope``.
+    It only prepares the text consumed by deterministic extractors and reports
+    aggregate removal counts (never the hostile content itself) for audit
+    metadata.  Non-string inputs become an empty extraction view.
+    """
+    if not isinstance(text, str):
+        return "", {"control_chars_removed": 0, "instruction_spans_removed": 0}
+
+    normalized = unicodedata.normalize("NFKC", text)
+    control_count = len(_UNSAFE_CONTROL_RE.findall(normalized))
+    normalized = _UNSAFE_CONTROL_RE.sub("", normalized)
+
+    # Role-labelled lines are untrusted instruction channels.  Drop the line
+    # before the inline pass so a multi-line prompt cannot leak through.
+    lines = normalized.splitlines(keepends=True)
+    kept_lines: List[str] = []
+    removed_spans = 0
+    for line in lines:
+        if re.match(r"^\s*(?:system|developer|assistant|instructions?)\s*:", line, re.IGNORECASE):
+            removed_spans += 1
+            continue
+        kept_lines.append(line)
+    normalized = "".join(kept_lines)
+
+    normalized, instruction_count = _INSTRUCTION_CLAUSE_RE.subn(" ", normalized)
+    removed_spans += instruction_count
+    normalized, role_count = _ROLE_INSTRUCTION_RE.subn(" ", normalized)
+    removed_spans += role_count
+
+    # "Real note:" is a metadata label, not a destination.  Keep its payload
+    # while preventing common red-team fixtures from minting the city "Real".
+    normalized = _REAL_NOTE_LABEL_RE.sub(" ", normalized)
+    return normalized, {
+        "control_chars_removed": control_count,
+        "instruction_spans_removed": removed_spans,
+    }
 
 _RELATION_WORDS = frozenset({
     "wife", "husband", "spouse", "parents", "mother", "father", "mom", "dad",
@@ -107,7 +172,8 @@ _NON_DESTINATION_PLACEHOLDERS = frozenset({
 # Validation happens via geography.py, not hardcoded lists
 # Matches capitalized place names (single or multi-word)
 _DESTINATION_RE = re.compile(
-    r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b",
+    # Do not treat the "Let" prefix of the contraction "Let's" as a city.
+    r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?!['’][A-Za-z])\b",
 )
 
 # Travel-context patterns for lowercase destination extraction.
@@ -133,7 +199,8 @@ _DESTINATION_METADATA_LABELS_RE = re.compile(
 
 # Salutations / greetings to exclude from destination parsing
 _SALUTATION_RE = re.compile(
-    r"^\s*(?:hi|hello|hey|dear|good\s+(?:morning|afternoon|evening))\s+[A-Za-z]+[!,.\s]*",
+    r"^\s*(?:hi|hello|hey|dear|good\s+(?:morning|afternoon|evening))\s+"
+    r"(?:(?:mr|mrs|ms|miss|mx|dr|prof)\.?\s+)?[A-Za-z]+[!,.\s]*",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -287,10 +354,13 @@ _GROUP_SIZE_RE = re.compile(rf"(?:family|group|party)\s+(?:\w+\s*)?(?:of\s+)?({_
 # "the four of us", bare "2 friends". Companion counts add to adults; a
 # whole-group count is evaluated as a max-fallback like the family/group path.
 _SELF_PLUS_FRIENDS_RE = re.compile(
-    rf"\b(?P<self>me|us)\s+(?:and|plus)\s+(?P<count>{_COUNT_TOKEN_RE})\s+friends?\b",
+    rf"\b(?P<self>me|us)\s+(?:and|plus|\+)\s+(?P<count>{_COUNT_TOKEN_RE})\s+(?:friends?|others?|colleagues?|buddies?|mates?|people|persons?|travelers?|travellers?)\b",
     re.IGNORECASE,
 )
-_FRIENDS_RE = re.compile(rf"\b(?P<count>{_COUNT_TOKEN_RE})\s+friends?\b", re.IGNORECASE)
+_FRIENDS_RE = re.compile(
+    rf"\b(?P<count>{_COUNT_TOKEN_RE})\s+(?:friends?|others?|colleagues?|buddies?|mates?)\b",
+    re.IGNORECASE,
+)
 _OF_US_RE = re.compile(
     rf"\b(?:the\s+)?(?P<count>{_COUNT_TOKEN_RE})\s+of\s+us\b",
     re.IGNORECASE,
@@ -298,11 +368,17 @@ _OF_US_RE = re.compile(
 # Group phrasings that imply a group exists but may carry no convertible
 # count ("one of us is terrified", "3 buddies"). Matched phrases are carried
 # as group_signals so validation can warn instead of silently mis-sizing.
+# Kinship/social plurals are included even though they are not in the parsed
+# vocabulary: "me and my 3 cousins" must leave a raw trace so validation can
+# flag PARTY_UNDERDETECTED instead of silently sizing the party as 1.
 _PARTY_GROUP_SIGNAL_RE = re.compile(
-    r"\b\d+\s+(?:friends?|buddies?|mates?|colleagues?)\b"
+    r"\b\d+\s+(?:friends?|others?|buddies?|mates?|colleagues?"
+    r"|cousins?|siblings?|nephews?|nieces?|aunts?|uncles?|grandparents?"
+    r"|kids?|children|sons?|daughters?|parents?|guests?|adults?|teens?|teenagers?"
+    r"|families?|classmates?|roommates?|flatmates?)\b"
     r"|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+of\s+us\b"
     r"|\bparty\s+of\s+\w+"
-    r"|\bcouple\s+of\s+friends\b",
+    r"|\bcouple\s+of\s+(?:friends|colleagues|people)\b",
     re.IGNORECASE,
 )
 
@@ -401,6 +477,81 @@ _ORIGIN_DEST_RE = re.compile(
     r"(?:jana hai|jana|jiba|jib|go|travel|visit)",
 )
 
+# Bare, travel-shaped notes are common in email and CRM exports.  They are
+# destinations when a known place appears immediately before a date/trip
+# marker, not origins merely because the note starts with a city.
+_VERBLESS_DESTINATION_RE = re.compile(
+    r"\b(?P<destination>[a-z][a-z'’-]*(?:\s+[a-z][a-z'’-]*){0,2})\s+"
+    r"(?=(?:in|during)\s+(?:the\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|"
+    r"jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b"
+    r"|(?:next|this|coming)\s+(?:spring|summer|fall|autumn|winter)\b"
+    r"|(?:trip|holiday|vacation)\b|for\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b)",
+    re.IGNORECASE,
+)
+
+_CITY_SET_TRAILING_TIME_RE = re.compile(
+    r"\s+(?:at|around|by)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b.*$",
+    re.IGNORECASE,
+)
+_CITY_SET_TRAILING_SEASON_RE = re.compile(
+    r"\s+(?:(?:next|this|coming|in)\s+(?:the\s+)?"
+    r"(?:spring|summer|fall|autumn|winter))\b.*$",
+    re.IGNORECASE,
+)
+
+_STRUCTURED_UNSAFE_VALUE_RE = re.compile(
+    r"(?:;|--|/\*|\*/|\b(?:drop|delete|insert|update|select)\s+(?:table|from|into)\b|"
+    r"\b(?:or|and)\s+\d+\s*=\s*\d+)",
+    re.IGNORECASE,
+)
+
+
+def _structured_destination_values(value: Any) -> List[str]:
+    """Validate and normalize structured destination input.
+
+    Structured authority does not mean arbitrary strings are destinations.
+    Only strings that resolve through the canonical geography layer are
+    promoted to ``destination_candidates``; malformed or SQL-shaped values
+    remain absent and therefore visible as an intake unknown.
+    """
+    raw_values: List[Any]
+    if isinstance(value, str):
+        raw_values = [value]
+    elif isinstance(value, list):
+        raw_values = value
+    else:
+        return []
+
+    output: List[str] = []
+    for raw in raw_values:
+        if not isinstance(raw, str) or _STRUCTURED_UNSAFE_VALUE_RE.search(raw):
+            continue
+        # Comma-separated structured exports are common; each candidate still
+        # needs independent geography validation.
+        for item in re.split(r"\s*,\s*", raw):
+            item = item.strip()
+            if not item:
+                continue
+            normalized, _ = Normalizer.normalize_city(item)
+            candidate = normalized or item
+            if is_known_destination(candidate) and candidate not in output:
+                output.append(candidate)
+    return output
+
+
+def _structured_origin_value(value: Any) -> Optional[str]:
+    if not isinstance(value, str) or _STRUCTURED_UNSAFE_VALUE_RE.search(value):
+        return None
+    normalized, _ = Normalizer.normalize_city(value.strip())
+    candidate = normalized or value.strip()
+    if not candidate or not is_known_city(candidate):
+        return None
+    return candidate
+
+
+def _structured_budget_is_safe(value: Any) -> bool:
+    return isinstance(value, (str, int, float)) and not isinstance(value, bool) and not _STRUCTURED_UNSAFE_VALUE_RE.search(str(value))
+
 
 @lru_cache(maxsize=32)
 def _month_to_num(month_str: str) -> Optional[int]:
@@ -412,7 +563,11 @@ def _count_token_to_int(raw: str | None) -> Optional[int]:
         return None
     token = raw.strip().lower()
     if token.isdigit():
-        return int(token)
+        value = int(token)
+        # A four-digit date must never become a party size.  The upper bound
+        # also prevents absurd imported/headcount values from feeding pricing
+        # and per-person arithmetic while leaving normal group travel intact.
+        return value if 0 < value <= 1000 else None
     return _NUMBER_WORDS.get(token)
 
 
@@ -421,6 +576,26 @@ def _infer_year_from_context(text: str) -> str:
     if year_match:
         return year_match.group(1)
     return str(datetime.now().year)
+
+
+def _classify_date_year(text: str) -> Optional[str]:
+    """Classify an explicitly stated travel year without rewriting it.
+
+    The extractor must preserve what the traveler said, even when it is stale
+    or implausibly distant.  This side-channel lets validation/policy surface
+    the problem instead of silently treating an impossible date as current.
+    A five-year planning horizon is intentionally conservative for an intake
+    quote while still allowing normal long-range group bookings.
+    """
+    years = [int(match.group(1)) for match in _YEAR_RE.finditer(text)]
+    if not years:
+        return None
+    current_year = datetime.now().year
+    if any(year < current_year for year in years):
+        return "past_year"
+    if any(year > current_year + 5 for year in years):
+        return "implausible_year"
+    return None
 
 
 def _normalize_constraint(raw: str) -> str:
@@ -437,6 +612,14 @@ def _normalize_constraint(raw: str) -> str:
         if re.search(pattern, lower):
             return replacement
     return raw
+
+
+# Phrases like "no idea of the name" / "no clue about dates" report the
+# traveler's own missing information, not a prohibition. Checking the capture's
+# headword keeps real negations ("no cable cars") while dropping these.
+_NEGATION_KNOWLEDGE_HEADWORDS = frozenset({
+    "idea", "ideas", "clue", "notion", "recollection",
+})
 
 
 def _extract_relevant_span(text: str, match_str: str, window: int = 80) -> str:
@@ -577,14 +760,16 @@ def _extract_leading_origin_city(text: str) -> Optional[str]:
             continue
 
         remainder_lower = " ".join(remainder).lower()
-        if any(hint in remainder_lower.split() for hint in _LEADING_ORIGIN_HINTS):
-            return city
 
-        if _DESTINATION_RE.search(" ".join(remainder)):
-            # "City from Another_City" → first city is destination, not origin.
-            # Remainder starting with "from" means the pattern is "DEST from ORIGIN".
-            if remainder and remainder[0].lower() == "from":
-                continue
+        # A city followed only by a trip/date phrase is a destination-shaped
+        # note ("Bali in June", "Bali trip 2027"), not evidence of origin.
+        # Origin inference from a leading city is reserved for agency/group
+        # descriptors that actually establish source context.
+        source_descriptor = re.search(
+            r"\b(?:agency|office|branch|desk|request|lead|team|family|group|couple|corporate)\b",
+            remainder_lower,
+        )
+        if source_descriptor:
             return city
 
     return None
@@ -598,7 +783,7 @@ def _is_valid_destination_candidate(span: str, context: str) -> bool:
     """
     lower = span.lower().strip()
 
-    if lower in _MONTH_NAMES:
+    if lower in _MONTH_NAMES or lower in _SEASON_NAMES:
         return False
 
     if lower in _RELATION_WORDS:
@@ -663,8 +848,26 @@ def _is_origin_candidate(full_text: str, dest: str) -> bool:
     mid-text origins in destination enumerations. Deliberately excludes
     _is_likely_origin's leading-city heuristic, which misreads pure
     destination lists ("Bali or Thailand?") as "origin + content".
+
+    Differently formatted raw tails ("flying from san francisco usa" vs the
+    resolved canonical "Usa"/"San Francisco") never contain the literal
+    "from <canonical>" span, so a tail-word fallback matches
+    "from ... <last word of dest>" — bounded to two filler words and never
+    across a directional "to", so "flying from delhi to boston" can't flag
+    Boston as origin.
     """
-    return bool(re.search(rf"\bfrom\s+{re.escape(dest.lower())}\b", full_text, re.IGNORECASE))
+    words = dest.split()
+    if not words:
+        return False
+    if re.search(rf"\bfrom\s+{re.escape(dest.lower())}\b", full_text, re.IGNORECASE):
+        return True
+    last_word = re.escape(words[-1].lower())
+    tail = (
+        rf"\bfrom\s+"
+        rf"(?:(?!(?:to|into|till|until)\s)\S+\s+){{0,2}}"
+        rf"{last_word}\b"
+    )
+    return bool(re.search(tail, full_text, re.IGNORECASE))
 
 
 def _extract_city_set(text_lower: str, full_text: str) -> Optional[Tuple[List[str], str]]:
@@ -690,6 +893,15 @@ def _extract_city_set(text_lower: str, full_text: str) -> Optional[Tuple[List[st
                 current, current_raw = [], []
             continue
         element = part.strip()
+        if not element:
+            continue
+        # The final member often carries a scheduling tail ("Tokyo + Kyoto
+        # at 7pm").  Keep the city, discard only the time clause; otherwise
+        # the final element fails validation and the set is silently truncated.
+        element = _CITY_SET_TRAILING_TIME_RE.sub("", element).strip(" ,.;:!?\t")
+        # A season-scale travel window belongs to date extraction, not to the
+        # final city-set member (for example, "Kyoto next spring").
+        element = _CITY_SET_TRAILING_SEASON_RE.sub("", element).strip(" ,.;:!?\t")
         if not element:
             continue
         dest: Optional[str] = None
@@ -732,6 +944,11 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     before the general destination regex so that hedging context is
     preserved in status and raw_match.
     """
+    # Never let raw untrusted text flow directly into the deterministic scans.
+    # This is idempotent, so direct helper callers and the pipeline share the
+    # same safety boundary.
+    text, _ = _prepare_extraction_text(text)
+
     # Remove call-log metadata lines that frequently contain capitalized labels
     # (Caller, Referral, Pace, Budget, etc.) and pollute destination extraction.
     # Also strip leading salutations/greetings (Hi Sam, Dear Marcus, etc.)
@@ -746,6 +963,14 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     text_lower = destination_text.lower()
     candidates: List[str] = []
     excluded_by_past_trip: List[str] = []
+
+    # Explicit "Destinations: X, Y" or "Destination: X" pass (inline or multiline)
+    dest_line_match = re.search(r"\bdestinations?\s*:\s*([^.\n]+)", destination_text, re.IGNORECASE)
+    if dest_line_match:
+        explicit_line = re.sub(r"\([^)]*\)", "", dest_line_match.group(1)).strip()
+        explicit_candidates, explicit_status, explicit_raw = _extract_destination_candidates(explicit_line)
+        if explicit_candidates:
+            return explicit_candidates, explicit_status, explicit_raw
 
     # City-set separator pass: "tokyo + kyoto + osaka", "tokyo, kyoto and
     # osaka", "covering tokyo and kyoto". Every element must resolve to a
@@ -863,6 +1088,26 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
             return candidates, "definite", raw_matches[0]
         elif len(candidates) > 1:
             return candidates, "semi_open", ", ".join(raw_matches)
+
+    # Lowercase/verb-less notes ("Bali in June 2027", "GOA trip for 2
+    # adults") are still explicit destination-shaped statements.  Handle this
+    # only when the candidate validates geographically and is not an origin or
+    # past-trip mention; do not turn arbitrary lowercase prose into a city.
+    for bare_match in _VERBLESS_DESTINATION_RE.finditer(destination_text):
+        span = bare_match.group("destination").strip()
+        words = span.split()
+        # The regex is intentionally bounded, but resolve the shortest valid
+        # prefix so "Bali trip" cannot become a multi-word false candidate.
+        for end in range(min(3, len(words)), 0, -1):
+            candidate = " ".join(words[:end])
+            title = candidate.title()
+            if (
+                is_known_destination(title)
+                and _is_valid_destination_candidate(title, destination_text)
+                and not _is_likely_origin(destination_text, candidate)
+                and not _is_past_trip_mention(destination_text, candidate)
+            ):
+                return [title], "definite", candidate
 
     # Fallback: context-gated lowercase destination extraction.
     # Only matches destinations appearing after travel verbs or before Hinglish/Odia
@@ -1118,9 +1363,9 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
         r"(usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|dollars?|bucks?|euros?|rupees?)"
     )
     # S1 (RQ-01): natural phrasing stacks connectives ("budget is around $3000",
-    # "budget is only 3000") — accept any number of them, not exactly one.
+    # "Budget: Around $14,000", "budget is only 3000") — accept colons and connectives in any order.
     budget_connective = (
-        r"(?:\s+(?:of|is|was|only|around|about|approx(?:imately)?|roughly|up\s+to|under|at\s+most|no\s+more\s+than|maximum|max(?:imum)?|exactly|between))*"
+        r"(?:\s*[:\-]?\s*(?:of|is|was|only|around|about|approx(?:imately)?|roughly|up\s+to|under|at\s+most|no\s+more\s+than|maximum|max(?:imum)?|exactly|between|\s))*"
     )
     trailing_budget_match = re.search(
         r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
@@ -1153,17 +1398,40 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
     range_budget_match = re.search(
         rf"\bbudget\b{budget_connective}\s*[:\-]?\s*"
         r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
-        r"(?P<low>\d[\d,]*(?:\.\d+)?)\s*(?:-|–|—|\bto\b|\band\b)\s*"
+        r"(?P<low>\d[\d,]*(?:\.\d+)?)\s*"
+        r"(?P<low_unit_prefix>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\s*"
+        r"(?:-|–|—|\bto\b|\band\b)\s*"
         r"(?P<low_unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\s*"
+        r"(?:(?P<currency_high>" + currency_token_pattern + r")\s*)?"
         r"(?P<high>\d[\d,]*(?:\.\d+)?)\s*"
         r"(?P<high_unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b"
         r"(?:\s+(?P<currency_after>" + currency_word_pattern + r")\b)?",
         text_lower,
     )
     if range_budget_match:
+        currency_tokens = [
+            token
+            for token in (
+                range_budget_match.group("currency"),
+                range_budget_match.group("currency_high"),
+                range_budget_match.group("currency_after"),
+            )
+            if token
+        ]
+        normalized_currencies = {_currency_code(token) for token in currency_tokens}
+        # A range with conflicting currency evidence is ambiguous.  Abstain
+        # rather than silently treating the low endpoint's currency as the
+        # whole range or inventing an exchange-rate conversion.
+        if len(normalized_currencies) > 1:
+            return None
         low = range_budget_match.group("low").replace(",", "").strip()
         high = range_budget_match.group("high").replace(",", "").strip()
-        unit = (range_budget_match.group("low_unit") or range_budget_match.group("high_unit") or "").strip().lower()
+        unit = (
+            range_budget_match.group("low_unit_prefix")
+            or range_budget_match.group("low_unit")
+            or range_budget_match.group("high_unit")
+            or ""
+        ).strip().lower()
         if not _looks_like_date_token(low) and not _looks_like_date_token(high):
             low_value = float(low)
             high_value = float(high)
@@ -1187,8 +1455,8 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
                 "min": int(low_value),
                 "max": int(high_value),
                 "currency": (
-                    _currency_code(range_budget_match.group("currency") or range_budget_match.group("currency_after"))
-                    if (range_budget_match.group("currency") or range_budget_match.group("currency_after"))
+                    _currency_code(currency_tokens[0])
+                    if currency_tokens
                     else _defaulted_currency(unit)
                 ),
             }
@@ -1345,27 +1613,23 @@ def _extract_budget_flexibility(text: str) -> str:
 
 def _extract_budget_scope(text: str) -> str:
     text_lower = text.lower()
-    if "per person" in text_lower or "per head" in text_lower:
+    if any(p in text_lower for p in ("per person", "per head", "per pax", "per traveller", "per traveler", "pp", "p/p", "a head", "a person")):
         return "per_person"
-    if "per night" in text_lower:
+    if "per night" in text_lower or "a night" in text_lower:
         return "per_night"
     if re.search(r"\b(?:a|per)\s+day\b", text_lower):
         return "daily"
-    # Explicit trip-total markers outrank a stray "each" elsewhere in the
-    # sentence: "5000 total, breakfast each morning" is a trip total, not
-    # per-person (inverting the silent-wrong-scope class this fix targets).
+    # Explicit trip-total markers outrank a stray "each" elsewhere in the sentence
     if _TOTAL_GROUP_RE.search(text_lower):
         return "total"
-    # "each"/"apiece" mean per-person only when tied to the amount
-    # ("3.5k USD each", "$500 each", "each person") — a bare "each" in
-    # prose must not flip the scope.
     if re.search(
-        r"(?:usd|eur|gbp|inr|chf|sgd|aud|cad|[$€£₹]|\d[\d,.]*\s*k?)\s*each\b"
-        r"|\beach\s+(?:person|traveler|adult|guest)\b",
+        r"(?:usd|eur|gbp|inr|chf|sgd|aud|cad|[$€£₹]|\b\d[\d,.]*\s*k?)\s*(?:each|pp|p/p|per\s+pax|per\s+person|per\s+head)\b"
+        r"|\beach\s+(?:person|traveler|traveller|adult|guest|of\s+us)\b",
         text_lower,
     ):
         return "per_person"
     return "unknown"
+
 
 
 def _extract_flight_hotel_mismatch(text: str) -> Optional[Dict[str, str]]:
@@ -1706,9 +1970,15 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
 
     # Constraints
     hard = []
-    no_match = re.findall(r"(?:no|don'?t\s+(?:want|need|book)|avoid|never)\s+([^.,]+)", text_lower)
+    no_match = re.findall(r"(?:no|don'?t\s+(?:want|need|book)|avoid|never|not\s+interested\s+in|not\s+looking\s+for)\s+([^.,]+)", text_lower)
     for constraint in no_match:
-        normalized = _normalize_constraint(constraint.strip())
+        constraint = constraint.strip()
+        headword = constraint.split(None, 1)[0] if constraint else ""
+        if headword in _NEGATION_KNOWLEDGE_HEADWORDS:
+            # "no idea of the name" / "no clue about dates" — traveler
+            # uncertainty about their own note, not a hard constraint.
+            continue
+        normalized = _normalize_constraint(constraint)
         if normalized:
             hard.append(normalized)
     if hard:
@@ -2041,6 +2311,26 @@ def _extract_traveler_plan(text: str) -> Dict[str, Any]:
     return results
 
 
+def extract_flight_inclusiveness(text: str) -> str:
+    """
+    Contract D-02: Returns one of:
+    - 'INCLUDE_FLIGHTS' (explicitly requesting airfare/flights)
+    - 'EXCLUDE_FLIGHTS' (flights already booked / land-only inquiry)
+    - 'UNSPECIFIED_AMBIGUOUS' (not stated or ambiguous)
+    """
+    text_lower = text.lower()
+
+    # 1. Exclusion patterns
+    if re.search(r"\b(flights?\s+(?:already\s+)?booked|have\s+(?:our\s+)?own\s+flights?|already\s+have\s+(?:tickets?|flights?)|hotel\s+only|land\s+only|exclude\s+flights?|no\s+flights?\s+needed|flight\s+not\s+required)\b", text_lower):
+        return "EXCLUDE_FLIGHTS"
+
+    # 2. Inclusion patterns
+    if re.search(r"\b(include\s+flights?|need\s+flights?|flights?\s+needed|with\s+flights?|book\s+flights?|flights?\s*\+\s*hotel|airfare\s+included|flight\s+options?|quote\s+with\s+flights?)\b", text_lower):
+        return "INCLUDE_FLIGHTS"
+
+    return "UNSPECIFIED_AMBIGUOUS"
+
+
 # =============================================================================
 # SECTION 11: EXTRACTION PIPELINE (v0.2)
 # =============================================================================
@@ -2074,7 +2364,16 @@ class ExtractionPipeline:
                 text = envelope.content
             elif isinstance(envelope.content, dict):
                 text = str(envelope.content.get("text", ""))
-            all_texts.append(text)
+            safe_text, safety_counts = _prepare_extraction_text(text)
+            all_texts.append(safe_text)
+            if any(safety_counts.values()):
+                safety_meta = packet.metadata.setdefault("input_safety", {
+                    "sanitized": True,
+                    "control_chars_removed": 0,
+                    "instruction_spans_removed": 0,
+                })
+                safety_meta["control_chars_removed"] += safety_counts["control_chars_removed"]
+                safety_meta["instruction_spans_removed"] += safety_counts["instruction_spans_removed"]
 
             if envelope.content_type == "freeform_text":
                 self._extract_from_freeform(envelope, packet, stage=stage)
@@ -2134,7 +2433,7 @@ class ExtractionPipeline:
         )
 
     def _extract_from_freeform(self, envelope: SourceEnvelope, packet: CanonicalPacket, stage: str = "discovery") -> None:
-        text = envelope.content
+        text, _ = _prepare_extraction_text(envelope.content)
         text_lower = text.lower()
         eid = envelope.envelope_id
 
@@ -2227,6 +2526,18 @@ class ExtractionPipeline:
                 "Derived from date parsing", eid,
             ))
 
+        # Year safety is independent of whether the rest of the date phrase
+        # was complete enough to form a date_window (for example, "Bali 2099"
+        # still requires review).  Preserve the literal date text and expose a
+        # derived classification for validation/policy.
+        year_status = _classify_date_year(text)
+        if year_status:
+            packet.set_derived_signal("date_year_status", self._make_slot(
+                year_status, 0.95, AuthorityLevel.DERIVED_SIGNAL,
+                f"Explicit travel year classified as {year_status}", eid,
+                extraction_mode="derived", maturity="verified",
+            ))
+
         # --- BUDGET ---
         budget_result = _extract_budget(text)
         if budget_result:
@@ -2258,25 +2569,36 @@ class ExtractionPipeline:
 
         budget_flex = _extract_budget_flexibility(text)
         explicit_budget_flex = budget_flex
+        is_inferred_flex = False
         if explicit_budget_flex == "unknown" and budget_result is not None:
             # D2 (RQ-01): golden convention — an unmarked budget is negotiable.
             budget_flex = "soft"
+            is_inferred_flex = True
         if budget_flex != "unknown":
             packet.set_fact("budget_flexibility", self._make_slot(
-                budget_flex, 0.85, AuthorityLevel.EXPLICIT_USER,
+                budget_flex, 0.7 if is_inferred_flex else 0.85,
+                AuthorityLevel.EXPLICIT_USER,
                 budget_flex, eid,
+                epistemic_status=EpistemicStatus.ASSUMED if is_inferred_flex else EpistemicStatus.FACT,
             ))
 
         budget_scope = _extract_budget_scope(text)
+        is_inferred_scope = False
         if budget_scope == "unknown" and budget_result is not None:
             # Golden convention (RQ-01): a budget without a scope marker is
             # trip-total. Without a budget, scope stays unset.
             budget_scope = "total"
+            is_inferred_scope = True
         if budget_scope != "unknown":
             packet.set_fact("budget_scope", self._make_slot(
-                budget_scope, 0.7, AuthorityLevel.EXPLICIT_USER,
-                "Derived from budget context", eid,
+                budget_scope, 0.7 if is_inferred_scope else 0.95,
+                AuthorityLevel.EXPLICIT_USER,
+                "Derived from budget context" if is_inferred_scope else budget_scope, eid,
+                epistemic_status=EpistemicStatus.ASSUMED if is_inferred_scope else EpistemicStatus.FACT,
             ))
+
+
+
 
         flight_hotel_mismatch = _extract_flight_hotel_mismatch(text)
         if flight_hotel_mismatch:
@@ -2580,12 +2902,24 @@ class ExtractionPipeline:
         """Extract from structured JSON input."""
         data = envelope.content
         eid = envelope.envelope_id
+        if not isinstance(data, dict):
+            # The API normally validates this shape, but direct callers and
+            # replayed historical envelopes can still be malformed.  A bad
+            # import is an unknown input, never a process-wide crash.
+            packet.metadata.setdefault("input_safety", {
+                "sanitized": False,
+                "control_chars_removed": 0,
+                "instruction_spans_removed": 0,
+            })["structured_shape_rejected"] = True
+            return
 
         field_mappings = {
             "destination": "destination_candidates",
+            "destination_candidates": "destination_candidates",
             "origin": "origin_city",
             "origin_city": "origin_city",
             "travelers": "party_size",
+            "party_size": "party_size",
             "budget": "budget_raw_text",
             "budget_raw_text": "budget_raw_text",
             "dates": "date_window",
@@ -2607,13 +2941,21 @@ class ExtractionPipeline:
         for src_field, canonical_field in field_mappings.items():
             if src_field in data:
                 value = data[src_field]
-                if canonical_field in ("origin_city", "destination_candidates"):
-                    if isinstance(value, str):
-                        value, was_normalized = Normalizer.normalize_city(value)
-                        mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.IMPORTED
-                    else:
-                        mode = ExtractionMode.IMPORTED
+                if canonical_field == "destination_candidates":
+                    values = _structured_destination_values(value)
+                    if not values:
+                        continue
+                    value = values
+                    mode = ExtractionMode.NORMALIZED
+                elif canonical_field == "origin_city":
+                    origin = _structured_origin_value(value)
+                    if origin is None:
+                        continue
+                    value = origin
+                    mode = ExtractionMode.NORMALIZED
                 elif canonical_field == "budget_raw_text":
+                    if not _structured_budget_is_safe(value):
+                        continue
                     parsed = Normalizer.parse_budget(str(value))
                     packet.set_fact("budget_raw_text", self._make_slot(
                         str(value), 1.0, AuthorityLevel.IMPORTED_STRUCTURED,
@@ -2634,7 +2976,19 @@ class ExtractionPipeline:
                     continue
                 elif canonical_field == "party_size":
                     if isinstance(value, list):
+                        # A list is a party only when every row is a mapping.
+                        # Do not turn malformed strings ("2 adults") into a
+                        # fabricated count or let them reach the row parser.
+                        if not value or not all(isinstance(item, dict) for item in value):
+                            continue
                         value = len(value)
+                    elif isinstance(value, int) and not isinstance(value, bool):
+                        if not 0 < value <= 1000:
+                            continue
+                    elif isinstance(value, str) and re.fullmatch(r"\d{1,3}", value.strip()):
+                        value = int(value.strip())
+                    else:
+                        continue
                     mode = ExtractionMode.IMPORTED
                 elif canonical_field == "party_composition":
                     if isinstance(value, dict):
@@ -2658,10 +3012,23 @@ class ExtractionPipeline:
             if "party_composition" not in data:
                 composition: Dict[str, int] = {}
                 child_ages: List[int] = []
-                for t in data["travelers"]:
+                travelers = [t for t in data["travelers"] if isinstance(t, dict)]
+                # A partially malformed list cannot safely establish a total
+                # party count.  Keep any valid rows for diagnostics only when
+                # the entire structured collection is well-shaped.
+                if len(travelers) != len(data["travelers"]):
+                    travelers = []
+                for t in travelers:
                     age = t.get("age")
-                    rel = (t.get("relationship") or "").lower()
-                    if age is not None:
+                    if isinstance(age, bool):
+                        age = None
+                    elif isinstance(age, str) and re.fullmatch(r"\d+(?:\.\d+)?", age.strip()):
+                        age = float(age.strip())
+                    elif not isinstance(age, (int, float)):
+                        age = None
+                    rel_raw = t.get("relationship")
+                    rel = rel_raw.lower() if isinstance(rel_raw, str) else ""
+                    if age is not None and 0 <= age <= 130:
                         if age < 4:
                             composition["toddlers"] = composition.get("toddlers", 0) + 1
                             child_ages.append(age)
@@ -2695,6 +3062,19 @@ class ExtractionPipeline:
 
     def _extract_from_hybrid(self, envelope: SourceEnvelope, packet: CanonicalPacket, stage: str = "discovery") -> None:
         """Handle hybrid input: text + structured data."""
+        if not isinstance(envelope.content, dict):
+            self._extract_from_structured(
+                SourceEnvelope(
+                    envelope_id=envelope.envelope_id,
+                    source_system=envelope.source_system,
+                    actor_type=envelope.actor_type,
+                    received_at=envelope.received_at,
+                    content=envelope.content,
+                    content_type="structured_json",
+                ),
+                packet,
+            )
+            return
         text = envelope.content.get("text", "")
         structured = envelope.content.get("structured", {})
 

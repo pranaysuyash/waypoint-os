@@ -1,7 +1,9 @@
-"""Document chunking and embedding indexer for Waypoint OS RAG Engine.
+"""Document chunking and local representation indexer for Waypoint OS RAG Engine.
 
-Supports parent-child hierarchical chunking, metadata extraction,
-and embedding generation with API and deterministic local fallbacks.
+Supports parent-child hierarchical chunking and metadata extraction.  The
+current implementation generates deterministic hash-bucket pseudo-vectors for
+offline/test use; it does not call an embedding API or provide semantic-model
+provenance.
 """
 
 import hashlib
@@ -18,7 +20,12 @@ STOPWORDS = {
 
 
 def generate_local_embedding(text: str, dim: int = 64) -> List[float]:
-    """Generate a deterministic normalized pseudo-embedding vector for offline/test use."""
+    """Generate a deterministic normalized hash-bucket vector for offline/test use.
+
+    This is a repeatable lexical-feature representation, not a semantic model
+    embedding.  Keeping the limitation explicit prevents cosine similarity
+    results from being presented as provider-backed semantic evidence.
+    """
     words = [w.strip(".,!?:;\"'()[]{}") for w in text.lower().split()]
     filtered_words = [w for w in words if w and w not in STOPWORDS and len(w) > 1]
     

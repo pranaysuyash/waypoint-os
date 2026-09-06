@@ -46,6 +46,7 @@ def evaluate_report_against_manifest(
     manifest: EvalManifest,
     *,
     category_accuracy: dict[str, float] | None = None,
+    category_authority: dict[str, bool] | None = None,
 ) -> EvalGateReport:
     """Compare an eval report to manifest thresholds and surface-readiness rules.
 
@@ -58,6 +59,8 @@ def evaluate_report_against_manifest(
     """
     if category_accuracy is None:
         category_accuracy = {}
+    if category_authority is None:
+        category_authority = {}
 
     decisions: dict[str, CategoryGateDecision] = {}
     for category, config in manifest.categories.items():
@@ -71,7 +74,17 @@ def evaluate_report_against_manifest(
             accuracy=category_accuracy.get(category),
         )
         blocks_ci = config.status == "gating" and not meets_thresholds
-        authoritative = config.status == "gating" and meets_thresholds
+        # A metric can meet its threshold while still being calibration-only
+        # (for example, when expected fixture values were mirrored as the
+        # actual output because no producer exists).  Callers can explicitly
+        # withhold public authority until the result has a real actual source.
+        authoritative = (
+            config.status == "gating"
+            and meets_thresholds
+            and category_authority.get(category, True)
+        )
+        if meets_thresholds and not category_authority.get(category, True):
+            reasons = [*reasons, "actual_source_not_independent"]
         if config.status != "gating":
             reasons = [*reasons, f"category_status_{config.status}"]
         decisions[category] = CategoryGateDecision(

@@ -30,12 +30,114 @@ from sqlalchemy import select, text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from spine_api.core.database import DATABASE_URL
+from spine_api.core.trip_status import (
+    INTAKE_BLOCKED_STATUSES,
+    QUOTE_CAPABLE_STATUSES,
+    STATUS_HISTORY_CAP,
+    enforce_status_transition,
+    record_status_transition,
+)
 from spine_api.models.trips import Trip
 from src.security.encryption import decrypt, encrypt
 
 logger = logging.getLogger(__name__)
 
 TEST_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+
+
+def _apply_status_guard(trip_record: dict, updates: dict) -> None:
+    """Enforce the trip-status invariant on an update-style write (dict records).
+
+    Raises IllegalTripStatusTransition if updates['status'] violates the
+    intake-blocked → quote-capable invariant relative to the persisted status.
+    On a legal transition, seeds updates['status_history'] from the persisted
+    record and appends the audited entry (must run under the store's lock).
+    """
+    new_status = updates.get("status")
+    if new_status is None:
+        return
+    old_status = trip_record.get("status")
+    enforce_status_transition(old_status, new_status)
+    if old_status is None or str(old_status) == str(new_status):
+        return
+    history = list(trip_record.get("status_history") or [])
+    history.append(
+        {"from": str(old_status), "to": str(new_status), "at": datetime.now(timezone.utc).isoformat()}
+    )
+    updates["status_history"] = history[-STATUS_HISTORY_CAP:]
+
+
+def _apply_status_guard_orm(trip_obj: Any, updates: dict) -> None:
+    """ORM-row variant of _apply_status_guard: same invariant, history folded
+    into analytics._extra (Trip has no dedicated status_history column)."""
+    new_status = updates.get("status")
+    if new_status is None:
+        return
+    old_status = getattr(trip_obj, "status", None)
+    enforce_status_transition(old_status, new_status)
+    if old_status is None or str(old_status) == str(new_status):
+        return
+    existing_analytics = getattr(trip_obj, "analytics", None)
+    base = dict(updates.get("analytics")) if isinstance(updates.get("analytics"), dict) else (
+        dict(existing_analytics) if isinstance(existing_analytics, dict) else {}
+    )
+    extra = dict(base.get("_extra") or {})
+    db_history = (
+        (existing_analytics or {}).get("_extra", {}).get("status_history")
+        if isinstance(existing_analytics, dict)
+        else None
+    )
+    history = list(db_history) if isinstance(db_history, list) else []
+    history.append(
+        {"from": str(old_status), "to": str(new_status), "at": datetime.now(timezone.utc).isoformat()}
+    )
+    extra["status_history"] = history[-STATUS_HISTORY_CAP:]
+    base["_extra"] = extra
+    updates["analytics"] = base
+
+
+def _fold_unmapped_updates(updates: dict) -> dict:
+    """Fold unmapped keys into analytics._extra for SQL update-style writes.
+
+    Mirrors save_trip's contract: unmapped keys persist inside
+    analytics._extra. Without this, update paths silently dropped any key
+    that is not a Trip column — the SQL CAS dropped packet/decision_state/
+    missing_fields entirely while reporting success (review cycle 2, finding A).
+    Returns a new dict; the input is not mutated.
+    """
+    try:
+        known_columns = set(Trip.__table__.columns.keys())
+    except AttributeError:
+        # Trip patched/stubbed (test seams): classification impossible —
+        # degrade to a no-op rather than guessing at column names.
+        return dict(updates)
+    folded: dict = {}
+    extras: dict = {}
+    for key, value in updates.items():
+        if key in known_columns:
+            folded[key] = value
+        elif key != "saved_at":
+            extras[key] = value
+    if extras:
+        analytics = folded.get("analytics")
+        analytics = dict(analytics) if isinstance(analytics, dict) else {}
+        extra = dict(analytics.get("_extra") or {})
+        extra.update(extras)
+        analytics["_extra"] = extra
+        folded["analytics"] = analytics
+    return folded
+
+
+def _status_guard_sql_predicate(new_status: str, prefix: str) -> tuple[str, dict]:
+    """Atomic WHERE predicate enforcing the intake-blocked invariant for raw-SQL
+    updates (no row is loaded, so enforcement happens at the database level,
+    inside the same UPDATE). Returns (sql_fragment, params)."""
+    blocked = ",".join(f"'{s}'" for s in sorted(INTAKE_BLOCKED_STATUSES))
+    capable_values = sorted(QUOTE_CAPABLE_STATUSES)
+    capable = ",".join(f":{prefix}_capable_{i}" for i in range(len(capable_values)))
+    params: dict = {f"{prefix}_capable_{i}": s for i, s in enumerate(capable_values)}
+    params[f"{prefix}_new"] = new_status
+    return f"NOT (status IN ({blocked}) AND :{prefix}_new IN ({capable}))", params
 
 import weakref
 
@@ -322,6 +424,16 @@ class FileTripStore:
                             f"Trip {trip_id} belongs to agency {existing_agency}, "
                             f"cannot save with agency {agency_id}"
                         )
+                    # Trip-status invariant (register N-2): intake-blocked trips
+                    # never become quote-capable in one hop; transitions audited
+                    # into the record's status_history (seeded from the persisted
+                    # record so history accumulates across saves).
+                    old_status = existing_data.get("status")
+                    new_status = trip_data.get("status")
+                    enforce_status_transition(old_status, new_status)
+                    if old_status and new_status and str(old_status) != str(new_status):
+                        serializable_data["status_history"] = list(existing_data.get("status_history") or [])
+                        record_status_transition(serializable_data, old_status, new_status)
                 with open(filepath, "w") as f:
                     json.dump(serializable_data, f, indent=2)
         
@@ -420,6 +532,7 @@ class FileTripStore:
                 if not trip:
                     return None
                 
+                _apply_status_guard(trip, updates)
                 trip.update(updates)
                 trip["updated_at"] = datetime.now(timezone.utc).isoformat()
                 
@@ -454,6 +567,7 @@ class FileTripStore:
                     return None
                 if expected_updated_at is not None and trip.get("updated_at") != expected_updated_at:
                     return None
+                _apply_status_guard(trip, updates)
                 trip.update(updates)
                 trip["updated_at"] = datetime.now(timezone.utc).isoformat()
                 serializable_trip = _make_json_serializable(trip)
@@ -500,6 +614,7 @@ class FileTripStore:
                     return None
                 if expected_updated_at is not None and trip.get("updated_at") != expected_updated_at:
                     return None
+                _apply_status_guard(trip, updates)
                 trip.update(updates)
                 trip["updated_at"] = datetime.now(timezone.utc).isoformat()
                 serializable_trip = _make_json_serializable(trip)
@@ -864,6 +979,41 @@ class SQLTripStore:
                         f"Trip {trip_id} belongs to agency {existing.agency_id}, "
                         f"cannot save with agency {save_agency}"
                     )
+                # Trip-status invariant (register N-2): intake-blocked trips never
+                # become quote-capable in one hop; transition audited into
+                # analytics._extra.status_history (no dedicated column yet).
+                # getattr-defensive: row-like stubs in tests must not brick saves.
+                # History is seeded from the DB record on every save of an existing
+                # trip so a stale caller copy can never regress the audit trail.
+                old_status = getattr(existing, "status", None)
+                new_status = model_data.get("status")
+                enforce_status_transition(old_status, new_status)
+                existing_analytics = getattr(existing, "analytics", None)
+                db_history = (
+                    (existing_analytics or {}).get("_extra", {}).get("status_history")
+                    if isinstance(existing_analytics, dict)
+                    else None
+                )
+                transitioned = (
+                    old_status is not None
+                    and new_status is not None
+                    and str(old_status) != str(new_status)
+                )
+                if transitioned or isinstance(db_history, list):
+                    prior_history: list = list(db_history) if isinstance(db_history, list) else []
+                    if transitioned:
+                        prior_history.append(
+                            {
+                                "from": str(old_status),
+                                "to": str(new_status),
+                                "at": datetime.now(timezone.utc).isoformat(),
+                            }
+                        )
+                    analytics_dict = dict(model_data.get("analytics") or {})
+                    extra = dict(analytics_dict.get("_extra") or {})
+                    extra["status_history"] = prior_history[-STATUS_HISTORY_CAP:]
+                    analytics_dict["_extra"] = extra
+                    model_data["analytics"] = analytics_dict
                 for key, value in model_data.items():
                     setattr(existing, key, value)
                 existing.updated_at = datetime.now(timezone.utc)
@@ -1050,11 +1200,13 @@ class SQLTripStore:
             from src.security.privacy_guard import check_trip_data
             check_trip_data(updates)
 
+        updates = _fold_unmapped_updates(updates)
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
         async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
             if not trip_obj:
                 return None
+            _apply_status_guard_orm(trip_obj, updates)
             for key, value in updates.items():
                 if key in _encrypted_fields:
                     value = SQLTripStore._encrypt_field_for_storage(key, value)
@@ -1072,7 +1224,7 @@ class SQLTripStore:
 
         Mirrors _to_dict but works on raw SQLAlchemy Row objects instead of ORM Trip instances.
         """
-        return {
+        result = {
             "id": row.id,
             "run_id": row.run_id,
             "agency_id": row.agency_id,
@@ -1102,6 +1254,86 @@ class SQLTripStore:
             "created_at": row.created_at.isoformat() if row.created_at else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
         }
+        # Fold analytics._extra to top level, mirroring _to_dict, so CAS-update
+        # returns carry the same shape as reads (unmapped keys like packet_version
+        # are persisted inside _extra on the SQL backend).
+        extra = (row.analytics or {}).get("_extra") if isinstance(row.analytics, dict) else None
+        if isinstance(extra, dict):
+            for k, v in extra.items():
+                if k not in result:
+                    result[k] = v
+        return result
+
+    @staticmethod
+    async def _prepare_raw_update(trip_id: str, updates: dict, agency_id: Optional[str] = None) -> dict:
+        """Pre-SELECT for raw-SQL update paths that touch status or analytics.
+
+        Three jobs in one read (review cycle 2, findings D+E+A):
+        1. Enforce the trip-status invariant (raises IllegalTripStatusTransition,
+           mapped to 422 by the app handler) — raw-SQL updates don't load an ORM row.
+        2. Append the audited status transition into analytics._extra.status_history.
+        3. Deep-merge analytics in PYTHON: the trips.analytics column is JSON
+           (no ``||`` merge operator), so an in-SQL merge is impossible — and a
+           plain SET would wipe keys another writer stored. The CAS WHERE
+           (updated_at) still owns concurrency.
+
+        Returns the (possibly replaced) updates dict. The UPDATE's WHERE guard
+        predicate remains as defense-in-depth for the read-enforce-write gap.
+        """
+        if "analytics" not in updates and updates.get("status") is None:
+            return updates
+        session_ctx = (
+            SQLTripStore._rls_session_for_agency(agency_id)
+            if agency_id
+            else SQLTripStore._rls_session()
+        )
+        async with session_ctx as session:
+            row = (
+                await session.execute(
+                    sa_text("SELECT status, analytics FROM trips WHERE id = :trip_id"),
+                    {"trip_id": trip_id},
+                )
+            ).fetchone()
+        if row is None:
+            return updates
+
+        raw_analytics = row.analytics
+        if isinstance(raw_analytics, str):
+            try:
+                existing_analytics = json.loads(raw_analytics)
+            except (TypeError, ValueError):
+                existing_analytics = {}
+        elif isinstance(raw_analytics, dict):
+            existing_analytics = raw_analytics
+        else:
+            existing_analytics = {}
+        existing_extra = dict(existing_analytics.get("_extra") or {}) if isinstance(existing_analytics, dict) else {}
+
+        merged_updates = dict(updates)
+
+        # 1+2. Status invariant + audited history.
+        old_status = row.status
+        new_status = updates.get("status")
+        enforce_status_transition(old_status, new_status)
+        status_history = list(existing_extra.get("status_history") or [])
+        if old_status is not None and new_status is not None and str(old_status) != str(new_status):
+            status_history.append(
+                {"from": str(old_status), "to": str(new_status), "at": datetime.now(timezone.utc).isoformat()}
+            )
+
+        # 3. Deep-merge analytics: DB keys survive unless the incoming update
+        # overrides them; DB stays authoritative for status_history.
+        incoming = updates.get("analytics")
+        incoming = dict(incoming) if isinstance(incoming, dict) else {}
+        incoming_extra = dict(incoming.get("_extra") or {})
+        merged_extra = {**existing_extra, **incoming_extra}
+        if status_history:
+            merged_extra["status_history"] = status_history[-STATUS_HISTORY_CAP:]
+        merged_analytics = {**existing_analytics, **incoming}
+        merged_analytics["_extra"] = merged_extra
+        merged_updates["analytics"] = merged_analytics
+        return merged_updates
+
 
     @staticmethod
     async def update_trip_if_version(trip_id: str, updates: dict, expected_updated_at: Optional[str] = None) -> Optional[dict]:
@@ -1119,6 +1351,9 @@ class SQLTripStore:
         if set(updates.keys()) & _pii_sensitive_keys:
             from src.security.privacy_guard import check_trip_data
             check_trip_data(updates)
+
+        updates = _fold_unmapped_updates(updates)
+        updates = await SQLTripStore._prepare_raw_update(trip_id, updates)
 
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
 
@@ -1145,6 +1380,10 @@ class SQLTripStore:
         params["trip_id"] = trip_id
 
         where_clauses = ["id = :trip_id"]
+        if updates.get("status") is not None:
+            guard_sql, guard_params = _status_guard_sql_predicate(updates["status"], "guard_v")
+            params.update(guard_params)
+            where_clauses.append(guard_sql)
         if expected_updated_at is not None:
             try:
                 expected_dt = datetime.fromisoformat(expected_updated_at)
@@ -1186,6 +1425,9 @@ class SQLTripStore:
             from src.security.privacy_guard import check_trip_data
             check_trip_data(updates)
 
+        updates = _fold_unmapped_updates(updates)
+        updates = await SQLTripStore._prepare_raw_update(trip_id, updates, agency_id)
+
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
 
         now = datetime.now(timezone.utc)
@@ -1211,6 +1453,10 @@ class SQLTripStore:
         params["agency_id"] = agency_id
 
         where_clauses = ["id = :trip_id", "agency_id = :agency_id"]
+        if updates.get("status") is not None:
+            guard_sql, guard_params = _status_guard_sql_predicate(updates["status"], "guard_va")
+            params.update(guard_params)
+            where_clauses.append(guard_sql)
         if expected_updated_at is not None:
             try:
                 expected_dt = datetime.fromisoformat(expected_updated_at)
@@ -1255,6 +1501,11 @@ class SQLTripStore:
             from src.security.privacy_guard import check_trip_data
             check_trip_data(updates)
 
+        updates = _fold_unmapped_updates(updates)
+        updates = await SQLTripStore._prepare_raw_update(trip_id, updates, agency_id)
+
+        _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
+
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
         now = datetime.now(timezone.utc)
 
@@ -1275,7 +1526,13 @@ class SQLTripStore:
 
         set_clauses.append("updated_at = :new_updated_at")
 
-        sql = f"UPDATE trips SET {', '.join(set_clauses)} WHERE id = :trip_id AND agency_id = :agency_id RETURNING *"
+        where_sql = "id = :trip_id AND agency_id = :agency_id"
+        if updates.get("status") is not None:
+            guard_sql, guard_params = _status_guard_sql_predicate(updates["status"], "guard_a")
+            params.update(guard_params)
+            where_sql += f" AND {guard_sql}"
+
+        sql = f"UPDATE trips SET {', '.join(set_clauses)} WHERE {where_sql} RETURNING *"
 
         async with SQLTripStore._rls_session_for_agency(agency_id) as session:
             result = await session.execute(sa_text(sql), params)
@@ -2082,13 +2339,26 @@ class AuditStore:
         return events
 
     @staticmethod
-    def _append_event(event: dict):
-        """Append one event as a JSON line. Atomic at the event level."""
+    def _append_event(event: dict, *, lock_held: bool = False):
+        """Append one event as a JSON line.
+
+        ``lock_held`` is used by ``log_event`` so the cross-process lock can
+        cover the entire read-hash-append critical section without attempting
+        to acquire the non-reentrant directory lock twice.
+        """
         AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
         line = json.dumps(event) + "\n"
-        with file_lock(AuditStore.AUDIT_FILE):
+        def write_line() -> None:
             with open(AuditStore.AUDIT_FILE, "a") as f:
                 f.write(line)
+                f.flush()
+                os.fsync(f.fileno())
+
+        if lock_held:
+            write_line()
+        else:
+            with file_lock(AuditStore.AUDIT_FILE):
+                write_line()
 
     @staticmethod
     def _trim_if_needed():
@@ -2128,31 +2398,40 @@ class AuditStore:
     def log_event(event_type: str, user_id: str, details: dict) -> dict:
         """Log an audit event — append-only, crash-safe per event with SHA-256 chain hashing."""
         with AuditStore._lock:
-            AuditStore._migrate_if_needed()
-            
-            # Retrieve last event to link chain hash
-            events = AuditStore._read_events()
-            last_event = events[-1] if events else None
-            previous_hash = last_event.get("current_hash", "GENESIS_BLOCK_HASH") if last_event else "GENESIS_BLOCK_HASH"
+            AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+            # The lock must cover migration, predecessor read, hash creation,
+            # and append. Locking only the append permits chain forks under
+            # concurrent threads/processes.
+            with file_lock(AuditStore.AUDIT_FILE):
+                AuditStore._migrate_if_needed()
 
-            event_id = f"evt_{uuid4().hex[:12]}"
-            timestamp = datetime.now(timezone.utc).isoformat()
-            
-            # Compute current block SHA-256 hash
-            hash_payload = f"{event_id}:{event_type}:{user_id}:{previous_hash}:{timestamp}:{json.dumps(details, sort_keys=True)}"
-            current_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+                events = AuditStore._read_events()
+                last_event = events[-1] if events else None
+                previous_hash = (
+                    last_event.get("current_hash", "GENESIS_BLOCK_HASH")
+                    if last_event
+                    else "GENESIS_BLOCK_HASH"
+                )
 
-            event = {
-                "id": event_id,
-                "event_type": event_type,
-                "type": event_type,
-                "user_id": user_id,
-                "timestamp": timestamp,
-                "details": details,
-                "previous_hash": previous_hash,
-                "current_hash": current_hash,
-            }
-            AuditStore._append_event(event)
+                event_id = f"evt_{uuid4().hex[:12]}"
+                timestamp = datetime.now(timezone.utc).isoformat()
+                hash_payload = (
+                    f"{event_id}:{event_type}:{user_id}:{previous_hash}:{timestamp}:"
+                    f"{json.dumps(details, sort_keys=True)}"
+                )
+                current_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+
+                event = {
+                    "id": event_id,
+                    "event_type": event_type,
+                    "type": event_type,
+                    "user_id": user_id,
+                    "timestamp": timestamp,
+                    "details": details,
+                    "previous_hash": previous_hash,
+                    "current_hash": current_hash,
+                }
+                AuditStore._append_event(event, lock_held=True)
             AuditStore._write_count += 1
             AuditStore._trim_if_needed()
             return event
@@ -2162,6 +2441,56 @@ class AuditStore:
         """Get recent events (up to `limit`)."""
         events = AuditStore._read_events()
         return events[-limit:]
+
+    @staticmethod
+    def verify_chain(events: Optional[list[dict]] = None) -> dict[str, Any]:
+        """Verify predecessor links and hashes for an audit-event sequence.
+
+        When ``events`` is omitted, the JSONL file is read while holding the
+        cross-process lock so a concurrent append cannot produce a partial
+        verification snapshot. The method never mutates the ledger.
+        """
+        if events is None:
+            AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with file_lock(AuditStore.AUDIT_FILE):
+                events = AuditStore._read_events()
+
+        errors: list[str] = []
+        previous_hash = "GENESIS_BLOCK_HASH"
+        for index, event in enumerate(events):
+            event_id = event.get("id")
+            event_type = event.get("event_type", event.get("type"))
+            user_id = event.get("user_id")
+            timestamp = event.get("timestamp")
+            details = event.get("details", {})
+            recorded_previous = event.get("previous_hash")
+            recorded_current = event.get("current_hash")
+
+            if recorded_previous != previous_hash:
+                errors.append(
+                    f"event {index} ({event_id or 'missing-id'}) predecessor mismatch: "
+                    f"expected {previous_hash}, got {recorded_previous}"
+                )
+
+            hash_payload = (
+                f"{event_id}:{event_type}:{user_id}:{recorded_previous}:"
+                f"{timestamp}:{json.dumps(details, sort_keys=True)}"
+            )
+            expected_current = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+            if recorded_current != expected_current:
+                errors.append(
+                    f"event {index} ({event_id or 'missing-id'}) hash mismatch: "
+                    f"expected {expected_current}, got {recorded_current}"
+                )
+
+            previous_hash = str(recorded_current or expected_current)
+
+        return {
+            "valid": not errors,
+            "event_count": len(events),
+            "head_hash": previous_hash if events else "GENESIS_BLOCK_HASH",
+            "errors": errors,
+        }
 
     @staticmethod
     def get_events_for_trip(trip_id: str) -> list:

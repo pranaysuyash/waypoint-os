@@ -1,11 +1,13 @@
 # Consolidated Findings & Tasks Register — Explicit + Implicit (2026-08-31)
 
 **Date:** 2026-08-31 · **Authoritative current-truth register.**
+**Role:** canonical lifecycle register (the only source used for current status).
 **Companion to:** `PERSONA_COUNCIL_AUDIT_2026-08-31.md`, `ALIGNMENT_EVALUATION_2026-08-31.md`, `IMPLEMENTATION_PLAN_2026-08-31.md`
 **Git HEAD:** `8ece02e` · **Working tree:** 48 modified + ~30 untracked (uncommitted P0 remediation; see A-14).
 **This register is a live re-verification. It supersedes the status columns of `FINDINGS_REGISTER_2026-08-29.md` and `FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md`, but does not delete them (doctrine §6).**
 
-**Legend**
+## Legend
+
 - **Type:** `E` = explicit (documented elsewhere) · `I` = implicit (discovered by audit)
 - **Truth:** Observed / Verified / Inferred / Unknown (doctrine §2)
 - **FP** first-principles sound · **LT** long-term coherent · **DOC** doctrine-aligned
@@ -47,11 +49,11 @@ Status is **this register's live re-verification (2026-08-31)**, not the origina
 | ID | Type | Area | Finding | Live status | FP | LT | DOC | Sev |
 |---|---|---|---|---|---|---|---|---|
 | A-01 | I | Quality | The only honest quality gate excluded from CI | ✅ **FIXED/closed** — budget gate wired & honest; F1 0.9524, blocks_ci honored | ✅ | ✅ | ✅ | closed |
-| A-02 | I | RAG | Embeddings are md5 hash vectors, not semantic | ❌ **OPEN** — `generate_local_embedding` md5 64-dim (`indexer.py:20-35`); hybrid BM25+dense+RRF added (`retriever.py:36-102`) but "dense" not semantic | ❌ | ⚠️ | ⚠️ | P1 |
+| A-02 | I | RAG | Embeddings are md5 hash vectors, not semantic | ⚠️ **OPEN — local truth corrected 2026-09-04** — code/docs now name the MD5 hash-bucket vector, substring lexical heuristic, and heuristic grounding; a real semantic provider, benchmark, calibrated scores, and claim-level entailment remain unimplemented | ⚠️ | ⚠️ | ✅ | P1 |
 | A-03 | I | Agentic | Agent tools default to Mock; shipped config 100% mock | ⚠️ **PARTIAL** — `MockWeatherTool` default (`live_tools.py:406-408`); `RealityTier` exists but tool connectivity not tied to it; `CONNECTIVITY_TIER` removed | ⚠️ | ⚠️ | ⚠️ | P1 |
 | A-04 | I | Architecture | Backend duplicate / shadow systems (9 pairs) | ⚠️ **PARTIAL** — `audit_bridge` corrected (intentional); `TeamStore` DEPRECATED not removed; **19 inline pydantic in server.py**; **156 scattered os.getenv, no BaseSettings**; vision clients NOT duplicates (text vs vision) | ❌ | ❌ | ❌ | P1 |
 | A-05 | I | Frontend | Three competing data-fetch layers | ⚠️ **PARTIAL** — 80 raw `fetch(` in 44 files; 6 files use both; **no ESLint bare-fetch ban** | ❌ | ❌ | ❌ | P1 |
-| A-06 | I | Contract | Generated type contract orphaned & stale | ❌ **OPEN** — 5 importers; not in CI; no drift gate | ❌ | ❌ | ❌ | P1 |
+| A-06 | I | Contract | Generated contract freshness and consumer consolidation | ⚠️ **PARTIAL 2026-09-05** — canonical generation and CI drift enforcement are implemented in `.github/workflows/ci.yml:112-115`; older no-gate claim is superseded. Recorded deterministic local generation is not clean-commit/hosted CI proof; handwritten-consumer contract review remains open. Direct importer count alone does not establish orphaning. | ✅ | ⚠️ | ✅ | P1 |
 | A-07 | I | Docs | Documentation decay | ❌ **OPEN** | ❌ | ❌ | ❌ | P1 |
 | A-08 | I | Docs | `motto_v4.md` filename drift (content recoverable) | ❌ **OPEN** — 20 files still reference deleted file; restore target exists; no CI dangling check | ❌ | ❌ | ⚠️ | P1 |
 | A-09 | I | ADR | No supersession mechanism; numbering broken | ❌ **OPEN** — 0 `Supersedes:`/`Superseded-By:`; 002→006 gap; 22 ADRs repo-wide, only 3 numbered in `adr/` | ❌ | ❌ | ❌ | P1 |
@@ -59,14 +61,14 @@ Status is **this register's live re-verification (2026-08-31)**, not the origina
 | A-11 | I | Frontend | Four concurrent marketing generations live | ❌ **OPEN** — `app/v2`–`v5` all routed | ❌ | ❌ | ❌ | P2 |
 | A-12 | I | Security | `src/proxy.ts` inert; edge auth gate may not run | ⚠️ **PARTIAL** — `proxy.ts` exists, only imported by test; no `middleware.ts`; version skew (Next14 vs eslint-config-next16/@types/react19) | ⚠️ | ❌ | ⚠️ | P1 |
 | A-13 | I | Quality | 358 test failures | ✅ **FIXED** — env artifact; true CI-identical baseline green | ⚠️ | ❌ | ❌ | closed |
-| A-14 | I | Process | Uncommitted P0 remediation exposed | ❌ **OPEN (process)** — 48 modified + ~30 untracked; no commit without authorization | ✅ | ✅ | ❌ | P0 |
+| A-14 | I | Process | Uncommitted P0 remediation exposed | ✅ **CLOSED 2026-09-01** — preserved in `2f9a638`; all 167 committed paths and the subsequent live concurrent worktree are classified in `A1_1_WORKTREE_CLASSIFICATION_CLOSURE_2026-09-01.md` and its machine-checked ledgers | ✅ | ✅ | ✅ | closed |
 | A-15 | I | Frontend | Frontend debt is undocumented, not absent | ⚠️ **PARTIAL** — 44 `any` prod (down from 65); 0 TODO/FIXME; 2,932-line `itinerary-checker/PageClient.tsx`; 1 `@ts-expect-error` | ⚠️ | ❌ | ⚠️ | P2 |
 | A-16 | I | Frontend | Coverage thresholds unenforced; no e2e | ❌ **OPEN** — no thresholds in `vitest.config.ts`; `frontend/tests/` empty | ❌ | ❌ | ❌ | P2 |
-| A-17 | I | A11y | `WelcomeModal` is not a modal | ❌ **OPEN** — no `role="dialog"`/`aria-modal`; plain card | ❌ | ⚠️ | ➖ | P3 |
-| A-18 | I | Security | Secrets posture | ⚠️ **PARTIAL** — live `OPENAI_API_KEY` (rotate); committed `DATABASE_URL` dev password; `SPINE_API_DISABLE_AUTH` warns-not-crashes outside prod | ⚠️ | ⚠️ | ⚠️ | P1 |
+| A-17 | I | A11y | `WelcomeModal` name overstated modal semantics | ⚠️ **PARTIAL 2026-09-04** — implementation is explicitly `WelcomeCard` with labelled `role="region"`, native keyboard controls, and compatibility export; browser/screen-reader/focus-order evidence remains open | ✅ | ✅ | ✅ | P3 |
+| A-18 | I | Security | Secrets posture | ✅ **FIXED 2026-08-31 — (re-verified in-tree 2026-09-02 — resolves the A-18 status split with `FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md` §1a, which recorded the same fix; that row is the fix-record, THIS register is authoritative for current truth).** Committed `DATABASE_URL` dev password removed — `spine_api/core/database.py:26-35` requires env, fails loud `RuntimeError` (`load_project_env()` self-sufficient; history: default introduced `470cea9`, absent from current tree); `SPINE_API_DISABLE_AUTH` hard-fails in **production AND staging** — `spine_api/core/startup_assertions.py:43-56`, `tests/test_startup_assertions.py` (21 tests); `.env` gitignored (`git check-ignore` verified 2026-09-02), `OPENAI_API_KEY` never committed — rotation downgraded to hygiene (owner call, per `FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md` §1a) | ✅ | ✅ | ✅ | closed |
 | A-19 | I | Security | Coverage gap in RLS enforcement | ✅ **FIXED 2026-08-30** — 11 routers `get_rls_db`; `auth.py` documented exception; 4 exempt tables verified safe (RQ-03) | ✅ | ✅ | ✅ | closed |
-| A-20 | I | Migrations | 4 model tables had zero migration files | ⚠️ **PARTIAL** — frontier-table migration added & in chain (`add_frontier_tables`); **CI `alembic check` drift gate still open** | ✅ | ✅ | ⚠️ | P2 |
-| A-21 | I | Process | Parallel remediation in flight | ✅ **Resolved** — tracked & consolidated; this audit defers to existing designs | ✅ | ✅ | ✅ | closed |
+| A-20 | I | Migrations | Frontier migration and model/schema ownership drift | ⚠️ **PARTIAL 2026-09-05** — frontier migration chain and model registration/FK/JSONB ownership repairs are in-tree. The recorded 2026-09-04 post-repair probe still has 37 operations (not rerun here); reconciliation, disposable-database upgrade/recovery and blocking Alembic CI evidence remain open. See A20 reconciliation dossier. | ✅ | ✅ | ⚠️ | P2 |
+| A-21 | I | Process | Parallel remediation in flight | ✅ **CLOSED** — the six named artifacts are tracked in `8ece02e`; ownership limits and later concurrent work are preserved in the A1-1 classification closure rather than inferred | ✅ | ✅ | ✅ | closed |
 
 ---
 
@@ -74,7 +76,7 @@ Status is **this register's live re-verification (2026-08-31)**, not the origina
 
 | ID | Finding | Status | FP | LT | DOC | Sev |
 |---|---|---|---|---|---|---|
-| F-01 | `price_lock.py` re_lock blind read-modify-write (no version/idempotency) → concurrent re-locks double-book | **open** | ❌ | ❌ | ❌ | P1 |
+| F-01 | `price_lock.py` re_lock blind read-modify-write (no version/idempotency) → concurrent re-locks double-book | **partial 2026-09-04** — optimistic `expected_version` guard, replay idempotency cache, and conflict/replay regressions now exist; durable multi-writer CAS and compensating-action ledger remain open | ⚠️ | ⚠️ | ✅ | P1 |
 | F-02 | `public_proposals.py` in-memory unbounded 16-hex unauthenticated tokens → full trip data; no TTL/revocation/consent | **open** | ❌ | ❌ | ❌ | P1 |
 | F-03 | `team_workflows`/`corporate_policy` store client-supplied signoff; who-authorized is self-asserted | **open** | ❌ | ❌ | ❌ | P1 |
 | F-04 | No payment authorization mandate ledger (split deposits + ACH move money w/o consent artifact) | **open** | ❌ | ❌ | ❌ | P1 |
@@ -97,7 +99,7 @@ Status is **this register's live re-verification (2026-08-31)**, not the origina
 
 | ID | Finding | Status | FP | LT | DOC | Sev |
 |---|---|---|---|---|---|---|
-| F-17 | Frontend suite debt: TimelinePanel test races async fetch; 49 unhandled vitest errors; 4 lint errors + 17 exhaustive-deps warnings | **open** | ⚠️ | ❌ | ⚠️ | P2 |
+| F-17 | Frontend asynchronous behavior, warning discipline and coverage policy | **partial 2026-09-05** — later local suite/lint receipts supersede the historical 49-error/4-error/17-warning baseline; Timeline tests await async rendering. Unexpected-warning policy, stale-response/race tests and coverage thresholds remain open. A passing local suite does not prove production race safety. | ⚠️ | ⚠️ | ✅ | P2 |
 | F-18 | Budget rule package (RQ-01 exit) | ✅ **FIXED** — F1 0.9524, gate green; **only S1/S3/S5 present** (S2/S4/S6 not found — prior claim overstated) | ✅ | ✅ | ✅ | closed |
 | F-19 | Full-suite phantom failures under live-server contention (order-dependence) | **open** | ⚠️ | ⚠️ | ⚠️ | P2 |
 | F-20 | DEMO-01/IMP-01: ESCALATE never persists a lead (P0) | ✅ **IMPLEMENTED 2026-08-31** — `save_processed_trip` on `early_exit` (`pipeline_execution_service.py:346`, `trip_status="incomplete"`, never overwrites); ADR `ADR_ESCALATE_LEAD_PERSISTENCE_2026-08-31.md` | ✅ | ✅ | ✅ | closed |
@@ -106,25 +108,203 @@ Status is **this register's live re-verification (2026-08-31)**, not the origina
 | F-23 | DEMO-04: Alex Morgan card hardcoded + unconditional + fake-facts injection; legacy `CUSTOMER_MEMORY_STORE` unscoped (latent isolation) | **open** | ❌ | ❌ | ❌ | **P1** |
 | F-24 | DEMO-05: `/inbox` renderer crash — verdict: dev-noise, not product defect | **watch** | ✅ | ✅ | ✅ | P3 |
 | F-25 | DEMO-06/09: Repair-surface UX no-op; banner lacks missing-field names | **open** | ⚠️ | ⚠️ | ⚠️ | P2 |
-| F-26 | DEMO-07: Copy/label drift (WORK EMAIL / you@agency.com / Waypoint HQ / runtime chip) | **open** | ⚠️ | ⚠️ | ⚠️ | P3 |
+| F-26 | DEMO-07: Copy/label drift (WORK EMAIL / <you@agency.com> / Waypoint HQ / runtime chip) | **open** | ⚠️ | ⚠️ | ⚠️ | P3 |
 
 ---
 
-## Part 5 — NEW findings identified by THIS audit (not in any prior register)
+## Part 4b — F-27…F-29 (2026-09-01, TPM-blueprint gap-diff; sourced from Docs/TPM_TRAINING_BLUEPRINT_PRODUCT_MAPPING_2026-09-01.md)
 
-| ID | Finding | FP | LT | DOC | Sev |
-|---|---|---|---|---|---|
-| **NEW-01** | **Inverted evidence apparatus on the facts path.** Every freeform extractor passes `AuthorityLevel.EXPLICIT_USER` unconditionally (`extractors.py:1863-2290`), so pattern-inferred (`party_size=1` from "me"), default-filled (`budget_flexibility="soft"`, `budget_scope="total"`), and spurious (`destination_status="open"` from an unrelated "somewhere") values all carry `explicit_user/FACT`. `set_fact` gates only on authority, not epistemic status. | ❌ | ❌ | ❌ | **P1** |
-| **NEW-02** | **Silently-wrong extraction (worse than missing).** Truth = Japan+Tokyo/Kyoto/Osaka, party=4, budget=per-person; packet emitted `party_size=1 @0.9`, `budget_scope="total"`, `destination_candidates=[]`. A quote built on party=1 × trip-total when truth is 4 pax × per-person is ~4x commercial error. Isolated to destination/party/budget-scope/date-flex pattern gaps + the "somewhere" fallback trigger. | ✅ | ✅ | ✅ | **P0** |
-| **NEW-03** | **Retirement is not a primitive.** 156 scattered `os.getenv` (no `BaseSettings`), `TeamStore` DEPRECATED-not-removed, 19 inline pydantic in `server.py`, 4 marketing generations, 2 doc trees, 0 ADR supersession. Deprecation is a comment, not a state with a date + enforcer. | ❌ | ❌ | ❌ | **P1 (systemic)** |
-| **NEW-04** | **RAG "dense" is a hash vector, not semantic** — `retriever.py` claims "dense semantic search" but its dense path is the md5 pseudo-embedding; only BM25 does real work. Claim-reality risk if ever called "semantic search." | ❌ | ⚠️ | ⚠️ | P1 |
-| **NEW-05** | **Findings-lifecycle gate exists but is not wired into CI** (`check_findings_register.py`, CI-ready, absent from `ci.yml`). Evidence of drift: consolidated register lists R-15 as open P1, but R-15 is FIXED 2026-08-31. | ❌ | ❌ | ❌ | P2 |
-| **NEW-06** | **Customer-memory backend is real; frontend never calls it.** `src/memory/` (store/retrieval/decay/eligibility/gdpr/provenance/sanitizer/supersession) + `routers/customer_memory.py` (`/api/v1/customers/*`) exist; `api-client.ts` has zero customer-memory functions. The Alex Morgan card is a UI mock of a backend it was never pointed at. | ❌ | ❌ | ❌ | **P1** |
-| **NEW-07** | **Agent runtime liveness gaps.** `ExecutionLease.heartbeat` dead code; >60s task re-acquirable (double-execution); leases have no pipeline-version stamp (deploy splits a run across two code generations); mock-vs-live not tied to `RealityTier`. | ⚠️ | ⚠️ | ⚠️ | P2 |
+| ID | Finding | Status | FP | LT | DOC | Sev |
+|---|---|---|---|---|---|---|
+| F-27 | `/optimistic-sync` blind last-write-wins: customer reply silently clobbers operator-corrected fields (and vice versa); no merge precedence, no provenance, no concurrency guard on trip-field writes | ✅ **IMPLEMENTED 2026-09-01** — canonical precedence contract `spine_api/services/field_merge.py` (preference customer>operator, commercial operator>customer; conflicts returned with kept value; provenance in packet `_field_provenance`); `expected_packet_version` 409 + store-level CAS via `update_trip_if_version`; no-regression rule (shallow re-check can't demote READY_FOR_STRATEGY unless this update cleared a required field). Tests `tests/test_optimistic_sync_merge.py` (10). Review cycle 1 caught TOCTOU on the version check → CAS + analytics JSONB-merge on raw-SQL updates | ✅ | ✅ | ✅ | closed |
+| F-28 | Intake-boundary idempotency: `/api/v1/inbound/parse` minted a fresh trip per call and `messaging_webhooks` had zero message dedup — any provider retry creates duplicate drafts/leads and duplicate LLM spend; dormant `IdempotencyRegistry` had zero callers (and a check-then-set race) | ✅ **IMPLEMENTED 2026-09-01** — `/parse` dedup keyed on (agency, channel, raw_text, customer fields, agent_notes): COMPLETED → replay same trip, PENDING → 409, FAILED → retry allowed; webhook dedup per provider message_id (replay / `duplicate_suppressed`); registry now `threading.Lock`-guarded incl. singleton creation; mark_completed immediately after `save_trip` with post-save side effects best-effort (failure after persist can't un-complete the key). Tests `tests/test_intake_idempotency.py` (8). In-process backend documented as the multi-worker seam | ✅ | ✅ | ✅ | closed |
+| F-29 | Trip-status invariant unenforced at the mutation layer: `trip_status` freeform string; incomplete/escalated leads could become quote-ready in one hop; ESCALATE ADR had to hand-patch semantics; no transition audit | ✅ **IMPLEMENTED 2026-09-01** — `spine_api/core/trip_status.py` (`INTAKE_BLOCKED × QUOTE_CAPABLE` invariant, `status_history` cap-50, alias normalize w/ warn); enforced in **every** persistence write path: `save_trip` (file+SQL), `update_trip` (file ×3 locked variants + SQL ORM via `_apply_status_guard_orm`), raw-SQL updates via atomic `_status_guard_sql_predicate` WHERE clause — review cycle 1 caught the update-path bypass. Tests `tests/test_trip_status_machine.py` (36). Full typed-enum/Literal enforcement deferred until the derived read-model (N-4) validates the real status distribution | ✅ | ✅ | ✅ | closed |
+
+Companion UX slice (not a finding): derived lifecycle read-model — `frontend/src/lib/trip-lifecycle.ts` + `LifecycleChip` (trip workspace header), escalated filter chip on Trips in Planning, unified blocker derivation. Tests: 19 (lib + component). Next slices documented in `Docs/review/TPM_BLUEPRINT_TASKS_IMPLEMENTATION_HANDOFF_2026-09-01.md`.
+
+---
+
+## Part 4c — G-01…G-19, GM-01…GM-09, PT/GF/REC series (2026-09-02 register-integration pass — closes REC-2/G-19)
+
+**Sources:** `Docs/exploration/AGENTIC_DEEP_AUDIT_SYNTHESIS_2026-08-31.md` §3 (G-series) + §2.5 (GM/REC rows); `Docs/exploration/GEMINI_WAVE_MODULE_AUDIT_2026-09-01.md` §1/§5 (GM-series); `Docs/review/SPINE_AUDIT_NEW_FINDINGS_2026-09-02.md` (PT-series); `Docs/review/GEMINI_WAVE_FINDINGS_FOR_REVIEW_2026-09-02.md` §A (GF-series).
+**Method:** every Status below was re-verified against the live tree on 2026-09-02 (file:line evidence cited in-row); items verified fixed in-tree are marked CLOSED with that evidence, unverified items are open/in-flight. BUILD_QUEUE truthfulness amendments (8 simulated/shadow "Completed" lines) and the findings-gate CI wiring (`ci.yml` findings step) are part of this pass.
+
+### G-series (deep-audit synthesis §3)
+
+| ID | Finding | Status | FP | LT | DOC | Sev |
+|---|---|---|---|---|---|---|
+| G-01 | Simulated subsystems (Frontier OS, Persona Council) render fabricated data behind dashboards while the honest concierge engine is orphaned — wire-or-label per never-both-and-hidden | **open** 2026-09-02 — disposition still unratified; wave amplified it (see GM-01) | ❌ | ✗ | synthesis §3 | P1 |
+| G-02 | No runtime model router exists; `routing_health` metrics measure a router that doesn't exist | **open** 2026-09-02 | ❌ | ✓ | synthesis §3 | P1 |
+| G-03 | Orphaned LLM assets: hybrid decision engine + suitability Tier-3 scorer built, unwired | **open** 2026-09-02 — ratify wire-vs-archive | ? | ✓ | synthesis §3 | P2 |
+| G-04 | RAG doc claims false (md5 hash-vector ≠ dense semantic; substring boosting ≠ graph traversal) | **open — claim corrected 2026-09-04** in canonical RAG modules and evidence record; real provider/benchmark and graph-edge traversal remain open (also tracked as A-02) | ⚠️ | ✗ | ✅ | P1 |
+| G-05 | Eval extraction/pipeline lanes "expected as actual" (grade nothing); 30-scenario corpus unwired | **open** 2026-09-02 | ❌ | ✓ | synthesis §3 | P1 |
+| G-06 | Holdout leak: colloquial fixtures verbatim in dev tests — F1 measures memorization | **open** 2026-09-02 | ❌ | ✓ | synthesis §3 | P1 |
+| G-07 | Journey-level tests absent from CI (the four-gap closure) | ✅ **CLOSED 2026-09-02** — `tests/test_journey_smoke.py` (in-process signup-principal → missing-basics intake → ESCALATE persists `incomplete` lead → inbox projection `list_trip_summaries(_INBOX_STATUSES)` → validation banner data asserted); auto-run by the CI `backend-tests` job (`pytest -q tests/`); local pass evidence 2026-09-02 | ✅ | ✅ | ✅ | closed |
+| G-08 | Red-team: escapeable egress delimiter + undelimited fact interpolation in hybrid prompts | ✅ **CLOSED 2026-09-02 (verified in-tree)** — `spine_api/core/llm_egress.py:194-204` `add_prompt_delimiters` neutralizes delimiter-lookalikes; `src/decision/hybrid_engine.py:707-731` interpolates packet facts per-call nonce-delimited | ✅ | ✅ | ✅ | closed |
+| G-09 | Red-team: draft-promote accepts cross-tenant trip_id | ✅ **CLOSED 2026-09-02 (verified in-tree)** — `spine_api/routers/drafts.py:280-286` agency-scoped `TripStore.get_trip_for_agency(trip_id, agency.id)` → 404 without leaking foreign-trip existence | ✅ | ✅ | ✅ | closed |
+| G-10 | Public-checker DoS surface: unauth 100KB notes, depth-unbounded structured_json | ✅ **CLOSED 2026-09-02 (verified in-tree)** — `spine_api/routers/public_checker.py:28` 16KiB event cap + `:70` 30/min rate limit; `spine_api/services/public_checker_service.py:41` `PUBLIC_CHECKER_MAX_JSON_DEPTH = 10` | ✅ | ✅ | ✅ | closed |
+| G-11 | Legacy `CUSTOMER_MEMORY_STORE` unpartitioned (memory-poisoning latent) | ✅ **CLOSED 2026-09-02 (verified in-tree)** — `spine_api/routers/customer_memory.py:43` store keyed `(agency_id, customer_id)` (`:159,252,505`); `tests/test_customer_memory_agency_partition.py` | ✅ | ✅ | ✅ | closed |
+| G-12 | 3 competing findings registers; authoritative register stale; findings gate unwired in CI | ⚠️ **PARTIAL 2026-09-02** — findings gate now wired into CI (`ci.yml` backend-lint job, findings-register lifecycle step) and this integration pass merged the G/GM/PT/GF/REC waves into the authoritative register; full one-register consolidation across `Docs/` still open | ❌ | ⚠️ | ⚠️ | P1 |
+| G-13 | MEMORY.md asserted opposite business model; falsified baselines circulate | **open** 2026-09-02 | ❌ | ✗ | synthesis §3 | P1 |
+| G-14 | Seasonal campaigns fully built, zero docs (code-ahead-of-record) | **open** 2026-09-02 | ✗ | ✓ | synthesis §3 | P2 |
+| G-15 | 19 unnumbered root ADRs; ADR 003–005 missing; 3 exploration backlogs; F-ID collisions | **open** 2026-09-02 | ✗ | ✗ | synthesis §3 | P2 |
+| G-16 | Browser-LLM: in-browser checker rejected; on-device draft+verify only as opt-in experiment pending benchmark + disagreement telemetry | **deferred** 2026-09-02 — parked behind golden-set SLM benchmark + telemetry gate per synthesis Phase 0/4 | ✓ | ✓ | synthesis §3 | P3 |
+| G-17 | Waypoint-specific personas under-leveraged (repo stack thin vs desktop registry) | **open** 2026-09-02 | ✓ | ✓ | synthesis §3 | P3 |
+| G-18 | Skills assessment: embedded patterns; agent-memory-mcp duplicates Docs/memory; agent-management not applicable | **wontfix** (recorded) 2026-09-02 — no action per synthesis §4.5 | — | — | synthesis §4.5 | P3 |
+| G-19 | Register/bookkeeping: integrate audit-wave findings as register rows (pending-veto) | ✅ **CLOSED 2026-09-02** — this Part 4c integration pass is the deliverable | ✓ | ✓ | synthesis §3 | P3 |
+
+### GM-series (Gemini-wave module audit §5)
+
+| ID | Finding | Status | FP | LT | DOC | Sev |
+|---|---|---|---|---|---|---|
+| GM-01 | G-01 amplified: wave interleaves genuine hardening (A) with unlabeled simulated-capability expansion (B); 12 new panels | ⚠️ **PARTIAL 2026-09-02 (in-flight)** — labeling landed on 4 surfaces (GDSSandboxPanel, IVRBypassPanel, FinancialSettlementPanel + CrisisEvacuation/Negotiation use `SimulatedBadge`; GDSSandboxPanel "Live" copy now "Simulated", verified in-tree); the 8-unlabeled-panel count is historical 2026-09-02 evidence requiring current surface review. Delivery correction 2026-09-05: commit splitting was a historical proposal, not an active veto on the user's authorized all-path A1-1 delivery. Simulator-label/provider-truth closure remains separate. | ❌ | ❌ | module audit §5 | P1 |
+| GM-02 | `spine_api/providers/*` named "Production … Adapter" with zero callers/zero network | ⚠️ **PARTIAL 2026-09-02 (in-flight)** — docstrings now honest ("Sandbox Amadeus/Stripe/Twilio … Adapter", "SIMULATED: deterministic in-process adapter", verified in-tree); files keep `_adapter.py` names under `spine_api/providers/` with zero callers — rename/gate decision open | ⚠️ | ❌ | module audit §5 | P1 |
+| GM-03 | Stripe `verify_webhook_signature` returned `True` unconditionally — fake security control | ✅ **CLOSED 2026-09-02 (verified in-tree)** — `spine_api/providers/stripe_issuing_adapter.py:124-144` real HMAC-SHA256 `t=,v1=` verification, constant-time compare, 5-min replay window, fail-closed without signing secret | ✅ | ✅ | ✅ | closed |
+| GM-04 | Proposal HMAC tokens weakened: hardcoded default secret, ≥16-char "legacy" bypass, test-agency UUID in verify loop, in-memory revocation | ✅ **CLOSED 2026-09-02 (verified in-tree)** — full PT-01…PT-06 stack landed: required `PROPOSAL_SIGNING_KEY` (`spine_api/routers/public_proposals.py:90-118`), explicit demo-token allowlist (`:120-135`), agency-encoded v2 tokens with no guess-loop (`:270-358`), file-backed durable revocations (`:150-200`), full 256-bit digest (`:264-266`) | ✅ | ✅ | ✅ | closed |
+| GM-05 | New tests validate the simulation's shape, not reality (assert hardcoded DTMF, fabricated stream URL) | **open** 2026-09-02 — `tests/test_production_provider_adapters.py` unchanged in this respect | ⚠️ | ❌ | module audit §5 | P2 |
+| GM-06 | 9 shadow src/ modules + yield-arbitrage engine have zero production callers | **open** 2026-09-02 — re-verified by rg: payment_mandates, perishable_sentinel, retention_enforcer, dlq_inspector, export_bridge, pre_departure_cadence, visa_workflow, rate_parity still test-only; wire-or-archive per module; BUILD_QUEUE "Completed" rows for these amended 2026-09-02 | ❌ | ❌ | module audit §5 | P2 |
+| GM-07 | 12 new routers skip `_auth_or_skip`; safe only via global AuthMiddleware ordering | ✅ **CLOSED 2026-09-02 (verified in-tree)** — `spine_api/server.py:1459-1476` all new routers included with explicit `Depends(_auth_or_skip)` | ✅ | ✅ | ✅ | closed |
+| GM-08 | `stress-test` POST spawns simulated load with no per-agency rate cap | **open** 2026-09-02 — `spine_api/routers/stress_benchmark.py` has no limiter (rg 2026-09-02) | ✗ | ⚠️ | module audit §5 | P3 |
+| GM-09 | Wave self-inconsistent: database.py purges committed credentials while proposal tokens kept a signing-key default and compose keeps a dev DB password | ⚠️ **PARTIAL 2026-09-02** — signing-key default removed (GM-04/PT-01 closed); `docker-compose.yml:79` still embeds a dev Postgres password (`waypoint_password`, dev-only container) | ⚠️ | ⚠️ | module audit §5 | P3 |
+
+### PT-series (spine audit 2026-09-02)
+
+| ID | Finding | Status | FP | LT | DOC | Sev |
+|---|---|---|---|---|---|---|
+| PT-01 | Hardcoded fallback signing secret for proposal capability tokens | ✅ **CLOSED 2026-09-02 (verified in-tree)** — `public_proposals.py:90-118` `_require_signing_key()` fails at import with actionable message (mirrors database.py A-18 posture) | ✅ | ✅ | ✅ | closed |
+| PT-02 | "Legacy" token bypass: any junk ≥16 chars authorized `trip_legacy` | ✅ **CLOSED 2026-09-02 (verified in-tree)** — length heuristic deleted; explicit `_DEMO_TOKEN_ALLOWLIST` of 3 named demo strings (`public_proposals.py:120-135`); unsigned junk now fails signature verification | ✅ | ✅ | ✅ | closed |
+| PT-03 | Verify loop hardcoded fallback agencies incl. test-agency UUID | ✅ **CLOSED 2026-09-02 (verified in-tree)** — v2 tokens embed the issuing agency (`prop_{trip}_{agency_field}_{exp}_{sig}`); verification reads the token's own agency, guess-list gone (`public_proposals.py:137-196,296-358`) | ✅ | ✅ | ✅ | closed |
+| PT-04 | Agency id signed but never used in verification | ✅ **CLOSED 2026-09-02 (verified in-tree)** — agency participates in the HMAC payload via the decoded agency field (root cause of PT-03 removed) | ✅ | ✅ | ✅ | closed |
+| PT-05 | Token revocation was an in-memory set (lost on restart) | ✅ **CLOSED 2026-09-02 (verified in-tree)** — file-backed revocation store with atomic persist (`public_proposals.py:150-200`); single-host durability boundary documented honestly | ✅ | ✅ | ✅ | closed |
+| PT-06 | HMAC signature truncated to 16 hex chars (64-bit) | ✅ **CLOSED 2026-09-02 (verified in-tree)** — full SHA-256 hex digest (`public_proposals.py:264-266`) | ✅ | ✅ | ✅ | closed |
+| PT-07 | Frontend VCC "fix" hardcoded `http://127.0.0.1:8000` (GF-05 defect) | ✅ **CLOSED 2026-09-02 (verified in-tree)** — `FinancialSettlementPanel.tsx:11,30` uses the BFF-relative `/api/v1/settlement/vcc/issue` path | ✅ | ✅ | ✅ | closed |
+| PT-08 | `IdempotencyRegistry` in-process; multi-worker deployments lose duplicate protection | ⚠️ **PARTIAL 2026-09-02 (in-flight)** — pluggable backend shipped (`src/agents/idempotency.py:357-390`: `SPINE_API_IDEMPOTENCY_BACKEND` = memory/sql/auto with `SqlIdempotencyBackend`); default still `memory` and no production startup assertion enforces a cross-process backend | ⚠️ | ⚠️ | ⚠️ | P2 |
+| PT-09 | Twelve new routers rely on global AuthMiddleware ordering (auth posture invisible at router level) | ✅ **CLOSED 2026-09-02 (verified in-tree)** — same fix as GM-07 (`server.py:1459-1476`) | ✅ | ✅ | ✅ | closed |
+
+### GF-series (findings BY the Gemini wave, self-documented) + REC rows
+
+| ID | Finding | Status | FP | LT | DOC | Sev |
+|---|---|---|---|---|---|---|
+| GF-01 | Salutation entity extraction (`Hi Sam!` → name as destination); `_SALUTATION_RE` fix in extractors.py | ✅ **CLOSED locally 2026-09-04** — basic and bounded honorific probes now return only the actual destination; focused N-09/GF regression suite passes | ✅ | ✅ | ✅ | P3 |
+| GF-02 | Colon budget connectives (`Budget: Around $14,000`) | ✅ **CLOSED** — fix in `_extract_budget` connective set; covered by the CI-green extraction/budget gate (F1 0.9524 baseline) | ✅ | ✅ | GF §A | closed |
+| GF-03 | Inline destination labels with parentheticals (`Destinations: Tokyo (4 nights)…`) | ✅ **CLOSED locally 2026-09-04** — parenthetical night stripping, explicit-label precedence, and city-set composition are covered by focused probes; country-vs-city semantics remain separate design work | ✅ | ✅ | ✅ | P3 |
+| GF-04 | CommSettingsTab red toast on fresh workspaces (missing defaults) | **open** 2026-09-02 — zero-settings render unverified | ⚠️ | ✅ | GF §A | P3 |
+| GF-05 | VCC endpoint 404 "fixed" via hardcoded localhost backend URL | ✅ **CLOSED 2026-09-02** — superseded by the correct BFF-proxy fix; see PT-07 (closed) | ✅ | ✅ | ✅ | closed |
+| GF-06 | A-14 closed via authorized commit `2f9a638` + machine-checked classification ledgers | ✅ **CLOSED** — `A1_1_WORKTREE_CLASSIFICATION_CLOSURE_2026-09-01.md` + CSV ledgers | ✅ | ✅ | ✅ | closed |
+| GF-07 | A-21 closed via the same classification closure | ✅ **CLOSED** — same evidence as GF-06 | ✅ | ✅ | ✅ | closed |
+| GF-08 | Implementation-plan Wave-0 0.4 closed; 0.3 honestly left partially open | ✅ **CLOSED** — A1-1 §10 records 0.3 as still-open baseline | ✅ | ✅ | ✅ | closed |
+| GF-09 | 12 persona docs + 4 live simulations + 16 case studies + simulation chronicle | ✅ **CLOSED (record)** — artifacts exist and the chronicle is titled and framed as simulation; capability-claim accuracy tracked under REC-1 | ⚠️ | ✅ | GF §A | closed |
+| GF-10 | ~30 new modules + ~20 test files (116/116 green) | ✅ **CLOSED** — 116/116 independently re-run by module audit §3 (2026-09-02) | ✅ | ⚠️ | ✅ | closed |
+| REC-1 | 30 chronicle/case-study capability claims: 7 VERIFIED / 5 PARTIAL / 17 SIMULATED | **open** 2026-09-02 — chronicle title discloses simulation, but the per-case-study simulator-caveat annotation pass is not verified in-tree | ❌ | ⚠️ | synthesis §2.5 | P1 |
+| REC-2 | Audit findings captured in no register; BUILD_QUEUE marks shadow modules "Completed"; A-18 split across registers | ✅ **CLOSED 2026-09-02** — this Part 4c pass (G/GM/PT/GF/REC rows), the BUILD_QUEUE truthfulness amendments (8 lines), the A-18 reconciliation (Part 2 + FINDINGS_TASKS §1a), and the findings-gate CI wiring | ✅ | ✅ | ✅ | closed |
+
+---
+
+## Part 4d — X-04 decision-escalation reconciliation (2026-09-04)
+
+The historical X-series rows remain preserved in
+`Docs/exploration/MASTER_FINDINGS_TASKS_INVENTORY_2026-09-02.md`; this row is
+the current lifecycle status for the canonical register. The pre-fix
+counterfactual is recorded in `Docs/exploration/N01_SCENARIO_TRIAGE_2026-09-02.md`
+§2.1: party/origin contradictions were classified as high-priority ASK actions
+but Phase 7 admitted only critical actions, producing
+`PROCEED_INTERNAL_DRAFT`. The current implementation and regression receipt are
+recorded in `Docs/review/DECISION_CORRECTNESS_X04_X05_X06_X13_2026-09-04.md`.
+
+| ID | Finding | Status | FP | LT | DOC | Sev |
+|---|---|---|---|---|---|---|
+| X-04 | High-priority `party_conflict`/`origin_conflict` actions were dead intent: consequential conflicts could be silently carried into a draft/quote path. | ✅ **CLOSED locally 2026-09-04** — `src/intake/decision.py` now admits critical actions plus the explicit high-priority party/origin set, emits field-targeted `ASK_FOLLOWUP`, and preserves STOP-over-ASK precedence; focused party/origin and mixed-conflict regressions are present in `tests/test_decision_policy_conformance.py`; 146 decision-focused tests and the 30-fixture corpus are green. | ✅ | ✅ | ✅ | P1 |
+
+**Boundary:** this is a local decision-correctness closure, not independent
+producer, private-holdout, provider, browser, hosted, or release-promotion
+proof. Independent evaluation and promotion gates remain open per the decision
+correctness evidence note.
+
+---
+
+| ID | Finding | FP | LT | DOC | Sev | Status |
+|---|---|---|---|---|---|---|
+| **NEW-01** | **Inverted evidence apparatus on the facts path.** Every freeform extractor passes `AuthorityLevel.EXPLICIT_USER` unconditionally (`extractors.py:1863-2290`), so pattern-inferred (`party_size=1` from "me"), default-filled (`budget_flexibility="soft"`, `budget_scope="total"`), and spurious (`destination_status="open"` from an unrelated "somewhere") values all carry `explicit_user/FACT`. `set_fact` gates only on authority, not epistemic status. | ❌ | ❌ | ❌ | **P1** | open — authority/assumptions integration remains under F-22/F-37 |
+| **NEW-02** | **Silently-wrong extraction (worse than missing).** Truth = Japan+Tokyo/Kyoto/Osaka, party=4, budget=per-person; packet emitted `party_size=1 @0.9`, `budget_scope="total"`, `destination_candidates=[]`. A quote built on party=1 × trip-total when truth is 4 pax × per-person is ~4x commercial error. Isolated to destination/party/budget-scope/date-flex pattern gaps + the "somewhere" fallback trigger. | ✅ | ✅ | ✅ | **P0** | partial — local extraction corrections recorded; residual product contracts D-01–D-03 and independent proof remain |
+| **NEW-03** | **Retirement is not a primitive.** 156 scattered `os.getenv` (no `BaseSettings`), `TeamStore` DEPRECATED-not-removed, 19 inline pydantic in `server.py`, 4 marketing generations, 2 doc trees, 0 ADR supersession. Deprecation is a comment, not a state with a date + enforcer. | ❌ | ❌ | ❌ | **P1 (systemic)** | open — canonical supersession and retirement remain unimplemented |
+| **NEW-04** | **RAG "dense" is a hash vector, not semantic** — `retriever.py` claims "dense semantic search" but its dense path is the md5 pseudo-embedding; only BM25 does real work. Claim-reality risk if ever called "semantic search." | ❌ | ⚠️ | ⚠️ | P1 | partial — local claim correction recorded 2026-09-04 under A-02/G-04; semantic provider and benchmark remain open |
+| **NEW-05** | **Findings-lifecycle gate exists but is not wired into CI** (`check_findings_register.py`, CI-ready, absent from `ci.yml`). Evidence of drift: consolidated register lists R-15 as open P1, but R-15 is FIXED 2026-08-31. | ❌ | ❌ | ❌ | P2 | closed 2026-09-05 — CI wiring directly observed in .github/workflows/ci.yml findings step; checker correctness tracked separately as EV-01 |
+| **NEW-06** | **Customer-memory backend is real; frontend never calls it.** `src/memory/` (store/retrieval/decay/eligibility/gdpr/provenance/sanitizer/supersession) + `routers/customer_memory.py` (`/api/v1/customers/*`) exist; `api-client.ts` has zero customer-memory functions. The Alex Morgan card is a UI mock of a backend it was never pointed at. | ❌ | ❌ | ❌ | **P1** | partial — legacy tenant partitioning recorded; canonical retrieval and user-flow completion remain open |
+| **NEW-07** | **Agent runtime liveness gaps.** `ExecutionLease.heartbeat` dead code; >60s task re-acquirable (double-execution); leases have no pipeline-version stamp (deploy splits a run across two code generations); mock-vs-live not tied to `RealityTier`. | ⚠️ | ⚠️ | ⚠️ | P2 | partial — local lease state-machine recorded; durable heartbeat/fenced mutation integration remains open |
+
+---
+
+## Part 4e — F-30…F-40 (2026-09-04, exploration-wave triage; sources: Docs/exploration/E1…E14 + Docs/architecture/TRIP_LIFECYCLE_STATE_CONTRACTS_2026-09-02.md; all claims spot-verified before filing)
+
+| ID | Finding | Status | FP | LT | DOC | Sev |
+|---|---|---|---|---|---|---|
+| F-30 | **`corporate_policy.py` routes have NO JWT auth.** Both routes take raw `X-Agency-ID` header with `TEST_AGENCY_ID` fallback (`corporate_policy.py:59-65,110-117`), bypassing the guard `core/auth.py:182-186` applies to that header — an unauthenticated caller can approve policy overrides for any named agency. Worse-than-F-03 adjacency; joins the F-03 closure. Verified read-only. | **open** | ✅ | ✅ | ✅ | **P1** |
+| F-31 | **Insurance timing, eligibility and attachment contracts are insufficiently evidenced.** Deposit-based calculation is present, but invalid dates become fresh quote-time windows, eligibility stays unconditionally true, and offset/bounds defects remain. The original universal 14-day premise is not a valid cross-plan rule. Attachment lacks action permission, records agency as actor and separates durable save/audit; pytest changes tenant-header resolution. | **partial 2026-09-05** — source/stdlib arithmetic review, primary-source counter-evidence and explicit auth/audit regression requirements documented in INSURANCE_TIMING_AND_ELIGIBILITY_CONTRACT_2026-09-05.md; five existing F-31 tests pass in the eight-test retry but do not prove revised eligibility or production authorization | ⚠️ | ⚠️ | ⚠️ | P1 |
+| F-32 | **`price_lock_expires_at` write/read split-brain.** `social_inbound.py:137` writes it at trip top-level; the sentinel reads `trip["strategy"]["price_lock_expires_at"]` (`price_lock.py:66-68`) — the sentinel never sees the social-channel value (its own fallback recomputes 72h from saved_at, masking the divergence). Verified read-only. | **open** | ✅ | ✅ | ✅ | P2 |
+| F-33 | **`active`/`archived` trips invisible in operator views.** Live SQL (E-1 probe): `active` rows exist in volume and `archived` (written by `inbox.py:231`) — both absent from frontend `STATUS_TO_STATE`/workspace+inbox partition sets, so those trips vanish from both views. Data safe; display-loss. Small fix (extend FE vocabularies), grouped with E-1 enum work. | **open** | ✅ | ✅ | ✅ | P2 |
+| F-34 | **Approval writes `delivered`; read-model knows only `completed`.** `src/analytics/review.py:100-101` sets `status="delivered"` on approval; `frontend/src/lib/trip-lifecycle.ts` recognizes only `"completed"` — approved trips render as the INTAKE chip. Related: **no writer anywhere emits `completed`**, and `ready_to_quote`/`ready_to_book` are guard-only vocabulary (never written on the happy path). Fix: add `delivered` to the read-model + reconcile terminal-state vocabulary (E-1). Verified read-only. | **open** | ✅ | ✅ | ✅ | P2 |
+| F-35 | **Booked-revenue metric structurally zero.** `src/analytics/metrics.py:51` counts `status == "booked"` — no writer sets `"booked"` (13-writer inventory, E-1). Metric always 0. Fix belongs with E-1's enum cut. Verified read-only. | **open** | ✅ | ✅ | ✅ | P3 |
+| F-36 | **Feedback module reality-boundary cluster.** `feedback.py`: survey URL fabricated (`feedback.waypointos.com`, :64 — never dispatched); **no survey-response ingestion endpoint exists** ("48h auto-trigger" is docstring fiction — nothing fires it); supplier scorecard is 100% hardcoded demo data (:100-133, no aggregation/persistence). The E-10 loop design requires this fixed first. Verified read-only. | **open** | ✅ | ✅ | ✅ | P2 |
+| F-37 | **Assumptions pipeline dead end-to-end.** `packet.assumptions` never populated in production (runtime probe; only a test exercises it); `CanonicalPacket.to_dict()` doesn't serialize `assumptions` (`packet_models.py:768-795`) so the `unacknowledged_critical_assumption` escalation in `src/intake/decision.py:1351-1365` is a dead policy check; `PacketPanel.tsx:46-53` synthesizes `explicit_user/FACT @1.0` fallback slots over real facts (F-22 re-created at the UI layer); `SlotValue` type lacks `epistemic_status`. Family: F-22/NEW-01/EX-02; surface work gated on label honesty. Verified read-only + runtime probe. | **open** | ❌ | ❌ | ❌ | P2 |
+| F-38 | **Stored disruption projection needs truthful completeness, time, identity and tenant authority.** The original default CRITICAL fabrication is removed. Current legacy handling can infer event creation time, omit malformed rows behind success, expose validation input and trust stored capability/identity fields; raw agency-header selection and implicit 100-trip scan cap remain. Original in-window scope (E-9) is not proved closed. | **partial 2026-09-05** — F38_DISRUPTION_DATA_INTEGRITY_REVIEW_2026-09-05.md records the failed full gate, changed fixture/handler, eight-test passing retry and nine explicit residual requirements. The implementation addendum below is historical, not end-to-end closure evidence | ⚠️ | ⚠️ | ⚠️ | P1 |
+| F-39 | **Webhook dedup call-site dormant.** `process_inbound_traveler_message` (F-28's deduped path) is reached by no production route — only tests. Capability shipped; caller missing (any future `POST /messaging/webhook/{provider}` wiring inherits the dedup). Note so F-28 isn't mistaken for end-to-end live. Verified read-only. | **open** | ✅ | ✅ | ✅ | P3 |
+| F-40 | **Overview `/api/stats` backend route missing.** E-8 exploration reports the frontend overview counts call `/api/stats` with **no corresponding backend route** (counts presumably render from a fallback/error path). Verify-then-fix: wire the route or correct the FE source. | **open** (verify first) | ❌ | ❌ | ❌ | P2 |
+
+### Corrections & sharpenings to existing rows (same wave — additive context, no status changes)
+
+- **PT-08 (refinement):** deploy surfaces already pin `SPINE_API_IDEMPOTENCY_BACKEND=sql` (docker-compose.yml:31, fly.toml:31, render.yaml — E-3 verified), so the "default still memory" exposure is narrower than the row states; the **no startup assertion** point stands (workers>1 with unset env silently loses cross-worker dedup — E-3 task list). Additional verified gaps: memory backend loses all records on restart (retry-after-crash duplicates with zero concurrency); neither backend compares `request_hash` on replay; idempotency table has no janitor.
+- **F-01 (sharpening):** `price_lock.py:198-221` now carries a *conditional* optimistic-version guard + idempotency-key cache (fire only when the caller passes `expected_version`/`idempotency_key`) — the "blind RMW" framing predates this; residual risk is callers that don't pass those fields.
+- **F-13 (sharpening):** suitability **never reads the durable MemoryStore** — the only memory→decision path is the legacy process-local hydrate (`customer_memory.py:302`), bypassing decay/provenance entirely. F-13 has two named slot points: `retriever.py:70` (long-term) and the hydrate path (today's actual injection).
+- **F-14 (sharpening):** the engine partially exists — `src/monitoring/perishable_sentinel.py` (deadline classifier, 48h/12h tiers) — but has zero production callers and knows time-to-deadline only, not freshness policy. E-5's `FRESHNESS_POLICIES` registry is the designed completion. Also: two undated visa tables (`visa_timeline.py` + `visa_radar.py` VISA_RULES_REGISTRY).
+- **F-03 (scope addition):** F-30 rides the same closure; the JWT-subject binding pattern already exists in-repo (`assignments.py:100-161`, `confirmations.py`) — an application gap, not a capability gap (E-4).
+- **Citation correction (E-6):** the payment-rails no-go is **EX-05** (negative space), not NG-01 (event-log-as-SSOT) — cite correctly in re-open conditions.
+- **E-11 dependency note:** `EpistemicPanel.tsx` is a SimulatedBadge demo panel; the real epistemic surface work (EX-02) is gated on F-22/NEW-01 label honesty.
+
+### Remediation-status addendum — 2026-09-05 (register-wave F-30…F-40; handoff `Docs/review/REGISTER_WAVE_F30_F40_HANDOFF_2026-09-05.md`)
+
+Appended additively (row texts above left as-authored; F-31 was concurrently deepened by the parallel stream — not regressed here). Evidence: focused suites 121 passed, FE 24 passed + TSC clean, full suite in the handoff.
+
+- **F-30:** ✅ implemented by the parallel execution agent (canonical `get_current_agency_id` on both routes); boundary tests 2/2 verified independently. Runtime/hosted proof remains on their doc.
+- **F-32:** ✅ implemented — `_get_price_lock_expires_at` reads both write locations (strategy wins). Tests: `test_register_wave_f30_f40.py::test_f32_*`.
+- **F-33:** ✅ implemented — FE status maps gain `active` (intake). `archived` left out deliberately: archive semantics intend queue exclusion.
+- **F-34:** ✅ implemented — FE maps + `deriveTripLifecycle` recognize `delivered` as approved-terminal.
+- **F-35:** ✅ implemented — `aggregate_insights` conversion counts terminal statuses writers emit (`booked`/`delivered`/`completed`).
+- **F-36:** ⚠️ honesty layer implemented — survey stores `STAGED`/`dispatched:false` (docstring states no dispatch backend exists), scorecard labeled `data_source:"demo_static"`. Ingestion + real dispatch remain open under E-10 (E10.1/E10.2).
+- **F-37:** ⚠️ honest slice implemented — `CanonicalPacket.to_dict()` serializes `assumptions`; PacketPanel AND PacketTab synthesized slots re-stamped `derived_signal @0.6` (+ badge class added). Full surface gated on F-22/NEW-01 per E-11.
+- **F-38:** ✅ implemented — `/alerts` returns only stored `active_disruption` (legacy-row tolerant). The strategic-phases test that pinned the fabrication now seeds stored data.
+- **F-40:** ✅ implemented — new `GET /stats` backend route (comma-split `count_trips` verified on both backends) + BFF proxy; route snapshots regenerated.
+- **PT-08 (addition):** `IDEMPOTENCY_BACKEND` startup assertion shipped — production/staging require `SPINE_API_IDEMPOTENCY_BACKEND=sql`; `test_production_boot.py` env updated to the now-complete production contract.
 
 ---
 
 ## Part 6 — Alignment summary
+
+### Evidence-system retry findings — 2026-09-05 (PER-0923)
+
+These rows capture the additional implicit findings from the retry, including
+counter-evidence. `Status` is canonical lifecycle; descriptions and earlier
+summaries retain historical evidence, not automatically current behavior.
+FP/LT/DOC assessments concern the proposed correction: preserve authoritative
+state, use a canonical path, and verify the actual boundary. A closed tooling
+row does not close the product findings the tool lists.
+
+| ID | Finding and evidence | Status | Required next action / closure evidence | Sev |
+|---|---|---|---|---|
+| EV-01 | Observed parser defects: formatted NEW IDs skipped, description words close open rows, historical rows inflate current counts, evidence dates refresh verification. `scripts/check_findings_register.py`; `tests/evals/test_findings_register.py`. | closed locally 2026-09-05 — 40 focused regressions pass after failing-first and independent-review cycles; shared structural parser validates metadata, table boundaries, IDs, state and explicit dates | Retain explicit-column/ID/date/count regressions. See `FINDINGS_LIFECYCLE_2026-08-30.md` current amendment. Product completeness and status freshness remain semantic obligations. | P1 |
+| EV-02 | Observed cross-document ID collisions: canonical F-03=actor signoff, master inventory F-03=simulator copy; F-04=payment mandate vs commit split; R-09=document trees vs signup posture. | partial 2026-09-05 — all 15 master-inventory F/R collisions have reviewed source-qualified relationships in FINDINGS_LIFECYCLE; other sources, unmapped tasks and mechanical enforcement remain open | Preserve historical IDs; migrate active references; validate uniqueness, target existence and complete alias coverage. Related/subtask/split items do not inherit closure. | P1 |
+| EV-03 | Observed stale status/count disagreement among this register, execution overlay, master inventory, known-issues ledger, and launch snapshot. | partial 2026-09-05 — bounded independent review corrected A-06/A-20/F-17 descriptions and lease follow-up prose; F-31 now reflects actual residual contract risk. Other overlays and derived-view enforcement remain open | Reverify each affected semantic issue; keep one lifecycle owner with derived audience views. Preserve closure tiers and historical receipts. No blanket mass closure from test counts. | P1 |
+| EV-04 | Observed A1-1 ledger rows classify ownership as `unknown_preserved_concurrent` with verification only `git_status_presence_only`; this does not prove concurrent ownership or artifact suitability. | open 2026-09-05 | Review exact artifacts for purpose/sensitivity/inclusion; use unknown where authorship cannot be established. Complete already-authorized Git delivery subject to actual gates and EV-11. | P1 |
+| EV-05 | Observed final24–final32 ledger proliferation and stale current-path references. | open 2026-09-05 | Establish one identified current custody view with generation time/hash; preserve historical snapshots with provenance. Do not generate another finalNN solely for path-count drift. | P2 |
+| EV-06 | Observed `scan_sql_store()` lacked canonical transaction-local RLS setup; zero-row result was described as environmental limitation. Missing scope is a source-supported cause to test, not proof of an empty database. | closed locally 2026-09-05 — canonical RLS and read-only transaction verified by focused regressions and independent live scoped CLI (21,937 rows); E12 repair evidence | Require agency scope, canonical RLS on same read-only transaction, timeout, role checks, and a live scoped read receipt; preserve uncertainty on old invocation. | P1 |
+| EV-07 | Observed status report coerced non-string values, silently accepted missing roots, declared handwritten writer knowledge, and emitted raw exception text. | closed locally 2026-09-05 — schema 2 explicit diagnostics and unknown writer provenance; 28 focused tests pass, safe descriptor ownership verified; tools/README.md updated | Explicit malformed/unavailable states, safe errors, bounded provenance claims, file/SQL tests and operator usage. Do not rewrite trip data or guess aliases. | P2 |
+| EV-08 | Observed corporate audit uses default Acme rules, missing-cost fallback 3000, assumed five nights, static destination-risk list, and authoritative-sounding compliance/risk outputs (`corporate_policy.py`). | open 2026-09-05 | Establish agency policy and factual input authority; return insufficient evidence when absent; verify policy applicability/version, cost/currency/nights, and sourced risk. Keep separate from F-03/F-30 auth correction. | P1 |
+| EV-09 | Observed corporate auth tests assert AST dependency syntax rather than HTTP identity/permission/resource behavior (`tests/test_corporate_policy_auth_boundary.py`). | open 2026-09-05 | Add anonymous/tenant/role/spoofed-actor/path-body/stale-version negative and positive HTTP tests; preserve global-middleware context before alleging anonymous exposure. | P1 |
+| EV-10 | Observed request trace incorrectly presented existing Git authorization as missing and labelled dirty paths concurrent without proof. | partial 2026-09-05 — correction recorded in request trace; wider stale overlays remain under EV-03 | Preserve original user wording, corrected interpretation, exact command sessions/results, and pending delivery. Never confuse launched/no output with verified failure or completion. | P2 |
+| EV-11 | Observed `.github/workflows/deploy.yml` triggers Fly deployment on master/main push, without CI dependency. User Git authorization does not independently establish production deployment approval. | open 2026-09-05 | Obtain destination/deployment direction before push; separately design CI-success and protected-environment release gates. Gate and commit receipts remain open. Old hook Downloads source is a symlink to canonical matching SHA-256, so stale content is not established. | P1 |
+
+The preceding retry's 194/118/70/6 combined-row count is historical and must
+not be treated as unique remaining tasks. The repaired CLI reports canonical
+rows only; run it for current numbers as this register evolves.
 
 | Dimension | ✅ | ⚠️ | ❌ | Systemic read |
 |---|---|---|---|---|
@@ -133,13 +313,14 @@ Status is **this register's live re-verification (2026-08-31)**, not the origina
 | **Doctrine-aligned (PER-0428)** | 10 | 6 | 10 | **§5 (one canonical source)** is the most-violated rule, breached on both sides of the stack. **§2 (truth taxonomy)** is now inverted on the facts path (NEW-01) — the system declares tiers honestly but not per-field authority. |
 
 ### The one-sentence version
+>
 > The project is architecturally right and — after 48 hours of hard work — its *measurement instruments* are finally honest. The remaining risk is **per-field truthfulness** (derived/default claims stamped as user-stated FACT) and **no mechanism to finish a canonical path**. The single highest-leverage intervention is a **retirement gate + an authority/epistemic label fix**.
 
 ---
 
 ## Part 7 — Counts
 
-- **Open (implement):** R-09, R-12, R-13, R-14, R-16, A-02, A-03, A-04, A-05, A-06, A-07, A-08, A-09, A-10, A-11, A-12, A-14, A-15, A-16, A-17, A-18, A-20 + F-01…F-16 + F-17, F-19, F-21…F-26 + NEW-01…NEW-07
+- **Open (implement):** R-09, R-12, R-13, R-14, R-16, A-02, A-03, A-04, A-05, A-06, A-07, A-08, A-09, A-10, A-11, A-12, A-15, A-16, A-17, A-20 + F-01…F-16 + F-17, F-19, F-21…F-26 + NEW-01…NEW-07 *(A-18 removed 2026-09-02 — fixed; see Part 2 and Part 4c; A-14 also removed — closed per Part 2 + A1-1 classification closure)*
 - **Fixed/closed since prior register:** R-01, R-02, R-03, R-04, R-05, R-06, R-07, R-08, R-15 + A-01, A-13, A-19, A-21 + F-18, F-20
 - **No-go / watch:** F-24 (dev-noise), NG-01…NG-04 (recorded from backlog)
 

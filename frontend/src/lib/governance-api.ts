@@ -33,6 +33,7 @@ import type {
   ApprovalThreshold,
   OperationalAlert,
 } from '@/types/governance';
+import type { ProductBKpiResponse } from '@/types/product-b';
 
 // ============================================================================
 // WORKSPACE API
@@ -105,6 +106,20 @@ export async function getInsightsSummary(
   timeRange: TimeRange = '30d',
 ): Promise<InsightsSummary> {
   return api.get(`/api/insights/summary?range=${timeRange}`);
+}
+
+export async function getProductBKpis(
+  windowDays = 30,
+  qualifiedOnly = true,
+): Promise<ProductBKpiResponse> {
+  return api.get(`/api/insights/product-b/kpis?window_days=${windowDays}&qualified_only=${qualifiedOnly}`);
+}
+
+export async function getPlatformProductBKpis(
+  windowDays = 30,
+  qualifiedOnly = true,
+): Promise<ProductBKpiResponse> {
+  return api.get(`/api/platform-admin/analytics/product-b/kpis?window_days=${windowDays}&qualified_only=${qualifiedOnly}`);
 }
 
 export async function getPipelineMetrics(

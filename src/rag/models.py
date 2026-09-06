@@ -1,7 +1,11 @@
 """Data models for the Waypoint OS RAG Engine.
 
-Supports dense vector embeddings, sparse lexical indexing, knowledge graph nodes/edges,
-granular citation metadata, and groundedness evaluation.
+Models cover the current local hash-vector representation, sparse lexical
+indexing, knowledge-graph records, citation metadata, and heuristic
+groundedness evaluation.  The model names are intentionally stable while the
+implementation remains provider-neutral; a future semantic embedding provider
+must carry its model/version provenance before these local vectors are treated
+as semantic evidence.
 """
 
 from datetime import datetime, timezone
@@ -92,5 +96,5 @@ class HybridSearchQuery(BaseModel):
     source_types: Optional[List[DocumentSourceType]] = None
     destination_filter: Optional[str] = None
     tags_filter: Optional[List[str]] = None
-    alpha: float = 0.5  # Dense vs Sparse weighting (0.0 = sparse only, 1.0 = dense only)
+    alpha: float = 0.5  # Dense vs sparse weight (0.0 = sparse only, 1.0 = dense only)
     include_graph: bool = True

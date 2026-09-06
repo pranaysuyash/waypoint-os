@@ -788,6 +788,10 @@ class CanonicalPacket:
             "lifecycle": asdict(self.lifecycle) if self.lifecycle else None,
             "ambiguities": [asdict(a) for a in self.ambiguities],
             "unknowns": [asdict(u) for u in self.unknowns],
+            # F-37 slice: assumptions were never serialized, so even a
+            # populated register was dropped on persistence — leaving the
+            # unacknowledged-critical-assumption escalation (decision.py) dead.
+            "assumptions": [a.to_dict() for a in self.assumptions],
             "contradictions": contradictions_out,
             "source_envelope_ids": self.source_envelope_ids,
             "revision_count": self.revision_count,

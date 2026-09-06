@@ -45,10 +45,15 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
     real velocity metrics instead of hardcoded values.
     """
     total = len(trips)
+    # Terminal/revenue statuses writers actually emit (F-35): no writer ever
+    # sets "booked"; "delivered" (review approval, review.py:101) and
+    # "completed" are the real terminal vocabulary. "booked" kept for the
+    # future booking-rail writer.
+    _TERMINAL_STATUSES = ("booked", "delivered", "completed")
     converted = sum(
         1
         for t in trips
-        if t.get("status") == "booked" or _trip_analytics(t).get("quality_score", 0) > 80
+        if t.get("status") in _TERMINAL_STATUSES or _trip_analytics(t).get("quality_score", 0) > 80
     )
 
     rate = (converted / total * 100) if total > 0 else 0

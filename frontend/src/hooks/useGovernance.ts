@@ -20,6 +20,7 @@ import type {
 } from "@/types/governance";
 import * as governanceApi from "@/lib/governance-api";
 import type { WorkspaceInfo } from "@/lib/governance-api";
+import type { ProductBKpiResponse } from "@/types/product-b";
 
 const QK = {
   workspace: () => ["governance", "workspace"] as const,
@@ -29,6 +30,8 @@ const QK = {
   teamMetrics: (t: TimeRange) => ["governance", "teamMetrics", t] as const,
   bottleneckAnalysis: (t: TimeRange) => ["governance", "bottleneckAnalysis", t] as const,
   revenueMetrics: (t: TimeRange) => ["governance", "revenueMetrics", t] as const,
+  productBKpis: (t: number, qualifiedOnly: boolean) => ["governance", "productBKpis", t, qualifiedOnly] as const,
+  platformProductBKpis: (t: number, qualifiedOnly: boolean) => ["governance", "platformProductBKpis", t, qualifiedOnly] as const,
   operationalAlerts: () => ["governance", "operationalAlerts"] as const,
   teamMembers: () => ["governance", "teamMembers"] as const,
   workloadDistribution: () => ["governance", "workloadDistribution"] as const,
@@ -202,6 +205,36 @@ export function useRevenueMetrics(timeRange: TimeRange = "30d") {
 
   return {
     data: asRecordOrNull<RevenueMetrics>(query.data),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
+}
+
+export function useProductBKpis(windowDays = 30, qualifiedOnly = true) {
+  const query = useQuery({
+    queryKey: QK.productBKpis(windowDays, qualifiedOnly),
+    queryFn: () => governanceApi.getProductBKpis(windowDays, qualifiedOnly),
+    staleTime: DEFAULT_STALE_TIME,
+  });
+
+  return {
+    data: (query.data as ProductBKpiResponse | undefined) ?? null,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
+}
+
+export function usePlatformProductBKpis(windowDays = 30, qualifiedOnly = true) {
+  const query = useQuery({
+    queryKey: QK.platformProductBKpis(windowDays, qualifiedOnly),
+    queryFn: () => governanceApi.getPlatformProductBKpis(windowDays, qualifiedOnly),
+    staleTime: DEFAULT_STALE_TIME,
+  });
+
+  return {
+    data: (query.data as ProductBKpiResponse | undefined) ?? null,
     isLoading: query.isLoading,
     error: query.error as Error | null,
     refetch: query.refetch,

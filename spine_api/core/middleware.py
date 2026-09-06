@@ -21,10 +21,14 @@ from spine_api.core.security import decode_token_safe
 from spine_api.models.tenant import User
 
 from spine_api.core.auth import _jwt_agency_id
+from spine_api.core.startup_assertions import auth_bypass_enabled
 
 logger = logging.getLogger("spine_api.middleware")
 
-PUBLIC_PATHS: set[str] = {"/health", "/docs", "/openapi.json", "/redoc"}
+# Liveness and readiness are platform probes: they must be reachable before a
+# user JWT exists.  The readiness handler returns only redacted status/check
+# names, so adding it here does not expose tenant or driver data.
+PUBLIC_PATHS: set[str] = {"/health", "/ready", "/docs", "/openapi.json", "/redoc"}
 PUBLIC_PREFIXES: tuple[str, ...] = (
     "/api/auth",
     "/api/public/",
@@ -36,7 +40,7 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
 
 
 def _is_public_path(path: str) -> bool:
-    if os.environ.get("SPINE_API_DISABLE_AUTH"):
+    if auth_bypass_enabled():
         return True
     return path in PUBLIC_PATHS or any(
         path.startswith(prefix) for prefix in PUBLIC_PREFIXES
@@ -49,6 +53,7 @@ class AuthMiddleware:
 
     Public routes:
     - /health
+    - /ready
     - /docs, /openapi.json, /redoc
     - /api/auth/*
     - /api/public/*
@@ -69,7 +74,7 @@ class AuthMiddleware:
             await self.app(scope, receive, send)
             return
 
-        if os.environ.get("SPINE_API_DISABLE_AUTH"):
+        if auth_bypass_enabled():
             await self.app(scope, receive, send)
             return
 

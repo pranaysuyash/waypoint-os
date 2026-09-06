@@ -12,6 +12,13 @@ import {
   Sparkles,
   Ticket,
 } from 'lucide-react';
+import SimulatedBadge from '@/components/ui/SimulatedBadge';
+
+/**
+ * GM-01 honesty fix: this console parses sample EDIFACT strings and computes
+ * fare-rule math locally in the browser. No NDC/EDIFACT gateway or ATPCO
+ * service exists behind it.
+ */
 
 type SubTabType = 'edifact' | 'ndc' | 'fare_rules';
 
@@ -51,22 +58,22 @@ export function DistributionPanel() {
           route: 'LHR → JFK',
           departure: '15OCT 11:40',
           arrival: '15OCT 14:25',
-          status: 'HK (Confirmed)',
+          status: 'HK (as supplied in sample dump)',
         },
       ],
       ssrs: ['SSR VGML BA HK1 (Vegan Meal)'],
       ticketing_limit: '15SEP 23:59 GMT (Active)',
-      adm_risk_status: 'Compliant · Zero ADM Risk',
+      adm_risk_status: 'Computed locally · no live ADM/provider assertion',
     });
   };
 
   const handleShopNdc = () => {
     setNdcResult({
-      order_id: 'ORD-NDC-BA-99A841',
+      order_id: null,
       offer_id: 'OFF-BA-CLUB-2026',
       total_price: 4850.0,
       currency: 'USD',
-      status: 'CONFIRMED (Direct Carrier Direct Connect)',
+      status: 'PREVIEW_ONLY (no carrier submission)',
       ancillaries: ['Priority Boarding Group 1', 'Fast Track Security', 'Lounge Access (Galleries Club)'],
     });
   };
@@ -102,19 +109,22 @@ export function DistributionPanel() {
             </div>
             <div>
               <h2 className="text-ui-base font-bold text-white flex items-center gap-2">
-                GDS Core & NDC Protocol Specialist
+                GDS Protocol Sandbox (EDIFACT / NDC / Fare Rules)
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-medium border border-blue-500/30">
                   PER-950887 / PER-950895
                 </span>
               </h2>
               <p className="text-ui-xs text-[#8b949e]">
-                Bi-directional EDIFACT terminal parser, IATA NDC 21.3 Order Lifecycle engine, and Category 16/35 Fare Rules audit.
+                Local sample EDIFACT parser, illustrative NDC order-shaped output, and fare-rule math — no live GDS or NDC gateway is connected.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0f1115] border border-[#30363d] text-ui-xs text-[#3fb950]">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>ADM Shield: Active</span>
+          <div className="flex flex-col items-end gap-2">
+            <SimulatedBadge label="Sample data" />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0f1115] border border-[#30363d] text-ui-xs text-[#8b949e]">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>ADM Shield: concept (no live ADM risk)</span>
+            </div>
           </div>
         </div>
       </div>
@@ -164,14 +174,14 @@ export function DistributionPanel() {
               className="w-full py-2 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold text-ui-xs rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              Parse Terminal PNR & Generate Cryptics
+              Parse sample terminal data & generate cryptics
             </button>
           </div>
 
           <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-5 space-y-3">
             <h3 className="text-ui-sm font-semibold text-white flex items-center gap-2">
               <FileCode className="h-4 w-4 text-[#a371f7]" />
-              Structured PNR Entity
+              Structured preview record
             </h3>
             {parsedPnr ? (
               <div className="space-y-2.5 text-ui-xs">
@@ -261,10 +271,10 @@ export function DistributionPanel() {
           {ndcResult && (
             <div className="p-4 rounded-lg bg-[#0f1115] border border-[#30363d] space-y-2 text-ui-xs font-mono">
               <div className="flex justify-between items-center text-[#58a6ff]">
-                <span className="font-bold">Order ID: {ndcResult.order_id}</span>
+                <span className="font-bold">Order preview (no provider order created)</span>
                 <span className="text-[#3fb950] font-semibold">{ndcResult.status}</span>
               </div>
-              <p className="text-white">Guaranteed NDC Price: USD {Number(ndcResult.total_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-white">Illustrative NDC-shaped price: USD {Number(ndcResult.total_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               <div className="pt-2 border-t border-[#30363d] text-[#8b949e]">
                 <span>Bundled Ancillaries:</span>
                 <ul className="list-disc list-inside text-white pt-1">

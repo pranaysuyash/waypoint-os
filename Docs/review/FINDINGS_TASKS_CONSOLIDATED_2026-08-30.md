@@ -1,6 +1,7 @@
 # Consolidated Findings & Tasks Register — Explicit + Implicit (2026-08-30)
 
 **Purpose:** one list of every finding/task that can or should be **explored** (researched + documented) or **implemented**, consolidated from:
+**Role:** historical planning companion; not authoritative for current lifecycle status.
 
 1. `FINDINGS_REGISTER_2026-08-29.md` — R-01…R-16 (explicit carry-forward, live-verified) + A-01…A-21 (new, mostly implicit)
 2. `EXPLORATION_RESEARCH_BACKLOG_2026-08-29.md` — RQ-01…06, EX-01…06, D-01…D-05
@@ -10,9 +11,16 @@
 **Legend:** Type `E` = explicit (already documented) · `I` = implicit (discovered by audit). Class: **IMP** = implement (known how) · **EXP** = explore (research + document first). Status drift as of 2026-08-30 noted inline.
 
 **Drift corrections applied (2026-08-30):**
-- **R-03 / RQ-04 largely RESOLVED** — `review/R03_SPLIT_BRAIN_RESOLUTION_2026-08-30.md` verified `data/trips/*.json` are gitignored test artifacts; SQL mode never reads them; fail-closed guard added (uncommitted — must be committed, see A-14).
+
+- **R-03 / RQ-04 largely RESOLVED** — `review/R03_SPLIT_BRAIN_RESOLUTION_2026-08-30.md` verified `data/trips/*.json` are gitignored test artifacts; SQL mode never reads them; fail-closed guard was preserved in `2f9a638` (A-14 closed 2026-09-01).
 - **R-12 narrowed** — `src/schemas/journey_graph.py` has 4 live importers; only the IROPS trigger path is missing (EX-01 narrowed).
-- R-01, R-02, R-04, R-05 fixed (partly still uncommitted).
+- R-01, R-02, R-04, R-05 fixes are preserved in Git; current behavior still depends on their finding-specific verification gates.
+
+**A1-1 closure correction (2026-09-01):** A-14 and A-21 are closed as
+preservation/classification tasks. The immutable 167-path commit inventory and
+the later live concurrent worktree inventory are owned by
+`review/A1_1_WORKTREE_CLASSIFICATION_CLOSURE_2026-09-01.md`; closure does not
+upgrade any product finding or current release gate.
 
 ---
 
@@ -22,11 +30,11 @@
 
 | ID | Type | Task | Wave | Priority |
 |----|------|------|------|----------|
-| A-14 | I | Commit the uncommitted P0 remediation (R-02/R-04/R-05 fixes, epistemic primitives, R-03 guard) as one atomic unit — **requires Pranay's explicit authorization in-session** | 0.2 | **P0** |
+| A-14 | I | ~~Preserve the uncommitted P0 remediation~~ **CLOSED 2026-09-01** — authorized commit/push completed as `2f9a638`; 167-path historical and live-worktree classification evidence is in `review/A1_1_WORKTREE_CLASSIFICATION_CLOSURE_2026-09-01.md` | 0.2 / 0.4 done | **closed** |
 | A-13 | I | ~~Triage 358 backend test failures~~ **RESOLVED 2026-08-30** — 358 were an env artifact (audit ran without CI env vars); true CI-identical baseline **3,206 passed / 10 skipped / 0 failed**. 2 real defects fixed (audit-store test pollution, brittle integration polling). Runner: `scripts/run_backend_tests.sh`. Evidence: `review/A13_TEST_BASELINE_RESOLUTION_2026-08-30.md`. Remaining Wave 4.5–4.9 items stay open | 4.1–4.4 done | **closed** |
 | A-01 / R-07 | I | ~~Un-mute the honest quality gate~~ **RESOLVED 2026-08-30** — implemented by parallel agent (`8ece02e` + unstaged manifest/snapshot), verified end-to-end: 43/43 eval tests pass; guard exits 1 with real blockers (budget F1 0.2857, blocks_ci true). CI now honestly red until F1 improves (RQ-01 unblocked). Residual 1.5: live-results params exist, no producer wired. Evidence: `review/WAVE1_A01_RQ06_EX06_OUTCOMES_2026-08-30.md` | 1.1–1.5 | **closed** |
 | A-19 | I | ~~RLS coverage~~ **RESOLVED 2026-08-30** — 5 routers converted (12 deps; integrations' hand-rolled session-scoped set_config retired), auth.py documented deviation; RQ-03 verdicts: all 4 exempt tables safe (filtered / write-only / unwired). Probe suite added. Evidence: `review/A19_RLS_COVERAGE_RESOLUTION_2026-08-30.md` | 2.2–2.3 done | **closed** |
-| A-18 | I | Rotate live `OPENAI_API_KEY`; remove committed `DATABASE_URL` default password; make `SPINE_API_DISABLE_AUTH` hard-fail outside test | 2.7–2.8 | **P1** |
+| A-18 | I | ~~Secrets & kill-switch posture~~ **RESOLVED 2026-08-31** — committed credential default removed from `core/database.py` (fail-loud RuntimeError; `load_project_env()` self-sufficiency; DATABASE_URL added to gitignored `.env` for local dev); `SPINE_API_DISABLE_AUTH` now refuses boot in **staging** too (gap: only production was checked) + staging/test regression tests. OPENAI key: `.env` is gitignored — rotation downgraded to good hygiene, no repo exposure (Pranay's call). Sims: no-env import raises; staging+flag fails; dev+flag allowed. 24/24 assertion tests green. **(2026-09-02: re-verified in-tree and reconciled — the authoritative register `FINDINGS_REGISTER_2026-08-31.md` Part 2 previously showed A-18 as PARTIAL/pre-fix; it now records this same closure with current file:line evidence. This row is the fix-record; that register is authoritative for current truth.)** | 2.7–2.8 | **closed** |
 | R-15 | E | PII guard posture: audit-event on fail-open no-op; reconcile Layer-1 fail-open vs Layer-2 fail-closed in an ADR | 2.5–2.6 | **P1** |
 | A-20 | I | Migrations drift: 4 frontier tables had NO migrations (endpoints runtime-broken — probe caught `relation does not exist`); **fixed 2026-08-30** with additive migration `add_frontier_tables` (applied, DB at new head). **Still open:** CI drift gate (`alembic check`) so the class cannot recur | 2.4 | P2 |
 | A-04 | I | Consolidate 9 duplicate/shadow systems (audit stores, dual auth decode, audit_bridge deletion, membership, scoring, vision clients, config → one `BaseSettings`) — each with a deletion date | 3.1–3.7 | **P1** |
@@ -47,7 +55,7 @@
 | R-14 | E | Frontend styling unification per design doc | 6.4 | P3 |
 | R-13 | E | Nav rollout-gate drift (`nav-modules.ts` `complete: false` vs "14/14 active" claim) — needs product decision first | 6.5 | P2 |
 | R-10 | E | Server decomposition per plan (`create_app()` factory; rejects microservices); single audit store decision (recommend Postgres `audit_logs` + hash chain) | 3.4, 6.6 | P2 |
-| A-21 | I | Track the 6 untracked in-flight artifacts (JDG design+code, connectivity, lease, decomposition, styling plans) in this register with owners | 6.8 | P2 |
+| A-21 | I | ~~Track the 6 untracked in-flight artifacts~~ **CLOSED** — all six are tracked in `8ece02e`; their historical author identity remains unknown where Git cannot prove it, and later concurrent work is separately classified by A1-1 | 6.8 done | **closed** |
 
 ### 1b. New implicit defect findings from the 2026-08-30 ADHD audit (not previously registered — proposed IDs F-01…F-16)
 
@@ -91,7 +99,8 @@
 | EX-06 | I | ~~Findings lifecycle~~ **DELIVERED 2026-08-30**: 4-state machine + `scripts/check_findings_register.py` (CI-ready, ruff-clean); both registers validate; spec + D-02 amendment text at `review/FINDINGS_LIFECYCLE_2026-08-30.md`. CI wiring deferred (coordination) | — | **closed** |
 | F-17 | I | Frontend suite debt (from RQ-06): TimelinePanel test races its async fetch (asserts before `Loading timeline…` resolves); 49 unhandled vitest errors unexamined; 4 lint errors (2 setState-in-effect, 1 refs-during-render, 1 unescaped entity) + 17 exhaustive-deps warnings | Fix the race (waitFor), triage unhandled errors, clear lint errors, then add ratcheting coverage thresholds (A-16) | P2 |
 | F-18 | I | ~~Budget extraction rule package (RQ-01 exit)~~ **RESOLVED 2026-08-30** — S1–S6 implemented in `_extract_budget` (+ eval-side amount composition, 8 negative precision traps added: 12→20 fixtures, 0 FP). Budget gate **passing: F1 0.9524, P 1.0, R 0.9091, blocks_ci False; guard exit 0 — CI green**. Decisions D1 (unmarked currency → USD, lakh/crore stay INR) and D2 (unmarked flexibility → soft, scope → total) implemented per RQ-01 recommendation — ratification pending. H1 (hard_004 revision resolution) deferred. Full suite 3,215 passed / 0 failed. Evidence: `exploration/F18_BUDGET_RULE_PACKAGE_IMPLEMENTATION_2026-08-30.md` | — | **closed** |
-| F-19 | I | Full-suite phantom failures under live-server contention: with the dev server up on :8000, integration tests run mid-suite against the shared DB — three consecutive full runs produced three different failure sets (1/4/13), 25-min runtime vs ~70s clean; every failing test passes in isolation. Runner now warns; clean baselines require the server stopped | Systemic fix: default-exclude integration tests (opt-in flag) or per-test DB namespacing | P2 |
+| F-19 | I | Full-suite phantom failures under live-server contention: with the dev server up on :8000, integration tests run mid-suite against the shared DB — failure sets differ per run (1/4/13/58/40 across five runs 2026-08-31); every failing test passes in isolation; runtime 25-min with server up vs ~70s clean. Runner now warns + arg-mode bug fixed (extra args had silently dropped CI `--ignore`s and the `tests/` target). Bisected: NOT caused by A-18 dotenv-at-import (identical 40 with it disabled). Remaining: intra-suite auth-state leakage (auth-middleware 401 tests fail only in full order) — hunt when the tree settles (conftest/persistence edits from the parallel agent were still landing) | Systemic fix: default-exclude integration tests (opt-in flag) or per-test DB namespacing; then bisect the auth-state leaker | P2 |
+| F-20 | I | ~~Parallel-agent working-tree breakage~~ **SOLVED 2026-08-31 (doctrine: if you find it, solve it)** — diagnosis: the working tree had *regressed* `yield_arbitrage.py` to an unscoped hardcoded stub (superseding the committed tenant-scoped, contract-aware implementation); the new `src/yield_arbitrage/` engine package was additive and kept. Fixes: router restored from HEAD (supersession comparison documented), route-parity snapshots regenerated canonically (`snapshot_server_routes.py --write`, 294 paths), and the F-02 signed-token parser's legacy fallback extended so multi-underscore legacy mock tokens (e.g. `prop_demo_italy_123`) resolve to the demo proposal instead of 410 — signature/TTL failures still hard-fail. Also fixed: runner arg-mode dropped CI ignores (F-19). Verified: yield+parity+gate 14/14, proposals 5/5, ruff clean. Remaining order-dependent auth-state failures tracked under F-19 | — | **closed** |
 | RQ-01 | I | ~~Is deterministic extraction the right ceiling?~~ **CLOSED 2026-08-30 — verdict: rule-coverage problem, falsifier NOT triggered** (1/12 fixtures = 8% needs-LLM, far under the 50% threshold). Prototype rules: 2/12 → 11/12 fixtures. Deterministic boundary survives; no hybrid redesign needed. Path to green CI = implement F-18, not threshold re-baseline. Evidence: `exploration/RQ01_BUDGET_EXTRACTION_CEILING_2026-08-30.md` | — | **closed** |
 | RQ-03 | I | ~~Are the 4 RLS-exempt tables cross-tenant reachable?~~ **CLOSED 2026-08-30 — verdict: none reachable cross-tenant.** audit_logs: single read agency-filtered · ghost_workflows: id+agency 404 probe · emotional_state_logs: write-only JWT-scoped · legacy_aspirations: no endpoints at all. Evidence: `review/A19_RLS_COVERAGE_RESOLUTION_2026-08-30.md` | — | **closed** |
 | EX-01 | E | **JDG IROPS trigger (narrowed)** — design + schema exist with 4 importers; only the trigger is open. Which real disruption signal mutates a JDG node, and what is its source of truth? (Mock-tool caveat: no live disruption source is connected — A-03) | Measure segment-count distribution first (falsifier: single-segment trips ⇒ low value) → trigger design + go/no-go | 5th |
@@ -108,13 +117,13 @@
 | NG-03 | I | **No-go-for-now: JIT ticketing scheduler** (src: L4) — autonomous deferred issuance has no real fulfillment/PNR path | Re-open after connectivity tier 1 | deferred |
 | NG-04 | I | **No-go-for-now: programmable supplier RFQ rounds** (src: A6) — same blocker as NG-02; `bargaining_engine.py` has no structured counterparty to bargain with | Re-open after connectivity tier 1 | deferred |
 
-**Closed since backlog was written:** RQ-02 (motto_v4 content recovered → folded into Wave 4.8 reference hygiene) · RQ-04 (resolved by `R03_SPLIT_BRAIN_RESOLUTION_2026-08-30.md`; remaining action is committing the guard, see A-14) · RQ-05 (folded into Wave 3.11 decision).
+**Closed since backlog was written:** RQ-02 (motto_v4 content recovered → folded into Wave 4.8 reference hygiene) · RQ-04 (resolved by `R03_SPLIT_BRAIN_RESOLUTION_2026-08-30.md`; the guard is preserved in `2f9a638`) · RQ-05 (folded into Wave 3.11 decision) · A-14/A-21 preservation and classification (A1-1 closure evidence).
 
 ---
 
 ## Section 3 — Recommended sequencing
 
-1. **Wave 0 (A-14 commit, with authorization) + RQ-06 + EX-06** — preserve uncommitted P0 work; close the two cheapest evidence holes.
+1. **Wave 0 residuals (A-14/A1-1 preservation complete) + RQ-06 + EX-06** — keep the classification ledger current; close the remaining baseline/evidence holes without reopening the preservation task.
 2. **Wave 1 (A-01)** — make the quality instrument honest before touching anything that reads it. Expect gates to go red; that is the point.
 3. **Wave 2 security (A-19, A-18, R-15, F-02, F-03)** — tenant boundary + identity binding + public token surface before any new money-moving feature.
 4. **Wave 3 consolidation** — retirement gate (EX-03 output) governs every consolidation here.

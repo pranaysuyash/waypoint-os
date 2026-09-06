@@ -20,10 +20,14 @@ function normalizeTripDisplayValue(value?: string | number | null): string | nul
 }
 
 function makeCanonicalSlot(value: unknown): SlotValue {
+  // F-37 slice (F-22 UI class): synthesized from derived trip fields, not
+  // user-stated — honest labels instead of explicit_user @1.0.
   return {
     value,
-    confidence: 1,
-    authority_level: "explicit_user",
+    confidence: 0.6,
+    authority_level: "derived_signal",
+    extraction_mode: "derived",
+    derived_from: ["trip_fields"],
   } as SlotValue;
 }
 

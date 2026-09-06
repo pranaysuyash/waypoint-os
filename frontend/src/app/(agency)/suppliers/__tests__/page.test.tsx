@@ -56,9 +56,13 @@ describe('SuppliersPage', () => {
     render(<SuppliersPage />);
 
     expect(screen.getByText(/Suppliers & DMC Directory/i)).toBeInTheDocument();
+    expect(screen.getByTestId('simulated-badge')).toHaveTextContent('Sample data');
+    expect(screen.getByTestId('suppliers-preview-banner')).toHaveTextContent(/not evidence that a supplier contract exists/i);
     expect(screen.getByTestId('suppliers-trip-select')).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /Cape Town business trip · Updated recently · BC27/i })).toBeInTheDocument();
-    expect(screen.getByText(/Current supplier risk: medium/i)).toBeInTheDocument();
-    expect(screen.getByText(/supplier intelligence snapshot is available/i)).toBeInTheDocument();
+    expect(screen.getByText(/medium \(not supplier-verified\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/stored trip snapshot \(freshness unknown\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Showing 6 sample records/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Verified Partners/i)).not.toBeInTheDocument();
   });
 });

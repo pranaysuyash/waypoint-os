@@ -29,6 +29,7 @@ import { PlanningTripCard } from '@/components/workspace/PlanningTripCard';
 import { getPlanningListSummary, getPlanningStageLabel } from '@/lib/planning-list-display';
 import { getPlanningBriefStatus, hasPlanningBriefBlocker } from '@/lib/planning-status';
 import { groupTripsByOverviewSignature } from '@/lib/trip-grouping';
+import { isTripEscalated } from '@/lib/trip-lifecycle';
 import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceTable';
 
 // ============================================================================
@@ -308,15 +309,31 @@ function WorkspacesPageWithSearchParams() {
     [workspaceTrips],
   );
 
+  // Escalated queue (register N-4): client-side slice over the workspace list.
+  // Server-side escalation filtering (routing-state join) is the follow-up slice —
+  // documented in the handoff; this keeps escalated trips visible today.
+  const escalatedTrips = useMemo(
+    () => workspaceTrips.filter(isTripEscalated),
+    [workspaceTrips],
+  );
+  const showEscalatedOnly = getSearchParam('filter') === 'escalated';
+  const toggleEscalatedOnly = useCallback(() => {
+    updateParams({ filter: showEscalatedOnly ? null : 'escalated' });
+  }, [showEscalatedOnly, updateParams]);
+
   const sortedTrips = useMemo(
     () => sortTrips(workspaceTrips, sortField, sortDirection),
     [workspaceTrips, sortField, sortDirection],
   );
-  const groupedTrips = useMemo(
-    () => groupTripsByOverviewSignature(sortedTrips),
-    [sortedTrips],
+  const visibleTrips = useMemo(
+    () => (showEscalatedOnly ? sortedTrips.filter(isTripEscalated) : sortedTrips),
+    [sortedTrips, showEscalatedOnly],
   );
-  const isCardGrouped = groupedTrips.length < sortedTrips.length;
+  const groupedTrips = useMemo(
+    () => groupTripsByOverviewSignature(visibleTrips),
+    [visibleTrips],
+  );
+  const isCardGrouped = groupedTrips.length < visibleTrips.length;
 
   const handleSort = useCallback((field: SortField) => {
     setSortField((current) => {
@@ -344,6 +361,22 @@ function WorkspacesPageWithSearchParams() {
               <AlertTriangle className='size-3.5' aria-hidden='true' />
               {needsDetailsCount} needs details
             </span>
+          )}
+          {escalatedTrips.length > 0 && (
+            <button
+              type='button'
+              onClick={toggleEscalatedOnly}
+              aria-pressed={showEscalatedOnly}
+              className='flex items-center gap-1.5 text-ui-sm px-2 py-0.5 rounded-md font-medium'
+              style={{
+                color: showEscalatedOnly ? '#0d1117' : '#f85149',
+                background: showEscalatedOnly ? '#f85149' : 'rgba(248,81,73,0.08)',
+                border: '1px solid rgba(248,81,73,0.22)',
+              }}
+            >
+              <AlertTriangle className='size-3.5' aria-hidden='true' />
+              {escalatedTrips.length} escalated
+            </button>
           )}
           <span className='text-ui-sm text-[var(--text-muted)]'>
             {isLoading ? 'Loading…' : `${workspaceTrips.length} in planning`}
@@ -391,7 +424,7 @@ function WorkspacesPageWithSearchParams() {
             <div className='space-y-4'>
               {isCardGrouped ? (
                 <p className='text-ui-sm text-[var(--text-muted)]'>
-                  Showing {groupedTrips.length.toLocaleString('en-IN')} grouped cards from {sortedTrips.length.toLocaleString('en-IN')} trips.
+                  Showing {groupedTrips.length.toLocaleString('en-IN')} grouped cards from {visibleTrips.length.toLocaleString('en-IN')} trips.
                 </p>
               ) : null}
               {groupedTrips.length === 1 ? (
@@ -409,7 +442,7 @@ function WorkspacesPageWithSearchParams() {
             </div>
           ) : (
             <WorkspaceTable
-              trips={sortedTrips}
+              trips={visibleTrips}
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={handleSort}

@@ -4,7 +4,7 @@ import PageClient from './PageClient';
 
 export const metadata: Metadata = {
   title: 'Waypoint OS — Bookings',
-  description: 'Confirmed operational booking records and fulfillment tracking.',
+  description: 'Sample booking records and local document-parse preview; no provider-backed booking state.',
 };
 
 export default function Page() {

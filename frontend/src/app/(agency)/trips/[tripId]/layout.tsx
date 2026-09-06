@@ -30,6 +30,7 @@ import { getPlanningStageProgressItems } from "@/lib/planning-list-display";
 import { getTripRoute, type WorkspaceStage } from "@/lib/routes";
 import { TripContextProvider } from "@/contexts/TripContext";
 import { TimelineSummary } from "@/components/workspace/panels/TimelineSummary";
+import { LifecycleChip } from "@/components/workspace/LifecycleChip";
 import { hasImportantTimelineEvent } from "@/lib/timeline-rail";
 import type { TimelineResponse } from "@/types/spine";
 
@@ -320,6 +321,9 @@ function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
                       />
                       {getPlanningStatusLabel(trip)}
                     </span>
+                    {/* Derived lifecycle chip (register N-4): one joined answer to
+                        "where is this trip?" across all status vocabularies. */}
+                    <LifecycleChip trip={trip} />
                     {planningIdentity && (
                       <span className="text-[var(--ui-text-xs)] text-[var(--text-tertiary)]">
                         {planningIdentity}

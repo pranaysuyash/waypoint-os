@@ -28,6 +28,14 @@ class EvacuationMode(str, Enum):
     MARITIME_FERRY = "maritime_ferry"
 
 
+class PassengerBeaconStatus(str, Enum):
+    SAFE_IN_SHELTER = "SAFE_IN_SHELTER"
+    EN_ROUTE_EVACUATION = "EN_ROUTE_EVACUATION"
+    ASSISTANCE_REQUESTED = "ASSISTANCE_REQUESTED"
+    UNACCOUNTED = "UNACCOUNTED"
+    EVACUATED_CLEARED = "EVACUATED_CLEARED"
+
+
 @dataclass(slots=True)
 class GeofenceArea:
     """Geographical circle or boundary for crisis containment."""

@@ -14,6 +14,19 @@ const nextConfig = {
   },
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
+  async rewrites() {
+    const spineApiUrl = process.env.SPINE_API_URL || 'http://127.0.0.1:8000';
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${spineApiUrl}/api/v1/:path*`,
+      },
+      {
+        source: '/api/public/:path*',
+        destination: `${spineApiUrl}/api/public/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

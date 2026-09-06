@@ -1,0 +1,321 @@
+{
+  "doc_path": "Docs/status/SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+  "mode": "auto",
+  "project_path": ".",
+  "total_features": 12,
+  "indexed_files": 715,
+  "index_categories": 5,
+  "summary": {
+    "go": 0,
+    "fix": 10,
+    "maybe": 0,
+    "nogo": 2,
+    "status_drift": 11
+  },
+  "features": [
+    {
+      "section": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+      "area": "Scope implemented",
+      "stated_status": "DONE",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:6",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.25,
+      "search_terms": [
+        "scope_implemented",
+        "implemented",
+        "scope"
+      ],
+      "evidence": [
+        "PAGE: frontend/src/app/(agency)/settings/components/IntegrationsTab.tsx",
+        "ROUTE: spine_api/routers/frontier.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+      "area": "Files changed",
+      "stated_status": "NEW_ANGLE",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:10",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "files_changed",
+        "changed",
+        "files"
+      ],
+      "evidence": [
+        "ROUTE: spine_api/routers/settings.py",
+        "ROUTE: spine_api/routers/loyalty.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+      "area": "Behavior contract preserved",
+      "stated_status": "NEW_ANGLE",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:15",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.25,
+      "search_terms": [
+        "behavior_contract_preserved",
+        "contract_preserved",
+        "behavior_contract",
+        "preserved",
+        "contract"
+      ],
+      "evidence": [
+        "PAGE: frontend/src/app/(agency)/workbench/FinancialSettlementPanel.tsx",
+        "ROUTE: spine_api/routers/messaging.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+      "area": "server.py changes performed",
+      "stated_status": "NOT_STARTED",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:30",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.25,
+      "search_terms": [
+        "server.py_changes_performed",
+        "changes_performed",
+        "server.py_changes",
+        "server.py",
+        "performed"
+      ],
+      "evidence": [
+        "ROUTE: spine_api/routers/integrations.py",
+        "MODEL: spine_api/models/frontier.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+      "area": "Verification executed",
+      "stated_status": "NOT_STARTED",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:38",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "verification_executed",
+        "verification",
+        "executed"
+      ],
+      "evidence": [
+        "ROUTE: spine_api/routers/messaging.py",
+        "ROUTE: spine_api/routers/concierge.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "Verification executed",
+      "area": "Verification executed > Test matrix",
+      "stated_status": "NOT_STARTED",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:40",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "verification_executed_test",
+        "verification_executed",
+        "executed_test_matrix",
+        "executed_test",
+        "verification"
+      ],
+      "evidence": [
+        "ROUTE: spine_api/routers/messaging.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "Verification executed",
+      "area": "Verification executed > Snapshot check",
+      "stated_status": "NOT_STARTED",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:47",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "verification_executed_snapshot",
+        "executed_snapshot_check",
+        "verification_executed",
+        "executed_snapshot",
+        "snapshot_check"
+      ],
+      "evidence": [
+        "ROUTE: spine_api/routers/trip_history.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "Verification executed",
+      "area": "Verification executed > Forbidden import check",
+      "stated_status": "NOT_STARTED",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:55",
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "verification_executed_forbidden",
+        "executed_forbidden_import",
+        "forbidden_import_check",
+        "verification_executed",
+        "executed_forbidden"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+      "area": "Non-goals honored",
+      "stated_status": "NOT_STARTED",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:62",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "non_goals_honored",
+        "goals_honored",
+        "non_goals",
+        "honored",
+        "goals"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/strategy.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+      "area": "Acceptance update (2026-05-08)",
+      "stated_status": "NOT_STARTED",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:70",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "acceptance_update",
+        "acceptance",
+        "update"
+      ],
+      "evidence": [
+        "ROUTE: spine_api/routers/public_proposals.py",
+        "ROUTE: spine_api/routers/messaging.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+      "area": "Merge condition (carried forward)",
+      "stated_status": "PARTIAL",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:82",
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "condition_carried_forward",
+        "merge_condition_carried",
+        "condition_carried",
+        "merge_condition",
+        "carried_forward"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md",
+      "area": "Stop condition",
+      "stated_status": "NOT_STARTED",
+      "priority": "Unknown",
+      "source": "SERVER_PY_REFACTOR_PHASE3_SLICEF_PRODUCTB_KPI_COMPLETION_2026-05-08.md:86",
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "stop_condition",
+        "condition"
+      ],
+      "evidence": [
+        "SERVICE: src/evals/agentic_feedback.py",
+        "ROUTE: spine_api/routers/supplier.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    }
+  ]
+}

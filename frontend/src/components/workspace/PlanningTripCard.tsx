@@ -110,7 +110,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
             <div className='mt-2 flex flex-wrap items-center gap-x-3 gap-y-1'>
               <span className='text-[12px]' style={{ color: '#8b949e' }}>Contact name missing</span>
               <Link
-                href={`/trips/${trip.id}/intake?field=customerName`}
+                href={`/trips/${trip.id}/intake?repair=customerName`}
                 className='inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-medium hover:opacity-80 transition-opacity'
                 style={{ color: '#8b949e', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
               >
@@ -131,7 +131,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
                 return (
                   <Link
                     key={badge}
-                    href={`/trips/${trip.id}/intake?field=${param}`}
+                    href={`/trips/${trip.id}/intake?repair=${param}`}
                     className='inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-medium hover:opacity-80 transition-opacity'
                     style={{ color: '#d29922', background: 'rgba(210,153,34,0.12)', border: '1px solid rgba(210,153,34,0.25)' }}
                   >

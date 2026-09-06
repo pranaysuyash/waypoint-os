@@ -14,8 +14,27 @@ from pydantic import BaseModel, Field
 from src.distribution.edifact_parser import EDIFACTParser
 from src.distribution.ndc_client import NDCProtocolEngine
 from src.distribution.fare_rules_engine import FareRulesEngine
+from spine_api.core.reality_tier import RealityTier, TierMetadata
 
 router = APIRouter(prefix="/api/v1/distribution", tags=["distribution"])
+
+
+def _preview_metadata(feature_name: str) -> Dict[str, Any]:
+    return {
+        **TierMetadata.for_response(
+            RealityTier.DETERMINISTIC_PREVIEW,
+            feature_name,
+            computation_method="local parser/protocol engine; no provider call",
+            missing_for_upgrade=[
+                "provider credentials and authenticated session",
+                "external order/PNR/ticket confirmation",
+                "idempotency, reconciliation, and audit reference",
+            ],
+        ),
+        "provider_connected": False,
+        "external_reference": None,
+        "effects": [],
+    }
 
 
 class ParseEdifactRequest(BaseModel):
@@ -60,10 +79,11 @@ class Cat35MarkupRequest(BaseModel):
 
 @router.post("/gds/parse-edifact")
 def parse_gds_terminal_dump(payload: ParseEdifactRequest) -> Dict[str, Any]:
-    """Parses raw GDS terminal output into structured GDSPNRRecord."""
+    """Parse supplied terminal text locally; this does not validate a live PNR."""
     record = EDIFACTParser.parse_amadeus_dump(payload.raw_terminal_dump, pcc=payload.pcc)
     return {
-        "status": "success",
+        "status": "PREVIEW_ONLY",
+        "reality": _preview_metadata("edifact_parse_preview"),
         "pnr": record.to_dict(),
     }
 
@@ -77,7 +97,8 @@ def generate_gds_cryptic_commands(payload: GenerateCrypticsRequest) -> Dict[str,
         ticketing_limit=payload.ticketing_limit,
     )
     return {
-        "status": "success",
+        "status": "PREVIEW_ONLY",
+        "reality": _preview_metadata("cryptic_command_preview"),
         "commands": commands,
         "command_count": len(commands),
     }
@@ -94,14 +115,15 @@ def request_ndc_air_shopping(payload: AirShoppingRequest) -> Dict[str, Any]:
         cabin_preference=payload.cabin_preference,
     )
     return {
-        "status": "success",
+        "status": "PREVIEW_ONLY",
+        "reality": _preview_metadata("ndc_air_shopping_preview"),
         "ndc_payload": req,
     }
 
 
 @router.post("/ndc/orders/create")
 def create_ndc_order(payload: OrderCreateRequest) -> Dict[str, Any]:
-    """Creates a confirmed IATA NDC 21.3 Order."""
+    """Build an unconfirmed NDC-shaped order preview; no order is submitted."""
     order = NDCProtocolEngine.execute_order_create(
         offer_id=payload.offer_id,
         airline_code=payload.airline_code,
@@ -110,9 +132,19 @@ def create_ndc_order(payload: OrderCreateRequest) -> Dict[str, Any]:
         total_amount=payload.total_amount,
         currency=payload.currency,
     )
+    order_payload = order.to_dict()
+    order_payload.update(
+        {
+            "status": "PREVIEW_ONLY",
+            "order_id": None,
+            "pnr_reference": None,
+            "provider_confirmation": None,
+        }
+    )
     return {
-        "status": "success",
-        "order": order.to_dict(),
+        "status": "PREVIEW_ONLY",
+        "reality": _preview_metadata("ndc_order_preview"),
+        "order": order_payload,
     }
 
 
@@ -125,7 +157,8 @@ def check_fare_penalties(payload: FareRuleCheckRequest) -> Dict[str, Any]:
         is_no_show=payload.is_no_show,
     )
     return {
-        "status": "success",
+        "status": "COMPUTED_PREVIEW",
+        "reality": _preview_metadata("fare_penalty_evaluation"),
         "evaluation": res,
     }
 
@@ -139,6 +172,7 @@ def evaluate_cat35_markup(payload: Cat35MarkupRequest) -> Dict[str, Any]:
         contract_code=payload.contract_code,
     )
     return {
-        "status": "success",
+        "status": "COMPUTED_PREVIEW",
+        "reality": _preview_metadata("cat35_markup_evaluation"),
         "cat35_evaluation": res,
     }

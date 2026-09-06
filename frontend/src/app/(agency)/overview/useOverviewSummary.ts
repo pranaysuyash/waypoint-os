@@ -286,7 +286,7 @@ export function useOverviewSummary() {
     [
       inbox.data,
       inboxStats.data,
-      inbox.total,
+      inboxCount,
       pendingReviews.data,
       workspace.data,
     ]

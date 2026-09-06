@@ -2,6 +2,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name?: string;
+  platform_role?: 'none' | 'support' | 'ops_admin' | 'super_admin';
 }
 
 export interface AuthAgency {

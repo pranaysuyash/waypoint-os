@@ -22,6 +22,7 @@ declare module 'pdfjs-dist/build/pdf.mjs' {
 
   export function getDocument(input: {
     data: ArrayBuffer | Uint8Array;
+    disableWorker?: boolean;
   }): {
     promise: Promise<PDFDocumentProxy>;
   };

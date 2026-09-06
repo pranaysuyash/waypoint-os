@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -33,8 +33,14 @@ router = APIRouter(prefix="/api/v1/customers", tags=["Customer Relationship Memo
 # Durable multi-tenant memory store singleton
 _MEMORY_STORE = MemoryStore()
 
-# Legacy in-memory dictionary maintained for backwards compatibility
-CUSTOMER_MEMORY_STORE: Dict[str, Dict[str, Any]] = {}
+# Legacy in-memory dictionary maintained for backwards compatibility.
+# S-08 (RT-07): tenant-partitioned — every entry is keyed by the composite
+# (agency_id, customer_id), so one agency can never read, overwrite, or delete
+# another agency's customer profiles. All access MUST go through
+# _find_customer_profile / the (agency_id, ...) key; a bare customer_id is not
+# a valid key. Process-local only (never persisted), so no data migration was
+# needed; the durable MemoryStore below was already agency-keyed.
+CUSTOMER_MEMORY_STORE: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -136,15 +142,23 @@ def _normalize_phone(phone: Optional[str]) -> Optional[str]:
 
 
 def _find_customer_profile(
+    agency_id: str,
     email: Optional[str] = None,
     phone: Optional[str] = None,
     name: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
+    """Find a customer profile scoped to ``agency_id`` (S-08 tenant partition).
+
+    ``agency_id`` is intentionally a required positional argument so no caller
+    can accidentally scan the cross-tenant store without an agency context.
+    """
     norm_e = _normalize_email(email)
     norm_p = _normalize_phone(phone)
     norm_n = name.strip().lower() if name and name.strip() else None
 
-    for profile in CUSTOMER_MEMORY_STORE.values():
+    for (profile_agency, _customer_id), profile in CUSTOMER_MEMORY_STORE.items():
+        if profile_agency != agency_id:
+            continue
         if norm_e and profile.get("normalized_email") == norm_e:
             return profile
         if norm_p and profile.get("normalized_phone") == norm_p:
@@ -170,7 +184,7 @@ async def get_customer_memory(
     if not any([email, phone, name]):
         raise HTTPException(status_code=400, detail="Must provide email, phone, or name for memory lookup")
 
-    profile = _find_customer_profile(email=email, phone=phone, name=name)
+    profile = _find_customer_profile(agency_id, email=email, phone=phone, name=name)
     if not profile:
         return None
 
@@ -201,7 +215,7 @@ async def remember_customer_preference(
     if not norm_e and not norm_p and not req.name:
         raise HTTPException(status_code=400, detail="Must provide email, phone, or name to index customer memory")
 
-    profile = _find_customer_profile(email=req.email, phone=req.phone, name=req.name)
+    profile = _find_customer_profile(agency_id, email=req.email, phone=req.phone, name=req.name)
     now_iso = datetime.now(timezone.utc).isoformat()
 
     if profile:
@@ -235,7 +249,7 @@ async def remember_customer_preference(
         profile["source_trip_ids"].append(req.source_trip_id)
 
     profile["last_confirmed_at"] = now_iso
-    CUSTOMER_MEMORY_STORE[cust_id] = profile
+    CUSTOMER_MEMORY_STORE[(agency_id, cust_id)] = profile
 
     # Also ingest structured facts into the 5-tier durable MemoryStore
     if req.dietary_requirements:
@@ -320,8 +334,8 @@ async def hydrate_trip_with_customer_memory(
 
     # _find_customer_profile matches by email, then phone, then normalized name,
     # so passing all three makes a body-less hydrate robust to whichever field
-    # the trip carries.
-    profile = _find_customer_profile(email=trip_email, phone=trip_phone, name=trip_name)
+    # the trip carries. Scoped to the caller's agency (S-08).
+    profile = _find_customer_profile(agency_id, email=trip_email, phone=trip_phone, name=trip_name)
     if not profile:
         return HydrateTripResponse(
             trip_id=trip_id,
@@ -486,9 +500,9 @@ async def forget_customer_gdpr(
         entity_id=req.customer_id,
     )
 
-    # Also remove from legacy store
-    if req.customer_id in CUSTOMER_MEMORY_STORE:
-        del CUSTOMER_MEMORY_STORE[req.customer_id]
+    # Also remove from legacy store — scoped to the caller's agency (S-08), so
+    # agency B cannot erase agency A's profile by guessing the customer id.
+    CUSTOMER_MEMORY_STORE.pop((agency_id, req.customer_id), None)
 
     AuditStore.log_event(
         event_type="gdpr_memory_erased",

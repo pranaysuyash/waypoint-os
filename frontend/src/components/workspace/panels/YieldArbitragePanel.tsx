@@ -17,6 +17,7 @@ interface SupplierOption {
 interface YieldArbitrageData {
   ok: boolean;
   trip_id: string;
+  data_sufficient: boolean;
   supplier_options: SupplierOption[];
   optimal_supplier: string;
   potential_margin_gain: number;
@@ -26,14 +27,19 @@ interface YieldArbitragePanelProps {
   tripId?: string;
 }
 
-export function YieldArbitragePanel({ tripId = 'trip_demo123' }: YieldArbitragePanelProps) {
+export function YieldArbitragePanel({ tripId }: YieldArbitragePanelProps) {
   const [data, setData] = useState<YieldArbitrageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [swapping, setSwapping] = useState<string | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!tripId) return;
+
     async function loadOpportunities() {
+      setLoading(true);
+      setError(null);
       try {
         const res = await api.get<YieldArbitrageData>(`/api/v1/yield/arbitrage/${tripId}`);
         setData(res);
@@ -42,6 +48,8 @@ export function YieldArbitragePanel({ tripId = 'trip_demo123' }: YieldArbitrageP
         }
       } catch (err) {
         console.warn('Failed to load yield arbitrage data:', err);
+        setData(null);
+        setError(err instanceof Error ? err.message : 'Supplier yield data is unavailable.');
       } finally {
         setLoading(false);
       }
@@ -50,7 +58,9 @@ export function YieldArbitragePanel({ tripId = 'trip_demo123' }: YieldArbitrageP
   }, [tripId]);
 
   const handleSwap = async (supplierName: string) => {
+    if (!tripId) return;
     setSwapping(supplierName);
+    setError(null);
     try {
       await api.post('/api/v1/yield/swap-supplier', {
         trip_id: tripId,
@@ -58,16 +68,38 @@ export function YieldArbitragePanel({ tripId = 'trip_demo123' }: YieldArbitrageP
       });
       setSelectedSupplier(supplierName);
     } catch (err) {
-      alert(`Supplier swap failed: ${(err as Error).message}`);
+      setError(err instanceof Error ? err.message : 'Supplier swap failed.');
     } finally {
       setSwapping(null);
     }
   };
 
+  if (!tripId) {
+    return (
+      <div
+        className="p-6 bg-slate-900/60 border border-amber-500/30 rounded-xl text-center text-xs text-amber-200"
+        role="status"
+      >
+        Select a trip before reviewing supplier yield.
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-xl text-center text-xs text-slate-400">
-        Scanning supplier GDS &amp; bedbank rates for yield arbitrage...
+        Loading agency supplier contracts for yield review...
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div
+        className="p-6 bg-slate-900/60 border border-amber-500/30 rounded-xl text-center text-xs text-amber-200"
+        role="status"
+      >
+        {error}
       </div>
     );
   }
@@ -98,14 +130,26 @@ export function YieldArbitragePanel({ tripId = 'trip_demo123' }: YieldArbitrageP
         )}
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200" role="alert">
+          {error}
+        </div>
+      )}
+
+      {!data.data_sufficient && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200" role="status">
+          No supplier contracts are uploaded for this agency. Upload a contract before comparing margins.
+        </div>
+      )}
+
       <div className="space-y-2.5">
-        {data.supplier_options.map((opt, idx) => {
+        {data.supplier_options.map((opt) => {
           const isSelected = selectedSupplier === opt.supplier_name;
           const isOptimal = data.optimal_supplier === opt.supplier_name;
 
           return (
             <div
-              key={idx}
+              key={opt.supplier_name}
               className={`p-3.5 rounded-lg border transition-all ${
                 isSelected
                   ? 'bg-slate-800/80 border-emerald-500/40 shadow-sm'

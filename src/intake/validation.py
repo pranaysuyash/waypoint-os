@@ -241,6 +241,24 @@ def validate_packet(packet: CanonicalPacket, stage: str = "discovery") -> Packet
             message=f"Packet has {stub_count} stub signals — downstream logic should respect maturity",
         ))
 
+    # 10a. Explicit years outside the intake planning horizon are preserved in
+    # the date fact for provenance, but must be surfaced for review.  The
+    # extractor records this as a derived signal so validation does not need to
+    # reinterpret localized/date-range text or silently rewrite customer input.
+    year_status_slot = packet.derived_signals.get("date_year_status")
+    year_status = getattr(year_status_slot, "value", None)
+    if year_status in {"past_year", "implausible_year"}:
+        warnings.append(ValidationIssue(
+            severity="warning",
+            code=year_status,
+            message=(
+                "Travel year is in the past and requires confirmation"
+                if year_status == "past_year"
+                else "Travel year is beyond the supported planning horizon and requires confirmation"
+            ),
+            field="date_window",
+        ))
+
     # 11. Party underdetection guards (DEMO-02). Group phrasing must never
     # silently collapse to a solo traveler or vanish — warn, never skip
     # (data-loss prevention). The extractor carries raw group phrases either

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { WelcomeModal } from '../WelcomeModal';
 
@@ -18,12 +19,27 @@ describe('WelcomeModal', () => {
     mockPathname = '/overview';
   });
 
-  it('renders as a non-blocking welcome card for authenticated users', () => {
+  it('renders as a labelled non-modal region for authenticated users', () => {
     render(<WelcomeModal isAuthenticated />);
 
     expect(screen.getByText('Welcome to Waypoint')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const card = screen.getByRole('region', { name: 'Welcome to Waypoint' });
+    expect(card).toHaveAttribute('aria-describedby', 'welcome-card-description');
+    expect(card).toHaveAttribute('data-testid', 'welcome-card');
     expect(screen.getByRole('button', { name: /process your first inquiry/i })).toBeInTheDocument();
+  });
+
+  it('keeps the non-modal card keyboard reachable and dismissible', async () => {
+    const user = userEvent.setup();
+    render(<WelcomeModal isAuthenticated />);
+
+    const closeButton = screen.getByRole('button', { name: /close welcome card/i });
+    closeButton.focus();
+    await user.keyboard('{Enter}');
+
+    expect(screen.queryByTestId('welcome-card')).not.toBeInTheDocument();
+    expect(localStorage.getItem('waypoint:welcome-seen:v1')).toBe('1');
   });
 
   it('dismisses the welcome card and records the seen flag', () => {

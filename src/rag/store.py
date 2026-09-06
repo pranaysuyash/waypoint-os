@@ -1,7 +1,9 @@
-"""SQLite-backed multi-tenant storage for the RAG engine.
+"""SQLite-backed multi-tenant storage for the local RAG engine.
 
-Provides vector similarity search, BM25 sparse keyword scoring,
-and knowledge graph (nodes/edges) persistence with strict tenant isolation.
+Provides cosine similarity over stored local vectors, BM25-style sparse
+keyword heuristics, and knowledge-graph (nodes/edges) persistence with strict
+tenant isolation.  The vector and lexical scores are implementation scores,
+not calibrated semantic confidence or standards-compliant BM25 scores.
 """
 
 import json
@@ -145,7 +147,12 @@ class SQLiteRAGStore:
         top_k: int = 5,
         source_types: Optional[List[str]] = None,
     ) -> List[Tuple[RAGChunk, float]]:
-        """Vector similarity search (cosine distance)."""
+        """Search tenant-local vectors by cosine similarity.
+
+        Indexer-produced vectors are deterministic hash-bucket representations
+        today, so this method must not be described as semantic retrieval
+        until a real embedding provider and provenance contract are present.
+        """
         with self._get_connection() as conn:
             query = "SELECT * FROM rag_chunks WHERE agency_id = ? AND embedding_json IS NOT NULL"
             params: List[Any] = [agency_id]
@@ -174,7 +181,11 @@ class SQLiteRAGStore:
         top_k: int = 5,
         source_types: Optional[List[str]] = None,
     ) -> List[Tuple[RAGChunk, float]]:
-        """BM25-style keyword matching score over content and title."""
+        """Score substring keyword matches over content and title.
+
+        The formula is intentionally a small offline heuristic inspired by
+        BM25; it does not calculate BM25 document frequency or IDF.
+        """
         query_tokens = [w.lower() for w in re.findall(r"\w+", query_text) if len(w) > 1]
         if not query_tokens:
             return []

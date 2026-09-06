@@ -40,6 +40,7 @@ import type {
 import type { Trip } from '@/lib/api-client';
 import { submitTripReviewAction, createDraft, getDraft, patchDraft, discardDraft, promoteDraft } from '@/lib/api-client';
 import { getTripRoute, getPostRunTripRoute, getWorkbenchTripId, getTripRepairRoute } from '@/lib/routes';
+import { buildRepairDeepLinkHref, getFirstRepairableFieldName } from '@/lib/repair-deep-link';
 import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { RunProgressPanel } from './RunProgressPanel';
@@ -174,7 +175,19 @@ function getPipelineStageForWorkbench(
 }
 
 function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
-  const store = useWorkbenchStore();
+  const {
+    setResultPacket,
+    setResultValidation,
+    setResultDecision,
+    setResultStrategy,
+    setResultInternalBundle,
+    setResultTravelerBundle,
+    setResultSafety,
+    setResultFees,
+    setResultFrontier,
+    setInputRawNote,
+    setInputOwnerNote,
+  } = useWorkbenchStore();
   const hydratedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -184,30 +197,30 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     hydratedRef.current = trip.id;
 
     // Always overwrite from current trip (prevent stale cross-trip data)
-    store.setResultPacket(trip.packet ?? null);
-    store.setResultValidation(trip.validation ?? null);
-    store.setResultDecision(trip.decision ?? null);
-    store.setResultStrategy(trip.strategy ?? null);
-    store.setResultInternalBundle(trip.internal_bundle ?? null);
-    store.setResultTravelerBundle(trip.traveler_bundle ?? null);
-    store.setResultSafety(normalizeSafetyResult(trip.safety));
-    store.setResultFees(trip.fees ?? null);
-    store.setResultFrontier(trip.frontier_result ?? null);
-    store.setInputRawNote(trip.customerMessage ?? '');
-    store.setInputOwnerNote(trip.agentNotes ?? '');
+    setResultPacket(trip.packet ?? null);
+    setResultValidation(trip.validation ?? null);
+    setResultDecision(trip.decision ?? null);
+    setResultStrategy(trip.strategy ?? null);
+    setResultInternalBundle(trip.internal_bundle ?? null);
+    setResultTravelerBundle(trip.traveler_bundle ?? null);
+    setResultSafety(normalizeSafetyResult(trip.safety));
+    setResultFees(trip.fees ?? null);
+    setResultFrontier(trip.frontier_result ?? null);
+    setInputRawNote(trip.customerMessage ?? '');
+    setInputOwnerNote(trip.agentNotes ?? '');
   }, [
     trip,
-    store.setInputRawNote,
-    store.setInputOwnerNote,
-    store.setResultPacket,
-    store.setResultValidation,
-    store.setResultDecision,
-    store.setResultStrategy,
-    store.setResultInternalBundle,
-    store.setResultTravelerBundle,
-    store.setResultSafety,
-    store.setResultFees,
-    store.setResultFrontier,
+    setInputRawNote,
+    setInputOwnerNote,
+    setResultPacket,
+    setResultValidation,
+    setResultDecision,
+    setResultStrategy,
+    setResultInternalBundle,
+    setResultTravelerBundle,
+    setResultSafety,
+    setResultFees,
+    setResultFrontier,
   ]);
 }
 
@@ -284,9 +297,14 @@ function WorkbenchContent() {
 
   const runFrontier = spineRunState?.frontier_result;
   const showFrontier = Boolean(trip?.frontier_result) || Boolean(store.result_frontier) || Boolean(runFrontier);
-  const tripRepairHref = trip?.id ? getTripRepairRoute(trip.id) : null;
   const blockCopy = getWorkbenchBlockCopy({ validation: store.result_validation, packet: store.result_packet ?? trip?.packet ?? null });
   const missingFieldsLabel = formatWorkbenchMissingFields(blockCopy.missingFields);
+  // D-09: deep-link the first repairable missing field straight into its
+  // intake editor (?repair=<field>), falling back to the plain intake route.
+  const firstRepairableField = getFirstRepairableFieldName(blockCopy.missingFields);
+  const tripRepairHref = trip?.id
+    ? (firstRepairableField ? buildRepairDeepLinkHref(trip.id, firstRepairableField) : getTripRepairRoute(trip.id))
+    : null;
 
   const visibleTabs = workspaceTabs.filter((tab) => {
     if (tab.id === 'packet') return showPacket;
@@ -336,7 +354,18 @@ function WorkbenchContent() {
   const prevDraftRef = useRef<string | null>(null);
   const draftLoadingRef = useRef(false);
   const [draftError, setDraftError] = useState<string | null>(null);
-  const { clearDraft, hydrateFromDraft, setDraftStatus } = store;
+  const {
+    clearDraft,
+    hydrateFromDraft,
+    setDraftStatus,
+    clearTransientRunResults,
+    setResultValidation,
+    setResultPacket,
+    setResultDecision,
+    setResultFrontier,
+    setSaveState,
+    setDraftMeta,
+  } = store;
   useEffect(() => {
     if (!draftParam) return;
     if (draftParam === 'new') {
@@ -394,14 +423,14 @@ function WorkbenchContent() {
       // Clear only transient run artifacts (run_ts, acknowledged flags, parked frontier).
       // Trip-persisted outputs (packet, decision, strategy, safety) remain visible
       // because they belong to the trip, not to a specific run config.
-      store.clearTransientRunResults();
+      clearTransientRunResults();
       prevConfigRef.current = {
         stage: spineStage,
         mode: currentMode,
         scenario: currentScenario,
       };
     }
-  }, [spineStage, currentMode, currentScenario, store.clearTransientRunResults]);
+  }, [spineStage, currentMode, currentScenario, clearTransientRunResults]);
 
   const handleTabChange = useCallback(
     (tab: string) => {
@@ -445,10 +474,10 @@ function WorkbenchContent() {
   // still show specific field-level errors in the UI.
   useEffect(() => {
     if (spineRunState?.validation) {
-      store.setResultValidation(spineRunState.validation);
+      setResultValidation(spineRunState.validation);
     }
     if (spineRunState?.packet) {
-      store.setResultPacket(spineRunState.packet);
+      setResultPacket(spineRunState.packet);
     }
     if (
       spineRunState?.decision_state ||
@@ -467,7 +496,7 @@ function WorkbenchContent() {
             };
           })
         : [];
-      store.setResultDecision({
+      setResultDecision({
         decision_state: spineRunState.decision_state ?? 'ASK_FOLLOWUP',
         hard_blockers: spineRunState.hard_blockers ?? [],
         soft_blockers: spineRunState.soft_blockers ?? [],
@@ -493,13 +522,13 @@ function WorkbenchContent() {
         budget_breakdown: null,
       });
     }
-    store.setResultFrontier(spineRunState?.frontier_result ?? null);
+    setResultFrontier(spineRunState?.frontier_result ?? null);
   }, [
     spineRunState,
-    store.setResultValidation,
-    store.setResultPacket,
-    store.setResultDecision,
-    store.setResultFrontier,
+    setResultValidation,
+    setResultPacket,
+    setResultDecision,
+    setResultFrontier,
   ]);
 
   // Update draft status based on run state, and refetch after terminal states
@@ -633,7 +662,7 @@ function WorkbenchContent() {
       store.setSaveState('saved');
     }, 0);
     return result.draft_id;
-  }, [store, searchParams, replace, spineStage, currentMode, currentScenario]);
+  }, [store, searchParams, spineStage, currentMode, currentScenario]);
 
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
@@ -822,7 +851,7 @@ function WorkbenchContent() {
 
     autoSaveTimerRef.current = setTimeout(() => {
       (async () => {
-        store.setSaveState('saving');
+        setSaveState('saving');
         try {
           const structured_json = safeParseJson(store.input_structured_json);
           const payload = {
@@ -842,7 +871,7 @@ function WorkbenchContent() {
               expected_version: store.draft_version,
               is_auto_save: true,
             });
-            store.setDraftMeta({
+            setDraftMeta({
               draft_id: store.draft_id,
               name: (updated.name as string) || store.draft_name,
               status: (updated.status as DraftStatus) || 'open',
@@ -858,7 +887,7 @@ function WorkbenchContent() {
               scenario_id: payload.scenario_id,
               strict_leakage: payload.strict_leakage,
             });
-            store.setDraftMeta({
+            setDraftMeta({
               draft_id: result.draft_id,
               name: result.name,
               status: result.status as DraftStatus,
@@ -871,11 +900,11 @@ function WorkbenchContent() {
             window.history.replaceState(null, '', `?${params.toString()}`);
           }
           // Mark as saved only after successful API call
-          store.setSaveState('saved');
+          setSaveState('saved');
           prevContentRef.current = buildContentKey();
         } catch (err) {
           const isConflict = err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409;
-          store.setSaveState(isConflict ? 'conflict' : 'error');
+          setSaveState(isConflict ? 'conflict' : 'error');
           // Do NOT update prevContentRef on failure - same content is retryable
         }
       })();
@@ -890,6 +919,7 @@ function WorkbenchContent() {
     store.input_structured_json,
     store.input_itinerary_text,
     store.draft_id,
+    store.draft_name,
     store.draft_status,
     store.draft_version,
     store.save_state,
@@ -899,8 +929,9 @@ function WorkbenchContent() {
     currentScenario,
     store.strict_leakage,
     searchParams,
-    replace,
     buildContentKey,
+    setSaveState,
+    setDraftMeta,
   ]);
 
   const handleSave = useCallback(async () => {
@@ -1357,7 +1388,7 @@ function WorkbenchContent() {
               {effectiveTab === 'safety' ? (
                 <SafetyTab trip={trip} />
               ) : effectiveTab === 'council' ? (
-                <PersonaCouncilPanel />
+                <PersonaCouncilPanel tripId={resolvedTripId} />
               ) : effectiveTab === 'frontier' ? (
                 <FrontierDashboard />
               ) : effectiveTab === 'packet' ? (

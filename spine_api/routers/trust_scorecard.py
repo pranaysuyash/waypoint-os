@@ -306,7 +306,9 @@ async def get_proposal_by_token(token: str):
             if datetime.now(timezone.utc) > exp_dt:
                 raise HTTPException(status_code=410, detail="Proposal link expired")
         except ValueError:
-            pass
+            # A malformed expiry is not an invitation to keep serving the
+            # resource indefinitely. Fail closed at the public boundary.
+            raise HTTPException(status_code=404, detail="Proposal not found or link expired")
 
     # Use traveler-safe public access projection
     safe_trip = TripStore.get_trip_for_public_access(target_trip_id)
@@ -321,15 +323,21 @@ async def get_proposal_by_token(token: str):
         "ok": True,
         "proposal_token": token,
         "trip_id": target_trip_id,
-        "destination": packet.get("destination", safe_trip.get("destination", "Bespoke Travel")),
+        # Preserve unknown facts as null; a public token must not manufacture
+        # a destination, date, party size, or timestamp for an incomplete trip.
+        "destination": packet.get("destination") or safe_trip.get("destination"),
         "budget_max": packet.get("budget_max"),
-        "dates": f"{packet.get('start_date', 'TBD')} to {packet.get('end_date', 'TBD')}",
-        "party_size": packet.get("party_size", 1),
+        "dates": (
+            f"{packet.get('start_date')} to {packet.get('end_date')}"
+            if packet.get("start_date") and packet.get("end_date")
+            else None
+        ),
+        "party_size": packet.get("party_size"),
         "proposal_token_expires_at": expires_at_str or safe_trip.get("proposal_token_expires_at"),
         "recommended_option": strategy.get("recommended_option"),
         "suitability_match_pct": completeness,
         "transparency_badges": compute_transparency_badges(packet),
-        "created_at": safe_trip.get("created_at", datetime.now(timezone.utc).isoformat()),
+        "created_at": safe_trip.get("created_at"),
         "_meta": TierMetadata.for_response(
             get_feature_tier("trust_scorecard"),
             "trust_scorecard",
@@ -359,7 +367,7 @@ async def accept_proposal_by_token(token: str):
             if datetime.now(timezone.utc) > exp_dt:
                 raise HTTPException(status_code=410, detail="Proposal link expired")
         except ValueError:
-            pass
+            raise HTTPException(status_code=404, detail="Proposal token not found or link expired")
 
     now_iso = datetime.now(timezone.utc).isoformat()
     target_trip["proposal_accepted_by_traveler"] = True

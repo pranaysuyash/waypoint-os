@@ -39,17 +39,11 @@ export default function FastIntakePage() {
       const data = await res.json();
       setResult(data);
     } catch (err: any) {
-      // Demo fallback if backend server is offline
+      // Never manufacture a teaser when the backend is unavailable. A success
+      // fallback would create an unbound token and misrepresent lead state.
       setResult({
-        ok: true,
-        trip_id: 'trip_fast_demo123',
-        teaser_url: '/proposals/prop_demo123?token=tok_teaser_demo123',
-        stage: 'STAGE_1_TEASER',
-        destination: 'Marrakech',
-        suitability_score: 96,
-        price_lock_expires_at: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
-        is_masked: true,
-        message: 'Social lead fast-pass generated successfully. Stage 1 teaser live.',
+        ok: false,
+        error: err instanceof Error ? err.message : 'Fast Intake is unavailable. Try again when the service is online.',
       });
     } finally {
       setLoading(false);
@@ -160,7 +154,12 @@ export default function FastIntakePage() {
           </form>
 
           {/* Generated Result Card */}
-          {result && (
+          {result?.ok === false ? (
+            <div role="alert" className="mt-6 pt-6 border-t border-rose-900/60 text-sm text-rose-300">
+              <strong>Fast Intake unavailable.</strong>{' '}
+              {result.error || 'The service did not return a teaser. Your inquiry was not submitted.'}
+            </div>
+          ) : result ? (
             <div className="mt-6 pt-6 border-t border-slate-800/80 space-y-4 animate-in fade-in duration-300">
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-400 text-xs font-semibold">
@@ -194,7 +193,7 @@ export default function FastIntakePage() {
                 </Link>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

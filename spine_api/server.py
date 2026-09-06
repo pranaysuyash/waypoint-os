@@ -66,7 +66,7 @@ from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import asyncpg
 
 # --- OpenTelemetry instrumentation ---
@@ -384,6 +384,24 @@ try:
     from spine_api.routers import loyalty as loyalty_router
     from spine_api.routers import feedback as feedback_router
     from spine_api.routers import tax_compliance as tax_compliance_router
+    from spine_api.routers import epistemic as epistemic_router
+    from spine_api.routers import document_extraction as document_extraction_router
+    from spine_api.routers import financial_settlement as financial_settlement_router
+    from spine_api.routers import group_pareto as group_pareto_router
+    from spine_api.routers import proposal_compiler as proposal_compiler_router
+    from spine_api.routers import irops_healer as irops_healer_router
+    from spine_api.routers import duty_of_care_radar as duty_of_care_radar_router
+    from spine_api.routers import logistics as logistics_router
+    from spine_api.routers import charter_aviation as charter_aviation_router
+    from spine_api.routers import ivr_bypass as ivr_bypass_router
+    from spine_api.routers import stress_benchmark as stress_benchmark_router
+    from spine_api.routers import gds_sandbox as gds_sandbox_router
+    from spine_api.routers import journey_graph as journey_graph_router
+    from spine_api.routers import agent_lease as agent_lease_router
+    from spine_api.routers import trip_history as trip_history_router
+    from spine_api.routers import itinerary_export as itinerary_export_router
+    from spine_api.routers import yield_benchmark as yield_benchmark_router
+    from spine_api.routers import fulfillment as fulfillment_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -669,6 +687,81 @@ except (ImportError, ValueError):
     _feedback_mod = importlib.util.module_from_spec(_feedback_spec)
     _feedback_spec.loader.exec_module(_feedback_mod)
     feedback_router = _feedback_mod
+
+    _epistemic_spec = importlib.util.spec_from_file_location("routers.epistemic", _base / "routers" / "epistemic.py")
+    _epistemic_mod = importlib.util.module_from_spec(_epistemic_spec)
+    _epistemic_spec.loader.exec_module(_epistemic_mod)
+    epistemic_router = _epistemic_mod
+
+    _doc_ext_spec = importlib.util.spec_from_file_location("routers.document_extraction", _base / "routers" / "document_extraction.py")
+    _doc_ext_mod = importlib.util.module_from_spec(_doc_ext_spec)
+    _doc_ext_spec.loader.exec_module(_doc_ext_mod)
+    document_extraction_router = _doc_ext_mod
+
+    _fin_spec = importlib.util.spec_from_file_location("routers.financial_settlement", _base / "routers" / "financial_settlement.py")
+    _fin_mod = importlib.util.module_from_spec(_fin_spec)
+    _fin_spec.loader.exec_module(_fin_mod)
+    financial_settlement_router = _fin_mod
+
+    _grp_spec = importlib.util.spec_from_file_location("routers.group_pareto", _base / "routers" / "group_pareto.py")
+    _grp_mod = importlib.util.module_from_spec(_grp_spec)
+    _grp_spec.loader.exec_module(_grp_mod)
+    group_pareto_router = _grp_mod
+
+    _prop_comp_spec = importlib.util.spec_from_file_location("routers.proposal_compiler", _base / "routers" / "proposal_compiler.py")
+    _prop_comp_mod = importlib.util.module_from_spec(_prop_comp_spec)
+    _prop_comp_spec.loader.exec_module(_prop_comp_mod)
+    proposal_compiler_router = _prop_comp_mod
+
+    _irops_spec = importlib.util.spec_from_file_location("routers.irops_healer", _base / "routers" / "irops_healer.py")
+    _irops_mod = importlib.util.module_from_spec(_irops_spec)
+    _irops_spec.loader.exec_module(_irops_mod)
+    irops_healer_router = _irops_mod
+
+    _doc_radar_spec = importlib.util.spec_from_file_location("routers.duty_of_care_radar", _base / "routers" / "duty_of_care_radar.py")
+    _doc_radar_mod = importlib.util.module_from_spec(_doc_radar_spec)
+    _doc_radar_spec.loader.exec_module(_doc_radar_mod)
+    duty_of_care_radar_router = _doc_radar_mod
+
+    _cht_spec = importlib.util.spec_from_file_location("routers.charter_aviation", _base / "routers" / "charter_aviation.py")
+    _cht_mod = importlib.util.module_from_spec(_cht_spec)
+    _cht_spec.loader.exec_module(_cht_mod)
+    charter_aviation_router = _cht_mod
+
+    _yld_spec = importlib.util.spec_from_file_location("routers.yield_arbitrage", _base / "routers" / "yield_arbitrage.py")
+    _yld_mod = importlib.util.module_from_spec(_yld_spec)
+    _yld_spec.loader.exec_module(_yld_mod)
+    yield_arbitrage_router = _yld_mod
+
+    _ivr_spec = importlib.util.spec_from_file_location("routers.ivr_bypass", _base / "routers" / "ivr_bypass.py")
+    _ivr_mod = importlib.util.module_from_spec(_ivr_spec)
+    _ivr_spec.loader.exec_module(_ivr_mod)
+    ivr_bypass_router = _ivr_mod
+
+    _stress_spec = importlib.util.spec_from_file_location("routers.stress_benchmark", _base / "routers" / "stress_benchmark.py")
+    _stress_mod = importlib.util.module_from_spec(_stress_spec)
+    _stress_spec.loader.exec_module(_stress_mod)
+    stress_benchmark_router = _stress_mod
+
+    _gds_sb_spec = importlib.util.spec_from_file_location("routers.gds_sandbox", _base / "routers" / "gds_sandbox.py")
+    _gds_sb_mod = importlib.util.module_from_spec(_gds_sb_spec)
+    _gds_sb_spec.loader.exec_module(_gds_sb_mod)
+    gds_sandbox_router = _gds_sb_mod
+
+    _itin_exp_spec = importlib.util.spec_from_file_location("routers.itinerary_export", _base / "routers" / "itinerary_export.py")
+    _itin_exp_mod = importlib.util.module_from_spec(_itin_exp_spec)
+    _itin_exp_spec.loader.exec_module(_itin_exp_mod)
+    itinerary_export_router = _itin_exp_mod
+
+    _yield_bench_spec = importlib.util.spec_from_file_location("routers.yield_benchmark", _base / "routers" / "yield_benchmark.py")
+    _yield_bench_mod = importlib.util.module_from_spec(_yield_bench_spec)
+    _yield_bench_spec.loader.exec_module(_yield_bench_mod)
+    yield_benchmark_router = _yield_bench_mod
+
+    _fulfill_spec = importlib.util.spec_from_file_location("routers.fulfillment", _base / "routers" / "fulfillment.py")
+    _fulfill_mod = importlib.util.module_from_spec(_fulfill_spec)
+    _fulfill_spec.loader.exec_module(_fulfill_mod)
+    fulfillment_router = _fulfill_mod
 
 
 def _register_router_module_aliases() -> None:
@@ -1142,12 +1235,14 @@ async def lifespan(app: FastAPI):
     log_feature_status()
 
     env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development")).lower().strip()
-    if os.environ.get("SPINE_API_DISABLE_AUTH") and env in ("production", "staging"):
+    from spine_api.core.startup_assertions import auth_bypass_enabled
+
+    if auth_bypass_enabled() and env in ("production", "staging"):
         raise RuntimeError(
             "SPINE_API_DISABLE_AUTH cannot be enabled in production or staging. "
             f"Current ENVIRONMENT={env}"
         )
-    if os.environ.get("SPINE_API_DISABLE_AUTH"):
+    if auth_bypass_enabled():
         logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
 
     # CORS production safety guard
@@ -1284,6 +1379,31 @@ app.add_middleware(RequestBodySizeMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, RateLimitExceededHandler.handler)
 
+# Trip-status invariant violations are client errors (policy rejection), not
+# server faults: map to 422 instead of a raw 500 (review cycle 2, finding D).
+# Raw-SQL update paths enforce via pre-SELECT raising the same exception, so
+# every backend surfaces the same signal.
+from fastapi import Request as _FastAPIRequest  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
+from spine_api.core.trip_status import IllegalTripStatusTransition  # noqa: E402
+
+
+@app.exception_handler(IllegalTripStatusTransition)
+async def _illegal_trip_status_transition_handler(
+    request: _FastAPIRequest, exc: IllegalTripStatusTransition
+):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": {
+                "reason": "illegal_trip_status_transition",
+                "from_status": exc.old_status,
+                "to_status": exc.new_status,
+                "message": str(exc),
+            }
+        },
+    )
+
 # Instrument FastAPI with OpenTelemetry
 FastAPIInstrumentor.instrument_app(app)
 
@@ -1351,9 +1471,34 @@ app.include_router(crisis_ops_router.router)
 app.include_router(visa_radar_router.router)
 app.include_router(subagent_payouts_router.router)
 app.include_router(insurance_router.router)
-app.include_router(loyalty_router.router)
-app.include_router(feedback_router.router)
-app.include_router(tax_compliance_router.router)
+# PT-09 / GM-07: every router below is agency-scoped internal tooling — none is
+# public-by-design (public-by-design surfaces are auth_router, health_router,
+# public_checker/public_collection/public_proposals, trust_scorecard.public_router,
+# messaging/social_inbound webhook receivers, and customer_memory et al. which
+# enforce get_current_agency_id in-file). Each gets the explicit per-route
+# _auth_or_skip dependency so the security posture is visible at the include
+# site and does not silently depend on AuthMiddleware's prefix allowlist.
+app.include_router(loyalty_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(feedback_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(tax_compliance_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(epistemic_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(document_extraction_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(financial_settlement_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(group_pareto_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(proposal_compiler_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(irops_healer_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(duty_of_care_radar_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(logistics_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(charter_aviation_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(ivr_bypass_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(stress_benchmark_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(gds_sandbox_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(journey_graph_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(agent_lease_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(trip_history_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(itinerary_export_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(yield_benchmark_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(fulfillment_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -1431,6 +1576,29 @@ def _seed_scenario(agency_id: Optional[str] = None):
         logger.error("SEED_SCENARIO: failed to load fixture: %s", e)
 
 
+def _is_trip_id_integrity_conflict(exc: IntegrityError) -> bool:
+    """Return True only for a duplicate ``trips.id`` insert.
+
+    Fixture seeding runs under the requesting agency's RLS context.  A trip
+    owned by another agency is therefore intentionally invisible to the
+    preflight lookup, while the database primary key remains global.  Treat
+    that one expected race/collision as an idempotent skip, but re-raise other
+    integrity failures (for example a broken foreign key or malformed row).
+    """
+    original = getattr(exc, "orig", None)
+    sqlstate = getattr(original, "sqlstate", None) or getattr(original, "pgcode", None)
+    constraint = getattr(original, "constraint_name", None)
+    detail = str(getattr(original, "detail", "") or exc).lower()
+    message = str(exc).lower()
+
+    if sqlstate == "23505":  # PostgreSQL unique_violation
+        return constraint in {"trips_pkey", "trip_pkey"} or "trips.id" in detail or "(id)" in detail
+
+    # SQLite/local test backends expose the table/column in the message rather
+    # than a PostgreSQL SQLSTATE.
+    return "unique constraint failed: trips.id" in message
+
+
 def _seed_scenario_for_agency(agency_id: str, seed_name: Optional[str] = None) -> int:
     """
     Seed a scenario fixture for a specific agency.
@@ -1494,7 +1662,17 @@ def _seed_scenario_for_agency(agency_id: str, seed_name: Optional[str] = None) -
                 "agency_id": agency_id,
             }
             
-            TripStore.save_trip(trip_record, agency_id=agency_id)
+            try:
+                TripStore.save_trip(trip_record, agency_id=agency_id)
+            except IntegrityError as exc:
+                if not _is_trip_id_integrity_conflict(exc):
+                    raise
+                logger.warning(
+                    "Seed fixture trip %s was inserted concurrently or already "
+                    "exists globally; preserving tenant ownership and skipping.",
+                    trip_id,
+                )
+                continue
             
             if trip_data.get("assignedTo"):
                 AssignmentStore.assign_trip(
@@ -1861,6 +2039,31 @@ async def list_trips(
     trips = await _ts(TripStore.list_trips, status=status, limit=limit, agency_id=agency_id)
     total = await _ts(TripStore.count_trips, status=status, agency_id=agency_id)
     return {"items": trips, "total": total}
+
+
+@app.get("/stats")
+async def trip_stats(agency: Agency = Depends(get_current_agency)):
+    """Trip stats for the operator overview (F-40): the frontend `useTripStats`
+    hook and its contract tests call `/api/stats`; this route makes the
+    contract real. Counts use the status vocabulary writers actually emit."""
+    agency_id = agency.id
+    total = await _ts(TripStore.count_trips, agency_id=agency_id)
+    terminal = 0
+    for status_name in ("booked", "delivered", "completed", "cancelled"):
+        terminal += await _ts(TripStore.count_trips, status=status_name, agency_id=agency_id)
+    pending_review = await _ts(TripStore.count_trips, status="pending_review", agency_id=agency_id)
+    ready_to_book = await _ts(TripStore.count_trips, status="ready_to_book", agency_id=agency_id)
+    needs_attention = await _ts(
+        TripStore.count_trips,
+        status="blocked,incomplete,needs_followup,escalated",
+        agency_id=agency_id,
+    )
+    return {
+        "active": max(0, total - terminal),
+        "pendingReview": pending_review,
+        "readyToBook": ready_to_book,
+        "needsAttention": needs_attention,
+    }
 
 
 @app.get("/trips/{trip_id}", response_model=TripResponse)

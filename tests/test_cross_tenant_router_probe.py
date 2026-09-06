@@ -86,6 +86,9 @@ def _ensure_agencies() -> None:
 def test_ghost_workflow_read_fails_closed_cross_tenant(session_client):
     """RQ-03: ghost_workflows is RLS-exempt — the read path must stay
     agency-checked. Agency B must get 404 (existence not confirmed)."""
+    # The SQL schema intentionally enforces the agency FK; seed the two
+    # synthetic tenants before exercising the cross-tenant read contract.
+    _ensure_agencies()
     created = session_client.post(
         "/frontier/ghost/workflows",
         json={"trip_id": "tenant_probe_trip_001", "task_type": "monitor", "autonomic_level": 0},

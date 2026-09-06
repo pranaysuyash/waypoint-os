@@ -39,18 +39,25 @@ categories:
   # Extraction accuracy is evaluated via _run_extraction_baseline() in
   # snapshot.py using the golden dataset.  overall_f1 feeds into
   # min_accuracy; precision/recall/severity_accuracy are reference-only.
-  # blocks_ci when F1 falls below the threshold.
+  # If promoted to gating, blocks_ci when F1 falls below the threshold.
   extraction:
-    status: gating
+    # Calibration-only until a deterministic document-vision producer is
+    # available.  The snapshot still records expected-vs-expected metrics to
+    # validate comparison logic, but those values cannot authorize a public
+    # surface or serve as a quality claim.
+    status: shadow
     min_precision: 0.85
     min_recall: 0.85
     min_severity_accuracy: 0.80
     min_accuracy: 0.85
   # Pipeline end-to-end accuracy is evaluated via _run_pipeline_baseline()
   # in snapshot.py using golden fixtures as the reference.
-  # blocks_ci when accuracy falls below the threshold.
+  # If promoted to gating, blocks_ci when accuracy falls below the threshold.
   pipeline:
-    status: gating
+    # The fixture contract spans document vision, trip agents, and decision
+    # stages that do not yet have one in-process producer.  Keep this lane
+    # visible and hash-tracked without treating the mirror fallback as proof.
+    status: shadow
     min_accuracy: 0.80
   # Colloquial extraction accuracy (DEMO-02 verb-object destinations, city
   # sets, party group phrasings, season/flexibility dates, per-person budget
@@ -65,3 +72,15 @@ categories:
     min_recall: 0.95
     min_severity_accuracy: 0.90
     min_accuracy: 0.85
+  # Gap/decision scenario lane (30-scenario NB02 corpus, data/fixtures/
+  # test_scenarios.py) is graded LIVE against run_gap_and_decision via
+  # _run_scenario_baseline() in snapshot.py — composite fixture accuracy
+  # (decision_state + hard_blockers + contradictions) feeds min_accuracy.
+  # Currently SHADOW: the honest composite accuracy at introduction (0.57 —
+  # the corpus expectations were authored against earlier NB02 semantics)
+  # does not meet the 0.95 gating bar, so results are reported and
+  # hash-tracked without blocking CI. Flip to gating once the 13 drifting
+  # scenarios are triaged against the current engine.
+  gap_decision:
+    status: shadow
+    min_accuracy: 0.95

@@ -19,8 +19,12 @@ def test_production_boot_assertions_pass_with_sql_backend():
         "ENVIRONMENT": "production",
         "DATABASE_URL": "postgresql+asyncpg://user:pass@localhost:5432/waypoint_prod",
         "JWT_SECRET": "production_super_secret_jwt_key_32chars_min_abcdef",
+        "REDIS_URL": "redis://localhost:6379/0",
         "TRIPSTORE_BACKEND": "sql",
         "PUBLIC_CHECKER_AGENCY_ID": "agency_prod_01",
+        # PT-08: cross-process intake idempotency is required in production
+        # (mirrors docker-compose/fly/render which pin this).
+        "SPINE_API_IDEMPOTENCY_BACKEND": "sql",
     }
     with patch.dict(os.environ, prod_env):
         run_startup_assertions(strict=True)
@@ -32,8 +36,10 @@ def test_production_boot_assertions_pass_with_postgres_alias():
         "ENVIRONMENT": "production",
         "DATABASE_URL": "postgresql+asyncpg://user:pass@localhost:5432/waypoint_prod",
         "JWT_SECRET": "production_super_secret_jwt_key_32chars_min_abcdef",
+        "REDIS_URL": "redis://localhost:6379/0",
         "TRIPSTORE_BACKEND": "postgres",
         "PUBLIC_CHECKER_AGENCY_ID": "agency_prod_01",
+        "SPINE_API_IDEMPOTENCY_BACKEND": "sql",
     }
     with patch.dict(os.environ, prod_env):
         run_startup_assertions(strict=True)

@@ -204,6 +204,7 @@ async def signup(
             "id": user.id,
             "email": user.email,
             "name": user.name,
+            "platform_role": getattr(user, "platform_role", "none") or "none",
         },
         "agency": {
             "id": agency.id,
@@ -266,6 +267,7 @@ async def login(
             "id": user.id,
             "email": user.email,
             "name": user.name,
+            "platform_role": getattr(user, "platform_role", "none") or "none",
         },
         "agency": {
             "id": agency.id,
@@ -577,6 +579,7 @@ async def join_with_code(
             "id": user.id,
             "email": user.email,
             "name": user.name,
+            "platform_role": getattr(user, "platform_role", "none") or "none",
         },
         "agency": {
             "id": agency.id,

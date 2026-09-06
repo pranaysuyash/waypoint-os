@@ -54,17 +54,17 @@ class TripRoutingState(Base):
     )
     trip_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     agency_id: Mapped[str] = mapped_column(
-        ForeignKey("agencies.id"), nullable=False
+        ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False
     )
 
     primary_assignee_id: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("users.id"), nullable=True
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     reviewer_id: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("users.id"), nullable=True
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     escalation_owner_id: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("users.id"), nullable=True
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     status: Mapped[str] = mapped_column(String(50), default="unassigned", nullable=False)

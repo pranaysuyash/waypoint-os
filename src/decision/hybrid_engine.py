@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Callable
 from dataclasses import dataclass
 
 from src.intake.packet_models import CanonicalPacket
+from spine_api.core.llm_egress import add_prompt_delimiters
 from .cache_schema import CachedDecision, CacheStats, CACHE_MIN_SUCCESS_RATE
 from .cache_storage import DecisionCacheStorage, get_default_storage
 from .cache_key import generate_cache_key
@@ -699,7 +700,14 @@ Consider age diversity, mobility requirements, and special needs.""",
         )
 
     def _extract_packet_context(self, packet: CanonicalPacket) -> str:
-        """Extract readable context from packet for LLM prompts."""
+        """Extract readable context from packet for LLM prompts.
+
+        S-06b (RT-02): packet facts include verbatim user-note slices
+        (budget_raw_text, hard_constraints, ...). Each value is wrapped in a
+        per-call nonce-delimited block (shared helper from the egress boundary)
+        so instruction-lookalike text inside a fact stays fenced off from the
+        surrounding prompt instructions.
+        """
         lines = []
 
         # Facts
@@ -710,7 +718,7 @@ Consider age diversity, mobility requirements, and special needs.""",
                     display = value.value
                 else:
                     display = value
-                lines.append(f"  - {key}: {display}")
+                lines.append(f"  - {key}: {add_prompt_delimiters(str(display), source_label='packet_fact')}")
 
         # Derived signals
         if packet.derived_signals:
@@ -720,7 +728,7 @@ Consider age diversity, mobility requirements, and special needs.""",
                     display = value.value
                 else:
                     display = value
-                lines.append(f"  - {key}: {display}")
+                lines.append(f"  - {key}: {add_prompt_delimiters(str(display), source_label='packet_fact')}")
 
         return "\n".join(lines)
 

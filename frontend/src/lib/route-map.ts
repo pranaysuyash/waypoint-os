@@ -43,6 +43,7 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["insights/escalations", { backendPath: "analytics/escalations" }],
   ["insights/funnel", { backendPath: "analytics/funnel" }],
   ["insights/product-b/kpis", { backendPath: "analytics/product-b/kpis" }],
+  ["platform-admin/analytics/product-b/kpis", { backendPath: "platform/admin/analytics/product-b/kpis" }],
   ["insights/alerts", { backendPath: "analytics/alerts" }],
   ["insights/export", { backendPath: "analytics/export" }],
 
@@ -185,6 +186,47 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["audit/trip/{id}", { backendPath: "audit" }],
 
   ["analytics/agent/{id}/drill-down", { backendPath: "analytics/agent/{id}/drill-down" }],
+
+  // ── Workbench capability panels (v1 sandbox/simulator routers) ──────────
+  // Explicitly mapped so client panels can call the canonical BFF-relative
+  // /api/v1/... pattern instead of hardcoding the backend origin. Each entry
+  // mirrors an existing FastAPI router prefix (verified against
+  // spine_api/routers/* prefix declarations).
+  ["v1/gds-sandbox/search", { backendPath: "api/v1/gds-sandbox/search" }],
+  ["v1/gds-sandbox/book", { backendPath: "api/v1/gds-sandbox/book" }],
+  ["v1/ivr-bypass/calls/dispatch", { backendPath: "api/v1/ivr-bypass/calls/dispatch" }],
+  ["v1/ivr-bypass/calls/bridge", { backendPath: "api/v1/ivr-bypass/calls/bridge" }],
+  ["v1/ivr-bypass/carriers/supported", { backendPath: "api/v1/ivr-bypass/carriers/supported" }],
+  ["v1/settlement/vcc/issue", { backendPath: "api/v1/settlement/vcc/issue" }],
+  ["v1/settlement/fx/calculate-quote", { backendPath: "api/v1/settlement/fx/calculate-quote" }],
+  ["v1/irops-healer/heal", { backendPath: "api/v1/irops-healer/heal" }],
+  ["v1/duty-of-care-radar/cockpit/summary", { backendPath: "api/v1/duty-of-care-radar/cockpit/summary" }],
+  ["v1/proposal-compiler/compile", { backendPath: "api/v1/proposal-compiler/compile" }],
+  ["v1/charter-aviation/quotes/calculate", { backendPath: "api/v1/charter-aviation/quotes/calculate" }],
+  ["v1/documents/mrz/parse-td3", { backendPath: "api/v1/documents/mrz/parse-td3" }],
+  ["v1/logistics/connection-risk", { backendPath: "api/v1/logistics/connection-risk" }],
+  ["v1/logistics/route-geometry/evaluate", { backendPath: "api/v1/logistics/route-geometry/evaluate" }],
+  ["v1/logistics/route-geometry/open-jaw", { backendPath: "api/v1/logistics/route-geometry/open-jaw" }],
+  ["v1/epistemic/constraints/extract-implicit", { backendPath: "api/v1/epistemic/constraints/extract-implicit" }],
+  ["v1/passenger-rights/evaluate", { backendPath: "api/v1/passenger-rights/evaluate" }],
+  ["v1/financial-ops/convert-currency", { backendPath: "api/v1/financial-ops/convert-currency" }],
+  ["v1/counterfactual/replan-disruption", { backendPath: "api/v1/counterfactual/replan-disruption" }],
+  ["v1/counterfactual/group-consensus", { backendPath: "api/v1/counterfactual/group-consensus" }],
+  ["v1/boundaries/tokens/issue", { backendPath: "api/v1/boundaries/tokens/issue" }],
+  [
+    "v1/benchmarking/stress-test",
+    {
+      backendPath: "api/v1/benchmarking/stress-test",
+      timeoutMs: LONG_RUNNING_COMMAND_TIMEOUT_MS,
+    },
+  ],
+
+  // ── Yield arbitrage (agency-scoped, data-dependent) ────────────────
+  // These entries mirror spine_api/routers/yield_arbitrage.py exactly.
+  // The former yield-arbitrage/rates/compare and reticket/execute paths were
+  // frontend-only inventions and remain intentionally unmapped.
+  ["v1/yield/arbitrage/{trip_id}", { backendPath: "api/v1/yield/arbitrage/{trip_id}" }],
+  ["v1/yield/swap-supplier", { backendPath: "api/v1/yield/swap-supplier" }],
 ];
 
 const BACKEND_ROUTE_MAP = new Map(BACKEND_ROUTE_ENTRIES);

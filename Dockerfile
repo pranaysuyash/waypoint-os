@@ -15,13 +15,16 @@
 # Production tip: Use --platform linux/amd64 on Apple Silicon (darwin) to avoid
 # compatibility issues with the Python extension modules (uvloop, httptools).
 
-FROM python:3.13-slim AS base
+# Digest pins are intentional; update the tag and digest together in a
+# reviewed dependency-refresh change. Digest resolved from Docker Hub on
+# 2026-09-04 (multi-architecture manifest).
+FROM python:3.13-slim@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285 AS base
 
 WORKDIR /app
 
-# Install system build dependencies (needed for uvloop, httptools, etc.)
+# Install the small runtime utilities used by healthchecks and TLS validation.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -33,12 +36,11 @@ FROM base AS deps
 
 COPY pyproject.toml uv.lock ./
 
-# Install uv (fast Python package manager)
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+# Install a pinned uv binary for reproducible dependency resolution.
+COPY --from=ghcr.io/astral-sh/uv:0.8.14@sha256:f3660c56d5b08d6c516360981bedc439f499b9bf37f46a216018da3777a74011 /uv /bin/uv
 
 # Sync dependencies into a venv (faster than pip, respects lock file)
-RUN uv sync --frozen
+RUN uv sync --frozen --no-dev --no-install-project
 
 # =============================================================================
 # Production image
@@ -48,35 +50,42 @@ FROM base AS runtime
 
 WORKDIR /app
 
+# Create the runtime identity before copying files so no application layer is
+# owned by root. The process remains least-privileged after startup.
+RUN useradd --create-home --shell /usr/sbin/nologin appuser
+
 # Copy installed venv from deps stage
-COPY --from=deps /app/.venv /app/.venv
+COPY --from=deps --chown=appuser:appuser /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy source code
-COPY src/ ./src/
-COPY spine_api/ ./spine_api/
-COPY data/ ./data/
-COPY alembic/ ./alembic/
-COPY alembic.ini ./alembic.ini
-COPY scripts/ ./scripts/
-COPY pyproject.toml uv.lock ./
+COPY --chown=appuser:appuser src/ ./src/
+COPY --chown=appuser:appuser spine_api/ ./spine_api/
+COPY --chown=appuser:appuser data/ ./data/
+COPY --chown=appuser:appuser alembic/ ./alembic/
+COPY --chown=appuser:appuser alembic.ini ./alembic.ini
+COPY --chown=appuser:appuser scripts/ ./scripts/
+COPY --chown=appuser:appuser pyproject.toml uv.lock ./
 
 # Non-root user for security
-RUN useradd --create-home --shell /bin/bash appuser && \
-    chown -R appuser:appuser /app
-USER appuser
+USER appuser:appuser
+
+# Let the process receive the normal termination signal directly. The command
+# uses exec below, so no shell remains as a signal-swallowing PID 1.
+STOPSIGNAL SIGTERM
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/ready || exit 1
 
 EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1 \
     SPINE_API_HOST=0.0.0.0 \
     SPINE_API_PORT=8000 \
-    SPINE_API_WORKERS=4 \
+    SPINE_API_WORKERS=1 \
     SPINE_API_RELOAD=0 \
-    TRAVELER_SAFE_STRICT=0
+    TRAVELER_SAFE_STRICT=1 \
+    USE_HYBRID_DECISION_ENGINE=1
 
-ENTRYPOINT ["uvicorn", "spine_api.server:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["sh", "-c", "exec uvicorn spine_api.server:app --host 0.0.0.0 --port ${SPINE_API_PORT:-8000} --workers ${SPINE_API_WORKERS:-1}"]

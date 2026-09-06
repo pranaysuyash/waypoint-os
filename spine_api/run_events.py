@@ -36,6 +36,8 @@ Usage
 from __future__ import annotations
 
 import json
+import os
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -47,7 +49,7 @@ from uuid import uuid4
 # ---------------------------------------------------------------------------
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-RUNS_DIR = DATA_DIR / "runs"
+RUNS_DIR = Path(os.environ.get("WAYPOINT_RUNS_DIR", str(DATA_DIR / "runs"))).expanduser()
 
 
 def _run_dir(run_id: str) -> Path:
@@ -58,6 +60,26 @@ def _run_dir(run_id: str) -> Path:
 
 def _events_file(run_id: str) -> Path:
     return _run_dir(run_id) / "events.jsonl"
+
+
+@contextmanager
+def _event_file_lock(path: Path):
+    """Serialize append/read operations for one event stream on one host."""
+    lock_path = path.with_name(path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = lock_path.open("a+", encoding="utf-8")
+    try:
+        try:
+            import fcntl
+        except ImportError:  # pragma: no cover - Windows uses the SQL backend.
+            fcntl = None
+        if fcntl is not None:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        if fcntl is not None:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        lock_file.close()
 
 
 # ---------------------------------------------------------------------------
@@ -93,9 +115,9 @@ def emit(
 
     Returns the event dict that was written.
 
-    Thread-safety note: each call opens, appends, and closes the file.
-    Sufficient for single-worker uvicorn. Add file locking if moving to
-    multi-worker or async writes in a future version.
+    Thread/process-safety note: each call opens, locks, appends, flushes, and
+    closes the file. This protects one local shared filesystem; it does not
+    establish replica-wide durability without a shared mounted volume or DB.
     """
     event: dict[str, Any] = {
         "event_id":   f"evt_{uuid4().hex[:8]}",
@@ -107,8 +129,11 @@ def emit(
     }
 
     events_path = _events_file(run_id)
-    with events_path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(event, default=str) + "\n")
+    with _event_file_lock(events_path):
+        with events_path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(event, default=str) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
 
     return event
 
@@ -129,15 +154,16 @@ def get_run_events(run_id: str) -> list[dict[str, Any]]:
         return []
 
     events: list[dict[str, Any]] = []
-    with path.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if line:
-                try:
-                    events.append(json.loads(line))
-                except json.JSONDecodeError:
-                    # Corrupted line — skip silently, log nothing (avoid import cycle)
-                    pass
+    with _event_file_lock(path):
+        with path.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    try:
+                        events.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        # Corrupted line — skip silently, log nothing (avoid import cycle)
+                        pass
     return events
 
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+import secrets
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -192,9 +193,28 @@ def strip_pii(text: str) -> tuple[str, int]:
 
 def add_prompt_delimiters(content: str, source_label: str = "user_content") -> str:
     """
-    Wrap untrusted user content in delimiters to reduce prompt injection risk.
+    Wrap untrusted content in a per-call nonce-delimited block.
+
+    Security (S-06 / RT-01): a static closing tag such as ``</user_content>``
+    can be forged *by the delimited content itself*, letting attacker text
+    break out of the untrusted block and pose as instructions. The opening and
+    closing tags therefore embed a random per-call nonce (``secrets.token_hex``)
+    that the content cannot predict. If the freshly drawn nonce ever collides
+    with the content (astronomically improbable), it is redrawn, so a
+    delimiter-lookalike sequence inside the content can never match the real
+    closing tag.
+
+    Callers that need to recover the payload should split on the tags returned
+    here (see tests for the round-trip pattern) rather than assuming a static
+    tag shape.
     """
-    return f"<{source_label}>\n{content}\n</{source_label}>"
+    while True:
+        nonce = secrets.token_hex(8)
+        if nonce not in content:
+            break
+    open_tag = f"<{source_label} nonce={nonce}>"
+    close_tag = f"</{source_label} nonce={nonce}>"
+    return f"{open_tag}\n{content}\n{close_tag}"
 
 
 def prepare_egress_payload(

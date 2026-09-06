@@ -32,7 +32,9 @@ def test_idempotency_key_lifecycle():
 
     # 3. Mark completed with response
     response_data = {"booking_reference": "CONF-998877", "amount_charged": 650.0}
-    registry.mark_completed(key, response_data)
+    assert registry.mark_completed(
+        key, response_data, fencing_token=rec.fencing_token
+    ) is True
 
     # 4. Subsequent acquire returns completed cached result
     acquired_post, rec_post = registry.try_acquire(key, trip_id, action, payload)

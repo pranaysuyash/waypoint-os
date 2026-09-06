@@ -7,6 +7,7 @@ export default function CorporateOffsitesPage() {
   const [dutyOfCare, setDutyOfCare] = useState<any | null>(null);
   const [policyAudit, setPolicyAudit] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -37,59 +38,7 @@ export default function CorporateOffsitesPage() {
           setPolicyAudit(auditData);
         }
       } catch (err) {
-        // Fallback demo data
-        setDutyOfCare({
-          ok: true,
-          company_id: 'comp_techcorp_01',
-          group_offsite_title: 'Q3 Zurich Executive Leadership Offsite',
-          total_active_travelers: 3,
-          disrupted_count: 1,
-          travelers: [
-            {
-              traveler_id: 'exec_01',
-              traveler_name: 'Vikram Sethi (VP Eng)',
-              origin: 'SFO',
-              destination: 'ZRH',
-              flight_pnr: 'LX18',
-              flight_status: 'ON_SCHEDULE',
-              hotel_name: 'The Dolder Grand Zurich',
-              risk_level: 'LOW',
-            },
-            {
-              traveler_id: 'exec_02',
-              traveler_name: 'Sarah Miller (Dir Product)',
-              origin: 'LHR',
-              destination: 'ZRH',
-              flight_pnr: 'BA710',
-              flight_status: 'DELAYED_90M',
-              hotel_name: 'The Dolder Grand Zurich',
-              risk_level: 'MEDIUM',
-              recommended_action: 'Ground Transfer #1 rescheduled to 18:30. Concierge standing by.',
-            },
-          ],
-          duty_of_care_sla_status: 'ACTIVE_PROTECTED',
-        });
-        setPolicyAudit({
-          ok: true,
-          is_compliant: false,
-          requires_approval: true,
-          violations: [
-            {
-              code: 'PER_DIEM_EXCEEDED',
-              severity: 'WARNING',
-              description: 'Hotel rate £420.00/night exceeds ZRH policy cap of £400.00/night by £20.00.',
-              amount_exceeded: 20.0,
-              currency: 'GBP',
-            },
-            {
-              code: 'CABIN_CLASS_DISCREPANCY',
-              severity: 'HARD_BLOCK',
-              description: 'JUNIOR grade is restricted to ECONOMY cabin. BUSINESS requested.',
-              amount_exceeded: 0.0,
-              currency: 'GBP',
-            },
-          ],
-        });
+        setLoadError(err instanceof Error ? err.message : 'The corporate data service is unavailable.');
       } finally {
         setLoading(false);
       }
@@ -115,11 +64,18 @@ export default function CorporateOffsitesPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="px-3 py-1.5 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-400 text-xs font-semibold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" /> Duty-of-Care SLA: Active
+            <span className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4" /> Duty-of-Care status requires live data
             </span>
           </div>
         </div>
+
+        {loadError && (
+          <div role="alert" className="rounded-xl border border-rose-900/70 bg-rose-950/40 px-4 py-3 text-sm text-rose-300">
+            <strong>Corporate data unavailable.</strong>{' '}
+            {loadError} No traveler status or policy result is being inferred.
+          </div>
+        )}
 
         {/* Section 1: Executive Flight Duty-of-Care Tracker */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">

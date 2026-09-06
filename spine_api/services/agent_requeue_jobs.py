@@ -45,6 +45,25 @@ class RequeueJob:
     updated_at: str
 
 
+@dataclass(frozen=True, slots=True)
+class PoisonedJobSummary:
+    """Bounded operator projection for a poisoned queue item.
+
+    The durable payload is intentionally absent.  Inspection must not become
+    an accidental credential/traveler-data export, and replay remains a
+    separate authorization/execution contract.
+    """
+
+    job_id: str
+    trip_id: str
+    reason: str
+    attempts: int
+    max_attempts: int
+    last_error: str
+    created_at: str
+    updated_at: str
+
+
 class RequeueJobStore:
     """SQL-backed durable storage for recovery requeue jobs."""
 
@@ -357,6 +376,62 @@ class RequeueJobStore:
             "active": active,
             "max_attempts": max_attempts,
         }
+
+    def list_poisoned(
+        self, *, limit: int = 50, offset: int = 0, trip_id: str | None = None
+    ) -> list[PoisonedJobSummary]:
+        """Return a deterministic, redacted page of poisoned jobs.
+
+        This is intentionally a service-level inspection primitive.  The
+        queue has no agency_id, so an authenticated tenant-facing route must
+        not be inferred from this method until an ownership contract exists.
+        """
+        if not 1 <= limit <= 100:
+            raise ValueError("limit must be between 1 and 100")
+        if offset < 0:
+            raise ValueError("offset must be non-negative")
+        return _run_async_blocking(self._list_poisoned(limit, offset, trip_id))
+
+    async def _list_poisoned(
+        self, limit: int, offset: int, trip_id: str | None
+    ) -> list[PoisonedJobSummary]:
+        filters = "status = :status"
+        params: dict[str, Any] = {
+            "status": JOB_STATUS_POISONED,
+            "limit": limit,
+            "offset": offset,
+        }
+        if trip_id is not None:
+            filters += " AND trip_id = :trip_id"
+            params["trip_id"] = trip_id
+        async with tripstore_session_maker() as session:
+            result = await session.execute(
+                text(
+                    f"""
+                    SELECT id, trip_id, reason, attempts, max_attempts,
+                           last_error, created_at, updated_at
+                    FROM agent_requeue_jobs
+                    WHERE {filters}
+                    ORDER BY updated_at DESC, id DESC
+                    LIMIT :limit OFFSET :offset
+                    """
+                ),
+                params,
+            )
+            rows = result.mappings().all()
+        return [
+            PoisonedJobSummary(
+                job_id=str(row["id"]),
+                trip_id=str(row["trip_id"]),
+                reason=str(row["reason"] or ""),
+                attempts=int(row["attempts"] or 0),
+                max_attempts=int(row["max_attempts"] or 0),
+                last_error=str(row["last_error"] or "")[:2048],
+                created_at=str(row["created_at"]),
+                updated_at=str(row["updated_at"]),
+            )
+            for row in rows
+        ]
 
 
 # ── Worker ──────────────────────────────────────────────────────────────

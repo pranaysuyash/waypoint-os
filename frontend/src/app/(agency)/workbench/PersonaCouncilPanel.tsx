@@ -1,5 +1,9 @@
 'use client';
 
+import { JourneyGraphVisualizer } from './JourneyGraphVisualizer';
+import { TimeTravelScrubber } from './TimeTravelScrubber';
+import { History, GitFork } from 'lucide-react';
+
 import React, { useState } from 'react';
 import { 
   ShieldCheck, 
@@ -17,14 +21,41 @@ import {
   TrendingUp,
   AlertTriangle,
   Layers,
+  Gauge,
+  Compass,
 } from 'lucide-react';
 import { DistributionPanel } from './DistributionPanel';
 import { NegotiationPanel } from './NegotiationPanel';
 import { CrisisEvacuationPanel } from './CrisisEvacuationPanel';
+import EpistemicPanel from './EpistemicPanel';
+import DocumentMRZPanel from './DocumentMRZPanel';
+import FinancialSettlementPanel from './FinancialSettlementPanel';
+import GroupParetoPanel from './GroupParetoPanel';
+import ProposalCompilerPanel from './ProposalCompilerPanel';
+import IROPSAutoHealerPanel from './IROPSAutoHealerPanel';
+import DutyOfCareRadarPanel from './DutyOfCareRadarPanel';
+import CharterAviationPanel from './CharterAviationPanel';
+import YieldArbitragePanel from './YieldArbitragePanel';
+import IVRBypassPanel from './IVRBypassPanel';
+import StressBenchmarkPanel from './StressBenchmarkPanel';
+import GDSSandboxPanel from './GDSSandboxPanel';
+import RouteLogisticsPanel from './RouteLogisticsPanel';
+import SimulatedBadge from '@/components/ui/SimulatedBadge';
 
-type CouncilViewType = 'all' | 'distribution' | 'negotiation' | 'crisis';
+/**
+ * GM-01 honesty fix: this is a demo console over deterministic simulators and
+ * client-side calculators. All fetches go through the BFF-relative /api/v1
+ * proxy (no hardcoded backend URL), and "live/nominal engine" copy has been
+ * replaced with explicit demo language.
+ */
 
-export default function PersonaCouncilPanel() {
+type CouncilViewType = 'all' | 'journeygraph' | 'timetravel' | 'route' | 'benchmark' | 'gdssandbox' | 'compiler' | 'irops' | 'duty' | 'charter' | 'yield' | 'ivr' | 'distribution' | 'negotiation' | 'crisis' | 'epistemic' | 'documents' | 'settlement' | 'group';
+
+interface PersonaCouncilPanelProps {
+  tripId?: string | null;
+}
+
+export default function PersonaCouncilPanel({ tripId }: PersonaCouncilPanelProps) {
   const [activeCouncilView, setActiveCouncilView] = useState<CouncilViewType>('all');
   // 1. Passenger Rights State
   const [prFlightNum, setPrFlightNum] = useState('BA112');
@@ -57,7 +88,7 @@ export default function PersonaCouncilPanel() {
 
   // 5. Capability Token State
   const [tokRole, setTokRole] = useState('senior_agent');
-  const [tokTripId, setTokTripId] = useState('trip_live_001');
+  const [tokTripId, setTokTripId] = useState('trip_demo_001');
   const [tokResult, setTokResult] = useState<any>(null);
   const [tokLoading, setTokLoading] = useState(false);
 
@@ -65,7 +96,7 @@ export default function PersonaCouncilPanel() {
   const handleEvaluateRights = async () => {
     setPrLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/passenger-rights/evaluate', {
+      const res = await fetch('/api/v1/passenger-rights/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -92,7 +123,7 @@ export default function PersonaCouncilPanel() {
   const handleConvertFx = async () => {
     setFxLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/financial-ops/convert-currency', {
+      const res = await fetch('/api/v1/financial-ops/convert-currency', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -115,7 +146,7 @@ export default function PersonaCouncilPanel() {
   const handleReplanDisruption = async () => {
     setCftLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/counterfactual/replan-disruption', {
+      const res = await fetch('/api/v1/counterfactual/replan-disruption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,7 +168,7 @@ export default function PersonaCouncilPanel() {
   const handleGroupConsensus = async () => {
     setGrpLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/counterfactual/group-consensus', {
+      const res = await fetch('/api/v1/counterfactual/group-consensus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -165,7 +196,7 @@ export default function PersonaCouncilPanel() {
   const handleIssueToken = async () => {
     setTokLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/boundaries/tokens/issue', {
+      const res = await fetch('/api/v1/boundaries/tokens/issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,19 +224,20 @@ export default function PersonaCouncilPanel() {
           <div>
             <div className="flex items-center gap-2 text-indigo-400 font-mono text-sm tracking-wider uppercase">
               <Sparkles className="w-4 h-4" />
-              11-Persona Council Command Center
+              Persona Council Demo Command Center
             </div>
             <h1 className="text-2xl font-bold text-slate-100 mt-1">
-              Autonomous Intelligence & Regulatory Governance
+              Capability Sandbox & Regulatory Calculation Demos
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-              Live operational controls for statutory passenger compensation, FX volatility buffers, multi-party Pareto consensus, and zero-trust capability tokens.
+              Demonstration controls over deterministic simulators: statutory passenger compensation math, FX volatility buffers, sample Pareto consensus, and illustrative capability tokens. No external systems are contacted.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              All 11 Engines Nominal
+          <div className="flex flex-col items-end gap-2">
+            <SimulatedBadge label="Simulated" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-800/60 text-slate-300 border border-slate-600/40">
+              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+              Demo Engines — Simulated Output
             </span>
           </div>
         </div>
@@ -214,10 +246,25 @@ export default function PersonaCouncilPanel() {
       {/* Category Filter Selector */}
       <div className="flex flex-wrap gap-2 p-1.5 bg-slate-900/60 rounded-xl border border-slate-800">
         {[
-          { key: 'all', label: 'All Operational Engines', icon: Layers },
-          { key: 'distribution', label: 'GDS & NDC Protocol (PER-950887)', icon: Plane },
-          { key: 'negotiation', label: 'Negotiation & Margins (PER-950888)', icon: TrendingUp },
-          { key: 'crisis', label: 'Crisis Evacuation & Ground (PER-950889)', icon: AlertTriangle },
+          { key: 'all', label: 'All Demo Engines', icon: Layers },
+          { key: 'journeygraph', label: 'Journey Graph (JDG) Simulator', icon: GitFork },
+          { key: 'timetravel', label: 'Time-Travel & Rollback Stack', icon: History },
+          { key: 'route', label: 'Route Geometry & MCT Risk', icon: Compass },
+          { key: 'benchmark', label: 'Multi-Agent Load Benchmark', icon: Gauge },
+          { key: 'gdssandbox', label: 'Dual GDS Sandbox (1A & 1S)', icon: Plane },
+          { key: 'charter', label: 'Private Jet / Empty-Leg Preview', icon: Plane },
+          { key: 'yield', label: 'Wholesale Rate Arbitrage (Simulation)', icon: TrendingUp },
+          { key: 'ivr', label: 'Voice / IVR Simulation', icon: Activity },
+          { key: 'compiler', label: 'Proposal Compiler (Simulation)', icon: Sparkles },
+          { key: 'irops', label: 'IROPS Recovery Simulator', icon: RefreshCw },
+          { key: 'duty', label: 'Duty-of-Care Threat Radar (Simulation)', icon: ShieldCheck },
+          { key: 'distribution', label: 'GDS & NDC Protocol Preview', icon: Plane },
+          { key: 'negotiation', label: 'Negotiation & Margin Simulation', icon: TrendingUp },
+          { key: 'crisis', label: 'Crisis Evacuation Preview', icon: AlertTriangle },
+          { key: 'epistemic', label: 'Epistemic & Provenance', icon: ShieldCheck },
+          { key: 'documents', label: 'ICAO MRZ Sample Parser', icon: Sparkles },
+          { key: 'settlement', label: 'Financial Settlement / VCC Simulation', icon: DollarSign },
+          { key: 'group', label: 'Group Pareto Consensus', icon: Users },
         ].map((t) => {
           const Icon = t.icon;
           const isSelected = activeCouncilView === t.key;
@@ -239,17 +286,44 @@ export default function PersonaCouncilPanel() {
       </div>
 
       {/* Conditional Active Persona Cluster View */}
+      {activeCouncilView === 'journeygraph' && <JourneyGraphVisualizer />}
+      {activeCouncilView === 'timetravel' && <TimeTravelScrubber />}
+      {activeCouncilView === 'route' && <RouteLogisticsPanel />}
+      {activeCouncilView === 'benchmark' && <StressBenchmarkPanel />}
+      {activeCouncilView === 'gdssandbox' && <GDSSandboxPanel />}
+      {activeCouncilView === 'charter' && <CharterAviationPanel />}
+      {activeCouncilView === 'yield' && <YieldArbitragePanel tripId={tripId} />}
+      {activeCouncilView === 'ivr' && <IVRBypassPanel />}
+      {activeCouncilView === 'compiler' && <ProposalCompilerPanel />}
+      {activeCouncilView === 'irops' && <IROPSAutoHealerPanel />}
+      {activeCouncilView === 'duty' && <DutyOfCareRadarPanel />}
       {activeCouncilView === 'distribution' && <DistributionPanel />}
       {activeCouncilView === 'negotiation' && <NegotiationPanel />}
       {activeCouncilView === 'crisis' && <CrisisEvacuationPanel />}
+      {activeCouncilView === 'epistemic' && <EpistemicPanel />}
+      {activeCouncilView === 'documents' && <DocumentMRZPanel />}
+      {activeCouncilView === 'settlement' && <FinancialSettlementPanel />}
+      {activeCouncilView === 'group' && <GroupParetoPanel />}
 
       {/* Grid of Persona Cards (Rendered when 'all' is selected) */}
       {activeCouncilView === 'all' && (
         <>
           <div className="space-y-6">
+            <StressBenchmarkPanel />
+            <GDSSandboxPanel />
+            <CharterAviationPanel />
+            <YieldArbitragePanel tripId={tripId} />
+            <IVRBypassPanel />
+            <ProposalCompilerPanel />
+            <IROPSAutoHealerPanel />
+            <DutyOfCareRadarPanel />
             <DistributionPanel />
             <NegotiationPanel />
             <CrisisEvacuationPanel />
+            <EpistemicPanel />
+            <DocumentMRZPanel />
+            <FinancialSettlementPanel />
+            <GroupParetoPanel />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -547,7 +621,7 @@ export default function PersonaCouncilPanel() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-rose-400 font-semibold">
             <ShieldCheck className="w-5 h-5" />
-            <span>Zero-Trust Scoped Capability Token & 5-Tier Authority Gatekeeper</span>
+            <span>Capability Token Preview & 5-Tier Authority Model Example</span>
           </div>
           <span className="text-xs bg-rose-950 text-rose-300 border border-rose-800 px-2 py-0.5 rounded-md font-mono">
             PER-0933 / PER-0927
@@ -584,7 +658,7 @@ export default function PersonaCouncilPanel() {
               className="w-full bg-rose-600 hover:bg-rose-500 text-white font-medium py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
             >
               {tokLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-              Issue HMAC SHA-256 Token
+              Generate Sample HMAC Token
             </button>
           </div>
         </div>
@@ -593,7 +667,7 @@ export default function PersonaCouncilPanel() {
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono space-y-2">
             <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
-              Token Successfully Minted & Cryptographically Signed
+              Sample token minted (simulated signing — demo only, do not treat as a real credential)
             </div>
             <div className="break-all text-slate-300 bg-slate-900 p-2.5 rounded-lg border border-slate-800">
               <span className="text-slate-500 select-none">Bearer </span>{tokResult.token}

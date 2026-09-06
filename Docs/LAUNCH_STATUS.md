@@ -1,0 +1,107 @@
+# Waypoint OS Launch Status
+
+**Decision date:** 2026-09-04\
+**Decision owner:** Product owner / agency operator (human ratification required)\
+**Evidence basis:** [Execution Status 2026-09-04](review/EXECUTION_STATUS_2026-09-04.md), [Launch Readiness Audit PER-0100](review/LAUNCH_READINESS_AUDIT_PER0100_2026-09-02.md), and the linked evidence records below.
+
+## Current decision
+
+**Public or paid launch: NO-GO.**
+
+**Invite-only local or tightly bounded pilot: CONDITIONAL GO only after the
+pilot gates below are explicitly accepted by the owner.** This is not a
+production approval and does not authorize external provider, customer,
+financial, legal, or deployment mutations.
+
+The decision is based on the strongest demonstrated evidence, not on the
+largest green test aggregate. The local code and test gates are substantially
+green, but hosted deployment, shared durability, provider connectivity,
+operator recovery, legal/privacy review, and semantic ownership are not yet
+demonstrated.
+
+## Evidence snapshot
+
+| Surface | Evidence | Interpretation |
+|---|---|---|
+| Backend | 3,718 passed, 44 skipped, 0 failed via `scripts/run_backend_tests.sh` (69.30s) | Local contract green; not hosted proof |
+| Frontend | 174 files / 1,311 tests passed; typecheck and build passed | Local UI contract green; browser/device proof remains |
+| Frontend lint | 0 errors, 0 warnings | Lint-clean; behavior-sensitive dependency fixes are covered |
+| RAG | 14 focused tests passed; implementation claims corrected to local hash-vector/lexical heuristics | Truthful local behavior; no semantic-provider claim |
+| RLS | Live rollback-only write probe plus mock/catalog checks pass | Local PostgreSQL evidence; role/replica/hosted proof remains |
+| Simulator truth | Crisis 8, bookings 2, GDS/distribution 11, FX/IROPS API 8, financial routes 9, duty-of-care API 2, proposal/persona 13, suppliers/MRZ 4, simulated-panel suite 11, IROPS panel 3 focused tests | Local preview/label containment; provider-backed booking, GDS, FX, financial, IROPS, duty-of-care, supplier, and proposal state remains unproven |
+| Worktree | 496 live paths in final24 2026-09-04 ledger; 497 porcelain rows including ledger | Preserved custody; semantic ownership and release split remain open |
+| Findings | 183 lifecycle rows: 108 open, 69 closed, 6 deferred | The system is not launch-complete |
+
+## Blockers before any public exposure
+
+1. Choose and provision the deployment target (Fly or Render), real secrets,
+   workers, Redis/PostgreSQL, webhook endpoints, alerts, and durable storage.
+2. Prove migration, rollback, backup, restore, failover, RPO/RTO, and
+   multi-replica convergence.
+3. Replace or explicitly gate simulator/provider surfaces and remove remaining
+   “live”, “issued”, “accepted”, or customer-visible fabricated claims.
+   This includes the legacy suppliers/proposal pages and backend disruption,
+   GDS, VCC, IROPS, FX, duty-of-care, and ghost-concierge routes. Bookings,
+   crisis, disruption, GDS/distribution, FX, IROPS, and duty-of-care now have
+   local preview/abstention containment, but still lack provider-backed state;
+   VCC, ghost-concierge, and residual legacy copy require further containment.
+4. Promote proposal revocation/issuance and run-ledger state to shared durable
+   storage; verify concurrent workers and restart behavior.
+5. Add independent extraction/pipeline producers, hidden holdouts, trajectory
+   evaluation, and calibrated judging before using quality aggregates as
+   promotion authority.
+6. Complete traveler PII, retention, consent, DPA/TOS, provider-processing,
+   and simulated-data disclosure review with a human owner.
+7. Run authenticated browser/device smoke over the canonical frontend/BFF,
+   SSE, auth, and provider-facing routes.
+8. Establish semantic Git ownership and a separately authorized release
+   snapshot; the current dirty tree is not a release boundary.
+
+## Conditional pilot gates
+
+An invite-only pilot may be considered only when all of the following have
+written evidence and an identified owner:
+
+- pilot cohort, exposure mechanism, support channel, and data-processing scope;
+- real or explicitly sandboxed provider contracts with cost and failure limits;
+- shared durable state and a tested recovery path;
+- `/ready` dependency checks, worker health, alerts, and rollback trigger;
+- browser journey: signup → intake → blocked/repair → inbox → proposal;
+- proposal token issuance, revocation, expiry, and tenant-binding checks;
+- documented known-issues acceptance with no unowned P0/P1 blocker;
+- legal/privacy sign-off for the pilot data and retention window;
+- rollback owner and a tested disable/quiesce procedure.
+
+## Stop, rollback, and escalation triggers
+
+Immediately pause exposure and escalate when any of these occurs:
+
+- a tenant can read or mutate another tenant's resource;
+- a token or proposal is issued without a persisted, agency-bound resource;
+- a provider result, payment state, or confirmation is represented as live when
+  it is simulated or unverified;
+- a run is duplicated, orphaned, or resumed under an incompatible pipeline
+  version;
+- backup/restore or migration rollback cannot be demonstrated;
+- PII is sent to an unapproved provider or retained outside the approved scope;
+- a quality gate has no independent producer or its holdout is contaminated;
+- the operator cannot identify the current truth, owner, or recovery action.
+
+## Canonical evidence links
+
+- [Execution status and findings/tasks register](review/EXECUTION_STATUS_2026-09-04.md)
+- [Known-issues ledger](review/KNOWN_ISSUES_LEDGER_2026-09-04.md)
+- [Deployment and launch envelope](review/DEPLOYMENT_LAUNCH_ENVELOPE_2026-09-03.md)
+- [RLS write probe](review/S12_RLS_WRITE_PROBE_2026-09-04.md)
+- [Proposal resource binding](review/PROPOSAL_RESOURCE_BINDING_N05_F03_2026-09-04.md)
+- [Run-ledger durability](review/S11_N07_LRB07_LOCAL_DURABILITY_2026-09-04.md)
+- [RAG retrieval honesty](review/RAG_RETRIEVAL_HONESTY_A02_R03_2026-09-04.md)
+- [GDS/distribution preview truth boundary](review/GDS_DISTRIBUTION_PREVIEW_TRUTH_BOUNDARY_2026-09-04.md)
+- [FX/IROPS preview truth boundary](review/FX_IROPS_PREVIEW_TRUTH_BOUNDARY_2026-09-04.md)
+- [Duty-of-care preview truth boundary](review/DUTY_OF_CARE_PREVIEW_TRUTH_BOUNDARY_2026-09-04.md)
+- [Proposal and Persona Council truth boundary](review/PROPOSAL_PERSONA_TRUTH_BOUNDARY_2026-09-04.md)
+- [Suppliers and MRZ truth containment](review/SUPPLIERS_MRZ_FRONTEND_TRUTH_CONTAINMENT_2026-09-04.md)
+
+This document must be refreshed whenever the exposure boundary, evidence
+snapshot, blocker set, or recovery posture changes. Historical audits remain
+preserved and are not silently rewritten.

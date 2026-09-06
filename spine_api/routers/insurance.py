@@ -9,9 +9,10 @@ and attaches insurance policy coverage to trips.
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.core.auth import get_current_agency_id
+from spine_api.persistence import AuditStore, TripStore
 
 router = APIRouter(prefix="/api/v1/insurance", tags=["Travel Insurance & CFAR Sentinel"])
 
@@ -42,6 +43,10 @@ class InsuranceQuoteResponse(BaseModel):
     total_trip_cost_usd: float
     cfar_deadline: str
     days_remaining_for_cfar: int
+    cfar_deadline_anchor: str = Field(
+        "quote_time",
+        description="'deposit_date' when the CFAR 14-day window anchors to the supplied deposit, else 'quote_time' (no deposit recorded).",
+    )
     plans: List[InsurancePlanOption] = Field(default_factory=list)
 
 
@@ -64,12 +69,34 @@ class AttachPolicyResponse(BaseModel):
 @router.post("/quote", response_model=InsuranceQuoteResponse)
 def generate_insurance_quotes(
     body: InsuranceQuoteRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Generate comprehensive travel insurance and CFAR quotes based on trip cost and traveler profile."""
     cost = max(500.0, body.total_trip_cost_usd)
     now = datetime.now(timezone.utc)
-    cfar_deadline = (now + timedelta(days=14)).isoformat()
+
+    # CFAR pre-existing-condition waiver is 14 days FROM DEPOSIT (F-31): when a
+    # deposit date is supplied it anchors the window; quote time is the honest
+    # fallback only when no deposit has been recorded. days_remaining is real
+    # remaining time (>=0), not a constant 14.
+    anchor_name = "quote_time"
+    anchor_dt = now
+    if body.deposit_date:
+        try:
+            parsed_deposit = datetime.fromisoformat(body.deposit_date.replace("Z", "+00:00"))
+            if parsed_deposit.tzinfo is None:
+                parsed_deposit = parsed_deposit.replace(tzinfo=timezone.utc)
+            anchor_dt = parsed_deposit
+            anchor_name = "deposit_date"
+        except (ValueError, TypeError):
+            # Unparseable deposit date: fall back to quote time rather than
+            # silently presenting a window the traveler may not have.
+            anchor_name = "quote_time"
+            anchor_dt = now
+    cfar_deadline = (anchor_dt + timedelta(days=14)).isoformat()
+    # Date-based remaining days: stable within the anchor day (a window opened
+    # today reports 14, not 13.99 floored to 13).
+    days_remaining = max(0, ((anchor_dt + timedelta(days=14)).date() - now.date()).days)
 
     plans: List[InsurancePlanOption] = [
         InsurancePlanOption(
@@ -114,7 +141,8 @@ def generate_insurance_quotes(
         ok=True,
         total_trip_cost_usd=cost,
         cfar_deadline=cfar_deadline,
-        days_remaining_for_cfar=14,
+        days_remaining_for_cfar=days_remaining,
+        cfar_deadline_anchor=anchor_name,
         plans=plans,
     )
 
@@ -123,10 +151,9 @@ def generate_insurance_quotes(
 def attach_insurance_policy_to_trip(
     trip_id: str,
     body: AttachPolicyRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Attach confirmed insurance policy to trip booking and record coverage audit event."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")

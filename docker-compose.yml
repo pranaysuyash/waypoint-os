@@ -1,94 +1,135 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: waypoint-postgres
-    environment:
-      POSTGRES_USER: waypoint
-      POSTGRES_PASSWORD: waypoint_dev_password
-      POSTGRES_DB: waypoint_os
+  # 1. Waypoint OS Spine API Backend
+  spine_api:
+    build:
+      context: .
+      dockerfile: Dockerfile.spine_api
+    container_name: waypoint_spine_api
+    restart: unless-stopped
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U waypoint -d waypoint_os"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - "${SPINE_API_BIND:-127.0.0.1}:8000:8000"
+    environment:
+      - PORT=8000
+      - ENVIRONMENT=${ENVIRONMENT:?Set ENVIRONMENT explicitly (development or production)}
+      - REDIS_URL=redis://redis:6379/0
+      # async engine requires the +asyncpg dialect (create_async_engine).
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:?Set POSTGRES_USER}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-waypoint_os}
+      - DATA_PRIVACY_MODE=production
+      - TRIPSTORE_BACKEND=sql
+      # Keep the compose service explicit about the same serving default as
+      # the production image and CI contract; override only deliberately.
+      - USE_HYBRID_DECISION_ENGINE=${USE_HYBRID_DECISION_ENGINE:-1}
+      # Secrets come from the environment / deploy-time .env — never committed
+      # (LR-O01/LR-B02). ${VAR:?} fails `docker compose up` with a clear error
+      # when the secret is absent.
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in your deploy environment or .env}
+      - PROPOSAL_SIGNING_KEY=${PROPOSAL_SIGNING_KEY:?Set PROPOSAL_SIGNING_KEY in your deploy environment or .env}
+      - PUBLIC_CHECKER_AGENCY_ID=${PUBLIC_CHECKER_AGENCY_ID:?Set PUBLIC_CHECKER_AGENCY_ID to an existing agency}
+      - SPINE_API_CORS=${SPINE_API_CORS:?Set SPINE_API_CORS to the browser origin}
+      # PT-08: SQL-backed idempotency is required for multi-worker or
+      # multi-replica deployment, even though this default topology is one worker.
+      - SPINE_API_IDEMPOTENCY_BACKEND=sql
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     networks:
-      - waypoint-net
+      - waypoint_mesh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
+  # 2. Next.js Agency Frontend
+  # Schema migration is an explicit release step. The API never mutates schema
+  # at startup; this one-shot service makes a local compose stack reproducible.
   migrations:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: waypoint-migrations
-    entrypoint: [""]  # Clear Dockerfile ENTRYPOINT (uvicorn) — this service only runs migrations, not the server
+      dockerfile: Dockerfile.spine_api
     environment:
-      DATABASE_URL: "postgresql+asyncpg://waypoint:waypoint_dev_password@postgres:5432/waypoint_os"
-      TRIPSTORE_BACKEND: "sql"
-      JWT_SECRET: "dev-jwt-secret-change-in-production"
-      PUBLIC_CHECKER_AGENCY_ID: "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:?Set POSTGRES_USER}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-waypoint_os}
+      - TRIPSTORE_BACKEND=sql
+      - PUBLIC_CHECKER_AGENCY_ID=${PUBLIC_CHECKER_AGENCY_ID:?Set PUBLIC_CHECKER_AGENCY_ID to an existing agency}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in your deploy environment or .env}
+      - PROPOSAL_SIGNING_KEY=${PROPOSAL_SIGNING_KEY:?Set PROPOSAL_SIGNING_KEY in your deploy environment or .env}
     depends_on:
       postgres:
         condition: service_healthy
-    command: >-
-      sh -c "uv run alembic upgrade head &&
-             uv run python scripts/bootstrap_public_checker_agency.py"
     networks:
-      - waypoint-net
-
-  spine-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: waypoint-spine-api
-    ports:
-      - "8000:8000"
-    environment:
-      SPINE_API_HOST: "0.0.0.0"
-      SPINE_API_PORT: "8000"
-      SPINE_API_CORS: "http://localhost:3000,http://frontend:3000"
-      SPINE_API_WORKERS: "2"
-      SPINE_API_RELOAD: "0"
-      DATABASE_URL: "postgresql+asyncpg://waypoint:waypoint_dev_password@postgres:5432/waypoint_os"
-      TRIPSTORE_BACKEND: "sql"
-      JWT_SECRET: "dev-jwt-secret-change-in-production"
-      PUBLIC_CHECKER_AGENCY_ID: "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
-      TRAVELER_SAFE_STRICT: "0"
-    depends_on:
-      migrations:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 15s
-      retries: 3
-    networks:
-      - waypoint-net
-    restart: unless-stopped
+      - waypoint_mesh
+    command: ["sh", "-c", "uv run alembic upgrade head && uv run python scripts/bootstrap_public_checker_agency.py"]
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: waypoint-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      SPINE_API_URL: "http://spine-api:8000"
-      NODE_ENV: "production"
-    depends_on:
-      spine-api:
-        condition: service_started
-    networks:
-      - waypoint-net
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_SPINE_API_URL: ${NEXT_PUBLIC_SPINE_API_URL:-}
+    container_name: waypoint_frontend
     restart: unless-stopped
+    ports:
+      - "3005:3005"
+    environment:
+      - PORT=3005
+      - NODE_ENV=production
+      # Server-side BFF calls use the mesh hostname. Browser bundles use the
+      # host-resolvable URL supplied as a build argument above.
+      - SPINE_API_URL=http://spine_api:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      spine_api:
+        condition: service_healthy
+    networks:
+      - waypoint_mesh
+
+  # 3. Redis Cache & Async Job Broker
+  redis:
+    image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+    container_name: waypoint_redis
+    restart: unless-stopped
+    # Redis is internal-only by default. Opt into a host port only for local
+    # debugging with an explicit compose override.
+    volumes:
+      - redis_data:/data
+    networks:
+      - waypoint_mesh
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # 4. PostgreSQL Relational Store
+  postgres:
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
+    container_name: waypoint_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-waypoint_os}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - waypoint_mesh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
 networks:
-  waypoint-net:
+  waypoint_mesh:
     driver: bridge
 
 volumes:
+  redis_data:
   postgres_data:

@@ -433,6 +433,48 @@ describe('WorkbenchPage', () => {
     });
   });
 
+  it('hydrates every persisted trip output through the Workbench store actions', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('trip=trip_hydrate_123') as never);
+    const packet = { destination: 'Bali' };
+    const validation = { is_valid: true, status: 'VALID' };
+    const decision = { decision_state: 'PROCEED' };
+    const strategy = { selected_option: 'direct' };
+    const internalBundle = { margin: 0.2 };
+    const travelerBundle = { summary: 'Ready to review' };
+    const fees = { total: 125 };
+    const frontier = { sentiment_score: 0.83 };
+    const safety = { leaks: [] };
+    mockTripData = {
+      id: 'trip_hydrate_123',
+      stage: 'proposal',
+      packet,
+      validation,
+      decision,
+      strategy,
+      internal_bundle: internalBundle,
+      traveler_bundle: travelerBundle,
+      fees,
+      frontier_result: frontier,
+      safety,
+      customerMessage: 'Traveler wants Bali',
+      agentNotes: 'Keep margin >=18%',
+    } as never;
+
+    render(<WorkbenchPage />);
+
+    expect(mockWorkbenchStore.setResultPacket).toHaveBeenCalledWith(packet);
+    expect(mockWorkbenchStore.setResultValidation).toHaveBeenCalledWith(validation);
+    expect(mockWorkbenchStore.setResultDecision).toHaveBeenCalledWith(decision);
+    expect(mockWorkbenchStore.setResultStrategy).toHaveBeenCalledWith(strategy);
+    expect(mockWorkbenchStore.setResultInternalBundle).toHaveBeenCalledWith(internalBundle);
+    expect(mockWorkbenchStore.setResultTravelerBundle).toHaveBeenCalledWith(travelerBundle);
+    expect(mockWorkbenchStore.setResultSafety).toHaveBeenCalledWith(normalizeSafetyResult(safety));
+    expect(mockWorkbenchStore.setResultFees).toHaveBeenCalledWith(fees);
+    expect(mockWorkbenchStore.setResultFrontier).toHaveBeenCalledWith(frontier);
+    expect(mockWorkbenchStore.setInputRawNote).toHaveBeenCalledWith('Traveler wants Bali');
+    expect(mockWorkbenchStore.setInputOwnerNote).toHaveBeenCalledWith('Keep margin >=18%');
+  });
+
   it('normalizes raw safety leaks from the hydrated trip into the workbench store', () => {
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('trip=trip_safety_123&tab=safety') as never);
     mockTripData = {

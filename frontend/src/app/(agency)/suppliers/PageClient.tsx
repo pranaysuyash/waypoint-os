@@ -13,12 +13,11 @@ import {
   Car,
   Shield,
   Star,
-  CheckCircle2,
   Clock,
-  ArrowUpRight,
   Plus,
   FileSpreadsheet,
 } from 'lucide-react';
+import SimulatedBadge from '@/components/ui/SimulatedBadge';
 
 interface SupplierPartner {
   id: string;
@@ -32,6 +31,7 @@ interface SupplierPartner {
   contactEmail: string;
   rating: number;
   activeRateSheets: number;
+  evidenceStatus: 'sample';
 }
 
 export default function SuppliersPage() {
@@ -63,9 +63,10 @@ export default function SuppliersPage() {
         paymentTerms: 'Net 30 Days (48h Soft-Hold)',
         slaScore: 99.2,
         softHoldSupported: true,
-        contactEmail: 'ops@wilderness-destinations.com',
+        contactEmail: 'ops@example.invalid',
         rating: 4.95,
         activeRateSheets: 4,
+        evidenceStatus: 'sample',
       },
       {
         id: 'sup_02',
@@ -76,9 +77,10 @@ export default function SuppliersPage() {
         paymentTerms: 'Pre-paid 14 days before check-in',
         slaScore: 98.8,
         softHoldSupported: true,
-        contactEmail: 'reservations@royalportfolio.com',
+        contactEmail: 'reservations@example.invalid',
         rating: 4.98,
         activeRateSheets: 2,
+        evidenceStatus: 'sample',
       },
       {
         id: 'sup_03',
@@ -89,9 +91,10 @@ export default function SuppliersPage() {
         paymentTerms: 'Instant Confirmation / Net 15',
         slaScore: 97.9,
         softHoldSupported: true,
-        contactEmail: 'b2b@singaporedmc.com',
+        contactEmail: 'b2b@example.invalid',
         rating: 4.88,
         activeRateSheets: 6,
+        evidenceStatus: 'sample',
       },
       {
         id: 'sup_04',
@@ -102,9 +105,10 @@ export default function SuppliersPage() {
         paymentTerms: 'BSP / GDS Instant Ticketing',
         slaScore: 99.5,
         softHoldSupported: false,
-        contactEmail: 'trade-support@emirates.com',
+        contactEmail: 'trade-support@example.invalid',
         rating: 4.9,
         activeRateSheets: 1,
+        evidenceStatus: 'sample',
       },
       {
         id: 'sup_05',
@@ -115,9 +119,10 @@ export default function SuppliersPage() {
         paymentTerms: 'Net 15 Days',
         slaScore: 99.0,
         softHoldSupported: true,
-        contactEmail: 'dispatch@capeexecvip.co.za',
+        contactEmail: 'dispatch@example.invalid',
         rating: 4.92,
         activeRateSheets: 2,
+        evidenceStatus: 'sample',
       },
       {
         id: 'sup_06',
@@ -128,9 +133,10 @@ export default function SuppliersPage() {
         paymentTerms: 'Monthly Commission Remittance',
         slaScore: 98.4,
         softHoldSupported: false,
-        contactEmail: 'agency-support@allianz-assistance.com',
+        contactEmail: 'agency-support@example.invalid',
         rating: 4.85,
         activeRateSheets: 3,
+        evidenceStatus: 'sample',
       },
     ];
   }, []);
@@ -172,9 +178,10 @@ export default function SuppliersPage() {
           <h1 className='text-ui-xl font-semibold text-[#e6edf3] flex items-center gap-2'>
             <Briefcase className='size-6 text-[#58a6ff]' />
             Suppliers & DMC Directory
+            <SimulatedBadge label='Sample data' />
           </h1>
           <p className='text-ui-sm text-[#8b949e] mt-1'>
-            Master preferred supplier directory, wholesale rate sheets, SLA performance scorecards, and soft-hold agreements.
+            Illustrative supplier records and workflow previews. No live supplier directory, rate feed, SLA monitor, inventory hold, or provider confirmation is connected.
           </p>
         </div>
 
@@ -184,8 +191,19 @@ export default function SuppliersPage() {
           className='px-3.5 py-2 bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-sm self-start md:self-auto'
         >
           <Plus className='size-3.5' />
-          Ingest Wholesale Rate Sheet
+          Preview Rate-Sheet Intake
         </button>
+      </div>
+
+      <div
+        data-testid='suppliers-preview-banner'
+        role='note'
+        className='rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100'
+      >
+        <div className='font-semibold'>Local preview only</div>
+        <p className='mt-1 text-xs leading-5 text-amber-100/80'>
+          The records, commercial terms, scores, and destinations below are sample fixtures for interface review. They are not evidence that a supplier contract exists, a rate sheet is current, an SLA was measured, or inventory is available.
+        </p>
       </div>
 
       {/* Trip Context & Intelligence Banner */}
@@ -193,7 +211,7 @@ export default function SuppliersPage() {
         <div className='flex flex-col md:flex-row md:items-center justify-between gap-3'>
           <div className='space-y-1'>
             <label htmlFor='suppliers-trip-select' className='block text-xs font-medium text-[#8b949e] uppercase tracking-wider'>
-              Trip Supplier Intelligence Scope
+              Trip context (local preview only)
             </label>
             <select
               id='suppliers-trip-select'
@@ -218,11 +236,11 @@ export default function SuppliersPage() {
           {effectiveSelectedTripId && (
             <div className='flex items-center gap-3 text-xs bg-[#161b22] px-3 py-2 rounded-md border border-[#30363d]'>
               <div className='text-[#8b949e]'>
-                Supplier Risk: <span className='text-[#3fb950] font-medium'>{supplierRiskLevel ? `Current supplier risk: ${supplierRiskLevel}` : 'Low (Preferred Partners Only)'}</span>
+                Trip-derived risk: <span className='text-[#d29922] font-medium'>{supplierRiskLevel ? `${supplierRiskLevel} (not supplier-verified)` : 'Unknown (no supplier evidence)'}</span>
               </div>
               <div className='w-px h-4 bg-[#30363d]' />
               <div className='text-[#8b949e]'>
-                Snapshot: <span className='text-[#58a6ff] font-medium'>{supplierSnapshot ? 'supplier intelligence snapshot is available' : 'Synced with active itineraries'}</span>
+                Snapshot: <span className='text-[#58a6ff] font-medium'>{supplierSnapshot ? 'stored trip snapshot (freshness unknown)' : 'no stored supplier snapshot'}</span>
               </div>
             </div>
           )}
@@ -233,38 +251,38 @@ export default function SuppliersPage() {
       <div className='grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'>
         <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
           <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Preferred Partners</span>
+            <span>Illustrative Partner Records</span>
             <Briefcase className='size-4 text-[#58a6ff]' />
           </div>
-          <div className='text-2xl font-bold text-[#e6edf3]'>{suppliersList.length} Suppliers</div>
-          <div className='text-xs text-[#8b949e]'>DMCs, Luxury Hotels & Airlines</div>
+          <div className='text-2xl font-bold text-[#e6edf3]'>{suppliersList.length} Sample Records</div>
+          <div className='text-xs text-[#8b949e]'>DMCs, hotels, airlines, transfers, and insurance fixtures</div>
         </div>
 
         <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
           <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Active Rate Sheets</span>
+            <span>Illustrative Rate Sheets</span>
             <FileSpreadsheet className='size-4 text-[#3fb950]' />
           </div>
-          <div className='text-2xl font-bold text-[#3fb950]'>18 Contracts</div>
-          <div className='text-xs text-[#8b949e]'>Wholesale pricing ingested</div>
+          <div className='text-2xl font-bold text-[#3fb950]'>18 Sample Rows</div>
+          <div className='text-xs text-[#8b949e]'>No contract has been uploaded or persisted</div>
         </div>
 
         <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
           <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Avg Partner SLA</span>
+            <span>Sample SLA Score</span>
             <Star className='size-4 text-[#d29922]' />
           </div>
-          <div className='text-2xl font-bold text-[#d29922]'>98.8%</div>
-          <div className='text-xs text-[#8b949e]'>On-time fulfillment reliability</div>
+          <div className='text-2xl font-bold text-[#d29922]'>98.8% Fixture</div>
+          <div className='text-xs text-[#8b949e]'>Not measured or monitored live</div>
         </div>
 
         <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
           <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Soft-Hold Inventory</span>
+            <span>Soft-Hold Capability Preview</span>
             <Clock className='size-4 text-[#a371f7]' />
           </div>
-          <div className='text-2xl font-bold text-[#a371f7]'>48h Zero-Cost</div>
-          <div className='text-xs text-[#8b949e]'>Enabled across top DMCs</div>
+          <div className='text-2xl font-bold text-[#a371f7]'>Not Connected</div>
+          <div className='text-xs text-[#8b949e]'>No inventory hold has been reserved</div>
         </div>
       </div>
 
@@ -311,9 +329,9 @@ export default function SuppliersPage() {
         <div className='p-4 border-b border-[#30363d] flex items-center justify-between bg-[#161b22]'>
           <div className='flex items-center gap-2 font-semibold text-sm text-[#e6edf3]'>
             <Briefcase className='size-4 text-[#58a6ff]' />
-            <span>Master Supplier & Wholesale Partner Ledger</span>
+            <span>Illustrative Supplier Records</span>
           </div>
-          <span className='text-xs text-[#8b949e]'>Showing {filteredSuppliers.length} Verified Partners</span>
+          <span className='text-xs text-[#8b949e]'>Showing {filteredSuppliers.length} sample records</span>
         </div>
 
         <div className='overflow-x-auto'>
@@ -322,9 +340,9 @@ export default function SuppliersPage() {
               <tr className='border-b border-[#30363d] bg-[#0d1117] text-xs font-semibold text-[#8b949e] uppercase tracking-wider'>
                 <th className='p-3.5'>Partner & Category</th>
                 <th className='p-3.5'>Destination Coverage</th>
-                <th className='p-3.5'>Commission / Markup Tier</th>
-                <th className='p-3.5'>Payment Terms</th>
-                <th className='p-3.5'>SLA Health</th>
+                <th className='p-3.5'>Illustrative Commission / Markup</th>
+                <th className='p-3.5'>Illustrative Payment Terms</th>
+                <th className='p-3.5'>Illustrative Score</th>
                 <th className='p-3.5 text-right'>Action</th>
               </tr>
             </thead>
@@ -338,7 +356,7 @@ export default function SuppliersPage() {
                       </div>
                       <div>
                         <div className='font-medium text-[#e6edf3]'>{supplier.name}</div>
-                        <div className='text-xs text-[#8b949e] capitalize'>{supplier.category} Partner</div>
+                        <div className='text-xs text-[#8b949e] capitalize'>{supplier.category} · {supplier.evidenceStatus} record</div>
                       </div>
                     </div>
                   </td>
@@ -357,15 +375,15 @@ export default function SuppliersPage() {
                   </td>
 
                   <td className='p-3.5 font-mono text-xs font-semibold text-[#3fb950]'>
-                    {supplier.commissionTier}
+                    Fixture: {supplier.commissionTier}
                   </td>
 
                   <td className='p-3.5 text-xs text-[#8b949e]'>
                     <div className='flex items-center gap-1.5'>
-                      <span>{supplier.paymentTerms}</span>
+                      <span>Fixture: {supplier.paymentTerms}</span>
                       {supplier.softHoldSupported && (
                         <span className='px-1.5 py-0.2 text-[10px] bg-[#238636]/20 text-[#3fb950] rounded border border-[#238636]/40'>
-                          48h Hold
+                          Sample hold terms
                         </span>
                       )}
                     </div>
@@ -373,21 +391,16 @@ export default function SuppliersPage() {
 
                   <td className='p-3.5'>
                     <div className='flex items-center gap-1.5 font-mono text-xs font-semibold text-[#58a6ff]'>
-                      <CheckCircle2 className='size-3.5 text-[#3fb950]' />
-                      <span>{supplier.slaScore}%</span>
+                      <Clock className='size-3.5 text-[#d29922]' />
+                      <span>{supplier.slaScore}% fixture</span>
                     </div>
-                    <div className='text-[11px] text-[#8b949e]'>Rating {supplier.rating}/5.0</div>
+                    <div className='text-[11px] text-[#8b949e]'>Sample score · rating fixture {supplier.rating}/5.0</div>
                   </td>
 
                   <td className='p-3.5 text-right'>
-                    <a
-                      href={`mailto:${supplier.contactEmail}`}
-                      className='p-1.5 text-xs text-[#58a6ff] hover:text-[#79b8ff] hover:bg-[#30363d] rounded inline-flex items-center gap-1 transition-colors'
-                      title='Contact Supplier Operations'
-                    >
-                      <span>Contact</span>
-                      <ArrowUpRight className='size-3.5' />
-                    </a>
+                    <span className='text-xs text-[#8b949e]' title='Provider contact is unavailable in local preview'>
+                      Contact unavailable in preview
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -399,11 +412,16 @@ export default function SuppliersPage() {
       {/* Upload Rate Sheet Modal */}
       {isUploadModalOpen && (
         <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4'>
-          <div className='w-full max-w-lg bg-[#0d1117] border border-[#30363d] rounded-lg shadow-xl p-6 space-y-4'>
+          <div
+            role='dialog'
+            aria-modal='true'
+            aria-labelledby='supplier-rate-sheet-preview-title'
+            className='w-full max-w-lg bg-[#0d1117] border border-[#30363d] rounded-lg shadow-xl p-6 space-y-4'
+          >
             <div className='flex items-center justify-between border-b border-[#30363d] pb-3'>
               <div className='flex items-center gap-2 font-semibold text-base text-[#e6edf3]'>
                 <FileSpreadsheet className='size-5 text-[#3fb950]' />
-                <span>Ingest Wholesale Rate Sheet</span>
+                <span id='supplier-rate-sheet-preview-title'>Preview Rate-Sheet Intake</span>
               </div>
               <button
                 type='button'
@@ -415,9 +433,13 @@ export default function SuppliersPage() {
             </div>
 
             <div className='space-y-3 text-xs text-[#c9d1d9]'>
+              <div className='rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-amber-100'>
+                This is a local form preview. No file is uploaded, no contract is persisted, and no supplier is contacted.
+              </div>
               <div>
-                <label className='block text-[#8b949e] mb-1 font-medium'>Supplier / DMC Company Name</label>
+                <label htmlFor='supplier-preview-name' className='block text-[#8b949e] mb-1 font-medium'>Supplier / DMC Company Name</label>
                 <input
+                  id='supplier-preview-name'
                   type='text'
                   placeholder='e.g., Wilderness Safaris Botswana'
                   className='w-full p-2 bg-[#161b22] border border-[#30363d] rounded text-sm text-[#e6edf3] outline-none focus:border-[#58a6ff]'
@@ -425,8 +447,9 @@ export default function SuppliersPage() {
               </div>
 
               <div>
-                <label className='block text-[#8b949e] mb-1 font-medium'>Destination / Region Covered</label>
+                <label htmlFor='supplier-preview-destination' className='block text-[#8b949e] mb-1 font-medium'>Destination / Region Covered</label>
                 <input
+                  id='supplier-preview-destination'
                   type='text'
                   placeholder='e.g., Okavango Delta, Botswana'
                   className='w-full p-2 bg-[#161b22] border border-[#30363d] rounded text-sm text-[#e6edf3] outline-none focus:border-[#58a6ff]'
@@ -453,7 +476,7 @@ export default function SuppliersPage() {
                 onClick={() => setIsUploadModalOpen(false)}
                 className='px-3.5 py-1.5 bg-[#238636] text-white rounded text-xs font-semibold hover:bg-[#2ea043]'
               >
-                Process & Ingest Contract
+                Close Preview
               </button>
             </div>
           </div>

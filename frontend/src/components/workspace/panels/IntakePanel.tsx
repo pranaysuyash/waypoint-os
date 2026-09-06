@@ -29,6 +29,7 @@ import { useSpineRun } from '@/hooks/useSpineRun';
 import { useStartPlanning, useUpdateTrip } from '@/hooks/useTrips';
 import { useTripContext } from '@/contexts/TripContext';
 import { getTripRoute } from '@/lib/routes';
+import { resolveRepairDeepLinkField } from '@/lib/repair-deep-link';
 import type { SpineStage, OperatingMode, SpineRunRequest } from '@/types/spine';
 import { FIELD_LABELS, labelOrTitle } from '@/lib/label-maps';
 import {
@@ -112,6 +113,15 @@ function getSpineProgressStage(elapsedSeconds: number) {
 
 export type PlanningDetailId = 'budget' | 'customerName' | 'dates' | 'destination' | 'origin' | 'priorities' | 'flexibility';
 
+const PLANNING_DETAIL_IDS = new Set<PlanningDetailId>([
+  'budget',
+  'customerName',
+  'origin',
+  'destination',
+  'priorities',
+  'flexibility',
+]);
+
 const PLANNING_DETAIL_LABEL_TO_ID: Record<string, PlanningDetailId> = {
   'Budget range': 'budget',
   Destination: 'destination',
@@ -185,7 +195,10 @@ function PlanningDetailEditor({
 
   if (detailId === 'budget') {
     return (
-      <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
+      <div
+        data-intake-editor={detailId}
+        className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'
+      >
         <div className='flex flex-col gap-3 sm:flex-row'>
           <input
             type='number'
@@ -219,7 +232,10 @@ function PlanningDetailEditor({
   }
 
   return (
-    <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
+    <div
+      data-intake-editor={detailId}
+      className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'
+    >
       <textarea
         ref={(el) => { setPlanningEditorRef(detailId, el); }}
         defaultValue={planningEditorDrafts[detailId] ?? ''}
@@ -363,7 +379,9 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const { push } = useRouter();
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
-  const fieldParam = getSearchParam('field');
+  // D-09 repair deep-link: `?repair=<field>` canonical, `?field=<field>` legacy alias.
+  const repairFieldParam = getSearchParam('repair') ?? getSearchParam('field');
+  const repairField = resolveRepairDeepLinkField(repairFieldParam);
   const captureMode = getSearchParam('capture_mode');
   const entry = getSearchParam('entry');
 
@@ -412,9 +430,9 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const [followUpDraftByTrip, setFollowUpDraftByTrip] = useState<Record<string, string>>({});
   const [notesExpandedByTrip, setNotesExpandedByTrip] = useState<Record<string, boolean>>({});
   const [activePlanningEditor, setActivePlanningEditor] = useState<PlanningDetailId | null>(() => {
-    const param = searchParams.get('field');
-    const planningEditFields: PlanningDetailId[] = ['budget', 'customerName', 'origin', 'destination', 'priorities', 'flexibility'];
-    return planningEditFields.includes(param as PlanningDetailId) ? (param as PlanningDetailId) : null;
+    const param = searchParams.get('repair') ?? searchParams.get('field');
+    const resolved = resolveRepairDeepLinkField(param);
+    return resolved && PLANNING_DETAIL_IDS.has(resolved as PlanningDetailId) ? (resolved as PlanningDetailId) : null;
   });
   const [planningEditorDrafts, setPlanningEditorDrafts] = useState<Record<PlanningDetailId, string>>({
     budget: '',
@@ -469,21 +487,81 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
 
   // Editable trip details state
   const [editingField, setEditingField] = useState<string | null>(() => {
-    const param = searchParams.get('field');
+    const param = searchParams.get('repair') ?? searchParams.get('field');
     const inlineEditFields = ['type', 'dateWindow', 'party'];
-    return param && inlineEditFields.includes(param) ? param : null;
+    const resolved = resolveRepairDeepLinkField(param);
+    return resolved && inlineEditFields.includes(resolved) ? resolved : null;
   });
 
-  // Clean the deep-link field param from the URL once it has been consumed by
-  // the initial state above.
-  const deepLinkHandledRef = useRef(false);
+  // Keep the editor state synchronized when navigation updates the query while
+  // this route remains mounted (for example, PacketPanel → a second repair).
   useEffect(() => {
-    if (deepLinkHandledRef.current) return;
-    const param = searchParams.get('field');
+    if (!repairField) return;
+    const reconcile = () => {
+      if (PLANNING_DETAIL_IDS.has(repairField as PlanningDetailId)) {
+        setActivePlanningEditor((current) => current === repairField ? current : repairField as PlanningDetailId);
+        setEditingField(null);
+      } else {
+        setEditingField((current) => current === repairField ? current : repairField);
+        setActivePlanningEditor(null);
+      }
+    };
+    const task = window.setTimeout(reconcile, 0);
+    return () => window.clearTimeout(task);
+  }, [repairField]);
+
+  // Clean only the consumed repair keys. Preserve unrelated route state such
+  // as capture mode, entry provenance, and future query parameters.
+  useEffect(() => {
+    const param = searchParams.get('repair') ?? searchParams.get('field');
     if (!param) return;
-    deepLinkHandledRef.current = true;
-    window.history.replaceState(null, '', `/trips/${tripId}/intake`);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('repair');
+    url.searchParams.delete('field');
+    const query = url.searchParams.toString();
+    window.history.replaceState(null, '', `${url.pathname}${query ? `?${query}` : ''}${url.hash}`);
   }, [searchParams, tripId]);
+
+  // D-09: once the deep-linked editor is mounted, scroll it into view and move
+  // focus to its input. Mark the target handled only after the anchor exists;
+  // this preserves the behavior across async trip hydration and lazy panels.
+  const deepLinkFocusKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!repairField) return;
+    const focusKey = `${tripId}:${repairField}`;
+    if (deepLinkFocusKeyRef.current === focusKey) return;
+
+    let frame: number | null = null;
+    let attempts = 0;
+    const attemptFocus = () => {
+      const container = document.querySelector<HTMLElement>(`[data-intake-editor="${repairField}"]`);
+      if (!container) {
+        // Retry while the trip/editor is being hydrated, but do not leave an
+        // unbounded animation loop for a malformed or unavailable route.
+        attempts += 1;
+        if (attempts < 120) frame = window.requestAnimationFrame(attemptFocus);
+        return;
+      }
+      deepLinkFocusKeyRef.current = focusKey;
+      container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const editorControl = container.querySelector<HTMLElement>('textarea, input, select');
+      if (!editorControl) {
+        // The anchor may be the read-only shell for an inline editor. Wait for
+        // the state synchronization effect to mount its actual control before
+        // claiming that the repair handoff succeeded.
+        deepLinkFocusKeyRef.current = null;
+        attempts += 1;
+        if (attempts < 120) frame = window.requestAnimationFrame(attemptFocus);
+        return;
+      }
+      editorControl.focus({ preventScroll: true });
+    };
+
+    frame = window.requestAnimationFrame(attemptFocus);
+    return () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [activePlanningEditor, editingField, repairField, trip, tripId]);
 
   const [editValues, setEditValues] = useState({
     destination: trip?.destination || '',
@@ -597,6 +675,17 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const requiredPlanningDetails = planningDetails.filter((detail) => detail.requirement === 'Required');
   const recommendedPlanningDetails = planningDetails.filter((detail) => detail.requirement === 'Recommended');
   const planningPanelVisible = Boolean(trip) && planningDetails.length > 0;
+  const activePlanningEditorInPlanningPanel = Boolean(
+    activePlanningEditor && planningDetails.some((detail) => detail.id === activePlanningEditor),
+  );
+  const showPlanningEditorInTripSummary = Boolean(
+    activePlanningEditor &&
+    (activePlanningEditor === 'priorities' || activePlanningEditor === 'flexibility') &&
+    !activePlanningEditorInPlanningPanel,
+  );
+  const showStandalonePlanningRepairEditor = Boolean(
+    activePlanningEditor && !activePlanningEditorInPlanningPanel && !showPlanningEditorInTripSummary,
+  );
   const processButtonLabel = !trip
     ? 'Process Trip'
     : isLeadReview
@@ -697,7 +786,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     window.requestAnimationFrame(() => {
       followUpTextareaRef.current?.focus();
     });
-  }, [followUpDraft, input_raw_note, setInputRawNote, setOperatingMode]);
+  }, [followUpDraft, input_raw_note, setInputRawNote, setNotesExpanded, setOperatingMode]);
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;
@@ -753,7 +842,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
       setSaveError('Failed to save. Check connection and try again.');
       setTimeout(() => setSaveError(null), 8000);
     }
-  }, [tripId, saveTrip, store.input_raw_note, store.input_owner_note, editingField, editValues, budgetAmount, budgetCurrency, tripPriorities, dateFlexibility]);
+  }, [tripId, saveTrip, replaceTrip, store.input_raw_note, store.input_owner_note, editingField, editValues, budgetAmount, budgetCurrency, tripPriorities, dateFlexibility]);
 
   const handleMarkReady = useCallback(async () => {
     if (!tripId) return;
@@ -782,7 +871,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     } finally {
       setIsMarkingReady(false);
     }
-  }, [tripId]);
+  }, [tripId, refetchTrip]);
 
   const handleStartPlanning = useCallback(async () => {
     if (!tripId) return;
@@ -929,7 +1018,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
       setSaveError('Failed to save. Check connection and try again.');
       setTimeout(() => setSaveError(null), 8000);
     }
-  }, [tripId, trip, saveTrip, editValues, budgetAmount, budgetCurrency, logChange]);
+  }, [tripId, trip, saveTrip, replaceTrip, editValues, budgetAmount, budgetCurrency, logChange]);
 
   const handleCaptureCallSave = useCallback((newTrip: Trip) => {
     setShowCapturePanel(false);
@@ -1066,7 +1155,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     window.requestAnimationFrame(() => {
       followUpTextareaRef.current?.focus();
     });
-  }, [followUpDraft, setFollowUpDraft, setOperatingMode]);
+  }, [followUpDraft, setFollowUpDraft, setNotesExpanded, setOperatingMode]);
 
   const savePlanningEditor = useCallback(async (detailId: PlanningDetailId) => {
     if (!tripId) return;
@@ -1455,17 +1544,19 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 onCancelEdit={cancelEditing}
                 onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
               />
-              <EditableField
-                label='Type'
-                value={editValues.type}
-                displayValue={trip.type}
-                field='type'
-                isEditing={editingField === 'type'}
-                onStartEdit={startEditing}
-                onSaveEdit={saveFieldEdit}
-                onCancelEdit={cancelEditing}
-                onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
-              />
+              <div data-intake-editor='type' className='contents'>
+                <EditableField
+                  label='Type'
+                  value={editValues.type}
+                  displayValue={trip.type}
+                  field='type'
+                  isEditing={editingField === 'type'}
+                  onStartEdit={startEditing}
+                  onSaveEdit={saveFieldEdit}
+                  onCancelEdit={cancelEditing}
+                  onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
+                />
+              </div>
               <EditableField
                 label='Purpose'
                 value={editValues.tripPurpose}
@@ -1477,31 +1568,35 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 onCancelEdit={cancelEditing}
                 onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
               />
-              <EditableField
-                label='Party Size'
-                value={editValues.party}
-                displayValue={trip.party ? `${trip.party} pax` : '-'}
-                field='party'
-                icon={Users}
-                type='number'
-                isEditing={editingField === 'party'}
-                onStartEdit={startEditing}
-                onSaveEdit={saveFieldEdit}
-                onCancelEdit={cancelEditing}
-                onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
-              />
-              <EditableField
-                label='Dates'
-                value={editValues.dateWindow}
-                displayValue={formatDateWindowDisplay(trip.dateWindow)}
-                field='dateWindow'
-                icon={Calendar}
-                isEditing={editingField === 'dateWindow'}
-                onStartEdit={startEditing}
-                onSaveEdit={saveFieldEdit}
-                onCancelEdit={cancelEditing}
-                onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
-              />
+              <div data-intake-editor='party' className='contents'>
+                <EditableField
+                  label='Party Size'
+                  value={editValues.party}
+                  displayValue={trip.party ? `${trip.party} pax` : '-'}
+                  field='party'
+                  icon={Users}
+                  type='number'
+                  isEditing={editingField === 'party'}
+                  onStartEdit={startEditing}
+                  onSaveEdit={saveFieldEdit}
+                  onCancelEdit={cancelEditing}
+                  onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
+                />
+              </div>
+              <div data-intake-editor='dateWindow' className='contents'>
+                <EditableField
+                  label='Dates'
+                  value={editValues.dateWindow}
+                  displayValue={formatDateWindowDisplay(trip.dateWindow)}
+                  field='dateWindow'
+                  icon={Calendar}
+                  isEditing={editingField === 'dateWindow'}
+                  onStartEdit={startEditing}
+                  onSaveEdit={saveFieldEdit}
+                  onCancelEdit={cancelEditing}
+                  onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
+                />
+              </div>
               <BudgetField
                 budget={trip.budget}
                 budgetAmount={budgetAmount}
@@ -1659,7 +1754,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 </div>
               )}
             </div>
-            {(activePlanningEditor === 'priorities' || activePlanningEditor === 'flexibility') && (
+            {showPlanningEditorInTripSummary && (
               <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
                 {planningDetailEditor}
               </div>
@@ -1671,6 +1766,18 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
           </p>
         )}
       </div>
+
+      {showStandalonePlanningRepairEditor && trip && (
+        <div className='rounded-xl border border-[var(--accent-blue)]/35 bg-[var(--bg-elevated)] p-4'>
+          <div className='mb-2'>
+            <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>Repair trip detail</h3>
+            <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
+              Update the field requested by the repair link, then save the change before processing again.
+            </p>
+          </div>
+          {planningDetailEditor}
+        </div>
+      )}
 
       <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-4'>
         <div className='flex items-center justify-between gap-3'>

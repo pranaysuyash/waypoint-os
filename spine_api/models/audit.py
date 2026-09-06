@@ -41,6 +41,7 @@ def _json_type():
 
 class AuditAction(StrEnum):
     """Controlled vocabulary for audit log actions."""
+    READ = "read"
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
@@ -73,10 +74,10 @@ class AuditLog(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     agency_id: Mapped[str] = mapped_column(
-        String(36), nullable=False, index=True
+        String(36), nullable=False
     )
     user_id: Mapped[Optional[str]] = mapped_column(
-        String(36), nullable=True, index=True
+        String(36), nullable=True
     )
     action: Mapped[str] = mapped_column(
         String(50), nullable=False

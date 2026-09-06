@@ -133,6 +133,19 @@ class AuditContext:
             logger.warning("Audit log hash flush failed (non-fatal): %s", exc)
         return entry
 
+    async def commit(self) -> None:
+        """Commit route-owned audit entries without making audit failure fatal.
+
+        Mutation routes historically rely on their business transaction to
+        commit the audit row. Read-only routes have no such transaction, so a
+        sensitive platform read needs an explicit commit point.
+        """
+        try:
+            await self._db.commit()
+        except Exception as exc:
+            await self._db.rollback()
+            logger.warning("Audit log commit failed (non-fatal): %s", exc)
+
     @property
     def agency_id(self) -> str:
         return self._agency_id

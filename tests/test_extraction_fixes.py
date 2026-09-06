@@ -32,7 +32,9 @@ from src.intake.extractors import (
     _extract_destination_candidates,
     _extract_dates,
     _extract_trip_intent,
+    _extract_city_set,
     _extract_date_flexibility,
+    _is_origin_candidate,
     ExtractionPipeline,
 )
 from src.intake.decision import run_gap_and_decision
@@ -1586,6 +1588,13 @@ class TestPrioritiesFlexibilityInPipeline:
 # DEMO-02 colloquial extraction gaps — destination verb-object phrasing +
 # city sets. Source:
 # Docs/exploration/DEMO02_COLLOQUIAL_EXTRACTION_GAPS_2026-08-31.md §4 (D1–D6)
+#
+# HOLDOUT POLICY (data/fixtures/evals/holdout/README.md): the phrasings in
+# the tests below are deliberately PARAPHRASED, not copied — the graded
+# colloquial corpus (data/fixtures/extraction/colloquial_golden.json) must
+# never be mirrored verbatim into dev-visible tests, or the gate measures
+# memorization instead of generalization. Each dev test asserts the same
+# extraction behavior through a different phrasing.
 # ---------------------------------------------------------------------------
 
 DEMO02_FULL_NOTE = (
@@ -1597,35 +1606,39 @@ DEMO02_FULL_NOTE = (
     "name. dates flexible plus or minus a week. we also wanna do a cooking class "
     "somewhere. thx!!"
 )
+# NOTE: DEMO02_FULL_NOTE is the verbatim demo note and IS also the graded
+# gate fixture `colloq_full_note_001` (colloquial_golden.json). It is kept
+# verbatim as the end-to-end regression anchor for the shipped demo P0 and
+# is on the holdout README allowlist as "gate fixture mirror; not a holdout".
 
 
 class TestColloquialDestination:
     """Lowercase verb-object destinations and city-set separators."""
 
     # --- D1: "do X" with fully lowercase text ---
-    def test_verb_object_do_japan(self):
-        candidates, status, raw = _extract_destination_candidates("want to do japan")
-        assert candidates == ["Japan"], candidates
+    def test_verb_object_do_destination(self):
+        candidates, status, raw = _extract_destination_candidates("we wanna do vietnam")
+        assert candidates == ["Vietnam"], candidates
         assert status == "definite"
-        assert raw == "japan"
+        assert raw == "vietnam"
 
     # --- D2: "hitting X" with trailing context words ---
-    def test_hitting_bali_with_trailing_context(self):
-        candidates, status, raw = _extract_destination_candidates("hitting bali next month")
-        assert candidates == ["Bali"], candidates
+    def test_hitting_destination_with_trailing_context(self):
+        candidates, status, raw = _extract_destination_candidates("hitting phuket in june")
+        assert candidates == ["Phuket"], candidates
         assert status == "definite"
-        assert raw == "bali"
+        assert raw == "phuket"
 
     # --- D3: "covering X and Y" ---
     def test_covering_two_cities(self):
-        candidates, status, _ = _extract_destination_candidates("covering tokyo and kyoto")
-        assert candidates == ["Tokyo", "Kyoto"], candidates
+        candidates, status, _ = _extract_destination_candidates("covering rome and florence")
+        assert candidates == ["Rome", "Florence"], candidates
         assert status == "semi_open"
 
     # --- D4: plus-separated city set with implied hedge verb ---
     def test_plus_separated_city_set(self):
-        candidates, _, _ = _extract_destination_candidates("thinking tokyo + kyoto + osaka")
-        assert candidates == ["Tokyo", "Kyoto", "Osaka"], candidates
+        candidates, _, _ = _extract_destination_candidates("thinking berlin + munich + hamburg")
+        assert candidates == ["Berlin", "Munich", "Hamburg"], candidates
 
     def test_comma_and_city_set(self):
         candidates, _, _ = _extract_destination_candidates("tokyo, kyoto and osaka")
@@ -1698,48 +1711,48 @@ class TestColloquialParty:
 
     # --- P1 ---
     def test_me_and_n_friends(self):
-        result = _extract_party("me and 3 friends want a beach trip")
-        assert result["party_size"] == 4, result
-        assert result["party_composition"]["adults"] == 4
+        result = _extract_party("me and 4 friends are craving a mountain break")
+        assert result["party_size"] == 5, result
+        assert result["party_composition"]["adults"] == 5
 
     # --- P2 ---
     def test_n_of_us(self):
-        result = _extract_party("4 of us want a beach trip")
-        assert result["party_size"] == 4, result
+        result = _extract_party("6 of us are planning an island hop")
+        assert result["party_size"] == 6, result
 
     def test_word_number_of_us(self):
         result = _extract_party("two of us are planning greece")
         assert result["party_size"] == 2, result
 
     # --- P3 ---
-    def test_the_four_of_us(self):
-        result = _extract_party("the four of us are going somewhere")
-        assert result["party_size"] == 4, result
+    def test_the_word_number_of_us(self):
+        result = _extract_party("the three of us are heading out")
+        assert result["party_size"] == 3, result
 
     # --- P4 ---
     def test_party_of_n(self):
-        result = _extract_party("party of 4 to japan")
-        assert result["party_size"] == 4, result
+        result = _extract_party("party of 2 to thailand")
+        assert result["party_size"] == 2, result
 
     def test_bare_n_friends_counts_companions(self):
         result = _extract_party("3 friends want a beach trip")
         assert result["party_size"] == 3, result
 
     # --- P5: self + spouse + friends must count everyone ---
-    def test_self_wife_and_friends(self):
-        result = _extract_party("me and my wife and 2 friends want to do japan")
-        assert result["party_size"] == 4, result
-        assert result["party_composition"]["adults"] == 4
+    def test_self_spouse_and_friends(self):
+        result = _extract_party("me and my husband and 3 friends want to do thailand")
+        assert result["party_size"] == 5, result
+        assert result["party_composition"]["adults"] == 5
 
     # --- negative: "one of us" is a member reference, never party_size=1 ---
     def test_one_of_us_is_not_group_size(self):
-        result = _extract_party("one of us is terrified of heights")
+        result = _extract_party("one of us gets seasick easily")
         assert result["party_size"] == 0, result
         assert result["group_signals"] == ["one of us"], result
 
     def test_signals_always_collected(self):
-        result = _extract_party("me and 3 friends want a beach trip")
-        assert result["group_signals"] == ["3 friends"], result
+        result = _extract_party("me and 4 friends are craving a mountain break")
+        assert result["group_signals"] == ["4 friends"], result
 
     # --- Review P2-3 / P2-4 ---
     def test_us_and_n_friends_includes_the_party(self):
@@ -1766,18 +1779,23 @@ class TestColloquialPartyWarnings:
 
     # --- P6: phrasing seen, headcount underdetected ---
     def test_party_underdetected_warning(self):
-        packet, codes = self._party_warning_codes("me and 3 buddies want a beach trip")
+        # "buddies"/"friends"/"mates" are recognized group words now (parsed
+        # to 4 with no warning — see test below). This test pins the WARNING
+        # path for colloquial group phrasing the vocabulary does NOT
+        # recognize: "me and my 3 cousins" must not silently size the party
+        # as 1 without flagging it to the operator.
+        packet, codes = self._party_warning_codes("me and my 3 cousins want a beach trip")
         assert packet.facts["party_size"].value == 1
         assert "PARTY_UNDERDETECTED" in codes, codes
 
     def test_no_party_warning_when_group_parsed(self):
-        packet, codes = self._party_warning_codes("me and 3 friends want a beach trip")
-        assert packet.facts["party_size"].value == 4
+        packet, codes = self._party_warning_codes("me and 4 friends are craving a mountain break")
+        assert packet.facts["party_size"].value == 5
         party_codes = {c for c in codes if c.startswith("PARTY_")}
         assert not party_codes, codes
 
     def test_party_unparsed_group_phrasing_warning(self):
-        packet, codes = self._party_warning_codes("one of us is terrified of heights")
+        packet, codes = self._party_warning_codes("one of us gets seasick easily")
         assert "party_size" not in packet.facts
         assert "PARTY_UNPARSED_GROUP_PHRASING" in codes, codes
 
@@ -1798,7 +1816,7 @@ class TestColloquialDates:
 
     # --- T1 ---
     def test_next_spring_season_window(self):
-        result = _extract_dates("want to do japan next spring")
+        result = _extract_dates("we want to do spain next spring")
         assert result is not None, "season phrasing should produce a date window"
         window, _, _, confidence = result
         assert window == "next spring (Mar-May)", window
@@ -1833,20 +1851,20 @@ class TestColloquialDates:
     # --- T2 + T5: season window folds the late-month refinement ---
     def test_season_folds_late_month(self):
         result = _extract_dates(
-            "want to do japan next spring, maybe late march for the cherry blossoms"
+            "want to do spain next spring, maybe late april for the feria"
         )
         assert result is not None
         window, _, _, confidence = result
         assert "next spring" in window
-        assert "late march" in window
+        assert "late april" in window
         assert confidence == "flexible"
 
     # --- T2 standalone ---
-    def test_late_month_without_preposition(self):
-        result = _extract_dates("maybe late march")
+    def test_early_month_without_preposition(self):
+        result = _extract_dates("maybe early may")
         assert result is not None
         window, _, _, confidence = result
-        assert window == "late march", window
+        assert window == "early may", window
         assert confidence == "flexible"
 
     def test_early_and_mid_month(self):
@@ -1856,8 +1874,8 @@ class TestColloquialDates:
             assert result[0] == phrase, result
 
     # --- T4: spelled-out flexibility ---
-    def test_flexibility_plus_or_minus(self):
-        assert _extract_date_flexibility("dates flexible plus or minus a week") == "flexible"
+    def test_flexibility_give_or_take(self):
+        assert _extract_date_flexibility("dates are flexible give or take a few days") == "flexible"
         assert _extract_date_flexibility("flexible +/- one week") == "flexible"
 
     # --- regression: precise dates still outrank casual season words ---
@@ -1876,7 +1894,7 @@ class TestBudgetScopeEach:
     """'each' / 'apiece' are per-person budget markers (DEMO-02 §2.4 / B1)."""
 
     def test_each_is_per_person(self):
-        assert _extract_budget_scope("budget around 3.5k USD each") == "per_person"
+        assert _extract_budget_scope("budget is roughly 2200 USD each") == "per_person"
 
     def test_unmarked_still_unknown(self):
         assert _extract_budget_scope("budget 3L") == "unknown"
@@ -1900,7 +1918,16 @@ class TestBudgetScopeEach:
 # ---------------------------------------------------------------------------
 
 class TestDemoNoteEndToEnd:
-    """The exact Tool-Taster demo note, asserted end-to-end."""
+    """The exact Tool-Taster demo note, asserted end-to-end.
+
+    GATE FIXTURE MIRROR; NOT A HOLDOUT — this note is verbatim
+    ``colloq_full_note_001`` in the graded colloquial corpus
+    (data/fixtures/extraction/colloquial_golden.json). It is deliberately
+    kept as the end-to-end regression anchor for the shipped demo P0 and is
+    allowlisted in data/fixtures/evals/holdout/README.md. Every other
+    colloquial fixture phrasing must stay paraphrased in dev tests — see
+    the holdout policy at the top of this file.
+    """
 
     @pytest.fixture(scope="class")
     def demo_packet(self):
@@ -1932,7 +1959,64 @@ class TestDemoNoteEndToEnd:
     def test_meal_preference(self, demo_packet):
         assert "vegetarian" in str(demo_packet.facts["meal_preferences"].value)
 
+    def test_hard_constraints_drop_negation_false_positive(self, demo_packet):
+        # "no idea of the name" reports the traveler's own missing info, not a
+        # prohibition — only the real "no cable cars please" constraint stays.
+        assert demo_packet.facts["hard_constraints"].value == ["cable cars please"]
+
     def test_intake_minimum_valid_no_errors(self, demo_packet):
         report = validate_packet(demo_packet, stage="discovery")
         assert report.is_valid, [(e.code, e.field) for e in report.errors]
         assert not any(w.code.startswith("PARTY_") for w in report.warnings)
+
+
+# ---------------------------------------------------------------------------
+# D-05 negation false positives + D-06 multi-word origin tail fallback
+# (DEMO02 §9 Q7 / DEMO_WAVE2 remediation handoff cycle-2 nit)
+# ---------------------------------------------------------------------------
+
+class TestExtractionEdges:
+    """Negation-knowledge guard and origin tail-word fallback edges."""
+
+    # --- D-05: "no <knowledge-word> ..." is traveler uncertainty, not a ban ---
+
+    def test_fear_phrase_keeps_negation_constraint(self):
+        result = _extract_trip_intent(
+            "one of us gets seasick easily so no boat trips please"
+        )
+        assert result.get("hard_constraints") == ["boat trips please"], result
+
+    def test_bare_negation_still_a_constraint(self):
+        result = _extract_trip_intent("no cable cars")
+        assert result.get("hard_constraints") == ["cable cars"], result
+
+    def test_no_idea_of_the_name_is_not_a_constraint(self):
+        result = _extract_trip_intent(
+            "we saw this gorgeous riad on instagram, no idea what it is called"
+        )
+        assert "hard_constraints" not in result, result
+
+    def test_no_clue_about_dates_is_not_a_constraint(self):
+        result = _extract_trip_intent("no clue about dates, just pick for us")
+        assert "hard_constraints" not in result, result
+
+    # --- D-06: differently formatted multi-word origin tails ---
+
+    def test_multiword_origin_excluded_from_city_set(self):
+        text = "flying from san francisco usa and visiting tokyo + kyoto"
+        result = _extract_city_set(text.lower(), text)
+        assert result is not None, text
+        cities, _raw = result
+        assert cities == ["Tokyo", "Kyoto"], cities
+
+    def test_origin_tail_fallback_matches_qualified_origin(self):
+        assert _is_origin_candidate("flying from san francisco usa", "Usa") is True
+        assert _is_origin_candidate("flying from san francisco usa", "San Francisco") is True
+
+    def test_directional_to_not_misread_as_origin(self):
+        # "from delhi to boston" — boston is the destination, not the origin.
+        assert _is_origin_candidate("flying from delhi to boston", "Boston") is False
+        assert _is_origin_candidate("flying from new delhi to new york", "New York") is False
+
+    def test_plain_from_origin_unchanged(self):
+        assert _is_origin_candidate("friends in paris, flying from london", "London") is True

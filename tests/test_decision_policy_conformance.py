@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from intake.constants import DECISION_STATES
-from intake.decision import run_gap_and_decision
+from intake.decision import field_fills_blocker, run_gap_and_decision
 from intake.packet_models import (
     Ambiguity,
     AuthorityLevel,
@@ -105,3 +105,80 @@ def test_blocking_ambiguity_cannot_be_proceed_traveler_safe():
     assert result.decision_state != "PROCEED_TRAVELER_SAFE"
     assert result.decision_state == "ASK_FOLLOWUP"
 
+
+def test_high_priority_party_conflict_reaches_declared_ask_action():
+    """Party-size conflicts affect pricing and must not silently draft a quote."""
+    pkt = _fill_discovery_hard_blockers(_base_packet(stage="discovery"))
+    pkt.facts["party_size"] = _slot([3, 5])
+    pkt.facts["trip_purpose"] = _slot("leisure")
+    pkt.facts["soft_preferences"] = _slot("none")
+    pkt.contradictions.append({
+        "field_name": "party_size",
+        "values": [3, 5],
+        "sources": ["call", "crm"],
+    })
+
+    result = run_gap_and_decision(pkt)
+
+    assert result.decision_state == "ASK_FOLLOWUP"
+    assert any(q["field_name"] == "party_size" for q in result.follow_up_questions)
+
+
+def test_high_priority_origin_conflict_reaches_declared_ask_action():
+    """Origin conflicts change availability/routing and require confirmation."""
+    pkt = _fill_discovery_hard_blockers(_base_packet(stage="discovery"))
+    pkt.facts["origin_city"] = _slot(["Bangalore", "Mumbai"])
+    pkt.facts["trip_purpose"] = _slot("leisure")
+    pkt.facts["soft_preferences"] = _slot("none")
+    pkt.contradictions.append({
+        "field_name": "origin_city",
+        "values": ["Bangalore", "Mumbai"],
+        "sources": ["owner", "crm"],
+    })
+
+    result = run_gap_and_decision(pkt)
+
+    assert result.decision_state == "ASK_FOLLOWUP"
+    assert any(q["field_name"] == "origin_city" for q in result.follow_up_questions)
+
+
+def test_budget_representations_are_one_or_group():
+    """Either raw budget evidence or its normalized value satisfies the one budget dimension."""
+    for field_name, value in (("budget_min", 200000), ("budget_raw_text", "2L")):
+        pkt = _fill_discovery_hard_blockers(_base_packet(stage="discovery"))
+        pkt.facts[field_name] = _slot(value)
+        pkt.facts["trip_purpose"] = _slot("leisure")
+        pkt.facts["soft_preferences"] = _slot("none")
+
+        result = run_gap_and_decision(pkt)
+
+        assert "budget_min" not in result.soft_blockers
+        assert "budget_raw_text" not in result.soft_blockers
+
+
+def test_missing_budget_or_group_emits_one_canonical_blocker():
+    pkt = _fill_discovery_hard_blockers(_base_packet(stage="discovery"))
+    result = run_gap_and_decision(pkt)
+
+    assert result.soft_blockers.count("budget_min") == 1
+    assert "budget_raw_text" not in result.soft_blockers
+
+
+def test_blank_and_empty_collection_values_do_not_fill_blockers():
+    for value in ("", "   ", [], {}, (), set()):
+        slot = _slot(value)
+        assert not field_fills_blocker(slot, [], "destination_candidates"), repr(value)
+
+
+def test_stop_action_wins_over_ask_action_for_mixed_conflicts():
+    pkt = _fill_discovery_hard_blockers(_base_packet(stage="discovery"))
+    pkt.facts["trip_purpose"] = _slot("leisure")
+    pkt.facts["soft_preferences"] = _slot("none")
+    pkt.contradictions.extend([
+        {"field_name": "party_size", "values": [3, 5], "sources": ["a", "b"]},
+        {"field_name": "date_window", "values": ["2026-01", "2026-02"], "sources": ["a", "b"]},
+    ])
+
+    result = run_gap_and_decision(pkt)
+
+    assert result.decision_state == "STOP_NEEDS_REVIEW"

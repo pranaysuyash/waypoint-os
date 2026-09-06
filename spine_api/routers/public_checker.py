@@ -66,6 +66,18 @@ def _load_public_checker_package_or_404(trip_id: str) -> dict[str, Any]:
     }
 
 
+def _validate_structure_depth(data: Any, current_depth: int = 0, max_depth: int = 10) -> None:
+    """Security (S-07): Prevent recursion stack exhaustion on untrusted structured payloads."""
+    if current_depth > max_depth:
+        raise HTTPException(status_code=400, detail=f"Structured JSON nesting exceeds maximum allowed depth ({max_depth})")
+    if isinstance(data, dict):
+        for val in data.values():
+            _validate_structure_depth(val, current_depth + 1, max_depth)
+    elif isinstance(data, (list, tuple)):
+        for item in data:
+            _validate_structure_depth(item, current_depth + 1, max_depth)
+
+
 @router.post("/api/public-checker/events")
 @limiter.limit("30/minute")
 def post_public_checker_event(
@@ -77,6 +89,9 @@ def post_public_checker_event(
     payload_size = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
     if payload_size > PUBLIC_CHECKER_EVENT_MAX_BYTES:
         raise HTTPException(status_code=413, detail="Event payload too large")
+
+    # Security (S-07): Recursion depth validation on untrusted properties
+    _validate_structure_depth(event.properties)
 
     if not payload.get("event_id"):
         payload["event_id"] = str(uuid.uuid4())

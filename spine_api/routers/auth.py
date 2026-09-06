@@ -270,6 +270,7 @@ async def get_me(
             "id": user.id,
             "email": user.email,
             "name": user.name,
+            "platform_role": getattr(user, "platform_role", "none") or "none",
         },
         agency={
             "id": agency.id,

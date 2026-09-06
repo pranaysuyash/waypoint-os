@@ -101,6 +101,8 @@ data/audit/
 !data/decision_cache/.gitkeep
 !data/audit/.gitkeep
 data/drafts/draft_*.json
+# Runtime lookup index belongs with ignored draft payloads; preserve local state.
+/data/drafts/index.json
 
 # Product B runtime event logs
 data/product_b_events/*.jsonl
@@ -163,3 +165,10 @@ data/trips/tc_roundtrip_*.json
 
 # Pytest scratch trip files (see tests/conftest.py; R-03)
 data/test_trips/
+
+# Proposal token revocations (durable runtime state)
+data/proposals/
+
+# Mimosa/agent-runner local hook state, reports, and working artifacts
+.mimosa/
+frontend/.mimosa/

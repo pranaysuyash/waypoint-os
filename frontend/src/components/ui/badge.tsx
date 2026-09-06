@@ -13,6 +13,9 @@ const badgeVariants = cva(
         explicit_user: "badge-explicit-user",
         explicit_owner: "badge-explicit-owner",
         derived: "badge-derived",
+        // backend AuthorityLevel spelling (src/intake/packet_models.py) —
+        // real packets carry this value; reuse the derived styling.
+        derived_signal: "badge-derived",
         hypothesis: "badge-hypothesis",
         manual: "badge-manual",
       },

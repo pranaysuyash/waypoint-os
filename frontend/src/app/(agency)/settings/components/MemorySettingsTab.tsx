@@ -17,6 +17,14 @@ import {
   Save,
   ShieldAlert,
 } from 'lucide-react';
+import SimulatedBadge from '@/components/ui/SimulatedBadge';
+
+/**
+ * GM-01 honesty fix: this settings tab is client-local state with no backend
+ * persistence yet. "Save" reports a local-only demo save, the erasure
+ * certificate is fabricated in the browser, and the sample customer is an
+ * obvious fixture.
+ */
 
 export function MemorySettingsTab() {
   const [retentionAllergy, setRetentionAllergy] = useState('permanent');
@@ -27,7 +35,7 @@ export function MemorySettingsTab() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // GDPR State
-  const [targetCustomer, setTargetCustomer] = useState('Alex Morgan (cust_alex_m)');
+  const [targetCustomer, setTargetCustomer] = useState('Sample Traveler (cust_sample_demo)');
   const [gdprCert, setGdprCert] = useState<any | null>(null);
 
   const handleSavePolicy = () => {
@@ -37,11 +45,12 @@ export function MemorySettingsTab() {
 
   const handlePurgeCustomer = () => {
     setGdprCert({
-      certificate_id: 'GDPR-CERT-2026-X9481',
+      certificate_id: 'GDPR-CERT-SAMPLE',
       customer_id: targetCustomer,
-      tombstones_created: 3,
+      tombstones_created: 0,
       erased_at: new Date().toUTCString(),
       verification_signature: '9a84f182bcde71029418247192834b9281a74910283471092834019283401928',
+      is_simulated: true,
     });
   };
 
@@ -49,23 +58,24 @@ export function MemorySettingsTab() {
     <div className="space-y-6">
       {/* Header Banner */}
       <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-5 space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 border border-blue-400/30">
               <Brain className="h-4 w-4" />
             </div>
             <div>
               <h2 className="text-ui-base font-bold text-white flex items-center gap-2">
-                Agency Memory & Data Retention Policies
+                Agency Memory & Data Retention Policies (Sample)
+                <SimulatedBadge label="Sample data" />
               </h2>
               <p className="text-ui-xs text-[#8b949e]">
-                Configure how long traveler preferences stay active before reconfirmation, manage 5-tier architecture rules, and process GDPR Article 17 Right-to-Erasure requests.
+                Proposed retention rules and 5-tier architecture shown with sample data. Saving here is a local demo — these settings are not persisted to the backend yet.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0f1115] border border-[#30363d] text-ui-xs text-[#3fb950]">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0f1115] border border-[#30363d] text-ui-xs text-[#8b949e] shrink-0">
             <ShieldCheck className="h-3.5 w-3.5" />
-            <span>RLS Multi-Tenant Guard: Active</span>
+            <span>RLS Multi-Tenant Guard: design only (not runtime-verified)</span>
           </div>
         </div>
       </div>
@@ -121,17 +131,17 @@ export function MemorySettingsTab() {
 
       {/* Preference Freshness & Decay Settings */}
       <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-5 space-y-4">
-        <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
           <h3 className="text-ui-sm font-semibold text-[#e6edf3] flex items-center gap-2">
             <Calendar className="h-4 w-4 text-[#d29922]" />
-            Preference Freshness & Reconfirmation Lifespans
+            Preference Freshness & Reconfirmation Lifespans (Sample)
           </h3>
           <button
             onClick={handleSavePolicy}
             className="px-3 py-1.5 rounded-lg bg-[#238636] hover:bg-[#2ea043] text-white text-ui-xs font-semibold flex items-center gap-1.5 transition-colors"
           >
             <Save className="h-3.5 w-3.5" />
-            {saveSuccess ? 'Policies Saved!' : 'Save Retention Rules'}
+            {saveSuccess ? 'Preview saved locally (no backend)' : 'Preview Retention Rules'}
           </button>
         </div>
 
@@ -196,16 +206,16 @@ export function MemorySettingsTab() {
         <div className="flex items-center justify-between">
           <h3 className="text-ui-sm font-semibold text-[#e6edf3] flex items-center gap-2">
             <Trash2 className="h-4 w-4 text-[#f85149]" />
-            Customer Privacy & GDPR Right-to-Erasure Console
+            Customer Privacy & GDPR Right-to-Erasure Console (Preview)
           </h3>
           <span className="text-ui-xs text-[#f85149] font-medium flex items-center gap-1">
             <ShieldAlert className="h-3.5 w-3.5" />
-            Compliance Enforced
+            Not connected — no compliance action
           </span>
         </div>
 
         <p className="text-ui-xs text-[#8b949e]">
-          Process formal Right-to-be-Forgotten requests. All personal identifying data will be permanently wiped and replaced with an anonymous cryptographic tombstone.
+          Preview of a future Right-to-Erasure workflow. This client-local sample cannot reach customer records, purge data, or issue a compliance certificate.
         </p>
 
         <div className="flex gap-3 text-ui-xs">
@@ -221,22 +231,22 @@ export function MemorySettingsTab() {
             className="px-4 py-2 bg-[#da3633] hover:bg-[#b62324] text-white rounded-lg font-semibold transition-colors flex items-center gap-1.5"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Purge Customer Records
+            Preview Erasure (No Deletion)
           </button>
         </div>
 
         {gdprCert && (
           <div className="p-4 rounded-lg bg-[#0f1115] border border-[#f85149]/40 space-y-2 text-ui-xs font-mono">
-            <div className="flex items-center justify-between text-[#f85149] font-bold">
+            <div className="flex items-center justify-between text-[#f85149] font-bold gap-2">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4" />
-                Certificate of Erasure: {gdprCert.certificate_id}
+                Simulated Certificate of Erasure (demo — nothing was purged): {gdprCert.certificate_id}
               </span>
               <span className="text-[#8b949e] font-normal">{gdprCert.erased_at}</span>
             </div>
             <p className="text-[#c9d1d9]">Customer Entity: {gdprCert.customer_id}</p>
-            <p className="text-[#8b949e]">Records Purged: {gdprCert.tombstones_created} memory facts purged and tombstoned.</p>
-            <p className="text-[#8b949e] break-all">SHA-256 Signature: {gdprCert.verification_signature}</p>
+            <p className="text-[#8b949e]">Records Purged: simulated — this console has no backend persistence, so no memory facts were touched.</p>
+            <p className="text-[#8b949e] break-all">SHA-256 Signature (sample): {gdprCert.verification_signature}</p>
           </div>
         )}
       </div>

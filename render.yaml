@@ -5,7 +5,7 @@
 #
 # Or connect directly on render.com to this repo and use:
 #   Build Command: uv sync --frozen
-#   Start Command: uvicorn spine_api.server:app --host 0.0.0.0 --port 8000 --workers 4
+#   Start Command: uvicorn spine_api.server:app --host 0.0.0.0 --port 8000 --workers 1
 
 services:
   - type: web
@@ -14,16 +14,32 @@ services:
     region: oregon
     plan: starter
     buildCommand: uv sync --frozen
-    preDeployCommand: uv run alembic upgrade head && uv run python scripts/bootstrap_public_checker_agency.py
-    startCommand: uvicorn spine_api.server:app --host 0.0.0.0 --port 8000 --workers 4
-    healthCheckPath: /health
+    preDeployCommand: uv run alembic upgrade head
+    startCommand: uvicorn spine_api.server:app --host 0.0.0.0 --port 8000 --workers 1
+    healthCheckPath: /ready
     envVars:
       - key: SPINE_API_PORT
         value: 8000
       - key: SPINE_API_WORKERS
-        value: 4
+        value: 1
+      - key: ENVIRONMENT
+        value: production
+      - key: USE_HYBRID_DECISION_ENGINE
+        value: 1
+      - key: TRIPSTORE_BACKEND
+        value: sql
+      - key: SPINE_API_IDEMPOTENCY_BACKEND
+        value: sql
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PROPOSAL_SIGNING_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
       - key: PUBLIC_CHECKER_AGENCY_ID
-        value: d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b
+        sync: false
       - key: SPINE_API_CORS
         sync: false
       - key: TRAVELER_SAFE_STRICT

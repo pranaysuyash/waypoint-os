@@ -57,3 +57,10 @@ def test_currency_conversion_api_endpoint(session_client):
     assert data["base_currency"] == "USD"
     assert data["base_amount"] == 540.0
     assert data["total_cost_in_base_currency"] > 540.0
+    assert data["status"] == "COMPUTED_PREVIEW"
+    assert data["reality_tier"] == "deterministic_preview"
+    assert data["provider_connected"] is False
+    assert data["external_reference"] is None
+    assert data["effects"] == []
+    assert data["metadata"]["source"] == "local_deterministic_preview"
+    assert data["metadata"]["operational_write"] is False

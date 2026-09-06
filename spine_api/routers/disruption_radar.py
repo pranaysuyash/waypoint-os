@@ -1,16 +1,23 @@
 """
-spine_api/routers/disruption_radar.py — Real-Time Flight Disruption Radar & Autonomous Re-Booking Copilot (IDEA-126).
+spine_api/routers/disruption_radar.py — deterministic disruption preview surface.
 
-Monitors flight status feeds, generates urgency-classified disruption alerts (CANCELLED, DELAYED),
-and auto-generates alternative flight/hotel itinerary options for 1-click advisor re-booking.
+The current implementation has no connected flight or booking provider. It
+therefore returns deterministic previews and refuses to mutate booking state.
+Provider-backed execution is a separate, evidence-gated integration.
 """
 
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from pydantic import BaseModel
+
+import logging
+
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Header, HTTPException
 
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.core.reality_tier import RealityTier, TierMetadata
+from spine_api.persistence import TEST_AGENCY_ID, TripStore
+
+logger = logging.getLogger("spine_api.routers.disruption_radar")
 
 router = APIRouter(prefix="/api/v1/disruptions", tags=["Real-Time Disruption Radar"])
 
@@ -26,6 +33,9 @@ class DisruptionAlert(BaseModel):
     impact_summary: str
     status: str = "ACTIVE"  # ACTIVE, REBOOKED, DISMISSED
     created_at: str
+    reality_tier: str = RealityTier.DETERMINISTIC_PREVIEW.value
+    provider_connected: bool = False
+    effects: list[str] = Field(default_factory=list)
 
 
 class ReBookOption(BaseModel):
@@ -37,6 +47,10 @@ class ReBookOption(BaseModel):
     cabin_class: str
     price_difference_usd: float
     recommended: bool = False
+    reality_tier: str = RealityTier.DETERMINISTIC_PREVIEW.value
+    provider_connected: bool = False
+    effects: list[str] = Field(default_factory=list)
+    metadata: dict = Field(default_factory=dict)
 
 
 class ReBookRequest(BaseModel):
@@ -47,48 +61,50 @@ class ReBookRequest(BaseModel):
 
 
 class ReBookResponse(BaseModel):
-    ok: bool = True
+    ok: bool = False
     trip_id: str
-    new_flight_number: str
-    new_departure_time: str
-    rebooked_at: str
+    status: str = "DRAFT"
+    new_flight_number: Optional[str] = None
+    new_departure_time: Optional[str] = None
+    rebooked_at: Optional[str] = None
+    reality_tier: str = RealityTier.DETERMINISTIC_PREVIEW.value
+    provider_connected: bool = False
+    effects: list[str] = []
+    metadata: dict = Field(default_factory=dict)
 
 
 @router.get("/alerts", response_model=List[DisruptionAlert])
 def list_disruption_alerts(
     x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
-    """Scan active agency trips for real-time flight disruption alerts."""
+    """List preview alerts; no live feed is connected.
+
+    Honesty rule (F-38): the radar surfaces only trips that HAVE stored
+    disruption data (`active_disruption`). It no longer fabricates a default
+    CRITICAL cancellation per trip — an empty result is the honest empty,
+    and unscoped CRITICAL fabrication trains operators to ignore urgency.
+    """
     agency_id = x_agency_id or TEST_AGENCY_ID
     trips = TripStore.list_trips(agency_id=agency_id)
     now_iso = datetime.now(timezone.utc).isoformat()
 
     alerts: List[DisruptionAlert] = []
+    known_fields = set(DisruptionAlert.model_fields)
 
     for trip in trips:
-        packet = trip.get("packet", {}) or {}
-        flight_no = packet.get("flight_number") or "BA178"
-
         # Check if trip has active disruption data stored
         disruption_data = trip.get("active_disruption")
-        if disruption_data:
-            alerts.append(DisruptionAlert(**disruption_data))
-        else:
-            # Default simulated active disruption for testing radar capabilities
-            dis_id = f"dis_{trip['id'][:8]}"
-            alert = DisruptionAlert(
-                disruption_id=dis_id,
-                trip_id=trip["id"],
-                destination=trip.get("destination") or "Destination",
-                flight_number=flight_no,
-                disruption_type="CANCELLED",
-                urgency_level="CRITICAL",
-                delay_minutes=240,
-                impact_summary=f"Flight {flight_no} cancelled due to weather disruption",
-                status="ACTIVE",
-                created_at=now_iso,
-            )
-            alerts.append(alert)
+        if not disruption_data:
+            continue
+        # Tolerate legacy stored rows: filter unknown keys and backfill
+        # created_at rather than 500-ing the whole surface on one bad row.
+        sanitized = {k: v for k, v in disruption_data.items() if k in known_fields}
+        if not sanitized.get("created_at"):
+            sanitized["created_at"] = trip.get("updated_at") or now_iso
+        try:
+            alerts.append(DisruptionAlert(**sanitized))
+        except Exception as e:
+            logger.warning("Skipping malformed stored disruption for trip %s: %s", trip.get("id"), e)
 
     return alerts
 
@@ -98,7 +114,7 @@ def get_rebook_options(
     trip_id: str,
     x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
-    """Auto-generate alternative flight re-booking options for a disrupted trip."""
+    """Return deterministic alternatives for operator review, never a quote."""
     agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
@@ -110,6 +126,13 @@ def get_rebook_options(
     dep_2 = (now + timedelta(hours=6)).isoformat()
     arr_2 = (now + timedelta(hours=14)).isoformat()
 
+    metadata = TierMetadata.for_response(
+        RealityTier.DETERMINISTIC_PREVIEW,
+        "disruption_rebook_options",
+        computation_method="local deterministic preview; no supplier availability check",
+        missing_for_upgrade=["connected flight provider", "fresh availability", "fare quote", "booking reference"],
+    )
+
     return [
         ReBookOption(
             option_id="opt_alt_1",
@@ -120,6 +143,10 @@ def get_rebook_options(
             cabin_class="Business",
             price_difference_usd=0.0,
             recommended=True,
+            reality_tier=RealityTier.DETERMINISTIC_PREVIEW.value,
+            provider_connected=False,
+            effects=[],
+            metadata=metadata,
         ),
         ReBookOption(
             option_id="opt_alt_2",
@@ -130,6 +157,10 @@ def get_rebook_options(
             cabin_class="Business",
             price_difference_usd=150.0,
             recommended=False,
+            reality_tier=RealityTier.DETERMINISTIC_PREVIEW.value,
+            provider_connected=False,
+            effects=[],
+            metadata=metadata,
         ),
     ]
 
@@ -140,40 +171,32 @@ def execute_rebook(
     body: ReBookRequest,
     x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
-    """Execute 1-click re-booking of an alternative flight option for a disrupted trip."""
+    """Refuse unverified rebooking; connected-provider execution is not wired."""
     agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    now_iso = datetime.now(timezone.utc).isoformat()
-    new_flight = "BA182" if body.chosen_option_id == "opt_alt_1" else "VS020"
+    # DETERMINISTIC_PREVIEW explicitly cannot mutate booking state. Keep the
+    # capability assertion adjacent to the old mutation seam so a future
+    # provider-backed implementation must opt into a higher, evidenced tier.
+    from spine_api.core.reality_tier import assert_tier_capability
 
-    packet = trip.setdefault("packet", {})
-    packet["flight_number"] = new_flight
-    packet["disruption_resolved"] = True
-
-    if "active_disruption" in trip:
-        trip["active_disruption"]["status"] = "REBOOKED"
-
-    TripStore.save_trip(trip, agency_id=agency_id)
-
-    AuditStore.log_event(
-        event_type="disruption_rebooked",
-        user_id=agency_id,
-        details={
-            "trip_id": trip_id,
-            "disruption_id": body.disruption_id,
-            "chosen_option_id": body.chosen_option_id,
-            "new_flight_number": new_flight,
-            "advisor_note": body.advisor_note,
-        },
+    assert_tier_capability(
+        RealityTier.DETERMINISTIC_PREVIEW,
+        "can_mutate_booking_state",
+        "disruption_rebook",
     )
 
+    # Defensive return for type checkers; assert_tier_capability always raises.
     return ReBookResponse(
-        ok=True,
         trip_id=trip_id,
-        new_flight_number=new_flight,
-        new_departure_time=now_iso,
-        rebooked_at=now_iso,
+        status="AWAITING_PROVIDER",
+        metadata=TierMetadata.for_response(
+            RealityTier.DETERMINISTIC_PREVIEW,
+            "disruption_rebook",
+            data_sufficient=False,
+            computation_method="no mutation performed; provider confirmation required",
+            missing_for_upgrade=["connected booking provider", "supplier confirmation", "idempotency key", "external booking reference"],
+        ),
     )

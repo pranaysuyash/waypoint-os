@@ -34,6 +34,10 @@ warnings.filterwarnings(
 if not os.environ.get("JWT_SECRET"):
     os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-only-32byt"
 
+# PROPOSAL_SIGNING_KEY — must be set before spine_api/routers/public_proposals.py
+# is imported, because it raises at import time if missing.
+os.environ.setdefault("PROPOSAL_SIGNING_KEY", "test-proposal-signing-key-for-pytest-32bytes")
+
 # Tell the app we are inside a test run so the lifespan skips background
 # agents that would create the TripStore SQL bridge (agent_work_coordinator
 # always uses _run_async_blocking, bypassing TRIPSTORE_BACKEND=file).
@@ -127,8 +131,8 @@ async def _ensure_test_principal() -> None:
             await conn.execute(
                 text(
                     """
-                    INSERT INTO users (id, email, password_hash, name, is_active, created_at)
-                    VALUES (:id, :email, :password_hash, :name, true, NOW())
+                    INSERT INTO users (id, email, password_hash, name, is_active, platform_role, created_at)
+                    VALUES (:id, :email, :password_hash, :name, true, 'none', NOW())
                     ON CONFLICT (id) DO NOTHING
                     """
                 ),

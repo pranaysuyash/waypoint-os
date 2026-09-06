@@ -7,6 +7,8 @@ audit, validation, readiness, mutation guards.
 Run: uv run pytest tests/test_booking_data.py -v
 """
 
+import json
+
 import pytest
 from unittest.mock import MagicMock
 
@@ -915,7 +917,6 @@ class TestFixtureSeedingNoReassignment:
         monkeypatch.setattr("spine_api.server.PROJECT_ROOT", tmp_path)
 
         # Create a fixture file
-        import json
         fixture = [{"id": "trip_f1", "status": "new", "created_at": "2026-01-01T00:00:00"}]
         fixture_path = fixtures_dir / "test_fixture.json"
         fixture_path.write_text(json.dumps(fixture))
@@ -932,3 +933,71 @@ class TestFixtureSeedingNoReassignment:
         assert count_b == 0  # Skipped, not reassigned
         trip_after = FileTripStore.get_trip("trip_f1")
         assert trip_after["agency_id"] == "agency_a"  # Unchanged
+
+    def test_seed_skips_global_id_collision_and_continues(self, tmp_path, monkeypatch):
+        """An RLS-hidden global ID collision must not abort later fixture rows."""
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+        from sqlalchemy.exc import IntegrityError
+
+        from spine_api.server import _seed_scenario_for_agency
+        from spine_api.persistence import TripStore
+
+        data_dir = tmp_path / "data"
+        fixtures_dir = data_dir / "fixtures"
+        fixtures_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr("spine_api.server.PROJECT_ROOT", tmp_path)
+        monkeypatch.setenv("SEED_SCENARIO", "collision_fixture")
+        (fixtures_dir / "collision_fixture.json").write_text(
+            json.dumps([
+                {"id": "trip_existing_elsewhere", "status": "new"},
+                {"id": "trip_after_collision", "status": "new"},
+            ])
+        )
+
+        monkeypatch.setattr(TripStore, "get_trip", lambda _trip_id: None)
+        saved_ids = []
+
+        def save_trip(trip_data, agency_id=None):
+            if trip_data["id"] == "trip_existing_elsewhere":
+                class DuplicateKey:
+                    sqlstate = "23505"
+                    constraint_name = "trips_pkey"
+                    detail = "Key (id)=(trip_existing_elsewhere) already exists."
+
+                raise IntegrityError("insert", {}, DuplicateKey())
+            saved_ids.append((trip_data["id"], agency_id))
+            return trip_data["id"]
+
+        monkeypatch.setattr(TripStore, "save_trip", save_trip)
+
+        assert _seed_scenario_for_agency("agency_new") == 1
+        assert saved_ids == [("trip_after_collision", "agency_new")]
+
+    def test_seed_reraises_unrelated_integrity_failure(self, tmp_path, monkeypatch):
+        """Only the trip primary-key conflict is an expected seed collision."""
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+        from sqlalchemy.exc import IntegrityError
+
+        from spine_api.server import _seed_scenario_for_agency
+        from spine_api.persistence import TripStore
+
+        data_dir = tmp_path / "data"
+        fixtures_dir = data_dir / "fixtures"
+        fixtures_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr("spine_api.server.PROJECT_ROOT", tmp_path)
+        monkeypatch.setenv("SEED_SCENARIO", "broken_fixture")
+        (fixtures_dir / "broken_fixture.json").write_text(json.dumps([{"id": "trip_bad"}]))
+
+        monkeypatch.setattr(TripStore, "get_trip", lambda _trip_id: None)
+        class ForeignKeyFailure:
+            sqlstate = "23503"
+            constraint_name = "trips_agency_id_fkey"
+            detail = "agency does not exist"
+
+        def save_trip_with_foreign_key_failure(*_args, **_kwargs):
+            raise IntegrityError("insert", {}, ForeignKeyFailure())
+
+        monkeypatch.setattr(TripStore, "save_trip", save_trip_with_foreign_key_failure)
+
+        with pytest.raises(IntegrityError):
+            _seed_scenario_for_agency("agency_new")

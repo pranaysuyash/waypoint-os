@@ -234,3 +234,48 @@ def test_sql_proposal_token_survives_roundtrip_and_is_scannable(sql_backend, sql
     found = persistence._run_async_blocking(_scan())
     assert found is not None, "proposal token must survive the SQL round-trip"
     assert found["id"] == trip_id
+
+
+# ---------------------------------------------------------------------------
+# Review cycle 2, finding A: the SQL CAS must fold unmapped keys into
+# analytics._extra and return the read shape — the production backend must
+# not silently drop packet/decision_state/missing_fields on optimistic-sync.
+# ---------------------------------------------------------------------------
+
+
+@requires_db
+def test_sql_cas_update_folds_unmapped_keys_and_returns_read_shape(sql_backend, sql_agency_id):
+    trip_id = sql_backend.save_trip(
+        {"id": str(uuid.uuid4()), "agency_id": sql_agency_id, "status": "new"},
+        agency_id=sql_agency_id,
+    )
+    try:
+        stored = sql_backend.get_trip_for_agency(trip_id, sql_agency_id)
+        updated = sql_backend.update_trip_if_version_for_agency(
+            trip_id,
+            sql_agency_id,
+            {
+                "packet": {"destination": "Tokyo", "budget_max": 8000},
+                "decision_state": "READY_FOR_STRATEGY",
+                "missing_fields": [],
+                "packet_version": 1,
+                "status": "active",
+            },
+            expected_updated_at=stored.get("updated_at"),
+        )
+
+        assert updated is not None, "CAS must match on the fresh read"
+        # Unmapped keys ride in analytics._extra but surface at top level.
+        assert updated["packet"] == {"destination": "Tokyo", "budget_max": 8000}
+        assert updated["decision_state"] == "READY_FOR_STRATEGY"
+        assert updated["missing_fields"] == []
+        assert updated["packet_version"] == 1
+
+        # The vanished-on-refetch defect: reads must agree with the CAS return.
+        refetched = sql_backend.get_trip_for_agency(trip_id, sql_agency_id)
+        assert refetched is not None
+        assert refetched["packet"] == {"destination": "Tokyo", "budget_max": 8000}
+        assert refetched["decision_state"] == "READY_FOR_STRATEGY"
+        assert refetched["packet_version"] == 1
+    finally:
+        sql_backend.delete_trip_for_agency(trip_id, sql_agency_id)

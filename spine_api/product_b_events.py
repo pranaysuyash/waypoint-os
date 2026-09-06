@@ -324,7 +324,10 @@ class ProductBEventStore:
         event_name: Optional[str] = None,
         inquiry_id: Optional[str] = None,
         trip_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
+        if workspace_id is not None and not str(workspace_id).strip():
+            raise ValueError("workspace_id must be non-empty when provided")
         cutoff = datetime.now(timezone.utc) - timedelta(days=max(1, window_days))
         events = cls._read_jsonl(cls.NORMALIZED_FILE)
         filtered: List[Dict[str, Any]] = []
@@ -340,6 +343,8 @@ class ProductBEventStore:
             if inquiry_id and event.get("inquiry_id") != inquiry_id:
                 continue
             if trip_id and event.get("trip_id") != trip_id:
+                continue
+            if workspace_id is not None and event.get("workspace_id") != workspace_id:
                 continue
             filtered.append(event)
 
@@ -455,8 +460,17 @@ class ProductBEventStore:
         }
 
     @classmethod
-    def compute_kpis(cls, *, window_days: int = 30, qualified_only: bool = False) -> Dict[str, Any]:
-        events = cls.list_events(window_days=window_days)
+    def compute_kpis(
+        cls,
+        *,
+        window_days: int = 30,
+        qualified_only: bool = False,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        if workspace_id is not None and not str(workspace_id).strip():
+            raise ValueError("workspace_id must be non-empty when provided")
+
+        events = cls.list_events(window_days=window_days, workspace_id=workspace_id)
         grouped = cls._group_by_inquiry(events)
 
         ttf_values: List[int] = []
@@ -536,7 +550,19 @@ class ProductBEventStore:
             product_a_signals / pull_through_denominator if pull_through_denominator > 0 else None
         )
 
+        observed_workspace_ids = {
+            str(event.get("workspace_id")).strip()
+            for event in events
+            if event.get("workspace_id")
+        }
+        workspace_count = 1 if workspace_id is not None else len(observed_workspace_ids)
+
         return {
+            "scope": {
+                "type": "agency" if workspace_id is not None else "global",
+                "workspace_id": workspace_id,
+                "workspace_count": workspace_count,
+            },
             "window_days": window_days,
             "qualified_only": qualified_only,
             "sample": {
@@ -567,4 +593,8 @@ class ProductBEventStore:
                 "product_a_interest_signal": product_a_signals,
             },
             "definitions": cls._kpi_definitions(window_days=window_days),
+            "provenance": {
+                "data_source": cls.NORMALIZED_DATA_SOURCE_LABEL,
+                "generated_at": _utc_now_iso(),
+            },
         }

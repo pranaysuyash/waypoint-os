@@ -8,7 +8,6 @@
 // ============================================================================
 
 /* tslint:disable */
-/* eslint-disable */
 /**
 /* This file was automatically generated from pydantic models by running pydantic2ts.
 /* Do not modify it by hand - just update the pydantic models and then re-run the script
@@ -76,6 +75,37 @@ export interface AssignInboxResponse {
   success: boolean;
   assigned: number;
 }
+/**
+ * Definition of an action authority rule (PER-0927).
+ */
+export interface AuthorityMatrixItem {
+  action_name: string;
+  tier: string;
+  description: string;
+  allowed_roles: string[];
+  requires_dual_approval?: boolean;
+}
+/**
+ * Catalog of the 5-tier Human-AI Authority Matrix.
+ */
+export interface AuthorityMatrixResponse {
+  actions?: AuthorityMatrixItem[];
+  total_actions?: number;
+}
+export interface AutoRebookRequest {
+  trip_id: string;
+  disruption_event_id: string;
+  auto_approve?: boolean;
+}
+export interface AutoRebookResponse {
+  ok?: boolean;
+  trip_id: string;
+  rebooked_segment: string;
+  new_confirmation_code: string;
+  additional_cost?: number;
+  status?: string;
+  executed_at: string;
+}
 export interface AutonomyOutcome {
   raw_verdict:
     | "ASK_FOLLOWUP"
@@ -105,6 +135,138 @@ export interface BottleneckCause {
   affectedTrips: number;
   suggestedAction: string;
 }
+/**
+ * List of registered circuit breakers across integrations.
+ */
+export interface CircuitListResponse {
+  circuits?: CircuitStatusItem[];
+  total_circuits?: number;
+}
+/**
+ * Operational telemetry of a single circuit breaker (PER-0924).
+ */
+export interface CircuitStatusItem {
+  name: string;
+  state: string;
+  recent_failure_count: number;
+  failure_threshold: number;
+  recovery_timeout_seconds: number;
+  cooldown_remaining_seconds: number;
+  total_successes: number;
+  total_failures: number;
+}
+/**
+ * Response returned when resetting a circuit breaker.
+ */
+export interface CircuitResetResponse {
+  circuit_name: string;
+  reset_successful: boolean;
+  state: string;
+}
+/**
+ * Request to initiate compensating transaction for commercial failure.
+ */
+export interface CompensationRequest {
+  trip_id: string;
+  payment_id: string;
+  amount: number;
+  reason: string;
+}
+/**
+ * Response confirming compensating hold and operator escalation.
+ */
+export interface CompensationResponse {
+  status: string;
+  incident_id: string;
+  trip_id: string;
+  payment_id: string;
+  refund_amount: number;
+  recommended_action: string;
+  timestamp: string;
+}
+export interface ComputedScore {
+  value?: number | null;
+  data_sufficient: boolean;
+  computation_method: string;
+  reality_tier?: string;
+}
+export interface ConciergeMonitorResponse {
+  ok?: boolean;
+  trip_id: string;
+  trip_status?: string;
+  disruption_detected?: boolean;
+  disruption_type?: string | null;
+  recommended_action?: string | null;
+  last_checked_at: string;
+}
+/**
+ * Complete constraint feasibility evaluation response (PER-0711).
+ */
+export interface ConstraintEvaluationResponse {
+  trip_id: string;
+  is_feasible: boolean;
+  hard_violations?: ConstraintViolationModel[];
+  soft_violations?: ConstraintViolationModel[];
+  relaxation_hierarchy?: {
+    [k: string]: unknown;
+  }[];
+  evaluated_at?: string | null;
+}
+/**
+ * Individual constraint violation in API responses (PER-0711).
+ */
+export interface ConstraintViolationModel {
+  constraint_id: string;
+  name: string;
+  category: string;
+  constraint_type: string;
+  severity: string;
+  affected_elements: string[];
+  description: string;
+  relaxation_option?: string | null;
+  metadata?: {
+    [k: string]: unknown;
+  };
+}
+/**
+ * Definition of an active constraint rule in the engine (PER-0711).
+ */
+export interface ConstraintRuleItem {
+  rule_id: string;
+  category: string;
+  constraint_type: string;
+  title: string;
+  description: string;
+  threshold_info: string;
+}
+/**
+ * List of active deterministic constraint satisfaction rules.
+ */
+export interface ConstraintRulesResponse {
+  active_rules?: ConstraintRuleItem[];
+  total_rules?: number;
+}
+/**
+ * Request to generate 3-tier counterfactual recovery alternatives.
+ */
+export interface CounterfactualReplanningRequest {
+  trip_id: string;
+  disrupted_node_id: string;
+  delay_minutes: number;
+}
+/**
+ * 3-tier ranked counterfactual recovery alternatives report.
+ */
+export interface CounterfactualReplanningResponse {
+  trip_id: string;
+  disrupted_node_id: string;
+  original_delay_hours: number;
+  alternatives: {
+    [k: string]: unknown;
+  }[];
+  recommended_strategy: string;
+  generated_at: string;
+}
 export interface CreateSeasonalCampaignRequest {
   name: string;
   status?: "draft" | "active" | "paused" | "archived";
@@ -125,6 +287,16 @@ export interface DashboardStatsResponse {
   ready_to_book: number;
   needs_attention: number;
 }
+/**
+ * Agency-level epistemic assumption policy response (PER-0922/0923).
+ */
+export interface EpistemicPolicyResponse {
+  agency_id: string;
+  critical_slot_gate?: string;
+  preference_slot_gate?: string;
+  custom_critical_slots?: string[];
+  require_evidence_provenance?: boolean;
+}
 export interface ExplicitReassessRequest {
   reason?: string | null;
   stage?: string | null;
@@ -139,11 +311,46 @@ export interface ExportResponse {
   download_url: string;
   expires_at: string;
 }
+/**
+ * Request for multi-currency conversion with volatility buffer.
+ */
+export interface FXConversionRequest {
+  amount_in_target: number;
+  target_currency: string;
+  agency_base_currency?: string;
+  custom_slippage_buffer_pct?: number;
+}
+/**
+ * Calculated multi-currency conversion result with fee breakdown.
+ */
+export interface FXConversionResponse {
+  base_currency: string;
+  target_currency: string;
+  mid_market_rate: number;
+  slippage_buffer_pct: number;
+  effective_rate: number;
+  base_amount: number;
+  target_amount: number;
+  slippage_cost_base: number;
+  payment_gateway_fee_base: number;
+  total_cost_in_base_currency: number;
+}
 export interface FilterCounts {
   all: number;
   at_risk: number;
   incomplete: number;
   unassigned: number;
+}
+export interface FollowUpPromptResponse {
+  ok?: boolean;
+  trip_id: string;
+  customer_name?: string | null;
+  channel?: string;
+  tone?: string;
+  missing_fields?: string[];
+  formatted_message: string;
+  quick_replies?: string[];
+  generated_at: string;
 }
 export interface FrontierOrchestrationResult {
   ghost_triggered?: boolean;
@@ -178,6 +385,26 @@ export interface NegotiationLog {
   next_action?: string | null;
   last_message?: string | null;
 }
+/**
+ * Request to compute Pareto-optimal group itinerary choices.
+ */
+export interface GroupConsensusRequest {
+  travelers: {
+    [k: string]: unknown;
+  }[];
+  candidate_options: {
+    [k: string]: unknown;
+  }[];
+}
+/**
+ * Ranked group consensus evaluation report.
+ */
+export interface GroupConsensusResponse {
+  results: {
+    [k: string]: unknown;
+  }[];
+  total_options_evaluated: number;
+}
 export interface HealthResponse {
   status: string;
   version: string;
@@ -185,6 +412,44 @@ export interface HealthResponse {
     [k: string]: unknown;
   } | null;
   issues?: string[] | null;
+}
+export interface InboundInquiryRequest {
+  channel?: "whatsapp_web" | "email" | "voice_note" | "manual_paste" | "chrome_extension";
+  /**
+   * Unstructured inbound chat or email text
+   */
+  raw_text: string;
+  customer_name?: string | null;
+  customer_contact?: string | null;
+  agent_notes?: string | null;
+  strict_leakage?: boolean;
+  metadata?: {
+    [k: string]: unknown;
+  };
+}
+export interface InboundInquiryResponse {
+  ok?: boolean;
+  trip_id: string;
+  channel: string;
+  decision_state: string;
+  packet: {
+    [k: string]: unknown;
+  };
+  missing_fields?: string[];
+  draft_followup_prompt?: string | null;
+  traveler_bundle?: {
+    [k: string]: unknown;
+  } | null;
+  internal_bundle?: {
+    [k: string]: unknown;
+  } | null;
+  safety?: SafetyResult;
+  created_at: string;
+}
+export interface SafetyResult {
+  strict_leakage?: boolean;
+  leakage_passed?: boolean;
+  leakage_errors?: string[];
 }
 /**
  * Canonical inbox payload — service-level projected and filtered.
@@ -244,6 +509,31 @@ export interface InboxStatsResponse {
   oldestUnassignedWaitingDays?: number | null;
   statsCoverage?: number;
 }
+/**
+ * Record of a failure incident or quarantined payload (PER-0924).
+ */
+export interface IncidentItem {
+  incident_id: string;
+  domain: string;
+  error_code: string;
+  message: string;
+  degradation_level: string;
+  circuit_state: string;
+  target_resource?: string | null;
+  compensating_action?: string | null;
+  quarantined_payload?: {
+    [k: string]: unknown;
+  } | null;
+  resolved?: boolean;
+  occurred_at: string;
+}
+/**
+ * List of failure incidents and quarantine entries.
+ */
+export interface IncidentListResponse {
+  incidents?: IncidentItem[];
+  total_incidents?: number;
+}
 export interface InsightsSummary {
   totalInquiries?: number;
   convertedToBooked?: number;
@@ -296,6 +586,33 @@ export interface InviteTeamMemberRequest {
   capacity?: number;
   specializations?: string[] | null;
 }
+/**
+ * Request to issue a cryptographically signed scoped capability token (PER-0933).
+ */
+export interface IssueCapabilityTokenRequest {
+  trip_id: string;
+  scopes: string[];
+  traveler_id?: string | null;
+  traveler_role?: string;
+  ttl_hours?: number;
+  metadata?: {
+    [k: string]: unknown;
+  } | null;
+}
+/**
+ * Response returned upon issuing a scoped capability token.
+ */
+export interface IssueCapabilityTokenResponse {
+  token_id: string;
+  token_string: string;
+  trip_id: string;
+  agency_id: string;
+  traveler_id?: string | null;
+  traveler_role: string;
+  allowed_scopes: string[];
+  expires_at: string;
+  issued_at: string;
+}
 export interface MonthlyRevenue {
   month: string;
   revenue?: number;
@@ -317,10 +634,77 @@ export interface OperationalAlert {
     [k: string]: unknown;
   };
 }
+export interface OptimisticSyncRequest {
+  trip_id: string;
+  /**
+   * Field-level updates (budget, dates, party, preferences)
+   */
+  field_updates: {
+    [k: string]: unknown;
+  };
+  actor_id?: string | null;
+  client_timestamp?: string | null;
+  /**
+   * 'operator' or 'customer' — drives merge precedence (commercial fields: operator>customer; preference fields: customer>operator). Defaults to operator.
+   */
+  actor_role?: string | null;
+  /**
+   * Optimistic concurrency check: reject with 409 if the stored packet_version is newer.
+   */
+  expected_packet_version?: number | null;
+}
+export interface OptimisticSyncResponse {
+  ok?: boolean;
+  trip_id: string;
+  previous_state: string;
+  new_state: string;
+  packet: {
+    [k: string]: unknown;
+  };
+  reconciled_fields: string[];
+  missing_fields?: string[];
+  /**
+   * Requested updates rejected by merge precedence, with the kept value — nothing silently lost.
+   */
+  conflicts?: {
+    [k: string]: unknown;
+  }[];
+  /**
+   * Monotonic version of the trip packet after this sync.
+   */
+  packet_version?: number;
+  synced_at: string;
+}
 export interface OrphanTrip {
   id: string;
   status?: string | null;
   created_at?: string | null;
+}
+export interface OutboundMessageRequest {
+  trip_id: string;
+  /**
+   * Recipient phone number (E.164) or email address
+   */
+  recipient: string;
+  /**
+   * whatsapp | email | sms
+   */
+  channel: string;
+  /**
+   * Formatted message body
+   */
+  content: string;
+  template_id?: string | null;
+}
+export interface OutboundMessageResponse {
+  ok?: boolean;
+  message_id: string;
+  trip_id: string;
+  channel: string;
+  status?: string;
+  provider?: string;
+  dispatched_at: string;
+  dispatch_status?: string;
 }
 export interface OverrideRequest {
   flag: string;
@@ -347,12 +731,51 @@ export interface OverrideResponse {
   warnings?: string[];
   audit_event_id: string;
 }
+/**
+ * Request to calculate legal disruption entitlements under EU261/DOT.
+ */
+export interface PassengerRightsRequest {
+  disruption_type?: string;
+  flight_distance_km: number;
+  delay_arrival_hours: number;
+  cancellation_notice_days?: number | null;
+  is_extraordinary_circumstances?: boolean;
+}
+/**
+ * Legal entitlement claim report for flight disruptions.
+ */
+export interface PassengerRightsResponse {
+  is_eligible_for_compensation: boolean;
+  is_eligible_for_full_refund: boolean;
+  jurisdiction: string;
+  compensation_currency: string;
+  compensation_amount: number;
+  right_to_care_required: boolean;
+  duty_of_care_items: string[];
+  statutory_reference: string;
+  claim_rationale: string;
+  rebooking_entitlement: string;
+}
 export interface PipelineStageConfig {
   stage_id: string;
   label: string;
   order: number;
   sla_hours?: number | null;
   auto_actions?: string[];
+}
+export interface ProposalLinkRequest {
+  trip_id: string;
+  expiry_days?: number;
+  allow_customization?: boolean;
+}
+export interface ProposalLinkResponse {
+  ok?: boolean;
+  trip_id: string;
+  proposal_token: string;
+  web_url: string;
+  expires_at: string;
+  interactive_capabilities?: string[];
+  generated_at: string;
 }
 export interface PublicCheckerArtifactManifest {
   trip_id: string;
@@ -391,6 +814,24 @@ export interface QualityScore {
     [k: string]: number;
   };
 }
+/**
+ * Request to isolate a poisoned/malformed inquiry payload.
+ */
+export interface QuarantineIntakeRequest {
+  raw_input: string;
+  reason: string;
+  metadata?: {
+    [k: string]: unknown;
+  } | null;
+}
+/**
+ * Response acknowledging intake payload quarantine.
+ */
+export interface QuarantineIntakeResponse {
+  incident_id: string;
+  status: string;
+  quarantined_at: string;
+}
 export interface RevenueMetrics {
   period?: string;
   totalPipelineValue?: number;
@@ -407,6 +848,88 @@ export interface ReviewActionRequest {
   error_category?: string | null;
   escalation_outcome?: ("false_escalation" | "missed_escalation" | "correct_escalation" | "not_applicable") | null;
   review_workflow_unit_id?: string | null;
+}
+export interface ReviewSignoffRequest {
+  trip_id: string;
+  reviewer_id: string;
+  decision?: string;
+  feedback_notes?: string | null;
+}
+export interface ReviewSignoffResponse {
+  ok?: boolean;
+  trip_id: string;
+  reviewer_id: string;
+  decision: string;
+  signoff_at: string;
+}
+/**
+ * Response acknowledging token revocation.
+ */
+export interface RevokeCapabilityTokenResponse {
+  token_id: string;
+  revoked: boolean;
+  message: string;
+}
+/**
+ * Operator triage action for routing health alerts.
+ *
+ * Notes are optional and can be used to record analyst context.
+ */
+export interface RoutingHealthAlertTriageRequest {
+  action: "acknowledge" | "close" | "escalate";
+  note?: string | null;
+}
+export interface RoutingHealthAlertTriageResponse {
+  success: boolean;
+  event_id: string;
+  target_event_id: string;
+  action: "acknowledge" | "close" | "escalate";
+  triage_event: {
+    [k: string]: unknown;
+  };
+}
+export interface RoutingHealthEvidenceExportResponse {
+  generated_at: string;
+  total: number;
+  items: {
+    [k: string]: unknown;
+  }[];
+}
+/**
+ * Log a paging alert suppression action for a single operator context.
+ */
+export interface RoutingHealthPagingSuppressionRequest {
+  note?: string | null;
+  suppress_for_minutes?: number | null;
+}
+export interface RoutingHealthPagingSuppressionResponse {
+  success: boolean;
+  event_id: string;
+  suppression_event: {
+    [k: string]: unknown;
+  };
+}
+export interface RoutingHealthTriageBatchItem {
+  event_id: string;
+  action: "acknowledge" | "close" | "escalate";
+  note?: string | null;
+}
+export interface RoutingHealthTriageBatchResponse {
+  success: boolean;
+  requested: number;
+  succeeded: number;
+  failed: number;
+  results: RoutingHealthTriageBatchResponseItem[];
+}
+export interface RoutingHealthTriageBatchResponseItem {
+  event_id: string;
+  success: boolean;
+  action?: ("acknowledge" | "close" | "escalate") | null;
+  note?: string | null;
+  triage_event?: {
+    [k: string]: unknown;
+  } | null;
+  error?: string | null;
 }
 /**
  * Returned immediately by POST /run — the run is queued, poll for status.
@@ -458,11 +981,6 @@ export interface RunStatusResponse {
   hard_blockers?: string[];
   soft_blockers?: string[];
   frontier_result?: FrontierOrchestrationResult | null;
-}
-export interface SafetyResult {
-  strict_leakage?: boolean;
-  leakage_passed?: boolean;
-  leakage_errors?: string[];
 }
 export interface SeasonDispatchRequest {
   dry_run?: boolean;
@@ -633,9 +1151,31 @@ export interface SuitabilitySignal {
   reason: string;
   confidence: number;
 }
+export interface SupplierOption {
+  supplier_name: string;
+  supplier_type: string;
+  base_cost: number;
+  commission_pct: number;
+  net_margin: number;
+  bonus_override_eligible?: boolean;
+  suitability_score: number;
+}
 export interface SystemicError {
   category: string;
   count: number;
+}
+export interface TeamAssignmentRequest {
+  trip_id: string;
+  assignee_id: string;
+  assignee_role?: string;
+  notes?: string | null;
+}
+export interface TeamAssignmentResponse {
+  ok?: boolean;
+  trip_id: string;
+  assigned_to: string;
+  role: string;
+  assigned_at: string;
 }
 export interface TeamMember {
   id: string;
@@ -764,6 +1304,23 @@ export interface TripResponse {
   trip_priorities?: string | null;
   date_flexibility?: string | null;
 }
+export interface TrustScorecardResponse {
+  ok?: boolean;
+  trip_id: string;
+  completeness_score: ComputedScore;
+  budget_alignment_score: ComputedScore;
+  confidence_score: ComputedScore;
+  overall_trust_score?: number | null;
+  suitability_match_pct?: number | null;
+  safety_score?: number | null;
+  budget_fit_status?: string;
+  highlights?: string[];
+  risk_mitigations?: string[];
+  transparency_badges?: {
+    [k: string]: string;
+  }[];
+  generated_at: string;
+}
 export interface UnifiedStateResponse {
   canonical_total: number;
   stages: {
@@ -845,6 +1402,15 @@ export interface UpdateCommSettings {
   include_unsubscribe_link?: boolean | null;
   compliance_footer?: string | null;
 }
+/**
+ * Agency-level epistemic assumption policy update request (PER-0922/0923).
+ */
+export interface UpdateEpistemicPolicy {
+  critical_slot_gate?: ("block" | "warn_watermark" | "allow") | null;
+  preference_slot_gate?: ("warn_advisory" | "block" | "silent_default") | null;
+  custom_critical_slots?: string[] | null;
+  require_evidence_provenance?: boolean | null;
+}
 export interface UpdateOperationalSettings {
   agency_name?: string | null;
   sub_brand?: string | null;
@@ -915,4 +1481,28 @@ export interface UpdateSupportSettings {
   out_of_hours_message?: string | null;
   enable_csat_survey?: boolean | null;
   csat_trigger?: string | null;
+}
+/**
+ * Verification diagnosis for a capability token.
+ */
+export interface VerifyCapabilityTokenResponse {
+  is_valid: boolean;
+  token_id?: string | null;
+  trip_id?: string | null;
+  agency_id?: string | null;
+  traveler_id?: string | null;
+  traveler_role?: string | null;
+  allowed_scopes?: string[];
+  expires_at?: string | null;
+  revoked?: boolean;
+  message: string;
+}
+export interface YieldArbitrageResponse {
+  ok?: boolean;
+  trip_id: string;
+  data_sufficient?: boolean;
+  supplier_options?: SupplierOption[];
+  optimal_supplier: string;
+  potential_margin_gain: number;
+  generated_at: string;
 }

@@ -6,11 +6,12 @@ and tracks duty-of-care traveler safety risk levels.
 """
 
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.core.auth import get_current_agency_id
+from spine_api.persistence import AuditStore, TripStore
 
 router = APIRouter(prefix="/api/v1/corporate", tags=["Corporate Policy & Duty of Care"])
 
@@ -59,10 +60,9 @@ def get_corporate_policy_rules():
 @router.post("/audit-policy/{trip_id}", response_model=PolicyAuditResponse)
 def audit_trip_corporate_policy(
     trip_id: str,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Audit a trip itinerary against corporate travel policy rules and duty of care safety metrics."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -111,10 +111,9 @@ def audit_trip_corporate_policy(
 def approve_corporate_policy_override(
     trip_id: str,
     body: OverrideRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Approve a corporate policy exception/override for a trip."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")

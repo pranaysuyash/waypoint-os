@@ -454,6 +454,56 @@ class TestRequeueJobStats:
         assert stats["poisoned"] is True
 
 
+class TestPoisonedJobInspection:
+    def test_list_poisoned_is_redacted_deterministic_and_excludes_active_jobs(self):
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        store = RequeueJobStore()
+        _, poisoned_id = store.enqueue(
+            "t_poison", "req:t_poison:1", "missing context", {"token": "secret"}
+        )
+        store.fail(poisoned_id, "x" * 3000, poison=True)
+        store.enqueue("t_pending", "req:t_pending:1", "still pending", {"password": "secret"})
+
+        rows = store.list_poisoned()
+
+        assert len(rows) == 1
+        summary = rows[0]
+        assert summary.job_id == poisoned_id
+        assert summary.trip_id == "t_poison"
+        assert summary.attempts == 1
+        assert len(summary.last_error) == 2048
+        assert "secret" not in repr(summary)
+        assert not hasattr(summary, "payload")
+
+    def test_list_poisoned_supports_bounded_filter_and_offset(self):
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        store = RequeueJobStore()
+        for index in range(3):
+            trip_id = f"t_filter_{index}"
+            _, job_id = store.enqueue(trip_id, f"req:{trip_id}", "fatal")
+            store.fail(job_id, f"error-{index}", poison=True)
+
+        filtered = store.list_poisoned(trip_id="t_filter_1")
+        page = store.list_poisoned(limit=1, offset=1)
+
+        assert [row.trip_id for row in filtered] == ["t_filter_1"]
+        assert len(page) == 1
+        assert page[0].trip_id in {"t_filter_0", "t_filter_1"}
+
+    def test_list_poisoned_rejects_unbounded_arguments(self):
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        store = RequeueJobStore()
+        with pytest.raises(ValueError):
+            store.list_poisoned(limit=0)
+        with pytest.raises(ValueError):
+            store.list_poisoned(limit=101)
+        with pytest.raises(ValueError):
+            store.list_poisoned(offset=-1)
+
+
 # ── Factory integration tests ──────────────────────────────────────────
 
 
