@@ -14,6 +14,17 @@
 - Wave B6/B7: orientation research -> `Docs/exploration/PROVIDER_CONNECTOR_AND_INDIA_PAYMENTS_RESEARCH_2026-09-08.md` (orientation tier — search quota exhausted mid-research; live vendor verification owed).
 - **OPEN TASK B6/B7-upgrade (2026-09-09):** upgrade the orientation-tier research to a live-verified DECIDE package. Owner selected this as an open task. Scope: (1) live vendor verification — Mystifly sandbox onboarding + API contract probe (flight-order round-trip shape vs our adapter contract), TBO hotel+flight one-wallet economics; (2) India rails — Razorpay mandate/webhook contract vs PaymentMandateLedger CAS, GST invoicing requirement; (3) output: updated `Docs/exploration/PROVIDER_CONNECTOR_AND_INDIA_PAYMENTS_RESEARCH_2026-09-08.md` from "orientation" to "verified" tier + DECIDE package for Wave C. Blocked only by web-search quota (resets 2026-10-06) and owner/Ravi answers on corridors + volume + GST needs.
 - Wave B8: blocked on Ravi's conversation.
+
+### FOR LATER — research/exploration deferred (owner directive, 2026-09-09)
+
+Research-type items are explicitly parked; implementation tasks proceed without them:
+
+- **B6/B7-upgrade** (live vendor verification: Mystifly/TBO sandbox probes, Razorpay contract mapping) — FOR LATER until web-search quota resets (2026-10-06) and owner/Ravi answer corridors + volume + GST.
+- **B8 stakeholder-requirements capture** — FOR LATER until the Ravi conversation is confirmed/held.
+- **E-H adversarial lane activation** (A7 sub-item) — the activation design needs a research pass on corpus-to-lane wiring before code; parked with A7.
+- **Hosted evidence (L8)** — FOR LATER until deploy authorization.
+
+Everything in Wave A (A1–A7) and the L7-authenticated walk is implementation work and proceeds.
 - Gates at close: 111 backend (focused expanded) + 1,371 frontend / 183 files tests passing; scoped mypy 21 files clean; ruff/tsc clean.
 
 ---
