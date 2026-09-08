@@ -4,6 +4,13 @@ const { proxy } = await import("../proxy");
 
 import type { NextRequest } from "next/server";
 
+// Synthetic test fixtures — NOT credentials. These strings exist so the
+// auth-proxy behavior can be exercised end-to-end; they are rejected by
+// every real credential check by construction (Part N, scanner remediation).
+const FIXTURE_ACCESS_TOKEN = 'proxy-test-fixture-access-value';
+const FIXTURE_REFRESH_TOKEN = 'proxy-test-fixture-refresh-value';
+
+
 function mockRequest(path: string, cookies: Record<string, string> = {}, search: string = ""): NextRequest {
   const url = `http://localhost:3000${path}${search}`;
   const req = {
@@ -76,14 +83,14 @@ describe("proxy.ts page guard", () => {
   });
 
   it("allows refresh_token-only requests through protected pages", async () => {
-    const req = mockRequest("/overview", { refresh_token: "valid-refresh" });
+    const req = mockRequest("/overview", { refresh_token: FIXTURE_REFRESH_TOKEN });
     const res = await proxy(req);
     expect(res.status).not.toBe(307);
   });
 
   it("redirects auth-looking user on /login to safe protected destination", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
-    const req = mockRequest("/login", { access_token: "valid-token" });
+    const req = mockRequest("/login", { access_token: FIXTURE_ACCESS_TOKEN });
     const res = await proxy(req);
     expect(res.status).toBe(307);
     const loc = redirectLocation(res)!;
@@ -92,7 +99,7 @@ describe("proxy.ts page guard", () => {
 
   it("redirects auth-looking user on /login with redirect param to target", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
-    const req = mockRequest("/login", { access_token: "valid-token" }, "?redirect=/inbox");
+    const req = mockRequest("/login", { access_token: FIXTURE_ACCESS_TOKEN }, "?redirect=/inbox");
     const res = await proxy(req);
     expect(res.status).toBe(307);
     const loc = redirectLocation(res)!;
@@ -102,7 +109,7 @@ describe("proxy.ts page guard", () => {
 
   it("ignores redirect=https://evil.com (external)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
-    const req = mockRequest("/login", { access_token: "valid-token" }, "?redirect=https://evil.com");
+    const req = mockRequest("/login", { access_token: FIXTURE_ACCESS_TOKEN }, "?redirect=https://evil.com");
     const res = await proxy(req);
     const loc = redirectLocation(res)!;
     expect(loc).toContain("/overview");
@@ -111,7 +118,7 @@ describe("proxy.ts page guard", () => {
 
   it("ignores redirect=//evil.com (protocol-relative)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
-    const req = mockRequest("/login", { access_token: "valid-token" }, "?redirect=//evil.com");
+    const req = mockRequest("/login", { access_token: FIXTURE_ACCESS_TOKEN }, "?redirect=//evil.com");
     const res = await proxy(req);
     const loc = redirectLocation(res)!;
     expect(loc).toContain("/overview");
@@ -120,7 +127,7 @@ describe("proxy.ts page guard", () => {
 
   it("ignores redirect=/login to prevent redirect loop", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
-    const req = mockRequest("/login", { access_token: "valid-token" }, "?redirect=/login");
+    const req = mockRequest("/login", { access_token: FIXTURE_ACCESS_TOKEN }, "?redirect=/login");
     const res = await proxy(req);
     const loc = redirectLocation(res)!;
     expect(loc).toContain("/overview");
@@ -128,7 +135,7 @@ describe("proxy.ts page guard", () => {
 
   it("ignores redirect=/signup to prevent redirect loop", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
-    const req = mockRequest("/login", { access_token: "valid-token" }, "?redirect=/signup");
+    const req = mockRequest("/login", { access_token: FIXTURE_ACCESS_TOKEN }, "?redirect=/signup");
     const res = await proxy(req);
     const loc = redirectLocation(res)!;
     expect(loc).toContain("/overview");
@@ -136,7 +143,7 @@ describe("proxy.ts page guard", () => {
 
   it("ignores redirect=/login?next=/overview to prevent auth-page redirect loops", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
-    const req = mockRequest("/login", { access_token: "valid-token" }, "?redirect=/login?next=/overview");
+    const req = mockRequest("/login", { access_token: FIXTURE_ACCESS_TOKEN }, "?redirect=/login?next=/overview");
     const res = await proxy(req);
     const loc = redirectLocation(res)!;
     expect(loc).toContain("/overview");
@@ -145,7 +152,7 @@ describe("proxy.ts page guard", () => {
 
   it("ignores redirect=/signup?invite=abc to prevent auth-page redirect loops", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
-    const req = mockRequest("/login", { access_token: "valid-token" }, "?redirect=/signup?invite=abc");
+    const req = mockRequest("/login", { access_token: FIXTURE_ACCESS_TOKEN }, "?redirect=/signup?invite=abc");
     const res = await proxy(req);
     const loc = redirectLocation(res)!;
     expect(loc).toContain("/overview");

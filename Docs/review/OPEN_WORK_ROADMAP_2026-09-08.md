@@ -65,7 +65,7 @@ Everything in Wave A (A1–A7) and the L7-authenticated walk is implementation w
 | C4 | C-01 Frontier/Council label-vs-wire · C-02 judge/orphans · C-03 router-vs-`routing_health` implement-or-rename · C-04 SLM waits on E-C | PER-0700 |
 | C5 | WhatsApp channel + invoice/GST + commission-model realism (from Ravi discovery) | demo plan §5 |
 | C6 | E-B vs live enum ratification (see B4) | contested since 09-07 |
-| C7 | **RDOC wedge decisions** — wedge fate (kill / invert to agency-branded checker [recommended] / keep as traveler surface; the master gate for FT-G1..G7) + email-capture fate + retention policy + rule-expansion scope + monetization direction | `Docs/review/WEDGE_FATE_DECISION_PACK_RDA_2026-09-08.md` + `FINDINGS_TASKS_IMPLICIT_EXPLICIT_REGISTER_RDOC_AUDIT_2026-09-08.md` (FT-G7 = pricing/marketing checker-link disposition: the links are wedge-era surface contradicting the 06-28 homepage delink — keep, rewrite as inverted-wedge copy, or remove per C7) |
+| C7 | **RDOC wedge decisions — DECIDED 2026-09-09** (WOBS Part 3.2): build the full open verifier + marketplace ("we build it"); **nothing gates on Ravi meetings** (Ravi = first receiver when available; demand-capture replaces acceptance-first); dream-shelf structural items pulled into the build (structured findings, content-addressed reports, server-seal, declare-radio attribution); Atlas publishes when corpus volume exists; Warranty Layer waits for multiple parties. Phased build (P1 Verifier / P2 Marketplace interaction / P3 Compounding) in WOBS Part 3.2. B9 competitor refresh remains as sharpening, not a gate. | `Docs/exploration/WOBS_AGENCY_BRANDED_CHECKER_2026-09-09.md` Parts 0–3.2 |
 
 ## Wave D — Launch envelope (owns L1–L8; do not mix with product waves)
 
@@ -82,3 +82,20 @@ Sequence per launch plan: E-G → SQL projection (L4) → platform choice (L1) �
 ---
 
 **Rule of thumb for the next agent:** pick from Wave A top-down; if a task says "needs E-*", do the Wave B item first. Never start a parallel router/store/healer — extend the canonical path. Verify with `scripts/run_backend_tests.sh` + scoped mypy + frontend vitest before claiming done.
+
+
+### Mimosa L3 commit-block findings (2026-09-09, registered — commit bd1c371+ gated)
+
+The workspace security scanner hard-blocked the Wave-A2/A6/A8 commit on findings across the repo (not introduced by that diff):
+
+| Finding | Severity | Disposition |
+|---|---|---|
+| Hardcoded credential-shaped literals in auth test fixtures (`proxy.test.ts`, `api-client.auth.test.ts`) | high (scanner) | **FIXED in working tree** — literals replaced with named synthetic constants (FIXTURE_ACCESS_TOKEN/FIXTURE_REFRESH_TOKEN); 18 auth tests pass; staged, awaiting gate-pass |
+| SSRF: `frontend/src/app/api/inbox/route.ts:17,52` | high | OPEN — route fetches `SPINE_API_URL` + user query; server-side allowlist needed. P1 (same-origin admin surface, but URL is env-derived + query passthrough) |
+| SSRF: `frontend/src/app/corporate/offsites/page.tsx:17-18` | high | OPEN — server component fetches `NEXT_PUBLIC_API_URL` + hardcoded company_id; P2 (env-derived, no user input in URL path shown) but needs verification |
+| SSRF: `frontend/design-lab/inspect-app-dna.py:266` | high | OPEN — dev-only design-lab script; exclude from production scan scope or fix |
+| Remaining Mimosa highs (of 30 flagged) | mixed | full re-scan required after fixes; do not treat this list as exhaustive |
+
+**Gate status:** commit blocked until the two SSRF surfaces are remediated (allowlist/URL-construction hardening) and the scanner re-run passes. The scanner's own caveat stands: this coverage was incomplete — run the full Mimosa audit per its recommendation before next release claim.
+
+**Wave A2/A6/A8 execution receipts are complete and tested** (see Part M / roadmap progress) but sit uncommitted behind this gate together with the rest of the staged tree.

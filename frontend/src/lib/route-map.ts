@@ -208,9 +208,11 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   // any spine route auth-free). They are explicitly mapped now; the wildcard
   // rewrites are removed. Do not reintroduce wildcard rewrites without
   // re-running the route-map honesty tests.
-  // 2026-09-06: `v1/logistics/assess-route` was removed — no backend route
-  // exists for it (route-inventory gate flagged it); re-add together with
-  // its backend endpoint, never ahead of one.
+  // 2026-09-08: `v1/logistics/assess-route` mapping restored — its backend
+  // endpoint now EXISTS (POST /api/v1/logistics/assess-route in
+  // spine_api/routers/logistics.py, deterministic 2-Opt geodesic solver), so
+  // the earlier route-inventory gate removal is satisfied.
+  ["v1/logistics/assess-route", { backendPath: "api/v1/logistics/assess-route" }],
   ["v1/group/token/{token}", { backendPath: "api/v1/group/token/{token}" }],
   ["v1/group/token/{token}/pay-share", { backendPath: "api/v1/group/token/{token}/pay-share" }],
   ["public/journey-graph/{trip_id}", { backendPath: "api/public/journey-graph/{trip_id}" }],

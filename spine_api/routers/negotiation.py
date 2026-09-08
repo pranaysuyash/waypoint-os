@@ -15,6 +15,8 @@ from src.negotiation.bargaining_engine import BargainingEngine
 from src.negotiation.margin_optimizer import MarginOptimizer
 from src.negotiation.fee_waiver_bot import FeeWaiverBot
 from src.negotiation.models import NegotiationSession, NegotiationStatus
+from spine_api.core.feature_gates import get_feature_tier
+from spine_api.core.reality_tier import TierMetadata
 
 router = APIRouter(prefix="/api/v1/negotiation", tags=["negotiation"])
 
@@ -69,6 +71,11 @@ def start_negotiation_session(payload: StartSessionRequest) -> Dict[str, Any]:
     return {
         "status": "success",
         "session": session.to_dict(),
+        "_meta": TierMetadata.for_response(
+            get_feature_tier("supplier_negotiation"),
+            "supplier_negotiation",
+            computation_method="local game-theoretic bargaining simulation",
+        ),
     }
 
 
@@ -93,6 +100,11 @@ def evaluate_supplier_counter(payload: CounterOfferRequest) -> Dict[str, Any]:
     return {
         "status": "success",
         "evaluation": res,
+        "_meta": TierMetadata.for_response(
+            get_feature_tier("supplier_negotiation"),
+            "supplier_negotiation",
+            computation_method="local game-theoretic counter-offer evaluation",
+        ),
     }
 
 
@@ -107,6 +119,11 @@ def optimize_dynamic_margin(payload: OptimizeMarginRequest) -> Dict[str, Any]:
     )
     return {
         "status": "success",
+        "_meta": TierMetadata.for_response(
+            get_feature_tier("supplier_negotiation"),
+            "supplier_negotiation",
+            computation_method="deterministic margin optimization over supplied parameters",
+        ),
         "margin_result": {
             "net_supplier_cost": result.net_supplier_cost,
             "optimized_selling_price": result.optimized_selling_price,
@@ -133,4 +150,9 @@ def generate_supplier_fee_waiver(payload: FeeWaiverRequest) -> Dict[str, Any]:
     return {
         "status": "success",
         "waiver": res,
+        "_meta": TierMetadata.for_response(
+            get_feature_tier("supplier_waiver"),
+            "supplier_waiver",
+            computation_method="deterministic waiver letter drafting; nothing sent to suppliers",
+        ),
     }

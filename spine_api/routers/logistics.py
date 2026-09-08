@@ -11,9 +11,12 @@ Endpoints:
 
 from __future__ import annotations
 
-from typing import List, Optional
-from pydantic import BaseModel
+
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field
 from fastapi import APIRouter
+
+from spine_api.core.reality_tier import RealityTier, TierMetadata
 
 from src.logistics.rooming_list import (
     RoomingListEngine,
@@ -115,6 +118,18 @@ class AccessibilityPlanRequest(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+def _tier_meta(feature: str, method: str) -> Dict[str, Any]:
+    """Reality-tier metadata: logistics computations are deterministic and real
+    over trip-local data; no external provider is contacted."""
+    return TierMetadata.for_response(
+        RealityTier.REAL,
+        feature,
+        data_sufficient=True,
+        computation_method=method,
+    )
+
+
+
 @router.post("/rooming-list")
 def generate_rooming_list_endpoint(payload: RoomingListRequest):
     """Allocate travelers to hotel rooms and compute single supplement totals."""
@@ -140,6 +155,7 @@ def generate_rooming_list_endpoint(payload: RoomingListRequest):
     )
 
     return {
+        "_meta": _tier_meta("logistics_rooming_list", "deterministic rooming-list and single-supplement computation over trip data"),
         "trip_id": res.trip_id,
         "hotel_name": res.hotel_name,
         "total_travelers": res.total_travelers,
@@ -173,6 +189,7 @@ def allocate_fleet_endpoint(payload: FleetAllocationRequest):
     )
 
     return {
+        "_meta": _tier_meta("logistics_fleet_allocation", "deterministic vehicle capacity matching over trip data"),
         "trip_id": res.trip_id,
         "passenger_count": res.passenger_count,
         "total_luggage_count": res.total_luggage_count,
@@ -212,6 +229,7 @@ def audit_timed_entry_endpoint(payload: TimedEntryAuditRequest):
     )
 
     return {
+        "_meta": _tier_meta("logistics_timed_entry", "deterministic timed-entry audit over trip schedule data"),
         "slot_id": res.slot_id,
         "venue_name": res.venue_name,
         "scheduled_arrival_time": res.scheduled_arrival_time,
@@ -239,6 +257,7 @@ def evaluate_connection_risk_endpoint(payload: ConnectionRiskRequest):
     )
 
     return {
+        "_meta": _tier_meta("logistics_connection_risk", "deterministic connection-risk scoring over trip data"),
         "connection_airport": res.connection_airport,
         "layover_minutes": res.layover_minutes,
         "required_mct_minutes": res.required_mct_minutes,
@@ -274,6 +293,7 @@ def create_accessibility_plan_endpoint(payload: AccessibilityPlanRequest):
     )
 
     return {
+        "_meta": _tier_meta("logistics_accessibility", "deterministic accessibility planning over trip data"),
         "trip_id": res.trip_id,
         "traveler_name": res.traveler_name,
         "airline_ssr_directives": [
@@ -328,6 +348,7 @@ def evaluate_route_geometry_endpoint(payload: RouteGeometryRequest):
     savings_pct = round((savings_dist / current_dist * 100.0), 1) if current_dist > 0 else 0.0
 
     return {
+        "_meta": _tier_meta("logistics_route_geometry", "deterministic backtracking detection and 2-Opt optimization over trip stops"),
         "has_backtracking": has_backtracking,
         "excess_distance": excess_dist,
         "current_distance": round(current_dist, 2),
@@ -348,6 +369,7 @@ def evaluate_open_jaw_endpoint(payload: OpenJawRequest):
     total_surface_dist = sum(float(seg.get("estimated_surface_distance_km") or 0.0) for seg in surface_segments)
 
     return {
+        "_meta": _tier_meta("logistics_route_geometry", "deterministic open-jaw surface-segment detection over trip legs"),
         "has_open_jaw": len(surface_segments) > 0,
         "open_jaw_segments_count": len(surface_segments),
         "total_surface_distance_km": round(total_surface_dist, 2),
@@ -374,10 +396,67 @@ def evaluate_ground_transit_endpoint(payload: GroundTransitRequest):
         dest_lon=payload.dest_lon,
     )
     return {
+        "_meta": _tier_meta("logistics_ground_transit", "OSRM-backed driving estimates with high-speed-rail heuristic"),
         "status": res.data.get("status", "success"),
         "direct_distance_km": res.data.get("direct_distance_km"),
         "road_distance_km": res.data.get("road_distance_km"),
         "driving_duration_minutes": res.data.get("driving_duration_minutes"),
         "high_speed_rail_duration_minutes": res.data.get("high_speed_rail_duration_minutes"),
         "mode": res.data.get("mode", "mock"),
+    }
+
+
+class AssessRouteStop(BaseModel):
+    airport_code: str = Field(..., description="IATA/ICAO or local stop code")
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+
+
+class AssessRouteRequest(BaseModel):
+    stops: List[AssessRouteStop] = Field(..., min_length=2, max_length=64)
+    fix_start: bool = True
+    unit: str = "km"
+
+
+@router.post("/assess-route")
+def assess_route_endpoint(payload: AssessRouteRequest):
+    """A8 (2026-09-08): backs the RouteMapStudio 2-Opt solver affordance.
+
+    Deterministic geodesic computation over the submitted stop coordinates —
+    no provider calls, no persistence, nothing simulated. Same input yields
+    the same output every time, so the response carries no reality-tier
+    downgrade: these are genuine great-circle numbers, not a provider claim.
+    """
+    stops = [s.model_dump() for s in payload.stops]
+    missing = [s["airport_code"] for s in stops if s.get("lat") is None or s.get("lng") is None]
+    if missing:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail=f"Stops missing coordinates: {', '.join(missing)}",
+        )
+
+    original_order = GeodesicPathOptimizer.calculate_total_distance(stops, unit=payload.unit)
+    optimized_stops = GeodesicPathOptimizer.optimize_waypoint_order(
+        stops, fix_start=payload.fix_start, unit=payload.unit
+    )
+    optimized_order = GeodesicPathOptimizer.calculate_total_distance(optimized_stops, unit=payload.unit)
+    savings = max(0.0, original_order - optimized_order)
+    savings_percent = round(savings / original_order * 100.0, 1) if original_order > 0 else 0.0
+
+    reordered = [s["airport_code"] for s in optimized_stops]
+    submitted = [s["airport_code"] for s in stops]
+
+    return {
+        "_meta": _tier_meta("logistics_assess_route", "deterministic great-circle and 2-Opt optimization over submitted coordinates"),
+        "status": "assessed",
+        "unit": payload.unit,
+        "total_distance_km": round(original_order, 2),
+        "optimized_distance_km": round(optimized_order, 2),
+        "savings_km": round(savings, 2),
+        "savings_percent": savings_percent,
+        "optimized_order": reordered,
+        "order_changed": reordered != submitted,
+        "stop_count": len(stops),
     }

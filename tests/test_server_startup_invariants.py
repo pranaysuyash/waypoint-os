@@ -16,9 +16,18 @@ class _ScalarResult:
 
 
 class _FakeConn:
-    def __init__(self, *, table_exists: bool = True, agency_exists: bool = True):
+    def __init__(
+        self,
+        *,
+        table_exists: bool = True,
+        agency_exists: bool = True,
+        memberships_table_exists: bool = True,
+        member_count: int = 0,
+    ):
         self.table_exists = table_exists
         self.agency_exists = agency_exists
+        self.memberships_table_exists = memberships_table_exists
+        self.member_count = member_count
         self.calls = []
 
     async def execute(self, statement, params=None):
@@ -26,6 +35,10 @@ class _FakeConn:
         self.calls.append((sql, params))
         if "set_config('lock_timeout'" in sql:
             return _ScalarResult(True)
+        if "table_name = 'memberships'" in sql:
+            return _ScalarResult(self.memberships_table_exists)
+        if "FROM memberships WHERE agency_id" in sql:
+            return _ScalarResult(self.member_count)
         if "information_schema.tables" in sql:
             return _ScalarResult(self.table_exists)
         if "FROM agencies WHERE id" in sql:

@@ -1,5 +1,20 @@
 # Wide-Open Brainstorm — Agency-Branded Checker (Full-B) (2026-09-09)
 
+## PART 0 — Discussion & decision trail (what was said, in order)
+
+Full-fidelity record of how this brainstorm came to be, with the owner's words preserved. Raw role outputs: **Appendix A (Round 1)** and **Appendix B (Round 2)** — `WOBS_AGENCY_BRANDED_CHECKER_2026-09-09_ROUND1_RAW.md` / `_ROUND2_RAW.md`.
+
+1. **2026-09-08 — Random doc audit.** Pranay's reusable "Random Repo Document Audit" prompt drew `Docs/context/ITINERARY_CHECKER_GTM_WEDGE_2026-04-14.md` (2,225-doc population, SystemRandom). Four parallel agents + live probes. Verdict: wedge implemented divergently, quietly demoted, never closed; honesty defects (fabricated testimonials, fake email gate, anonymous 401s, KPI-poisonable events). Report + register delivered.
+2. **2026-09-08 — "do all following the doctrines".** Register Buckets A (EXPLORE) + B (IMPLEMENT) executed same session (testimonials/email-gate removed, kill switch, event rotation, throttles, XFF rate key, agency guard, dead-share cleanup, supersession banners, 8 explore docs, wedge-fate decision pack). 189 backend + 22 frontend green.
+3. **2026-09-09 — Pranay challenged the AUD-07 "false positive" framing:** *"why should the pricing/marketing link to itinerary checker? isnt that the gtm wedge?"* → Verified: links work, but they ARE the wedge in copy (pricing tier 1 = "Traveler checker… pre-qualifying a trip before it reaches the agency"; PublicHeader default nav). Reframed: FT-03 moot as a broken-link fix; FT-G7 (marketing-link disposition) added to Bucket C, D-01-gated.
+4. **2026-09-09 — "keep this open as a task for later"** (on the quota-blocked competitor refresh) → Open Work Roadmap rows **B9** (retry 2026-10-06, queries recorded) and **C7** (wedge decisions).
+5. **2026-09-09 — "whats left?"** → Decisions D-01..D-05, Bucket C, full-suite debt, uncommitted tree.
+6. **2026-09-09 — "lets discuss, explain"** (D-01 selected) → Three options argued: kill steelmanned (surface = liability tax), keep called a trap (unowned surfaces decay — the testimonials/email-gate proved it), invert argued on five grounds (distribution dissolves, trust flips to the agent, pricing copy already inverted, feeds the core loop, ~full engine reuse); recommendation narrowed to "B pending one Ravi discovery answer, C-lite if it fails."
+7. **2026-09-09 — Pranay decided:** *"i think i will improve the page and do full B plus more if needed… you should call wide open brainstorm or the council orchestrator or personas that may help with this… even online research if needed"* → Skill-tool invocation timed out; SKILL.md read and followed manually. No external LLM CLIs → single-agent mode, 8 roles. Round 1 ran (Appendix A). Search quota exhausted (→ B9 debt made load-bearing).
+8. **2026-09-09 — Pranay's counter-frame (Part 1.5):** *"you took it such that the b2b side itself is asking clients to check their own provided itineraries while i had the gtm wedge inverted, people get to check any itinerary whether their own, an llms or any other vendor, we build a data corpus, and we also maybe make that a funnel to a marketplace of our own b2b customers… have you considered exploring?"* → Conceded the frame miss; compared B vs B′; proposed stack (B′ acquisition layer, B expansion layer); re-aimed pilot metrics; flagged B9 as now load-bearing.
+9. **2026-09-09 — Pranay: "document the whole brainstorm… then what we discussed and then run it again against the brainstorm"** → Part 1.5 written; Round 2 dispatched with cross-pollination digest (Appendix B); Part 2 synthesis: corrected kill ledger — (b) channel and (e) demand-research gate hold, (d) corpus-liability downgraded after its citation failed verification, verdict "conditional survive" with build conditions (proceed / gated / pause-cuts).
+10. **2026-09-09 — Pranay's epistemics ruling (Part 3):** *"why before launch you keep breaking your head… if you build properly, we start marketing properly"* → kill (b) ruled circular (the channel was never opened; zero organic usage cannot falsify demand); gates inverted: build properly → the checker earns its own scoped exposure decision (separate from platform NO-GO) → market properly, with B9/spend as post-exposure measurement, not preconditions.
+
 > **PART 1.5 — THE OWNER'S COUNTER-FRAME (Pranay, 2026-09-09, same day).** Round 1 anchored on the Sept-1 assessment's reading of "invert" (agency-branded private tool). Pranay corrected the frame: **the inverted wedge is an OPEN checker that verifies ANY itinerary — the user's own, an LLM-generated plan, or another vendor's package — builds a source-keyed data corpus, and funnels users to a marketplace of Waypoint's own B2B customers** ("3 things wrong with this plan → hand it to a vetted agency who'll fix them"). Key properties: agencies are demand *receivers*, not distributors; the funnel does not depend on clients arriving with pre-quote documents (the Executioner's kill-1 evidence is about the agency→client flow, not this); the original April wedge is reframed as *unfinished* (checker shipped; the quote-improvement → lead-routing → partner-agency leg that monetizes was never built — the orphan surface was an open-top funnel with a bricked middle). Round-1's agency-branded B survives as the *expansion layer* (branded check portal as a paid feature for agencies who became customers via routed leads), not the acquisition layer. Round 2 (below) re-ran all eight roles against this corrected thesis. Research debt note: B9's competitor refresh must be reframed for this thesis ("AI itinerary verifier" landscape, "check your ChatGPT plan" demand) and is now load-bearing — Oct 6 reset is a real gate before committing build effort.
 
 Method: `wide-open-brainstorm` skill, single-agent mode (no external LLM CLIs). Eight roles as differentiated read-only subagents: Strategist(+Methodologist), Champion, Operator, Customer Whisperer(+Outsider), Trickster(+Cartographer), Skeptic(+Data Steward), Future Self, Executioner(+Devil's Advocate). Web search quota-blocked (resets 2026-10-06; roadmap B9). All role claims spot-verified where load-bearing (both Executioner citations checked in-repo this session).
@@ -69,3 +84,138 @@ White: engine real (live-probed), 0 real users/5 months, Ravi call = no pre-quot
 ## Reformulated reusable prompt
 
 "Interrogate [feature] as a pilot-of-one before a platform: map the real two-sided workflow, find the five micro-decisions, run the kill test against the closest recorded real-user evidence, define a two-number unpoisonable experiment with go/stop thresholds, and only then design the page — hero object first, client/agency lenses, shame-safe inputs."
+
+---
+
+# PART 2 — Round 2: the room re-run against the owner's corrected thesis (2026-09-09)
+
+Seed: OPEN checker for ANY itinerary (self / LLM-generated / vendor package) → source-keyed corpus → routing to a vetted-agency marketplace (supply ≈ 1). Same 8 roles, cross-pollinated with the Round-1 digest and Part 1.5's counter-frame.
+
+## Round-1 ledger under the new frame (Strategist)
+
+Survives: "briefs that become quotes" (generalized to *routed* briefs with status); kill-the-score-dial page; Poisoned-Pipe Firewall (promoted to Gate 0 — attribution *is* the corpus schema). Inverts: Hand-Carried Pilot (Ravi becomes receiver #1, not distributor). Dies: Tenant-of-One as strategy (three competitors already ship a check; the moat candidate moves to the source-keyed corpus + acceptance loop). Executioner's Round-1 kill (no pre-quote documents) **dies for layers 1–2** (open traffic doesn't depend on any agency's client list), partially survives for layer 3 (agency portals).
+
+## Round-2 convergences (highest signal)
+
+1. **North star: routed-lead acceptance, not corpus size.** (Strategist) "A corpus entry is complete only when a professional signs" — Acceptance Ledger. Gate B: ≥10 routed briefs, ≥30% accepted in SLA, ≥1 paid fix.
+2. **The Ghost Hotel Test is the wedge inside the wedge.** (Operator, independently Trickster's "lien" + Future Self's entity-existence generalization) Entity-existence verification — LLM-invented hotels as hard blockers — is the one test OTA PDFs never fail and LLM plans routinely fail. Reality-check every named entity.
+3. **The consent moment IS the product.** (Operator) A user who pastes a hallucinated plan and opts into routing has performed the highest-intent agency-sales action in travel; today that moment evaporates into a clipboard string and an `__UNSET__` agency row.
+4. **Findings-first page, provenance stamp not accusation.** (Trickster + Customer Whisperer + Champion) Hero = the plan-as-manifest with pins ("The Manifest", "The Hoist" car-inspection grammar); provenance badge is descriptive ("AI-assisted — verified against 214 live sources"), judgment lives in findings; "Second Opinion" medical framing with a Disagree button per finding; clean reports get the sommelier's nod + a re-check date (the trust engine), zero CTA.
+5. **The funnel's two ends were never tested; you built the middle twice.** (Skeptic, echoing Round-1's convergence) Checking is engineering; ROUTING is the unproven leg. Cut-list: multi-format ingestion v1 (one format: pasted LLM-style itineraries), Ammunition Mode, marketplace UI, attribution classifier (declare-radio only), corpus-as-feature.
+
+## Kill test — verdict, with auditor corrections
+
+Executioner verdict: "does not survive" — but its three holding kills need correction after spot-verification:
+
+- **(b) Same-failed channel — HOLDS.** No sitemap, no robots, no blog (CONTENT_SEO_STRATEGY never built), launch NO-GO, 0 organic users in 5 months. The correction changes the hook, not the channel. Watch-item: B9.
+- **(e) Category absence — HOLDS as a gate.** "AI itinerary verification" demand is unresearchable until the Oct 6 quota reset; SALES_MARKETING_FIT sets zero ad spend until 50 paying customers. The repo cannot validate demand before asking the owner to commit.
+- **(d) Corpus liability — DOWNGRADED.** Its sharpest citation (a shipped "Not stored · Not shared · Session only" promise, test-enforced) **failed verification — no such copy or test exists**; what ships is a consent toggle covering "product improvement" storage. Surviving (d)-core: consent copy does NOT cover marketplace secondary use or vendor-scoring (legal exposure for scoring OTA packages), and EX-02 retention is unresolved. The corpus is therefore a *consent-redesign + legal-scoping task*, not a broken promise.
+- **(c) Marketplace illusion — HOLDS as sequencing constraint** (supply = 1; the clearinghouse flip is Round-1 dream-column).
+- **(a) Novelty-not-habit — inference, untestable until traffic.**
+
+**Arbitrated verdict: the corrected thesis SURVIVES conditionally** — as a product direction with two untested load-bearing premises (verification demand exists; routed leads get accepted), one hard channel gate (distribution — Oct 6 research and/or owner-approved spend-as-instrument), and one redesign obligation (consent + legal scoping before corpus-as-feature).
+
+## Build conditions
+
+**Proceed now (no kill touches these):** Gate-0 server-sealed events; Ghost Hotel Test (entity-existence gate); page rework per convergence 4 (Manifest + provenance stamp + pins + findings-first + clean-report path + Disagree); Ravi as receiver #1 — manual acceptance test of the first 10 routed briefs before ANY routing code; consent-copy redesign scoping (product-improvement vs routing vs corpus).
+**Gated on evidence:** corpus-as-feature (Gate A: ≥200 verified checks, ≥85% extraction, ≥60% yield ≥1 pin, ≥30% pins dedupe into failure clusters); marketplace (Gate B above); Oct 6 B9-reframed research (demand landscape — load-bearing); any ad spend (owner gate: Spend-Is-The-Instrument, $200 test vs zero-spend rule).
+**Pause/cut:** multi-format ingestion, attribution classifier, Ammunition Mode, marketplace UI, agency-branded portals (wait for agencies who *arrived via routed leads*).
+
+## Round-2 named ideas (kept)
+
+Second Opinion Engine · Acceptance Ledger · Failure-Mode Atlas (source-attributed failure rates by plan origin — publish early, "PR nuke that names the category") · Ghost Hotel Test · Fix-it Brief · Second-Opinion Escrow (disputes as corpus gold) · The Manifest / The Hoist / The Corked Ritual · Ammunition Mode (parked) · Verify-as-API (content-addressed report artifacts, headless) · The Warranty Layer (agencies as recourse/insurers for AI-booked travel) · Continuous re-verification until travel date (perishable plans = subscription + temporal corpus depth).
+
+## Six-hat coverage (Round 2)
+
+White: engine real; zero corpus bytes ever; supply=1; demand research blocked to Oct 6; no sitemap/robots. Yellow: AI-hallucination wave; highest-intent lead ever generated = diagnostic-attached; engine reuse. Black: channel death; two-products-in-one; consent/legal scoping; LLM vendors self-auditing (hedge = corpus + vetted network). Green: Ghost Hotel; Manifest; Escrow; Atlas; Verify-as-API; Warranty Layer. Red: ego threat of judged AI plans → Disagree button; OTA-buyer anger → leverage not pity; agency first message = free partial fix, never a call. Blue: gates A/B + proceed/gated/pause lists above.
+
+## Reformulated reusable prompt
+
+"Re-run every role against the corrected owner frame before accepting any kill verdict; verify each Executioner citation in-repo before it lands; separate what the kill touches (channel) from what it doesn't (product); define the two funnel ends as the only gates; cut the middle."
+
+---
+
+# PART 3 — Owner ruling on kill (b): the channel was never opened (2026-09-09)
+
+**Pranay's correction (adopted):** *"Why before launch you keep breaking your head… if you build properly, we start marketing properly."*
+
+Kill (b) ("same failed bet — zero organic users") is **circular and downgraded to inadmissible as demand evidence.** The door was never opened: no sitemap/robots, homepage delink, launch NO-GO, all traffic synthetic. Five months of a private dev instance cannot falsify demand — it can only prove a private instance attracts nobody, which nobody doubted. The Sept-1 assessment's word "falsified" overclaimed (it falsified the wedge *as operated*, i.e. operationally nothing); both rounds inherited that overclaim.
+
+**Inverted gate structure:**
+- Research (B9, reframed) and any spend test move from *pre-build preconditions* to *post-exposure measurements*. The demand question is only answerable by exposure.
+- "Build properly" = the light exposure envelope, NOT the full platform NO-GO stack: honest findings ✅ · kill switch ✅ · abuse caps ✅ · consent ✅ · remaining: Ghost Hotel Test, findings-first page rework, server-sealed funnel counting, one retention-policy line, disclaimer copy. That is the entire pre-launch list.
+- The checker earns **its own scoped exposure decision** — separate from the platform NO-GO.
+- "Market properly" then runs: sitemap/robots, the ownable hook ("your AI itinerary has holes — we find them before you pay"), and the two server-sealed numbers (completed checks; routed leads accepted) as the standing strategy dashboard. B9 becomes sharpening, not gating.
+
+**What survives from the kills:** (e) shrinks to "name the category honestly when marketing" (no demand claim without data); (d)-core stays as build scope (consent redesign for secondary use; vendor-scoring legal care); sequencing discipline (receiver #1 before routing code; findings before corpus-as-feature) is unchanged.
+
+---
+
+## Appendices (raw role transcripts)
+
+- **Appendix A — Round 1, all 8 role outputs verbatim:** `Docs/exploration/WOBS_AGENCY_BRANDED_CHECKER_2026-09-09_ROUND1_RAW.md` (with auditor verification notes on the Executioner's citations)
+- **Appendix B — Round 2, all 8 role outputs verbatim:** `Docs/exploration/WOBS_AGENCY_BRANDED_CHECKER_2026-09-09_ROUND2_RAW.md` (with auditor verification notes, including the failed "Not stored · Session only" citation)
+
+This file (Parts 0–3) is the distilled, decision-grade layer; the appendices are the preserved raw room.
+
+### Part 3.1 — Owner ruling on the "shipped promise" (2026-09-09)
+
+Pranay (on the Executioner's failed citation): *"its not launched so it can be changed… whatever makes us better, makes money for us stays."*
+
+Ruling adopted: **nothing pre-launch is binding** — UI, copy, consent framing, scoring, and "promises" are all freely changeable; the filter for what stays is *does it make us better, does it make money*. The corpus is not contract-blocked (the "Not stored · Not shared · Session only" promise the Executioner cited never existed — failed verification, see Appendix B post-script). Consent UX will be redesigned around the value loop (e.g. "Save this brief so an agency can fix these 3 things") rather than around compliance language. The only pre-exposure obligations retained: retention policy (EX-02) and working erasure (FT-G2) must do what the final copy says, because those are the one unrecoverable trust break once real users exist.
+
+### Part 3.2 — FINAL BUILD DIRECTIVE (owner, 2026-09-09): "we build it" — no Ravi gate, dream shelf merged into the build
+
+Pranay: *"we build it, i am not sure if we will get ravi to meet … so the dream shelf or whatever has to be built now."*
+
+Consequences adopted:
+1. **Nothing gates on Ravi meetings.** Ravi is "first receiver whenever available," not a sequencing gate. The receiver-side acceptance metric is replaced (for now) by **demand capture**: the marketplace interaction launches at ANY supply level — matched-choice when agencies exist, consented waitlist/capture when they don't ("no matched agency for your dates yet — we'll send your brief when one is"). Captured demand becomes the lead pool that recruits supply.
+2. **Dream shelf, split by what "now" means:**
+   - **Pulled into build now (structural, cheap today, expensive to retrofit):** structured findings as objects (not prose strings) — the Atlas/API substrate; content-addressed report artifacts (Verify-as-API substrate — the run output becomes an addressable object); server-sealed funnel metrics (completed checks / pins per check / route-intent clicks); Ghost Hotel Test (entity-existence, v1 = advisory findings only); consent redesign tied to the value loop; source attribution as a declare-radio field from day one.
+   - **Built when data exists (the product ships the generator, publishing waits for N):** Failure-Mode Atlas v0 publication (needs real corpus volume; generator built with the structured findings).
+   - **Built when the loop closes (needs multiple parties, not just code):** Warranty Layer / inter-agency acceptance ledger / continuous re-verification subscription (scheduler is Phase 3; the paid tier around it waits for exposure).
+3. **Phased build order (each phase = shippable units, tests green per phase):**
+   - **P1 — The Verifier:** Ghost Hotel entity-existence service (v1 advisory), findings-first Manifest page (provenance stamp, pins, Disagree, clean-report badge + re-check date, score demoted to chip), server-sealed metrics, consent redesign + retention line + disclaimer, keep one ingestion format solid (paste; upload stays as-is).
+   - **P2 — The Marketplace interaction:** matched-choice presentation (works at any supply), demand-capture waitlist, user-owned brief via capability tokens ("take it to any agent, or pick from ours"), in-platform first contact (Cold Open rule: first message = free partial fix, no calls).
+   - **P3 — The Compounding layer:** source-attribution reports, Atlas generator v0, re-verification scheduler (perishable plans), Verify-as-API (headless, content-addressed).
+4. **Sequencing note:** P1 does not wait for the uncommitted tree decision or the full-suite run, but those remain pre-conditions for *exposure*, not for building. Wave A P0/P1s continue in parallel lanes as real work — the checker build does not displace them; it adds a lane.
+
+### Part 3.3 — Marketplace routing refined: relevance-matched choice + sponsored-slot policy (owner, 2026-09-09)
+
+Pranay: matching may be based on *types of customers served, places covered, services*, etc., limiting user choices to the most relevant — with a possible sponsored vendor later.
+
+Adopted design:
+- **Match dimensions = brief needs × agency profile.** Brief side (already extracted): destination/dates, traveler-composition flags, finding categories needing a fixer, locale. Agency side (new structured profile fields — add in P2 schema now, avoid backfill later): places covered, customer types served, services offered, languages, response SLA.
+- **Capped matched set (top 2–3)** shown in the report close; score = overlap. Capping = no choice paralysis, agency scarcity (prices monetization later), and every shown match is explainable ("covers Kerala + families + visa help").
+- **User-owned brief stays**: "take it to any agent, or pick from matched agencies" (EX-04 tokens) — marketplace is the convenient default, never a gate.
+- **Sponsored vendor (later, sequenced last):** clearly labeled + separate slot; must pass the same relevance floor for that brief; never displaces the top organic match; only shown when organic supply is thin. Monetization sequence: free matched-choice → lead fees/subscriptions on acceptance data → sponsored placement once agencies compete for visibility.
+- **Compounding:** acceptance data (SLA response, fix accepted) becomes the earned ranking signal — relevance improves with use, same flywheel as the Failure-Mode Atlas.
+- Honesty guardrails apply unchanged: no invented ratings/badges (post-testimonials-removal rule); vetting criteria displayed must be real and measured.
+
+### Part 3.3-A — Routing-mechanism decision record (full option analysis; EXPLORATION §44 + DOCUMENTATION §8/§61)
+
+**Date:** 2026-09-09 · **Owner:** Pranay · **Status:** accepted (matched choice + BYO brief), with reopen triggers below.
+**Context:** The rooms' "Ravi as receiver #1 / one routed handoff" was challenged by the owner: *"we dont route to one, we just give them the marketplace? or is there another way to do that part?"* Analysis of the three distinct mechanisms inside "give them the marketplace":
+
+**Option 1 — Single routing** (tool picks one agency, hands over the brief).
+- Pro: clean measurement (acceptance trivially computable); no marketplace UI before supply exists.
+- Con as product: Waypoint becomes the gatekeeper — the user never chose ("why did you give MY plan to THIS agency?" reads as a referral racket); concentrates dependency on one agency's responsiveness; abandons the Whisperer finding that choice itself is the trust mechanism.
+- **Disposition: deferred as pilot-era measurement simplification; not the product.** Reopen trigger: if supply is exactly one agency AND demand-capture waitlist fails to recruit #2, single-routing returns as the only honest interaction.
+
+**Option 2 — Pure marketplace/directory** (report ends with "here are vetted agencies — browse").
+- Pro: maximum user agency; supply scales without matchmaking; no gatekeeper.
+- Con: converts diagnostic-attached leads into Yelp (directory listings worth pennies vs warm semi-exclusive briefs agencies pay for); choice paralysis for an anxious one-time user; **breaks measurement** — external contact makes routed-lead acceptance untrackable; coldest cold-start (3-agency directory looks abandoned).
+- **Disposition: rejected.** Reopen condition: only if the business model shifts to listing-subscription revenue AND supply density makes browsing real (≥10 agencies + traffic). Evidence that would reopen: directory-style competitors demonstrably monetizing at our scale.
+- Doctrine note (EXPLORATION §13): the rejection is not "directories fail everywhere" — it's "directory economics contradict the diagnostic-attached-lead economics this thesis depends on."
+
+**Option 3 — Matched choice (SELECTED): marketplace as the interaction, not a directory.** Report's findings define matching criteria; close presents the top 2–3 matched agencies; user picks who receives the brief; first contact in-product (Cold Open rule: first message = free partial fix of a flagged day, never a call). Owner refinement (Part 3.3): matching dimensions = brief needs × structured agency profile (places covered, customer types served, services, languages, response SLA); sponsored slot later, labeled, relevance-floored, never displacing organic #1.
+- Rationale: keeps user agency (no gatekeeper), agencies receive consent-warmed qualified briefs, platform-mediated contact preserves the acceptance north star, matched-set framing survives cold start at any supply level.
+- **BYO-brief escape hatch (EX-04 tokens):** "Take this brief to any agent you trust — or pick from our matched agencies." Serves the used-AI-to-avoid-agencies segment; marketplace is the convenient default, not a toll booth.
+
+**Hypotheses in falsifiable form (EXPLORATION §39–40):**
+- **H-R1:** Because matched choice preserves user agency while keeping first contact platform-mediated, we believe route-pick conversion and acceptance are both measurable without trap-feel. Weakened/falsified by: users reaching the close but route-pick rate <~5% (trust framing failure), or picked agencies accepting <30% (supply-quality failure). Next discriminating check: first 100 exposed reports.
+- **H-R2:** Because the brief is user-owned (capability token), we believe BYO-agency exports widen adoption without cannibalizing routing. Falsified by: BYO exports dominating while marketplace picks → 0 (marketplace premise dead; the checker remains valuable as pure verifier — a survivable outcome).
+
+**Honest constraints carried forward:** cold-start optics ("matched to your plan" at any supply; never "browse our directory" while thin) · honesty rules (real, visible vetting criteria; no invented ratings — post-testimonials rule) · zero-findings reports get no marketplace (clean-report path = trust engine: badge + re-check date).
+
+**Doctrine layering note (DOCUMENTATION §54/§56):** this Part is the canonical decision record; the chat discussion it extracts from is preserved verbatim in the session and summarized in Part 0; raw brainstorm transcripts live separately in Appendices A/B. Distillation must not silently change semantics — where wording matters, the owner's messages are quoted verbatim in Part 0.

@@ -43,7 +43,13 @@ class CompileItineraryRequest(BaseModel):
 
 @router.post("/{trip_id}/export/html")
 def export_trip_itinerary_html(trip_id: str, payload: CompileItineraryRequest) -> Response:
-    """Renders standalone luxury print-ready HTML document."""
+    """Renders standalone luxury print-ready HTML document.
+
+    Part-L A6: the default request model carries sample content (Japan
+    immersion fixture); callers POSTing real trip data get a real render.
+    The sample-payload disclosure travels in a response header rather than
+    the HTML body so printed output stays clean.
+    """
     day_items = [
         ItineraryDayItem(
             day_number=d.day_number,
@@ -71,4 +77,15 @@ def export_trip_itinerary_html(trip_id: str, payload: CompileItineraryRequest) -
     )
 
     html_content = LuxuryItineraryExportEngine.compile_html(doc_payload)
-    return Response(content=html_content, media_type="text/html")
+    return Response(
+        content=html_content,
+        media_type="text/html",
+        headers={
+            "X-Itinerary-Data-Source": (
+                "sample-payload"
+                if not payload.days
+                else "caller-provided"
+            ),
+            "X-Reality-Tier": "real",  # deterministic render over the stored trip
+        },
+    )

@@ -11,6 +11,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from src.benchmarking.stress_simulator import MultiAgentStressSimulator
+from spine_api.core.feature_gates import get_feature_tier
+from spine_api.core.reality_tier import TierMetadata
 
 router = APIRouter(prefix="/api/v1/benchmarking", tags=["benchmarking"])
 
@@ -26,4 +28,9 @@ async def execute_stress_test(payload: StressTestRequest) -> Dict[str, Any]:
     return {
         "status": "success",
         "benchmark_metrics": result.to_dict(),
+        "_meta": TierMetadata.for_response(
+            get_feature_tier("stress_benchmark"),
+            "stress_benchmark",
+            computation_method="simulated concurrency over in-process fixtures; measures engine throughput, not provider capacity",
+        ),
     }

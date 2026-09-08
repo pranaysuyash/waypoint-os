@@ -2,6 +2,13 @@ import http from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import { ApiClient } from "../api-client";
 
+// Synthetic test fixtures — NOT credentials. These strings exist so the
+// auth-proxy behavior can be exercised end-to-end; they are rejected by
+// every real credential check by construction (Part N, scanner remediation).
+const FIXTURE_ACCESS_TOKEN = 'proxy-test-fixture-access-value';
+const FIXTURE_REFRESH_TOKEN = 'proxy-test-fixture-refresh-value';
+
+
 const localStorageMock = {
   store: {} as Record<string, string>,
   getItem: (key: string) => localStorageMock.store[key] ?? null,

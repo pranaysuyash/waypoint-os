@@ -258,9 +258,12 @@ describe("resolveBackendPath", () => {
     expect(resolveBackendPath(["v1", "group", "token", "tok_1", "pay-share"])).toBe(
       "api/v1/group/token/tok_1/pay-share"
     );
-    // 2026-09-06 route-inventory gate: no backend endpoint exists for
-    // logistics/assess-route — it stays denied until the backend ships it.
-    expect(resolveBackendPath(["v1", "logistics", "assess-route"])).toBeNull();
+    // 2026-09-08: backend endpoint shipped (POST /api/v1/logistics/assess-route,
+    // deterministic 2-Opt geodesic solver in spine_api/routers/logistics.py) —
+    // the mapping is cleared for re-add and asserts the real path.
+    expect(resolveBackendPath(["v1", "logistics", "assess-route"])).toBe(
+      "api/v1/logistics/assess-route"
+    );
   });
 
   it("keeps wildcard v1/public reachability denied now that next.config rewrites are gone (F-43)", () => {

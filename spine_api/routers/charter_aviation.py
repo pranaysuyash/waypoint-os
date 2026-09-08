@@ -12,6 +12,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from src.charter.aviation_engine import PrivateAviationEngine
+from spine_api.core.feature_gates import get_feature_tier
+from spine_api.core.reality_tier import TierMetadata
 
 router = APIRouter(prefix="/api/v1/charter-aviation", tags=["charter-aviation"])
 
@@ -35,6 +37,11 @@ def calculate_charter_quote(payload: CharterQuoteRequest) -> Dict[str, Any]:
     return {
         "status": "success",
         "quote": quote.to_dict(),
+        "_meta": TierMetadata.for_response(
+            get_feature_tier("charter_aviation"),
+            "charter_aviation",
+            computation_method="deterministic pricing from local aircraft/empty-leg fixtures; no operator contacted",
+        ),
     }
 
 
@@ -45,4 +52,9 @@ def get_available_empty_legs() -> Dict[str, Any]:
     return {
         "status": "success",
         "empty_legs": [leg.to_dict() for leg in legs],
+        "_meta": TierMetadata.for_response(
+            get_feature_tier("charter_aviation"),
+            "charter_aviation",
+            computation_method="locally indexed empty-leg fixtures; no operator contacted",
+        ),
     }

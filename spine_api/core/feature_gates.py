@@ -89,6 +89,46 @@ FEATURE_REGISTRY: Dict[str, FeatureRegistryEntry] = {
         requires_integration="Supplier verification APIs for tier upgrade to REAL",
     ),
 
+    # ── Deterministic sandbox engines (Part L A6, 2026-09-08) ──
+    "supplier_negotiation": FeatureRegistryEntry(
+        name="supplier_negotiation",
+        tier=RealityTier.DETERMINISTIC_PREVIEW,
+        description="Multi-round supplier concession bargaining and margin optimization",
+        honest_status="Deterministic game-theoretic simulation with no counterparty on the line",
+        data_source="Locally supplied quotes and margin parameters",
+        requires_integration="Live supplier messaging channel for tier upgrade",
+    ),
+    "supplier_waiver": FeatureRegistryEntry(
+        name="supplier_waiver",
+        tier=RealityTier.DETERMINISTIC_PREVIEW,
+        description="Automated contractual fee-waiver letter drafting",
+        honest_status="Drafts a waiver request letter; nothing is sent to suppliers",
+        data_source="Locally supplied booking reference and penalty parameters",
+        requires_integration="Supplier messaging channel for tier upgrade",
+    ),
+    "charter_aviation": FeatureRegistryEntry(
+        name="charter_aviation",
+        tier=RealityTier.DETERMINISTIC_PREVIEW,
+        description="Private aviation quote calculation and empty-leg matching",
+        honest_status="Deterministic pricing from local aircraft/empty-leg fixtures; no operator contacted",
+        data_source="Local aircraft performance tables and indexed empty legs",
+        requires_integration="Charter operator APIs for tier upgrade",
+    ),
+    "stress_benchmark": FeatureRegistryEntry(
+        name="stress_benchmark",
+        tier=RealityTier.DETERMINISTIC_PREVIEW,
+        description="Concurrent multi-agent IROPS healing load simulation",
+        honest_status="Simulated concurrency over in-process fixtures; measures engine throughput, not provider capacity",
+        data_source="In-process fixture execution",
+    ),
+    "itinerary_export": FeatureRegistryEntry(
+        name="itinerary_export",
+        tier=RealityTier.REAL,
+        description="HTML itinerary export compiled from the stored trip",
+        honest_status="Renders the actual stored trip record; default route uses the sample payload",
+        data_source="Stored trip record (default route: sample payload)",
+    ),
+
     # ── Proposal lifecycle (DATA_DEPENDENT) ──
     "proposal_lifecycle": FeatureRegistryEntry(
         name="proposal_lifecycle",
