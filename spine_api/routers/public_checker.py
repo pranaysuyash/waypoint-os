@@ -29,6 +29,29 @@ PUBLIC_CHECKER_EVENT_MAX_BYTES = 16 * 1024
 DEFAULT_PUBLIC_CHECKER_AGENCY_ID = "__UNSET__"
 
 
+def public_checker_enabled() -> bool:
+    """Runtime kill switch (RDA-2026-09-08 FT-05).
+
+    Read at call time so tests and operators can toggle without a reload.
+    Set PUBLIC_CHECKER_ENABLED=0 (or "false") to return 503 on every public
+    checker surface — run, events, result fetch, export, and delete.
+    """
+    return os.environ.get("PUBLIC_CHECKER_ENABLED", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _require_public_checker_enabled() -> None:
+    if not public_checker_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail="Public checker temporarily disabled",
+        )
+
+
 class PublicCheckerEventEnvelope(BaseModel):
     event_name: str
     event_version: int = 1
@@ -85,6 +108,7 @@ def post_public_checker_event(
     response: Response,
     event: PublicCheckerEventEnvelope,
 ):
+    _require_public_checker_enabled()
     payload = event.model_dump(exclude_none=False)
     payload_size = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
     if payload_size > PUBLIC_CHECKER_EVENT_MAX_BYTES:
@@ -111,23 +135,32 @@ def post_public_checker_event(
 
 
 @router.get("/api/public-checker/{trip_id}", response_model=PublicCheckerExportResponse)
+@limiter.limit("30/minute")
 def get_public_checker_package(
+    request: Request,
     trip_id: str,
 ):
+    _require_public_checker_enabled()
     return _load_public_checker_package_or_404(trip_id)
 
 
 @router.get("/api/public-checker/{trip_id}/export", response_model=PublicCheckerExportResponse)
+@limiter.limit("30/minute")
 def export_public_checker_package(
+    request: Request,
     trip_id: str,
 ):
+    _require_public_checker_enabled()
     return _load_public_checker_package_or_404(trip_id)
 
 
 @router.delete("/api/public-checker/{trip_id}", response_model=PublicCheckerDeleteResponse)
+@limiter.limit("30/minute")
 def delete_public_checker_package(
+    request: Request,
     trip_id: str,
 ):
+    _require_public_checker_enabled()
     _package = _load_public_checker_package_or_404(trip_id)
     public_checker_agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
     deleted_artifacts = persistence.PublicCheckerArtifactStore.delete_trip_artifacts(trip_id)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -137,6 +138,34 @@ class ProductBEventStore:
     def _append_jsonl(cls, path: Path, payload: Dict[str, Any]) -> None:
         with open(path, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, separators=(",", ":"), ensure_ascii=False) + "\n")
+
+    @classmethod
+    def _max_store_bytes(cls) -> int:
+        """Size cap per event-store segment (RDA-2026-09-08 FT-06). Read at call time."""
+        raw = os.environ.get("PUBLIC_B_EVENTS_MAX_BYTES", "")
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return 10 * 1024 * 1024
+        return max(64 * 1024, value)
+
+    @classmethod
+    def _rotate_store_if_oversized(cls) -> int:
+        """Rotate oversized segments to `<name>.1` (one retained generation).
+
+        Trade-off (documented): dedupe and KPI reads cover the current segment
+        only, so after a rotation the same event_id could be re-accepted and the
+        KPI window restarts. The rotated segment preserves raw history on disk.
+        """
+        rotated = 0
+        for path in (cls.RAW_FILE, cls.NORMALIZED_FILE):
+            try:
+                if path.exists() and path.stat().st_size > cls._max_store_bytes():
+                    path.replace(path.with_name(path.name + ".1"))
+                    rotated += 1
+            except OSError:
+                continue
+        return rotated
 
     @classmethod
     def _read_jsonl(cls, path: Path) -> List[Dict[str, Any]]:
@@ -301,6 +330,7 @@ class ProductBEventStore:
         normalized = cls.normalize_event(payload)
         cls._ensure_dirs()
         with file_lock(cls.NORMALIZED_FILE):
+            cls._rotate_store_if_oversized()
             if cls._event_id_exists(normalized["event_id"]):
                 return {
                     "status": "duplicate",

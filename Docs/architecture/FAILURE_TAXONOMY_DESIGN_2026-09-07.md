@@ -1,5 +1,12 @@
 # Failure Taxonomy & Recovery-Routing Design (2026-09-07)
 
+> **VOCABULARY SUPERSEDED 2026-09-08:** the seven-class noun set in this doc is superseded by the
+> live 8-class `FailureClass` enum (`spine_api/failure_taxonomy.py`). See
+> `FAILURE_TAXONOMY_RECONCILIATION_2026-09-08.md` for the ratified crosswalk. The recovery ladders,
+> POLICY-routing principle, sweep-race fix, and operator-queue designs below remain valid with the
+> crosswalked names.
+
+
 **Status:** exploration package E-B output (PER-0700). Design for ratification; no code changed.
 **Problem (PA-07):** the run system has exactly one failure shape — `run_state=failed` + free-text `error_message` — and one recovery policy — retry 2× then escalate (`recovery_agent.py:245-249`). A provider outage, a poisoned fixture, a state divergence, and a budget-guard trip all recover identically, which is why recovery is class-blind and the ledger cannot answer "why did this fail?" (`run_ledger.py:277-296` records no class; `stage_at_failure` is absent from meta).
 **Related defects this design must absorb:** PA-13 (no per-trip in-flight lease → concurrent last-writer-wins), PA-17 (stale-run sweep races live threads → `failed` ledger with a saved trip and a swallowed `complete()`), PA-38 (recovery writes `review_status`, the new queue reads `TripRoutingState`), PA-29 (terminal lease/requeue rows never expire), PA-40 (idempotency CAS wired to only 2 ingress paths).

@@ -165,15 +165,14 @@ describe("proxy.ts page guard", () => {
     expect(res.status).not.toBe(307);
   });
 
-  it("allows public /itinerary-checker/shared/[id] without auth", async () => {
-    const req = mockRequest("/itinerary-checker/shared/abc-123");
-    const res = await proxy(req);
-    expect(res.status).not.toBe(307);
-  });
-
-  it("allows public /itinerary/shared/[id] without auth", async () => {
-    const req = mockRequest("/itinerary/shared/xyz-456");
-    const res = await proxy(req);
-    expect(res.status).not.toBe(307);
+  it("does not public-allowlist dead /itinerary-checker/shared/ route (no such page exists)", async () => {
+    const sharedReq = mockRequest("/itinerary-checker/shared/abc-123");
+    const sharedRes = await proxy(sharedReq);
+    const plainReq = mockRequest("/trips/123");
+    const plainRes = await proxy(plainReq);
+    // No shared page exists; the dead public allowlist entry was removed, so the
+    // path now follows the generic protected-route behavior (auth shell), exactly
+    // like any other non-public path.
+    expect(sharedRes.status).toBe(plainRes.status);
   });
 });

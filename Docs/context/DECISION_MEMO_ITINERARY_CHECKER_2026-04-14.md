@@ -1,5 +1,7 @@
 # Decision Memo: Itinerary Checker Wedge (2026-04-14 IST)
 
+> **CLOSURE NOTE (2026-09-08, R-02/R-03).** This memo was never formally closed. Record of what actually happened: the v1 10-check lock was not implemented as named (different check taxonomy shipped); the P0 instrumentation shipped in a different form (product-B event funnel, ADR-007, with different KPIs); the P1 paid-fix handoff and memory-ingestion mapping were never built; the 30-day go/no-go gates were **never run** — the wedge thesis was instead falsified retrospectively in `Docs/review/GTM_ANGLE_ASSESSMENT_2026-09-01.md` (all funnel traffic synthetic; no distribution), the checker was deliberately delinked from the homepage (`Docs/FRONTEND_LANDING_REDESIGN_2026-06-28.md`), and public/paid launch is NO-GO (`Docs/LAUNCH_STATUS.md`, 2026-09-04). The wedge-fate decision (kill / invert to agency-branded checker / keep as traveler surface) is **open** — see EX-01/D-01 in `Docs/review/FINDINGS_TASKS_IMPLICIT_EXPLICIT_REGISTER_RDOC_AUDIT_2026-09-08.md`. Content below is unmodified history.
+
 ## Decision
 Proceed with the itinerary-checker GTM wedge as a **focused acquisition + data layer** for the agency platform.
 

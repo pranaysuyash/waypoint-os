@@ -2706,19 +2706,125 @@ class FlightStatusAgent:
             "operator_next_action": operator_next_action,
             "authority": "Internal flight status support only. Do not rebook, ticket, contact suppliers, or send customer messages.",
         }
-        updated = trip_repo.update_trip(
-            work_item.trip_id,
-            {
-                "flight_status_snapshot": output,
-                "flight_disruption_risk_level": overall,
-                "operator_next_action": operator_next_action,
-                "last_agent_action": self.definition.name,
-                "last_agent_action_at": checked_at.isoformat(),
-            },
-        )
+        # A1/2.3b (2026-09-08): high-risk evidence runs the stored journey's
+        # disruption ripple so downstream impact lands on the trip as an R2
+        # review item. Preview-only: a ripple NEVER rebooks or contacts a
+        # supplier — the authority string above stays the contract.
+        disruption_ripple: dict[str, Any] | None = None
+        escalated = False
+        if overall in {"medium", "high"}:
+            disruption_ripple = self._evaluate_stored_graph_ripple(
+                trip_id=work_item.trip_id,
+                trip_repo=trip_repo,
+                flight_outputs=flight_outputs,
+            )
+            if disruption_ripple is not None:
+                output["disruption_ripple"] = disruption_ripple
+            if overall == "high":
+                escalated = True
+        update_fields: dict[str, Any] = {
+            "flight_status_snapshot": output,
+            "flight_disruption_risk_level": overall,
+            "operator_next_action": operator_next_action,
+            "last_agent_action": self.definition.name,
+            "last_agent_action_at": checked_at.isoformat(),
+        }
+        if escalated:
+            # Route onto the human-review queue (R2). No auto-rebook: the
+            # ripple is evidence for the operator, not an action plan.
+            update_fields["review_status"] = "escalated"
+            update_fields["escalation_reason"] = "flight_disruption"
+        updated = trip_repo.update_trip(work_item.trip_id, update_fields)
         if not updated:
             return AgentExecutionResult(work_item, WorkStatus.RETRY_PENDING, False, "Trip update returned empty result")
         return AgentExecutionResult(work_item, WorkStatus.COMPLETED, True, "Attached flight status snapshot", output)
+
+    def _evaluate_stored_graph_ripple(
+        self,
+        trip_id: str,
+        trip_repo: TripRepository,
+        flight_outputs: list[dict[str, Any]],
+    ) -> dict[str, Any] | None:
+        """Evaluate the stored journey graph's disruption ripple for the
+        riskiest fresh flight (A1/2.3b). Returns None when there is no stored
+        graph, no flight nodes, or the graph cannot be evaluated — the
+        snapshot still lands, just without a ripple. Never synthesizes a
+        graph: no stored nodes means no ripple (AT-01 contract).
+        """
+        from src.schemas.journey_graph import JourneyDependencyGraph, NodeType
+
+        try:
+            current = trip_repo.get_trip(trip_id) or {}
+            raw_nodes = current.get("journey_graph_nodes") or []
+            if not raw_nodes:
+                return None
+            graph = JourneyDependencyGraph.from_stored(
+                trip_id, raw_nodes, current.get("journey_graph_edges") or []
+            )
+            risky_flights = [
+                f for f in flight_outputs if f.get("risk_level") in {"medium", "high"}
+            ]
+            if not risky_flights:
+                return None
+
+            flight_nodes = [
+                node for node in graph.nodes.values()
+                if getattr(node, "node_type", None) == NodeType.FLIGHT
+            ]
+            if not flight_nodes:
+                return None
+
+            def _flight_marker_text(flight: dict[str, Any]) -> str:
+                detail = flight.get("flight") or {}
+                return str(
+                    detail.get("flight_number")
+                    or detail.get("number")
+                    or detail.get("carrier")
+                    or ""
+                ).lower()
+
+            delayed_node = None
+            for flight in risky_flights:
+                needle = _flight_marker_text(flight)
+                delayed_node = next(
+                    (
+                        node for node in flight_nodes
+                        if needle
+                        and (
+                            needle in str(node.title or "").lower()
+                            or needle in str(node.location or "").lower()
+                        )
+                    ),
+                    None,
+                )
+                if delayed_node is not None:
+                    break
+            if delayed_node is None:
+                delayed_node = flight_nodes[0]
+
+            tool_evidence = (risky_flights[0].get("tool_evidence") or [{}])[0]
+            delay_minutes = int(tool_evidence.get("delay_minutes") or 0)
+            status = str(tool_evidence.get("status") or "").lower()
+            is_cancellation = status in {"cancelled", "diverted"}
+
+            report = graph.evaluate_disruption(
+                delayed_node.node_id,
+                delay_minutes=delay_minutes,
+                is_cancellation=is_cancellation,
+            )
+            ripple = report.to_dict()
+            ripple["evaluated_node_id"] = delayed_node.node_id
+            ripple["reality_tier"] = "deterministic_preview"
+            return ripple
+        except ValueError as exc:
+            logger.info(
+                "FlightStatusAgent: disruption ripple abstains for trip %s: %s",
+                trip_id, exc,
+            )
+            return None
+        except Exception:
+            logger.exception("FlightStatusAgent: disruption ripple evaluation failed")
+            return None
 
     def _extract_flights(self, trip: Any) -> list[dict[str, Any]]:
         raw_flights = first_non_empty(get_field(trip, "flights", "flight_segments"), get_nested(trip, "booking_data.flights"), get_nested(trip, "itinerary.flights"), [])

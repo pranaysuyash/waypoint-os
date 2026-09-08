@@ -8,7 +8,7 @@ import { safeWriteClipboardText } from '@/lib/clipboard';
 import type { RunStatusResponse } from '@/types/spine';
 import {
   Activity, ArrowRight, Check, Clock, DollarSign,
-  Camera, Compass, FileCheck, Globe, Mail, MapPin, PlaneTakeoff, Route,
+  Camera, Compass, FileCheck, Globe, MapPin, PlaneTakeoff, Route,
   Shield, Sparkles, Star, SunMedium, Ticket, Upload,
 } from 'lucide-react';
 
@@ -1023,28 +1023,6 @@ const sevBadgeBg  = { Critical: 'rgba(248,81,73,0.1)', Warning: 'rgba(210,153,34
 const sevBadgeBdr = { Critical: 'rgba(248,81,73,0.22)', Warning: 'rgba(210,153,34,0.25)', Info: 'rgba(88,166,255,0.22)' } as const;
 const sevBadgeTxt = { Critical: T.red, Warning: T.amber, Info: T.blue } as const;
 
-// ── Testimonials ──────────────────────────────────────────────────────────────
-const TESTIMONIALS = [
-  {
-    quote: 'Found a 52-minute connection I completely missed. That alone was worth the 60 seconds.',
-    name: 'Sarah K.',
-    role: 'Solo traveler, Japan trip 2025',
-    color: T.cyan,
-  },
-  {
-    quote: 'I\'m a 20-year travel veteran and it still caught a visa issue my agent didn\'t flag.',
-    name: 'Marcus T.',
-    role: 'Frequent business traveler',
-    color: T.blue,
-  },
-  {
-    quote: 'Shared the report with my advisor. She said it was the most useful pre-trip brief she\'d seen.',
-    name: 'Priya N.',
-    role: 'Family trip, Italy 2025',
-    color: T.purple,
-  },
-];
-
 // ── Upload view sections ─────────────────────────────────────────────────────
 function UploadHeroSection({
   onAnalyze,
@@ -1409,50 +1387,6 @@ function SampleBriefPreviewSection() {
   );
 }
 
-function TestimonialsSection() {
-  return (
-    <>
-      {/* ── TESTIMONIALS ── */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '88px 40px' }}>
-        <div style={{ maxWidth: 1140, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <h2 style={{
-	              fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 600,
-              letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay, marginBottom: 10,
-            }}>
-              What travelers say
-            </h2>
-            <p style={{ fontSize: 14, color: T.t3 }}>Real feedback from real itineraries</p>
-          </div>
-
-          <div className='itinerary-stagger' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
-            {TESTIMONIALS.map(t => (
-              <div key={t.name} style={{
-                padding: '24px 24px', borderRadius: 16,
-                background: T.surface, border: `1px solid ${T.b0}`,
-                borderTop: `2px solid ${t.color}`,
-              }}>
-                <div style={{ display: 'flex', marginBottom: 14, gap: 2 }}>
-                    {['star-1', 'star-2', 'star-3', 'star-4', 'star-5'].map((starKey) => (
-                      <span key={starKey} style={{ color: T.amber, fontSize: 13 }}>★</span>
-                    ))}
-                </div>
-                <p style={{ fontSize: 13.5, color: T.t1, lineHeight: 1.65, marginBottom: 18 }}>
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.t1 }}>{t.name}</div>
-                  <div style={{ fontSize: 12, color: T.t3, marginTop: 2 }}>{t.role}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </>
-  );
-}
-
 function FinalCtaSection() {
   return (
     <>
@@ -1546,7 +1480,6 @@ function UploadView({
       <TravelChecksSection />
       <ExampleFindingsSection />
       <SampleBriefPreviewSection />
-      <TestimonialsSection />
       <FinalCtaSection />
     </div>
   );
@@ -2112,12 +2045,8 @@ function ResultsHeaderGrid({
   blockerItems,
   tripSummary,
   liveChecks,
-  clarificationItems,
-  sent,
-  email,
-  setEmail,
-  setSent,
-  manageMessage,
+          clarificationItems,
+          manageMessage,
   manageBusy,
   tripId,
   onExport,
@@ -2134,10 +2063,6 @@ function ResultsHeaderGrid({
   tripSummary: ResultSummaryItem[];
   liveChecks?: Record<string, any>;
   clarificationItems: string[];
-  sent: boolean;
-  email: string;
-  setEmail: (email: string) => void;
-  setSent: (sent: boolean) => void;
   manageMessage: string | null;
   manageBusy: ManageBusyState;
   tripId: string | null;
@@ -2198,7 +2123,7 @@ function ResultsHeaderGrid({
             </div>
           </div>
 
-          {/* Trip summary + email gate */}
+          {/* Trip summary + saved-data management */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ padding: '18px 20px', borderRadius: 16, background: T.surface, border: `1px solid ${T.b0}`, flex: 1 }}>
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 12 }}>
@@ -2268,53 +2193,14 @@ function ResultsHeaderGrid({
               </div>
             ) : null}
 
-            {/* Email gate */}
-            <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.05)', border: '1px solid rgba(57,208,216,0.18)' }}>
-              {sent ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ color: T.green, fontSize: 20 }}>✓</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: T.t1 }}>Report sent!</div>
-                    <div style={{ fontSize: 12, color: T.t2 }}>Check your inbox for the full PDF.</div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Email this result to yourself</div>
-                  <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>Send a copy of this trip check so you can revisit it or forward it later.</div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <div style={S.emailInputFrame}>
-                      <Mail size={14} color={T.t4} />
-                      <input
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        placeholder='your@email.com'
-                        style={{
-                          flex: 1, background: 'none', border: 'none',
-                          color: T.t1, fontSize: 12, fontFamily: T.fBody,
-                        }}
-                      />
-                    </div>
-                    <button
-                      onClick={() => email.includes('@') && setSent(true)}
-                      style={{ ...primaryButtonStyle(true), boxShadow: '0 4px 14px rgba(57,208,216,0.25)' }}
-                    >
-                      Send →
-                    </button>
-                  </div>
-                  <div style={{ fontSize: 12, color: T.t4, marginTop: 7 }}>{storageCopy}</div>
-                  {manageMessage ? (
-                    <div style={{ fontSize: 12, color: T.t3, marginTop: 7 }}>{manageMessage}</div>
-                  ) : null}
-                </>
-              )}
-            </div>
-
             <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.04)', border: '1px solid rgba(57,208,216,0.16)' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Manage your saved data</div>
               <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>
                 {storageCopy}
               </div>
+              {manageMessage ? (
+                <div style={{ fontSize: 12, color: T.t3, marginBottom: 10 }}>{manageMessage}</div>
+              ) : null}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   onClick={handleExport}
@@ -2473,8 +2359,6 @@ function ResultsView({
   analysis?: RunStatusResponse | null;
   errorMessage?: string | null;
 }) {
-  const [email, setEmail] = useState('');
-  const [sent,  setSent]  = useState(false);
   const [manageMessage, setManageMessage] = useState<string | null>(null);
   const [manageBusy, setManageBusy] = useState<'export' | 'delete' | null>(null);
   const [reportStorage, setReportStorage] = useState<PublicCheckerReportStorageSummary>({
@@ -2595,7 +2479,7 @@ function ResultsView({
     const packetId = tripId ?? `packet_${Date.now().toString(36)}`;
     const shareText = `${summaryCopy}\nReport ID: ${tripId ?? 'pending'}`;
 
-    let shareChannel: 'whatsapp' | 'email' | 'copy_paste' | 'other' = 'copy_paste';
+    let shareChannel: 'copy_paste' | 'other' = 'copy_paste';
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
         await navigator.share({
@@ -2674,10 +2558,6 @@ function ResultsView({
           tripSummary={tripSummary}
           liveChecks={liveChecks}
           clarificationItems={clarificationItems}
-          sent={sent}
-          email={email}
-          setEmail={setEmail}
-          setSent={setSent}
           manageMessage={manageMessage}
           manageBusy={manageBusy}
           tripId={tripId}
@@ -2693,7 +2573,36 @@ function ResultsView({
     </div>
   );
 }// ── Page ──────────────────────────────────────────────────────────────────────
+
+const CHECKER_DISABLED = process.env.NEXT_PUBLIC_PUBLIC_CHECKER_DISABLED === '1';
+
+function CheckerMaintenanceNotice() {
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: T.canvas, fontFamily: T.fBody, color: T.t1, padding: 24,
+    }}>
+      <div style={{
+        maxWidth: 460, padding: '32px 28px', borderRadius: 16,
+        background: T.surface, border: `1px solid ${T.b0}`, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Checker is temporarily offline</div>
+        <div style={{ fontSize: 13.5, color: T.t2, lineHeight: 1.6 }}>
+          The public itinerary check is paused for maintenance. Please try again later.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ItineraryCheckerPage() {
+  if (CHECKER_DISABLED) {
+    return <CheckerMaintenanceNotice />;
+  }
+  return <CheckerPage />;
+}
+
+function CheckerPage() {
   const [state, dispatch] = useReducer(itineraryCheckerReducer, initialItineraryCheckerState);
   const { view, analysis, analysisError, isAnalyzing, tracking } = state;
   const motionRootRef = useRef<HTMLDivElement>(null);

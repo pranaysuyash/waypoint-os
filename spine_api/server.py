@@ -1151,6 +1151,31 @@ async def _validate_public_checker_agency_configuration() -> None:
                     "Create/seed that agency or set PUBLIC_CHECKER_AGENCY_ID to an existing agencies.id."
                 )
 
+            # FT-09 (RDA-2026-09-08): the checker agency must be a dedicated
+            # non-operating agency. Warn (do not fail boot) when it has human
+            # members, because anonymous submissions would land in their dashboard.
+            memberships_table_result = await conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'memberships'
+                )
+            """))
+            if bool(memberships_table_result.scalar()):
+                member_count_result = await conn.execute(
+                    text("SELECT COUNT(*) FROM memberships WHERE agency_id = :agency_id"),
+                    {"agency_id": agency_id},
+                )
+                member_count = int(member_count_result.scalar() or 0)
+                if member_count > 0:
+                    logger.warning(
+                        "Public checker agency_id=%s has %d membership row(s); anonymous "
+                        "submissions will appear in that agency's workspace. Use a "
+                        "dedicated non-operating agency for PUBLIC_CHECKER_AGENCY_ID.",
+                        agency_id,
+                        member_count,
+                    )
+
         logger.info("Public checker agency validation passed for agency_id=%s", agency_id)
     except RuntimeError:
         raise
@@ -1960,6 +1985,8 @@ def run_public_checker(
     payload: SpineRunRequest,
 ) -> RunStatusResponse:
     """Submit a public itinerary checker run without agency auth."""
+    if not public_checker_router.public_checker_enabled():
+        raise HTTPException(status_code=503, detail="Public checker temporarily disabled")
     content_length = request.headers.get("content-length")
     if content_length:
         try:

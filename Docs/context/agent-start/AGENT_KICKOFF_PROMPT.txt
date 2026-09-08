@@ -28,3 +28,6 @@ Rules:
 - Never bypass the gate with core.hooksPath=/dev/null, git commit --no-verify, or an equivalent config/environment override; the Projects Git command guard blocks these invocations.
 - Research online when facts may be current, external, or uncertain; cite sources when research affects decisions.
 - Test changes, verify regressions, document findings/questions/decisions/follow-ups in durable project docs, then re-run agent-start after major updates.
+- For explicit role/persona calls, persona-council or specialist requests, random repository document audits, or consequential work that needs multiple distinct expertise areas, use $council-orchestrator. A named persona is normally the Lead, not the whole council; resolve supporting canonical personas, applicable skills, and bounded speciality seats dynamically.
+- For a random repository document review, use $random-repository-document-audit. It selects and understands the document first, establishes repository evidence with fixed reviewers, then hands persona composition to $council-orchestrator. Keep the audit and council individually callable and do not implement the recommended work during the audit.
+- Shared skill source: /Users/pranay/.agents/skills; Codex and workspace discovery aliases may expose the same canonical directories. Do not duplicate or edit a generated skill mirror.

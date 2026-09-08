@@ -31,8 +31,6 @@ const PUBLIC_PAGES = new Set([
 // Dynamic public routes that should not require authentication
 const PUBLIC_PREFIXES = [
   '/reset-password/',
-  '/itinerary-checker/shared/',
-  '/itinerary/shared/',
 ];
 
 const AUTH_PAGES = new Set(['/login', '/signup']);

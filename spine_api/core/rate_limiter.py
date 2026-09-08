@@ -21,7 +21,20 @@ logger = logging.getLogger("spine_api.rate_limiter")
 
 
 def _key_func(request: Request) -> str:
-    """Rate limit key: IP address from X-Forwarded-For or direct client."""
+    """Rate limit key: proxy-aware client IP.
+
+    Deployments (fly.io) sit behind a proxy that appends the original client to
+    X-Forwarded-For, so the leftmost entry is the real client and the direct
+    peer is the proxy (which would collapse all traffic into one bucket).
+    Set TRUST_PROXY_HEADERS=0 when exposing the app without a trusted proxy,
+    otherwise a spoofed X-Forwarded-For could evade limiting.
+    """
+    if os.environ.get("TRUST_PROXY_HEADERS", "1") != "0":
+        forwarded_for = request.headers.get("x-forwarded-for")
+        if forwarded_for:
+            first_hop = forwarded_for.split(",")[0].strip()
+            if first_hop:
+                return first_hop
     return get_remote_address(request)
 
 

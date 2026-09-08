@@ -12,9 +12,17 @@ class _ScalarResult:
 
 
 class _FakeConn:
-    def __init__(self, table_exists: bool, agency_exists: bool):
+    def __init__(
+        self,
+        table_exists: bool,
+        agency_exists: bool,
+        memberships_table_exists: bool = True,
+        member_count: int = 0,
+    ):
         self.table_exists = table_exists
         self.agency_exists = agency_exists
+        self.memberships_table_exists = memberships_table_exists
+        self.member_count = member_count
         self.calls = []
 
     async def execute(self, statement, params=None):
@@ -22,6 +30,10 @@ class _FakeConn:
         self.calls.append((sql, params))
         if "set_config(" in sql:
             return _ScalarResult(True)
+        if "table_name = 'memberships'" in sql:
+            return _ScalarResult(self.memberships_table_exists)
+        if "FROM memberships WHERE agency_id" in sql:
+            return _ScalarResult(self.member_count)
         if "information_schema.tables" in sql:
             return _ScalarResult(self.table_exists)
         if "FROM agencies WHERE id" in sql:
@@ -66,6 +78,24 @@ async def test_validate_public_checker_agency_configuration_passes_when_agency_e
         for sql, params in fake_conn.calls
     )
     assert any((params or {}).get("agency_id") == "agency-123" for _, params in fake_conn.calls)
+
+
+@pytest.mark.asyncio
+async def test_validate_public_checker_agency_configuration_warns_but_passes_with_members(
+    monkeypatch,
+):
+    """FT-09 (RDA-2026-09-08): memberships on the checker agency warn, not fail boot."""
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+    monkeypatch.setenv("PUBLIC_CHECKER_AGENCY_ID", "agency-123")
+
+    fake_conn = _FakeConn(table_exists=True, agency_exists=True, member_count=3)
+    monkeypatch.setattr(server, "engine", _FakeEngine(fake_conn))
+
+    await server._validate_public_checker_agency_configuration()
+
+    assert any(
+        "FROM memberships WHERE agency_id" in sql for sql, _ in fake_conn.calls
+    )
 
 
 @pytest.mark.asyncio

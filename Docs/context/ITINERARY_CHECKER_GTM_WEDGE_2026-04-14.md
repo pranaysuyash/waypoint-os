@@ -1,5 +1,7 @@
 # Itinerary Checker GTM Wedge (2026-04-14 IST)
 
+> **SUPERSESSION NOTE (2026-09-08).** This is a preserved historical strategy doc. Its specific contracts were not implemented as written and are now superseded: the rule IDs below never entered code (actual taxonomy: `src/intake/decision.py` risk flags + `src/public_checker/live_checks.py`); the 0–10 scoring model was superseded by the shipped 0–100 baseline/penalty model (`spine_api/services/live_checker_service.py`); `/api/v1/analyze` + `/api/v1/fix-request` were superseded by `/api/public-checker/run` (`spine_api/server.py`); the ₹999 paid-fix tier and partner lead routing were never built. The 30-day go/no-go gates below were **never executed**; the retrospective falsification of the consumer wedge thesis is in `Docs/review/GTM_ANGLE_ASSESSMENT_2026-09-01.md`, and public/paid launch is NO-GO per `Docs/LAUNCH_STATUS.md` (2026-09-04). Current findings/tasks register: `Docs/review/FINDINGS_TASKS_IMPLICIT_EXPLICIT_REGISTER_RDOC_AUDIT_2026-09-08.md`. Full audit: `Docs/review/RANDOM_DOC_AUDIT_ITINERARY_CHECKER_GTM_WEDGE_2026-09-08.md`. Content below is unmodified history.
+
 ## Sources
 - User-provided GTM strategy and rule set in this session.
 - `/Users/pranay/Downloads/Thinking-about-agentic-flow (6).html` (`17:59 IST`)

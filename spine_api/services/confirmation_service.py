@@ -384,7 +384,7 @@ async def update_confirmation(
             actor_type="agent",
             actor_id=updated_by,
             source="agent_action",
-            metadata={"confirmation_type": c.confirmation_type},
+            event_metadata={"confirmation_type": c.confirmation_type},
         )
         await db.commit()
 
@@ -437,7 +437,7 @@ async def record_confirmation(
         actor_type="agent",
         actor_id=recorded_by,
         source="agent_action",
-        metadata={"confirmation_type": c.confirmation_type},
+        event_metadata={"confirmation_type": c.confirmation_type},
     )
     await db.commit()
 
@@ -467,7 +467,7 @@ async def try_record_fulfillment_confirmation(
     the fulfillment result and audit record.
     """
     try:
-        from spine_api.core.database import async_session_maker
+        from spine_api.core.rls import rls_session
     except Exception as exc:  # pragma: no cover - depends on deploy env
         return {"recorded": False, "reason": f"no_database_session_maker: {exc}"}
 
@@ -477,7 +477,14 @@ async def try_record_fulfillment_confirmation(
         "recorded by booking fulfillment engine (AT-04)"
     )
     try:
-        async with async_session_maker() as db:
+        from spine_api.core.rls import rls_session
+
+        # Part-L A3 (2026-09-08): fulfillment runs OUTSIDE request context
+        # (background/engine path), so the bare session maker has no RLS
+        # agency set and booking_confirmations INSERTs fail row-level
+        # security. The canonical rls_session binds the agency explicitly —
+        # same isolation, background-safe.
+        async with rls_session(agency_id) as db:
             detail = await create_confirmation(
                 db,
                 trip_id=trip_id,
@@ -548,7 +555,7 @@ async def verify_confirmation(
         actor_type="agent",
         actor_id=verified_by,
         source="agent_action",
-        metadata={"confirmation_type": c.confirmation_type},
+        event_metadata={"confirmation_type": c.confirmation_type},
     )
     await db.commit()
 
@@ -597,7 +604,7 @@ async def void_confirmation(
         actor_type="agent",
         actor_id=voided_by,
         source="agent_action",
-        metadata={"confirmation_type": c.confirmation_type},
+        event_metadata={"confirmation_type": c.confirmation_type},
     )
     await db.commit()
 
