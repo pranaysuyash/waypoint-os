@@ -392,9 +392,9 @@ export default function SuppliersPage() {
                   <td className='p-3.5'>
                     <div className='flex items-center gap-1.5 font-mono text-xs font-semibold text-[#58a6ff]'>
                       <Clock className='size-3.5 text-[#d29922]' />
-                      <span>{supplier.slaScore}% fixture</span>
+                      <span>{supplier.slaScore}% (demo)</span>
                     </div>
-                    <div className='text-[11px] text-[#8b949e]'>Sample score · rating fixture {supplier.rating}/5.0</div>
+                    <div className='text-[11px] text-[#8b949e]'>Sample score · rating (demo) {supplier.rating}/5.0</div>
                   </td>
 
                   <td className='p-3.5 text-right'>

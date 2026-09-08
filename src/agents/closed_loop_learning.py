@@ -83,7 +83,14 @@ class FixCandidate:
 
 @dataclass(slots=True)
 class ShadowTestResult:
-    """Outcome of a shadow test run against sample events."""
+    """Outcome of a shadow test run against sample events.
+
+    PA-21 verdict honesty: the shadow test is a heuristic string match
+    (``event_failure_layer == candidate.next_fix_layer``), NOT a re-execution
+    of the pipeline. ``verdict_basis`` and ``demonstrated`` travel with every
+    result so no downstream reader can mistake a "proceed" verdict for a
+    proven fix.
+    """
 
     candidate_id: str
     sample_count: int
@@ -94,6 +101,8 @@ class ShadowTestResult:
     verdict: str  # "proceed", "defer", "reject"
     rationale: str
     run_at: str = ""
+    verdict_basis: str = "heuristic_string_match"
+    demonstrated: bool = False
 
     def __post_init__(self) -> None:
         if not self.run_at:
@@ -264,7 +273,12 @@ class ClosedLoopLearningAgent:
         description="Consumes eval failure signals, produces fix candidates with shadow testing, and surfaces actionable recommendations.",
         trigger_contract="Execution events contain repeated failure_signature with enough occurrences (≥3) to indicate a systemic issue.",
         input_contract="Trip records with execution events and review history. WorkItem payload contains AgenticEvalWorkItem fields.",
-        output_contract="Trip is updated with closed_loop_fix_candidate, closed_loop_shadow_test, and closed_loop_verdict.",
+        output_contract=(
+            "Trip is updated with closed_loop_fix_candidate, closed_loop_shadow_test, "
+            "closed_loop_verdict, plus closed_loop_verdict_basis and "
+            "closed_loop_verdict_demonstrated (PA-21): the verdict is a heuristic "
+            "string match, never a demonstrated re-execution."
+        ),
         idempotency_contract="One fix candidate per failure_signature until the signature changes or the candidate is resolved.",
         failure_contract="Retry event query failures; poison after retry budget. Shadow test failures produce 'defer' verdict, not poison.",
         retry_policy=RetryPolicy(max_attempts=3, backoff_seconds=(0, 2, 8)),
@@ -402,23 +416,32 @@ class ClosedLoopLearningAgent:
             # Step 4: Run shadow test
             shadow_result = run_shadow_test(candidate, sample_events)
 
-            # Step 5: Build output
+            # Step 5: Build output — PA-21 honesty fields travel with every
+            # verdict so "proceed" can never be read as a demonstrated fix.
             output = {
                 "fix_candidate": candidate.to_dict(),
                 "shadow_test": shadow_result.to_dict(),
                 "verdict": shadow_result.verdict,
+                "verdict_basis": shadow_result.verdict_basis,
+                "demonstrated": shadow_result.demonstrated,
                 "rationale": shadow_result.rationale,
                 "generated_at": datetime.now(timezone.utc).isoformat(),
                 "source": self.definition.name,
             }
 
-            # Step 6: Update trip with the fix candidate
+            # Step 6: Update trip with the fix candidate.
+            # PA-21: ``closed_loop_verdict`` is kept for compatibility, but the
+            # basis/demonstrated fields are written alongside so any reader of
+            # the trip record sees the verdict is a heuristic string match,
+            # not a re-executed proof.
             updated = trip_repo.update_trip(
                 work_item.trip_id,
                 {
                     "closed_loop_fix_candidate": candidate.to_dict(),
                     "closed_loop_shadow_test": shadow_result.to_dict(),
                     "closed_loop_verdict": shadow_result.verdict,
+                    "closed_loop_verdict_basis": shadow_result.verdict_basis,
+                    "closed_loop_verdict_demonstrated": shadow_result.demonstrated,
                     "last_agent_action": self.definition.name,
                     "last_agent_action_at": datetime.now(timezone.utc).isoformat(),
                 },
@@ -436,7 +459,10 @@ class ClosedLoopLearningAgent:
                 work_item=work_item,
                 status=WorkStatus.COMPLETED,
                 success=True,
-                reason=f"Generated fix candidate with shadow verdict: {shadow_result.verdict}",
+                reason=(
+                    f"Generated fix candidate with heuristic shadow verdict "
+                    f"(basis=string_match, not demonstrated): {shadow_result.verdict}"
+                ),
                 output=output,
             )
 

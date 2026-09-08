@@ -4,6 +4,68 @@
 **Status:** partial; removal of fabricated alerts observed, residual contract open.
 **Lifecycle owner:** `FINDINGS_REGISTER_2026-08-31.md::F-38`.
 
+## September 8 current-source refresh and implementation refinement
+
+A bounded Luna/high read-only review reconfirmed all nine residual requirements
+against the current router and storage facade. No F-38 code was changed in this
+continuation. The current full backend run is tracked separately in execution
+status; a green aggregate count would not verify these missing regressions.
+
+Two implementation assumptions were resolved from source:
+
+- `TripStore.list_trips` supports limit/offset, but file storage silently skips
+  unreadable rows and orders reverse filenames; SQL orders only creation time,
+  without an ID tie-breaker. A successful short list is not evidence of a
+  complete readable agency corpus. Adding a loop around the existing list
+  cannot repair that information loss or guarantee stable concurrent paging.
+- No implemented `resolve_trip_window`, `TripWindow`, or `in_trip_basis` helper
+  was found. `services/inbox_projection.py::_date_window_value` resolves a
+  display phrase, not authoritative start/end dates. E-9 is a design dependency,
+  not a reusable runtime resolver. Do not fabricate a dependency on it or treat
+  the legacy social-inbound flat packet fields as the canonical date model.
+
+**Accepted implementation direction:** keep one canonical radar/store and
+introduce an explicit read envelope with healthy `alerts`, separate
+`observed_at`, allowlisted issues and bounded coverage. Event `created_at` is
+nullable with known/unknown/invalid provenance. System-generated preview
+metadata overrides stored capability claims; source records remain untouched.
+Canonical membership resolution owns tenant scope, with optional exact-trip
+lookup returning the same 404 for missing/foreign trips.
+
+**Corrected reviewer example:** `coverage.status=complete` must never coexist
+with `has_more=true` when status refers to the whole selected agency scope.
+Page completion and agency-scan completion need distinct names. Store read
+errors or omitted malformed alerts also prevent a whole-scope complete claim.
+An offset endpoint must disclose non-snapshot consistency; a tie-breaker alone
+does not prevent shifting boundaries under concurrent inserts.
+
+The next coherent implementation package is:
+
+1. Extend the existing persistence facade with a bounded page result that
+   preserves safe read-error counts/codes and exhaustion evidence for both
+   backends. Define deterministic ordering and explicit concurrency semantics;
+   do not add an unbounded scan or a second store.
+2. Implement the radar envelope and non-mutating projection, including mapping
+   validation before field access, time/identity diagnostics, canonical tenant
+   scope and system-owned capability fields. Keep all-stored-alerts as the
+   existing default for this integrity slice; do not hide known disruptions
+   using an unimplemented date resolver. E-9 in-window prioritization remains
+   a separate documented product decision.
+3. Migrate the two known test consumers (wave F-30–F-40 and strategic phases
+   6–9), preserving exact seeded identity and rebooking-denial assertions.
+   Add more-than-100-trip, unreadable-file, concurrent-boundary, mixed-invalid,
+   sensitive-sentinel, forged-capability and real-auth positive/negative cases.
+   Review actual serialized schema twice and regenerate only artifacts that
+   genuinely derive this router; no current frontend consumer/type was found.
+4. Document the response migration and operator recovery. Unknown external
+   consumers are a release/migration uncertainty, not proof of absence.
+   Malformed source records are preserved; no invented timestamp, silent
+   ownership reassignment, provider feed or live rebooking is introduced.
+
+This refines the existing F-38 package rather than opening a competing ledger.
+F-38 remains partial/P1. The separate concierge disruption surface uses another
+business input and is not merged merely because its endpoint name is similar.
+
 ## Objective, scope and evidence
 
 Operators need to distinguish no disruption from unreadable disruption data,

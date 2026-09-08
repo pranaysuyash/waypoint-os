@@ -26,9 +26,18 @@ image = "ghcr.io/your-org/spine-api:latest"
   SPINE_API_WORKERS = "1"
   SPINE_API_RELOAD = "0"
   TRAVELER_SAFE_STRICT = "1"
-  USE_HYBRID_DECISION_ENGINE = "1"
+  # PA-03: USE_HYBRID_DECISION_ENGINE is deliberately NOT set here. The code
+  # default is now OFF so the serving spine stays deterministic by
+  # architecture, not by credential absence. Opt in explicitly (e.g.
+  # `fly env set USE_HYBRID_DECISION_ENGINE=1`) only with review — enabling
+  # it puts credential-gated LLM calls on the serving path (logged loudly at
+  # startup when enabled).
   TRIPSTORE_BACKEND = "sql"
   SPINE_API_IDEMPOTENCY_BACKEND = "sql"
+  # PA-12: opt the deployment into the throttled lazy run-ledger GC (terminal
+  # runs older than 30 days, hard-capped per pass). Dev compose keeps this
+  # OFF so local history is never pruned implicitly.
+  WAYPOINT_RUN_LEDGER_GC = "1"
   # Set PUBLIC_CHECKER_AGENCY_ID, DATABASE_URL, REDIS_URL, JWT_SECRET,
   # PROPOSAL_SIGNING_KEY, and SPINE_API_CORS with `fly secrets set`.
 

@@ -189,7 +189,17 @@ def test_f30_dependency_rejects_anonymous_without_bypass(monkeypatch):
 
 def test_f30_authenticated_bypass_write_scopes_to_requested_agency(session_client):
     """Runtime proof 2/3: the write succeeds under test isolation and persists
-    scoped to the requested agency."""
+    scoped to the requested agency.
+
+    PA-26 adjustment (2026-09-06): the override endpoint no longer approves
+    outright on a single call. With require_pre_approval active and no prior
+    recorded approval, the first call stages a dual-control
+    ``pending_second_approval`` record (approved=False) — this test failed
+    before the change because the endpoint wrote approved=True immediately
+    from client-supplied free text. The agency-scoping intent of this test is
+    unchanged: the staged record must still be written scoped to the
+    requested agency, attributed to the authenticated principal.
+    """
     trip_id = _seed_corporate_trip(AGENCY)
     resp = session_client.post(
         f"/api/v1/corporate/approve-policy-override/{trip_id}",
@@ -197,8 +207,19 @@ def test_f30_authenticated_bypass_write_scopes_to_requested_agency(session_clien
         headers={"X-Agency-ID": AGENCY},
     )
     assert resp.status_code == 200
+    body = resp.json()
+    assert body["override_approved"] is False
+    assert body["pending_second_approval"] is True
+    assert body["status"] == "pending_second_approval"
     saved = TripStore.get_trip(trip_id)
-    assert saved["corporate_policy_override"]["approved"] is True
+    override = saved["corporate_policy_override"]
+    assert override["approved"] is False
+    assert override["status"] == "pending_second_approval"
+    # Approver identity now comes from the authenticated principal, not the
+    # client-supplied free-text name ("Ops Lead" is ignored). Under the
+    # session_client JWT this is the canonical test owner user id.
+    assert override["first_approved_by_id"] == "323468de-ba3d-437b-aa10-35b281a0c6a6"
+    assert override["first_approved_by"] != "Ops Lead"
 
 
 def test_f30_cross_tenant_write_is_indistinguishable_denial(auth_states, session_client):

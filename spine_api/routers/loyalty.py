@@ -40,6 +40,9 @@ class AwardSearchResponse(BaseModel):
     departure_date: str
     cabin_class: str
     award_options: List[AwardAvailabilityOption] = Field(default_factory=list)
+    reality_tier: str = "deterministic_preview"
+    provider_connected: bool = False
+    sample_data: bool = True
 
 
 class LoyaltyProgramProfile(BaseModel):
@@ -56,6 +59,9 @@ class CustomerLoyaltySummary(BaseModel):
     tsa_precheck_known_traveler_number: Optional[str] = None
     passport_number_masked: Optional[str] = None
     programs: List[LoyaltyProgramProfile] = Field(default_factory=list)
+    reality_tier: str = "deterministic_preview"
+    provider_connected: bool = False
+    sample_data: bool = True
 
 
 @router.post("/award-search", response_model=AwardSearchResponse)
@@ -96,6 +102,9 @@ def search_award_availability(
         departure_date=body.departure_date,
         cabin_class=body.cabin_class,
         award_options=options,
+        reality_tier="deterministic_preview",
+        provider_connected=False,
+        sample_data=True,
     )
 
 
@@ -104,35 +113,14 @@ def get_customer_loyalty_balances(
     customer_id: str,
     x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
-    """Inspect customer frequent flyer numbers, TSA PreCheck, and hotel elite status perks."""
-    programs = [
-        LoyaltyProgramProfile(
-            program_name="United MileagePlus",
-            account_number="UA-99823102",
-            elite_tier="Premier 1K",
-            points_balance=340000,
-            perks=["Complimentary Economy Plus", "Star Alliance Gold Lounge Access", "3 Free Checked Bags"],
-        ),
-        LoyaltyProgramProfile(
-            program_name="Marriott Bonvoy",
-            account_number="MB-77192031",
-            elite_tier="Titanium Elite",
-            points_balance=580000,
-            perks=["4pm Late Checkout", "Suite Night Awards", "Lounge Access & Free Breakfast"],
-        ),
-        LoyaltyProgramProfile(
-            program_name="Hyatt World of Hyatt",
-            account_number="HY-11294022",
-            elite_tier="Globalist",
-            points_balance=195000,
-            perks=["Waived Resort Fees", "Club Lounge Access", "Best Room Guarantee"],
-        ),
-    ]
-
+    """Loyalty balances are not a live FFN store (AT-13). Abstain instead of inventing 1K/Titanium."""
     return CustomerLoyaltySummary(
         ok=True,
         customer_id=customer_id,
-        tsa_precheck_known_traveler_number="TT-992019201",
-        passport_number_masked="••••••••4921",
-        programs=programs,
+        tsa_precheck_known_traveler_number=None,
+        passport_number_masked=None,
+        programs=[],
+        reality_tier="unavailable",
+        provider_connected=False,
+        sample_data=False,
     )

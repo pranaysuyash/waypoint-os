@@ -379,8 +379,10 @@ class AgentSupervisor:
         interval_seconds: int = 300,
         coordinator: Optional[WorkCoordinator] = None,
     ):
+        from src.orchestration.travel_next_action import NextActionAwareTripRepo
+
         self.registry = registry
-        self.trip_repo = trip_repo
+        self.trip_repo = NextActionAwareTripRepo(trip_repo)
         self.audit = audit
         self.interval_seconds = interval_seconds
         self.coordinator = coordinator or InMemoryWorkCoordinator()

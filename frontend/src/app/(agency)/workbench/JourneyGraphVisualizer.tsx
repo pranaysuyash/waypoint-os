@@ -55,7 +55,7 @@ export function JourneyGraphVisualizer() {
         <div>
           <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
             <MapPin className="h-5 w-5 text-primary" />
-            Journey Dependency Graph (JDG) & Disruption Simulator
+            Journey & Disruption Simulator (demo)
           </h3>
           <p className="text-ui-xs text-muted-foreground">
             Topological DAG tracking physical buffers, Minimum Connecting Times (MCT), and co-terminal airport links.

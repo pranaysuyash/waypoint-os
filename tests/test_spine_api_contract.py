@@ -109,7 +109,10 @@ class TestSpineApiHealth:
 class TestAcceptedContract:
     def test_post_run_returns_accepted_shape(self, api_health, sc_001_payload):
         accepted = post_run(sc_001_payload)
-        assert set(accepted.keys()) == {"run_id", "state"}
+        # PA-13 (2026-09-06): `idempotent_replay` joins the minimal async
+        # accepted contract — always present, False on fresh submissions.
+        assert set(accepted.keys()) == {"run_id", "state", "idempotent_replay"}
+        assert accepted["idempotent_replay"] is False
         assert isinstance(accepted["run_id"], str) and accepted["run_id"]
         assert accepted["state"] == "queued"
 

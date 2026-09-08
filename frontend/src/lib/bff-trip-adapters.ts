@@ -586,6 +586,9 @@ export function transformSpineTripToTrip(
       commercial_decision: asString(decision.commercial_decision, "NONE"),
       intent_scores: asRecord(decision.intent_scores),
       next_best_action: decision.next_best_action ?? null,
+      commercial_next_action:
+        decision.commercial_next_action ?? decision.next_best_action ?? null,
+      travel_next_action: decision.travel_next_action ?? null,
       budget_breakdown: decision.budget_breakdown ?? DEFAULT_BUDGET_BREAKDOWN,
     } as unknown) as Trip["decision"],
     strategy: (trip.strategy as StrategyOutput | undefined) ?? undefined,

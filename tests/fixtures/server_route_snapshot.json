@@ -1,5 +1,5 @@
 {
-  "route_count": 342,
+  "route_count": 356,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -140,6 +140,14 @@
     {
       "path": "/analytics/team",
       "name": "get_analytics_team",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/assignments/queue/escalated",
+      "name": "list_escalated_queue",
       "methods": [
         "GET"
       ],
@@ -518,6 +526,14 @@
       "name": "submit_public_booking_data",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public/journey-graph/{trip_id}",
+      "name": "get_public_journey_graph",
+      "methods": [
+        "GET"
       ],
       "operation_id": null
     },
@@ -956,6 +972,46 @@
     {
       "path": "/api/v1/benchmarking/stress-test",
       "name": "execute_stress_test",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/boundaries/authority-approvals",
+      "name": "list_authority_approvals",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/boundaries/authority-approvals",
+      "name": "request_authority_approval",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/boundaries/authority-approvals/{approval_id}",
+      "name": "get_authority_approval",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/boundaries/authority-approvals/{approval_id}/approve",
+      "name": "approve_authority_approval",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/boundaries/authority-approvals/{approval_id}/deny",
+      "name": "deny_authority_approval",
       "methods": [
         "POST"
       ],
@@ -1410,6 +1466,46 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/financial-ops/payment-mandates",
+      "name": "list_payment_mandates",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/financial-ops/payment-mandates",
+      "name": "register_payment_mandate",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/financial-ops/payment-mandates/{mandate_id}",
+      "name": "get_payment_mandate",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/financial-ops/payment-mandates/{mandate_id}/revoke",
+      "name": "revoke_payment_mandate",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/fulfillment/proposals/fulfill",
+      "name": "fulfill_proposal",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/fx/exposures",
       "name": "list_fx_exposures",
       "methods": [
@@ -1606,6 +1702,14 @@
       "name": "evaluate_journey_disruption",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/journey-graph/{trip_id}",
+      "name": "get_journey_graph",
+      "methods": [
+        "GET"
       ],
       "operation_id": null
     },
@@ -1958,6 +2062,14 @@
       "name": "issue_virtual_credit_card",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/subagent-payouts/reconciliation/{trip_id}",
+      "name": "get_trip_commission_reconciliation",
+      "methods": [
+        "GET"
       ],
       "operation_id": null
     },

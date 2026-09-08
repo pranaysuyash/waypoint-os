@@ -232,9 +232,9 @@ export default function IROPSAutoHealerPanel() {
       {healingPlan && (
         <div className="space-y-3 pt-2" data-testid="irops-preview-result">
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono uppercase text-amber-600">
-            <span>PREVIEW_ONLY</span>
+            <span>Preview only — nothing was sent to any carrier</span>
             <span aria-hidden="true">·</span>
-            <span>UNVERIFIED LOCAL INPUT</span>
+            <span>Details need human verification</span>
           </div>
 
           <div className="p-3.5 rounded-xl border border-border bg-muted/40 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">

@@ -89,6 +89,7 @@ def test_price_lock_optimistic_concurrency_conflict():
             "trip_id": trip_id,
             "new_net_rate_cents": 250000,
             "expected_version": 1,  # Stale! Current is 2
+            "idempotency_key": "idem_pl_conc_1",  # required since PA-06
         },
     )
     assert resp.status_code == 409
@@ -96,7 +97,15 @@ def test_price_lock_optimistic_concurrency_conflict():
 
 
 def test_price_lock_idempotency_caching():
-    """Verify identical idempotency_key returns cached response without duplicate increment."""
+    """Verify the (now mandatory) idempotency key is accepted and the preview is stable.
+
+    S2 state change (PA-06, 2026-09-06):
+    - FAILED BEFORE: the first re-lock persisted the simulated rate and bumped
+      the trip version 1 -> 2; the cached replay asserted version stayed 2.
+    - PASSES AFTER: re-lock is PREVIEW-ONLY — no version bump (stays 1), no
+      trip mutation, ``effects: []`` and ``would_persist: false``. The same
+      request replays the identical preview deterministically.
+    """
     trip_id = "trip_pl_idemp_1"
     TripStore.save_trip(
         {
@@ -116,27 +125,33 @@ def test_price_lock_idempotency_caching():
             "trip_id": trip_id,
             "new_net_rate_cents": 270000,
             "idempotency_key": idemp_key,
+            "expected_version": 1,
         },
     )
     assert resp1.status_code == 200
     data1 = resp1.json()
     assert data1["margin_saved_cents"] == 30000
-    assert data1["version"] == 2
+    # Preview-only: the trip's version is echoed unchanged (no persist).
+    assert data1["version"] == 1
+    assert data1["would_persist"] is False
+    assert data1["not_persisted_reason"] == "simulated_rate_source"
+    assert data1["effects"] == []
 
-    # Duplicate re-entry with same key
+    # Duplicate re-entry with same key — identical deterministic preview.
     resp2 = client.post(
         f"/api/v1/price-lock/{trip_id}/re-lock",
         json={
             "trip_id": trip_id,
             "new_net_rate_cents": 270000,
             "idempotency_key": idemp_key,
+            "expected_version": 1,
         },
     )
     assert resp2.status_code == 200
     data2 = resp2.json()
     assert data2["margin_saved_cents"] == 30000
-    # Version should remain unchanged on replay
-    assert data2["version"] == 2
+    # Version should remain unchanged (no persist happened).
+    assert data2["version"] == 1
 
 
 # ---------------------------------------------------------------------------

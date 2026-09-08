@@ -127,8 +127,15 @@ def test_strategic_phases_6_to_9_lifecycle_end_to_end(session_client):
         json={"trip_id": trip_id, "approver_name": "Jane Miller VP", "reason": "Approved executive accommodation cap exception"},
         headers={"X-Agency-ID": "agency_phase69_test"},
     )
+    # PA-26 adjustment (2026-09-06): a single call no longer approves outright.
+    # With require_pre_approval active, the first call stages a dual-control
+    # pending_second_approval record (this test previously failed after the
+    # change because it asserted immediate override_approved=True from
+    # client-supplied free text — the self-certifying behavior PA-26 removed).
     assert override_res.status_code == 200
-    assert override_res.json()["override_approved"] is True
+    assert override_res.json()["override_approved"] is False
+    assert override_res.json()["pending_second_approval"] is True
+    assert override_res.json()["status"] == "pending_second_approval"
 
     # --- PHASE 9: Concierge Up-Sell Engine ---
     propose_res = session_client.get(

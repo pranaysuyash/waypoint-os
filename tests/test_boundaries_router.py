@@ -13,6 +13,10 @@ def setup_test_env(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
     monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
     monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+    # PA-24: the boundary engine fails closed without a real secret — the old
+    # committed default ("waypoint_capability_secret_key_2026") is gone. Tests
+    # must supply a dev-only secret, mirroring PROPOSAL_SIGNING_KEY handling.
+    monkeypatch.setenv("CAPABILITY_TOKEN_SECRET", "pytest-capability-secret-0123456789abcdef")
 
 
 def test_issue_capability_token_endpoint(session_client):

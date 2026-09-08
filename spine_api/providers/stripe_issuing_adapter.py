@@ -59,6 +59,12 @@ class VirtualCardIssuanceRequest:
     single_use: bool = True
     expiry_hours: int = 72
     metadata: Dict[str, Any] = field(default_factory=dict)
+    # Part-H P0 (2026-09-07): provider-side idempotency. When set, the sandbox
+    # card id is derived deterministically from this key so a re-issued request
+    # (crash between issuance and durable persistence) returns the SAME
+    # instrument. Livemode issuance still delegates idempotency to Stripe's
+    # native Idempotency-Key header — do not assume determinism there.
+    idempotency_key: Optional[str] = None
 
 
 @dataclass(slots=True)
@@ -86,15 +92,39 @@ class StripeIssuingAdapter:
     """
 
     def __init__(self, api_key: Optional[str] = None) -> None:
-        self.api_key = api_key or os.getenv("STRIPE_SECRET_KEY", "")
-        self.is_livemode = self.api_key.startswith("sk_live_")
+        self.api_key = api_key if api_key is not None else os.getenv("STRIPE_SECRET_KEY", "")
+        self.is_livemode = bool(self.api_key) and self.api_key.startswith("sk_live_")
 
     async def issue_single_use_card(
         self, request: VirtualCardIssuanceRequest
     ) -> IssuedVirtualCard:
         """Issue a virtual card with strict spend controls and single-use expiry."""
-        if self.is_livemode and self.api_key:
-            card_id = f"ic_{uuid.uuid4().hex[:16]}"
+        if self.is_livemode:
+            # Part-K fail-closed (§13 claim reality): there is NO live Stripe
+            # integration behind this adapter — under sk_live_* it would mint
+            # a FAKE instrument labeled live. Refuse instead. Live issuance
+            # requires the native Stripe Issuing API called with Stripe's
+            # Idempotency-Key header set to the fulfillment provider key.
+            raise RuntimeError(
+                "Live Stripe Issuing is not implemented: this adapter is a "
+                "sandbox simulation and refuses to mint a simulated card as "
+                "a live instrument. Wire the native Stripe Issuing API "
+                "(Idempotency-Key header = fulfillment provider key) before "
+                "enabling livemode."
+            )
+        if request.idempotency_key:
+            # Bind the card identity to the idempotency key AND the business
+            # parameters, so the same key with changed spend/currency cannot
+            # silently alias a different instrument (Part-J #1).
+            digest = hashlib.sha256(
+                "vcc:{key}:{trip}:{amount}:{currency}".format(
+                    key=request.idempotency_key,
+                    trip=request.trip_id or "",
+                    amount=request.amount_cents,
+                    currency=request.currency,
+                ).encode("utf-8")
+            ).hexdigest()
+            card_id = f"ic_sandbox_{digest[:12]}"
         else:
             card_id = f"ic_sandbox_{uuid.uuid4().hex[:12]}"
 
@@ -104,11 +134,18 @@ class StripeIssuingAdapter:
 
         # Decimal conversion is variable-width; constrain and zero-pad so the
         # sandbox card contract always exposes exactly four network digits.
-        last4 = f"{int(uuid.uuid4().hex[:4], 16) % 10000:04d}"
-        # Keep the sandbox credential shape identical to a card-network CVC:
-        # decimal conversion is variable-width, so zero-pad after constraining
-        # the value to the three-digit range.
-        cvc = f"{int(uuid.uuid4().hex[:4], 16) % 1000:03d}"
+        if request.idempotency_key:
+            idem_digest = hashlib.sha256(
+                f"last4:{request.idempotency_key}".encode("utf-8")
+            ).hexdigest()
+            last4 = f"{int(idem_digest[:4], 16) % 10000:04d}"
+            cvc = f"{int(idem_digest[4:8], 16) % 1000:03d}"
+        else:
+            last4 = f"{int(uuid.uuid4().hex[:4], 16) % 10000:04d}"
+            # Keep the sandbox credential shape identical to a card-network CVC:
+            # decimal conversion is variable-width, so zero-pad after constraining
+            # the value to the three-digit range.
+            cvc = f"{int(uuid.uuid4().hex[:4], 16) % 1000:03d}"
         pan = f"4242-4242-4242-{last4}"
 
         return IssuedVirtualCard(

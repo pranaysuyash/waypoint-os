@@ -8,7 +8,7 @@ bookings in an itinerary (PER-0700, PER-0442 / Travel Operating Systems Architec
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 from typing import Any, Dict, List, Literal, Optional
 
@@ -49,37 +49,110 @@ class DependencyRelation(StrEnum):
     RETURN_LEG_OF = "RETURN_LEG_OF"
 
 
+# Progressive-commitment states on a journey node (AT-02 / PER-0443).
+# A rung is real only if a later writer honors these; ticketed nodes must not
+# be silently overwritten by a second fulfill.
+CommitmentStatus = Literal["quoted", "held", "booked", "ticketed", "void"]
+
+
+def _parse_dt(value: Any) -> Optional[datetime]:
+    """Tolerant timestamp parse.
+
+    Stored journey nodes may legitimately lack schedule times (identity,
+    provider, and confirmation fields only). Raising on absence made every
+    such record fail hydration even though the router can serve it raw —
+    the parser now abstains (``None``) instead of fabricating a datetime or
+    crashing (codex Part-H P2, 2026-09-07).
+
+    Naive timestamps are normalized to UTC (storage canonical is UTC; legacy
+    naive values are presumed UTC) so mixed-provenance nodes never crash
+    datetime comparisons in topological_sort (Part-J #7).
+    """
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        text = str(value or "").replace("Z", "+00:00")
+        if not text:
+            return None
+        try:
+            parsed = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _node_type_value(node_type: Any) -> Any:
+    """Serialize a node type that may be a NodeType or a preserved raw string."""
+    return getattr(node_type, "value", node_type)
+
+
 @dataclass(slots=True)
 class JourneyNode:
     """An atomic node in a journey DAG (a flight, hotel, transfer, or activity)."""
     node_id: str
     node_type: NodeType
     title: str
-    start_time: datetime
-    end_time: datetime
-    location: str
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    location: str = ""
     provider: str = ""
     confirmation_code: Optional[str] = None
     buffer_minutes_before: int = 30
     is_cancellable: bool = True
     cancellation_deadline: Optional[datetime] = None
+    commitment_status: CommitmentStatus = "quoted"
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "node_id": self.node_id,
-            "node_type": self.node_type.value,
+            "node_type": _node_type_value(self.node_type),
             "title": self.title,
-            "start_time": self.start_time.isoformat(),
-            "end_time": self.end_time.isoformat(),
+            "start_time": self.start_time.isoformat() if self.start_time else None,
+            "end_time": self.end_time.isoformat() if self.end_time else None,
             "location": self.location,
             "provider": self.provider,
             "confirmation_code": self.confirmation_code,
             "buffer_minutes_before": self.buffer_minutes_before,
             "is_cancellable": self.is_cancellable,
             "cancellation_deadline": self.cancellation_deadline.isoformat() if self.cancellation_deadline else None,
+            "commitment_status": self.commitment_status,
             "metadata": self.metadata,
         }
+
+    @classmethod
+    def from_dict(cls, raw: Dict[str, Any]) -> "JourneyNode":
+        raw_type = str(raw.get("node_type") or "FLIGHT")
+        try:
+            node_type: Any = NodeType(raw_type)
+        except ValueError:
+            # Preserve the operational meaning of unknown/future node types
+            # instead of silently re-labeling them FLIGHT (Part-H P2).
+            node_type = raw_type
+        status_raw = str(raw.get("commitment_status") or "quoted")
+        commitment: CommitmentStatus
+        if status_raw in ("quoted", "held", "booked", "ticketed", "void"):
+            commitment = status_raw  # type: ignore[assignment]
+        else:
+            commitment = "quoted"
+        deadline = raw.get("cancellation_deadline")
+        return cls(
+            node_id=str(raw.get("node_id") or ""),
+            node_type=node_type,
+            title=str(raw.get("title") or ""),
+            start_time=_parse_dt(raw.get("start_time")),
+            end_time=_parse_dt(raw.get("end_time")),
+            location=str(raw.get("location") or ""),
+            provider=str(raw.get("provider") or ""),
+            confirmation_code=raw.get("confirmation_code"),
+            buffer_minutes_before=int(raw.get("buffer_minutes_before") or 30),
+            is_cancellable=bool(raw.get("is_cancellable", True)),
+            cancellation_deadline=_parse_dt(deadline) if deadline else None,
+            commitment_status=commitment,
+            metadata=dict(raw.get("metadata") or {}),
+        )
 
 
 @dataclass(slots=True)
@@ -163,6 +236,45 @@ class JourneyDependencyGraph:
     def get_node(self, node_id: str) -> Optional[JourneyNode]:
         return self.nodes.get(node_id)
 
+    def to_stored_payload(self) -> Dict[str, Any]:
+        """Trip-record fields the journey-graph GET already reads (AT-01)."""
+        return {
+            "journey_graph_nodes": [n.to_dict() for n in self.nodes.values()],
+            "journey_graph_edges": [e.to_dict() for e in self.edges],
+        }
+
+    @classmethod
+    def from_stored(
+        cls,
+        trip_id: str,
+        nodes: Optional[List[Dict[str, Any]]] = None,
+        edges: Optional[List[Dict[str, Any]]] = None,
+    ) -> "JourneyDependencyGraph":
+        graph = cls(trip_id=trip_id)
+        for raw in nodes or []:
+            if not isinstance(raw, dict) or not raw.get("node_id"):
+                continue
+            graph.add_node(JourneyNode.from_dict(raw))
+        for raw in edges or []:
+            if not isinstance(raw, dict):
+                continue
+            from_id = str(raw.get("from_node_id") or "")
+            to_id = str(raw.get("to_node_id") or "")
+            if from_id not in graph.nodes or to_id not in graph.nodes:
+                continue
+            try:
+                relation = DependencyRelation(str(raw.get("relation") or "REQUIRES_ARRIVAL_BEFORE"))
+            except ValueError:
+                relation = DependencyRelation.REQUIRES_ARRIVAL_BEFORE
+            graph.add_edge(
+                from_id,
+                to_id,
+                relation=relation,
+                min_connection_minutes=int(raw.get("min_connection_minutes") or 60),
+                notes=raw.get("notes"),
+            )
+        return graph
+
     def add_edge(
         self,
         from_node_id: str,
@@ -196,6 +308,11 @@ class JourneyDependencyGraph:
             raise ValueError(f"Node {delayed_node_id} not found in JourneyDependencyGraph")
 
         root = self.nodes[delayed_node_id]
+        if root.end_time is None:
+            raise ValueError(
+                f"Node {delayed_node_id} has no scheduled end time; disruption "
+                "ripple evaluation abstains instead of guessing a schedule."
+            )
         impacts: List[DisruptionImpact] = []
         visited = set()
 
@@ -213,6 +330,10 @@ class JourneyDependencyGraph:
             out_edges = [e for e in self.edges if e.from_node_id == curr_id]
             for edge in out_edges:
                 target = self.nodes[edge.to_node_id]
+                if target.start_time is None or target.end_time is None:
+                    # Undated nodes have no schedule to violate; they cannot
+                    # participate in a temporal ripple evaluation.
+                    continue
                 min_allowed_start = curr_end + timedelta(minutes=edge.min_connection_minutes)
 
                 if is_cancellation:
@@ -288,8 +409,10 @@ class JourneyDependencyGraph:
             in_degree[edge.to_node_id] += 1
 
         queue = [nid for nid, deg in in_degree.items() if deg == 0]
-        # Sort initial queue by start_time
-        queue.sort(key=lambda nid: self.nodes[nid].start_time)
+        # Sort initial queue by start_time; undated nodes sort last so they
+        # never crash the ordering against scheduled nodes.
+        _undated = datetime.max.replace(tzinfo=timezone.utc)
+        queue.sort(key=lambda nid: (self.nodes[nid].start_time is None, self.nodes[nid].start_time or _undated))
 
         sorted_nodes: List[JourneyNode] = []
 
@@ -301,7 +424,7 @@ class JourneyDependencyGraph:
                 in_degree[neighbor] -= 1
                 if in_degree[neighbor] == 0:
                     queue.append(neighbor)
-            queue.sort(key=lambda nid: self.nodes[nid].start_time)
+            queue.sort(key=lambda nid: (self.nodes[nid].start_time is None, self.nodes[nid].start_time or _undated))
 
         if len(sorted_nodes) != len(self.nodes):
             raise ValueError("Cycle detected in JourneyDependencyGraph")
@@ -317,6 +440,11 @@ class JourneyDependencyGraph:
         to_node = self.get_node(to_node_id)
         if not from_node or not to_node:
             raise ValueError("Both nodes must exist in graph")
+        if from_node.end_time is None or to_node.start_time is None:
+            raise ValueError(
+                "Connection cushion requires scheduled times on both nodes; "
+                "abstaining instead of computing against an unknown schedule."
+            )
 
         edge = next((e for e in self.edges if e.from_node_id == from_node_id and e.to_node_id == to_node_id), None)
         min_mct = edge.min_connection_minutes if edge else 60
@@ -334,11 +462,11 @@ class JourneyDependencyGraph:
                 "geometry": None,  # Can be populated with coordinates if available
                 "properties": {
                     "node_id": node.node_id,
-                    "node_type": node.node_type.value,
+                    "node_type": _node_type_value(node.node_type),
                     "title": node.title,
                     "location": node.location,
-                    "start_time": node.start_time.isoformat(),
-                    "end_time": node.end_time.isoformat(),
+                    "start_time": node.start_time.isoformat() if node.start_time else None,
+                    "end_time": node.end_time.isoformat() if node.end_time else None,
                     "provider": node.provider,
                 }
             })

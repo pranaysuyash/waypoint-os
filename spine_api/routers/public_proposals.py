@@ -80,6 +80,10 @@ class PublicProposalView(BaseModel):
     accepted_by: Optional[str] = None
     days: List[ProposalDay] = Field(default_factory=list)
     available_options: List[ProposalOption] = Field(default_factory=list)
+    # Part-H P1 (2026-09-07): travelers must be able to tell a persisted,
+    # observed quote from the explicitly gated demo fixture. The frontend
+    # badges ``demo``; "persisted_observed" marks real agency data.
+    reality_tier: Optional[str] = None
 
 
 class UpdateOptionsRequest(BaseModel):
@@ -515,6 +519,7 @@ def _build_demo_proposal(token: str, trip_id: str) -> PublicProposalView:
             ),
         ],
         available_options=base_options,
+        reality_tier="demo",
     )
     _PROPOSAL_REGISTRY[token] = proposal
     return proposal
@@ -630,6 +635,7 @@ def _build_persisted_proposal(token: str, trip_id: str, agency_id: str) -> Publi
         accepted_by=None,
         days=[],
         available_options=[],
+        reality_tier="persisted_observed",
     )
 
 
@@ -701,7 +707,15 @@ def calculate_proposal_options(token: str, req: UpdateOptionsRequest) -> PublicP
 
 @router.post("/{token}/accept", response_model=PublicProposalView)
 def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalView:
-    """E-sign and accept proposal."""
+    """E-sign and accept proposal.
+
+    PA-02: acceptance is the authorization artifact for the whole money path,
+    so besides the process-local registry cache it is persisted DURABLY on the
+    trip record (``proposal_accepted_at`` / ``proposal_accepted_by`` /
+    ``proposal_acceptance_token`` / ``proposal_esign_consent``). Fulfillment
+    verifies against that durable field. If the trip record cannot be updated,
+    acceptance fails loudly instead of silently staying non-durable.
+    """
     if not req.e_signature_consent:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -710,11 +724,39 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
 
     proposal = _get_or_create_proposal(token)
     now_iso = datetime.now(timezone.utc).isoformat()
+
+    # PA-02: durable persistence on the trip record FIRST — the registry row
+    # must never advertise an acceptance the durable store does not have (a
+    # failed persistence must not leave a process-local "accepted" row). The
+    # exact allowlisted demo fixtures are explicitly process-local test/demo
+    # seams (see _build_demo_proposal) with no durable trip behind them, so
+    # the registry remains their only store; real signed tokens MUST persist
+    # durably.
+    signer_label = f"{req.signer_name} <{req.signer_email}>"
+    if token not in _DEMO_TOKEN_ALLOWLIST:
+        acceptance_updates = {
+            "proposal_accepted_at": now_iso,
+            "proposal_accepted_by": signer_label,
+            "proposal_acceptance_token": token,
+            "proposal_esign_consent": True,
+        }
+        persisted_trip = TripStore.update_trip(proposal.trip_id, acceptance_updates)
+        if not persisted_trip:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Proposal acceptance could not be persisted: trip "
+                    f"'{proposal.trip_id}' has no durable record. Acceptance is "
+                    "refused rather than kept process-local (PA-02)."
+                ),
+            )
+
     proposal.status = "accepted"
     proposal.accepted_at = now_iso
-    proposal.accepted_by = f"{req.signer_name} <{req.signer_email}>"
+    proposal.accepted_by = signer_label
 
-    # Audit the acceptance
+    # Audit the acceptance — emitted from the durable-persistence path, before
+    # and independent of the registry cache write below.
     AuditStore.log_event(
         "proposal_accepted",
         "public_client",
@@ -725,6 +767,7 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
             "signer_email": req.signer_email,
             "total_price_usd": proposal.selected_total_price_usd,
             "accepted_at": now_iso,
+            "persisted_on_trip": token not in _DEMO_TOKEN_ALLOWLIST,
         },
     )
     _PROPOSAL_REGISTRY[token] = proposal

@@ -272,7 +272,7 @@ export function DistributionPanel() {
             <div className="p-4 rounded-lg bg-[#0f1115] border border-[#30363d] space-y-2 text-ui-xs font-mono">
               <div className="flex justify-between items-center text-[#58a6ff]">
                 <span className="font-bold">Order preview (no provider order created)</span>
-                <span className="text-[#3fb950] font-semibold">{ndcResult.status}</span>
+                <span className="text-[#3fb950] font-semibold">Preview — nothing sent to the airline</span>
               </div>
               <p className="text-white">Illustrative NDC-shaped price: USD {Number(ndcResult.total_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               <div className="pt-2 border-t border-[#30363d] text-[#8b949e]">

@@ -33,8 +33,8 @@ def test_execute_spine_pipeline_uses_injected_run_and_persistence() -> None:
             return {"draft_id": None}
 
         @staticmethod
-        def fail(run_id, error_type, error_message):
-            _ = (run_id, error_type, error_message)
+        def fail(run_id, error_type, error_message, failure_class="unclassified", stage=None):
+            _ = (run_id, error_type, error_message, failure_class, stage)
 
     emit_started = MagicMock()
     emit_completed = MagicMock()
@@ -369,8 +369,8 @@ def test_execute_spine_pipeline_isolates_fail_ledger_failure() -> None:
             _ = (run_id, state)
 
         @staticmethod
-        def fail(run_id, error_type, error_message):
-            _ = (run_id, error_type, error_message)
+        def fail(run_id, error_type, error_message, failure_class="unclassified", stage=None):
+            _ = (run_id, error_type, error_message, failure_class, stage)
             raise RuntimeError("fail store down")
 
     result = _execute_for_boundary_test(

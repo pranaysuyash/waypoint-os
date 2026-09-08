@@ -42,6 +42,32 @@ from src.agents.requeue import (
 logger = logging.getLogger("recovery_agent")
 AGENT_NAME = "recovery_agent"
 
+
+def _get_failure_taxonomy():
+    """Lazy import of the run-ledger failure taxonomy (PA-07).
+
+    Lazy because recovery agents can run in deployments without spine_api; a
+    missing taxonomy degrades to the existing class-blind ladder instead of
+    breaking detection.
+    """
+    try:
+        from spine_api.failure_taxonomy import recovery_action_for
+
+        return recovery_action_for
+    except ImportError:  # pragma: no cover — spine-less deployment fallback
+        return None
+
+
+def _get_latest_run_meta(trip_id: str):
+    """Lazy run-ledger lookup for a trip's most recent run (PA-07)."""
+    try:
+        from spine_api.run_ledger import RunLedger
+
+        return RunLedger.latest_run_for_trip(trip_id)
+    except Exception:  # defensive — ledger absence must never break detection
+        logger.debug("Run-ledger lookup unavailable for trip %s", trip_id)
+        return None
+
 # ── Thresholds ────────────────────────────────────────────────────────────────
 # Read at call time so tests can monkeypatch without importlib.reload.
 
@@ -238,15 +264,56 @@ class RecoveryAgent:
         """
         Choose and execute a recovery action for a stuck trip.
 
-        Escalation ladder:
-          attempts < MAX_REQUEUE_ATTEMPTS and requeue enabled → try requeue via port
-          otherwise → escalate (human review)
+        Escalation ladder (PA-07 class-aware):
+          - poisoned trips → escalate (unchanged)
+          - latest run FAILED with failure_class known:
+              policy_block                → escalate, never requeue
+              state/verification/authority→ escalate (re-running cannot fix
+                                            state divergence)
+              tool/model/environment      → existing max-2 requeue ladder
+          - otherwise (no failed run / unknown class) → existing ladder:
+              attempts < MAX_REQUEUE_ATTEMPTS and requeue enabled → requeue
+              otherwise → escalate (human review)
         """
         if self._is_trip_poisoned(trip.trip_id):
             return self._action_escalate(trip)
+
+        failure_class = self._latest_failure_class(trip.trip_id)
+        if failure_class is not None:
+            branch = None
+            recovery_action_for = _get_failure_taxonomy()
+            if recovery_action_for is not None:
+                branch = recovery_action_for(failure_class)
+            if branch == "never_requeue":
+                result = self._action_escalate(trip)
+                result.reason = f"failure_class={failure_class} (policy block): never requeued. {result.reason}"
+                return result
+            if branch == "escalate":
+                result = self._action_escalate(trip)
+                result.reason = (
+                    f"failure_class={failure_class}: requeue cannot fix this — "
+                    f"escalated without retry. {result.reason}"
+                )
+                return result
+            # branch == "requeue" or "default": existing ladder below.
+
         if trip.requeue_attempts < _get_max_requeue_attempts() and self._requeue_enabled:
             return self._action_requeue(trip)
         return self._action_escalate(trip)
+
+    def _latest_failure_class(self, trip_id: str) -> Optional[str]:
+        """Read failure_class from the trip's latest run, when it FAILED (PA-07).
+
+        Returns None when there is no run ledger, no run for the trip, or the
+        latest run is not FAILED — in which case the existing ladder applies.
+        """
+        meta = _get_latest_run_meta(trip_id)
+        if not isinstance(meta, dict):
+            return None
+        if str(meta.get("state", "")).lower() != "failed":
+            return None
+        failure_class = meta.get("failure_class")
+        return str(failure_class) if failure_class else None
 
     def _get_requeue_attempts(self, trip_id: str) -> int:
         getter = getattr(self._requeue_port, "get_trip_attempts", None)

@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.tsx'],
     include: ['**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['node_modules', 'dist', '.next', 'out', '.claude'],
+    exclude: ['node_modules', 'dist', '.next', '.next-dev', 'out', '.claude'],
     // Full-suite runs are heavy (React 19 + jsdom + async UI effects). A larger
     // timeout budget plus conservative worker fan-out reduces Vitest RPC stalls.
     testTimeout: 60000,

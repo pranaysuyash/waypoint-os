@@ -2,8 +2,12 @@
 spine_api/routers/price_lock.py — Autonomous Price-Lock Sentinel & Re-Shopping Alert Engine.
 
 Monitors GDS, NDC, and bedbank rate holds during the 72-hour quote window (price_lock_expires_at).
-Audits rate drops, calculates potential margin gains, logs price_lock_arbitrage_saved audit events,
-and allows advisors to re-lock lower rates before deposit confirmation.
+Audits rate drops, calculates potential margin gains, and PREVIEWS advisor re-lock plans.
+
+PA-06 (2026-09-06): the rate source is still simulated (in-memory supplier
+contract rows with hardcoded fallbacks), so the re-lock endpoint is
+PREVIEW-ONLY — it never mutates the trip of record. See ReLockResponse and the
+re_lock_lower_rate docstring.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -12,7 +16,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 
 from spine_api.core.auth import get_current_agency_id
-from spine_api.persistence import AuditStore, TripStore
+from spine_api.persistence import TripStore
 from spine_api.routers.supplier import CONTRACTS_STORE
 
 router = APIRouter(prefix="/api/v1/price-lock", tags=["Price Lock Sentinel"])
@@ -48,18 +52,37 @@ class ReLockRequest(BaseModel):
     new_net_rate_cents: int
     supplier_name: Optional[str] = None
     advisor_note: Optional[str] = None
-    expected_version: Optional[int] = None
-    idempotency_key: Optional[str] = None
-
+    # PA-06: both guards are now REQUIRED (422 when absent) so the future
+    # real-rate-source path inherits optimistic concurrency + replay protection.
+    expected_version: int
+    idempotency_key: str
 
 class ReLockResponse(BaseModel):
+    """PA-06 preview-only re-lock response.
+
+    The rate source is still simulated (in-memory supplier contract row with
+    hardcoded fallbacks), so the endpoint is PREVIEW-ONLY: it computes what a
+    re-lock WOULD change and persists nothing. ``effects`` is always empty,
+    ``would_persist`` is always False with reason ``simulated_rate_source``,
+    and ``version`` echoes the trip's CURRENT version (unchanged). When a real
+    rate source lands, this endpoint may gain a persist path guarded by the
+    (now mandatory) optimistic-version and idempotency-key fields.
+    """
+
     ok: bool = True
     trip_id: str
+    preview: bool = True
     previous_net_rate_cents: int
     new_net_rate_cents: int
     margin_saved_cents: int
     updated_at: str
     version: int = 1
+    # Preview / reality metadata (repo pattern: financial_settlement, distribution)
+    reality_tier: str = "deterministic_preview"
+    provider_connected: bool = False
+    effects: List[str] = []
+    would_persist: bool = False
+    not_persisted_reason: str = "simulated_rate_source"
 
 
 def _get_price_lock_expires_at(trip: dict) -> datetime:
@@ -201,37 +224,39 @@ async def re_lock_lower_rate(
     body: ReLockRequest,
     agency_id: str = Depends(get_current_agency_id),
 ):
-    """Re-lock a lower net rate quote, updating trip strategy and logging margin savings with optimistic locking."""
+    """PREVIEW-ONLY re-lock computation (PA-06, 2026-09-06).
+
+    Doctrine: simulated data must never mutate real state. The current rate
+    source is simulated (first in-memory supplier contract row with hardcoded
+    fallbacks), so the previous behavior — overwriting the live trip's
+    ``strategy.recommended_option.cost`` and bumping the version — is removed.
+
+    What this endpoint does now:
+    1. Loads the agency-scoped trip (404 when missing/foreign).
+    2. Enforces the REQUIRED optimistic-version guard (409 on stale version)
+       and accepts the REQUIRED idempotency key (422 when absent) so the
+       future real-source persist path inherits both guards.
+    3. Computes exactly what WOULD change and returns it as a preview with
+       ``effects: []``, ``provider_connected: false``, ``would_persist: false``
+       and reason ``simulated_rate_source``. The trip record is never written
+       and no audit event is logged (a ``price_lock_arbitrage_saved`` audit
+       entry would claim a persist that did not happen).
+    """
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     current_version = int(trip.get("version") or 1)
 
-    # Optimistic locking guard (F-01)
-    if body.expected_version is not None and body.expected_version != current_version:
+    # Optimistic locking guard (F-01) — mandatory since PA-06.
+    if body.expected_version != current_version:
         raise HTTPException(
             status_code=409,
             detail=f"Conflict: trip version mismatch (expected {body.expected_version}, current {current_version}). Re-lock aborted to prevent race condition.",
         )
 
-    strategy = trip.setdefault("strategy", {})
-    applied_idempotency_keys = strategy.setdefault("price_lock_idempotency_keys", {})
-
-    # Idempotent re-entry check (F-01)
-    if body.idempotency_key and body.idempotency_key in applied_idempotency_keys:
-        cached = applied_idempotency_keys[body.idempotency_key]
-        return ReLockResponse(
-            ok=True,
-            trip_id=trip_id,
-            previous_net_rate_cents=cached["previous_net_rate_cents"],
-            new_net_rate_cents=cached["new_net_rate_cents"],
-            margin_saved_cents=cached["margin_saved_cents"],
-            updated_at=cached["updated_at"],
-            version=current_version,
-        )
-
-    rec_option = strategy.setdefault("recommended_option", {})
+    strategy = trip.get("strategy") or {}
+    rec_option = strategy.get("recommended_option") or {}
 
     cost = rec_option.get("cost") or 0
     if cost <= 0:
@@ -240,46 +265,25 @@ async def re_lock_lower_rate(
     new_net_cents = body.new_net_rate_cents
     margin_saved_cents = max(0, prev_net_cents - new_net_cents)
 
-    rec_option["cost"] = round(new_net_cents / 100.0, 2)
-    if body.supplier_name:
-        rec_option["name"] = body.supplier_name
-
     now_iso = datetime.now(timezone.utc).isoformat()
-    strategy["price_lock_re_locked_at"] = now_iso
-    strategy["price_lock_margin_saved_cents"] = margin_saved_cents
-    trip["version"] = current_version + 1
 
-    if body.idempotency_key:
-        applied_idempotency_keys[body.idempotency_key] = {
-            "previous_net_rate_cents": prev_net_cents,
-            "new_net_rate_cents": new_net_cents,
-            "margin_saved_cents": margin_saved_cents,
-            "updated_at": now_iso,
-        }
-
-    TripStore.save_trip(trip, agency_id=agency_id)
-
-    AuditStore.log_event(
-        event_type="price_lock_arbitrage_saved",
-        user_id=agency_id,
-        details={
-            "trip_id": trip_id,
-            "previous_net_rate_cents": prev_net_cents,
-            "new_net_rate_cents": new_net_cents,
-            "margin_saved_cents": margin_saved_cents,
-            "supplier_name": body.supplier_name or rec_option.get("name"),
-            "advisor_note": body.advisor_note,
-            "version": trip["version"],
-            "idempotency_key": body.idempotency_key,
-        },
-    )
+    # PA-06: NO trip mutation, NO TripStore.save_trip, NO AuditStore write.
+    # Replay note: because nothing is persisted, an idempotency-key re-entry
+    # deterministically recomputes the identical preview; the key is accepted
+    # (and required) so the future real-source path inherits replay protection.
 
     return ReLockResponse(
         ok=True,
         trip_id=trip_id,
+        preview=True,
         previous_net_rate_cents=prev_net_cents,
         new_net_rate_cents=new_net_cents,
         margin_saved_cents=margin_saved_cents,
         updated_at=now_iso,
-        version=trip["version"],
+        version=current_version,
+        reality_tier="deterministic_preview",
+        provider_connected=False,
+        effects=[],
+        would_persist=False,
+        not_persisted_reason="simulated_rate_source",
     )

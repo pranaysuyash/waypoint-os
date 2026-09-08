@@ -12,13 +12,15 @@ Backends (IMP-07):
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import uuid
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from threading import RLock
-from typing import Any, Dict, Optional
+from typing import Any, AsyncIterator, Dict, Optional
 
 logger = logging.getLogger("src.orchestration.agent_lease")
 
@@ -418,7 +420,7 @@ class SqlAgentLeaseBackend:
                 async with session.begin():
                     stmt = (
                         update(AgentLeaseModel)
-                        .where(AgentLeaseModel.is_active == True, AgentLeaseModel.expires_at <= now)
+                        .where(AgentLeaseModel.is_active.is_(True), AgentLeaseModel.expires_at <= now)
                         .values(is_active=False)
                     )
                     res = await session.execute(stmt)
@@ -487,3 +489,52 @@ class DurableAgentLeaseManager:
                 cls._sql_backend.clear()
             except Exception:
                 pass
+
+
+@asynccontextmanager
+async def lease_heartbeat(
+    trip_id: str,
+    lease_token: str,
+    *,
+    interval_seconds: float = 15.0,
+    ttl_seconds: int = 60,
+) -> AsyncIterator[None]:
+    """Part-J #2 (2026-09-07): renew a lease DURING long awaits.
+
+    The fulfillment lease is 60 seconds; a slow provider call can outlive it
+    and let another worker acquire the trip mid-flight. This context manager
+    runs a renewal heartbeat while the body executes. If any renewal raises
+    (lease expired/lost), the failure is recorded and re-raised on exit —
+    AFTER the body completes — so the caller fails loud instead of persisting
+    a booking under a lease it no longer holds. Cancellation-safe: the
+    heartbeat task is always cancelled and awaited.
+    """
+    renewal_error: Optional[BaseException] = None
+
+    async def _beat() -> None:
+        nonlocal renewal_error
+        while True:
+            await asyncio.sleep(interval_seconds)
+            try:
+                DurableAgentLeaseManager.renew_lease(
+                    trip_id, lease_token, ttl_seconds=ttl_seconds
+                )
+            except asyncio.CancelledError:
+                raise
+            except BaseException as exc:  # recorded, re-raised on CM exit
+                renewal_error = exc
+                return
+
+    task = asyncio.create_task(_beat())
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        if renewal_error is not None:
+            raise RuntimeError(
+                f"Lease lost during heartbeat window for trip '{trip_id}': {renewal_error}"
+            ) from renewal_error

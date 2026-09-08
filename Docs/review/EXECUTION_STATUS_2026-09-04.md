@@ -1,5 +1,395 @@
 # Execution Status and Complete Findings/Tasks Register — 2026-09-04
 
+## Current continuation — 2026-09-08
+
+This section supersedes September 5 checkout/count assertions, not their
+historical receipts. Live HEAD is now
+`096ceba39e320b527ed60e47f0c54d8d00a11748`; 179 paths were staged at the initial
+read-only check and no unstaged paths were reported before this continuation's
+edits. The intervening commit contains 585 changed paths. Its existence does
+not establish this agent performed it, that remote delivery succeeded, or that
+the current candidate passed gates. No Git mutation was performed here.
+
+Current canonical/CI-companion lifecycle check: **207 rows — 151 open,
+55 closed, one deferred; zero warnings**. The newer PA/AT work expands the
+register; the historical 145-row count is not the current inventory.
+
+The user explicitly requested Luna/high subagents and Astra/light-or-medium
+help when needed. Two bounded Luna/high lanes were started: quote-contract
+implementation/tests, and read-only attachment authorization/durability review.
+Main owns integration, evidence records and full gates. All staged preview
+labels and unrelated product changes must be preserved; no writer identity is
+inferred from dirty state.
+
+### Instruction/context refresh boundary
+
+The required command
+`/Users/pranay/Projects/agent-start/bin/agent-start --project travel_agency_agent --skip-index`
+failed before regeneration: canonical Review Doctrine title is `1.2`, but its
+internal-version field contains `1.2` plus an explanatory parenthetical, which
+the integrity validator treats as a different version. The failure is retained;
+no validator bypass or shared-doctrine edit was made. Main read the canonical
+Review 1.2 and Architecture 1.1 directly. Existing generated context remains
+dated September 7 and records skipped/locked retrieval; it is not fresh complete
+retrieval. Operating 8.0 hash remains
+`ff848618a7431a3b06c7409caa45683bd27c64263d45b93f9fcd36a89803466a`.
+
+### Current verification handles
+
+- Backend before-change baseline: session `69057`,
+  `USE_HYBRID_DECISION_ENGINE=1 PYTHONDONTWRITEBYTECODE=1 scripts/run_backend_tests.sh -p no:cacheprovider`.
+  The runner detected an existing server on port 8000 and warned of shared
+  integration-state interference. It was not stopped. This is explicitly not
+  a hermetic baseline. Terminal **exit 0: 4,091 passed, 10 skipped, 9 warnings
+  in 385.71s**. Warnings were one unregistered `live_db` marker and eight
+  multi-threaded Python `fork()` warnings. Product quote changes began only
+  after this before-change run completed.
+- Frontend: session `62261`, from `frontend`,
+  `npm run typecheck && npm run lint && npm test -- --run && npm run build`.
+  Terminal **exit 1**: typecheck passed, lint failed with two companion-page
+  hook errors (`set-state-in-effect` and loader use before declaration).
+  Tests/build were not reached. A bounded Luna/high worker owns the companion
+  lifecycle repair and tests; no lint suppression is accepted as the repair.
+- During-run source/config/test checkpoint at `2026-09-08T06:02:42.974Z`:
+  1,461 paths, SHA-256
+  `4d1e11b8e40d1dd5b1fd01902d57c9050c03489ac319d07af42d5537d1c7af57`.
+  This checkpoint was taken after launch, not an immutable pre-run snapshot.
+
+The initial insurance source added preview/carrier-confirmation labels but
+retained unsupported affirmative eligibility and the universal deadline
+calculation. The quote worker has now replaced those primary results with
+nullable, explicitly unevaluated values, preserving the three illustrations.
+Its first focused receipt was **33 passed in 23.75s**, plus scoped Ruff and
+diff checks. Reported S3 mutations restoring affirmative eligibility and a
+fabricated deadline each failed the new assertions, then were restored.
+These are local fixture receipts with explicit auth bypass, not production
+authorization or carrier proof. Independent source review accepted the main
+contract; parent review then found UTC-normalization overflow outside the
+exception handler and obsolete 14-day bounds arithmetic. A second failing-first
+correction followed; the first receipt does not cover that final change.
+
+Full backend after-run session `92587` uses the same command as the baseline.
+The normalization correction arrived while this run was active; no immutable
+final-candidate claim is made. Terminal **exit 1: nine failed, 4,057 passed,
+12 skipped, eight warnings, 37 setup errors in 867.97s**. Failure/error IDs
+are confined to `test_booking_data.py` and `test_booking_documents.py` in the
+returned summary. Traceback excerpts explicitly show `OSError: [Errno 28]
+No space left on device`, numbered temporary-directory creation failure,
+and `asyncpg.exceptions.CannotConnectNowError` with database recovery/startup
+messages. These are observed environment failures, not assumed quote regressions
+or evidence that every failure is explained by ordinary contention. The tool
+truncated the large traceback output; this note preserves the terminal counts,
+affected modules and observed error classes, not a claimed complete raw log.
+
+Post-run read-only checks: root volume 927 GB / 917 GB used / about 9.6 GB
+available (99% used), inode use 7%; `.runtime` 50 MB, frontend `.next` 412 MB,
+test trips 32 MB. These later sizes do not reconstruct peak usage or identify
+who caused/recovered the transient exhaustion. `pg_isready` then reported
+accepting connections and existing port-8000 `/health` returned HTTP 200.
+No service restart, cleanup, database reset or deletion was performed.
+
+Parent serialized retry session `63445` selects insurance quote/F-31/capability
+and the two failed booking modules through the canonical runner, after the
+worker's backend test processes ended. Terminal **130 passed, 3,989 deselected
+in 52.54s**, exit 0. All five changed Python files passed Ruff. It remains shared-environment evidence,
+not a hermetic full after-pass. Existing attachment findings are not closed by
+the quote work or by preview labels.
+
+Second full after-run `57559` is serialized against other backend test writers
+and adds only `--tb=short` to the canonical command. The existing developer
+server remains running, so its shared-target warning remains applicable.
+Terminal **exit 0: 4,109 passed, 10 skipped, eight warnings in 509.72s**.
+All eight warnings are the pre-existing multithreaded `fork()` deprecation in
+ledger tests; the unknown `live_db` marker warning is absent. Each of the five
+scoped fingerprints below matched after the run, and HEAD remained unchanged.
+This is a successful local full gate, not isolated infrastructure, hosted,
+provider or end-to-end attachment proof. The earlier failed receipt remains.
+Pre-run SHA-256 checkpoints (a scoped fingerprint, not the entire repository):
+
+| File | SHA-256 |
+|---|---|
+| `spine_api/routers/insurance.py` | `53f34f2f8566f6836daf6664d6a04c87966dff090a86345d2efbd13287925662` |
+| `tests/test_insurance_quote_evidence.py` | `8b21dbf513ec4e125c83a87534b22834b51841a7cb96cb42b9c4d555482de528` |
+| `tests/test_register_wave_f30_f40.py` | `098107f6ee349f2d3915da6f606538f1bb8d7ac578229cbba1abd69aba226ec6` |
+| `tests/test_capability_routers_batch.py` | `c3fd642aed1ac045e3de4839c7a697c476bd2a32d8f0dae0abb3ff8d7f7e54c3` |
+| `tests/conftest.py` | `ce472c30cc515578115d687a6d5713d0b288073ab68248d97d2f8b4cbd48eaac` |
+
+### F-19: durable verification isolation requirements
+
+Luna/high's bounded read-only review found no isolated full-suite runner.
+The local runner only warns about port 8000, uses the shared default database
+and omits the migration step that CI performs. `session_client` stabilizes one
+process's event loop but commits a fixed test principal; fixture rollback does
+not undo service commits through other sessions. File-backed trips, audit,
+assignments and related test paths are also shared between pytest processes.
+The collection hook enables HTTP integration from a hardcoded port-8000 login
+probe; PostgreSQL availability checks only TCP readiness, not database ownership
+or schema version. CI has a fresh PostgreSQL service per job, not proof of local
+isolation. These source findings describe risks; they do not identify the actor
+or full causal chain behind this run's ENOSPC/database recovery.
+
+Required coherent remediation: per-run real PostgreSQL and file-store namespace,
+migrations/bootstrap against that explicit target, coordinated full-suite writer,
+capacity/readiness preflight, redacted target identity and source receipts, and
+an explicit HTTP integration tier with a separately allocated server/base URL.
+All clients/fixtures must honor the selected namespace; changing one environment
+variable while fixed paths remain is insufficient. Preserve real PostgreSQL
+semantics rather than substituting a SQLite-only green gate.
+
+**Accept with modification:** fail closed on ambiguous/shared verification
+targets, not merely because an unrelated developer service exists on port 8000.
+A correctly isolated run should coexist with it. Disposable resource creation
+must have exact ownership and retained receipts; cleanup is a separate exact-
+target operation, never deletion of ambient application/database state.
+The design remains unimplemented. F-19 remains open and no commit-ready claim
+follows from a focused retry.
+
+### Companion lifecycle and private-data boundary — September 8
+
+The frontend baseline's two hook errors led to a bounded repair of
+`frontend/src/app/(traveler)/companion/page.tsx` and its honesty tests.
+The React effect discipline skill informed the separation of URL-derived
+identity from request lifecycle. Main and Astra/medium review found that a
+trip-only guard was insufficient: token changes and A → missing token → A
+could reveal old accepted data before revalidation. The final data-owning
+child is keyed by exact trip/token identity, with AbortController/cancellation
+and `cache: 'no-store'` for each new graph request.
+
+An intermediate token-hashed persistent cache was reviewed and **superseded**,
+not accepted as the long-term solution. Backend share verification refreshes
+revocations and checks TTL per request; an earlier success does not authorize
+offline replay after a later request fails. The optional offline-policy question
+has no recorded answer. The stated safe default is online revalidation, not an
+assumed approval for offline access.
+
+| Capability / old path | Final implementation / preservation |
+|---|---|
+| Private journey cache read/write and transport fallback | Removed from this component; no dead write-only cache retained. Existing localStorage entries are untouched, not migrated or deleted. |
+| Authorized journey display | Preserved after a fresh successful response for the current identity; denial, missing token, mismatched trip, empty graph and tested malformed shapes abstain. |
+| URL-derived state in mount effect | Replaced by `useSearchParams` and keyed child; source identity and request state no longer drift independently. |
+| Late response from previous identity | Cancellation plus remount prevents it from overwriting the current view. |
+| Offline/verification badge claims | Replaced by neutral “Itinerary loaded”; no booking/provider verification inferred from successful loading. |
+| Sample and preview behavior | Existing honesty tests retained; provider-provenance compatibility fallback retained for older response shapes, not for reading persisted caches. |
+
+Worker final receipt: **12/12 focused tests**, targeted ESLint zero errors,
+typecheck and diff check passed. The initial URL-race regression failed against
+the baseline before the repair. Final tests also cover token removal/replacement,
+same-token return before new validation, network failure after prior authorized
+load/remount, null/non-array-node responses and preservation of existing storage.
+This is local mocked-request behavior evidence (S2 where failing-first demonstrated),
+not a browser/real-auth proof or a universal malformed-payload validator claim.
+
+The worker's earlier build passed before the final privacy supersession; it is
+not the final build receipt. Parent full frontend gate `62910` runs typecheck,
+lint, all tests and build after ownership release. Before-run SHA-256:
+
+- Companion page: `448fb100191df679920f4469f4e3aac4975d0bc2198134f8270f8cb994ddc39b`.
+- Companion tests: `ac0f7e76fecb5ab24cc18e479cf951b89a0a07911e724432a088180b8f4a2a23`.
+
+Gate `62910` ended exit 1: typecheck and lint passed; **179 test files / 1,344
+tests passed in 351.01s**; build compiled and typechecked but failed during page
+data collection with `PageNotFoundError: Cannot find module for page: /_document`
+and ENOENT. Test collection preceded the subsequent null-destination regression;
+this receipt does not cover the final candidate. A live developer server and
+production build shared `.next`. That is an observed unsafe output boundary,
+not a demonstrated forensic explanation of every build failure.
+
+Parent found the backend legitimately returns `destination: null`; the new
+frontend guard had rejected that otherwise valid itinerary. Regression `39376`
+failed first (one failed / 12 skipped), then `31330` passed **13 tests** after
+allowing null and retaining the existing destination fallback. Astra/medium
+independently reviewed that exact corrected source. Later browser inspection
+found unsupported satellite/consular connectivity copy and fixed local times.
+Regression `20669` failed first; final focused `53372` passed **14 tests in
+3.94s** after the SOS surface consistently said demonstration/no alert sent,
+sample location and demo progress. Stored transfer/hotel start times are shown
+when available; missing times abstain, while explicitly sample times remain in
+sample view. Node count now says itinerary items, not days. This is not a full
+calendar/day-projection implementation or durable emergency service.
+
+The Browser Daemon skill was used for visible browser inspection. Existing
+backend `/health` returned 200, `/metrics` returned **401**, and frontend root
+returned 200. The missing-token companion requested no journey graph and showed
+the private-link abstention, but CSS and four inspected asset requests included
+404s; the screenshot was unstyled. Preserved and viewed failure artifact:
+`Docs/review/companion-no-token-before-copy-2026-09-08.png`. It is not clean
+render proof. Metrics' 401 agrees with `core/middleware.py::PUBLIC_PATHS`,
+which excludes `/metrics`; `server.py::metrics_endpoint` incorrectly says it
+remains public. PA-10 retains the scrape-auth/documentation gap; no public
+metrics exposure was added and no authenticated scrape is claimed.
+
+### Frontend output isolation — September 8
+
+Luna/high implemented phase-aware configuration in the existing
+`frontend/next.config.mjs`: development `.next-dev`, production build and server
+`.next`. Existing standalone packaging, headers, image settings and staged
+F-43 wildcard-rewrite removal are preserved. Git, ESLint, Vitest and both Docker
+contexts exclude the new generated directory. Parent corrected the generated
+type include to `.next-dev/types/**/*.ts`, matching installed Next **14.2.35**
+`writeConfigurationDefaults.js` and the observed generated directory; inherited
+type includes remain. No build-output deletion or manual server restart was used.
+
+Decision sources: official [Next.js 14 configuration functions and phases](https://nextjs.org/docs/14/app/api-reference/next-config-js)
+and [Next.js 14 distDir contract](https://nextjs.org/docs/14/app/api-reference/next-config-js/distDir).
+Worker focused test failed twice before implementation and passed **2/2**
+afterward; scoped lint/typecheck passed. Parent full gate `48337` runs typecheck,
+lint, all frontend tests and build after ownership release. Its result remains
+pending until a terminal receipt is appended. A checkpoint just after launch:
+
+| File | SHA-256 |
+|---|---|
+| Companion page | `6074edd9103d6178cfb106c6a430ea58e60c220c9bbd06844657bce164f1099a` |
+| Companion tests | `a11a3390ac49a5a86a7bb424dc9f9dec74f71ff2224cb50d428853d21903f42c` |
+| Next config | `87553de1635d91e9e1e18101e211dacbd143fcf373b6145260ddacef9b7d59f2` |
+| TypeScript config | `4ce9bf8693fe7b44af4666d6c35273cea4f76db35fdc178835064c68491277a1` |
+| Next config tests | `7b15243d643cc1efb6a1943d3cd7bcae6a4db92482f2b61fc08f1ed7ed266ed8` |
+
+Follow-up visible browser check after phase isolation loaded styled companion
+content at desktop 1682×1083 and mobile 390×844. Both screenshots were inspected:
+`Docs/review/companion-no-token-desktop-2026-09-08.png` and
+`Docs/review/companion-no-token-mobile-2026-09-08.png`. The missing-token route
+showed the private-link requirement and demo-only SOS; no graph resource request
+was observed. Mobile document width equaled viewport width (390 px). Fresh
+console inspection showed React DevTools information and two unused font-preload
+warnings, with no repeated asset 404s in that captured navigation. These are
+Tier 3 browser observations for unauthenticated abstention only; real signed
+itinerary/provider behavior and installed-device behavior are not proved.
+
+Independent final review accepted privacy, nullable destination, sample-time
+and output-isolation semantics but identified pending fetch and network failure
+sharing one unavailable state. A bounded follow-up worker now owns explicit
+per-identity request states. Consequently `48337` is an intermediate gate, not
+the final immutable candidate. Terminal **exit 0**: typecheck/lint, **180 files /
+1,348 tests in 391.60s**, then production build completed all 60 static pages
+and route/build-trace output. Existing dynamic-server-usage messages appeared
+for cookie/search-param API handlers during static probing; those handlers
+were emitted as dynamic routes. This is a successful local build receipt, not
+a warning-free log or coverage of subsequently added request-state/manifest tests.
+
+Install metadata also advertised unsupported offline itineraries, live alerts
+and crisis SOS. Parent's new `companion-manifest.test.ts` failed first (`50626`)
+then passed (`36699`, one test, 5.09s) after the manifest description stated
+online private-link itinerary access, sample itinerary and SOS demonstration.
+Start URL/icons/install configuration are preserved. Existing installed metadata
+may remain stale; service-worker registration/cache ownership is under separate
+read-only review. No browser storage purge or unrelated cache deletion occurred.
+
+### Service-worker boundary and live denial follow-up
+
+Read-only source review found the companion registers `/sw.js` at origin-root
+scope; the separate SLM downloader has no discovered registration/message
+sender. The v1 shell worker precaches only companion/manifest, but globally
+looks through CacheStorage on every request and deletes every other named cache
+on activation. No current graph-response CacheStorage writer was found; this
+is an unsafe interception/ownership boundary, not demonstrated existing private
+graph replay. Main's fresh browser observed the root-scope active `sw.js` and
+`waypoint-companion-v1` cache. No unrelated profile was controlled.
+
+Accepted narrow remediation, assigned to Luna/high: same-origin GET only,
+exact query-free shell/manifest allowlist, explicit private API/no-store bypass,
+network-first public shell/manifest with fallback only in its new owned cache.
+All existing caches are preserved; remove the previous global deletion behavior
+without executing cache cleanup. Legacy retirement requires a separate exact
+ownership/retention policy. PWA metadata discovery and SLM activation are not
+included. [MDN CacheStorage.match](https://developer.mozilla.org/en-US/docs/Web/API/CacheStorage/match)
+documents its cross-cache lookup; the [service-worker lifecycle guide](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers)
+informed the update/ownership boundary. Worker tests and final gate are pending.
+
+Parent's live invalid-token companion check returned HTTP 404 through the BFF
+(browser console and independent curl). No private itinerary appeared. The
+intermediate UI incorrectly treated this as connectivity failure; backend
+intentionally uses generic 404 for invalid/mismatched/revoked capabilities.
+The request-state worker was instructed to add 404 contract coverage and generic
+cannot-open/fresh-link guidance without revealing trip existence. This is
+denial-path runtime evidence, not valid-token authorization/acceptance proof.
+The browser helper's network-idle wait timed out after 30 seconds during that
+navigation; subsequent DOM/console inspection and curl supplied the stated
+observations, not a successful helper-navigation receipt.
+
+Request-state repair is released: loading, denied (401/403/404), service
+unavailable, transport error, invalid envelope and genuinely empty graph have
+separate states. The backend's `exists:false` envelope without nodes remains
+valid; invalid/wrong-trip payloads do not become evidence of no bookings.
+Worker focused suite: 19 passed, scoped lint/typecheck clean. Parent mutation
+`6093` temporarily removed 404 denial handling: the targeted assertion failed
+(one failed / 18 skipped, 7.47s). Restoring the mapping then passed all **19
+tests in 8.00s** (`10359`). This is Tier 2/S3 sensitivity for that mapping,
+not a claim that every added state had a pre-implementation red receipt.
+
+Service-worker implementation released: **14 focused VM-harness tests** passed
+(1.93s), targeted ESLint and typecheck passed. The initial source run had 10
+failures after fixing a harness-path issue; distinguish that harness repair from
+product regression evidence. The actual worker source is executed by the VM
+harness, with string and Request-like cache keys normalized. Parent review also
+required cache-control handling during warmup, field-qualified private headers,
+optional warmup failure and fresh-response preservation on cache-write failure.
+
+| Superseded behavior | Preserved capability / new boundary |
+|---|---|
+| Global `caches.match` for all origin requests | Public shell fallback only through `waypoint-companion-shell-v2`; API, non-GET, cross-origin, query-bearing and no-store requests are not intercepted. |
+| Cache-first manifest and companion | Network-first exact public resources, successful cacheable responses only; no-store/private responses are not stored. |
+| Delete every cache except current | No enumeration/deletion on activation. Existing v1 and unrelated caches remain untouched. Future retirement requires exact ownership/retention policy. |
+| Install requires precache success | Warmup is optional; unavailable storage/network cannot block installation of the safer worker. |
+| Cache-write failure can obscure successful network response | Return fresh response even if optional cache refresh fails. |
+
+Registration call-site audit found one companion mount registration. The SLM
+downloader remains separate and unregistered; no model-cache capability is
+claimed or removed. Browser update through that registration reached activated
+state with both v1 and v2 cache names present. The v2 cache contained only
+`/manifest.json` at inspection; the fetched manifest had the corrected online/
+demo description. Do not claim a fully cached/offline app from this observation.
+No stored cache entries were purged; v1 preservation was observed directly.
+After update, a normal browser manifest fetch returned the corrected description;
+an explicit no-store invalid-capability API fetch returned **404**. The owned
+cache still contained only `/manifest.json`, with v1 still present (`2834`).
+The final invalid-link DOM showed generic access denial/fresh-link guidance;
+saved and viewed `Docs/review/companion-invalid-link-mobile-2026-09-08.png`.
+The navigation helper again timed out; these subsequent DOM/HTTP/screenshot
+observations, not an invented network-idle success, support the narrow claim.
+
+### Final coordinated frontend candidate
+
+Parent gate `85080` runs the standard typecheck → lint → all tests → build
+chain after both workers released ownership. Its result is pending until a
+terminal receipt is recorded. Before-run SHA-256 fingerprints:
+
+| File | SHA-256 |
+|---|---|
+| Companion page | `124217d9a9422f350ed351c082d6dd4281e1915cdda341be0310daf7d9c2addc` |
+| Companion tests | `2457cb7d1e8a5b67d95db9c738e17cb8adacbe29f43d39ebce13921ee840fb1d` |
+| Service worker | `2ba2185556a295aef774207219bdd2e8f77f0806c69018f2de5e5e39479545bb` |
+| Service-worker tests | `e6404d21e04415183545dd4901636d15713627d8a6650be053f36fd1a70a12aa` |
+| Manifest | `ae0c50f8489333d46d96e7b6882bb722752fd83f1392c16d19faa2812a9b039b` |
+| Manifest tests | `ba9b4093496778fe015ef3bbc452104e0122fcede1388c1adef8104d8bde3b42` |
+| Next config | `87553de1635d91e9e1e18101e211dacbd143fcf373b6145260ddacef9b7d59f2` |
+| TypeScript config | `4ce9bf8693fe7b44af4666d6c35273cea4f76db35fdc178835064c68491277a1` |
+| Next config tests | `7b15243d643cc1efb6a1943d3cd7bcae6a4db92482f2b61fc08f1ed7ed266ed8` |
+
+Residuals: already displayed data is not continuously revoked while an unchanged
+page stays open; no polling/push revocation channel was added. Explicit offline
+download, bounded expiry/revocation and recovery need a separate product contract.
+The service worker's global cache lookup is superseded by the bounded shell
+implementation above; no pre-existing graph CacheStorage writer was found,
+so historical private API replay is not claimed. Installed-device rollout,
+legacy-cache retirement and PWA metadata discovery remain unproved/open.
+Durable SOS, provider fulfillment and whole AT-05/AT-18 readiness are
+not established by this lifecycle repair.
+
+Main repaired the newly used `live_db` marker registration in the canonical
+`tests/conftest.py::pytest_configure` location. Strict collection failed first
+with unknown marker (exit 2), then collected all four probe tests (exit 0,
+0.11s); Ruff passed. This is Tier 2/S2 collection evidence, not execution of
+those probes or removal of the independent `fork()` warnings. No test was
+disabled and no warning filter was added.
+
+Astra/medium was called for the attachment transaction design after Luna's
+current-source review. It identified the existing encrypted
+`BookingConfirmation` insurance type as the canonical evidence record;
+duplicating full policy evidence in trip extras is not the preferred long-term
+path. Main verified the model/service and is recording transaction, replay,
+ownership and migration requirements in the F-31 package. Architecture advice
+is not implementation or insurer-verification evidence.
+
 ## Latest continuation: semantic reconciliation — 2026-09-05
 
 ### Full-gate terminal receipts and source drift — 2026-09-05

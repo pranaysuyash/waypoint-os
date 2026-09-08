@@ -97,3 +97,30 @@ A travel agency is a fiduciary high-stakes fulfillment machine. Its end-to-end o
    Architecture uses Twilio Programmable Voice with Media Streams forwarding bidirectional audio to a speech-to-text pipeline (Whisper/Deepgram) and DTMF tone injection (`<Play digits="...">`), alerting human travel advisors via WebRTC softphone when a live representative answers.
 3. **Wholesale Hotel Bed-Banks**:
    Hotelbeds / Bedsonline API integration contract using SHA-256 API signature headers, caching static hotel portfolios, and executing real-time rate availability and booking creation with deposit cancellation deadlines.
+
+---
+
+## 5. Verification Evidence & Architectural Closure
+
+All 4 phases (Options A, B, C, and D) were fully implemented and verified against first principles and the Operating Doctrine:
+
+1. **Option A (Autonomous Proposal Compilation & Booking Fulfillment)**:
+   - `AutonomousProposalCompiler.compile_from_intake` queries GDS/NDC inventory and generates cryptographically signed capability tokens.
+   - `BookingFulfillmentEngine.fulfill_accepted_proposal` verifies proposal acceptance, acquires an exclusive distributed agent lease, provisions single-use Stripe VCC, tickets GDS PNR, mints DAG nodes, and persists confirmation.
+   - Workbench UI (`ProposalCompilerPanel.tsx`) provides 1-click execution and renders confirmed booking cards with PNR, E-Ticket, VCC, and companion links.
+   - Evidence: `tests/test_booking_fulfillment_lifecycle.py` and `tests/test_proposal_compiler_e2e.py` passed with 100% success.
+
+2. **Option B (Traveler Companion Offline Hydration & Journey DAG Sync)**:
+   - Built `GET /api/public/journey-graph/{trip_id}` endpoint mounted via `public_router` in `spine_api/routers/journey_graph.py` and `server.py`.
+   - Hydrated `frontend/src/app/(traveler)/companion/page.tsx` with live DAG data, dynamic flight/hotel/transfer nodes, and instant `localStorage` offline caching fallback.
+   - Evidence: `tests/test_journey_graph_hydration.py` passed (2/2 tests passed in 27s).
+
+3. **Option C (Distributed Agent Lease Backend & DB Concurrency)**:
+   - Added `SqlAgentLeaseBackend` backed by PostgreSQL table `agent_leases` (`AgentLeaseModel`) with monotonic fencing and automatic memory fallback.
+   - Evidence: `tests/test_durable_agent_lease.py` (7/7 tests passed in 11.98s).
+
+4. **Option D (Launch Readiness & BFF Proxy Health)**:
+   - Configured Next.js rewrites for `/api/v1/:path*` and `/api/public/:path*` in `frontend/next.config.mjs`.
+   - Verified strict startup assertion in `auth_bypass_enabled()` and degraded component reporting in `/health`.
+   - Evidence: Backend on port 8000 and Frontend on port 3005 both returned 200 OK. Linter zero-warning policy verified via `uv run ruff check --fix .` (0 errors). Frontend typecheck verified via `tsc --noEmit` (0 errors).
+

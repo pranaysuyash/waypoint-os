@@ -60,7 +60,7 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from starlette.requests import Request
 from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -141,6 +141,7 @@ from spine_api.contract import (
     TripResponse,
 )
 from src.intake.normalizer import Normalizer
+from src.agents.idempotency import IdempotencyRegistry, IdempotencyStatus  # noqa: E402 (PA-13)
 from spine_api.services.public_checker_service import run_public_checker_submission
 from spine_api.services.pipeline_execution_service import execute_spine_pipeline
 from spine_api.services import trip_lifecycle_service
@@ -1465,11 +1466,17 @@ app.include_router(financial_ops_router.router, dependencies=[Depends(_auth_or_s
 app.include_router(counterfactual_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(trip_documents_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(public_proposals_router.router)
-app.include_router(distribution_router.router)
-app.include_router(negotiation_router.router)
-app.include_router(crisis_ops_router.router)
+app.include_router(journey_graph_router.public_router)
+# PA-09 (2026-09-06): distribution / negotiation / crisis_ops / subagent_payouts
+# were mounted with NO include-level auth dependency — subagent_payouts in
+# particular is the advisor-payout (money-adjacent) surface. All four now use
+# the same include-level `_auth_or_skip` dependency as the other protected
+# routers in this file. Include order is otherwise preserved exactly.
+app.include_router(distribution_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(negotiation_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(crisis_ops_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(visa_radar_router.router)
-app.include_router(subagent_payouts_router.router)
+app.include_router(subagent_payouts_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(insurance_router.router)
 # PT-09 / GM-07: every router below is agency-scoped internal tooling — none is
 # public-by-design (public-by-design surfaces are auth_router, health_router,
@@ -1964,18 +1971,104 @@ def run_public_checker(
     return _run_public_checker_submission(payload.model_dump(exclude_none=True))
 
 
+_IDEMPOTENCY_INFLIGHT_TTL_SECONDS = 1800  # 30-minute stale-reclaim window
+
+
 @app.post("/run", response_model=RunAcceptedResponse)
 async def run_spine(
     request: SpineRunRequest,
     agency: Agency = Depends(get_current_agency),
     user: User = Depends(get_current_user),
+    idempotency_key_header: Optional[str] = Header(
+        default=None,
+        alias="Idempotency-Key",
+        description="Optional client-supplied idempotency key (PA-13). "
+        "Scopes to the authenticated agency; completed keys replay the "
+        "original run, in-flight keys yield 409.",
+    ),
 ) -> RunAcceptedResponse:
     """
     Submit a spine run and return immediately.
 
     This is the canonical Process Trip path. Poll GET /runs/{run_id} for
     status, checkpointed steps, events, and final trip_id.
+
+    PA-13 (2026-09-06): when an ``Idempotency-Key`` header is present, the key
+    ``(agency_id, header)`` is resolved against the durable idempotency
+    registry (src/agents/idempotency.py — the same CAS machinery wired at
+    routers/inbound.py). A COMPLETED record replays the original run_id;
+    a PENDING record yields 409; PENDING records older than 30 minutes are
+    stale-reclaimable via the registry's TTL path. Without the header the
+    behavior is unchanged (fresh uuid4 per submission).
     """
+    if idempotency_key_header:
+        registry = IdempotencyRegistry.get_instance()
+        idem_key = f"run:{agency.id}:{idempotency_key_header}"
+        acquired, existing = registry.try_acquire(
+            idem_key,
+            trip_id="",  # trip is assigned later by the pipeline
+            action_name="run_spine",
+            # Include the body hash so one key cannot silently alias different
+            # payloads into a replay; distinct payloads for the same key
+            # remain distinguishable in the registry record.
+            payload=request.model_dump(exclude_none=True),
+            ttl_seconds=_IDEMPOTENCY_INFLIGHT_TTL_SECONDS,
+        )
+        if not acquired and existing is not None:
+            if existing.status == IdempotencyStatus.COMPLETED:
+                payload = existing.response_payload or {}
+                return RunAcceptedResponse(
+                    run_id=payload.get("run_id", ""),
+                    state=payload.get("state", "completed"),
+                    idempotent_replay=True,
+                )
+            # PENDING (in-flight, or a failed attempt pending retry per the
+            # registry's FAILED->retry semantics is handled inside try_acquire).
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "reason": "run_already_in_flight_for_idempotency_key",
+                    "idempotency_key": idempotency_key_header,
+                },
+            )
+        # acquired == True: the registry now holds this key as in-flight.
+        # TODO(integrator, PA-13): record COMPLETED (registry.mark_completed
+        # with the acquired fencing_token) when the run reaches its terminal
+        # state — the terminal callback lives in
+        # spine_api/services/pipeline_execution_service.py, owned by another
+        # workstream. Until that lands, keys stay in-flight and age out of
+        # replay via the 30-minute TTL reclaim above.
+        run_id = str(uuid.uuid4())
+        RunLedger.create(
+            run_id=run_id,
+            trip_id=None,
+            stage=request.stage,
+            operating_mode=request.operating_mode,
+            agency_id=agency.id,
+            draft_id=request.draft_id,
+        )
+        try:
+            # PA-13: stash the idempotency key + fencing token into run meta so
+            # the pipeline's terminal callback (pipeline_execution_service) can
+            # close the registry record and replays return the original run_id.
+            RunLedger.update_meta(
+                run_id,
+                idempotency_key=idem_key,
+                idempotency_fencing_token=getattr(existing, "fencing_token", None),
+            )
+        except Exception as meta_err:  # enrichment is best-effort; run proceeds
+            logger.warning(
+                "PA-13 idempotency meta stash skipped for run %s: %s", run_id, meta_err
+            )
+        _launch_spine_pipeline_thread(run_id, request, agency.id, user.id)
+        logger.info(
+            "spine_run queued run_id=%s agency_id=%s idempotency_key=%s",
+            run_id,
+            agency.id,
+            idempotency_key_header,
+        )
+        return RunAcceptedResponse(run_id=run_id, state="queued")
+
     run_id = str(uuid.uuid4())
     RunLedger.create(
         run_id=run_id,
@@ -1985,20 +2078,27 @@ async def run_spine(
         agency_id=agency.id,
         draft_id=request.draft_id,
     )
+    _launch_spine_pipeline_thread(run_id, request, agency.id, user.id)
+
+    logger.info("spine_run queued run_id=%s agency_id=%s", run_id, agency.id)
+    return RunAcceptedResponse(run_id=run_id, state="queued")
+
+
+def _launch_spine_pipeline_thread(
+    run_id: str, request: SpineRunRequest, agency_id: str, user_id: str
+) -> None:
+    """Start the pipeline daemon thread (shared by both /run entry paths)."""
     request_dict = request.model_dump(exclude_none=True)
     # Run pipeline in a daemon thread (not multiprocessing) to avoid
     # all file-descriptor-inheritance and lock-deadlock issues across
     # fork/spawn on macOS/Linux.
     thread = threading.Thread(
         target=_execute_spine_pipeline,
-        args=(run_id, request_dict, agency.id, user.id),
+        args=(run_id, request_dict, agency_id, user_id),
         daemon=True,
         name=f"spine-{run_id[:8]}",
     )
     thread.start()
-
-    logger.info("spine_run queued run_id=%s agency_id=%s", run_id, agency.id)
-    return RunAcceptedResponse(run_id=run_id, state="queued")
 
 
 # =============================================================================
@@ -2007,8 +2107,21 @@ async def run_spine(
 
 @app.get("/metrics")
 async def metrics_endpoint():
-    """Prometheus metrics endpoint."""
-    return {"status": "ok", "app": "spine_api", "version": "1.0.0"}
+    """Prometheus metrics endpoint (PA-10, 2026-09-06).
+
+    Previously returned a static JSON body while claiming to be Prometheus.
+    Now renders the real in-process registry
+    (spine_api/metrics_registry.py) as Prometheus text exposition v0.0.4.
+    Stays in the public auth allowlist per Prometheus convention — the
+    AuthMiddleware PUBLIC_PATHS set is intentionally untouched.
+    """
+    from spine_api.metrics_registry import collect_runtime_gauges, render
+
+    collect_runtime_gauges()
+    return Response(
+        content=render(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 @app.get("/trips")

@@ -66,8 +66,17 @@ def test_price_lock_sentinel_lifecycle_end_to_end(session_client):
     assert audit_data["rate_drop_detected"] is True
     assert audit_data["potential_margin_gain_cents"] == 100000  # $1,000 savings
 
-    # 4. Re-lock the lower net rate
-    relock_res = session_client.post(
+    # 4. Re-lock the lower net rate — PREVIEW-ONLY since PA-06 (2026-09-06).
+    # FAILED BEFORE: re-lock persisted the simulated rate onto the trip and
+    # bumped its version. PASSES AFTER: the endpoint is preview-only, so the
+    # guards (expected_version + idempotency_key, now mandatory -> 422 when
+    # absent) are supplied and the response carries effects:[] with
+    # would_persist: false. The trip must remain byte-identical.
+    from spine_api.persistence import TripStore
+
+    trip_before = TripStore.get_trip_for_agency(trip_id, "agency_pricelock_test")
+
+    relock_no_guards = session_client.post(
         f"/api/v1/price-lock/{trip_id}/re-lock",
         json={
             "trip_id": trip_id,
@@ -77,9 +86,31 @@ def test_price_lock_sentinel_lifecycle_end_to_end(session_client):
         },
         headers={"X-Agency-ID": "agency_pricelock_test"},
     )
+    # Guards are mandatory now (422) — no unguarded simulated write path.
+    assert relock_no_guards.status_code == 422
+
+    relock_res = session_client.post(
+        f"/api/v1/price-lock/{trip_id}/re-lock",
+        json={
+            "trip_id": trip_id,
+            "new_net_rate_cents": 200000,
+            "supplier_name": "Belmond Hotel Caruso",
+            "advisor_note": "Re-locked lower rate hold during 72-hour window",
+            "expected_version": 1,
+            "idempotency_key": "idem_pricelock_sentinel_1",
+        },
+        headers={"X-Agency-ID": "agency_pricelock_test"},
+    )
 
     assert relock_res.status_code == 200
     relock_data = relock_res.json()
     assert relock_data["ok"] is True
     assert relock_data["margin_saved_cents"] == 100000
     assert relock_data["new_net_rate_cents"] == 200000
+    assert relock_data["would_persist"] is False
+    assert relock_data["not_persisted_reason"] == "simulated_rate_source"
+    assert relock_data["effects"] == []
+    assert relock_data["provider_connected"] is False
+
+    trip_after = TripStore.get_trip_for_agency(trip_id, "agency_pricelock_test")
+    assert trip_after == trip_before  # simulated rate never mutates real state

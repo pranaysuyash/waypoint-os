@@ -23,6 +23,7 @@ const DEFAULT_WAYPOINTS: Waypoint[] = [
 export default function RouteMapStudio() {
   const [waypoints, setWaypoints] = useState<Waypoint[]>(DEFAULT_WAYPOINTS);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [backendUnavailable, setBackendUnavailable] = useState(false);
   const [optimizationSavings, setOptimizationSavings] = useState<{
     original_km: number;
     optimized_km: number;
@@ -39,10 +40,12 @@ export default function RouteMapStudio() {
     next[targetIndex] = temp;
     setWaypoints(next);
     setOptimizationSavings(null);
+    setBackendUnavailable(false);
   };
 
   const handle2OptOptimize = async () => {
     setIsOptimizing(true);
+    setBackendUnavailable(false);
     try {
       const res = await fetch('/api/v1/logistics/assess-route', {
         method: 'POST',
@@ -53,21 +56,30 @@ export default function RouteMapStudio() {
       });
       if (res.ok) {
         const data = await res.json();
-        setOptimizationSavings({
-          original_km: data.total_distance_km || 12450,
-          optimized_km: data.optimized_distance_km || 11120,
-          savings_km: data.savings_km || 1330,
-          savings_percent: data.savings_percent || 10.7,
-        });
+        const { total_distance_km, optimized_distance_km, savings_km, savings_percent } = data;
+        const valid =
+          typeof total_distance_km === 'number' && Number.isFinite(total_distance_km) &&
+          typeof optimized_distance_km === 'number' && Number.isFinite(optimized_distance_km) &&
+          typeof savings_km === 'number' && Number.isFinite(savings_km) &&
+          typeof savings_percent === 'number' && Number.isFinite(savings_percent);
+        if (!valid) {
+          // No fabricated defaults: an unusable payload is reported, never
+          // replaced with invented savings (Part-J #5 follow-up).
+          setBackendUnavailable(true);
+        } else {
+          setOptimizationSavings({
+            original_km: total_distance_km,
+            optimized_km: optimized_distance_km,
+            savings_km,
+            savings_percent,
+          });
+        }
+      } else {
+        // 2026-09-06 route-inventory gate: no backend endpoint exists yet.
+        setBackendUnavailable(true);
       }
     } catch {
-      // Fallback optimistic simulation
-      setOptimizationSavings({
-        original_km: 12450,
-        optimized_km: 11120,
-        savings_km: 1330,
-        savings_percent: 10.7,
-      });
+      setBackendUnavailable(true);
     } finally {
       setIsOptimizing(false);
     }
@@ -133,6 +145,15 @@ export default function RouteMapStudio() {
               ))}
             </div>
           </div>
+
+          {backendUnavailable && (
+            <div className="mt-4 p-3 bg-amber-950/40 border border-amber-800/50 rounded-lg flex items-center justify-between text-xs text-amber-300">
+              <span>
+                Route assessment isn&apos;t available yet — you&apos;ll see
+                nothing here rather than made-up numbers.
+              </span>
+            </div>
+          )}
 
           {optimizationSavings && (
             <div className="mt-4 p-3 bg-emerald-950/40 border border-emerald-800/50 rounded-lg flex items-center justify-between text-xs text-emerald-300">

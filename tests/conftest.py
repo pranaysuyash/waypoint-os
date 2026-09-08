@@ -216,6 +216,10 @@ def pytest_configure(config):
         "markers",
         "require_postgres: marks tests that require a running PostgreSQL instance",
     )
+    config.addinivalue_line(
+        "markers",
+        "live_db: marks tests that exercise a live database, including additive multi-process probes",
+    )
 
 
 def pytest_collection_modifyitems(config, items):

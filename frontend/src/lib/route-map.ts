@@ -202,6 +202,21 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["v1/irops-healer/heal", { backendPath: "api/v1/irops-healer/heal" }],
   ["v1/duty-of-care-radar/cockpit/summary", { backendPath: "api/v1/duty-of-care-radar/cockpit/summary" }],
   ["v1/proposal-compiler/compile", { backendPath: "api/v1/proposal-compiler/compile" }],
+  // ── Traveler/public surfaces (F-43, 2026-09-07) ─────────────────────
+  // These previously rode the next.config /api/v1/* + /api/public/* wildcard
+  // rewrites, which bypassed this allowlist entirely (any browser could reach
+  // any spine route auth-free). They are explicitly mapped now; the wildcard
+  // rewrites are removed. Do not reintroduce wildcard rewrites without
+  // re-running the route-map honesty tests.
+  // 2026-09-06: `v1/logistics/assess-route` was removed — no backend route
+  // exists for it (route-inventory gate flagged it); re-add together with
+  // its backend endpoint, never ahead of one.
+  ["v1/group/token/{token}", { backendPath: "api/v1/group/token/{token}" }],
+  ["v1/group/token/{token}/pay-share", { backendPath: "api/v1/group/token/{token}/pay-share" }],
+  ["public/journey-graph/{trip_id}", { backendPath: "api/public/journey-graph/{trip_id}" }],
+  ["public/proposals/{token}", { backendPath: "api/public/proposals/{token}" }],
+  ["public/proposals/{token}/calculate", { backendPath: "api/public/proposals/{token}/calculate" }],
+  ["public/proposals/{token}/accept", { backendPath: "api/public/proposals/{token}/accept" }],
   ["v1/charter-aviation/quotes/calculate", { backendPath: "api/v1/charter-aviation/quotes/calculate" }],
   ["v1/documents/mrz/parse-td3", { backendPath: "api/v1/documents/mrz/parse-td3" }],
   ["v1/logistics/connection-risk", { backendPath: "api/v1/logistics/connection-risk" }],

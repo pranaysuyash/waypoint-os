@@ -2,8 +2,8 @@
 Tests for the 2026-09-05 register-wave fixes (F-30..F-40 partial + PT-08).
 
 Covers:
-- F-31: insurance CFAR window anchors to deposit_date (14 days FROM DEPOSIT),
-  honest fallback to quote time, real days_remaining (not constant 14).
+- F-31: insurance preview preserves illustrative plans without claiming an
+  unsupported CFAR deadline or pre-existing-condition eligibility.
 - F-32: price-lock expiry reads BOTH write locations (strategy + trip top-level).
 - F-35: metrics conversion counts terminal statuses writers emit (delivered).
 - F-36: feedback honesty — survey staged (not "DISPATCHED"), scorecard labeled
@@ -60,7 +60,7 @@ def _make_trip(extra: dict | None = None) -> str:
 # ---------------------------------------------------------------- F-31
 
 
-def test_f31_quote_without_deposit_anchors_to_quote_time(session_client):
+def test_f31_quote_without_deposit_is_not_evaluated(session_client):
     resp = session_client.post(
         "/api/v1/insurance/quote",
         json={"total_trip_cost_usd": 5000.0},
@@ -68,11 +68,15 @@ def test_f31_quote_without_deposit_anchors_to_quote_time(session_client):
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["cfar_deadline_anchor"] == "quote_time"
-    assert data["days_remaining_for_cfar"] == 14  # anchored now
+    assert data["cfar_deadline"] is None
+    assert data["days_remaining_for_cfar"] is None
+    assert data["cfar_deadline_anchor"] == "not_evaluated"
+    assert data["cfar_timing_status"] == "not_evaluated"
+    assert data["cfar_evidence"]["policy_rule_status"] == "not_adopted"
+    assert all(plan["pre_existing_waiver_eligible"] is None for plan in data["plans"])
 
 
-def test_f31_quote_with_recent_deposit_anchors_to_deposit(session_client):
+def test_f31_quote_with_recent_deposit_keeps_timing_unresolved(session_client):
     deposit = (datetime.now(timezone.utc) - timedelta(days=4)).isoformat()
     resp = session_client.post(
         "/api/v1/insurance/quote",
@@ -81,14 +85,15 @@ def test_f31_quote_with_recent_deposit_anchors_to_deposit(session_client):
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["cfar_deadline_anchor"] == "deposit_date"
-    # 14-day window from a deposit 4 days ago → 10 days remain.
-    assert data["days_remaining_for_cfar"] == 10
-    expected_deadline = (datetime.now(timezone.utc) - timedelta(days=4) + timedelta(days=14)).date()
-    assert datetime.fromisoformat(data["cfar_deadline"]).date() == expected_deadline
+    assert data["cfar_deadline"] is None
+    assert data["days_remaining_for_cfar"] is None
+    assert data["cfar_deadline_anchor"] == "not_evaluated"
+    assert data["cfar_timing_status"] == "not_evaluated"
+    assert data["cfar_evidence"]["source"] == "request.deposit_date"
+    assert data["cfar_evidence"]["verification"] == "unverified"
 
 
-def test_f31_quote_with_stale_deposit_reports_zero_days(session_client):
+def test_f31_quote_with_stale_deposit_does_not_invent_expiry(session_client):
     deposit = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
     resp = session_client.post(
         "/api/v1/insurance/quote",
@@ -97,18 +102,23 @@ def test_f31_quote_with_stale_deposit_reports_zero_days(session_client):
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["cfar_deadline_anchor"] == "deposit_date"
-    assert data["days_remaining_for_cfar"] == 0  # window passed — honest, not 14
+    assert data["cfar_deadline"] is None
+    assert data["days_remaining_for_cfar"] is None
+    assert data["cfar_deadline_anchor"] == "not_evaluated"
+    assert data["cfar_timing_status"] == "not_evaluated"
 
 
-def test_f31_unparseable_deposit_falls_back_to_quote_time(session_client):
+def test_f31_unparseable_deposit_is_a_validation_error(session_client):
     resp = session_client.post(
         "/api/v1/insurance/quote",
         json={"total_trip_cost_usd": 5000.0, "deposit_date": "not-a-date"},
         headers=_headers(),
     )
-    assert resp.status_code == 200
-    assert resp.json()["cfar_deadline_anchor"] == "quote_time"
+    assert resp.status_code == 422
+    assert any(
+        "deposit_date" in str(error.get("loc", []))
+        for error in resp.json()["detail"]
+    )
 
 
 def test_f31_attach_policy_still_works(session_client):

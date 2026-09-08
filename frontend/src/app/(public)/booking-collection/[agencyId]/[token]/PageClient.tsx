@@ -175,10 +175,10 @@ function TravelersSection({
           <div className="text-sm font-medium text-[#e6edf3]">Traveler {index + 1}</div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor={travelerIdBase + '-' + index + '-tid'} className="block text-xs text-[#8b949e] mb-1">Traveler ID *</label>
+              <label htmlFor={travelerIdBase + '-' + index + '-tid'} className="block text-xs text-[#8b949e] mb-1">Traveler name or reference *</label>
               <input
                 id={travelerIdBase + '-' + index + '-tid'}
-                placeholder="e.g. adult_1"
+                placeholder="e.g. Sarah (lead traveler)"
                 className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                 value={traveler.traveler_id}
                 onChange={(event) => updateTraveler(index, { traveler_id: event.target.value })}
@@ -335,7 +335,13 @@ function DocumentsSection({
           {uploadedDocs.map((document, index) => (
             <div key={document.id} data-testid={`collection-doc-${index}`} className="flex items-center gap-2 text-xs">
               <span className="text-emerald-400">Uploaded</span>
-              <span className="text-[#8b949e]">({document.status.replace('_', ' ')})</span>
+              <span className="text-[#8b949e]">
+                ({document.status === 'rejected'
+                  ? 'needs attention — please re-upload or contact your travel advisor'
+                  : document.status === 'deleted'
+                    ? 'removed'
+                    : document.status.replace('_', ' ')})
+              </span>
             </div>
           ))}
         </div>

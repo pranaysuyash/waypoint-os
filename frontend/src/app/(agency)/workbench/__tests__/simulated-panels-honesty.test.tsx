@@ -76,7 +76,8 @@ describe('simulated panel honesty labels', () => {
 
     // Switch to the VCC tab and prove the preview never calls issuance.
     fireEvent.click(screen.getByRole('button', { name: /VCC Design Preview/i }));
-    expect(screen.getByText(/does not call an issuance endpoint/i)).toBeInTheDocument();
+    expect(screen.getByText(/No card is created, no funds are authorized/i)).toBeInTheDocument();
+    expect(screen.queryByText(/issuance endpoint/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Preview Amount \(No Card\)/i }));
     expect(screen.getByTestId('vcc-preview-result')).toHaveTextContent(/NO CARD CREATED/i);
     expect(screen.getByTestId('vcc-preview-result')).toHaveTextContent(/authorization: not attempted/i);

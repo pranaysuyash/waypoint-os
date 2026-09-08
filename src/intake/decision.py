@@ -30,11 +30,38 @@ from src.intake.telemetry import emit_ambiguity_synthesis
 # =============================================================================
 
 # Feature flag to enable hybrid decision engine.
-# Set via environment variable: USE_HYBRID_DECISION_ENGINE=1
+# PA-03 (P1, 2026-09-06): default is now OFF so serving determinism is
+# architectural, not credential-accidental. The serving spine stays on the
+# deterministic rung unless a deployment explicitly opts into the
+# credential-gated hybrid engine via USE_HYBRID_DECISION_ENGINE=1.
 # Read at call time so tests can monkeypatch without importlib.reload.
 @lru_cache(maxsize=1)
 def _is_hybrid_engine_enabled() -> bool:
-    return os.environ.get("USE_HYBRID_DECISION_ENGINE", "1") == "1"
+    enabled = os.environ.get("USE_HYBRID_DECISION_ENGINE", "0") == "1"
+    if enabled:
+        _warn_hybrid_engine_enabled_once()
+    return enabled
+
+
+_HYBRID_ENABLED_WARNING_EMITTED = False
+
+
+def _warn_hybrid_engine_enabled_once() -> None:
+    """Emit a one-per-process warning when the hybrid engine is enabled.
+
+    PA-03 startup-visibility hook: an operator enabling the flag must see a
+    loud warning that the serving path now includes credential-gated LLM
+    calls. Deliberately NOT reset by _reset_hybrid_engine() so test churn
+    cannot silence it within a real serving process.
+    """
+    global _HYBRID_ENABLED_WARNING_EMITTED
+    if _HYBRID_ENABLED_WARNING_EMITTED:
+        return
+    _HYBRID_ENABLED_WARNING_EMITTED = True
+    logger.warning(
+        "Hybrid decision engine ENABLED — serving path includes "
+        "credential-gated LLM calls (PA-03)"
+    )
 
 
 # Lazy-load hybrid engine only when enabled
@@ -249,7 +276,9 @@ class DecisionResult:
     suitability_profile: Optional[Any] = None  # Shadow field — zero breakage
     commercial_decision: str = "NONE"          # One of COMMERCIAL_DECISIONS
     intent_scores: Dict[str, float] = field(default_factory=dict)
-    next_best_action: Optional[str] = None
+    next_best_action: Optional[str] = None  # commercial CRM (compat); see commercial_next_action
+    commercial_next_action: Optional[str] = None
+    travel_next_action: Optional[str] = None
     budget_breakdown: Optional[BudgetBreakdownResult] = None
 
     def __post_init__(self) -> None:
@@ -2264,7 +2293,11 @@ def run_gap_and_decision(
         decision_state = "ASK_FOLLOWUP"
 
     intent_scores = compute_intent_scores(packet)
-    commercial_decision, next_best_action = decide_commercial_action(packet, intent_scores)
+    commercial_decision, commercial_next_action = decide_commercial_action(packet, intent_scores)
+    from src.orchestration.travel_next_action import travel_action_from_decision_state
+
+    travel_next_action = travel_action_from_decision_state(decision_state or "ASK_FOLLOWUP")
+    next_best_action = commercial_next_action
 
     rationale = {
         "hard_blockers": hard_blockers,
@@ -2279,6 +2312,8 @@ def run_gap_and_decision(
         "feasibility": feasibility["status"],
         "operating_mode": mode,
         "commercial_decision": commercial_decision,
+        "commercial_next_action": commercial_next_action,
+        "travel_next_action": travel_next_action,
         "budget_verdict": budget_breakdown.verdict if budget_breakdown else None,
         "budget_total_low": budget_breakdown.total_estimated_low if budget_breakdown else None,
         "budget_total_high": budget_breakdown.total_estimated_high if budget_breakdown else None,
@@ -2307,5 +2342,7 @@ def run_gap_and_decision(
         commercial_decision=commercial_decision,
         intent_scores=intent_scores,
         next_best_action=next_best_action,
+        commercial_next_action=commercial_next_action,
+        travel_next_action=travel_next_action,
         budget_breakdown=budget_breakdown,
     )

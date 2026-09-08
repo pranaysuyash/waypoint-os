@@ -91,11 +91,64 @@ def test_fx_lock_preview_never_persists_or_reports_a_lock(monkeypatch) -> None:
     _assert_preview_metadata(response.metadata)
 
 
-def test_irops_recovery_plan_is_analysis_only_and_scrubs_effects() -> None:
+def test_irops_recovery_plan_abstains_without_stored_graph() -> None:
     response = heal_disrupted_journey(
         HealDisruptionRequest(
             trip_id="TRIP-IROPS-PREVIEW",
             delayed_node_id="N_FLT_178",
+            delay_minutes=180,
+        )
+    )
+
+    assert response["status"] == "PREVIEW_ONLY"
+    assert response["reality_tier"] == "deterministic_preview"
+    assert response["simulation"] is True
+    assert response["provider_connected"] is False
+    assert response["external_action"] is False
+    assert response["operational_write"] is False
+    assert response["effects"] == []
+    _assert_preview_metadata(response["metadata"])
+
+    plan = response["healing_plan"]
+    assert plan["analysis_status"] == "ABSTAIN_NO_STORED_GRAPH"
+    assert plan["evidence_status"] == "NO_STORED_JOURNEY_GRAPH"
+    assert plan["emergency_lodging_vcc"] is None
+    assert plan["counterfactual_options"] == []
+    assert plan["statutory_compensation"]["amount_eur"] is None
+    assert plan["statutory_compensation"]["estimated_amount_eur"] is None
+
+
+def test_irops_recovery_plan_is_analysis_only_and_scrubs_effects(monkeypatch) -> None:
+    from datetime import datetime, timezone
+
+    from src.schemas.journey_graph import JourneyDependencyGraph, JourneyNode, NodeType
+
+    trip_id = "TRIP-IROPS-STORED"
+    node_id = "N_FLT_STORED"
+    now = datetime.now(timezone.utc)
+    graph = JourneyDependencyGraph(trip_id=trip_id)
+    graph.add_node(
+        JourneyNode(
+            node_id=node_id,
+            node_type=NodeType.FLIGHT,
+            title="Stored delayed flight",
+            start_time=now,
+            end_time=now,
+            location="JFK",
+            provider="StoredCarrier",
+            confirmation_code="STORED1",
+            commitment_status="ticketed",
+        )
+    )
+    stored = {"id": trip_id, **graph.to_stored_payload()}
+    monkeypatch.setattr(
+        TripStore, "get_trip", lambda tid, *args, **kwargs: stored if tid == trip_id else None
+    )
+
+    response = heal_disrupted_journey(
+        HealDisruptionRequest(
+            trip_id=trip_id,
+            delayed_node_id=node_id,
             delay_minutes=180,
         )
     )

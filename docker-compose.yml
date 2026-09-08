@@ -18,7 +18,13 @@ services:
       - TRIPSTORE_BACKEND=sql
       # Keep the compose service explicit about the same serving default as
       # the production image and CI contract; override only deliberately.
-      - USE_HYBRID_DECISION_ENGINE=${USE_HYBRID_DECISION_ENGINE:-1}
+      # PA-03: the code default is OFF — determinism is architectural, so the
+      # compose default is 0 and only an explicit .env value opts into the
+      # credential-gated hybrid engine (loud startup warning when enabled).
+      - USE_HYBRID_DECISION_ENGINE=${USE_HYBRID_DECISION_ENGINE:-0}
+      # PA-12: run-ledger GC stays OFF in dev so local history is never pruned
+      # implicitly; production fly.toml opts in with WAYPOINT_RUN_LEDGER_GC=1.
+      - WAYPOINT_RUN_LEDGER_GC=${WAYPOINT_RUN_LEDGER_GC:-0}
       # Secrets come from the environment / deploy-time .env — never committed
       # (LR-O01/LR-B02). ${VAR:?} fails `docker compose up` with a clear error
       # when the secret is absent.

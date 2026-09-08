@@ -60,6 +60,9 @@ RLS_TENANT_TABLES: tuple[str, ...] = (
     "execution_events",
     # Integration enablement (Phase 6A)
     "agency_integrations",
+    # PER-0700 wave 2 (PA-08/PA-23): tenant-owned approval + payout ledgers
+    "authority_approvals",
+    "advisor_payouts",
 )
 
 RLS_EXCLUDED_AGENCY_TABLES: dict[str, str] = {

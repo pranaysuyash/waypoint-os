@@ -103,23 +103,16 @@ def _sanitize_healing_plan(plan: Any, payload: HealDisruptionRequest) -> Dict[st
 
 
 class HealDisruptionRequest(BaseModel):
-    trip_id: str = Field("TRIP-LIVE-109", description="Identifier of the disrupted trip")
-    delayed_node_id: str = Field("N_FLT_178", description="ID of the delayed/cancelled node")
+    trip_id: str = Field(..., description="Identifier of the disrupted trip")
+    delayed_node_id: str = Field(..., description="ID of the delayed/cancelled node")
     delay_minutes: int = Field(180, description="Delay duration in minutes")
 
 
 @router.post("/heal")
 def heal_disrupted_journey(payload: HealDisruptionRequest) -> Dict[str, Any]:
     """Calculate a local recovery-plan preview without executing any action."""
-    plan = IROPSAutoHealerEngine.execute_healing_protocol(
-        trip_id=payload.trip_id,
-        delayed_node_id=payload.delayed_node_id,
-        delay_minutes=payload.delay_minutes,
-    )
-    plan_data = _sanitize_healing_plan(plan, payload)
-    return {
+    preview_envelope = {
         "status": "PREVIEW_ONLY",
-        "healing_plan": plan_data,
         "reality_tier": RealityTier.DETERMINISTIC_PREVIEW.value,
         "simulation": True,
         "provider_connected": False,
@@ -128,3 +121,38 @@ def heal_disrupted_journey(payload: HealDisruptionRequest) -> Dict[str, Any]:
         "effects": [],
         "metadata": _preview_metadata("irops_recovery_plan"),
     }
+    try:
+        plan = IROPSAutoHealerEngine.execute_healing_protocol(
+            trip_id=payload.trip_id,
+            delayed_node_id=payload.delayed_node_id,
+            delay_minutes=payload.delay_minutes,
+        )
+    except ValueError as exc:
+        digest = _preview_incident_id(
+            payload.trip_id, payload.delayed_node_id, payload.delay_minutes
+        )
+        preview_envelope["healing_plan"] = {
+            "incident_id": f"PREVIEW-IROPS-{digest}",
+            "trip_id": payload.trip_id,
+            "analysis_status": "ABSTAIN_NO_STORED_GRAPH",
+            "evidence_status": "NO_STORED_JOURNEY_GRAPH",
+            "resolved_at": None,
+            "counterfactual_options": [],
+            "emergency_lodging_vcc": None,
+            "lodging_payment_status": "NOT_ISSUED",
+            "waiver_status": "DRAFT_NOT_SENT",
+            "statutory_compensation": {
+                "amount_eur": None,
+                "estimated_amount_eur": None,
+                "status": "NOT_EVALUATED",
+            },
+            "operator_next_step": (
+                "No stored journey graph for this trip; IROPS analysis abstains. "
+                f"{exc}"
+            ),
+        }
+        return preview_envelope
+
+    plan_data = _sanitize_healing_plan(plan, payload)
+    preview_envelope["healing_plan"] = plan_data
+    return preview_envelope

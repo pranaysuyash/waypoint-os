@@ -9,7 +9,7 @@ Privacy tiers:
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -442,6 +442,68 @@ async def record_confirmation(
     await db.commit()
 
     return _to_summary(c)
+
+
+async def try_record_fulfillment_confirmation(
+    *,
+    agency_id: str,
+    trip_id: str,
+    created_by: str,
+    pnr_locator: str,
+    e_ticket_number: str,
+    vcc_card_id: str,
+    total_usd: float,
+    reality_tier: str,
+    provider_connected: bool,
+) -> Dict[str, Any]:
+    """AT-04: durably record a fulfillment as a ``BookingConfirmation`` row
+    (draft → recorded) so the SQL confirmation machine — not the trip JSON
+    blob — is the durable truth the void/verify paths operate on.
+
+    Honest degradation (Part-H, 2026-09-07): without a configured database
+    session maker, or on any write failure, this returns
+    ``{"recorded": False, "reason": …}`` instead of raising into the booking
+    path or pretending the row exists. The caller surfaces that outcome on
+    the fulfillment result and audit record.
+    """
+    try:
+        from spine_api.core.database import async_session_maker
+    except Exception as exc:  # pragma: no cover - depends on deploy env
+        return {"recorded": False, "reason": f"no_database_session_maker: {exc}"}
+
+    notes = (
+        f"reality_tier={reality_tier}; provider_connected={provider_connected}; "
+        f"vcc_card_id={vcc_card_id}; total_usd={total_usd}; "
+        "recorded by booking fulfillment engine (AT-04)"
+    )
+    try:
+        async with async_session_maker() as db:
+            detail = await create_confirmation(
+                db,
+                trip_id=trip_id,
+                agency_id=agency_id,
+                created_by=created_by,
+                data={
+                    "confirmation_type": "flight",
+                    "supplier_name": "Amadeus NDC (simulated sandbox)",
+                    "confirmation_number": pnr_locator,
+                    "external_ref": e_ticket_number,
+                    "notes": notes,
+                },
+            )
+            summary = await record_confirmation(
+                db,
+                confirmation_id=detail.id,
+                agency_id=agency_id,
+                recorded_by=created_by,
+            )
+            return {
+                "recorded": True,
+                "confirmation_id": detail.id,
+                "status": summary.confirmation_status,
+            }
+    except Exception as exc:
+        return {"recorded": False, "reason": f"{type(exc).__name__}: {exc}"}
 
 
 async def verify_confirmation(

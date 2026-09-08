@@ -1,7 +1,7 @@
 {
   "name": "Waypoint Companion",
   "short_name": "Waypoint",
-  "description": "Autonomous Travel Companion with Offline Itineraries, Live Flight Alerts, and Crisis SOS",
+  "description": "Online itinerary access through your private travel-advisor link, plus sample itinerary and SOS demonstration views.",
   "start_url": "/companion",
   "display": "standalone",
   "background_color": "#090d16",

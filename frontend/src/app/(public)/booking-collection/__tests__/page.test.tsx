@@ -103,7 +103,7 @@ describe('BookingCollectionPage', () => {
 
     // Fill required fields
     const inputs = screen.getAllByRole('textbox');
-    const travelerIdInput = inputs.find((el) => el.getAttribute('placeholder') === 'e.g. adult_1');
+    const travelerIdInput = inputs.find((el) => el.getAttribute('placeholder') === 'e.g. Sarah (lead traveler)');
     if (travelerIdInput) await user.type(travelerIdInput, 'adult_1');
 
     await user.click(screen.getByTestId('collection-submit-btn'));

@@ -129,6 +129,18 @@ files = [
     "spine_api/routers/customer_memory.py",
     "spine_api/routers/price_lock.py",
     "spine_api/routers/messaging.py",
+    # Money/booking durability surfaces (PER-0443 Parts G–L, 2026-09-07).
+    "spine_api/persistence.py",
+    "spine_api/routers/fulfillment.py",
+    "spine_api/routers/journey_graph.py",
+    "spine_api/routers/visa_radar.py",
+    "spine_api/providers/stripe_issuing_adapter.py",
+    "spine_api/services/confirmation_service.py",
+    "spine_api/models/tenant.py",
+    "src/orchestration/booking_fulfillment.py",
+    "src/orchestration/travel_next_action.py",
+    "src/orchestration/agent_lease.py",
+    "src/schemas/journey_graph.py",
 ]
 ignore_missing_imports = true
 # Do not follow transitive imports — gate only the listed files. Following

@@ -58,6 +58,31 @@ _IDEMPOTENCY = IdempotencyRegistry.get_instance()
 # In-memory pub/sub queues for SSE trip state listeners
 _TRIP_EVENT_LISTENERS: Dict[str, List[asyncio.Queue]] = {}
 
+# PA-14: bounded SSE lifetime. Mirrors the max_iterations budget pattern from
+# routers/trip_observability.py:170-183 — the previous `while True` loop only
+# exited on client disconnect, so a silent client could hold a listener (and a
+# queue) open forever. Every loop pass (heartbeat wait or event delivery)
+# consumes one cycle of the budget, bounding the stream unconditionally. On
+# exhaustion the stream emits a final reconnect event and closes; well-behaved
+# clients reconnect and resume.
+SSE_WAIT_TIMEOUT_SECONDS = 15.0
+SSE_MAX_WAIT_CYCLES = 240  # ~60 minutes max connection lifetime (240 x 15s)
+
+
+def _prune_trip_listener(trip_id: str, queue: asyncio.Queue) -> None:
+    """Remove a listener queue; drop the trip's dict entry when it empties.
+
+    Keeps multiple concurrent listeners per trip working: the dict entry is
+    only removed when NO listeners remain (PA-14 leak fix).
+    """
+    listeners = _TRIP_EVENT_LISTENERS.get(trip_id)
+    if not listeners:
+        return
+    if queue in listeners:
+        listeners.remove(queue)
+    if not listeners:
+        _TRIP_EVENT_LISTENERS.pop(trip_id, None)
+
 
 def _broadcast_trip_event(trip_id: str, event_type: str, payload: Dict[str, Any]) -> None:
     """Broadcast real-time state reconciliation events to connected SSE clients."""
@@ -520,6 +545,40 @@ async def generate_client_followup_prompt(
     )
 
 
+async def _trip_event_stream(trip_id: str, queue: asyncio.Queue):
+    """SSE generator for trip events (PA-14: bounded lifetime + pruned cleanup)."""
+    wait_cycles = 0
+    try:
+        # Initial connection heartbeat
+        init_msg = json.dumps({"event": "CONNECTED", "trip_id": trip_id, "timestamp": datetime.now(timezone.utc).isoformat()})
+        yield f"data: {init_msg}\n\n"
+
+        while wait_cycles < SSE_MAX_WAIT_CYCLES:
+            wait_cycles += 1
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=SSE_WAIT_TIMEOUT_SECONDS)
+                data_str = json.dumps(event)
+                yield f"data: {data_str}\n\n"
+            except asyncio.TimeoutError:
+                # Periodic SSE heartbeat
+                ping_str = json.dumps({"event": "HEARTBEAT", "timestamp": datetime.now(timezone.utc).isoformat()})
+                yield f"data: {ping_str}\n\n"
+        # PA-14: lifetime budget exhausted — tell the client to reconnect.
+        limit_msg = json.dumps({
+            "event": "STREAM_LIMIT_REACHED",
+            "trip_id": trip_id,
+            "reconnect": True,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        yield f"data: {limit_msg}\n\n"
+    except asyncio.CancelledError:
+        pass
+    finally:
+        # PA-14: prune the empty listener entry so the dict cannot grow
+        # without bound; concurrent listeners for the same trip are kept.
+        _prune_trip_listener(trip_id, queue)
+
+
 @router.get("/stream-events/{trip_id}")
 async def stream_trip_events(
     trip_id: str,
@@ -527,6 +586,11 @@ async def stream_trip_events(
 ):
     """
     Server-Sent Events (SSE) stream for real-time state sync and trip state notifications.
+
+    PA-14: the stream has a bounded lifetime (see SSE_MAX_WAIT_CYCLES); on
+    exhaustion a final ``STREAM_LIMIT_REACHED`` event tells the client to
+    reconnect. Listener queues are pruned from ``_TRIP_EVENT_LISTENERS`` when
+    the last listener for a trip disconnects.
     """
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
@@ -537,25 +601,4 @@ async def stream_trip_events(
         _TRIP_EVENT_LISTENERS[trip_id] = []
     _TRIP_EVENT_LISTENERS[trip_id].append(queue)
 
-    async def event_generator():
-        try:
-            # Initial connection heartbeat
-            init_msg = json.dumps({"event": "CONNECTED", "trip_id": trip_id, "timestamp": datetime.now(timezone.utc).isoformat()})
-            yield f"data: {init_msg}\n\n"
-
-            while True:
-                try:
-                    event = await asyncio.wait_for(queue.get(), timeout=15.0)
-                    data_str = json.dumps(event)
-                    yield f"data: {data_str}\n\n"
-                except asyncio.TimeoutError:
-                    # Periodic SSE heartbeat
-                    ping_str = json.dumps({"event": "HEARTBEAT", "timestamp": datetime.now(timezone.utc).isoformat()})
-                    yield f"data: {ping_str}\n\n"
-        except asyncio.CancelledError:
-            pass
-        finally:
-            if trip_id in _TRIP_EVENT_LISTENERS and queue in _TRIP_EVENT_LISTENERS[trip_id]:
-                _TRIP_EVENT_LISTENERS[trip_id].remove(queue)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(_trip_event_stream(trip_id, queue), media_type="text/event-stream")

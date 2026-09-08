@@ -166,7 +166,7 @@ function ScenarioLabInner() {
         rawNote: String(input.raw_note ?? ''),
         ownerNote: String(input.owner_note ?? ''),
       };
-      dispatchOp({ type: 'generate-end', generated, status: `Loaded ${payload?.source ?? 'generated'} scenario and saved fixture ${persisted?.file_name ?? ''}`.trim() });
+      dispatchOp({ type: 'generate-end', generated, status: `Loaded ${payload?.source ?? 'generated'} scenario and saved its template ${persisted?.file_name ?? ''}`.trim() });
       await refetch();
       if (persisted?.scenario_id) {
         setScenarioId(persisted.scenario_id);
@@ -191,7 +191,7 @@ function ScenarioLabInner() {
         </div>
         <div className='text-right text-[var(--ui-text-xs)] text-[var(--text-muted)]'>
           <div>{docCount} docs</div>
-          <div>{fixtureCount} fixtures</div>
+          <div>{fixtureCount} saved scenarios</div>
         </div>
       </div>
 
@@ -275,7 +275,7 @@ function ScenarioLabInner() {
               className='w-full rounded-lg border border-[#30363d] bg-[#0d1117] px-3 py-2 text-ui-xs text-[#e6edf3] outline-none focus:border-[var(--accent-blue)]'
             >
               <option value='docs'>Generate from Docs Templates</option>
-              <option value='fixtures'>Generate from Fixture Templates</option>
+              <option value='fixtures'>Generate from saved templates</option>
               <option value='llm'>Generate via LLM (.env.local key)</option>
             </select>
             <button

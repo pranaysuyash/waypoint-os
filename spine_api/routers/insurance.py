@@ -1,20 +1,33 @@
 """
 spine_api/routers/insurance.py — Travel Insurance & CFAR Sentinel Router.
 
-Generates comprehensive travel insurance & Cancel For Any Reason (CFAR) quotes,
-tracks 14-day pre-existing condition waiver deadlines from deposit confirmation,
-and attaches insurance policy coverage to trips.
+Generates illustrative travel insurance & Cancel For Any Reason (CFAR) quote
+options, preserves explicit policy-evidence uncertainty, and attaches insurance
+policy coverage to trips.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+import math
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from fastapi import APIRouter, Depends, HTTPException
 
 from spine_api.core.auth import get_current_agency_id
 from spine_api.persistence import AuditStore, TripStore
 
 router = APIRouter(prefix="/api/v1/insurance", tags=["Travel Insurance & CFAR Sentinel"])
+
+
+class InsuranceEvidence(BaseModel):
+    """Minimal provenance for a quote assertion or deliberately unevaluated state."""
+
+    policy_rule_status: str = "not_adopted"
+    source: Optional[str] = None
+    verification: str = "not_evaluated"
+    deposit_date_utc: Optional[str] = None
+    unresolved_predicates: List[str] = Field(
+        default_factory=lambda: ["provider_rule", "plan_version", "coverage_facts"]
+    )
 
 
 class InsurancePlanOption(BaseModel):
@@ -26,28 +39,77 @@ class InsurancePlanOption(BaseModel):
     emergency_medical_usd: float
     medical_evacuation_usd: float
     cfar_included: bool
-    pre_existing_waiver_eligible: bool
+    pre_existing_waiver_eligible: Optional[bool] = None
+    pre_existing_waiver_status: str = "not_evaluated"
+    eligibility_evidence: InsuranceEvidence
     estimated_agency_commission_usd: float
 
 
 class InsuranceQuoteRequest(BaseModel):
     trip_id: Optional[str] = None
     total_trip_cost_usd: float
-    traveler_ages: List[int] = Field(default_factory=lambda: [35, 38])
+    traveler_ages: Optional[List[int]] = None
     destination_country: str = "IT"
-    deposit_date: Optional[str] = None
+    deposit_date: Optional[datetime] = None
+
+    @field_validator("total_trip_cost_usd")
+    @classmethod
+    def validate_total_trip_cost(cls, value: float) -> float:
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError("total_trip_cost_usd must be a finite positive number")
+        return value
+
+    @field_validator("total_trip_cost_usd", mode="before")
+    @classmethod
+    def reject_boolean_trip_cost(cls, value):
+        if isinstance(value, bool):
+            raise ValueError("total_trip_cost_usd must be a numeric amount")
+        return value
+
+    @field_validator("deposit_date", mode="before")
+    @classmethod
+    def parse_deposit_date(cls, value):
+        if value is None or isinstance(value, datetime):
+            return value
+        if not isinstance(value, str):
+            raise ValueError("deposit_date must be an ISO-8601 datetime string")
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("deposit_date must be an ISO-8601 datetime string") from exc
+
+    @field_validator("deposit_date")
+    @classmethod
+    def normalize_deposit_date(cls, value: Optional[datetime]) -> Optional[datetime]:
+        if value is None:
+            return None
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("deposit_date must include a timezone offset")
+
+        try:
+            normalized = value.astimezone(timezone.utc)
+        except (OverflowError, ValueError) as exc:
+            raise ValueError("deposit_date is outside the supported UTC date range") from exc
+        if normalized > datetime.now(timezone.utc):
+            raise ValueError("deposit_date cannot be in the future")
+        return normalized
 
 
 class InsuranceQuoteResponse(BaseModel):
     ok: bool = True
     total_trip_cost_usd: float
-    cfar_deadline: str
-    days_remaining_for_cfar: int
+    cfar_deadline: Optional[str] = None
+    days_remaining_for_cfar: Optional[int] = None
     cfar_deadline_anchor: str = Field(
-        "quote_time",
-        description="'deposit_date' when the CFAR 14-day window anchors to the supplied deposit, else 'quote_time' (no deposit recorded).",
+        "not_evaluated",
+        description="No deadline is emitted until an adopted versioned policy rule and required evidence exist.",
     )
+    cfar_timing_status: str = "not_evaluated"
+    cfar_evidence: InsuranceEvidence = Field(default_factory=InsuranceEvidence)
     plans: List[InsurancePlanOption] = Field(default_factory=list)
+    reality_tier: str = "deterministic_preview"
+    provider_connected: bool = False
+    carrier_confirmed: bool = False
 
 
 class AttachPolicyRequest(BaseModel):
@@ -64,6 +126,9 @@ class AttachPolicyResponse(BaseModel):
     policy_number: str
     plan_id: str
     attached_at: str
+    reality_tier: str = "deterministic_preview"
+    provider_connected: bool = False
+    carrier_confirmed: bool = False
 
 
 @router.post("/quote", response_model=InsuranceQuoteResponse)
@@ -72,31 +137,20 @@ def generate_insurance_quotes(
     agency_id: str = Depends(get_current_agency_id),
 ):
     """Generate comprehensive travel insurance and CFAR quotes based on trip cost and traveler profile."""
-    cost = max(500.0, body.total_trip_cost_usd)
-    now = datetime.now(timezone.utc)
+    if body.trip_id and not TripStore.get_trip_for_agency(body.trip_id, agency_id):
+        raise HTTPException(status_code=404, detail="Trip not found")
 
-    # CFAR pre-existing-condition waiver is 14 days FROM DEPOSIT (F-31): when a
-    # deposit date is supplied it anchors the window; quote time is the honest
-    # fallback only when no deposit has been recorded. days_remaining is real
-    # remaining time (>=0), not a constant 14.
-    anchor_name = "quote_time"
-    anchor_dt = now
-    if body.deposit_date:
-        try:
-            parsed_deposit = datetime.fromisoformat(body.deposit_date.replace("Z", "+00:00"))
-            if parsed_deposit.tzinfo is None:
-                parsed_deposit = parsed_deposit.replace(tzinfo=timezone.utc)
-            anchor_dt = parsed_deposit
-            anchor_name = "deposit_date"
-        except (ValueError, TypeError):
-            # Unparseable deposit date: fall back to quote time rather than
-            # silently presenting a window the traveler may not have.
-            anchor_name = "quote_time"
-            anchor_dt = now
-    cfar_deadline = (anchor_dt + timedelta(days=14)).isoformat()
-    # Date-based remaining days: stable within the anchor day (a window opened
-    # today reports 14, not 13.99 floored to 13).
-    days_remaining = max(0, ((anchor_dt + timedelta(days=14)).date() - now.date()).days)
+    cost = body.total_trip_cost_usd
+    cfar_evidence = InsuranceEvidence(
+        source="request.deposit_date" if body.deposit_date else None,
+        verification="unverified" if body.deposit_date else "not_available",
+        deposit_date_utc=body.deposit_date.isoformat() if body.deposit_date else None,
+    )
+    eligibility_evidence = InsuranceEvidence(
+        source="request.deposit_date" if body.deposit_date else None,
+        verification="unverified" if body.deposit_date else "not_available",
+        deposit_date_utc=body.deposit_date.isoformat() if body.deposit_date else None,
+    )
 
     plans: List[InsurancePlanOption] = [
         InsurancePlanOption(
@@ -108,7 +162,9 @@ def generate_insurance_quotes(
             emergency_medical_usd=50000.0,
             medical_evacuation_usd=250000.0,
             cfar_included=False,
-            pre_existing_waiver_eligible=True,
+            pre_existing_waiver_eligible=None,
+            pre_existing_waiver_status="not_evaluated",
+            eligibility_evidence=eligibility_evidence,
             estimated_agency_commission_usd=round(cost * 0.045 * 0.30, 2),  # 30% commission
         ),
         InsurancePlanOption(
@@ -120,7 +176,9 @@ def generate_insurance_quotes(
             emergency_medical_usd=100000.0,
             medical_evacuation_usd=500000.0,
             cfar_included=False,
-            pre_existing_waiver_eligible=True,
+            pre_existing_waiver_eligible=None,
+            pre_existing_waiver_status="not_evaluated",
+            eligibility_evidence=eligibility_evidence,
             estimated_agency_commission_usd=round(cost * 0.075 * 0.30, 2),
         ),
         InsurancePlanOption(
@@ -132,7 +190,9 @@ def generate_insurance_quotes(
             emergency_medical_usd=250000.0,
             medical_evacuation_usd=1000000.0,
             cfar_included=True,
-            pre_existing_waiver_eligible=True,
+            pre_existing_waiver_eligible=None,
+            pre_existing_waiver_status="not_evaluated",
+            eligibility_evidence=eligibility_evidence,
             estimated_agency_commission_usd=round(cost * 0.115 * 0.35, 2),  # 35% commission
         ),
     ]
@@ -140,10 +200,15 @@ def generate_insurance_quotes(
     return InsuranceQuoteResponse(
         ok=True,
         total_trip_cost_usd=cost,
-        cfar_deadline=cfar_deadline,
-        days_remaining_for_cfar=days_remaining,
-        cfar_deadline_anchor=anchor_name,
+        cfar_deadline=None,
+        days_remaining_for_cfar=None,
+        cfar_deadline_anchor="not_evaluated",
+        cfar_timing_status="not_evaluated",
+        cfar_evidence=cfar_evidence,
         plans=plans,
+        reality_tier="deterministic_preview",
+        provider_connected=False,
+        carrier_confirmed=False,
     )
 
 
@@ -165,6 +230,9 @@ def attach_insurance_policy_to_trip(
         "provider": body.insurance_provider,
         "premium_paid_usd": body.premium_paid_usd,
         "attached_at": now_iso,
+        "carrier_confirmed": False,
+        "reality_tier": "deterministic_preview",
+        "provider_connected": False,
     }
 
     TripStore.save_trip(trip, agency_id=agency_id)
@@ -187,4 +255,7 @@ def attach_insurance_policy_to_trip(
         policy_number=body.policy_number,
         plan_id=body.selected_plan_id,
         attached_at=now_iso,
+        reality_tier="deterministic_preview",
+        provider_connected=False,
+        carrier_confirmed=False,
     )

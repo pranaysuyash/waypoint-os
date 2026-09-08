@@ -812,7 +812,8 @@ def create_hybrid_engine(
     Reads configuration from environment variables.
 
     Environment variables:
-        USE_HYBRID_DECISION_ENGINE: 0 or 1 (default: 1)
+        USE_HYBRID_DECISION_ENGINE: 0 or 1 (default: 0 — PA-03 serving
+            determinism is architectural; opt in explicitly)
         LLM_PROVIDER: gemini, openai, local (default: gemini)
         DECISION_CACHE_TTL_DAYS: Cache TTL in days (default: 30)
 
@@ -826,7 +827,8 @@ def create_hybrid_engine(
     """
     import os
 
-    enabled = os.environ.get("USE_HYBRID_DECISION_ENGINE", "1") == "1"
+    # PA-03: agree with src/intake/decision.py — the serving default is OFF.
+    enabled = os.environ.get("USE_HYBRID_DECISION_ENGINE", "0") == "1"
 
     if not enabled:
         # Return engine with only rules enabled

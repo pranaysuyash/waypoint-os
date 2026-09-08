@@ -69,8 +69,12 @@ export default function PublicGroupSharePage() {
         }
         setLoading(false);
       })
-      .catch((err) => {
-        setError(err.message || 'Failed to load group invite');
+      .catch(() => {
+        // Part-K AT-21: never render browser/backend error strings (e.g.
+        // "Failed to fetch") to group travelers — one fixed, honest line.
+        setError(
+          'This invite link is not working right now. Please ask your travel advisor to resend it.',
+        );
         setLoading(false);
       });
   }, [token]);
@@ -93,7 +97,9 @@ export default function PublicGroupSharePage() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to record payment notification');
+        throw new Error(
+          'We could not reach your travel advisor just now. Please try again — nothing was charged.',
+        );
       }
 
       setSubmittedSuccess(true);

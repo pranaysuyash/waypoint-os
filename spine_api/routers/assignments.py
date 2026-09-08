@@ -97,6 +97,39 @@ async def get_routing_state(
     return _routing_response(state)
 
 
+@router.get("/queue/escalated")
+async def list_escalated_queue(
+    limit: int = 100,
+    agency_id: str = Depends(get_current_agency_id),
+    membership=require_permission("trips:read"),
+    db: AsyncSession = Depends(get_rls_db),
+):
+    """Escalated queue (register I-1): routing states currently in
+    `status='escalated'`, oldest escalation first, with SLA per entry.
+
+    Server-side so the operator queue is accurate under pagination — the
+    frontend chip previously sliced the workspace list client-side and
+    missed routing-escalated trips whose trip.status looked healthy.
+    """
+    from sqlalchemy import select
+
+    from spine_api.models.routing import TripRoutingState
+
+    result = await db.execute(
+        select(TripRoutingState)
+        .where(TripRoutingState.agency_id == agency_id)
+        .where(TripRoutingState.status == "escalated")
+        .order_by(TripRoutingState.escalated_at.asc().nulls_last())
+        .limit(max(1, min(limit, 500)))
+    )
+    states = result.scalars().all()
+    entries = []
+    for state in states:
+        item = routing_service._to_dict(state)
+        entries.append({**item, "sla": compute_sla(item)})
+    return {"ok": True, "items": entries, "total": len(entries)}
+
+
 @router.post("/{trip_id}/assign", status_code=status.HTTP_200_OK)
 async def post_assign(
     trip_id: str,

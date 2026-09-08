@@ -185,6 +185,37 @@ async def escalate_trip(
     return _to_dict(state)
 
 
+async def system_escalate(
+    db: AsyncSession,
+    trip_id: str,
+    agency_id: str,
+    reason: Optional[str] = None,
+) -> dict:
+    """
+    System-initiated escalation (PA-38): used by background recovery so that
+    automated escalations land on the same TripRoutingState surface the
+    escalated-queue reads. Unlike :func:`escalate_trip` this is valid from any
+    status — recovery must not be blocked by a missing assignment — and sets
+    no human escalation owner (``escalation_owner_id`` stays as-is/None).
+    """
+    state = await get_or_create_routing_state(db, trip_id, agency_id)
+    if state.status == "escalated":
+        return _to_dict(state)
+    now = datetime.now(timezone.utc)
+    state.status = "escalated"
+    state.escalated_at = now
+    state.updated_at = now
+    _append_history(
+        state,
+        "system_escalate",
+        by_user_id="system:recovery",
+        reason=reason,
+    )
+    await db.commit()
+    await db.refresh(state)
+    return _to_dict(state)
+
+
 async def reassign_trip(
     db: AsyncSession,
     trip_id: str,

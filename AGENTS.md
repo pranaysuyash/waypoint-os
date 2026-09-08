@@ -120,6 +120,7 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 ### Reference
 
 - **Master catalog**: `/Users/pranay/Projects/SKILLS_CATALOG.md`
+- **This repo (Waypoint OS / travel_agency_agent):** `Docs/FULL_SKILLS_CATALOG.md` — categories mapped to this product. Tell another agent: *Open `Docs/FULL_SKILLS_CATALOG.md`, search for the relevant skill in category X, and follow its `SKILL.md` file.* Do not default to gstack.
 - **Workspace rules**: `/Users/pranay/Projects/AGENTS.md`
 
 ### `clawpatch` Evaluation

@@ -56,6 +56,56 @@ class StressBenchmarkResult:
 class MultiAgentStressSimulator:
     """Executes high-throughput concurrent IROPS auto-healing simulations."""
 
+    @staticmethod
+    def _build_bench_graphs(trip_count: int) -> "Dict[str, Any]":
+        """Build in-memory journey graphs for the namespaced bench trips.
+
+        AT-06 alignment (2026-09-06): the IROPS healer abstains when a trip has
+        no stored journey graph — it never synthesizes an itinerary. The
+        benchmark supplies its graphs explicitly (``stored_graph=``) so heals
+        exercise the real engine against a non-synthetic graph without a store
+        round-trip. Every graph carries the fixed delayed node ``N_FLT_178``.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        from src.schemas.journey_graph import (
+            JourneyDependencyGraph,
+            JourneyNode,
+            NodeType,
+        )
+
+        graphs: Dict[str, Any] = {}
+        for idx in range(trip_count):
+            trip_id = f"TRIP-BENCH-{idx:04d}"
+            graph = JourneyDependencyGraph(trip_id=trip_id)
+            t0 = datetime.now(timezone.utc)
+            graph.add_node(
+                JourneyNode(
+                    node_id="N_FLT_178",
+                    node_type=NodeType.FLIGHT,
+                    title="Benchmark flight",
+                    provider="Benchmark carrier",
+                    commitment_status="ticketed",
+                    start_time=t0,
+                    end_time=t0 + timedelta(hours=8),
+                    location="BENCH",
+                )
+            )
+            graph.add_node(
+                JourneyNode(
+                    node_id="N_HTL_001",
+                    node_type=NodeType.HOTEL_CHECKIN,
+                    title="Benchmark hotel",
+                    provider="Benchmark lodging",
+                    commitment_status="booked",
+                    start_time=t0 + timedelta(hours=9),
+                    end_time=t0 + timedelta(hours=33),
+                    location="BENCH",
+                )
+            )
+            graphs[trip_id] = graph
+        return graphs
+
     @classmethod
     async def run_concurrent_irops_benchmark(
         cls,
@@ -77,6 +127,13 @@ class MultiAgentStressSimulator:
         success_count = 0
         fail_count = 0
 
+        # AT-06 alignment (2026-09-06): the IROPS healer now abstains when a
+        # trip has no stored journey graph — it never synthesizes an
+        # itinerary. The benchmark builds its graphs explicitly and hands them
+        # to the engine via ``stored_graph=``, so heals run the real engine
+        # against a non-synthetic graph with no store round-trip.
+        bench_graphs = cls._build_bench_graphs(len(hub_pairs))
+
         async def _heal_task(idx: int):
             nonlocal vcc_count, statutory_claims_eur, fee_waivers_count, success_count, fail_count
             _, _, flight, delay, dist = hub_pairs[idx % len(hub_pairs)]
@@ -88,6 +145,7 @@ class MultiAgentStressSimulator:
                     trip_id=f"TRIP-BENCH-{idx:04d}",
                     delayed_node_id="N_FLT_178",
                     delay_minutes=delay,
+                    stored_graph=bench_graphs[f"TRIP-BENCH-{idx % len(hub_pairs):04d}"],
                 )
                 elapsed_ms = (time.perf_counter() - t0) * 1000.0
                 latencies_ms.append(elapsed_ms)

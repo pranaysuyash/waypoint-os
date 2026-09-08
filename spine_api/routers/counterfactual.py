@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from dataclasses import asdict
 from datetime import datetime, timezone
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from spine_api.contract import (
     CounterfactualReplanningRequest,
@@ -19,13 +19,14 @@ from spine_api.contract import (
     GroupConsensusRequest,
     GroupConsensusResponse,
 )
+from spine_api.core.auth import get_current_agency_id
 from src.decision.counterfactual_recovery import CounterfactualReplanningEngine
 from src.decision.group_consensus import (
     GroupConsensusOptimizer,
     ItineraryOptionProposal,
     TravelerPreferenceProfile,
 )
-from src.schemas.journey_graph import JourneyDependencyGraph, JourneyNode, NodeType
+from src.schemas.journey_graph import JourneyDependencyGraph
 
 logger = logging.getLogger("spine_api.counterfactual")
 
@@ -33,23 +34,39 @@ router = APIRouter(prefix="/api/v1/counterfactual", tags=["counterfactual"])
 
 
 @router.post("/replan-disruption", response_model=CounterfactualReplanningResponse)
-def replan_disruption_endpoint(request: CounterfactualReplanningRequest) -> CounterfactualReplanningResponse:
+def replan_disruption_endpoint(
+    request: CounterfactualReplanningRequest,
+    agency_id: str = Depends(get_current_agency_id),
+) -> CounterfactualReplanningResponse:
+    """Generate ranked recovery alternatives from the stored journey graph.
+
+    AT-19: never mint a dummy Air France node. Scores from the engine are
+    heuristic (hardcoded) and are labeled as such.
     """
-    Generate 3 ranked counterfactual recovery alternatives (Minimum Delay, Same Carrier, Premium Comfort).
-    """
-    now = datetime.now(timezone.utc)
-    graph = JourneyDependencyGraph(trip_id=request.trip_id)
-    graph.add_node(
-        JourneyNode(
-            node_id=request.disrupted_node_id,
-            node_type=NodeType.FLIGHT,
-            title="Scheduled Flight",
-            start_time=now,
-            end_time=now,
-            location="Airport",
-            provider="Air France",
-        )
+    from spine_api.persistence import TripStore
+
+    stored = TripStore.get_trip_for_agency(request.trip_id, agency_id) or {}
+    graph = JourneyDependencyGraph.from_stored(
+        request.trip_id,
+        stored.get("journey_graph_nodes") or [],
+        stored.get("journey_graph_edges") or [],
     )
+    used_stored = request.disrupted_node_id in graph.nodes
+    if not used_stored:
+        # Abstain-shaped report: empty alternatives, no invented carrier.
+        now = datetime.now(timezone.utc).isoformat()
+        return CounterfactualReplanningResponse(
+            trip_id=request.trip_id,
+            disrupted_node_id=request.disrupted_node_id,
+            original_delay_hours=request.delay_minutes / 60.0,
+            alternatives=[],
+            recommended_strategy="NONE",
+            generated_at=now,
+            reality_tier="unavailable",
+            provider_connected=False,
+            used_stored_graph=False,
+            heuristic_scores=True,
+        )
 
     report = CounterfactualReplanningEngine.generate_alternatives(
         graph=graph,
@@ -60,6 +77,7 @@ def replan_disruption_endpoint(request: CounterfactualReplanningRequest) -> Coun
     alts = [asdict(a) for a in report.alternatives]
     for a in alts:
         a["strategy"] = a["strategy"].value if hasattr(a["strategy"], "value") else str(a["strategy"])
+        a["score_basis"] = "heuristic_hardcoded"
 
     return CounterfactualReplanningResponse(
         trip_id=report.trip_id,
@@ -68,6 +86,10 @@ def replan_disruption_endpoint(request: CounterfactualReplanningRequest) -> Coun
         alternatives=alts,
         recommended_strategy=report.recommended_strategy.value,
         generated_at=report.generated_at,
+        reality_tier="deterministic_preview",
+        provider_connected=False,
+        used_stored_graph=True,
+        heuristic_scores=True,
     )
 
 

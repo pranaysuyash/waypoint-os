@@ -136,9 +136,17 @@ class SpineRunResponse(BaseModel):
 
 
 class RunAcceptedResponse(BaseModel):
-    """Returned immediately by POST /run — the run is queued, poll for status."""
+    """Returned immediately by POST /run — the run is queued, poll for status.
+
+    PA-13 (additive): ``idempotent_replay`` is True only when the request
+    carried an ``Idempotency-Key`` header whose key had already COMPLETED, and
+    the original run_id/state are being replayed. Fresh runs always report
+    False, so existing consumers are unaffected.
+    """
+
     run_id: str
     state: str = "queued"
+    idempotent_replay: bool = False
 
 
 class RunStatusResponse(BaseModel):
@@ -760,6 +768,10 @@ class CounterfactualReplanningResponse(BaseModel):
     alternatives: List[Dict[str, Any]]
     recommended_strategy: str
     generated_at: str
+    reality_tier: str = "deterministic_preview"
+    provider_connected: bool = False
+    used_stored_graph: bool = False
+    heuristic_scores: bool = True
 
 
 class GroupConsensusRequest(BaseModel):

@@ -122,7 +122,7 @@ export default function FinancialSettlementPanel() {
             <SimulatedBadge label="Simulated" />
           </div>
           <p className="text-xs text-muted-foreground">
-            This screen only previews an amount and currency locally. It does not call an issuance endpoint, authorize funds, create card credentials, or contact a supplier/payment provider.
+            This screen only previews an amount and currency locally. No card is created, no funds are authorized, and no supplier or payment provider is contacted.
           </p>
           <div className="flex items-center gap-3">
             <input

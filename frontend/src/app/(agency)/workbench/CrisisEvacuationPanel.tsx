@@ -225,7 +225,7 @@ export function CrisisEvacuationPanel() {
             <div className="flex justify-between items-center gap-2">
               <span className="font-bold text-white text-sm">Sample Dispatch Ref: {driverDispatch.dispatch_id}</span>
               <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-semibold">
-                {driverDispatch.status}
+                {driverDispatch.status === 'dispatched' ? 'Armored transport dispatched (simulated)' : driverDispatch.status.replace(/_/g, ' ')}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[#8b949e]">

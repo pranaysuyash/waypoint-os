@@ -26,6 +26,7 @@ from sqlalchemy import (
     Index,
     UniqueConstraint,
     CheckConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -685,6 +686,21 @@ class BookingConfirmation(Base):
         Index("ix_bc_status", "confirmation_status"),
         Index("ix_bc_type", "confirmation_type"),
         Index("ix_bc_trip_status", "trip_id", "confirmation_status"),
+        # Part-J #3 (2026-09-07): at most ONE active confirmation per
+        # (trip, type). Voids are excluded so a legitimate re-issue after a
+        # void stays legal. This is the durable guard against duplicate
+        # confirmation rows from concurrent or replayed fulfillment repairs —
+        # the failure mode codex flagged when replay-repair landed without a
+        # uniqueness backstop. Mirrored in alembic revision
+        # ``bc_active_type_uniqueness``.
+        Index(
+            "uq_bc_trip_type_active",
+            "trip_id",
+            "confirmation_type",
+            unique=True,
+            sqlite_where=text("confirmation_status != 'voided'"),
+            postgresql_where=text("confirmation_status != 'voided'"),
+        ),
     )
 
 

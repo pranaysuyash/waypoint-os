@@ -2,7 +2,7 @@
 
 # >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
 # Pin the canonical v5 motto source so agent-start never downgrades to a retired doctrine.
-export AGENT_DOCTRINE_SOURCE="/Users/pranay/Downloads/OPERATING_DOCTRINE.md"
+export AGENT_DOCTRINE_SOURCE="/Users/pranay/Projects/agent-start/doctrines/OPERATING_DOCTRINE.md"
 
 # Commit-message gate (motto §0.4.2 multi-pass review + §0.5 evidence tiers).
 # Receives the commit message file path as $1. Blocks AI co-author trailers and

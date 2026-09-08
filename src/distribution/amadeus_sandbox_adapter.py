@@ -6,8 +6,9 @@ Provides flight offers search (v2/shopping/flight-offers) and order creation (v1
 
 from __future__ import annotations
 
+import hashlib
 import uuid
-from typing import List
+from typing import List, Optional
 
 from src.distribution.sandbox_models import (
     GDSSandboxBookingResult,
@@ -64,13 +65,32 @@ class AmadeusSandboxAdapter:
         cls,
         offer_id: str,
         traveler_name: str = "Alex Morgan",
+        idempotency_key: Optional[str] = None,
     ) -> GDSSandboxBookingResult:
-        """Simulates Amadeus v1 Flight Order Creation with instant ticket issuance."""
+        """Simulates Amadeus v1 Flight Order Creation with instant ticket issuance.
+
+        ``idempotency_key`` (Part-H P0, 2026-09-07): when provided, the PNR,
+        e-ticket, and booking reference are derived deterministically from it,
+        so re-issuing the same order — e.g. after a crash between the provider
+        call and durable persistence — returns the SAME instruments instead of
+        minting a second set. Live GDS idempotency follows this contract.
+        """
+        if idempotency_key:
+            digest = hashlib.sha256(
+                f"{idempotency_key}:{offer_id}:{traveler_name}".encode("utf-8")
+            ).hexdigest().upper()
+            pnr_locator = digest[:6]
+            e_ticket_number = f"057-{int(digest[6:16], 16) % 10_000_000_000:010d}"
+            booking_reference = f"1A-{digest[16:22]}"
+        else:
+            pnr_locator = uuid.uuid4().hex[:6].upper()
+            e_ticket_number = f"057-{uuid.uuid4().int % 10000000000:010d}"
+            booking_reference = f"1A-{uuid.uuid4().hex[:6].upper()}"
         return GDSSandboxBookingResult(
-            booking_reference=f"1A-{uuid.uuid4().hex[:6].upper()}",
+            booking_reference=booking_reference,
             provider=GDSProvider.AMADEUS,
-            pnr_locator=uuid.uuid4().hex[:6].upper(),
-            e_ticket_number=f"057-{uuid.uuid4().int % 10000000000:010d}",
+            pnr_locator=pnr_locator,
+            e_ticket_number=e_ticket_number,
             total_charged_usd=3850.0,
             status="TICKETED_CONFIRMED",
         )

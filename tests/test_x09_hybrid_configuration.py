@@ -19,8 +19,20 @@ def _disable_provider_credentials(monkeypatch):
 
 
 def test_x09_unset_mode_uses_serving_default_and_records_boundary(monkeypatch):
+    """The hybrid boundary is recorded for an explicitly-on deployment.
+
+    PA-03 (2026-09-06): the serving default flipped to OFF — determinism is
+    now architectural. This test previously relied on the old default being
+    ON when the variable was unset; it now sets the value explicitly so the
+    recorded boundary assertions keep pinning the same observable contract.
+    (snapshot.py still hardcodes the retired default; flagging that to the
+    lead is part of the PA-03 remediation note.)
+    """
     _disable_provider_credentials(monkeypatch)
     monkeypatch.delenv("USE_HYBRID_DECISION_ENGINE", raising=False)
+    # The recorded value must now be supplied explicitly — an unset variable
+    # means OFF at the engine (src/intake/decision.py) after PA-03.
+    monkeypatch.setenv("USE_HYBRID_DECISION_ENGINE", "1")
 
     health = _run_scenario_baseline()
 
@@ -28,7 +40,7 @@ def test_x09_unset_mode_uses_serving_default_and_records_boundary(monkeypatch):
         "environment_variable": "USE_HYBRID_DECISION_ENGINE",
         "configured_value": "1",
         "effective_enabled": True,
-        "default_enabled": True,
+        "default_enabled": False,
         "evaluation_contract": "deterministic_authority_axes",
         "provider_calls_authorized": False,
     }

@@ -1602,7 +1602,7 @@ function summaryFromAnalysis(analysis: RunStatusResponse | null): string {
   return `${summaryLead} ${hardBlockers} critical issues · ${softBlockers} warnings · ${followUps} follow-up questions`;
 }
 
-function formatTravelerBlockerItem(item: string): string {
+export function formatTravelerBlockerItem(item: string): string {
   if (item === 'extraction_quality') {
     return 'We could not confidently read the key trip details from this plan yet. Please add clearer dates, route details, and traveler info.';
   }
@@ -1611,7 +1611,9 @@ function formatTravelerBlockerItem(item: string): string {
     return 'A few core intake details are still missing. Add travel dates, budget and traveler count to move this from draft to reliable recommendations.';
   }
 
-  return item.replaceAll('_', ' ');
+  // Part-K AT-21: backend slugs must not reach travelers as findings — an
+  // unknown blocker falls back to an honest generic line, never raw copy.
+  return 'We flagged something in this plan that needs a human eye. Your travel advisor can confirm the details.';
 }
 
 function getTravelerTripSummaryFallback(
@@ -1936,7 +1938,7 @@ function buildTravelerTripSummary(
   const travelerPlanFromFacts = buildSummaryFactItem(packet, 'traveler_plan', 'Booking stage');
   const destinationStatusFromFacts = buildSummaryFactItem(packet, 'destination_status', 'Destination status');
   const budgetFromFacts = buildSummaryFactItem(packet, 'budget_scope', 'Budget');
-  const sourceFromLiveChecks = liveChecks?.source ? { l: 'Live source', v: String(liveChecks.source) } : null;
+  const sourceFromLiveChecks = liveChecks?.source ? { l: 'Data checked', v: 'Live sources' } : null;
 
   const summaryLines = [
     ...buildTravelerSummaryPreamble(
@@ -1986,7 +1988,8 @@ function buildTravelerClarifications(analysis: RunStatusResponse | null | undefi
       if (!fieldName) return null;
       const reason = typeof item === 'object' && item && 'reason' in item ? String((item as Record<string, unknown>).reason ?? '') : '';
       if (reason && reason !== 'None' && reason.toLowerCase() !== 'null') {
-        return `Add ${formatClarificationLabel(fieldName).toLowerCase()} (${reason.replaceAll('_', ' ')}).`;
+        // Part-K AT-21: raw backend reason slugs stay out of traveler copy.
+        return `Add ${formatClarificationLabel(fieldName).toLowerCase()} — this detail is still missing.`;
       }
       return `Add ${formatClarificationLabel(fieldName).toLowerCase()}.`;
     }),
@@ -2001,7 +2004,12 @@ function buildTravelerClarifications(analysis: RunStatusResponse | null | undefi
     ...validationErrors.map((item) => {
       if (!item || typeof item !== 'object') return null;
       const message = (item as Record<string, unknown>).message;
-      return typeof message === 'string' && message.trim().length > 0 ? message.trim() : null;
+      const cleaned = typeof message === 'string' ? message.trim() : '';
+      if (!cleaned) return null;
+      // Part-K AT-21: slug-shaped backend messages never render raw.
+      return cleaned.includes('_')
+        ? 'Please double-check your travel dates and traveler details.'
+        : cleaned;
     }),
     ...followUps.map((item) => {
       if (!item || typeof item !== 'object') return null;
@@ -2230,7 +2238,7 @@ function ResultsHeaderGrid({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {Array.isArray(liveChecks.signals) && liveChecks.signals.length > 0 ? (
                     <div style={{ fontSize: 12, color: T.cyan, lineHeight: 1.5 }}>
-                      Source signals: {liveChecks.signals.slice(0, 3).join(' · ')}
+                      Checked against live data sources.
                     </div>
                   ) : null}
                   {(Array.isArray(liveChecks.soft_blockers) ? liveChecks.soft_blockers : []).slice(0, 2).map((item: string) => (
@@ -2313,7 +2321,7 @@ function ResultsHeaderGrid({
                   disabled={!tripId || manageBusy !== null}
                   style={primaryButtonStyle(Boolean(tripId && manageBusy === null))}
                 >
-                  {manageBusy === 'export' ? 'Exporting…' : 'Export JSON'}
+                  {manageBusy === 'export' ? 'Exporting…' : 'Download my saved report'}
                 </button>
                 <button
                   onClick={handleDelete}
@@ -2353,7 +2361,7 @@ function ResultsHeaderGrid({
                 </button>
               </div>
               <div style={{ fontSize: 12, color: T.t4, marginTop: 8 }}>
-                Report ID: {tripId ?? 'pending'}
+                Reference: {tripId ?? 'being generated'}
               </div>
             </div>
           </div>
@@ -2410,7 +2418,7 @@ function ResultsFindingsSection({
               background: 'rgba(88,166,255,0.05)', border: '1px solid rgba(88,166,255,0.15)',
               fontSize: 12, color: T.t2, lineHeight: 1.55,
             }}>
-              No blockers returned yet. Upload a real itinerary to surface timing, climate, and plan-quality issues.
+              No issues found yet. Upload your itinerary and we&apos;ll check timing, weather, and pacing.
             </div>
           )}
         </div>
@@ -2521,7 +2529,7 @@ function ResultsView({
   }, [tripId]);
 
   const storageCopy = reportStorage.loading
-    ? 'Checking storage mode...'
+    ? 'Checking what we saved…'
     : reportStorage.retentionConsented === true
       ? reportStorage.hasStoredUpload
         ? `Report and upload were saved${reportStorage.uploadFileName ? ` (file: ${reportStorage.uploadFileName})` : ''}.`
@@ -2530,7 +2538,7 @@ function ResultsView({
         ? 'You ran this as a one-time analysis. No uploaded document text was retained.'
         : reportStorage.hasStoredUpload
           ? 'Uploaded details were retained for this report.'
-          : 'Storage mode could not be determined.';
+          : 'We couldn\u2019t confirm what was saved.';;
 
   const handleExport = async () => {
     if (!tripId) return;
@@ -2871,7 +2879,7 @@ export default function ItineraryCheckerPage() {
     } catch (error) {
       dispatch({
         type: 'analysisFailed',
-        message: error instanceof Error ? error.message : 'The live run did not return a result. Check the backend and try again.',
+        message: error instanceof Error ? error.message : 'We couldn\u2019t finish checking your plan just now. Please try again in a moment.',
       });
     }
   };

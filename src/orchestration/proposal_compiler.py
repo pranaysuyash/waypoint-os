@@ -8,20 +8,32 @@ into a single-click verified proposal package.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
+from spine_api.core.reality_tier import RealityTier
 from src.decision.constraint_engine import ConstraintEngine
 from src.distribution.amadeus_sandbox_adapter import AmadeusSandboxAdapter
 from src.intake.epistemic_arbiter import EpistemicArbiter, EpistemicStatus, ProvenanceSlot
 from src.negotiation.margin_optimizer import MarginOptimizer
 from src.schemas.journey_graph import DependencyRelation, JourneyDependencyGraph, JourneyNode, NodeType
 
+logger = logging.getLogger("src.orchestration.proposal_compiler")
+
 
 @dataclass(slots=True)
 class CompiledProposalPackage:
-    """End-to-end compiled proposal artifact."""
+    """End-to-end compiled proposal artifact.
+
+    PA-25 honesty notes: the compiled inventory is SYNTHETIC (sandbox air
+    offers plus fabricated lodging/transfer providers), so the package carries
+    reality-tier metadata and share-token minting is blocked by default —
+    a signed credential is never minted for fabricated inventory unless the
+    caller explicitly opts in via ``allow_share_for_simulated``.
+    """
+
     proposal_id: str
     trip_id: str
     title: str
@@ -34,7 +46,11 @@ class CompiledProposalPackage:
     is_feasibility_passed: bool
     journey_graph_node_count: int
     provenance_assertion_count: int
-    proposal_share_url: str
+    proposal_share_url: Optional[str] = None
+    share_token: Optional[str] = None
+    share_blocked_reason: Optional[str] = None
+    reality_tier: str = RealityTier.DETERMINISTIC_PREVIEW.value
+    provider_connected: bool = False
     breakdown_items: List[Dict[str, Any]] = field(default_factory=list)
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -53,6 +69,10 @@ class CompiledProposalPackage:
             "journey_graph_node_count": self.journey_graph_node_count,
             "provenance_assertion_count": self.provenance_assertion_count,
             "proposal_share_url": self.proposal_share_url,
+            "share_token": self.share_token,
+            "share_blocked_reason": self.share_blocked_reason,
+            "reality_tier": self.reality_tier,
+            "provider_connected": self.provider_connected,
             "breakdown_items": self.breakdown_items,
             "created_at": self.created_at,
         }
@@ -72,6 +92,7 @@ class AutonomousProposalCompiler:
         traveler_count: int = 2,
         price_sensitivity: float = 0.2,  # Luxury / Low sensitivity
         peak_season: bool = True,
+        allow_share_for_simulated: bool = False,
     ) -> CompiledProposalPackage:
         # 1. Epistemic extraction & constraint parsing
         epistemic_data = EpistemicArbiter.extract_implicit_and_negative_constraints(raw_intake_text)
@@ -129,18 +150,53 @@ class AutonomousProposalCompiler:
         graph.add_node(h_node)
         graph.add_edge("N_FLT_01", "N_TRF_01", DependencyRelation.TRANSFER_CONNECTS, min_connection_minutes=45)
         graph.add_edge("N_TRF_01", "N_HTL_01", DependencyRelation.HOTEL_NIGHT_FOR, min_connection_minutes=30)
+        for node in graph.nodes.values():
+            node.commitment_status = "quoted"
+            node.metadata = {
+                **node.metadata,
+                "reality_tier": RealityTier.DETERMINISTIC_PREVIEW.value,
+                "provider_connected": False,
+            }
+
+        # AT-01: persist the compiled DAG onto an existing trip; never overwrite
+        # ticketed/booked nodes and never invent a trip record.
+        try:
+            from spine_api.persistence import TripStore
+
+            existing = TripStore.get_trip(trip_id)
+            if existing:
+                prior = existing.get("journey_graph_nodes") or []
+                locked = any(
+                    isinstance(n, dict)
+                    and str(n.get("commitment_status") or "") in {"booked", "ticketed"}
+                    for n in prior
+                )
+                if not locked:
+                    TripStore.update_trip(trip_id, graph.to_stored_payload())
+        except Exception:
+            logger.warning("compiler did not persist journey graph for trip %s", trip_id)
 
         # 5. Feasibility Constraint Evaluation
         feasibility_report = ConstraintEngine.evaluate_itinerary_graph(graph)
 
         proposal_id = f"PROP-{trip_id[-6:].upper()}"
-        try:
-            from spine_api.routers.public_proposals import generate_signed_proposal_token
-            share_token = generate_signed_proposal_token(trip_id=trip_id, agency_id="system")
-        except Exception:
-            share_token = proposal_id
 
-        share_url = f"https://proposals.waypointos.com/view/{share_token}"
+        # PA-25: share-token minting is gated on inventory reality. The
+        # compiled package is synthetic (sandbox air offers, fabricated
+        # lodging/transfer providers), so the default path does NOT mint a
+        # signed credential for it. Callers that explicitly accept the
+        # simulated nature may opt in via allow_share_for_simulated.
+        share_token: Optional[str] = None
+        share_url: Optional[str] = None
+        share_blocked_reason: Optional[str] = "simulated_inventory"
+        if allow_share_for_simulated:
+            share_blocked_reason = None
+            try:
+                from spine_api.routers.public_proposals import generate_signed_proposal_token
+                share_token = generate_signed_proposal_token(trip_id=trip_id, agency_id="system")
+            except Exception:
+                share_token = proposal_id
+            share_url = f"https://proposals.waypointos.com/view/{share_token}"
 
         return CompiledProposalPackage(
             proposal_id=proposal_id,
@@ -156,6 +212,10 @@ class AutonomousProposalCompiler:
             journey_graph_node_count=len(graph.nodes),
             provenance_assertion_count=len(slots) + len(epistemic_data.get("implicit_needs", [])),
             proposal_share_url=share_url,
+            share_token=share_token,
+            share_blocked_reason=share_blocked_reason,
+            reality_tier=RealityTier.DETERMINISTIC_PREVIEW.value,
+            provider_connected=False,
             breakdown_items=[
                 {"category": "Flights", "provider": flight_provider, "amount_usd": flight_cost},
                 {"category": "Lodging", "provider": "Belmond Luxury Properties", "amount_usd": hotel_cost},

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
 # Pin the canonical doctrine source so agent-start and hooks use one source.
-export AGENT_DOCTRINE_SOURCE="/Users/pranay/Downloads/OPERATING_DOCTRINE.md"
+export AGENT_DOCTRINE_SOURCE="/Users/pranay/Projects/agent-start/doctrines/OPERATING_DOCTRINE.md"
 
 # Motto attestation gate. This runs in prepare-commit-msg so `git commit --no-verify`
 # still hits it. The goal is to block commits until the repo has a fresh

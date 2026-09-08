@@ -73,6 +73,32 @@ def _router_prefix(tree: ast.AST) -> str:
     return ""
 
 
+def _router_prefixes(tree: ast.AST) -> dict[str, str]:
+    """Map every APIRouter variable name in the module to its prefix.
+
+    Routers are not always named ``router`` (e.g. ``public_router`` for the
+    token-gated traveler-companion surfaces); the inventory must see routes
+    declared on any APIRouter variable, each with its own prefix.
+    """
+    prefixes: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        call = node.value
+        if not isinstance(call, ast.Call):
+            continue
+        if not isinstance(call.func, ast.Name) or call.func.id != "APIRouter":
+            continue
+        prefix = ""
+        for keyword in call.keywords:
+            if keyword.arg == "prefix":
+                prefix = _string_arg(keyword.value) or ""
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                prefixes[target.id] = prefix
+    return prefixes
+
+
 def _join_paths(prefix: str, path: str) -> str:
     if not prefix:
         return path or "/"
@@ -81,8 +107,14 @@ def _join_paths(prefix: str, path: str) -> str:
     return f"{prefix.rstrip('/')}/{path.lstrip('/')}"
 
 
-def _decorated_routes(path: Path, decorator_owner: str, route_prefix: str = "") -> list[BackendRoute]:
+def _decorated_routes(
+    path: Path,
+    decorator_owner: str,
+    route_prefix: str = "",
+    owner_prefixes: dict[str, str] | None = None,
+) -> list[BackendRoute]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    owner_prefixes = owner_prefixes or {decorator_owner: route_prefix}
     routes: list[BackendRoute] = []
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -96,7 +128,7 @@ def _decorated_routes(path: Path, decorator_owner: str, route_prefix: str = "") 
             if func.attr not in HTTP_METHODS:
                 continue
             owner = func.value
-            if not isinstance(owner, ast.Name) or owner.id != decorator_owner:
+            if not isinstance(owner, ast.Name) or owner.id not in owner_prefixes:
                 continue
             route_path = _string_arg(decorator.args[0] if decorator.args else None)
             if route_path is None:
@@ -104,7 +136,7 @@ def _decorated_routes(path: Path, decorator_owner: str, route_prefix: str = "") 
             routes.append(
                 BackendRoute(
                     method=func.attr.upper(),
-                    path=_join_paths(route_prefix, route_path),
+                    path=_join_paths(owner_prefixes[owner.id], route_path),
                     function=node.name,
                     source=str(path.relative_to(PROJECT_ROOT)),
                     line=node.lineno,
@@ -125,6 +157,7 @@ def collect_backend_routes() -> list[BackendRoute]:
                 router_file,
                 decorator_owner="router",
                 route_prefix=_router_prefix(tree),
+                owner_prefixes=_router_prefixes(tree),
             )
         )
     return sorted(routes, key=lambda route: (route.path, route.method, route.source, route.line))

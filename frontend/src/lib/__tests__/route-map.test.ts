@@ -235,4 +235,38 @@ describe("resolveBackendPath", () => {
     expect(resolveBackendPath(["v1", "yield-arbitrage", "rates", "compare"])).toBeNull();
     expect(resolveBackendPath(["v1", "yield-arbitrage", "reticket", "execute"])).toBeNull();
   });
+
+  it("routes traveler public surfaces through the allowlist (F-43)", () => {
+    // /p/[token] proposal share page
+    expect(resolveBackendPath(["public", "proposals", "tok_abc"])).toBe(
+      "api/public/proposals/tok_abc"
+    );
+    expect(resolveBackendPath(["public", "proposals", "tok_abc", "calculate"])).toBe(
+      "api/public/proposals/tok_abc/calculate"
+    );
+    expect(resolveBackendPath(["public", "proposals", "tok_abc", "accept"])).toBe(
+      "api/public/proposals/tok_abc/accept"
+    );
+    // Traveler companion journey graph (signed share token rides the query string)
+    expect(resolveBackendPath(["public", "journey-graph", "trip_123"])).toBe(
+      "api/public/journey-graph/trip_123"
+    );
+    // Group member decision page
+    expect(resolveBackendPath(["v1", "group", "token", "tok_1"])).toBe(
+      "api/v1/group/token/tok_1"
+    );
+    expect(resolveBackendPath(["v1", "group", "token", "tok_1", "pay-share"])).toBe(
+      "api/v1/group/token/tok_1/pay-share"
+    );
+    // 2026-09-06 route-inventory gate: no backend endpoint exists for
+    // logistics/assess-route — it stays denied until the backend ships it.
+    expect(resolveBackendPath(["v1", "logistics", "assess-route"])).toBeNull();
+  });
+
+  it("keeps wildcard v1/public reachability denied now that next.config rewrites are gone (F-43)", () => {
+    expect(resolveBackendPath(["public", "unknown-resource"])).toBeNull();
+    expect(resolveBackendPath(["public", "proposals"])).toBeNull();
+    expect(resolveBackendPath(["v1", "not-a-real-router"])).toBeNull();
+    expect(resolveBackendPath(["v1", "fulfillment", "proposals", "fulfill"])).toBeNull();
+  });
 });

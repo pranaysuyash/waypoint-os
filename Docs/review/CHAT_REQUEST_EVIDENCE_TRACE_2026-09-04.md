@@ -10,6 +10,122 @@ into observed fact, interpretation, action, and evidence boundary.
 
 ## Request chronology and disposition
 
+### Continuation and model routing — 2026-09-08
+
+The user continued the complete doctrine-aligned goal and explicitly directed:
+use Luna/high subagents by default; call Astra/light or medium when help is
+needed. Main assigned two bounded Luna/high lanes for insurance quote
+implementation and attachment source review. This is not a new task scope or
+approval for deployments/provider actions. The earlier September 5 turn was
+progress through verified findings and durable plans, not product completion.
+
+Live refresh found HEAD `096ceba39e320b527ed60e47f0c54d8d00a11748`, 179 staged
+paths and a current canonical inventory of 207 rows (151 open, 55 closed,
+one deferred). Prior checkout/count assertions are historical. The current
+insurance implementation has new preview metadata, which is preserved, but
+initially still emitted unconditional waiver eligibility and a universal 14-day countdown.
+No new commit/push is attributed to this continuation.
+
+Required context generation failed integrity validation on the canonical Review
+1.2 internal-version line's parenthetical. Main read the complete current
+Review/Architecture doctrines directly, retained the existing generated pack's
+September 7 provenance, and did not edit shared doctrine or bypass validation.
+The failure and live full-gate handles `69057`/`62261` are recorded in execution
+status. Backend detected a pre-existing port-8000 server; it was not stopped,
+and the run is not presented as hermetic evidence. Test-driven-development
+governs quote implementation; current behavior tests cannot serve as policy
+oracles where they encode the very unsupported claim being corrected.
+
+Implementation continuation: the quote worker replaced those primary claims
+with nullable unevaluated results and explicit unverified provenance. Two
+independent source-review cycles and parent review caught additional UTC
+overflow and numeric coercion edges; chronological failing/green/mutation
+receipts are preserved in the insurance research package. The first full
+after-run (`92587`) overlapped validator correction and focused tests; failures
+and setup errors appeared, with cause pending terminal tracebacks. It is not
+presented as a frozen or hermetic final-candidate gate.
+
+The frontend baseline's two hook errors led to a bounded companion repair,
+using the React effect discipline skill. Parent review found same-trip token
+changes could retain prior data and the trip-only cache was read before token
+validation. The worker was instructed to test missing/changed/denied tokens
+and stale responses, not merely suppress lint. Main asked the user a nonblocking
+offline-policy question and stated the safe default: changed/missing tokens
+must never reveal cached protected data. No reply is assumed or recorded here.
+
+F-31 and related AT-12 wording now distinguish the quote repair from unresolved
+attachment durability/authorization. Astra/medium advice reuses the existing
+encrypted insurance BookingConfirmation; a typed identifier is recordable
+evidence, not carrier verification. No attachment transaction or provider
+operation has been implemented by this continuation.
+
+Final implementation/recovery continuation: backend run `92587` ended with
+nine failures and 37 setup errors; returned tracebacks showed ENOSPC and
+PostgreSQL recovery/startup. A later disk snapshot showed about 9.6 GB available,
+and readiness recovered without this agent deleting files or restarting a
+service. Serialized focused retry `63445` passed 130 tests. Serialized full
+retry `57559` passed **4,109 tests, 10 skipped, eight warnings** with matching
+before/after fingerprints for the five changed Python files. The earlier
+environment failure and shared-server qualification remain preserved.
+
+The companion's intermediate hashed-cache design was rejected under the stated
+online-revalidation default. Astra/medium also found A → missing token → A
+could resurrect old state. Final worker source keys the data-owning child by
+trip/token, uses no-store requests, and removes component cache replay/read/write
+without deleting existing localStorage entries. It preserves sample/preview
+honesty and uses “Itinerary loaded,” not a booking-verification claim. Worker
+reports 12 focused tests plus lint/typecheck; parent full frontend gate is
+`62910`. Supersession comparison and residual continuous-revocation/offline-policy
+limits are in execution status. No unanswered question is treated as approval.
+
+Documentation review corrected the initial staged-versus-working-tree wording,
+preserved September 5 doctrine provenance as historical, reconciled AT-12's
+obsolete universal deposit/typed-confirmation prescriptions, and marked the
+F-38 default-fabrication addendum as bounded historical implementation. Six
+changed documentation files passed Markdown lint after five formatting defects
+in the touched PER-0443 companion were corrected without deleting content.
+
+Further September 8 evidence: parent full frontend gate `62910` passed
+typecheck/lint and 1,344 tests but failed production page-data collection
+(`/_document` missing). Shared dev/build output was observed, not assumed to
+explain every failure. Luna/high isolated development output to `.next-dev`
+using installed Next 14's phase configuration, preserving production `.next`
+and the staged security rewrite removal. Parent corrected the actual generated
+type path. Final full gate is `48337`; terminal evidence belongs in execution
+status, not an inferred success from launch.
+
+Parent failing-first tests preserved valid null-destination itineraries and
+removed newly observed satellite/consular and fixed-time claims from the SOS
+demonstration surface. Final focused companion suite: 14 passed (`53372`).
+Visible browser inspection preserved an unstyled pre-fix screenshot and asset
+404s as failure evidence, not polished proof. Missing-token abstention issued
+no graph request. Runtime `/metrics` returned 401, consistent with middleware
+but contrary to the endpoint's public-allowlist docstring; PA-10 now records
+the precise scrape-auth uncertainty. No token, private itinerary, service reset,
+cleanup or provider operation was needed for these checks.
+
+Final-review continuation: intermediate frontend `48337` passed typecheck,
+lint, 1,348 tests and production build after output isolation. Independent
+review then identified conflated request states and stale install metadata.
+Luna/high implemented explicit per-identity request states; parent live invalid
+share-token request verified generic backend 404 and corrected fresh-link
+guidance. Parent temporarily removed 404 handling (`6093`): the targeted test
+failed, then all 19 companion tests passed after restoration (`10359`). The
+manifest's unsupported offline/live-alert/crisis claims were replaced with
+online itinerary and demonstration wording, with a separate red/green test.
+
+Service-worker source review found root-scope global cache lookup and deletion
+outside its ownership. Main accepted a bounded public-shell-only correction,
+but explicitly rejected executing cleanup: all legacy/unrelated caches remain.
+Query-bearing pages, APIs and no-store requests must bypass the worker; only
+its own public shell cache can supply fallback. Astra/medium reviewed the
+privacy boundary; main additionally required optional warmup/storage failures
+not to block safe worker activation or fresh network responses. Scope and
+supersession details, final receipts and remaining device/offline limitations
+are recorded in execution status. The PER-0443 implementation plan now carries
+a dated refinement tied to canonical IDs, rather than repeating stale typed-
+confirmation-ID or full-closure prescriptions.
+
 ### Goal continuation and long-term-solution annotation — 2026-09-05
 
 The user selected the earlier report that the insurance route now uses the

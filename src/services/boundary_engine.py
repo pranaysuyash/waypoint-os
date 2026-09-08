@@ -28,7 +28,42 @@ from src.schemas.boundary_contracts import (
 
 logger = logging.getLogger("waypoint.boundaries")
 
-DEFAULT_HMAC_SECRET = os.environ.get("CAPABILITY_TOKEN_SECRET", "waypoint_capability_secret_key_2026")
+# ---------------------------------------------------------------------------
+# PA-24: CAPABILITY_TOKEN_SECRET is required — no committed fallback.
+# Mirrors spine_api/routers/public_proposals.py `_require_signing_key`
+# (PT-01): a hardcoded default would let anyone forge scoped capability
+# tokens on any deployment that forgot to set the env var. Fail loudly at
+# first construction (startup/first use) instead.
+# ---------------------------------------------------------------------------
+_KNOWN_SECRET_PLACEHOLDERS = frozenset(
+    {
+        "waypoint_capability_secret_key_2026",
+        "change-me-to-a-random-secret",
+        "secret",
+        "changeme",
+        "password",
+        "default",
+        "test",
+        "dev",
+    }
+)
+
+
+def _require_capability_secret() -> str:
+    value = (os.environ.get("CAPABILITY_TOKEN_SECRET") or "").strip()
+    if not value:
+        raise RuntimeError(
+            "CAPABILITY_TOKEN_SECRET is not set. Boundary-engine capability "
+            "tokens are signed with this secret, so shipping a default would "
+            "let anyone forge tokens for arbitrary trips. Provide it via the "
+            "environment or .env (see .env.example)."
+        )
+    if value.lower() in _KNOWN_SECRET_PLACEHOLDERS or len(value) < 32:
+        raise RuntimeError(
+            "CAPABILITY_TOKEN_SECRET is too weak or is a known placeholder. "
+            "Use a randomly generated secret of at least 32 characters."
+        )
+    return value
 
 
 class BoundaryEngine:
@@ -37,7 +72,10 @@ class BoundaryEngine:
     _instance: Optional[BoundaryEngine] = None
 
     def __init__(self, secret_key: Optional[str] = None) -> None:
-        self.secret_key = secret_key or DEFAULT_HMAC_SECRET
+        # PA-24: fail closed when neither an explicit key nor the env var is
+        # provided. Callers that pass an explicit secret (tests, seeded
+        # services) keep working; the process-wide default is env-only.
+        self.secret_key = secret_key or _require_capability_secret()
         self._tokens: dict[str, ScopedCapabilityToken] = {}
         self._contracts: list[BoundaryContract] = []
         self._bootstrap_standard_contracts()

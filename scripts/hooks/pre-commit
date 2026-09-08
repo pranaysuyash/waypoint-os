@@ -2,7 +2,7 @@
 
 # >>> PROJECTS_AGENT_PRECOMMIT_BEGIN >>>
 # Pin the canonical doctrine source used by agent-start and the attestation gate.
-export AGENT_DOCTRINE_SOURCE="/Users/pranay/Downloads/OPERATING_DOCTRINE.md"
+export AGENT_DOCTRINE_SOURCE="/Users/pranay/Projects/agent-start/doctrines/OPERATING_DOCTRINE.md"
 
 if [ -x /Users/pranay/Projects/agent-start/bin/agent-start ] && [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
   _doctrine_file="OPERATING_DOCTRINE.md"
@@ -133,28 +133,23 @@ EOF
     fi
     if [ -f pyproject.toml ] && grep -qiE 'tool\.mypy|\[tool\.mypy' pyproject.toml; then
       if command -v uv >/dev/null 2>&1 && uv run mypy --version >/dev/null 2>&1; then
+        # Honor a curated [tool.mypy].files scope when the repo defines one:
+        # a blanket `mypy src` blocks every commit on repos whose baseline
+        # carries pre-existing errors in untyped modules, defeating the gate
+        # (2026-09-08, travel_agency_agent PER-0443).
         if grep -qE '^[[:space:]]*files[[:space:]]*=' pyproject.toml; then
-          # Project declares an explicit mypy scope via [tool.mypy].files.
-          # Run without a CLI target: an explicit target (e.g. "src") would
-          # override the configured files list and check unscoped untyped code
-          # the project intentionally keeps out of the gate.
-          if ! uv run mypy >/tmp/_pc_mypy.log 2>&1; then
-            echo "pre-commit: mypy FAILED (configured scope)." >&2
-            cat /tmp/_pc_mypy.log >&2
-            rm -f /tmp/_pc_mypy.log
-            echo "  Fix the issues and retry." >&2
-            exit 1
-          fi
+          uv run mypy >/tmp/_pc_mypy.log 2>&1
         else
           _mypy_target="src"
           [ -d "$_mypy_target" ] || _mypy_target="$(printf '%s\n' "$_staged_py" | head -1)"
-          if ! uv run mypy "$_mypy_target" >/tmp/_pc_mypy.log 2>&1; then
-            echo "pre-commit: mypy FAILED." >&2
-            cat /tmp/_pc_mypy.log >&2
-            rm -f /tmp/_pc_mypy.log
-            echo "  Fix the issues and retry." >&2
-            exit 1
-          fi
+          uv run mypy "$_mypy_target" >/tmp/_pc_mypy.log 2>&1
+        fi
+        if [ $? -ne 0 ]; then
+          echo "pre-commit: mypy FAILED." >&2
+          cat /tmp/_pc_mypy.log >&2
+          rm -f /tmp/_pc_mypy.log
+          echo "  Fix the issues and retry." >&2
+          exit 1
         fi
         rm -f /tmp/_pc_mypy.log
       else

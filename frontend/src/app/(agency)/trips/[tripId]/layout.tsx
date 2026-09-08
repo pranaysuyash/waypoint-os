@@ -201,7 +201,7 @@ function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
           credentials: "include",
           cache: "no-store",
         });
-        if (!response.ok) throw new Error(`Failed to fetch timeline: ${response.statusText}`);
+        if (!response.ok) throw new Error(response.status === 404 ? 'No timeline recorded for this trip yet.' : `Could not load the timeline right now (error ${response.status}).`);
         const data = (await response.json()) as TimelineResponse;
         if (cancelled) return;
         dispatchTimeline({ type: "loaded", timeline: data });

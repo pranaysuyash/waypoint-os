@@ -73,7 +73,8 @@ describe('IROPSAutoHealerPanel', () => {
     await user.click(screen.getByRole('button', { name: /generate recovery preview/i }));
 
     await waitFor(() => expect(screen.getByTestId('irops-preview-result')).toBeInTheDocument());
-    expect(screen.getByText('PREVIEW_ONLY')).toBeInTheDocument();
+    expect(screen.getByText(/Preview only — nothing was sent to any carrier/i)).toBeInTheDocument();
+    expect(screen.queryByText('PREVIEW_ONLY')).not.toBeInTheDocument();
     expect(screen.getByText(/compensation eligibility/i)).toBeInTheDocument();
     expect(screen.getByText('Not assessed')).toBeInTheDocument();
     expect(screen.getByText(/lodging \/ payment/i)).toBeInTheDocument();

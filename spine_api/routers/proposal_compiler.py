@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/v1/proposal-compiler", tags=["proposal-compiler"
 
 
 class CompileProposalRequest(BaseModel):
-    trip_id: str = "TRIP-LIVE-772"
+    trip_id: str = Field(..., description="Existing trip identifier; compiler will not invent LIVE ids")
     raw_intake_text: str = Field(..., description="Conversational text or lead notes")
     destination: str = "Paris"
     departure_date: date

@@ -97,7 +97,7 @@ export default function BookingsPageClient() {
         guestCount: selectedTrip.party || 2,
         status: 'sample_preview',
         value: 1850,
-        sourceLabel: 'Sample itinerary fixture',
+        sourceLabel: 'Sample itinerary (demo data)',
       },
       {
         id: 'bk_02',
@@ -109,7 +109,7 @@ export default function BookingsPageClient() {
         guestCount: selectedTrip.party || 2,
         status: 'sample_preview',
         value: 3400,
-        sourceLabel: 'Sample itinerary fixture',
+        sourceLabel: 'Sample itinerary (demo data)',
       },
       {
         id: 'bk_03',
@@ -121,7 +121,7 @@ export default function BookingsPageClient() {
         guestCount: selectedTrip.party || 2,
         status: 'sample_preview',
         value: 450,
-        sourceLabel: 'Sample itinerary fixture',
+        sourceLabel: 'Sample itinerary (demo data)',
       },
       {
         id: 'bk_04',
@@ -133,7 +133,7 @@ export default function BookingsPageClient() {
         guestCount: selectedTrip.party || 2,
         status: 'sample_preview',
         value: 620,
-        sourceLabel: 'Sample itinerary fixture',
+        sourceLabel: 'Sample itinerary (demo data)',
       },
     ];
   }, [selectedTrip]);

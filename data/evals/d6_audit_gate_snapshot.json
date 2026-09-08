@@ -273,7 +273,7 @@
     "total_fixtures": 50
   },
   "fixture_root": "data/fixtures/audit",
-  "generated_at": "2026-09-03T23:49:07.980838+00:00",
+  "generated_at": "2026-09-06T19:09:04.910641+00:00",
   "manifest_version": 1,
   "pipeline_health": {
     "actual_source": "expected_fixture_mirror",
@@ -297,7 +297,7 @@
   "routing_health": {
     "alerts": [],
     "blocks_ci": false,
-    "checked_at": "2026-09-03T23:49:07.086131+00:00",
+    "checked_at": "2026-09-06T19:09:03.258529+00:00",
     "metrics_snapshot": {
       "correct_escalation_count": null,
       "cost_usd": {
@@ -358,9 +358,9 @@
     "fixtures_passing": 30,
     "hard_blocker_accuracy": 1.0,
     "hybrid_config": {
-      "configured_value": "1",
-      "default_enabled": true,
-      "effective_enabled": true,
+      "configured_value": "0",
+      "default_enabled": false,
+      "effective_enabled": false,
       "environment_variable": "USE_HYBRID_DECISION_ENGINE",
       "evaluation_contract": "deterministic_authority_axes",
       "provider_calls_authorized": false

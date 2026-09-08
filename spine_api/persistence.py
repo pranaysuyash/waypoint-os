@@ -78,9 +78,13 @@ def _apply_status_guard_orm(trip_obj: Any, updates: dict) -> None:
     if old_status is None or str(old_status) == str(new_status):
         return
     existing_analytics = getattr(trip_obj, "analytics", None)
-    base = dict(updates.get("analytics")) if isinstance(updates.get("analytics"), dict) else (
-        dict(existing_analytics) if isinstance(existing_analytics, dict) else {}
-    )
+    incoming_analytics = updates.get("analytics")
+    if isinstance(incoming_analytics, dict):
+        base = dict(incoming_analytics)
+    elif isinstance(existing_analytics, dict):
+        base = dict(existing_analytics)
+    else:
+        base = {}
     extra = dict(base.get("_extra") or {})
     db_history = (
         (existing_analytics or {}).get("_extra", {}).get("status_history")
@@ -141,8 +145,8 @@ def _status_guard_sql_predicate(new_status: str, prefix: str) -> tuple[str, dict
 
 import weakref
 
-_tripstore_session_makers = weakref.WeakKeyDictionary()
-_tripstore_engines = weakref.WeakKeyDictionary()
+_tripstore_session_makers: "weakref.WeakKeyDictionary[Any, Any]" = weakref.WeakKeyDictionary()
+_tripstore_engines: "weakref.WeakKeyDictionary[Any, Any]" = weakref.WeakKeyDictionary()
 _tripstore_session_makers_lock = threading.Lock()
 
 
@@ -239,7 +243,7 @@ def _make_json_serializable(obj: Any) -> Any:
     elif isinstance(obj, (list, tuple)):
         return [_make_json_serializable(item) for item in obj]
     elif is_dataclass(obj):
-        return _make_json_serializable(asdict(obj))
+        return _make_json_serializable(asdict(obj))  # type: ignore[arg-type]
     elif hasattr(obj, '__dict__'):
         # For regular objects with __dict__
         return _make_json_serializable(obj.__dict__)
@@ -1201,6 +1205,13 @@ class SQLTripStore:
             check_trip_data(updates)
 
         updates = _fold_unmapped_updates(updates)
+        # Part-L (2026-09-07): deep-merge analytics._extra like every other
+        # write path. Without this, any partial update that touches an
+        # unmapped key (e.g. booking_confirmation) REPLACED analytics._extra
+        # wholesale — silently dropping journey_graph_nodes/edges and other
+        # unmapped keys written by earlier updates. Root cause of the L7
+        # browser-check data-loss catch.
+        updates = await SQLTripStore._prepare_raw_update(trip_id, updates)
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
         async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
@@ -2157,7 +2168,7 @@ def _build_processed_trip(
         "extracted": packet,
         "validation": validation,
         "decision": decision,
-        "strategy": strategy.to_dict() if hasattr(strategy, "to_dict") else strategy,
+        "strategy": strategy.to_dict() if hasattr(strategy, "to_dict") else strategy,  # type: ignore[union-attr]
         "traveler_bundle": spine_output.get("traveler_bundle"),
         "internal_bundle": spine_output.get("internal_bundle"),
         "safety": safety,
@@ -3107,7 +3118,9 @@ class ConfigStore:
 
     @staticmethod
     def _write_json_map(filepath: Path, payload: Dict[str, Any]):
-        ConfigStore._save_file(filepath, payload)
+        # _save_file's list annotation describes the pipeline/approvals list
+        # files; the map variant intentionally stores a JSON object.
+        ConfigStore._save_file(filepath, payload)  # type: ignore[arg-type]
 
     @staticmethod
     def _coerce_campaign_payload(plan_id: str, payload: dict, now_iso: str, is_new: bool = False) -> dict:

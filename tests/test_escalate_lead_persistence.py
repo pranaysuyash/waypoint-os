@@ -45,6 +45,7 @@ def _make_ledger(meta: dict):
 
     class Ledger:
         state: dict = dict(meta)
+        fail_calls: list = []
 
         @staticmethod
         def set_state(run_id, state):
@@ -69,6 +70,18 @@ def _make_ledger(meta: dict):
             return dict(Ledger.state)
 
         @staticmethod
+        def fail(run_id, error_type, error_message, failure_class="unclassified", stage=None):
+            Ledger.fail_calls.append(
+                {
+                    "run_id": run_id,
+                    "error_type": error_type,
+                    "error_message": error_message,
+                    "failure_class": failure_class,
+                    "stage": stage,
+                }
+            )
+
+        @staticmethod
         def block(run_id, block_reason):
             _ = (run_id, block_reason)
 
@@ -79,6 +92,7 @@ def _run_escalate(draft_store, trip_store=None, save_processed_trip=None, target
     logger = MagicMock()
     emit_blocked = MagicMock()
     emit_completed = MagicMock()
+    emit_failed = MagicMock()
     save_mock = save_processed_trip or MagicMock(return_value="trip-new")
 
     svc.execute_spine_pipeline(
@@ -107,7 +121,7 @@ def _run_escalate(draft_store, trip_store=None, save_processed_trip=None, target
         build_live_checker_signals_fn=lambda _packet, _raw: None,
         emit_run_started_fn=MagicMock(),
         emit_run_completed_fn=emit_completed,
-        emit_run_failed_fn=MagicMock(),
+        emit_run_failed_fn=emit_failed,
         emit_run_blocked_fn=emit_blocked,
         emit_stage_entered_fn=MagicMock(),
         emit_stage_completed_fn=MagicMock(),
@@ -117,6 +131,7 @@ def _run_escalate(draft_store, trip_store=None, save_processed_trip=None, target
         logger=logger,
         emit_blocked=emit_blocked,
         emit_completed=emit_completed,
+        emit_failed=emit_failed,
         save_processed_trip=save_mock,
         draft_store=draft_store,
     )
@@ -207,26 +222,80 @@ def test_escalate_reprocess_with_deleted_trip_creates_new_lead() -> None:
     assert call_kwargs["trip_status"] == "incomplete"
 
 
-def test_escalate_lead_save_failure_still_blocks_cleanly() -> None:
-    """A failed lead save must not crash the block path — but must log loudly."""
+def test_escalate_lead_save_failure_is_loud_and_failed_not_blocked() -> None:
+    """PA-27: two consecutive lead-save failures FAIL the run (classified), loudly.
+
+    Failed-before: the save failure was logged and the run proceeded to
+    BLOCKED with no trip (silent lead loss to the traveler). Passes-after:
+    the save is retried once, then the run is marked FAILED with
+    failure_class="state" and the error propagates so the lost lead is loud
+    AND classified.
+    """
+    import pytest
+
+    from spine_api.services.pipeline_execution_service import LeadPersistenceError
+
     draft_store = SimpleNamespace(
         get=MagicMock(return_value=None),
         update_run_state=MagicMock(),
     )
+    ledger = _make_ledger({"draft_id": "draft-1"})
+    save_mock = MagicMock(side_effect=RuntimeError("db down"))
+    logger = MagicMock()
+    emit_blocked = MagicMock()
+    emit_failed = MagicMock()
 
-    result = _run_escalate(
-        draft_store,
-        save_processed_trip=MagicMock(side_effect=RuntimeError("db down")),
-    )
+    with pytest.raises(LeadPersistenceError):
+        svc.execute_spine_pipeline(
+            run_id="run-1",
+            request_dict=_base_request(),
+            agency_id="agency-1",
+            user_id="user-1",
+            build_envelopes=lambda _payload: [],
+            load_fixture_expectations=lambda _scenario_id: None,
+            to_dict=lambda obj: obj if isinstance(obj, dict) else getattr(obj, "__dict__", obj),
+            close_inherited_lock_fds=lambda: None,
+            save_processed_trip=save_mock,
+            trip_store=SimpleNamespace(get_trip=MagicMock(return_value={})),
+            audit_store=SimpleNamespace(log_event=MagicMock()),
+            run_spine_once_fn=lambda **_kwargs: _escalating_result(),
+            logger=logger,
+            otel_tracer=SimpleNamespace(
+                start_as_current_span=lambda _name: nullcontext(
+                    SimpleNamespace(set_attribute=lambda *_a, **_k: None)
+                )
+            ),
+            run_ledger=ledger,
+            run_state_running="running",
+            draft_store=draft_store,
+            agency_settings_store=SimpleNamespace(load=MagicMock(return_value={})),
+            build_live_checker_signals_fn=lambda _packet, _raw: None,
+            emit_run_started_fn=MagicMock(),
+            emit_run_completed_fn=MagicMock(),
+            emit_run_failed_fn=emit_failed,
+            emit_run_blocked_fn=emit_blocked,
+            emit_stage_entered_fn=MagicMock(),
+            emit_stage_completed_fn=MagicMock(),
+        )
 
-    result.emit_blocked.assert_called_once()
-    assert result.emit_blocked.call_args.kwargs["trip_id"] is None
+    # Retried exactly once (two attempts), then failed loudly.
+    assert save_mock.call_count == 2
+    # The run is FAILED with the state failure class — not blocked-without-trip.
+    assert len(ledger.fail_calls) == 1
+    assert ledger.fail_calls[0]["failure_class"] == "state"
+    assert "Lead persistence failed after retry" in ledger.fail_calls[0]["error_message"]
+    assert emit_failed.call_count == 1
+    # stage_at_failure kwarg is carried (None here: the fake never checkpoints
+    # a stage, so no stage has been entered yet).
+    assert "stage_at_failure" in emit_failed.call_args.kwargs
+    # The blocked path must NOT claim the run.
+    emit_blocked.assert_not_called()
+    # Each attempt logged loudly.
     error_calls = [
-        call for call in result.logger.error.call_args_list
-        if call.args and call.args[0] == "ESCALATE lead persistence failed for run %s: %s"
+        call for call in logger.error.call_args_list
+        if call.args and "lead persistence failed" in str(call.args[0])
     ]
-    assert error_calls, "expected the loud lead-persistence failure log"
-    assert error_calls[0].args[1] == "run-1"
+    assert len(error_calls) >= 2
 
 
 def test_degrade_reprocess_resolves_linked_trip_too() -> None:

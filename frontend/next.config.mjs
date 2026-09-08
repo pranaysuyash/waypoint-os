@@ -1,5 +1,13 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
+
+/**
+ * @param {string} phase
+ * @returns {import('next').NextConfig}
+ */
+const nextConfig = (phase) => ({
+  // Keep the long-lived dev server's incremental output out of the production
+  // build/start directory. Production packaging remains rooted at `.next`.
+  distDir: phase === PHASE_DEVELOPMENT_SERVER ? '.next-dev' : '.next',
   compress: true,
   output: 'standalone',
   images: {
@@ -14,19 +22,12 @@ const nextConfig = {
   },
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
-  async rewrites() {
-    const spineApiUrl = process.env.SPINE_API_URL || 'http://127.0.0.1:8000';
-    return [
-      {
-        source: '/api/v1/:path*',
-        destination: `${spineApiUrl}/api/v1/:path*`,
-      },
-      {
-        source: '/api/public/:path*',
-        destination: `${spineApiUrl}/api/public/:path*`,
-      },
-    ];
-  },
-};
+  // F-43 (2026-09-07): the former /api/v1/* and /api/public/* wildcard
+  // rewrites bypassed the BFF route-map allowlist, so any browser could reach
+  // arbitrary spine routes auth-free. All consumers now route through the
+  // explicit /api/[...path] catch-all allowlist in src/lib/route-map.ts —
+  // do not reintroduce wildcard rewrites without re-running the route-map
+  // honesty tests.
+});
 
 export default nextConfig;

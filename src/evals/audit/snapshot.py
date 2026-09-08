@@ -792,19 +792,19 @@ def _run_scenario_baseline(
     # Record the canonical effective value rather than raw environment
     # provenance.  This keeps a local run with the serving default (unset)
     # comparable to CI/deployments that explicitly declare the same value.
+    # PA-03 (2026-09-06): the serving default flipped to OFF — determinism is
+    # architectural, not credential-accidental — so an unset variable now
+    # records "0", keeping the snapshot able to catch CI/serving divergence.
     effective_hybrid_value = (
         configured_hybrid_flag
         if configured_hybrid_flag is not None
-        else "1"
+        else "0"
     )
-    # The serving path defaults to hybrid ON when the deployment leaves the
-    # variable unset. Keep the effective value in the snapshot so future
-    # changes cannot silently make CI and serving disagree again.
     hybrid_config = {
         "environment_variable": "USE_HYBRID_DECISION_ENGINE",
         "configured_value": effective_hybrid_value,
-        "effective_enabled": configured_hybrid_flag is None or configured_hybrid_flag == "1",
-        "default_enabled": True,
+        "effective_enabled": effective_hybrid_value == "1",
+        "default_enabled": False,
         "evaluation_contract": "deterministic_authority_axes",
         "provider_calls_authorized": False,
     }

@@ -33,14 +33,33 @@ Usage
 from __future__ import annotations
 
 import json
+import logging
 import os
+import shutil
 import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from spine_api.failure_taxonomy import FailureClass
 from spine_api.run_state import RunState, assert_can_transition
+
+logger = logging.getLogger(__name__)
+
+# Terminal ledger states eligible for garbage collection (PA-12).
+TERMINAL_STATES = {"completed", "failed", "blocked"}
+
+# Lazy-GC throttle: prune at most once per hour, keyed on a marker file in
+# RUNS_DIR so multi-worker deployments share the throttle through the volume.
+_PRUNE_MARKER_NAME = ".last_prune"
+_PRUNE_INTERVAL_SECONDS = 3600
+
+# The lazy trigger is opt-in (WAYPOINT_RUN_LEDGER_GC=1). Pruning deletes run
+# directories, so it must never fire implicitly against a live data/runs tree
+# — including when tests import server modules and exercise the GET /runs
+# sweep path. Deployments enable it explicitly; operators can always run
+# prune_expired_runs() directly (see the manual first-prune command).
 
 # ---------------------------------------------------------------------------
 # Storage root
@@ -274,8 +293,77 @@ class RunLedger:
             _atomic_write_json(path, locked_meta)
 
     @staticmethod
-    def fail(run_id: str, error_type: str, error_message: str) -> None:
-        """Mark run as FAILED. Enforces transition guard."""
+    def complete_after_timeout(
+        run_id: str,
+        total_ms: Optional[float] = None,
+    ) -> None:
+        """Reconcile a run the stale sweep FAILED while its thread was alive.
+
+        PA-17: the sweep can mark a live run FAILED; when the pipeline then
+        finishes and saves its trip successfully, ``complete()`` raises on the
+        illegal failed→completed transition and the ledger would forever say
+        FAILED even though the trip exists. This method is the explicit,
+        audited reconciliation: it marks the run COMPLETED and records
+        ``recovered_after_timeout: true`` in meta.
+
+        Unlike ``complete()`` this deliberately bypasses the state machine's
+        transition guard — but only from ``failed``. Any other source state
+        raises ValueError so this can never mask a genuinely illegal write.
+        """
+        path = _meta_path(run_id)
+        with _file_lock(path):
+            locked_meta = RunLedger.get_meta(run_id)
+            if locked_meta is None:
+                raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+            current = RunState(locked_meta["state"])
+            if current is not RunState.FAILED:
+                raise ValueError(
+                    f"complete_after_timeout is only valid from 'failed', "
+                    f"got {current!r} for run {run_id!r}"
+                )
+            locked_meta["state"] = RunState.COMPLETED.value
+            locked_meta["completed_at"] = _now_iso()
+            if total_ms is not None:
+                locked_meta["total_ms"] = round(total_ms, 2)
+            locked_meta["recovered_after_timeout"] = True
+            _atomic_write_json(path, locked_meta)
+
+    @staticmethod
+    def touch(run_id: str) -> None:
+        """Heartbeat a live run (PA-17).
+
+        Cheap meta merge: updates ``heartbeat_at`` so ``timeout_stale_runs``
+        can distinguish a live run (fresh heartbeat) from a genuinely stuck
+        one. Raises FileNotFoundError if the run does not exist; callers in
+        the checkpoint path guard this — observability must never break a run.
+        """
+        meta = RunLedger.get_meta(run_id)
+        if meta is None:
+            raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+        path = _meta_path(run_id)
+        with _file_lock(path):
+            locked_meta = RunLedger.get_meta(run_id)
+            if locked_meta is None:
+                raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+            locked_meta["heartbeat_at"] = _now_iso()
+            _atomic_write_json(path, locked_meta)
+
+    @staticmethod
+    def fail(
+        run_id: str,
+        error_type: str,
+        error_message: str,
+        failure_class: str = FailureClass.UNCLASSIFIED.value,
+        stage: Optional[str] = None,
+    ) -> None:
+        """Mark run as FAILED. Enforces transition guard.
+
+        PA-07: besides the raw ``error_type`` (kept as-is — existing callers
+        and consumers are unchanged), the ledger meta now records a stable
+        ``failure_class`` (see spine_api.failure_taxonomy) and the
+        ``stage_at_failure`` so recovery can branch on cause instead of
+        requeueing class-blind.
+        """
         meta = RunLedger.get_meta(run_id)
         if meta is None:
             raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
@@ -293,6 +381,8 @@ class RunLedger:
             locked_meta["completed_at"] = _now_iso()
             locked_meta["error_type"] = error_type
             locked_meta["error_message"] = error_message
+            locked_meta["failure_class"] = failure_class
+            locked_meta["stage_at_failure"] = stage
             _atomic_write_json(path, locked_meta)
 
     @staticmethod
@@ -406,15 +496,119 @@ class RunLedger:
         return runs
 
     @staticmethod
+    def latest_run_for_trip(trip_id: str) -> Optional[dict[str, Any]]:
+        """Return the most recent run meta for a trip, or None (PA-07 helper).
+
+        Used by the recovery agent to read ``failure_class`` /
+        ``stage_at_failure`` from the trip's latest run so recovery can branch
+        on cause. Missing/invalid ledgers degrade to None — recovery falls
+        back to its existing ladder.
+        """
+        if not trip_id or not RUNS_DIR.exists():
+            return None
+        try:
+            runs = RunLedger.list_runs(trip_id=trip_id, limit=1)
+        except (OSError, ValueError):  # defensive — never break recovery
+            return None
+        return runs[0] if runs else None
+
+    @staticmethod
+    def prune_expired_runs(retention_days: int = 30, max_delete: int = 500) -> int:
+        """Delete terminal run dirs older than the retention window (PA-12).
+
+        Safety properties (deliberately conservative):
+          - Only directories whose meta.json parses AND whose state is
+            terminal (completed/failed/blocked) are ever removed.
+          - Runs in queued/running state are never touched, no matter how old.
+          - Anything without a readable meta.json is skipped (never delete
+            unknown dirs).
+          - Hard cap of ``max_delete`` deletions per invocation so a first
+            sweep on the 648MB backlog is bounded.
+          - Age is judged by the meta.json mtime (last write to the record).
+
+        Returns the number of run directories deleted. Never raises on
+        individual deletion failures (logged and skipped).
+        """
+        if not RUNS_DIR.exists():
+            return 0
+
+        import datetime as _dt
+
+        cutoff = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=retention_days)
+        deleted = 0
+
+        for run_dir in RUNS_DIR.iterdir():
+            if deleted >= max_delete:
+                break
+            if not run_dir.is_dir() or run_dir.name.startswith("."):
+                continue
+            meta_path = run_dir / "meta.json"
+            if not meta_path.exists():
+                continue  # never delete unknown dirs
+            try:
+                with meta_path.open(encoding="utf-8") as fh:
+                    meta = json.load(fh)
+                state = meta.get("state", "")
+                if state not in TERMINAL_STATES:
+                    continue
+                mtime = _dt.datetime.fromtimestamp(
+                    meta_path.stat().st_mtime, tz=_dt.timezone.utc
+                )
+                if mtime >= cutoff:
+                    continue
+                shutil.rmtree(run_dir)
+                deleted += 1
+            except (OSError, ValueError) as exc:
+                logger.warning("prune_expired_runs: skipping %s: %s", run_dir, exc)
+                continue
+
+        return deleted
+
+    @staticmethod
     def timeout_stale_runs(max_age_seconds: int = 300) -> list[str]:
         """
         Mark any run stuck in queued/running for longer than max_age_seconds as FAILED.
+
+        PA-17 sweep awareness: a run with a fresh ``heartbeat_at`` (updated by
+        RunLedger.touch() at each pipeline stage checkpoint) is ALIVE — a
+        long-running pipeline, not a dead thread — and must be skipped even if
+        it has been running longer than the threshold. Only runs whose
+        heartbeat is absent (legacy runs) or older than the threshold are
+        timed out.
+
+        PA-12 lazy GC: this is the only path that already scans the whole
+        ledger, so it also serves as the throttled prune trigger — at most
+        once per hour (marker file in RUNS_DIR) it prunes expired terminal
+        runs with the default retention. The prune is best-effort and fully
+        failure-tolerant: it must never break this scan or the GET path that
+        drives it.
 
         Returns list of run_ids that were timed out.
         """
         if not RUNS_DIR.exists():
             return []
 
+        timed_out: list[str] = RunLedger._timeout_scan(max_age_seconds)
+
+        # Throttled lazy GC trigger (PA-12). Opt-in via WAYPOINT_RUN_LEDGER_GC=1
+        # so deletion can never happen implicitly against live data (tests hit
+        # this sweep path too). Everything here is guarded: a prune failure
+        # must never break the GET path that called us.
+        try:
+            if os.environ.get("WAYPOINT_RUN_LEDGER_GC", "0") == "1" and RunLedger._prune_throttle_due():
+                pruned = RunLedger.prune_expired_runs()
+                logger.info(
+                    "Run-ledger lazy GC pruned %d terminal run dirs (retention trigger)",
+                    pruned,
+                )
+        except Exception as exc:  # noqa: BLE001 — GC must never break the scan
+            logger.warning("Run-ledger lazy GC skipped after error: %s", exc)
+
+        return timed_out
+
+    @staticmethod
+    def _timeout_scan(max_age_seconds: int) -> list[str]:
+        """Heartbeat-aware stale-run scan (PA-17). See timeout_stale_runs."""
         import datetime as _dt
 
         now = _dt.datetime.now(_dt.timezone.utc)
@@ -428,6 +622,17 @@ class RunLedger:
                 state = meta.get("state", "")
                 if state not in ("queued", "running"):
                     continue
+
+                # Fresh heartbeat ⇒ alive. Skip regardless of total age.
+                heartbeat = meta.get("heartbeat_at")
+                if heartbeat:
+                    try:
+                        heartbeat_dt = _dt.datetime.fromisoformat(heartbeat)
+                        heartbeat_age = (now - heartbeat_dt).total_seconds()
+                        if heartbeat_age <= max_age_seconds:
+                            continue
+                    except ValueError:
+                        pass  # malformed heartbeat falls through to legacy check
 
                 created = meta.get("created_at") or meta.get("started_at")
                 if not created:
@@ -443,6 +648,8 @@ class RunLedger:
                             run_id,
                             error_type="RunTimeout",
                             error_message=f"Run timed out after {int(age)}s (max {max_age_seconds}s)",
+                            failure_class=FailureClass.ENVIRONMENT.value,
+                            stage=meta.get("stage"),
                         )
                         timed_out.append(run_id)
                     except (ValueError, FileNotFoundError):
@@ -451,3 +658,48 @@ class RunLedger:
                 continue
 
         return timed_out
+
+    # ------------------------------------------------------------------
+    # Lazy-GC throttle (PA-12)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _prune_marker_path() -> Path:
+        return RUNS_DIR / _PRUNE_MARKER_NAME
+
+    @staticmethod
+    def _prune_throttle_due() -> bool:
+        """Return True at most once per _PRUNE_INTERVAL_SECONDS (marker file)."""
+        marker = RunLedger._prune_marker_path()
+
+        if marker.exists():
+            try:
+                last = float(marker.read_text(encoding="utf-8").strip())
+                if (datetime.now(timezone.utc).timestamp() - last) < _PRUNE_INTERVAL_SECONDS:
+                    return False
+            except (OSError, ValueError):
+                pass  # unreadable marker → treat as due
+        return RunLedger._write_prune_marker()
+
+    @staticmethod
+    def _write_prune_marker() -> bool:
+        """Atomically write the throttle marker. Failure-tolerant by design."""
+        try:
+            marker = RunLedger._prune_marker_path()
+            RUNS_DIR.mkdir(parents=True, exist_ok=True)
+            temp_path = marker.with_name(
+                f".{_PRUNE_MARKER_NAME}.{os.getpid()}.{threading.get_ident()}.tmp"
+            )
+            try:
+                with temp_path.open("w", encoding="utf-8") as fh:
+                    fh.write(str(datetime.now(timezone.utc).timestamp()))
+                os.replace(temp_path, marker)
+            finally:
+                try:
+                    temp_path.unlink()
+                except FileNotFoundError:
+                    pass
+            return True
+        except OSError as exc:
+            logger.warning("Run-ledger prune marker write failed: %s", exc)
+            return False

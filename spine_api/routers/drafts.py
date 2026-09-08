@@ -298,7 +298,12 @@ def promote_draft(
         )
         raise HTTPException(status_code=404, detail="Trip not found in your agency")
 
-    promoted = DraftStore.promote(draft_id, trip_id)
+    try:
+        promoted = DraftStore.promote(draft_id, trip_id)
+    except ValueError as exc:
+        # PA-39: the store owns the single-shot invariant (race-safe); a lost
+        # race against a concurrent promote surfaces here as a conflict.
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if promoted:
         AuditStore.log_event("draft_promoted", user.id, {
             "draft_id": draft_id,

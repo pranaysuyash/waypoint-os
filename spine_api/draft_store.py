@@ -376,7 +376,22 @@ class FileDraftStore:
         Promote a draft to a trip.
         Sets status to promoted, stores promoted_trip_id.
         Returns updated draft.
+
+        PA-39: promotion is single-shot and the store owns the invariant (the
+        router's pre-check is advisory — TOCTOU and non-HTTP callers bypass
+        it). An already-promoted draft is returned unchanged when re-promoted
+        to the SAME trip (idempotent) and refused with ValueError when the
+        second promote targets a DIFFERENT trip — the original linkage is
+        never silently overwritten.
         """
+        draft = FileDraftStore.get(draft_id)
+        if draft is not None and draft.status == "promoted":
+            if draft.promoted_trip_id == trip_id:
+                return draft
+            raise ValueError(
+                f"Draft '{draft_id}' is already promoted to trip "
+                f"'{draft.promoted_trip_id}'; refusing to re-promote to '{trip_id}'."
+            )
         return FileDraftStore.patch(
             draft_id,
             {

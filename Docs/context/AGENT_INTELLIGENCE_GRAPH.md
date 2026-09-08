@@ -3,7 +3,6 @@
 This graph turns the repo's research, feedback, graph, and learning docs into a living navigation layer.
 
 ## Core Concepts
-
 - `concept:autoresearch` - Autoresearch Loop
 - `concept:feedback` - Feedback / Learning Loop
 - `concept:governance` - Governance / Routing
@@ -11,7 +10,6 @@ This graph turns the repo's research, feedback, graph, and learning docs into a 
 - `concept:live` - Live Intelligence
 
 ## Seed Docs
-
 - `Docs/AGENT_FEEDBACK_LOOP_SPEC_2026-04-22.md` - Agent Feedback Loop: Suitability Overrides — Full Specification | themes: feedback_learning, live_intelligence, agent_governance
   - supports -> `concept:feedback`
   - anchors -> `concept:governance`
@@ -71,14 +69,12 @@ This graph turns the repo's research, feedback, graph, and learning docs into a 
   - supports -> `concept:governance`
 
 ## Operating Model
-
 - Live path stays deterministic and bounded.
 - Autoresearch is offline only: mutate, evaluate, persist only if evidence improves.
 - Feedback loops convert overrides, outcomes, and recurring corrections into future policy.
 - Graph memory links docs, decisions, and learning signals so the next agent can start from a better map.
 
 ## Suggested Reading Order
-
 1. `Docs/INDEX.md`
 2. `Docs/TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md`
 3. `Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md`

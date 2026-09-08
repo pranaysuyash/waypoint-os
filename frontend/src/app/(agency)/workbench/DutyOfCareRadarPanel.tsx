@@ -82,7 +82,7 @@ export default function DutyOfCareRadarPanel() {
           className="py-2 px-3.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 flex items-center gap-1.5 shrink-0"
         >
           <Radio className={`h-3.5 w-3.5 ${isLoading ? 'animate-pulse' : ''}`} />
-          {isLoading ? 'Loading sample fixtures...' : 'Load sample threat fixtures'}
+          {isLoading ? 'Loading sample scenarios...' : 'Load sample scenarios'}
         </button>
       </div>
 

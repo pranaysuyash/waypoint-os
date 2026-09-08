@@ -26,8 +26,12 @@ def test_post_run_uses_run_accepted_response_model() -> None:
 
 
 def test_run_accepted_response_shape_is_minimal_async_contract() -> None:
+    # PA-13 (2026-09-06): `idempotent_replay` joins the minimal async contract
+    # — a deliberate additive flag marking Idempotency-Key replays. It must
+    # stay a bool default-False and no sync payload fields may join.
     fields = set(RunAcceptedResponse.model_fields.keys())
-    assert fields == {"run_id", "state"}
+    assert fields == {"run_id", "state", "idempotent_replay"}
+    assert RunAcceptedResponse.model_fields["idempotent_replay"].default is False
 
 
 def test_run_accepted_response_excludes_sync_payload_fields() -> None:

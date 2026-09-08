@@ -120,7 +120,12 @@ def test_counterfactual_and_consensus_api_endpoints(session_client):
         headers={"X-Agency-ID": "agency_cf_test"},
     )
     assert res_replan.status_code == 200
-    assert len(res_replan.json()["alternatives"]) == 3
+    body = res_replan.json()
+    assert body["alternatives"] == []
+    assert body["used_stored_graph"] is False
+    assert body["reality_tier"] == "unavailable"
+    assert body["heuristic_scores"] is True
+    assert body["recommended_strategy"] == "NONE"
 
     # Test group consensus endpoint
     res_group = session_client.post(
@@ -149,3 +154,51 @@ def test_counterfactual_and_consensus_api_endpoints(session_client):
     )
     assert res_group.status_code == 200
     assert res_group.json()["total_options_evaluated"] == 1
+
+
+def test_counterfactual_replans_from_stored_graph(session_client, monkeypatch):
+    """AT-19: stored disrupted node is required; alternatives are heuristic-labeled."""
+    from datetime import datetime, timezone
+
+    from spine_api.persistence import TripStore
+    from src.schemas.journey_graph import JourneyDependencyGraph, JourneyNode, NodeType
+
+    trip_id = "trip_cf_stored_graph"
+    now = datetime.now(timezone.utc)
+    graph = JourneyDependencyGraph(trip_id=trip_id)
+    graph.add_node(
+        JourneyNode(
+            node_id="node_fl_01",
+            node_type=NodeType.FLIGHT,
+            title="Stored AF22",
+            start_time=now,
+            end_time=now,
+            location="CDG",
+            provider="Air France",
+            commitment_status="ticketed",
+        )
+    )
+    stored = {"id": trip_id, **graph.to_stored_payload()}
+    # 2026-09-06 tenant-scoping fix: the endpoint reads via get_trip_for_agency
+    # (agency from X-Agency-ID header in tests), so patch the scoped method.
+    monkeypatch.setattr(
+        TripStore,
+        "get_trip_for_agency",
+        lambda tid, aid, *args, **kwargs: stored if tid == trip_id else None,
+    )
+    res = session_client.post(
+        "/api/v1/counterfactual/replan-disruption",
+        json={
+            "trip_id": trip_id,
+            "disrupted_node_id": "node_fl_01",
+            "delay_minutes": 180,
+        },
+        headers={"X-Agency-ID": "agency_cf_test"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["used_stored_graph"] is True
+    assert body["heuristic_scores"] is True
+    assert body["reality_tier"] == "deterministic_preview"
+    assert len(body["alternatives"]) == 3
+    assert all(a.get("score_basis") == "heuristic_hardcoded" for a in body["alternatives"])

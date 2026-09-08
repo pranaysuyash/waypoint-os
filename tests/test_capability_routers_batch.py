@@ -79,8 +79,11 @@ def test_capability_routers_batch_end_to_end(session_client):
         headers={"X-Agency-ID": "agency_batch_test"},
     )
     assert quote_res.status_code == 200
-    assert len(quote_res.json()["plans"]) == 3
-    assert quote_res.json()["days_remaining_for_cfar"] == 14
+    quote_data = quote_res.json()
+    assert len(quote_data["plans"]) == 3
+    assert quote_data["days_remaining_for_cfar"] is None
+    assert quote_data["cfar_timing_status"] == "not_evaluated"
+    assert quote_data["cfar_evidence"]["policy_rule_status"] == "not_adopted"
 
     attach_ins_res = session_client.post(
         f"/api/v1/insurance/{trip_id}/attach-policy",
@@ -115,7 +118,9 @@ def test_capability_routers_batch_end_to_end(session_client):
         headers={"X-Agency-ID": "agency_batch_test"},
     )
     assert balances_res.status_code == 200
-    assert len(balances_res.json()["programs"]) >= 3
+    assert balances_res.json()["programs"] == []
+    assert balances_res.json()["reality_tier"] == "unavailable"
+    assert balances_res.json()["provider_connected"] is False
 
     # --- 5. FEEDBACK & NPS ROUTER ---
     survey_res = session_client.post(

@@ -103,6 +103,13 @@ class AutoResearchRunner:
             "config": asdict(config),
             "result": asdict(eval_res),
             "accepted": accepted,
+            # PA-11: run_eval_suite is a hardcoded simulation (synthetic
+            # accuracy/safety/latency, no D6 lane execution), so every lineage
+            # record is truth-labeled until the loop grades real lanes. The
+            # "accepted" verdicts here are experiment-bookkeeping, NOT
+            # verified-improvement claims — consumers must check this flag.
+            "simulated": True,
+            "evaluation_source": "hardcoded_simulation",
         }
         with open(self.log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")

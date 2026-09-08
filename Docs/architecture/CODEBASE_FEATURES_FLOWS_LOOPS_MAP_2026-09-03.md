@@ -5,6 +5,8 @@
 **Method:** four parallel read-only Explore sweeps — agent core (`src/`), backend API (`spine_api/`), frontend (`frontend/`), and the docs/tests/tools landscape — synthesized here with file-path citations.
 **Scope:** features, end-to-end flows, and explicit loops (polling, background workers, retry/flywheel cycles) as the code implements them today. This is a map, not a spec: for product intent see [MASTER_PRODUCT_SPEC](../MASTER_PRODUCT_SPEC.md); for trip state rules see [TRIP_STATE_CONTRACT](../TRIP_STATE_CONTRACT.md).
 
+> **2026-09-06 drift addendum:** [CODEBASE_FEATURES_FLOWS_LOOPS_MAP_DRIFT_2026-09-06.md](CODEBASE_FEATURES_FLOWS_LOOPS_MAP_DRIFT_2026-09-06.md) — commit `096ceba` (585 files: lifecycle read-model, trip-status invariant, field-merge precedence, platform auth, idempotency fencing, strategic expansion verdicts) landed plus working-tree drift; §5 of the addendum lists the corrections that supersede the sections noted here.
+
 ---
 
 ## 1. System at a glance

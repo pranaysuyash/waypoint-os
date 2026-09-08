@@ -144,7 +144,7 @@ export default function IVRBypassPanel() {
                   : 'bg-amber-500/10 text-amber-400'
               }`}>
                 {session.status === 'bridged_to_advisor' ? <UserCheck className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5 animate-pulse" />}
-                {session.status.replace(/_/g, ' ').toUpperCase()}
+                {session.status === 'bridged_to_advisor' ? 'Bridged to advisor' : session.status.replace(/_/g, ' ').toLowerCase()}
               </span>
             </div>
           </div>

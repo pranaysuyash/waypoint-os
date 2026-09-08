@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, use } from 'react';
-import { Check, Sparkles, ShieldCheck, MapPin, Calendar, ArrowRight, UserCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Check, Sparkles, ShieldCheck, ShieldAlert, MapPin, Calendar, ArrowRight, UserCheck } from 'lucide-react';
 
 interface ProposalOption {
   id: string;
@@ -36,13 +36,29 @@ interface ProposalData {
   accepted_by?: string;
   days: ProposalDay[];
   available_options: ProposalOption[];
+  reality_tier?: string;
 }
 
-export default function PublicProposalPage({ params }: { params: Promise<{ token: string }> }) {
-  const resolvedParams = use(params);
-  const token = resolvedParams.token;
+// Part-H P1 (2026-09-07): a 200 response is not automatically a proposal.
+// Casts hide malformed payloads; an incomplete payload must abstain instead
+// of rendering a fabricated $0 package.
+function asProposal(data: unknown): ProposalData | null {
+  if (!data || typeof data !== 'object') return null;
+  const d = data as Record<string, unknown>;
+  if (typeof d.title !== 'string' || !d.title.trim()) return null;
+  if (typeof d.destination !== 'string' || !d.destination.trim()) return null;
+  if (typeof d.selected_total_price_usd !== 'number' || !Number.isFinite(d.selected_total_price_usd) || d.selected_total_price_usd <= 0) return null;
+  if (typeof d.duration_days !== 'number' || !Number.isFinite(d.duration_days) || d.duration_days <= 0) return null;
+  return data as ProposalData;
+}
+
+// Next 14 app router: params is a plain object (Promise params + React `use()`
+// are Next 15/React 19 patterns — they crash this React 18 runtime, AT-20).
+export default function PublicProposalPage({ params }: { params: { token: string } }) {
+  const token = params.token;
 
   const [proposal, setProposal] = useState<ProposalData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [signerName, setSignerName] = useState('');
@@ -56,17 +72,31 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
       try {
         const res = await fetch(`/api/public/proposals/${token}`);
         if (res.ok) {
-          const data = (await res.json()) as ProposalData;
-          setProposal(data);
+          const parsed = asProposal(await res.json());
+          if (!parsed) {
+            setLoadError('This proposal exists but its details are incomplete. Please ask your travel advisor for assistance.');
+            return;
+          }
+          setProposal(parsed);
           setSelectedOptionIds(
-            data.available_options.filter((o) => o.selected).map((o) => o.id),
+            parsed.available_options.filter((o) => o.selected).map((o) => o.id),
           );
-          if (data.status === 'accepted') {
+          if (parsed.status === 'accepted') {
             setIsSuccess(true);
           }
+          return;
+        }
+        // AT-20: an invalid/expired/revoked link must abstain — never render
+        // placeholder itinerary content the backend did not send.
+        if (res.status === 410) {
+          setLoadError('This proposal link has expired or was revoked.');
+        } else if (res.status === 404) {
+          setLoadError('We could not find a proposal for this link.');
+        } else {
+          setLoadError('This proposal link is not valid.');
         }
       } catch {
-        // Fallback demo data if offline
+        setLoadError('This proposal could not be loaded right now.');
       } finally {
         setLoading(false);
       }
@@ -88,8 +118,12 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
         body: JSON.stringify({ selected_option_ids: nextSelected }),
       });
       if (res.ok) {
-        const updated = (await res.json()) as ProposalData;
-        setProposal(updated);
+        // Part-J #8: follow-up responses get the same runtime validation as
+        // the initial GET — a malformed recalculation must not corrupt state.
+        const parsed = asProposal(await res.json());
+        if (parsed) {
+          setProposal(parsed);
+        }
       }
     } catch {
       // Ignore network errors on local recalculation
@@ -114,9 +148,13 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
       });
 
       if (res.ok) {
-        const updated = (await res.json()) as ProposalData;
-        setProposal(updated);
-        setIsSuccess(true);
+        // Part-J #8: acceptance success is only claimed on a valid accepted
+        // proposal payload.
+        const parsed = asProposal(await res.json());
+        if (parsed && parsed.status === 'accepted') {
+          setProposal(parsed);
+          setIsSuccess(true);
+        }
       }
     } catch {
       // Handle acceptance failure
@@ -136,7 +174,29 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
     );
   }
 
-  const currentTotal = proposal?.selected_total_price_usd ?? 5030.0;
+  // AT-20: no proposal from the backend → honest abstention screen, never
+  // placeholder itinerary copy.
+  if (!proposal) {
+    return (
+      <div className="min-h-screen bg-[#080a0c] text-[#e6edf3] font-sans antialiased flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-2xl border border-[#30363d] bg-[#161b22] p-8 text-center space-y-4">
+          <div className="size-12 rounded-full bg-[#f85149]/15 text-[#f85149] flex items-center justify-center mx-auto">
+            <ShieldAlert className="size-6" />
+          </div>
+          <h1 className="text-xl font-bold text-white">Proposal unavailable</h1>
+          <p className="text-sm text-[#8b949e] leading-relaxed">
+            {loadError ?? 'This proposal link is not valid.'}
+          </p>
+          <p className="text-xs text-[#8b949e] leading-relaxed">
+            Proposal links are private and expire after a while. Please ask
+            your travel advisor for a fresh link.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentTotal = proposal.selected_total_price_usd;
 
   return (
     <div className="min-h-screen bg-[#080a0c] text-[#e6edf3] font-sans antialiased pb-24">
@@ -150,7 +210,7 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
             <div>
               <p className="text-xs text-[#8b949e] font-medium tracking-wide uppercase">Waypoint Curated Proposal</p>
               <h1 className="text-sm font-semibold text-white truncate max-w-sm sm:max-w-md">
-                {proposal?.title ?? 'Italian Grand Tour'}
+                {proposal.title}
               </h1>
             </div>
           </div>
@@ -159,7 +219,7 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
             <div className="text-right">
               <p className="text-xs text-[#8b949e]">Total Package</p>
               <p className="text-lg font-bold text-[#3fb950] tracking-tight">
-                ${currentTotal.toLocaleString()} {proposal?.currency ?? 'USD'}
+                ${currentTotal.toLocaleString()} {proposal.currency}
               </p>
             </div>
             {!isSuccess && (
@@ -167,7 +227,7 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
                 href="#accept-section"
                 className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold shadow-md transition-colors"
               >
-                Accept & Reserve <ArrowRight className="size-3.5" />
+                Accept Proposal <ArrowRight className="size-3.5" />
               </a>
             )}
           </div>
@@ -178,20 +238,26 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
         {/* Trip Overview Card */}
         <section className="rounded-2xl border border-[#30363d] bg-gradient-to-b from-[#161b22] to-[#0d1117] p-8 shadow-xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#58a6ff]/10 text-[#58a6ff] border border-[#58a6ff]/20 mb-4">
-            <Sparkles className="size-3.5" /> Curated for {proposal?.traveler_name ?? 'Our Valued Travelers'}
+            <Sparkles className="size-3.5" /> Curated for {proposal.traveler_name}
+            {proposal.reality_tier === 'demo' && (
+              <span className="ml-1 px-2 py-0.5 rounded-md bg-[#d29922]/15 text-[#d29922] border border-[#d29922]/40 text-[10px] font-bold uppercase tracking-wider">
+                Demo content
+              </span>
+            )}
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-4">
-            {proposal?.title ?? 'Italian Grand Tour: Rome, Florence & Amalfi'}
+            {proposal.title}
           </h2>
           <div className="flex flex-wrap items-center gap-6 text-sm text-[#8b949e]">
             <span className="flex items-center gap-1.5">
-              <MapPin className="size-4 text-[#58a6ff]" /> {proposal?.destination ?? 'Italy'}
+              <MapPin className="size-4 text-[#58a6ff]" /> {proposal.destination}
             </span>
             <span className="flex items-center gap-1.5">
-              <Calendar className="size-4 text-[#58a6ff]" /> {proposal?.duration_days ?? 8} Days / 7 Nights
+              <Calendar className="size-4 text-[#58a6ff]" /> {proposal.duration_days} Days /{' '}
+              {Math.max(proposal.duration_days - 1, 0)} Nights
             </span>
             <span className="flex items-center gap-1.5">
-              <ShieldCheck className="size-4 text-[#3fb950]" /> 100% Verified & Protected
+              <ShieldCheck className="size-4 text-[#3fb950]" /> E-signature secured
             </span>
           </div>
         </section>
@@ -295,16 +361,18 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
               </div>
               <h3 className="text-xl font-bold text-white">Proposal Successfully Accepted</h3>
               <p className="text-sm text-[#8b949e] max-w-md mx-auto">
-                Thank you! Your travel advisor has been notified and is now securing your reservations. A
-                confirmation receipt has been emailed to you.
+                Thank you! Your acceptance has been recorded. Your travel
+                advisor will confirm the details and next steps with you
+                directly.
               </p>
             </div>
           ) : (
             <>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-white">Accept & Reserve Itinerary</h3>
+                <h3 className="text-lg font-bold text-white">Accept Proposal</h3>
                 <p className="text-xs text-[#8b949e]">
-                  Please provide your name and email to electronically sign and confirm this proposal.
+                  Please provide your name and email to electronically sign and
+                  record your acceptance of this proposal.
                 </p>
               </div>
 
@@ -344,8 +412,10 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
                     className="mt-1 size-4 rounded border-[#30363d] bg-[#0d1117] text-[#58a6ff]"
                   />
                   <label htmlFor="consent-check" className="text-xs text-[#8b949e] leading-relaxed cursor-pointer">
-                    I agree to the terms of this itinerary and authorize Waypoint OS to lock reservations at the
-                    selected total of <strong className="text-white">${currentTotal.toLocaleString()} USD</strong>.
+                    I agree to the terms of this itinerary and authorize Waypoint OS to
+                    record my acceptance of this proposal at the selected total of{' '}
+                    <strong className="text-white">${currentTotal.toLocaleString()} USD</strong>. A
+                    travel advisor will then secure the reservations.
                   </label>
                 </div>
 
@@ -354,7 +424,7 @@ export default function PublicProposalPage({ params }: { params: Promise<{ token
                   disabled={isSubmitting || !signerName || !signerEmail || !eSignConsent}
                   className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-lg"
                 >
-                  {isSubmitting ? 'Securing Reservations…' : 'Confirm & E-Sign Proposal'}
+                  {isSubmitting ? 'Recording acceptance…' : 'Confirm & E-Sign Proposal'}
                 </button>
               </form>
             </>

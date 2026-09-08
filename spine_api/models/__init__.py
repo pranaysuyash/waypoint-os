@@ -12,6 +12,8 @@ from spine_api.models.agent_work import AgentWorkLease
 from spine_api.models.idempotency import IdempotencyKey
 from spine_api.models.audit import AuditLog
 from spine_api.models.routing import TripRoutingState
+from spine_api.models.authority_approval import AuthorityApprovalModel
+from spine_api.models.advisor_payout import AdvisorPayoutModel
 
 __all__ = [
     "Base", 
@@ -29,4 +31,6 @@ __all__ = [
     "IdempotencyKey",
     "AuditLog",
     "TripRoutingState",
+    "AuthorityApprovalModel",
+    "AdvisorPayoutModel",
 ]

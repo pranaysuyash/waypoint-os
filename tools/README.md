@@ -600,3 +600,72 @@ Notes:
   canonical vocabulary; it imports the backend alias map for comparison.
 - Evidence, schema, alternatives, and remaining writer/alias research:
   `Docs/exploration/E12_STATUS_ALIAS_EXPANSION_PLAN_2026-09-02.md`, repair section.
+
+## Live-PostgreSQL Multi-Worker Contention Probe: `live_db_multiworker_probe.py`
+
+Purpose:
+
+- Run the live-PostgreSQL multi-worker contention probe (PER-0700 wave 2) as a
+  single command: real OS processes contending on the same durable Postgres
+  rows, asserting exactly-one-winner semantics.
+- Thin pytest orchestrator only — the single source of truth for the probe
+  logic is `tests/test_pa_wave2_live_probe.py`; this tool holds no SQL and no
+  business logic.
+- Performs preflight (loads `.env`, verifies `DATABASE_URL`, cheap TCP dial of
+  the Postgres host), forwards knobs to pytest, propagates pytest's exit code,
+  and prints what each check proves.
+
+Usage:
+
+```bash
+# All 4 checks, default 4 workers each
+.venv/bin/python tools/live_db_multiworker_probe.py
+
+# More contention
+.venv/bin/python tools/live_db_multiworker_probe.py --workers 8
+
+# One check (or a comma-separated subset) via pytest -k
+.venv/bin/python tools/live_db_multiworker_probe.py --check idempotency
+.venv/bin/python tools/live_db_multiworker_probe.py --check lease,token --verbose
+```
+
+Example output (abbreviated):
+
+```text
+========================================================================
+Live-PostgreSQL multi-worker contention probe (PER-0700 wave 2)
+========================================================================
+  Test module:  tests/test_pa_wave2_live_probe.py
+  Workers:      4 (real OS processes, spawn context)
+  Checks:       all 4
+  DATABASE_URL: found (source: .env)
+  Database:     localhost:5432/waypoint_os (credentials redacted)
+  Preflight:    Postgres reachable at localhost:5432
+...
+tests/test_pa_wave2_live_probe.py ....                                    [100%]
+Probe PASSED: contention guarantees hold at 4 workers.
+```
+
+What each check proves (one line each, also printed by the tool):
+
+- `idempotency` — SQL idempotency registry CAS grants the action to exactly
+  1 of N cross-process contenders.
+- `lease` — SQLWorkCoordinator work lease is won by exactly 1 process.
+- `token` — collection tokens are single-use across processes.
+- `usage_events` — usage_events store exposes run correlation columns.
+
+Safety notes:
+
+- **Additive-only by design**: probe rows anchor to the seeded canonical
+  agency; each run creates one fresh namespaced probe trip and one fresh
+  collection token through the canonical `TripStore` / collection service.
+  Nothing pre-existing is mutated or deleted.
+- **Skips without `DATABASE_URL`**: the pytest module auto-skips (green) when
+  no live PG is configured; this wrapper fails fast with exit code 2 so the
+  missing prerequisite is explicit rather than silently proving nothing.
+- **CI-safe**: with a Postgres service container providing `DATABASE_URL`,
+  the probe runs unattended in CI; exit code is non-zero only on a real
+  contention failure or environment error.
+- `--workers N` forwards through the `PROBE_WORKERS` env var to the test
+  module (`WORKERS = int(os.environ.get("PROBE_WORKERS", "4"))`).
+

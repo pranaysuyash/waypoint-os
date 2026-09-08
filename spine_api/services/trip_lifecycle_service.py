@@ -118,6 +118,18 @@ def queue_trip_reassessment(
     execute_pipeline_fn: Callable[..., None],
     reason: Optional[str] = None,
 ) -> str:
+    """Queue a background reassessment run for an existing trip.
+
+    PA-13 note — the reassess path takes NO lock here. Both this path (via
+    ``execute_pipeline_fn`` with ``target_trip_id=trip["id"]`` and no
+    draft_id) and draft reprocesses (POST /run with ``draft_id``) funnel into
+    the SINGLE lock choke point:
+    ``spine_api.services.pipeline_execution_service.execute_spine_pipeline``,
+    which derives ``trip-run:trip:{trip_id}`` for reassessment and
+    ``trip-run:draft:{draft_id}`` for drafts against the durable
+    IdempotencyRegistry. Do NOT add a second lock here — reassessment would
+    be double-locked.
+    """
     run_id = str(uuid.uuid4())
     RunLedger.create(
         run_id=run_id,
