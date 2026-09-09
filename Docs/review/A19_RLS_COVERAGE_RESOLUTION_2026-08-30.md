@@ -9,7 +9,13 @@
 
 The audit's numbers held exactly: 6 routers used `get_rls_db`, 6 used unscoped `Depends(get_db)`, none mixed. RLS machinery (`spine_api/core/rls.py`) is sound by design: ContextVar populated by `get_current_membership` (auth.py:155/165) on every authenticated request; `get_rls_db` sets transaction-safe session config and resets on exit.
 
+**Honest security posture note — CORRECTED 2026-08-31:** the original note below claimed RLS was dormant (owner bypasses ENABLE-without-FORCE). Live pg_class verification during the F-19/F-20 hunt proved that wrong: `trips` and `booking_collection_tokens` carry **FORCE RLS** (`relforcerowsecurity = true`), so the database is enforcing isolation **right now** — policies are fail-closed (`agency_id = current_setting('app.current_agency_id', true)`: no context ⇒ zero rows). Only `memberships`/`workspace_codes` are ENABLE-without-FORCE (by design, auth chicken-and-egg). Consequence: any router querying a FORCE-RLS table without setting the context sees *nothing* — and endpoints that appeared to work were surviving on stale session context bleeding through pooled connections (the exact hazard `rls.py` documents). The conversions below were therefore correctness-critical, not just posture alignment. See `architecture/TENANCY_ISOLATION_MODELS_LEARNING_2026-08-31.md` addendum.
+
+<details><summary>Original (incorrect) note</summary>
+
 **Honest security posture note (verified):** the app currently connects as the table **owner**, and these tables use ENABLE-without-FORCE RLS — so RLS is currently *dormant defense-in-depth*, and the **active** isolation guard is application-level `agency_id` filtering. Unscoped `get_db` was therefore not a live leak path; it was (a) a correctness gap the moment a non-owner role cutover happens, and (b) an inconsistency that made the security posture unverifiable. The checker (`scripts/check_rls_coverage.py`) validates table posture: **12 protected / 4 exempted / 15 total with agency_id — passed.**
+
+</details>
 
 ## 2. Router conversions (Wave 2.2)
 

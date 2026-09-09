@@ -123,6 +123,11 @@ _STOP_WORDS = frozenset({
     "we", "i", "my", "our", "the", "this", "that", "it", "they",
     "he", "she", "us", "me", "him", "her", "and", "or", "to",
     "with", "for", "from", "in", "on", "at", "by",
+    # Negation tokens: "No" and "Not" are real GeoNames entries (No is an
+    # alternate name of Ho, Ghana), so geography validation alone cannot
+    # filter them. Blocking them here closes every destination pass
+    # (VA-07, review cycle 1 2026-09-09).
+    "no", "not",
     # Hinglish/common false positives (often match obscure GeoNames entries)
     "se", "ru", "side", "jana", "jaana", "hai", "ho", "ka", "ki", "ke",
     "ko", "ye", "wo", "jo", "tha", "thee", "hain", "log", "aur", "nahi",

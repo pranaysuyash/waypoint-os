@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from spine_api.contract import RunStatusResponse, SpineRunRequest
 from spine_api.product_b_events import ProductBEventStore
+from spine_api.services.public_checker_access import issue_access_token, retention_days as public_checker_retention_days
 from spine_api.services.live_checker_service import (
     build_consented_submission,
     collect_raw_text_sources,
@@ -440,6 +441,11 @@ def run_public_checker_submission(
             _safe_log_product_b_event(first_finding_event, logger=logger)
 
         finding_count = len(primary_hard_blockers) + len(primary_soft_blockers)
+        # EX-04 capability token (WOBS P2/P3): the anonymous owner's proof of
+        # access for fetch/export/delete. Issued for every run — one-time
+        # analyses get an ephemeral panel too; retention bounds its lifetime.
+        access_token = issue_access_token(trip_id_saved)
+
         check_completed_event = build_check_completed_event(
             session_id=session_id,
             inquiry_id=inquiry_id,
@@ -484,6 +490,8 @@ def run_public_checker_submission(
             hard_blockers=list(decision_payload.get("hard_blockers") or []),
             soft_blockers=list(decision_payload.get("soft_blockers") or []),
             report_fingerprint=compute_report_fingerprint(validation_payload, decision_payload),
+            access_token=access_token,
+            retention_days=public_checker_retention_days(),
         )
     except Exception as exc:
         logger.exception("Public checker submission failed")

@@ -85,6 +85,8 @@ export interface RunStatusResponse {
   hard_blockers?: string[] | null;
   soft_blockers?: string[] | null;
   report_fingerprint?: string | null;
+  access_token?: string | null;
+  retention_days?: number | null;
 }
 
 // ============================================================================

@@ -22,6 +22,11 @@ from spine_api.services.agency_marketplace import (
     valid_contact,
 )
 from spine_api.services.live_checker_service import apply_live_checker_adjustments
+from spine_api.services.public_checker_access import (
+    record_dispute,
+    revoke_tokens_for_trip,
+    verify_access_token,
+)
 from src.public_checker.entity_checks import run_entity_checks
 from src.public_checker.live_checks import build_live_checker_signals, extract_destination
 
@@ -76,6 +81,19 @@ class PublicCheckerEventEnvelope(BaseModel):
     locale: Optional[str] = None
     currency: Optional[str] = None
     properties: Dict[str, Any]
+
+
+class PublicCheckerDisputeEnvelope(BaseModel):
+    trip_id: str
+    finding_text: str
+    verdict: str = "disagree"
+
+
+def _bearer_token(request: Request) -> str:
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return ""
 
 
 def _load_public_checker_package_or_404(trip_id: str) -> dict[str, Any]:
@@ -290,6 +308,85 @@ def post_public_checker_re_verify(
     }
 
 
+def _verify_trip_token_or_403(request: Request, trip_id: str) -> None:
+    """EX-04 capability check: the bearer token must be valid and bound to this trip."""
+    token = _bearer_token(request)
+    if not verify_access_token(token, trip_id):
+        raise HTTPException(status_code=403, detail="Invalid or missing report access token")
+
+
+@router.get("/api/public-checker/trip/{trip_id}", response_model=PublicCheckerExportResponse)
+@limiter.limit("30/minute")
+def get_public_checker_trip_by_token(
+    request: Request,
+    response: Response,
+    trip_id: str,
+):
+    """Token-authorized report fetch for the anonymous owner (EX-04 / AUD-04 fix)."""
+    _require_public_checker_enabled()
+    _verify_trip_token_or_403(request, trip_id)
+    return _load_public_checker_package_or_404(trip_id)
+
+
+@router.get("/api/public-checker/trip/{trip_id}/export", response_model=PublicCheckerExportResponse)
+@limiter.limit("30/minute")
+def export_public_checker_trip_by_token(
+    request: Request,
+    response: Response,
+    trip_id: str,
+):
+    _require_public_checker_enabled()
+    _verify_trip_token_or_403(request, trip_id)
+    return _load_public_checker_package_or_404(trip_id)
+
+
+@router.delete("/api/public-checker/trip/{trip_id}", response_model=PublicCheckerDeleteResponse)
+@limiter.limit("12/minute")
+def delete_public_checker_trip_by_token(
+    request: Request,
+    response: Response,
+    trip_id: str,
+):
+    """Token-authorized erasure: the anonymous owner can delete their own report."""
+    _require_public_checker_enabled()
+    _verify_trip_token_or_403(request, trip_id)
+    _package = _load_public_checker_package_or_404(trip_id)
+    public_checker_agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+    deleted_artifacts = persistence.PublicCheckerArtifactStore.delete_trip_artifacts(trip_id)
+    deleted_trip = persistence.TripStore.delete_trip_for_agency(trip_id, public_checker_agency_id)
+    if not deleted_artifacts and not deleted_trip:
+        raise HTTPException(status_code=404, detail="Public checker record not found")
+    revoke_tokens_for_trip(trip_id)
+    return {
+        "ok": True,
+        "trip_id": trip_id,
+        "deleted_trip": deleted_trip,
+        "deleted_artifacts": deleted_artifacts,
+    }
+
+
+@router.post("/api/public-checker/disputes")
+@limiter.limit("6/minute")
+def post_public_checker_dispute(
+    request: Request,
+    response: Response,
+    dispute: PublicCheckerDisputeEnvelope,
+):
+    """Second-Opinion Escrow v0 (WOBS P3): record a client-claimed dispute.
+
+    Honest labeling: stored with verified=false (quarantined) — disputes
+    become corpus rows only after server-side confirmation.
+    """
+    _require_public_checker_enabled()
+    record = record_dispute(
+        trip_id=dispute.trip_id,
+        finding_text=dispute.finding_text,
+        verdict=dispute.verdict,
+    )
+    _ = (request, response)
+    return {"ok": True, "dispute_id": record["dispute_id"], "verified": record["verified"]}
+
+
 @router.get("/api/public-checker/{trip_id}", response_model=PublicCheckerExportResponse)
 @limiter.limit("30/minute")
 def get_public_checker_package(
@@ -304,6 +401,7 @@ def get_public_checker_package(
 @limiter.limit("30/minute")
 def export_public_checker_package(
     request: Request,
+    response: Response,
     trip_id: str,
 ):
     _require_public_checker_enabled()
@@ -314,6 +412,7 @@ def export_public_checker_package(
 @limiter.limit("30/minute")
 def delete_public_checker_package(
     request: Request,
+    response: Response,
     trip_id: str,
 ):
     _require_public_checker_enabled()

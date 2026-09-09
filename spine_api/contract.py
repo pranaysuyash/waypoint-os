@@ -179,6 +179,8 @@ class RunStatusResponse(BaseModel):
     hard_blockers: List[str] = Field(default_factory=list)
     soft_blockers: List[str] = Field(default_factory=list)
     report_fingerprint: Optional[str] = None
+    access_token: Optional[str] = None
+    retention_days: Optional[int] = None
     frontier_result: Optional[FrontierOrchestrationResult] = None
 
 

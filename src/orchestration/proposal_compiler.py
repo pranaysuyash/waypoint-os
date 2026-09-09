@@ -177,7 +177,10 @@ class AutonomousProposalCompiler:
             logger.warning("compiler did not persist journey graph for trip %s", trip_id)
 
         # 5. Feasibility Constraint Evaluation
-        feasibility_report = ConstraintEngine.evaluate_itinerary_graph(graph)
+        feasibility_report = ConstraintEngine.evaluate_itinerary_graph(
+            graph,
+            party_size=traveler_count,
+        )
 
         proposal_id = f"PROP-{trip_id[-6:].upper()}"
 

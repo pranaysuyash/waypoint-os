@@ -71,6 +71,162 @@ TERMINAL_MCT_MATRIX: Dict[Tuple[str, str, str], int] = {
 }
 
 
+# --- TS-01 ground-access feasibility families (2026-09-09) -------------------
+#
+# Transport modes whose END is an "arrival" that gates downstream ground
+# commitments (activities, meals, hotel check-ins).
+TRANSPORT_ARRIVAL_TYPES: Set[Any] = {
+    NodeType.FLIGHT,
+    NodeType.RAIL,
+    NodeType.RAIL_HIGH_SPEED,
+    NodeType.FERRY,
+    NodeType.CRUISE,
+}
+
+# Nodes that represent a ground commitment the traveler must physically
+# reach after arriving (the "lands 10:40, Disney 11:00" family).
+GROUND_COMMITMENT_TYPES: Set[Any] = {
+    NodeType.ACTIVITY,
+    NodeType.RESTAURANT,
+    NodeType.HOTEL_CHECKIN,
+}
+
+# Heuristic default minutes from transport arrival to a ground commitment
+# when the node carries no explicit transfer requirement. FLIGHT includes
+# immigration + baggage + city transfer; rail/ferry/cruise include station
+# exit only. These defaults produce SOFT (advisory) violations — only an
+# explicit per-node requirement can produce a hard physical reject.
+GROUND_ACCESS_DEFAULT_MINUTES: Dict[str, int] = {
+    NodeType.FLIGHT.value: 90,
+    NodeType.RAIL.value: 45,
+    NodeType.RAIL_HIGH_SPEED.value: 45,
+    NodeType.FERRY.value: 45,
+    NodeType.CRUISE.value: 45,
+}
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Normalize naive datetimes to UTC so mixed-provenance nodes never crash comparisons."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
+def _node_required_transfer_minutes(node: Any) -> Optional[int]:
+    """Explicit ground-transfer requirement declared by the node itself.
+
+    Honors the TimedEntrySlot vocabulary (``recommended_arrival_buffer_minutes``)
+    and the planner-facing ``required_transfer_minutes``. Returns ``None`` when
+    the node declares nothing — the caller then falls back to heuristic
+    defaults, which can only ever yield an advisory, never a hard reject.
+    """
+    for key in ("required_transfer_minutes", "recommended_arrival_buffer_minutes"):
+        raw = node.metadata.get(key)
+        if raw is None:
+            continue
+        try:
+            minutes = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if minutes >= 0:
+            return minutes
+    return None
+
+
+def _node_room_capacity(node: Any) -> Optional[int]:
+    """Maximum guest capacity a hotel node declares, or None when unknown.
+
+    Recognized metadata shapes (abstains on anything unrecognized):
+    - ``max_guests`` / ``capacity``: int
+    - ``room_count`` + ``max_occupancy_per_room``: product
+    - ``rooms``: list of ints, list of ``{"max_occupancy"|"capacity": int}``,
+      or a bare int room count (then requires ``max_occupancy_per_room``)
+    """
+    meta = node.metadata or {}
+
+    def _to_int(raw: Any) -> Optional[int]:
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return None
+        return value if value >= 0 else None
+
+    for key in ("max_guests", "capacity"):
+        if key in meta:
+            value = _to_int(meta.get(key))
+            if value is not None:
+                return value
+
+    per_room = _to_int(meta.get("max_occupancy_per_room"))
+    room_count = _to_int(meta.get("room_count"))
+    rooms_raw = meta.get("rooms")
+
+    if rooms_raw is not None:
+        if isinstance(rooms_raw, (int, float)):
+            count = _to_int(rooms_raw)
+            if count is not None and per_room is not None:
+                return count * per_room
+            return None
+        if isinstance(rooms_raw, list):
+            total = 0
+            matched_any = False
+            for entry in rooms_raw:
+                if isinstance(entry, dict):
+                    value = _to_int(entry.get("max_occupancy") or entry.get("capacity"))
+                else:
+                    value = _to_int(entry)
+                if value is None:
+                    continue
+                total += value
+                matched_any = True
+            if matched_any:
+                return total
+            if room_count is not None and per_room is not None:
+                return room_count * per_room
+            return None
+
+    if room_count is not None and per_room is not None:
+        return room_count * per_room
+    return None
+
+
+def _node_declared_pax(node: Any) -> Optional[int]:
+    """Traveler count a node claims to cover (ticket / booking pax), if declared."""
+    meta = node.metadata or {}
+    for key in ("traveler_count", "pax", "passenger_count"):
+        if key in meta:
+            try:
+                value = int(meta[key])
+            except (TypeError, ValueError):
+                continue
+            if value > 0:
+                return value
+    return None
+
+
+def _node_age_bounds(node: Any) -> Tuple[Optional[int], Optional[int]]:
+    """(min_age, max_age) product rules a node declares, e.g. fare or ticketed-entry age categories."""
+    meta = node.metadata or {}
+    bounds: List[Optional[int]] = []
+    for key in ("min_age", "child_fare_min_age", "infant_max_age"):
+        raw = meta.get(key)
+        try:
+            bounds.append(int(raw) if raw is not None else None)
+        except (TypeError, ValueError):
+            bounds.append(None)
+    min_age = bounds[0]
+    if min_age is None:
+        min_age = bounds[1]
+    # infant_max_age expresses "this product only covers ages <= X"
+    max_age = bounds[2]
+    if "max_age" in meta:
+        try:
+            max_age = int(meta["max_age"])
+        except (TypeError, ValueError):
+            pass
+    return min_age, max_age
+
+
 class ConstraintEngine:
     """Deterministic Constraint Satisfaction Engine for Travel Itineraries."""
 
@@ -152,8 +308,15 @@ class ConstraintEngine:
         travelers: Optional[List[Dict[str, Any]]] = None,
         budget_cents: Optional[int] = None,
         hard_budget_ceiling: bool = False,
+        party_size: Optional[int] = None,
     ) -> ConstraintEvaluationReport:
-        """Evaluate all hard and soft constraints across a JourneyDependencyGraph."""
+        """Evaluate all hard and soft constraints across a JourneyDependencyGraph.
+
+        ``party_size`` lets callers without per-traveler detail (e.g. the
+        proposal compiler, which only knows a count) still participate in
+        occupancy and pax checks. When both ``travelers`` and ``party_size``
+        are supplied, the traveler list wins.
+        """
         trip_id = graph.trip_id
         hard_violations: List[ConstraintViolation] = []
         soft_violations: List[ConstraintViolation] = []
@@ -229,6 +392,128 @@ class ConstraintEngine:
                             relaxation_option="Consider booking flight with >= 2hr buffer for comfortable transit.",
                         )
                     )
+
+        # 1b. Ground-Access Feasibility: transport arrival -> ground commitment
+        # (TS-01, 2026-09-09). The "flight lands 10:40, Disney at 11:00,
+        # 70-minute transfer" family. Only an explicit per-node transfer
+        # requirement (or a negative gap, i.e. physically starting before the
+        # arrival) can produce a HARD reject; heuristic defaults stay advisory.
+        for i in range(len(sorted_nodes) - 1):
+            curr_node = sorted_nodes[i]
+            next_node = sorted_nodes[i + 1]
+
+            if curr_node.node_type not in TRANSPORT_ARRIVAL_TYPES:
+                continue
+            if next_node.node_type not in GROUND_COMMITMENT_TYPES:
+                continue
+            if curr_node.end_time is None or next_node.start_time is None:
+                continue
+
+            gap_minutes = int(
+                (_as_utc(next_node.start_time) - _as_utc(curr_node.end_time)).total_seconds() / 60.0
+            )
+            explicit_required = _node_required_transfer_minutes(next_node)
+            mode_default = GROUND_ACCESS_DEFAULT_MINUTES.get(str(curr_node.node_type))
+            heuristic_required = (
+                explicit_required if explicit_required is not None else mode_default
+            )
+
+            if gap_minutes < 0:
+                hard_violations.append(
+                    ConstraintViolation(
+                        constraint_id=f"GROUND_OVERLAP_{curr_node.node_id}_{next_node.node_id}",
+                        name="Ground Commitment Starts Before Arrival",
+                        category=ConstraintCategory.SPATIAL_CONTINUITY,
+                        constraint_type=ConstraintType.HARD,
+                        severity="blocking",
+                        affected_elements=[curr_node.node_id, next_node.node_id],
+                        description=(
+                            f"{next_node.title} starts at {next_node.start_time.strftime('%H:%M')} "
+                            f"but {curr_node.title} does not arrive until {curr_node.end_time.strftime('%H:%M')}. "
+                            "The commitment is scheduled before the traveler can physically be there."
+                        ),
+                        relaxation_option=(
+                            f"Move {next_node.title} to start after {curr_node.end_time.strftime('%H:%M')} "
+                            "plus the required ground transfer time."
+                        ),
+                    )
+                )
+            elif explicit_required is not None and gap_minutes < explicit_required:
+                deficit = explicit_required - gap_minutes
+                hard_violations.append(
+                    ConstraintViolation(
+                        constraint_id=f"GROUND_ACCESS_DEFICIT_{curr_node.node_id}_{next_node.node_id}",
+                        name="Ground Transfer Time Deficit",
+                        category=ConstraintCategory.SPATIAL_CONTINUITY,
+                        constraint_type=ConstraintType.HARD,
+                        severity="blocking",
+                        affected_elements=[curr_node.node_id, next_node.node_id],
+                        description=(
+                            f"Only {gap_minutes}m between arrival of {curr_node.title} "
+                            f"({curr_node.end_time.strftime('%H:%M')}) and {next_node.title} "
+                            f"({next_node.start_time.strftime('%H:%M')}), but the node requires "
+                            f"{explicit_required}m of ground transfer."
+                        ),
+                        relaxation_option=(
+                            f"Shift {next_node.title} at least {deficit}m later, or arrange a faster transfer."
+                        ),
+                    )
+                )
+            elif heuristic_required is not None and gap_minutes < heuristic_required:
+                soft_violations.append(
+                    ConstraintViolation(
+                        constraint_id=f"GROUND_BUFFER_TIGHT_{curr_node.node_id}_{next_node.node_id}",
+                        name="Tight Ground-Access Buffer",
+                        category=ConstraintCategory.TEMPORAL_PACING,
+                        constraint_type=ConstraintType.SOFT,
+                        severity="advisory",
+                        affected_elements=[curr_node.node_id, next_node.node_id],
+                        description=(
+                            f"Only {gap_minutes}m between arrival of {curr_node.title} and "
+                            f"{next_node.title}. Typical {str(curr_node.node_type).lower()} "
+                            f"egress (exit, baggage, city transfer) needs ~{heuristic_required}m."
+                        ),
+                        relaxation_option=(
+                            f"Consider starting {next_node.title} at least {heuristic_required}m "
+                            "after arrival, or declare an explicit required_transfer_minutes "
+                            "on the node to make this check authoritative."
+                        ),
+                    )
+                )
+
+        # 1c. First-Night Lodging Coverage (TS-01). If the traveler arrives on
+        # date D but the first hotel check-in at that destination begins on a
+        # later date, the arrival night has no accommodation.
+        arrival_nodes = [n for n in sorted_nodes if n.node_type in TRANSPORT_ARRIVAL_TYPES and n.end_time is not None]
+        checkin_nodes = [n for n in sorted_nodes if n.node_type == NodeType.HOTEL_CHECKIN and n.start_time is not None]
+        for checkin in checkin_nodes:
+            prior_arrivals = [a for a in arrival_nodes if _as_utc(a.end_time) <= _as_utc(checkin.start_time)]
+            if not prior_arrivals:
+                continue
+            first_arrival = min(prior_arrivals, key=lambda a: _as_utc(a.end_time))
+            arrival_day = _as_utc(first_arrival.end_time).date()
+            checkin_day = _as_utc(checkin.start_time).date()
+            if checkin_day > arrival_day:
+                nights = (checkin_day - arrival_day).days
+                hard_violations.append(
+                    ConstraintViolation(
+                        constraint_id=f"UNCOVERED_FIRST_NIGHT_{checkin.node_id}",
+                        name="Arrival Night Has No Accommodation",
+                        category=ConstraintCategory.CAPACITY_ROOMING,
+                        constraint_type=ConstraintType.HARD,
+                        severity="blocking",
+                        affected_elements=[first_arrival.node_id, checkin.node_id],
+                        description=(
+                            f"Traveler arrives {first_arrival.title} on {arrival_day.isoformat()} "
+                            f"but the first hotel check-in ({checkin.title}) begins "
+                            f"{checkin_day.isoformat()} — {nights} night(s) uncovered."
+                        ),
+                        relaxation_option=(
+                            f"Book the arrival night at {first_arrival.location or 'the arrival city'} "
+                            f"or move check-in to {arrival_day.isoformat()}."
+                        ),
+                    )
+                )
 
         # 2. Regulatory Passport Validity & Schengen Rules
         trip_start: Optional[datetime] = sorted_nodes[0].start_time if sorted_nodes else None
@@ -323,6 +608,93 @@ class ConstraintEngine:
                             relaxation_option="Designate an alternative traveler >= 21 years old as primary driver or switch to private chauffeur transfers.",
                         )
                     )
+
+        # 4b. Capacity & Product-Rule Checks (TS-01). Occupancy vs party size,
+        # declared ticket pax vs actual party, and product age bounds (child /
+        # infant fare rules). Every check abstains unless the node declares
+        # the relevant rule — no fabricated defaults on the supplier side.
+        effective_party_size = len(travelers) if travelers else party_size
+        if effective_party_size is not None:
+            for node in sorted_nodes:
+                # Occupancy vs party size (hotel stays / check-ins)
+                if node.node_type in (NodeType.HOTEL_CHECKIN, NodeType.HOTEL_STAY):
+                    capacity = _node_room_capacity(node)
+                    if capacity is not None and capacity < effective_party_size:
+                        hard_violations.append(
+                            ConstraintViolation(
+                                constraint_id=f"OCCUPANCY_EXCEEDED_{node.node_id}",
+                                name="Hotel Capacity Below Party Size",
+                                category=ConstraintCategory.CAPACITY_ROOMING,
+                                constraint_type=ConstraintType.HARD,
+                                severity="blocking",
+                                affected_elements=[node.node_id],
+                                description=(
+                                    f"{node.title} provides capacity for {capacity} guest(s) "
+                                    f"but the party has {effective_party_size} traveler(s)."
+                                ),
+                                relaxation_option=(
+                                    f"Add room(s) at {node.title} to cover "
+                                    f"{effective_party_size - capacity} more traveler(s)."
+                                ),
+                            )
+                        )
+
+                # Declared ticket pax vs actual party size
+                declared_pax = _node_declared_pax(node)
+                if declared_pax is not None and declared_pax != effective_party_size:
+                    hard_violations.append(
+                        ConstraintViolation(
+                            constraint_id=f"PAX_MISMATCH_{node.node_id}",
+                            name="Booked Traveler Count Mismatch",
+                            category=ConstraintCategory.COMMERCIAL_SUPPLIER_POLICY,
+                            constraint_type=ConstraintType.HARD,
+                            severity="blocking",
+                            affected_elements=[node.node_id],
+                            description=(
+                                f"{node.title} is booked for {declared_pax} traveler(s) "
+                                f"but the trip party is {effective_party_size}."
+                            ),
+                            relaxation_option=(
+                                f"Re-book {node.title} for {effective_party_size} traveler(s) "
+                                "before any payment is taken."
+                            ),
+                        )
+                    )
+
+                # Product age bounds (fare / ticketed-entry age categories)
+                if travelers:
+                    min_age, max_age = _node_age_bounds(node)
+                    if min_age is None and max_age is None:
+                        continue
+                    for idx, traveler in enumerate(travelers):
+                        trav_name = traveler.get("name") or f"Traveler #{idx + 1}"
+                        age = traveler.get("age")
+                        if not isinstance(age, (int, float)):
+                            continue
+                        violated_bound = None
+                        if min_age is not None and age < min_age:
+                            violated_bound = f"minimum age {min_age}"
+                        elif max_age is not None and age > max_age:
+                            violated_bound = f"maximum age {max_age}"
+                        if violated_bound:
+                            hard_violations.append(
+                                ConstraintViolation(
+                                    constraint_id=f"AGE_RULE_{node.node_id}_{idx}",
+                                    name=f"Traveler Age Violates Product Rule ({node.title})",
+                                    category=ConstraintCategory.COMMERCIAL_SUPPLIER_POLICY,
+                                    constraint_type=ConstraintType.HARD,
+                                    severity="blocking",
+                                    affected_elements=[node.node_id, f"traveler:{trav_name}"],
+                                    description=(
+                                        f"{trav_name} is {int(age)} years old, but {node.title} "
+                                        f"requires {violated_bound}."
+                                    ),
+                                    relaxation_option=(
+                                        f"Move {trav_name} to an age-appropriate fare/product "
+                                        f"for {node.title}, or select a different product."
+                                    ),
+                                )
+                            )
 
         # 5. Synthesize 4-Tier Relaxation Hierarchy
         # Priority 0: HARD_SAFETY (Never relaxed)

@@ -34,6 +34,19 @@ The extreme version of layer three's opposite is **Salesforce**: the most succes
 | Scale path | Shared | Shared → replicas → Citus (partitions **by tenant_id** — the model already matches) | pg_catalog bloat | Horizontal for free, cross-tenant caps |
 | Cost at 20–200 tenants | Lowest | Lowest | Medium | High (ops, not storage) |
 
+> **⚠️ Live correction (2026-08-31, same day):** subtlety 1 below was written from the
+> audit's Tier-1 reading and is **wrong for this repo's FORCE-RLS tables**. `pg_class`
+> verification shows `trips` and `booking_collection_tokens` carry
+> `relforcerowsecurity = true` — the owner does NOT bypass, RLS is enforcing *now*,
+> and the policies are fail-closed (no context ⇒ zero rows). The real hazards this
+> exposes: (a) unscoped endpoints only "worked" via stale session context bleeding
+> through pooled connections (cleaned by `get_rls_db`'s exit-reset — until the next
+> request needs it), and (b) commit-then-refresh flows break when the session
+> re-checks out a fresh connection (fixed: flush → refresh → commit in
+> `collection_service` / `document_service`). Subtlety 1's *general* lesson stands —
+> verify enforcement empirically (pg_class, not docs) — but this repo's FORCE tables
+> are the counter-example to "RLS here is dormant".
+
 Two subtleties worth internalizing:
 
 1. **"Shared + RLS" only protects if RLS is live.** This repo's tables use ENABLE-without-FORCE RLS and the app connects as the table *owner* — and owners bypass ENABLE RLS. So RLS here is currently *dormant defense-in-depth*: the active guard is application filtering, and RLS becomes real armor only at a **non-owner-role cutover**. A dormant safety system that everyone believes is active is itself a risk (the audit's "13/14 nav modules active" claim was the same disease in a different organ).
