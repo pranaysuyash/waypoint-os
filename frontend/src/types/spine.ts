@@ -84,6 +84,7 @@ export interface RunStatusResponse {
   follow_up_questions?: Array<Record<string, unknown>> | null;
   hard_blockers?: string[] | null;
   soft_blockers?: string[] | null;
+  report_fingerprint?: string | null;
 }
 
 // ============================================================================

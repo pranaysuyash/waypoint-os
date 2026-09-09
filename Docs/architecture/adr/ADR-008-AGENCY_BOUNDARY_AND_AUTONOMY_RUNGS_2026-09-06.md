@@ -64,7 +64,7 @@ Product contracts (D-01…D-04), signup/business model (R-09/R-10), payment-exec
 
 | # | Decision | Default if unanswered |
 |---|---|---|
-| 1 | Rung table §3 as canonical | — (no default; required) |
+| 1 | **RATIFIED 2026-09-09 (owner, with amendment):** money path becomes a **per-agency tri-state setting** — `money_execution_mode: fully_human \| hybrid \| fully_autonomous` in agency settings. **Default `fully_human`**: every booking/payout/refund/VCC movement requires an authenticated human operator as the approving principal (recorded in audit); the system never moves money alone. `hybrid` = auto within governance-registry caps + required payment mandate (F-04); `fully_autonomous` = auto under registry authority, mandate recorded not required. All three modes are built into the backend contract; the settings UI exposes **only `fully_human` for now** (the other two are valid API values, hidden until product-ready). Supersedes the env-flag approach (`SPINE_API_REQUIRE_PAYMENT_MANDATES` becomes the pre-setting fallback, removable once the setting lands). Enforcement seam: fulfillment + payouts + settlement read the trip's agency mode; violations → 403 escalation-required with the approver-identity requirement stated. | — (DECIDED) |
 | 2 | Hybrid engine: prod default `"0"` + startup rung log | stays credential-accidental |
 | 3 | Tier-3 scorer: `PLANNED`, unwired until 4.3+E-C | stays silently dormant |
 | 4 | Memory read-path: wire two slot points post-E-D, else archive | stays write-only |

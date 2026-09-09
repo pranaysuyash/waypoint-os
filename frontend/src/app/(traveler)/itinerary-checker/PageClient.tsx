@@ -633,6 +633,7 @@ type UploadCardState = {
   isProcessingFile: boolean;
   fileError: string | null;
   retentionConsent: boolean;
+  declaredPlanSource: 'self' | 'ai' | 'vendor';
 };
 
 type UploadCardAction =
@@ -643,7 +644,8 @@ type UploadCardAction =
   | { type: 'fileProcessingSucceeded' }
   | { type: 'fileProcessingFailed'; message: string }
   | { type: 'setFileError'; message: string | null }
-  | { type: 'setRetentionConsent'; retentionConsent: boolean };
+  | { type: 'setRetentionConsent'; retentionConsent: boolean }
+  | { type: 'setDeclaredPlanSource'; source: 'self' | 'ai' | 'vendor' };
 
 const initialUploadCardState: UploadCardState = {
   activeTab: 'file',
@@ -652,6 +654,7 @@ const initialUploadCardState: UploadCardState = {
   isProcessingFile: false,
   fileError: null,
   retentionConsent: false,
+  declaredPlanSource: 'ai',
 };
 
 function uploadCardReducer(state: UploadCardState, action: UploadCardAction): UploadCardState {
@@ -672,6 +675,8 @@ function uploadCardReducer(state: UploadCardState, action: UploadCardAction): Up
       return { ...state, fileError: action.message };
     case 'setRetentionConsent':
       return { ...state, retentionConsent: action.retentionConsent };
+    case 'setDeclaredPlanSource':
+      return { ...state, declaredPlanSource: action.source };
     default:
       return state;
   }
@@ -683,12 +688,12 @@ function UploadCard({
   onAnalyzeFile,
   isBusy,
 }: {
-  onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>) => void;
-  onAnalyzeFile: (file: File, retentionConsent: boolean) => Promise<void>;
+  onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => void;
+  onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor') => Promise<void>;
   isBusy: boolean;
 }) {
   const [state, dispatch] = useReducer(uploadCardReducer, initialUploadCardState);
-  const { activeTab, dragging, text, isProcessingFile, fileError, retentionConsent } = state;
+  const { activeTab, dragging, text, isProcessingFile, fileError, retentionConsent, declaredPlanSource } = state;
   const fileRef = useRef<HTMLInputElement>(null);
 
   const tabs: { key: UploadTab; label: string }[] = [
@@ -702,7 +707,7 @@ function UploadCard({
   const handleFile = async (file: File) => {
     dispatch({ type: 'startFileProcessing' });
     try {
-      await onAnalyzeFile(file, retentionConsent);
+      await onAnalyzeFile(file, retentionConsent, declaredPlanSource);
       dispatch({ type: 'fileProcessingSucceeded' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not read that file.';
@@ -764,13 +769,17 @@ function UploadCard({
                 {text.length > 0 ? `${text.length} characters` : 'Messy inputs work fine'}
               </span>
               <button
-                onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent })}
+                onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent }, declaredPlanSource)}
                 disabled={text.length < 10 || isBusy || isProcessingFile}
                 style={primaryButtonStyle(text.length >= 10 && !isBusy)}
               >
                 {isBusy ? 'Scoring…' : 'Score My Itinerary'} <ArrowRight size={13} />
               </button>
             </div>
+            <PlanSourcePicker
+              value={declaredPlanSource}
+              onChange={(source) => dispatch({ type: 'setDeclaredPlanSource', source })}
+            />
             <ConsentToggle
               checked={retentionConsent}
               onChange={(next) => dispatch({ type: 'setRetentionConsent', retentionConsent: next })}
@@ -797,6 +806,10 @@ function UploadCard({
           <div style={{ fontSize: 12, color: T.t3, marginBottom: 20 }}>
             {activeTab === 'screenshot' ? 'JPG, PNG, or WEBP up to 25 MB' : 'PDF, JPG, PNG, or .txt up to 25 MB'}
           </div>
+          <PlanSourcePicker
+            value={declaredPlanSource}
+            onChange={(source) => dispatch({ type: 'setDeclaredPlanSource', source })}
+          />
           <ConsentToggle
             checked={retentionConsent}
             onChange={(next) => dispatch({ type: 'setRetentionConsent', retentionConsent: next })}
@@ -1034,8 +1047,8 @@ function UploadHeroSection({
   onAnalyzeFile,
   isBusy,
 }: {
-  onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>) => void;
-  onAnalyzeFile: (file: File, retentionConsent: boolean) => Promise<void>;
+  onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => void;
+  onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor') => Promise<void>;
   isBusy: boolean;
 }) {
   return (
@@ -1470,8 +1483,8 @@ function UploadView({
   isBusy,
 }: {
   rootRef: RefObject<HTMLDivElement | null>;
-  onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>) => void;
-  onAnalyzeFile: (file: File, retentionConsent: boolean) => Promise<void>;
+  onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => void;
+  onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor') => Promise<void>;
   isBusy: boolean;
 }) {
   return (
@@ -1699,6 +1712,45 @@ function ConsentToggle({
         Store my typed input, extracted facts, and score to help improve the checker.
         Leave unchecked for a one-time, anonymous analysis — nothing is kept.
       </div>
+    </div>
+  );
+}
+
+// Plan-source picker (WOBS P3): owner declares the plan's origin for the
+// source-keyed corpus. Declare-radio only — no silent classification.
+function PlanSourcePicker({
+  value,
+  onChange,
+}: {
+  value: 'self' | 'ai' | 'vendor';
+  onChange: (source: 'self' | 'ai' | 'vendor') => void;
+}) {
+  const options: Array<{ key: 'self' | 'ai' | 'vendor'; label: string }> = [
+    { key: 'self', label: 'I planned it' },
+    { key: 'ai', label: 'AI planned it' },
+    { key: 'vendor', label: 'A company did' },
+  ];
+  return (
+    <div style={{ padding: '0 16px 10px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 12, color: T.t4 }}>Who made this plan?</span>
+      {options.map((option) => (
+        <button
+          key={option.key}
+          type='button'
+          onClick={() => onChange(option.key)}
+          style={{
+            fontSize: 11.5,
+            padding: '4px 10px',
+            borderRadius: 999,
+            cursor: 'pointer',
+            color: value === option.key ? T.canvas : T.t2,
+            background: value === option.key ? T.cyan : T.elevated,
+            border: `1px solid ${value === option.key ? T.cyan : T.b0}`,
+          }}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -2387,23 +2439,175 @@ function ResultsFindingsSection({
   );
 }
 
+type MarketplaceMatch = {
+  agency_id: string;
+  display_name: string;
+  response_sla_hours: number;
+  blurb: string;
+  match_reasons: string[];
+};
+
+// Matched-choice close (WOBS P2): user picks from the matched set, or joins
+// the demand-capture waitlist when no agency matches yet. The consent moment
+// (explicit checkbox + send) is the qualification — nothing is sent without it.
+function RouteRequestPanel({ tripId, blockerCount }: { tripId: string | null; blockerCount: number }) {
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'matched' | 'waitlist' | 'sent' | 'error'>('idle');
+  const [matches, setMatches] = useState<MarketplaceMatch[]>([]);
+  const [pickedAgency, setPickedAgency] = useState<string | null>(null);
+  const [contact, setContact] = useState('');
+  const [consented, setConsented] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const findMatches = async () => {
+    if (!tripId) return;
+    setPhase('loading');
+    setError(null);
+    try {
+      const res = await api.post<{ trip_id: string; matches: MarketplaceMatch[] }>(
+        '/api/public-checker/matches',
+        { trip_id: tripId },
+      );
+      setMatches(res.matches ?? []);
+      setPhase((res.matches ?? []).length > 0 ? 'matched' : 'waitlist');
+    } catch {
+      setError('Could not load matches right now.');
+      setPhase('error');
+    }
+  };
+
+  const sendBrief = async () => {
+    if (!tripId || !consented) return;
+    setError(null);
+    try {
+      await api.post('/api/public-checker/route-request', {
+        trip_id: tripId,
+        contact,
+        agency_id: pickedAgency,
+        consent: true,
+      });
+      setPhase('sent');
+    } catch {
+      setError('Could not send your brief. Please try again.');
+    }
+  };
+
+  if (phase === 'sent') {
+    return (
+      <div style={{ fontSize: 12.5, color: T.green, lineHeight: 1.55 }}>
+        ✓ Brief saved. {pickedAgency ? 'The matched agency will reach out in-product.' : "We'll match an agency and send your brief when one covers your trip."}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {phase === 'idle' ? (
+        <button
+          onClick={() => void findMatches()}
+          disabled={!tripId}
+          style={{
+            ...primaryButtonStyle(Boolean(tripId)),
+            boxShadow: '0 4px 14px rgba(57,208,216,0.25)',
+          }}
+        >
+          {blockerCount > 0 ? `Get these ${blockerCount} things fixed →` : 'Get it fixed by an agency →'}
+        </button>
+      ) : null}
+
+      {phase === 'loading' ? <div style={{ fontSize: 12, color: T.t3 }}>Matching your plan…</div> : null}
+
+      {phase === 'matched' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 12, color: T.t2 }}>Agencies matched to your plan — pick who receives it:</div>
+          {matches.map((match) => (
+            <button
+              key={match.agency_id}
+              onClick={() => setPickedAgency(match.agency_id)}
+              style={{
+                textAlign: 'left', padding: '10px 14px', borderRadius: 10,
+                background: pickedAgency === match.agency_id ? 'rgba(57,208,216,0.1)' : T.elevated,
+                border: `1px solid ${pickedAgency === match.agency_id ? 'rgba(57,208,216,0.4)' : T.b0}`,
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: T.t1 }}>
+                {match.display_name}
+                <span style={{ fontSize: 11, fontWeight: 400, color: T.t3, marginLeft: 8 }}>
+                  responds within {match.response_sla_hours}h
+                </span>
+              </div>
+              {match.match_reasons.length > 0 ? (
+                <div style={{ fontSize: 11.5, color: T.t3, marginTop: 2 }}>
+                  {match.match_reasons.join(' · ')}
+                </div>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {phase === 'waitlist' ? (
+        <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>
+          No matched agency covers this trip yet — leave your contact and we&apos;ll send your brief to the first agency that does.
+        </div>
+      ) : null}
+
+      {(phase === 'matched' || phase === 'waitlist') ? (
+        <>
+          <input
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder='Email or phone for the agency to reach you'
+            style={{
+              padding: '9px 12px', borderRadius: 10, background: T.elevated,
+              border: `1px solid ${T.b0}`, color: T.t1, fontSize: 12, fontFamily: T.fBody,
+            }}
+          />
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11.5, color: T.t2, lineHeight: 1.45 }}>
+            <input type='checkbox' checked={consented} onChange={(e) => setConsented(e.target.checked)} style={{ marginTop: 2, accentColor: T.cyan }} />
+            <span>
+              {pickedAgency
+                ? `Send my brief and contact to ${matches.find((m) => m.agency_id === pickedAgency)?.display_name ?? 'the selected agency'}. Findings only — your raw documents stay private.`
+                : 'Send my brief to the next matched agency. Findings only — your raw documents stay private.'}
+            </span>
+          </label>
+          <button
+            onClick={() => void sendBrief()}
+            disabled={!consented || contact.trim().length === 0}
+            style={primaryButtonStyle(Boolean(consented && contact.trim()))}
+          >
+            {phase === 'matched' ? 'Send my brief →' : 'Notify me →'}
+          </button>
+        </>
+      ) : null}
+
+      {error ? <div style={{ fontSize: 12, color: T.red }}>{error}</div> : null}
+    </div>
+  );
+}
+
 function ResultsConversionSection({
   onShareReport,
+  tripId,
+  blockerCount,
 }: {
   onShareReport: () => Promise<void>;
+  tripId: string | null;
+  blockerCount: number;
 }) {
   const handleShareReport = onShareReport;
   return (
     <>
-      {/* Soft agency conversion */}
+      {/* Soft agency conversion — matched choice + user-owned brief (WOBS P2) */}
         <div className='itinerary-reveal' style={S.conversionCard}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: T.t1, marginBottom: 4 }}>Working with a travel advisor?</div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: T.t1, marginBottom: 4 }}>Want a professional to handle this?</div>
             <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55, maxWidth: '50ch' }}>
-              Share this report with them directly - or find an advisor who uses Waypoint OS to fix these issues professionally.
+              Pick a matched agency to fix these findings — or take this brief to any agent you already trust.
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <RouteRequestPanel tripId={tripId} blockerCount={blockerCount} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <button
               onClick={handleShareReport}
               style={S.shareReportButton}>
@@ -2634,6 +2838,14 @@ function ResultsView({
           <span style={{ fontSize: 12, color: T.t2 }}>
             Checked against live sources · Advisory findings only
           </span>
+          {analysis?.report_fingerprint ? (
+            <span
+              style={{ fontSize: 11, color: T.t4, fontFamily: 'monospace' }}
+              title="Tamper-evident report fingerprint"
+            >
+              {analysis.report_fingerprint.slice(0, 14)}
+            </span>
+          ) : null}
           <span style={{ fontSize: 12, color: T.t4, marginLeft: 'auto' }}>
             Report {tripId ?? 'pending'}
           </span>
@@ -2657,7 +2869,7 @@ function ResultsView({
           onReportRevision={handleReportRevision}
           storageCopy={storageCopy}
         />
-        <ResultsConversionSection onShareReport={handleShareReport} />
+        <ResultsConversionSection onShareReport={handleShareReport} tripId={tripId} blockerCount={blockerItems.length} />
         <div style={{ paddingBottom: 48 }} />
       </div>
     </div>
@@ -2823,7 +3035,7 @@ function CheckerPage() {
     return () => ctx.revert();
   }, [view]);
 
-  const handleAnalyze = async (plan: string, sourcePayload?: Record<string, unknown>) => {
+  const handleAnalyze = async (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => {
     const trimmed = plan.trim();
     if (trimmed.length < 10) {
       return;
@@ -2869,6 +3081,7 @@ function CheckerPage() {
         itinerary_text: trimmed,
         structured_json: { source_payload: storedPayload, ...inferredContext },
         retention_consent: retentionConsent,
+        declared_plan_source: declaredPlanSource ?? null,
         stage: 'discovery',
         operating_mode: 'normal_intake',
         strict_leakage: true,
@@ -2883,7 +3096,7 @@ function CheckerPage() {
     }
   };
 
-  const handleAnalyzeFile = async (file: File, retentionConsent: boolean) => {
+  const handleAnalyzeFile = async (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor') => {
     const extracted = await extractTextFromFile(file);
     const trimmed = extracted.trim();
     if (trimmed.length < 10) {
@@ -2912,7 +3125,7 @@ function CheckerPage() {
       uploaded_file: uploadedFile,
       retention_consent: retentionConsent,
       trip_context: inferredContext,
-    });
+    }, declaredPlanSource);
   };
 
   if (view === 'results') {

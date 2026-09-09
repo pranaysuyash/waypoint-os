@@ -1,5 +1,13 @@
 """
-spine_api/services/visa_radar.py — Real-Time Visa & Passport Validity Radar (IDEA-130).
+spine_api/services/visa_radar.py — Visa & Passport Validity Radar (IDEA-130).
+
+HEURISTIC SCOPE (VA-02, 2026-09-09): this radar is NOT a live data service.
+Visa requirements come from a small hardcoded sample registry below (7
+passport x destination pairs) with a conservative fallback for unknown pairs;
+passport-validity math is the only computed logic. For any pair outside the
+registry, results are flagged `registry_match=False` (VA-03) so consumers can
+distinguish a data hit from the fallback heuristic. Live-source integration
+(Timatic/Sherpa-class) is tracked as register item VD-02.
 
 Audits traveler passport expiry dates against destination 6-month / 3-month entry rules,
 evaluates e-Visa, ESTA, ETA, and Schengen visa requirements, and alerts advisors 60 days before travel.
@@ -11,7 +19,10 @@ from pydantic import BaseModel, Field
 
 
 class VisaCheckRequest(BaseModel):
-    passport_country: str = "US"
+    # No default nationality (VA-01, 2026-09-09): an omitted passport country
+    # must fail validation rather than silently assume US — same abstain
+    # doctrine as the AT-11 trip-requirements fix.
+    passport_country: str
     destination_country: str
     passport_expiry_date: str
     travel_date: str
@@ -27,6 +38,10 @@ class VisaCheckResult(BaseModel):
     visa_type_required: str  # NONE, ESTA, ETA, SCHENGEN, E_VISA, CONSULAR_VISA
     action_required: str
     warnings: List[str] = Field(default_factory=list)
+    # True when (passport_country, destination_country) hit the sample
+    # registry; False means the conservative fallback was applied and the
+    # visa determination is a heuristic, not data (VA-03).
+    registry_match: bool = True
 
 
 # Visa rules registry by (passport_country, destination_country)
@@ -52,6 +67,7 @@ def audit_visa_and_passport_validity(req: VisaCheckRequest) -> VisaCheckResult:
     delta_days = (p_exp_dt - t_dt).days
     months_remaining = round(delta_days / 30.4375, 1)
 
+    registry_match = (p_country, d_country) in VISA_RULES_REGISTRY
     rule = VISA_RULES_REGISTRY.get((p_country, d_country), {"requires_visa": True, "visa_type": "E_VISA", "min_months": 6})
     min_months = rule.get("min_months", 6)
 
@@ -85,4 +101,5 @@ def audit_visa_and_passport_validity(req: VisaCheckRequest) -> VisaCheckResult:
         visa_type_required=visa_type,
         action_required=action,
         warnings=warnings,
+        registry_match=registry_match,
     )

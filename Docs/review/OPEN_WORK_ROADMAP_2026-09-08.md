@@ -55,6 +55,21 @@ Everything in Wave A (A1–A7) and the L7-authenticated walk is implementation w
 | B8 | **Stakeholder-requirements capture** — log Ravi's answers (demo plan §5 questions) into `Docs/exploration/` mapped to DECIDE rows | requirements note | D-01..03, WhatsApp channel, commission model realism |
 | B9 | **Live competitor refresh for the wedge-fate decision** (RDA EX-01 research debt, kept open for later per Pranay 2026-09-09) — BLOCKED: web-search quota exhausted on both backends until **2026-10-06 17:07 IST**; retry then with: "AI itinerary checker app" · "travel plan risk checker tool" · "trip stress test tool" · "Spotinga" · "Fortrip". Merge findings into `Docs/review/WEDGE_FATE_DECISION_PACK_RDA_2026-09-08.md` §Research-debt | refreshed competitive table annexed to the decision pack | sharpens C7 (wedge fate) before any public commitment |
 
+### Training-session source register (2026-09-09) — TS-01…TS-06
+
+From the owner's ChatGPT systems-training session (evidence-mapped register + raw transcript at `Docs/exploration/CHATGPT_SYSTEMS_TRAINING_SESSION_FINDINGS_2026-09-09.md`). All concepts were verified against code before registering; 14 of ~20 taught concepts are already implemented (register §2). New items:
+
+| # | Class | Item | Size | Note |
+|---|---|---|---|---|
+| TS-01 | IMPLEMENT | Hard itinerary-feasibility validators: arrival→activity transfer buffer (hard, chained to flight nodes — today advisory-only in `timed_entry.py`), hotel check-in vs arrival, occupancy vs party, child-age vs fare | M | extend `src/decision/constraint_engine.py`; pure deterministic, no provider dependency — recommended next unit |
+| TS-02 | EXPLORE (park w/ B6/B7) | Quote-freshness / recheck-before-execution contract (`revalidate_quote_before_payment` is a token, not logic) | S | meaningful only with a live rate source |
+| TS-03 | EXPLORE → IMPLEMENT | Multi-modal intake completion: customer-path images/PDF (vision exists only on the operator trip-documents lane), voice ASR (absent), URL fetch (absent, SSRF-gated) | M-L | intake side of the D-01 open-verifier/marketplace funnel |
+| TS-04 | EXPLORE | Per-field provenance actor vocabulary for tool/provider writes (`field_merge` models operator/customer actors only) | S-M | transcript: "proposal must retain provenance to the authoritative source" |
+| TS-05 | EXPLORE (park) | Pipeline parallel orchestration / speculative execution with cancellation — `run_spine_once` is strictly sequential | M | park until external provider tools land; reconcile w/ runtime roadmap Layer 3 |
+| TS-06 | EXPLORE | Candidate route-structure generation + incremental refinement under soft dependencies (feasibility matrix validates, doesn't generate) | S | verify Phase 4.6 plan-candidate first |
+
+Owner-learning (not agent work): TS-L1 tutor exercise on NEEDS_INFORMATION / BOOKING_IN_PROGRESS — the answer promotes into the dormant lifecycle-state contracts and feeds E-8; TS-L2 next tutoring module (events/queues/retries/idempotency) can use repo artifacts (`src/agents/idempotency.py`, leases/heartbeats, SQL idempotency backend) as worked examples.
+
 ## Wave C — DECIDE (owner-gated; research exists or probes ready)
 
 | # | Decision | Source |
@@ -99,3 +114,12 @@ The workspace security scanner hard-blocked the Wave-A2/A6/A8 commit on findings
 **Gate status:** commit blocked until the two SSRF surfaces are remediated (allowlist/URL-construction hardening) and the scanner re-run passes. The scanner's own caveat stands: this coverage was incomplete — run the full Mimosa audit per its recommendation before next release claim.
 
 **Wave A2/A6/A8 execution receipts are complete and tested** (see Part M / roadmap progress) but sit uncommitted behind this gate together with the rest of the staged tree.
+---
+
+## Addendum (2026-09-09) — Visa & Immigration document audit (random seed 20260909)
+
+Random-document audit of `Docs/personas_scenarios/AREA_DEEP_DIVE_VISA_IMMIGRATION.md` → canonical store: `Docs/reviews/VISA_IMMIGRATION_DOCUMENT_AUDIT_2026-09-09.md`. Navigator summary:
+
+- **IMPLEMENT — DONE same session (all tests green, full suite 4,161/0):** VA-01 US-default removal on visa radar request, VA-02 honesty rebadge ("Real-Time"→heuristic scope), VA-03 `registry_match` fallback flag, VA-04 corpus seeds SC-960/SC-961 (+`tests/test_visa_scenario_seeds.py`), VA-05 vaccination category marked dormant, **VA-06 visa-extractor negation inversion (both directions wrong — found during execution)**, **VA-07 "No"-as-destination leak (GeoNames city collision)**.
+- **EXPLORE — DONE (docs):** VE-01 data-source landscape (`Docs/exploration/VISA_DATA_SOURCE_LANDSCAPE_2026-09-09.md`), VE-02 transit-visa design (blocked on VD-02), VE-04 scenario-graduation protocol (**owner decision requested**), VE-05 passport-PII flow audit.
+- **DECIDE — open:** VD-01 `visa_workflow.py` orphan (badge PREVIEW_ONLY recommended), VD-02 live visa data source, VD-03 invitation-letter workflow, VD-04 courier/embassy manifest. All deferred off the marketplace-pilot critical path per PER-0100 lens.

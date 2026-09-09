@@ -12,6 +12,7 @@ import os
 import pytest
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, AsyncMock, patch
 
 
@@ -272,6 +273,10 @@ class TestDocumentService:
         mock_db.refresh = AsyncMock(return_value=None)
         mock_db.flush = AsyncMock(return_value=None)
         mock_db.add = MagicMock(return_value=None)
+        # execution_event_service now reads the last chain anchor with
+        # `await db.execute(...)` (PA-19 tamper-evidence) — mock_db.execute
+        # must be awaitable and report no previous anchor (scalar_one → None).
+        mock_db.execute = AsyncMock(return_value=SimpleNamespace(scalar_one_or_none=lambda: None))
         # Mock begin_nested for emit_event_best_effort savepoint
         mock_savepoint = AsyncMock()
         mock_savepoint.__aenter__ = AsyncMock(return_value=None)

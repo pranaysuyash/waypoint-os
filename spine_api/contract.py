@@ -101,6 +101,11 @@ class SpineRunRequest(BaseModel):
     structured_json: Optional[Dict[str, Any]] = None
     itinerary_text: Optional[str] = Field(default=None, max_length=200_000)
     retention_consent: bool = False
+    declared_plan_source: Optional[str] = Field(
+        default=None,
+        max_length=20,
+        description="Owner-declared plan origin for the source-keyed corpus (WOBS P3): 'self' | 'ai' | 'vendor'.",
+    )
     stage: str = "discovery"
     operating_mode: str = "normal_intake"
     strict_leakage: bool = False
@@ -173,6 +178,7 @@ class RunStatusResponse(BaseModel):
     follow_up_questions: List[Dict[str, Any]] = Field(default_factory=list)
     hard_blockers: List[str] = Field(default_factory=list)
     soft_blockers: List[str] = Field(default_factory=list)
+    report_fingerprint: Optional[str] = None
     frontier_result: Optional[FrontierOrchestrationResult] = None
 
 

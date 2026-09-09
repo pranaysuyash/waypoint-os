@@ -1071,7 +1071,7 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
                 if title in seen:
                     start = end
                     continue
-                if title.lower() in {"caller", "referral", "party", "pace", "budget", "interests", "follow-up", "follow_up", "toddler", "elderly", "promised", "not", "date", "dates", "schengen", "visa", "visas", "passport", "passports", "booking", "bookings", "purpose", "purposes", "adult", "adults", "child", "children"}:
+                if title.lower() in {"caller", "referral", "party", "pace", "budget", "interests", "follow-up", "follow_up", "toddler", "elderly", "promised", "not", "no", "date", "dates", "schengen", "visa", "visas", "passport", "passports", "booking", "bookings", "purpose", "purposes", "adult", "adults", "child", "children"}:
                     start = end
                     continue
                 if _is_likely_origin(destination_text, candidate):
@@ -2246,12 +2246,19 @@ def _extract_passport_visa(text: str) -> Dict[str, Any]:
 
     # Visa status extraction
     if "visa" in text_lower:
-        if "required" in text_lower or "need visa" in text_lower:
-            results["visa_status"] = {"requirement": "required", "status": "not_applied"}
+        # Negation-aware ordering (VA-06, 2026-09-09): check "no visa
+        # required/needed" forms BEFORE the generic "required" substring,
+        # which would otherwise invert them; and treat "no visa(s) yet" /
+        # "don't have a visa" as required-but-not-applied rather than
+        # not_required. Both inversions existed before this fix.
+        not_required_forms = ("no visa required", "no visa needed", "visa not required", "visa-free", "visa free")
+        not_applied_forms = ("no visa yet", "no visas yet", "visa pending", "visa not applied", "haven't got visa", "haven't got a visa", "don't have visa", "don't have a visa")
+        if any(p in text_lower for p in not_required_forms):
+            results["visa_status"] = {"requirement": "not_required"}
         elif "approved" in text_lower or "got visa" in text_lower:
             results["visa_status"] = {"requirement": "required", "status": "approved"}
-        elif "not required" in text_lower or "no visa" in text_lower:
-            results["visa_status"] = {"requirement": "not_required"}
+        elif any(p in text_lower for p in not_applied_forms) or "required" in text_lower or "need visa" in text_lower:
+            results["visa_status"] = {"requirement": "required", "status": "not_applied"}
         else:
             results["visa_status"] = {"requirement": "unknown"}
 

@@ -15,6 +15,15 @@ from starlette.responses import Response
 from spine_api.contract import PublicCheckerDeleteResponse, PublicCheckerExportResponse
 from spine_api.core.rate_limiter import limiter
 from spine_api.product_b_events import ProductBEventStore
+from spine_api.services.agency_marketplace import (
+    AgencyMarketplaceStore,
+    derive_brief_needs,
+    match_agencies_for_needs,
+    valid_contact,
+)
+from spine_api.services.live_checker_service import apply_live_checker_adjustments
+from src.public_checker.entity_checks import run_entity_checks
+from src.public_checker.live_checks import build_live_checker_signals, extract_destination
 
 try:
     from spine_api import persistence
@@ -137,6 +146,148 @@ def post_public_checker_event(
 
     _ = (request, response)
     return {"ok": True, **result}
+
+
+@router.post("/api/public-checker/matches")
+@limiter.limit("12/minute")
+def post_public_checker_matches(
+    request: Request,
+    response: Response,
+    body: Dict[str, Any],
+):
+    """Matched-choice marketplace close (WOBS P2).
+
+    Returns the top matched agencies for a stored brief. Works at any supply
+    level: an empty match list is the demand-capture signal, never a dead end.
+    Derived needs only — raw text and consented artifacts are never returned.
+    """
+    _require_public_checker_enabled()
+    trip_id = str(body.get("trip_id") or "").strip()
+    if not trip_id:
+        raise HTTPException(status_code=422, detail="trip_id is required")
+    _load_public_checker_package_or_404(trip_id)
+
+    trip = persistence.TripStore.get_trip_for_agency(
+        trip_id, os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+    ) or {}
+    packet = trip.get("packet") if isinstance(trip.get("packet"), dict) else {}
+    decision = trip.get("decision") if isinstance(trip.get("decision"), dict) else {}
+    blocker_texts = [
+        *(decision.get("hard_blockers") or []),
+        *(decision.get("soft_blockers") or []),
+    ]
+    needs = derive_brief_needs(packet, [str(item) for item in blocker_texts])
+    matches = match_agencies_for_needs(needs, AgencyMarketplaceStore.list_profiles())
+    _ = (request, response)
+    return {
+        "trip_id": trip_id,
+        "needs": needs,
+        "matches": [match.as_dict() for match in matches],
+    }
+
+
+@router.post("/api/public-checker/route-request")
+@limiter.limit("6/minute")
+def post_public_checker_route_request(
+    request: Request,
+    response: Response,
+    body: Dict[str, Any],
+):
+    """Consented route request / demand capture (WOBS P2).
+
+    The consent moment IS the product: a user who opts in here has performed
+    the highest-intent action on the surface. With a matched agency_id the
+    lead is 'routed'; without one it is 'captured' (waitlist recruits supply).
+    """
+    _require_public_checker_enabled()
+    trip_id = str(body.get("trip_id") or "").strip()
+    contact = str(body.get("contact") or "").strip()
+    agency_id = str(body.get("agency_id") or "").strip() or None
+    if body.get("consent") is not True:
+        raise HTTPException(status_code=422, detail="Explicit consent is required")
+    if not trip_id:
+        raise HTTPException(status_code=422, detail="trip_id is required")
+    if not valid_contact(contact):
+        raise HTTPException(status_code=422, detail="A valid email or phone number is required")
+
+    _load_public_checker_package_or_404(trip_id)
+    trip = persistence.TripStore.get_trip_for_agency(
+        trip_id, os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+    ) or {}
+    packet = trip.get("packet") if isinstance(trip.get("packet"), dict) else {}
+    decision = trip.get("decision") if isinstance(trip.get("decision"), dict) else {}
+    needs = derive_brief_needs(
+        packet,
+        [str(item) for item in (decision.get("hard_blockers") or []) + (decision.get("soft_blockers") or [])],
+    )
+    record = AgencyMarketplaceStore.capture_route_lead(
+        trip_id=trip_id, contact=contact, agency_id=agency_id, needs=needs
+    )
+    _ = (request, response)
+    return {"ok": True, "lead_id": record["lead_id"], "status": record["status"]}
+
+
+@router.post("/api/public-checker/re-verify")
+@limiter.limit("6/minute")
+def post_public_checker_re_verify(
+    request: Request,
+    response: Response,
+    body: Dict[str, Any],
+):
+    """On-demand re-verification (WOBS P3 v0): "what would the check say now?".
+
+    Read-only: recomputes live climate/safety signals and advisory entity
+    checks against the STORED packet and returns a fresh score preview. Never
+    mutates the stored trip — report versioning waits for exposure (WOBS P3).
+    Fail-open on provider outage.
+    """
+    _require_public_checker_enabled()
+    trip_id = str(body.get("trip_id") or "").strip()
+    if not trip_id:
+        raise HTTPException(status_code=422, detail="trip_id is required")
+    _load_public_checker_package_or_404(trip_id)
+
+    trip = persistence.TripStore.get_trip_for_agency(
+        trip_id, os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+    ) or {}
+    packet = trip.get("packet") if isinstance(trip.get("packet"), dict) else {}
+    validation = trip.get("validation") if isinstance(trip.get("validation"), dict) else {}
+    decision = trip.get("decision") if isinstance(trip.get("decision"), dict) else {}
+
+    fresh_score = validation.get("overall_score")
+    live_checks_payload = None
+    try:
+        live = build_live_checker_signals(packet, "")
+        if live:
+            _, fresh_validation, _ = apply_live_checker_adjustments(
+                packet_payload=dict(packet),
+                validation_payload=dict(validation),
+                decision_payload=dict(decision),
+                live_checker=live,
+            )
+            fresh_score = fresh_validation.get("overall_score")
+            live_checks_payload = fresh_validation.get("public_checker_live_checks")
+    except Exception:
+        live_checks_payload = None
+
+    try:
+        entity_results = run_entity_checks(
+            "", city=extract_destination(packet, ""), max_entities=3
+        )
+        entity_checks_payload = [item.as_dict() for item in entity_results]
+    except Exception:
+        entity_checks_payload = []
+
+    checked_at = datetime.now(timezone.utc).isoformat()
+    _ = (request, response)
+    return {
+        "trip_id": trip_id,
+        "refreshed": True,
+        "checked_at": checked_at,
+        "overall_score_preview": fresh_score,
+        "live_checks": live_checks_payload,
+        "entity_checks": entity_checks_payload,
+    }
 
 
 @router.get("/api/public-checker/{trip_id}", response_model=PublicCheckerExportResponse)

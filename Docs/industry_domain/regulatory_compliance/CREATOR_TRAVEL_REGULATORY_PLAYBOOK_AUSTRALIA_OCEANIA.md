@@ -2,6 +2,8 @@
 
 This playbook is written for creator travel products, agent workflows, and partner experiences in Australia and Oceania, including Australia, New Zealand, Fiji, and Pacific Island destinations.
 
+> **Verification status (2026-09-09):** This playbook is directional market research. Its regulatory claims (visa categories, permit regimes, GST treatment, Indigenous protocols) are unsourced and carry no as-of date. Sourced verification is registered in `../CREATOR_TRAVEL_RESEARCH_ROADMAP.md` → "Regional playbook research-actions registry (2026-09-09)" (rows AU-1..AU-3) and is gated on the web-search quota reset (2026-10-06) per owner directive. Do not productize any claim in this document before that verification pass completes.
+
 ## 1. Why Australia & Oceania matters
 - Australia and Oceania are premium creator travel destinations with strong storytelling appeal, natural scenery, adventure tourism, and high-value event production.
 - The region has clear regulatory frameworks, which makes it a good fit for creator products once compliance is understood.
@@ -24,7 +26,7 @@ This playbook is written for creator travel products, agent workflows, and partn
 ### 2.3 Environmental and Indigenous compliance
 - Protected areas, marine parks, and Indigenous lands require special permits, environmental approvals, and cultural liaison.
 - Australia’s Great Barrier Reef, national parks, and sacred Indigenous sites have strict access and filming rules.
-- New Zealand also requires Maori partnership and cultural sensitivity for many locations.
+- New Zealand also requires Māori partnership and cultural sensitivity for many locations.
 - Creator travel products should surface sustainability and community impact requirements for these destinations.
 
 ### 2.4 Advertising, sponsorship, and local marketing
@@ -73,3 +75,4 @@ This playbook is written for creator travel products, agent workflows, and partn
 - Map Australia and New Zealand media visa categories and film permit timelines.
 - Catalog Pacific Island destination permit requirements and cultural consent workflows.
 - Identify the highest-priority supplier categories for Australia & Oceania creator travel: production support, eco-tourism, luxury hospitality, and Indigenous cultural experiences.
+- Registry status: these actions are tracked with gates as AU-1..AU-3 in `../CREATOR_TRAVEL_RESEARCH_ROADMAP.md` → "Regional playbook research-actions registry (2026-09-09)".

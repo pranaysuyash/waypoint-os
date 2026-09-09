@@ -34,6 +34,9 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     "/api/public/",
     "/api/public-checker/run",
     "/api/public-checker/events",
+    "/api/public-checker/matches",
+    "/api/public-checker/route-request",
+    "/api/public-checker/re-verify",
     "/api/v1/proposals/token/",
     "/api/v1/trust-scorecard/proposal/",
 )

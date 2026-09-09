@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
@@ -193,6 +194,34 @@ def build_entity_checks_for_submission(
     return run_entity_checks(raw_text, city=city, max_entities=3)
 
 
+def compute_report_fingerprint(
+    validation_payload: dict[str, Any],
+    decision_payload: dict[str, Any],
+) -> str:
+    """Content-addressed report seed (Verify-as-API v0, WOBS P3).
+
+    Deterministic sha256 over the canonical findings payload, so any consumer
+    can verify a report hasn't been altered since issuance. Findings-only by
+    design: free-text inputs are excluded (consent-dependent), making the
+    fingerprint safe to share publicly alongside the report.
+    """
+    import hashlib
+
+    canonical = json.dumps(
+        {
+            "hard_blockers": decision_payload.get("hard_blockers") or [],
+            "soft_blockers": decision_payload.get("soft_blockers") or [],
+            "advisory_hard_blockers": decision_payload.get("advisory_hard_blockers") or [],
+            "advisory_soft_blockers": decision_payload.get("advisory_soft_blockers") or [],
+            "overall_score": validation_payload.get("overall_score"),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    return "fp_" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
+
+
 def run_public_checker_submission(
     request_dict: dict[str, Any],
     *,
@@ -231,6 +260,14 @@ def run_public_checker_submission(
     elif source_payload.get("kind") == "mixed":
         input_mode = "mixed"
 
+    # WOBS P3: owner-declared plan origin (source-keyed corpus). Declare-radio
+    # only — no classifier (EX-03/Skeptic cut: classification is precision
+    # theater at near-zero traffic).
+    allowed_plan_sources = {"self", "ai", "vendor"}
+    declared_plan_source = str(request_dict.get("declared_plan_source") or "").strip().lower()
+    if declared_plan_source not in allowed_plan_sources:
+        declared_plan_source = "unknown"
+
     trip_context = source_payload.get("trip_context") if isinstance(source_payload.get("trip_context"), dict) else {}
     has_destination = bool(trip_context.get("destination_candidates") or trip_context.get("destination") or request_dict.get("destination"))
     has_dates = bool(trip_context.get("date_window") or trip_context.get("travel_window") or request_dict.get("date_window"))
@@ -254,6 +291,7 @@ def run_public_checker_submission(
             "has_dates": has_dates,
             "has_budget_band": has_budget_band,
             "has_traveler_profile": has_traveler_profile,
+            "declared_plan_source": declared_plan_source,
         },
     )
     _safe_log_product_b_event(intake_event, logger=logger)
@@ -350,6 +388,7 @@ def run_public_checker_submission(
                     "execution_ms": round(execution_ms, 2),
                     "submission": consented_submission,
                     "retention_consent": request.retention_consent,
+                    "declared_plan_source": declared_plan_source,
                     "session_id": session_id,
                     "inquiry_id": inquiry_id,
                 },
@@ -444,6 +483,7 @@ def run_public_checker_submission(
             follow_up_questions=list(result.follow_up_questions) if hasattr(result, "follow_up_questions") else [],
             hard_blockers=list(decision_payload.get("hard_blockers") or []),
             soft_blockers=list(decision_payload.get("soft_blockers") or []),
+            report_fingerprint=compute_report_fingerprint(validation_payload, decision_payload),
         )
     except Exception as exc:
         logger.exception("Public checker submission failed")

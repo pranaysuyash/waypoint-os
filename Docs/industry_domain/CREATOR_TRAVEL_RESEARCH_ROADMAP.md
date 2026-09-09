@@ -171,8 +171,64 @@ These are the “what if” and feature experiment areas worth checking next:
 - Creator mobile/field bot workflows and conversational operations
 - Phone-native creator task entry, approvals, and local partner support
 
+## Regional playbook research-actions registry (2026-09-09)
+
+Every regional regulatory playbook carries a "Next research actions" section, but none of those
+actions were previously tracked anywhere — they were orphans. This registry closes that gap
+(found via random-document audit of `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_AUSTRALIA_OCEANIA.md`,
+seed 2026090914; full audit at `../exploration/RANDOM_DOC_AUDIT_CREATOR_AU_OCEANIA_2026-09-09.md`).
+
+**Gates:**
+
+- **QG** — quota-gated FOR LATER until the web-search quota resets (2026-10-06), per owner
+  directive (`Docs/review/OPEN_WORK_ROADMAP_2026-09-08.md`, commit a030190). India rows are
+  first in queue at reset given the platform's India-first direction.
+- **DG** — DECIDE-gated product work; conflicts with the current product focus (D-01, 2026-09-09:
+  Tenant-of-One Ravi page + Hand-Carried Pilot) until the owner activates the relevant
+  market/capability.
+
+| ID | Playbook | Action (condensed from source) | Class | Gate |
+| -- | -------- | ------------------------------ | ----- | ---- |
+| AU-1 | Australia & Oceania | Map AU/NZ media-visa categories and film-permit timelines | research | QG |
+| AU-2 | Australia & Oceania | Catalog Pacific Island permit requirements and cultural-consent workflows | research | QG |
+| AU-3 | Australia & Oceania | Prioritize AU/Oceania supplier categories (production, eco-tourism, luxury, Indigenous cultural) | research | QG |
+| SEA-1 | Southeast Asia | Map country-specific filming and drone regulations for key SEA destinations | research | QG |
+| SEA-2 | Southeast Asia | Audit creator complaint themes: local permits, payment disputes, cultural issues | research | QG |
+| SEA-3 | Southeast Asia | Identify regional partner categories: layover content, micro-destination experiences, sustainable tours | research | QG |
+| US-1 | United States | Audit US influencer-disclosure enforcement examples; translate into platform policy language | research → product | QG, then DG |
+| US-2 | United States | Map state production-permit regimes for major creator hubs (CA, NY, FL, TX) | research | QG |
+| US-3 | United States | Identify highest-demand US partner categories: curated layovers, production support, branded venue activations | research | QG |
+| LATAM-1 | Latin America | Map priority creator corridors and local booking models | research | QG |
+| LATAM-2 | Latin America | Catalog complaint patterns for agents/suppliers/customers in Guatemala and neighboring markets | research | QG |
+| LATAM-3 | Latin America | Define local agent product features: cash-based supplier payouts, escrows, permit tracking | product | DG |
+| JPKR-1 | Japan & Korea | Map film-permit requirements and processing timelines for major JP/KR cities | research | QG |
+| JPKR-2 | Japan & Korea | Document influencer-disclosure enforcement examples in Japan and South Korea | research | QG |
+| JPKR-3 | Japan & Korea | Identify strongest partner categories: production support, cultural experiences, luxury hospitality | research | QG |
+| IN-1 | India | Map state-level film and tourism permit requirements for creators | research | QG (priority) |
+| IN-2 | India | Define documentation requirements: e-Visa vs business visa vs film-shooting permit | research | QG (priority) |
+| IN-3 | India | Research India complaint themes: creator bookings and influencer-campaign disputes | research | QG (priority) |
+| AF-1 | Africa | Map visa, production-permit, and drone rules for leading African creator destinations | research | QG |
+| AF-2 | Africa | Document complaint/dispute themes for Africa creator packages involving creators and local suppliers | research | QG |
+| AF-3 | Africa | Prioritize supplier categories: safari, cultural experiences, production support, conservation tourism | research | QG |
+| CN-1 | China | Research China-specific media/filming permit timelines for commercial content | research | QG |
+| CN-2 | China | Identify top Chinese cities and destinations by creator-travel demand | research | QG |
+| CN-3 | China | Audit creator campaigns blocked or delayed for compliance reasons in China | research | QG |
+| EU-1 | EU / Schengen | Map EU package-travel examples for creator bundles; identify highest-risk product shapes | research | QG |
+| EU-2 | EU / Schengen | Survey local permit requirements for creator events and filming in key European cities | research | QG |
+| EU-3 | EU / Schengen | Define GDPR-specific travel-platform controls for creator data and traveler profiling | product | DG |
+| GCC-1 | GCC | Map GCC media-permit requirements and timelines for creators and influencer shoots | research | QG |
+| GCC-2 | GCC | Research Saudi/UAE influencer destination restrictions and permit-enforcement trends | research | QG |
+| GCC-3 | GCC | Identify high-value GCC partner categories: luxury hospitality, media production, event staging | research | QG |
+| CDF-1 | Complaints & Enforcement (cross-market) | Catalog top complaint and fraud scenarios for creator-travel marketplaces | research | QG |
+| CDF-2 | Complaints & Enforcement (cross-market) | Map enforcement regimes for agency/supplier/creator misconduct in priority markets | research | QG |
+| CDF-3 | Complaints & Enforcement (cross-market) | Define a unified dispute taxonomy for product, operations, and compliance | product | DG |
+
+Source of record: each playbook's own "Next research actions" section under
+`regulatory_compliance/`. When a row is executed, mark it here and update the playbook.
+
 ## How to use this roadmap
 
 - Treat this file as the navigator for the next wave of creator research.
 - Start by indexing the unlisted docs, then group them by the clusters above.
 - Use the inventory as the intake log and the roadmap as the prioritization lens.
+- Consult the regional playbook research-actions registry above for per-playbook open actions and their gates.

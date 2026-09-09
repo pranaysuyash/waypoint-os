@@ -1,5 +1,12 @@
 """
-spine_api/routers/visa_radar.py — Real-Time Visa & Passport Validity Router.
+spine_api/routers/visa_radar.py — Visa & Passport Validity Radar Router.
+
+HEURISTIC SCOPE (VA-02, 2026-09-09): the radar is backed by a small hardcoded
+sample registry, not a live visa data source. The trip-requirements endpoint
+returns curated consular portal links (gov.uk ETA, france-visas, Japan eVisa)
+matched by destination name — not a full "official entry protocol" feed.
+Results for passport x destination pairs outside the registry carry
+`registry_match=False` (conservative fallback heuristic).
 
 Provides endpoints to audit traveler passport expiration against destination entry rules,
 evaluate e-Visa, ESTA, ETA, and Schengen requirements, and fetch destination entry protocols.
@@ -42,7 +49,7 @@ def get_trip_visa_requirements(
     passport_country: Optional[str] = None,
     x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
-    """Fetch official destination visa entry protocols and consular application links for a trip.
+    """Fetch destination visa entry summary and curated consular application links for a trip.
 
     AT-11 (2026-09-07): no test-agency fallback — the agency scope must be
     explicit. The traveler's passport country comes from the trip record (or

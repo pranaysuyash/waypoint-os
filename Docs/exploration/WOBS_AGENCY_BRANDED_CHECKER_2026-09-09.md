@@ -219,3 +219,44 @@ Adopted design:
 **Honest constraints carried forward:** cold-start optics ("matched to your plan" at any supply; never "browse our directory" while thin) · honesty rules (real, visible vetting criteria; no invented ratings — post-testimonials rule) · zero-findings reports get no marketplace (clean-report path = trust engine: badge + re-check date).
 
 **Doctrine layering note (DOCUMENTATION §54/§56):** this Part is the canonical decision record; the chat discussion it extracts from is preserved verbatim in the session and summarized in Part 0; raw brainstorm transcripts live separately in Appendices A/B. Distillation must not silently change semantics — where wording matters, the owner's messages are quoted verbatim in Part 0.
+
+### Part 3.4 — BUILD LOG: "do all" executed (2026-09-09)
+
+**P1 — The Verifier (complete):**
+- Ghost Hotel Test wired into the pipeline: `finalize_result_with_live_checker(build_entity_checks_fn=…)` attaches `public_checker_entity_checks` (advisory, fail-open, cap 3/run) to packet+validation; destination reuse via new public `live_checks.extract_destination()`.
+- Server-sealed funnel (Gate 0): `check_completed` event added to the store schema (allowlist + required props `input_mode`/`finding_count`/`execution_ms`), emitted only by `public_checker_service` after trip persistence; **client `/events` endpoint rejects it 403** — the completion count cannot be client-poisoned. Existing server-side `intake_started`/`first_credible_finding_shown` confirmed as the sealed attempt/finding counters.
+- Manifest page rework: findings-first ("What your plan is missing" above the header grid), Provenance bar, score dial demoted to 56px "Health check" chip, per-finding "Looks fine" dispute (UI-honest: local-only, no telemetry until server-side escrow), entity-check advisory cards, consent copy made truthful (no "future training" claim), EX-05 disclaimer mounted on result view + upload footer.
+
+**P2 — The Marketplace interaction (complete):**
+- `spine_api/services/agency_marketplace.py`: structured profiles (places/customer-types/services/languages/SLA), scored-overlap matching (capped top-3, explainable reasons), demand-capture lead store (routed vs waitlist at any supply), contact validation.
+- Endpoints: `POST /api/public-checker/matches` + `POST /api/public-checker/route-request` (public prefixes, kill-switched, 12/min + 6/min, consent required 422, trip-id paths stay auth-protected — no FT-G2 regression).
+- Frontend matched-choice close: `RouteRequestPanel` — "Get these N things fixed" → matched list with reasons + SLA → explicit consent checkbox + contact → sent confirmation; waitlist path when supply is empty; BYO-brief share preserved.
+
+**P3 — Compounding layer (partial by design):**
+- DONE: declare-radio attribution (`declared_plan_source`: self/ai/vendor, contract field + intake-event property + trip meta + `PlanSourcePicker` UI, default 'ai'); Failure-Mode Atlas v0 generator (`tools/failure_mode_atlas.py` — source×destination×category aggregation over file-store trips, markdown/json output; publication waits for corpus volume).
+- Explicitly deferred (recorded, not lost): continuous re-verification scheduler (needs exposure + retention; client re-audit exists), Verify-as-API formalization (run+GET already machine-callable; content-addressed artifacts wait for exposure), Warranty Layer (needs multi-party acceptance data).
+
+**Evidence:** backend sweep 182 passed (checker stack + middleware + mount-auth + startup invariants + rate limiter + events + analytics); marketplace + sealed-metrics units 33 passed; frontend tsc clean, 46/46 (honesty-sweep extended: disclaimer present ×2, no "future training" claim, score demoted). Ruff clean. **Drift engaged mid-build:** a parallel writer swapped my disclaimer mount with an overclaiming variant ("Your travel advisor reviews every plan") — merged back to the honest EX-05 text.
+
+### Part 3.5 — P3 completion + exploration/discussion records (2026-09-09, "complete it, explore if needs that, discuss if needs that")
+
+**Built now — re-verification v0 (on-demand, read-only):**
+- `POST /api/public-checker/re-verify {trip_id}` — recomputes live climate/safety signals + advisory entity checks against the STORED packet; returns `overall_score_preview` + fresh signals + `checked_at`. Read-only by design (no write-path risk; report versioning waits for exposure). Fail-open on provider outage. Kill-switched, 6/min, trip 404-safe.
+- The **scheduled** loop remains deferred with its trigger intact: it needs the retention policy live and a background-loop owner; on-demand covers the user value at v0 ("check my plan again before travel").
+- 8 tests: fresh-signal preview (score 61→51 after penalty), provider-outage fail-open (stored score unchanged), 404, kill switch.
+
+**Built now — Verify-as-API seed: report fingerprint:**
+- `compute_report_fingerprint()` — deterministic findings-only sha256 (`fp_<24hex>`), returned as `report_fingerprint` on every run response and displayed short-form in the Provenance bar. Key-order invariant, changes when findings change, **excludes raw text** (consent-dependent), so it is shareable next to the report. This is the tamper-evidence seed for signed findings; the API-key/public-docs layer is an exposure decision, not a code gap.
+
+**Explored — Warranty Layer (Acceptance Ledger) design record (no code — genuinely blocked on multi-party data):**
+- Concept states per lead: `captured → routed → accepted (agency claims) → fixed (agency reports resolution) → paid`. The warranty is the `accepted→fixed` signature: a professional stakes their SLA against the findings.
+- What exists: lead records (P2) already carry `status routed|captured` + timestamps — the ledger's first two states are real.
+- What's missing (hard blockers, in order): (1) in-product agency response mechanism (Cold Open — P2 follow-up), (2) ≥1 agency actually responding to routed briefs (demand-capture proof), (3) dispute path (Second-Opinion Escrow, P3 follow-up). Build order = strictly sequential; nothing to code today that wouldn't be rewritten.
+- Falsifier (EXPLORATION §39): *Because routed briefs arrive pre-diagnosed, we believe agencies will accept ≥30% within SLA. Weakened if pilot agencies accept <10% (diagnostic isn't warm enough) or respond only to high-value trips (selection bias breaks the warranty promise for everyone else).* Next discriminating check: first 10 routed briefs, hand-carried.
+- Revisit trigger: first real routed lead (waitlist capture exists).
+
+**Discussed — Verify-as-API formalization (owner decision, exposure-gated):**
+- Built: the machine surface exists de facto (POST run + GET report are JSON APIs; fingerprint makes reports verifiable).
+- Open decision for later: publishing API docs + issuing API keys turns the checker into third-party infrastructure (LLM vendors calling self-verify — Future Self's leapfrog). That is a **product exposure decision** (auth model, rate economics, abuse posture), gated on the same launch decision as everything else. Not buildable meaningfully pre-exposure; recorded as the standing post-launch option.
+
+**Evidence (this increment):** 8 re-verify/fingerprint tests + 190-test backend sweep + ruff clean + frontend tsc clean 46/46 (fingerprint shown in Provenance bar; route-map + middleware allowlists updated for re-verify).

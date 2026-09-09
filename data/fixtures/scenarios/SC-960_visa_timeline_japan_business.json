@@ -1,0 +1,27 @@
+{
+  "scenario_id": "SC-960",
+  "title": "Japan business conference - visa required, not applied",
+  "description": "VA-04 seed (2026-09-09 visa audit): booking-stage business trip with an explicit month-day date range and 'No visas yet' phrasing. Exercises the visa_status extractor's not-applied path (VA-06 regression), destination extraction without the 'No' negation leak (VA-07 regression), and the deterministic decision routing. Seeded from AREA_DEEP_DIVE_VISA_IMMIGRATION.md scenario VISA-001 family; expectations frozen from live pipeline behavior (ASK_FOLLOWUP, low urgency given the far-future window).",
+  "mode": "normal_intake",
+  "stage": "booking",
+  "inputs": {
+    "raw_note": "Client needs to travel to Japan for a conference, March 15 to 20 2027. Party of 2, business trip, budget 3 lakh total for both. No visas yet.",
+    "owner_note": null,
+    "structured_json": null,
+    "itinerary_text": null
+  },
+  "expected": {
+    "allowed_decision_states": ["ASK_FOLLOWUP"],
+    "required_packet_fields": ["destination_candidates", "date_window", "visa_status", "party_size"],
+    "forbidden_traveler_terms": [],
+    "leakage_expected": false,
+    "assertions": [
+      {
+        "type": "field_equals",
+        "field": "visa_status.requirement",
+        "value": "required",
+        "message": "A 'No visas yet' note must extract as visa required, not as visa-free (VA-06 negation-inversion regression)."
+      }
+    ]
+  }
+}

@@ -732,6 +732,13 @@ class ExecutionEvent(Base):
 
     event_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
+    # PA-19 tamper-evidence chain (E-E ADR, 2026-09-08): per-agency hash chain.
+    # prev_hash = the previous anchored event's event_hash for this agency
+    # (NULL = genesis or legacy pre-chain row); event_hash = SHA-256 over
+    # (prev_hash + canonical event fields). Computed in the emit choke point.
+    prev_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    event_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
     )
@@ -742,6 +749,8 @@ class ExecutionEvent(Base):
         Index("ix_ee_subject", "subject_type", "subject_id"),
         Index("ix_ee_category", "event_category"),
         Index("ix_ee_trip_created", "trip_id", "created_at"),
+        # Chain walk ordering + last-event lookup for append
+        Index("ix_ee_agency_created", "agency_id", "created_at"),
     )
 
 

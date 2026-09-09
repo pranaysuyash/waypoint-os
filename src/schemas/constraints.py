@@ -25,6 +25,12 @@ class ConstraintCategory(str, Enum):
     REGULATORY_PASSPORT = "REGULATORY_PASSPORT"          # Passport validity >= 6 months from return date
     REGULATORY_PASSPORT_VALIDITY = "REGULATORY_PASSPORT_VALIDITY"  # Blank pages & format validity
     REGULATORY_VISA_SCHENGEN = "REGULATORY_VISA_SCHENGEN"# Schengen 90/180-day rolling stay limits
+    # DORMANT (VA-05, 2026-09-09 visa audit): no producer currently emits
+    # this category — constraint_engine.py carries tier handling for it, but
+    # no rule or extractor constructs a vaccination constraint. Kept (not
+    # deleted) as the schema home for the future health-declaration lane;
+    # see findings-register item VA-05 / exploration VE-02 before wiring a
+    # producer.
     REGULATORY_HEALTH_VACCINATION = "REGULATORY_HEALTH_VACCINATION"  # Mandatory vaccinations (Yellow Fever / ICVP)
     COMMERCIAL_SUPPLIER_POLICY = "COMMERCIAL_SUPPLIER_POLICY"  # Age limits, car rental rules
     FINANCIAL_BOUND = "FINANCIAL_BOUND"                  # Hard budget ceilings vs soft targets

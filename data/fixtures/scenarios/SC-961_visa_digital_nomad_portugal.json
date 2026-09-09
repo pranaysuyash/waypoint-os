@@ -1,0 +1,27 @@
+{
+  "scenario_id": "SC-961",
+  "title": "Portugal digital nomad relocation - visa and tax residency unknowns",
+  "description": "VE-03 seed (2026-09-09 visa audit): long-stay remote-worker relocation with an explicit multi-month date range and 'visa not applied yet' phrasing. Graduates the VISA-002 (digital nomad / tax residency) proposal from AREA_DEEP_DIVE_VISA_IMMIGRATION.md into the corpus as a coverage seed; the current pipeline correctly routes to ASK_FOLLOWUP because party size, purpose and per-traveler details are unknown. Tax-residency reasoning itself remains an open exploration item (VE-03 in the findings register).",
+  "mode": "normal_intake",
+  "stage": "booking",
+  "inputs": {
+    "raw_note": "Client is relocating to Portugal as a remote worker, June 10 to December 10 2027. Needs help with the digital nomad visa application, visa not applied yet. Budget around 8 lakh for the whole stay.",
+    "owner_note": null,
+    "structured_json": null,
+    "itinerary_text": null
+  },
+  "expected": {
+    "allowed_decision_states": ["ASK_FOLLOWUP"],
+    "required_packet_fields": ["destination_candidates", "date_window", "visa_status"],
+    "forbidden_traveler_terms": [],
+    "leakage_expected": false,
+    "assertions": [
+      {
+        "type": "field_equals",
+        "field": "visa_status.requirement",
+        "value": "required",
+        "message": "A 'visa not applied yet' note must extract as visa required / not applied."
+      }
+    ]
+  }
+}

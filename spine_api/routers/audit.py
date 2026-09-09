@@ -4,6 +4,8 @@ spine_api.routers.audit — Audit trail query endpoints.
 Provides:
 - GET /api/audit — List audit log entries with filtering
   Query params: resource_type, user_id, action, since (ISO timestamp), limit (max 200)
+- GET /api/audit/chain-verify — PA-19 execution-event hash-chain verifier
+  (per-agency walk: link continuity, recompute, fork detection)
 
 Access control:
 - Owner/admin roles can view audit logs for their agency
@@ -106,3 +108,32 @@ async def list_audit_logs(
         ],
         total=len(entries),
     )
+
+
+class ChainVerifyResponse(BaseModel):
+    ok: bool = True
+    verdict: str  # "pass" | "fail"
+    agency_id: str
+    events_scanned: int
+    anchored: int
+    legacy_unanchored: int
+    first_break: Optional[dict] = None
+    forks: list[str] = []
+
+
+@router.get("/chain-verify", response_model=ChainVerifyResponse)
+async def verify_execution_event_chain(
+    membership: Membership = require_permission("audit:read"),
+    db: AsyncSession = Depends(get_rls_db),
+):
+    """PA-19: walk this agency's execution_events hash chain.
+
+    Verifies link continuity (prev_hash == prior anchored event_hash),
+    recomputes each event_hash over its canonical payload, and flags
+    concurrent-append forks. Legacy pre-chain rows are reported as an
+    unanchored prefix, not a failure. Requires audit:read permission.
+    """
+    from spine_api.services.execution_event_service import verify_execution_chain
+
+    verdict = await verify_execution_chain(db, agency_id=membership.agency_id)
+    return ChainVerifyResponse(ok=True, **verdict)

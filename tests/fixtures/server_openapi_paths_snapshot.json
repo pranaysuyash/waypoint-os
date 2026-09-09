@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 324,
+  "openapi_path_count": 329,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -28,6 +28,7 @@
     "/api/assignments/{trip_id}/return",
     "/api/assignments/{trip_id}/unassign",
     "/api/audit",
+    "/api/audit/chain-verify",
     "/api/auth/confirm-password-reset",
     "/api/auth/join",
     "/api/auth/login",
@@ -55,6 +56,9 @@
     "/api/integrations/{provider}",
     "/api/internal/documents/{document_id}/download",
     "/api/public-checker/events",
+    "/api/public-checker/matches",
+    "/api/public-checker/re-verify",
+    "/api/public-checker/route-request",
     "/api/public-checker/run",
     "/api/public-checker/{trip_id}",
     "/api/public-checker/{trip_id}/export",
@@ -192,6 +196,7 @@
     "/api/v1/journey-graph/evaluate",
     "/api/v1/journey-graph/{trip_id}",
     "/api/v1/logistics/accessibility-plan",
+    "/api/v1/logistics/assess-route",
     "/api/v1/logistics/connection-risk",
     "/api/v1/logistics/fleet-allocation",
     "/api/v1/logistics/ground-transit",

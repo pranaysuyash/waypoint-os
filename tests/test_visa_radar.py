@@ -72,3 +72,42 @@ def test_unknown_destination_defaults_to_visa_required():
 
     assert report.requires_visa is True
     assert report.visa_type_required == "E_VISA"
+
+
+def test_unknown_pair_is_flagged_as_heuristic():
+    # VA-03 (2026-09-09): fallback results must carry registry_match=False so
+    # consumers can distinguish a registry hit from the conservative default.
+    req = VisaCheckRequest(
+        passport_country="US",
+        destination_country="XY",
+        passport_expiry_date="2029-01-01",
+        travel_date="2026-10-01",
+    )
+    report = audit_visa_and_passport_validity(req)
+    assert report.registry_match is False
+
+
+def test_known_pair_is_flagged_as_registry_match():
+    req = VisaCheckRequest(
+        passport_country="IN",
+        destination_country="TH",
+        passport_expiry_date="2029-01-01",
+        travel_date="2026-10-01",
+    )
+    report = audit_visa_and_passport_validity(req)
+    assert report.registry_match is True
+
+
+def test_passport_country_is_required():
+    # VA-01 (2026-09-09): no US-nationality default — omitting the passport
+    # country must fail validation rather than silently assume US (same
+    # abstain doctrine as the AT-11 trip-requirements fix).
+    import pytest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        VisaCheckRequest(
+            destination_country="GB",
+            passport_expiry_date="2029-01-01",
+            travel_date="2026-10-01",
+        )
