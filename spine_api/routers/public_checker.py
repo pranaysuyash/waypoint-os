@@ -109,6 +109,11 @@ def post_public_checker_event(
     event: PublicCheckerEventEnvelope,
 ):
     _require_public_checker_enabled()
+    # Gate 0 (WOBS P1): check_completed is the sealed funnel-completion counter,
+    # emitted only by the run service after the trip row is persisted. The
+    # client-fed events endpoint must never accept it.
+    if event.event_name == "check_completed":
+        raise HTTPException(status_code=403, detail="check_completed is server-emitted only")
     payload = event.model_dump(exclude_none=False)
     payload_size = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
     if payload_size > PUBLIC_CHECKER_EVENT_MAX_BYTES:

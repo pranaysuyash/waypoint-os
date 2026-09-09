@@ -163,23 +163,49 @@ def finalize_result_with_live_checker(
     build_live_checker_signals_fn: Callable[[dict[str, Any], str], Any],
     to_dict: Callable[[Any], Any],
     on_adjusted: Optional[Callable[[dict[str, Any], dict[str, Any], dict[str, Any]], None]] = None,
+    build_entity_checks_fn: Optional[Callable[[dict[str, Any], str], list]] = None,
 ) -> None:
-    """Apply live-check adjustments to a SpineResult in one canonical step."""
+    """Apply live-check adjustments to a SpineResult in one canonical step.
+
+    ``build_entity_checks_fn`` (Ghost Hotel Test, WOBS 2026-09-09 P1) runs after
+    live-check adjustments and attaches advisory entity-existence findings to
+    the packet/validation payloads under ``public_checker_entity_checks``. It
+    must never raise into the pipeline: a gazetteer outage degrades to no
+    entity findings, never a failed run.
+    """
     packet_payload = to_dict(result.packet) if hasattr(result, "packet") else {}
     live_checker = build_live_checker_signals_fn(packet_payload or {}, raw_text)
-    if not live_checker:
+    if live_checker:
+        validation_payload = to_dict(result.validation) if hasattr(result, "validation") else {}
+        decision_payload = to_dict(result.decision) if hasattr(result, "decision") else {}
+        packet_payload, validation_payload, decision_payload = apply_live_checker_adjustments(
+            packet_payload=packet_payload,
+            validation_payload=validation_payload,
+            decision_payload=decision_payload,
+            live_checker=live_checker,
+        )
+        result.validation = validation_payload
+        result.decision = decision_payload
+        result.packet = packet_payload
+        if on_adjusted is not None:
+            on_adjusted(packet_payload, validation_payload, decision_payload)
+
+    if build_entity_checks_fn is None:
         return
 
+    entity_results: list = []
+    try:
+        entity_results = build_entity_checks_fn(packet_payload or {}, raw_text) or []
+    except Exception:
+        # Advisory layer: never fail a run over entity verification.
+        entity_results = []
+    if not entity_results:
+        return
+
+    serialized = [item.as_dict() if hasattr(item, "as_dict") else dict(item) for item in entity_results]
+    packet_payload = to_dict(result.packet) if hasattr(result, "packet") else packet_payload
     validation_payload = to_dict(result.validation) if hasattr(result, "validation") else {}
-    decision_payload = to_dict(result.decision) if hasattr(result, "decision") else {}
-    packet_payload, validation_payload, decision_payload = apply_live_checker_adjustments(
-        packet_payload=packet_payload,
-        validation_payload=validation_payload,
-        decision_payload=decision_payload,
-        live_checker=live_checker,
-    )
-    result.validation = validation_payload
-    result.decision = decision_payload
+    packet_payload["public_checker_entity_checks"] = serialized
+    validation_payload["public_checker_entity_checks"] = serialized
     result.packet = packet_payload
-    if on_adjusted is not None:
-        on_adjusted(packet_payload, validation_payload, decision_payload)
+    result.validation = validation_payload

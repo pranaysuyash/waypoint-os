@@ -57,6 +57,9 @@ class ProductBEventStore:
         "agency_revision_reported",
         "re_audit_started",
         "product_a_interest_signal",
+        # Server-sealed completion marker (WOBS P1 Gate 0): emitted only by
+        # public_checker_service after the trip row is persisted. Never client-fed.
+        "check_completed",
     }
 
     REQUIRED_ENVELOPE_FIELDS = {
@@ -127,6 +130,11 @@ class ProductBEventStore:
             "signal_type",
             "attribution_mode",
             "source_inquiry_id",
+        },
+        "check_completed": {
+            "input_mode",
+            "finding_count",
+            "execution_ms",
         },
     }
 

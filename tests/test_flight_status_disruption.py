@@ -145,6 +145,12 @@ def test_high_risk_runs_stored_graph_ripple_and_escalates():
     # disclaims rebooking and the ripple carries no execution claims.
     assert "do not rebook" in str(snapshot.get("authority")).lower()
     assert "rebooked" not in str(snapshot.get("disruption_ripple")).lower()
+    # A2 second half: the statutory rights claim rides on the escalation for
+    # the operator case, marked provisional (distance unverified).
+    claim = stored.get("passenger_rights_claim") or {}
+    assert claim.get("provisional") is True
+    assert "distance_unverified" in str(claim.get("provisional_reason"))
+    assert claim.get("compensation_currency") == "EUR"
 
 
 def test_no_stored_graph_still_snapshots_without_ripple():

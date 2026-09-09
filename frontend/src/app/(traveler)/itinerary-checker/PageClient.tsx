@@ -1023,6 +1023,11 @@ const sevBadgeBg  = { Critical: 'rgba(248,81,73,0.1)', Warning: 'rgba(210,153,34
 const sevBadgeBdr = { Critical: 'rgba(248,81,73,0.22)', Warning: 'rgba(210,153,34,0.25)', Info: 'rgba(88,166,255,0.22)' } as const;
 const sevBadgeTxt = { Critical: T.red, Warning: T.amber, Info: T.blue } as const;
 
+// EX-05 legal-disclaimer draft (policy-reviewed copy pending owner sign-off).
+// Mounted on the result view and the upload footer; asserted by honesty-sweep.
+const CHECKER_DISCLAIMER =
+  'Automated guidance based on what you provided and public data sources — not legal, visa, or booking advice. Verify with official sources and your travel advisor before you pay or travel.';
+
 // ── Upload view sections ─────────────────────────────────────────────────────
 function UploadHeroSection({
   onAnalyze,
@@ -1480,6 +1485,11 @@ function UploadView({
       <TravelChecksSection />
       <ExampleFindingsSection />
       <SampleBriefPreviewSection />
+      <div style={{ position: 'relative', zIndex: 1, padding: '0 40px 40px', textAlign: 'center' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto', fontSize: 11.5, color: T.t3, lineHeight: 1.55 }}>
+          {CHECKER_DISCLAIMER}
+        </div>
+      </div>
       <FinalCtaSection />
     </div>
   );
@@ -1686,8 +1696,8 @@ function ConsentToggle({
         style={{ marginTop: 3, accentColor: T.cyan }}
       />
       <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.45 }}>
-        Store my typed input/uploaded text, extracted facts, and score for product improvement and future training.
-        You can uncheck this for a one-time analysis.
+        Store my typed input, extracted facts, and score to help improve the checker.
+        Leave unchecked for a one-time, anonymous analysis — nothing is kept.
       </div>
     </div>
   );
@@ -2082,19 +2092,19 @@ function ResultsHeaderGrid({
           {/* Score card */}
             <div style={{ padding: '24px 26px', borderRadius: 20, background: T.surface, border: `1px solid ${T.b0}` }}>
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 14 }}>
-                Itinerary Health Score
+                Health check
               </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              <div style={{ position: 'relative', width: 88, height: 88, flexShrink: 0 }}>
-                <svg width='88' height='88' viewBox='0 0 88 88' style={{ transform: 'rotate(-90deg)' }}>
-                  <circle cx='44' cy='44' r='36' fill='none' stroke={T.b0} strokeWidth='8' />
-                  <circle cx='44' cy='44' r='36' fill='none' stroke={T.amber} strokeWidth='8'
-                    strokeDasharray={`${circumference * (SCORE / 100)} ${circumference}`}
+              <div style={{ position: 'relative', width: 56, height: 56, flexShrink: 0 }}>
+                <svg width='56' height='56' viewBox='0 0 56 56' style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx='28' cy='28' r='22' fill='none' stroke={T.b0} strokeWidth='5' />
+                  <circle cx='28' cy='28' r='22' fill='none' stroke={T.amber} strokeWidth='5'
+                    strokeDasharray={`${(2 * Math.PI * 22) * (SCORE / 100)} ${2 * Math.PI * 22}`}
                     strokeLinecap='round' />
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 26, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>{SCORE}</div>
-                  <div style={{ fontSize: 12, color: T.t3, marginTop: 1 }}>/100</div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>{SCORE}</div>
+                  <div style={{ fontSize: 9, color: T.t3, marginTop: 1 }}>/100</div>
                 </div>
               </div>
               <div>
@@ -2263,18 +2273,29 @@ function ResultsFindingsSection({
   blockerItems: string[];
   analysis?: RunStatusResponse | null;
 }) {
+  // Disagree is per-report UI feedback only (honest label below) — it is not
+  // emitted as telemetry and does not feed the corpus until a server-side
+  // escrow exists (WOBS P3).
+  const [disputed, setDisputed] = useState<Record<string, boolean>>({});
+  const packet = (analysis?.packet ?? null) as Record<string, any> | null;
+  const entityChecks = Array.isArray(packet?.public_checker_entity_checks)
+    ? (packet!.public_checker_entity_checks as Array<Record<string, any>>)
+    : [];
+
   return (
     <>
-      {/* Findings */}
+      {/* Findings — first object on the page (Manifest: pins before numbers) */}
         <div className='itinerary-stagger' style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t2, marginBottom: 12 }}>Findings</div>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t2, marginBottom: 12 }}>What your plan is missing</div>
           {blockerItems.length > 0 ? (
             <div className='itinerary-stagger' style={{ display: 'grid', gap: 10 }}>
               {blockerItems.map((item, index) => {
                 const severity = index < (analysis?.hard_blockers?.length ?? 0) ? 'Critical' : 'Warning';
                 const c = rSevColor(severity) as keyof typeof rSevBadgeTxt;
+                const key = `${severity}-${item.slice(0, 30)}`;
+                const isDisputed = Boolean(disputed[key]);
                 return (
-                  <div key={`${severity}-${item.slice(0, 30)}`} style={{
+                  <div key={key} style={{
                     ...severityCardStyle(
                       severity === 'Critical' ? 'rgba(248,81,73,0.06)' : 'rgba(210,153,34,0.06)',
                       severity === 'Critical' ? 'rgba(248,81,73,0.2)' : 'rgba(210,153,34,0.2)',
@@ -2289,11 +2310,33 @@ function ResultsFindingsSection({
                     }}>
                       {severity}
                     </span>
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: T.t1, lineHeight: 1.55 }}>
                         {formatTravelerBlockerItem(item)}
                       </div>
+                      {isDisputed ? (
+                        <div style={{ fontSize: 11.5, color: T.t3, marginTop: 4 }}>
+                          Noted for this report — you marked this as fine.
+                        </div>
+                      ) : null}
                     </div>
+                    <button
+                      type='button'
+                      onClick={() => setDisputed((state) => ({ ...state, [key]: !state[key] }))}
+                      style={{
+                        alignSelf: 'center',
+                        fontSize: 11,
+                        color: isDisputed ? T.t3 : T.t2,
+                        background: 'none',
+                        border: `1px solid ${T.b0}`,
+                        borderRadius: 999,
+                        padding: '4px 10px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {isDisputed ? 'Dispute removed' : 'Looks fine'}
+                    </button>
                   </div>
                 );
               })}
@@ -2307,6 +2350,38 @@ function ResultsFindingsSection({
               No issues found yet. Upload your itinerary and we&apos;ll check timing, weather, and pacing.
             </div>
           )}
+
+          {entityChecks.length > 0 ? (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 8 }}>Place checks — advisory</div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {entityChecks.map((check, index) => {
+                  const verified = check.status === 'verified';
+                  const notFound = check.status === 'not_found';
+                  return (
+                    <div key={`${check.name}-${index}`} style={{
+                      padding: '10px 14px', borderRadius: 10,
+                      background: verified ? 'rgba(88,166,255,0.05)' : 'rgba(210,153,34,0.05)',
+                      border: `1px solid ${verified ? 'rgba(88,166,255,0.15)' : 'rgba(210,153,34,0.18)'}`,
+                      fontSize: 12, color: notFound ? T.t1 : T.t2, lineHeight: 1.5,
+                    }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
+                        color: verified ? T.blue : T.amber, marginRight: 8,
+                      }}>
+                        {verified ? 'Found' : notFound ? 'No public record' : 'Not checked'}
+                      </span>
+                      {String(check.message ?? '')}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          <div style={{ marginTop: 16, fontSize: 11.5, color: T.t3, lineHeight: 1.55 }}>
+            {CHECKER_DISCLAIMER}
+          </div>
         </div>
     </>
   );
@@ -2548,6 +2623,22 @@ function ResultsView({
         <button onClick={onReset} style={S.backButton}>
           ← Analyze another itinerary
         </button>
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
+          padding: '10px 16px', borderRadius: 12,
+          background: T.surface, border: `1px solid ${T.b0}`, marginBottom: 20,
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.t3 }}>
+            Provenance
+          </span>
+          <span style={{ fontSize: 12, color: T.t2 }}>
+            Checked against live sources · Advisory findings only
+          </span>
+          <span style={{ fontSize: 12, color: T.t4, marginLeft: 'auto' }}>
+            Report {tripId ?? 'pending'}
+          </span>
+        </div>
+        <ResultsFindingsSection blockerItems={blockerItems} analysis={analysis} />
         <ResultsHeaderGrid
           score={SCORE}
           circumference={circumference}
@@ -2566,7 +2657,6 @@ function ResultsView({
           onReportRevision={handleReportRevision}
           storageCopy={storageCopy}
         />
-        <ResultsFindingsSection blockerItems={blockerItems} analysis={analysis} />
         <ResultsConversionSection onShareReport={handleShareReport} />
         <div style={{ paddingBottom: 48 }} />
       </div>

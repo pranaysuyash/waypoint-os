@@ -131,3 +131,101 @@ def test_apply_live_checker_adjustments_merges_authoritative_blockers(monkeypatc
     assert "possible budget drift" in decision["soft_blockers"]
     assert decision["advisory_hard_blockers"] == []
     assert decision["advisory_soft_blockers"] == []
+
+
+# ---------------------------------------------------------------------------
+# WOBS 2026-09-09 P1 — Ghost Hotel entity-check wiring (advisory, fail-open)
+# ---------------------------------------------------------------------------
+
+class _FakeResult:
+    def __init__(self, packet, validation, decision):
+        self.packet = packet
+        self.validation = validation
+        self.decision = decision
+
+
+def _identity(value):
+    return value
+
+
+def test_finalize_attaches_entity_checks_without_live_signals() -> None:
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    result = _FakeResult(packet={"quality_score": 70}, validation={}, decision={})
+    calls = []
+
+    def fake_entity_fn(packet, raw_text):
+        calls.append((packet, raw_text))
+        return [
+            {
+                "name": "Taj Palace",
+                "status": "verified",
+                "confidence": 0.7,
+                "message": "Found.",
+            }
+        ]
+
+    finalize_result_with_live_checker(
+        result=result,
+        raw_text="check-in at Taj Palace Hotel",
+        build_live_checker_signals_fn=lambda packet, text: None,  # no live signals
+        to_dict=_identity,
+        build_entity_checks_fn=fake_entity_fn,
+    )
+
+    assert calls and calls[0][1] == "check-in at Taj Palace Hotel"
+    assert result.packet["public_checker_entity_checks"][0]["name"] == "Taj Palace"
+    assert result.validation["public_checker_entity_checks"][0]["status"] == "verified"
+
+
+def test_finalize_entity_fn_failure_fails_open_without_breaking_run() -> None:
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    result = _FakeResult(packet={"quality_score": 70}, validation={}, decision={})
+
+    def bomb(packet, raw_text):
+        raise RuntimeError("gazetteer down")
+
+    finalize_result_with_live_checker(
+        result=result,
+        raw_text="check-in at Hotel Nowhere",
+        build_live_checker_signals_fn=lambda packet, text: None,
+        to_dict=_identity,
+        build_entity_checks_fn=bomb,
+    )
+
+    assert "public_checker_entity_checks" not in (result.packet or {})
+
+
+def test_finalize_entity_checks_run_after_live_adjustments() -> None:
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    result = _FakeResult(
+        packet={"quality_score": 90, "destination": "Singapore"},
+        validation={"overall_score": 88},
+        decision={"hard_blockers": [], "soft_blockers": []},
+    )
+    live_checker = {
+        "score_penalty": 5,
+        "hard_blockers": [],
+        "soft_blockers": ["monsoon window"],
+        "destination": "Singapore",
+    }
+    seen_packets = []
+
+    finalize_result_with_live_checker(
+        result=result,
+        raw_text="check-in at Marina Bay Hotel",
+        build_live_checker_signals_fn=lambda packet, text: live_checker,
+        to_dict=_identity,
+        build_entity_checks_fn=lambda packet, text: (seen_packets.append(packet) or [
+            {"name": "Marina Bay", "status": "not_found", "confidence": 0.5, "message": "no record"}
+        ]),
+    )
+
+    # Entity fn saw the post-adjustment packet (score already applied).
+    assert seen_packets[0]["score"] == 83
+    assert result.packet["public_checker_entity_checks"][0]["status"] == "not_found"
+    # Advisory: score and blockers untouched by entity layer.
+    assert result.validation["overall_score"] == 83
+    assert result.decision["hard_blockers"] == []

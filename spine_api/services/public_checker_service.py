@@ -17,7 +17,8 @@ from spine_api.services.live_checker_service import (
 )
 from src.intake.config.agency_settings import AgencySettingsStore
 from src.intake.orchestration import run_spine_once
-from src.public_checker.live_checks import build_live_checker_signals
+from src.public_checker.entity_checks import run_entity_checks
+from src.public_checker.live_checks import build_live_checker_signals, extract_destination
 
 _DECISION_BASELINE_CATEGORY_COST = ("price", "budget", "cost", "fare", "expensive")
 _DECISION_BASELINE_CATEGORY_POLICY = ("visa", "policy", "entry", "insurance", "passport")
@@ -136,6 +137,62 @@ def _safe_log_product_b_event(payload: dict[str, Any], *, logger: logging.Logger
         logger.warning("product_b_event_log_failed event=%s error=%s", payload.get("event_name"), event_err)
 
 
+def build_check_completed_event(
+    *,
+    session_id: str,
+    inquiry_id: str,
+    trip_id: Optional[str],
+    workspace_id: str,
+    input_mode: str,
+    finding_count: int,
+    hard_blocker_count: int,
+    soft_blocker_count: int,
+    overall_score: Optional[float],
+    execution_ms: float,
+) -> dict[str, Any]:
+    """Sealed server-side completion event (WOBS P1, Poisoned-Pipe Gate 0).
+
+    Client-fed events are untrusted by construction (RDA_EX03); the funnel's
+    completion count must come from here — emitted only after the trip row is
+    successfully persisted, never from the browser.
+    """
+    properties: dict[str, Any] = {
+        "input_mode": input_mode,
+        "finding_count": int(finding_count),
+        "hard_blocker_count": int(hard_blocker_count),
+        "soft_blocker_count": int(soft_blocker_count),
+        "execution_ms": int(round(execution_ms)),
+    }
+    if isinstance(overall_score, (int, float)):
+        properties["overall_score"] = int(overall_score)
+    return ProductBEventStore.build_event(
+        event_name="check_completed",
+        session_id=session_id,
+        inquiry_id=inquiry_id,
+        trip_id=trip_id,
+        actor_type="system",
+        actor_id=None,
+        workspace_id=workspace_id,
+        channel="api",
+        locale=None,
+        currency=None,
+        properties=properties,
+    )
+
+
+def build_entity_checks_for_submission(
+    packet_payload: dict[str, Any],
+    raw_text: str,
+) -> list:
+    """Ghost Hotel Test wiring (WOBS P1): advisory entity-existence findings.
+
+    Bounded to 3 entities per run to cap added synchronous latency (~1s per
+    uncached gazetteer lookup). Raises are caught downstream (fail-open).
+    """
+    city = extract_destination(packet_payload or {}, raw_text)
+    return run_entity_checks(raw_text, city=city, max_entities=3)
+
+
 def run_public_checker_submission(
     request_dict: dict[str, Any],
     *,
@@ -220,6 +277,7 @@ def run_public_checker_submission(
                 raw_text=raw_text,
                 build_live_checker_signals_fn=build_live_checker_signals,
                 to_dict=to_dict,
+                build_entity_checks_fn=build_entity_checks_for_submission,
             )
 
         def _stage_checkpoint(stage_name: str, data: Any) -> None:
@@ -341,6 +399,23 @@ def run_public_checker_submission(
                 },
             )
             _safe_log_product_b_event(first_finding_event, logger=logger)
+
+        finding_count = len(primary_hard_blockers) + len(primary_soft_blockers)
+        check_completed_event = build_check_completed_event(
+            session_id=session_id,
+            inquiry_id=inquiry_id,
+            trip_id=trip_id_saved,
+            workspace_id=public_checker_agency_id,
+            input_mode=input_mode,
+            finding_count=finding_count,
+            hard_blocker_count=len(primary_hard_blockers),
+            soft_blocker_count=len(primary_soft_blockers),
+            overall_score=validation_payload.get("overall_score")
+            if isinstance(validation_payload.get("overall_score"), (int, float))
+            else None,
+            execution_ms=execution_ms,
+        )
+        _safe_log_product_b_event(check_completed_event, logger=logger)
 
         now_iso = datetime.now(timezone.utc).isoformat()
 

@@ -512,3 +512,8 @@ def build_live_checker_signals(packet: dict[str, Any], raw_text: str) -> Optiona
         "score_penalty": min(35, score_penalty),
         "source": "open-meteo",
     }
+
+
+def extract_destination(packet: dict[str, Any], text: str) -> Optional[str]:
+    """Public wrapper over the internal destination extractor (entity checks reuse)."""
+    return _extract_destination(packet, text)

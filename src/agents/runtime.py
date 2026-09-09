@@ -19,6 +19,7 @@ from uuid import uuid4
 
 from src.agents.events import AgentEvent, AgentEventType
 from src.agents.risk_contracts import feasibility_constraint_to_structured
+from src.decision.passenger_rights import DisruptionType, PassengerRightsEngine
 from src.intake.risk_action_policy import build_risk_action_plan
 from src.intake.route_analysis import analyze_route_complexity, parse_itinerary_text
 from src.intake.regional_risk import assess_regional_disruption
@@ -2734,6 +2735,35 @@ class FlightStatusAgent:
             # ripple is evidence for the operator, not an action plan.
             update_fields["review_status"] = "escalated"
             update_fields["escalation_reason"] = "flight_disruption"
+            # A2 second half (2026-09-08): attach the statutory rights claim
+            # so the operator case carries the passenger-rights picture.
+            # Distance is unknown at this point (no route geometry for the
+            # actual flown leg), so the claim is computed at the conservative
+            # minimum tier and explicitly marked provisional — the operator
+            # confirms distance/route before any filing.
+            tool_evidence = (flight_outputs[0].get("tool_evidence") or [{}])[0]
+            delay_minutes = int(tool_evidence.get("delay_minutes") or 0)
+            flight_status = str(tool_evidence.get("status") or "").lower()
+            claim = PassengerRightsEngine.evaluate_eu261(
+                DisruptionType.CANCELLATION if flight_status in {"cancelled", "diverted"} else DisruptionType.DELAY,
+                flight_distance_km=0.0,
+                delay_arrival_hours=delay_minutes / 60.0,
+                is_extraordinary_circumstances=False,
+            )
+            rights_claim = {
+                "is_eligible_for_compensation": claim.is_eligible_for_compensation,
+                "compensation_currency": claim.compensation_currency,
+                "compensation_amount": claim.compensation_amount,
+                "right_to_care_required": claim.right_to_care_required,
+                "duty_of_care_items": claim.duty_of_care_items,
+                "statutory_reference": claim.statutory_reference,
+                "claim_rationale": claim.claim_rationale,
+                "provisional": True,
+            }
+            rights_claim["provisional_reason"] = (
+                "distance_unverified — operator confirms flown leg before filing"
+            )
+            update_fields["passenger_rights_claim"] = rights_claim
         updated = trip_repo.update_trip(work_item.trip_id, update_fields)
         if not updated:
             return AgentExecutionResult(work_item, WorkStatus.RETRY_PENDING, False, "Trip update returned empty result")

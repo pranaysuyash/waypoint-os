@@ -38,4 +38,21 @@ describe('itinerary-checker honesty sweep (FT-01/FT-02/FT-10)', () => {
     expect(proxySource).not.toContain('/itinerary-checker/shared/');
     expect(proxySource).not.toContain('/itinerary/shared/');
   });
+
+  it('renders the legal disclaimer on the surface (EX-05, WOBS P1)', () => {
+    expect(pageClientSource).toContain('not legal, visa, or booking advice');
+    // Mounted in both the result view and the upload footer.
+    expect(pageClientSource.match(/{CHECKER_DISCLAIMER}/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+  });
+
+  it('consent copy makes no training claim (truthful storage framing)', () => {
+    expect(pageClientSource).not.toContain('future training');
+    expect(pageClientSource).toContain('nothing is kept');
+  });
+
+  it('score is demoted — dial is compact and retitled (Manifest rework)', () => {
+    expect(pageClientSource).not.toContain('Itinerary Health Score');
+    expect(pageClientSource).toContain('Health check');
+    expect(pageClientSource).toContain('What your plan is missing');
+  });
 });
