@@ -15,5 +15,4 @@ Extreme adventure travel carries significant risks that require expert coordinat
 - Certified guide and equipment arrangements
 - Emergency evacuation and medical service coordination
 - Comprehensive safety briefings and risk assessments
-- Specialized insurance coverage for extreme activities</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_167_EXTREME_ADVENTURE_TRAVEL_COORDINATION.md
+- Specialized insurance coverage for extreme activities

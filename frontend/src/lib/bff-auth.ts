@@ -16,10 +16,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { parse as parseSetCookie } from "set-cookie-parser";
-import { forwardAuthHeaders } from "@/lib/proxy-core";
+import { forwardAuthHeaders, spineUrl } from "@/lib/proxy-core";
 
 const PROXY_TIMEOUT_MS = 10_000;
-const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
 export type CookieScope = "access_only" | "access_and_refresh";
 
@@ -146,7 +145,10 @@ export function mergeCookieHeader(
 }
 
 export async function refreshAuthCookies(request: NextRequest): Promise<string[]> {
-  const response = await fetch(`${SPINE_API_URL}/api/auth/refresh`, {
+  // spineUrl() applies the validated backend base (scheme + origin checked
+  // at module load in proxy-core.ts) — no ad-hoc URL construction here.
+  const refreshUrl = spineUrl("/api/auth/refresh");
+  const response = await fetch(refreshUrl, {
     method: "POST",
     headers: forwardAuthHeaders(request),
     cache: "no-store",

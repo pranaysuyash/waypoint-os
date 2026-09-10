@@ -15,5 +15,4 @@ Gaming events have unique timing, access requirements, and technical needs that 
 - Tournament ticket and VIP package procurement
 - Gaming convention and event access coordination
 - Esports venue accommodation arrangements
-- Gaming equipment transportation and setup services</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_175_GAMING_AND_ESPORTS_EVENT_TRAVEL.md
+- Gaming equipment transportation and setup services

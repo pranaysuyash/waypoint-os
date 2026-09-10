@@ -15,5 +15,4 @@ Solo female travelers face unique safety considerations that require proactive p
 - Women-friendly accommodation and neighborhood recommendations
 - Safe transportation arrangements with tracking capabilities
 - Comprehensive safety briefing and emergency contact systems
-- Coordination with local women's safety networks and embassies</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_159_SOLO_FEMALE_TRAVELER_SAFETY_PLANNING.md
+- Coordination with local women's safety networks and embassies

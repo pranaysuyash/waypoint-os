@@ -15,5 +15,4 @@ Agricultural travel involves specialized knowledge of farming seasons, rural acc
 - Farm stay and agricultural tour access coordination
 - Harvest and farming experience participation arrangements
 - Rural transportation and accommodation logistics support
-- Agricultural travel experience and educational enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_213_AGRICULTURAL_AND_FARM_TRAVEL.md
+- Agricultural travel experience and educational enhancement

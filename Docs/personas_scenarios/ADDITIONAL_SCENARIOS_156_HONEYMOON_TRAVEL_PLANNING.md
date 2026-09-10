@@ -15,5 +15,4 @@ Honeymoons are milestone celebrations that require thoughtful personalization to
 - Romantic destination selection with privacy considerations
 - Personalized touches and surprise elements in itinerary
 - Luxury accommodations and experience upgrades
-- Seamless coordination of special requests and celebrations</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_156_HONEYMOON_TRAVEL_PLANNING.md
+- Seamless coordination of special requests and celebrations

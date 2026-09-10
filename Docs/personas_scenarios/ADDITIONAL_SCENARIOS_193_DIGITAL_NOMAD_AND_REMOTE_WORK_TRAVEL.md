@@ -15,5 +15,4 @@ Digital nomad travel involves work requirements, connectivity needs, and extende
 - Extended stay accommodation and housing arrangements
 - Coworking space and workspace access coordination
 - Connectivity and infrastructure reliability support
-- Digital nomad visa and work permit assistance</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_193_DIGITAL_NOMAD_AND_REMOTE_WORK_TRAVEL.md
+- Digital nomad visa and work permit assistance

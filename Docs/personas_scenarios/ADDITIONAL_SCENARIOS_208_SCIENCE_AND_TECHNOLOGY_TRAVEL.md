@@ -15,5 +15,4 @@ Science travel involves specialized knowledge of research facilities, technology
 - Science museum and technology conference access coordination
 - Research facility visit and laboratory tour arrangements
 - Professional development and networking opportunities
-- Science travel experience and educational enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_208_SCIENCE_AND_TECHNOLOGY_TRAVEL.md
+- Science travel experience and educational enhancement

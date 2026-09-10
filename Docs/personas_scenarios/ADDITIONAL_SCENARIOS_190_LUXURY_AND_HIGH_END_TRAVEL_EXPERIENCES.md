@@ -15,5 +15,4 @@ Luxury travel involves exclusivity, personalization, and premium service expecta
 - Exclusive and bespoke travel experience arrangements
 - Private concierge and personalized service coordination
 - Premium transportation and accommodation access
-- Luxury travel management and expectation fulfillment</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_190_LUXURY_AND_HIGH_END_TRAVEL_EXPERIENCES.md
+- Luxury travel management and expectation fulfillment

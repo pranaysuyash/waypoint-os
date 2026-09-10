@@ -15,5 +15,4 @@ Religious travel involves cultural sensitivity, spiritual significance, and inst
 - Pilgrimage site visit and sacred location arrangements
 - Religious institution coordination and accommodation support
 - Culturally sensitive and respectful service delivery
-- Spiritual journey logistics and experience enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_188_RELIGIOUS_AND_SPIRITUAL_PILGRIMAGE_TRAVEL.md
+- Spiritual journey logistics and experience enhancement

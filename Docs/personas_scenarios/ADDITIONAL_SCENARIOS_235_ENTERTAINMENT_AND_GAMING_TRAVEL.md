@@ -15,5 +15,4 @@ Entertainment travel involves specialized knowledge of media protocols, entertai
 - Entertainment venue and gaming conference access coordination
 - Media production facility and event attendance arrangements
 - Technical transportation and entertainment logistics support
-- Entertainment travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_235_ENTERTAINMENT_AND_GAMING_TRAVEL.md
+- Entertainment travel experience and professional enhancement

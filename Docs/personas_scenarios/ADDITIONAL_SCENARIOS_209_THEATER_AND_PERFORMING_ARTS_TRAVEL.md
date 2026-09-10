@@ -15,5 +15,4 @@ Performing arts travel involves specialized knowledge of theater schedules, arti
 - Theater and performing arts ticket access coordination
 - Backstage tour and artist meet-and-greet arrangements
 - Performing arts festival and event logistics support
-- Theater travel experience and cultural enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_209_THEATER_AND_PERFORMING_ARTS_TRAVEL.md
+- Theater travel experience and cultural enhancement

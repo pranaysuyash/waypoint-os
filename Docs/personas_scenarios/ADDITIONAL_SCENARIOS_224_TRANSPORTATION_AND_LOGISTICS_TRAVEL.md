@@ -15,5 +15,4 @@ Transportation travel involves specialized knowledge of logistics protocols, tra
 - Transportation hub and logistics center access coordination
 - Industry conference and event attendance arrangements
 - Technical transportation and logistics support
-- Transportation travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_224_TRANSPORTATION_AND_LOGISTICS_TRAVEL.md
+- Transportation travel experience and professional enhancement

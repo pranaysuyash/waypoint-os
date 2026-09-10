@@ -15,5 +15,4 @@ Space tourism represents an emerging travel sector that requires specialized kno
 - Astronomical viewing tour and dark sky location arrangements
 - Space camp program and education coordination
 - Telescope rental and astronomy equipment services
-- Emerging space tourism opportunity booking</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_180_SPACE_TOURISM_AND_ASTRONOMY_TRAVEL.md
+- Emerging space tourism opportunity booking

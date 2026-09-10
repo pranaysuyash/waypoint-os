@@ -15,5 +15,4 @@ Paper travel involves specialized knowledge of pulp protocols, paper safety, and
 - Paper mill and pulp conference access coordination
 - Forestry facility and event attendance arrangements
 - Technical transportation and paper logistics support
-- Paper travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_248_PAPER_AND_PULP_TRAVEL.md
+- Paper travel experience and professional enhancement

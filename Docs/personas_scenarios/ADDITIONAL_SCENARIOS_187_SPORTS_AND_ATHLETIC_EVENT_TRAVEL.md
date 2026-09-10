@@ -15,5 +15,4 @@ Sports travel involves team coordination, equipment logistics, and competition s
 - Team transportation and accommodation arrangements
 - Equipment shipping and athletic gear coordination
 - Competition schedule and event support
-- Team logistics and performance optimization</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_187_SPORTS_AND_ATHLETIC_EVENT_TRAVEL.md
+- Team logistics and performance optimization

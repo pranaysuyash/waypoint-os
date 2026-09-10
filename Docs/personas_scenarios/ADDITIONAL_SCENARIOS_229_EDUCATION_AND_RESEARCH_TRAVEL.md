@@ -15,5 +15,4 @@ Education travel involves specialized knowledge of research protocols, academic 
 - Academic conference and research facility access coordination
 - Educational institution and event attendance arrangements
 - Technical transportation and education logistics support
-- Education travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_229_EDUCATION_AND_RESEARCH_TRAVEL.md
+- Education travel experience and professional enhancement

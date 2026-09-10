@@ -15,5 +15,4 @@ Construction travel involves specialized knowledge of site safety, engineering p
 - Construction site and infrastructure access coordination
 - Engineering conference and industry event attendance arrangements
 - Technical transportation and project logistics support
-- Construction travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_217_CONSTRUCTION_AND_ENGINEERING_TRAVEL.md
+- Construction travel experience and professional enhancement

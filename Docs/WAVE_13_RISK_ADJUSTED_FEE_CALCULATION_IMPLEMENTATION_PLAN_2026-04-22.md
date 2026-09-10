@@ -105,5 +105,4 @@ This implementation plan outlines the development of a risk-adjusted fee calcula
 
 - Docs/SUITABILITY_ENGINE.md
 - Docs/DECISION_PIPELINE.md
-- Docs/DATA_MODEL_AND_TAXONOMY.md</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/WAVE_13_RISK_ADJUSTED_FEE_CALCULATION_IMPLEMENTATION_PLAN_2026-04-22.md
+- Docs/DATA_MODEL_AND_TAXONOMY.md

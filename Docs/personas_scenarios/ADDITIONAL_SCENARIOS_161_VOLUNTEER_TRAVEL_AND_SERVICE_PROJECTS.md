@@ -15,5 +15,4 @@ Volunteer travel requires careful matching of traveler skills with community nee
 - Ethical volunteer organization vetting and placement
 - Cultural sensitivity training and orientation
 - Logistics coordination around volunteer schedules
-- Impact assessment and reflection opportunities</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_161_VOLUNTEER_TRAVEL_AND_SERVICE_PROJECTS.md
+- Impact assessment and reflection opportunities

@@ -15,5 +15,4 @@ Water sports travel involves safety-critical activities that require proper cert
 - PADI certification course and dive site arrangements
 - Dive boat charter and transportation coordination
 - Equipment rental and maintenance services
-- Safety briefings and emergency procedure coordination</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_178_SCUBA_DIVING_AND_WATER_SPORTS_TRAVEL.md
+- Safety briefings and emergency procedure coordination

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { parse as parseSetCookie } from "set-cookie-parser";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
+import { spineUrl } from "@/lib/proxy-core";
 
 function getSetCookieHeaders(headers: Headers): string[] {
   const headersAny = headers as Headers & {
@@ -24,7 +25,8 @@ export async function POST(request: NextRequest) {
     return bffJson({ error: "Invalid request body" }, 400);
   }
 
-  const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/api/auth/login`;
+  // spineUrl() applies the validated backend base from proxy-core.ts.
+  const spineApiUrl = spineUrl("/api/auth/login");
 
   try {
     const response = await fetch(

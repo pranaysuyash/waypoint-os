@@ -15,5 +15,4 @@ Retail travel involves specialized knowledge of consumer goods protocols, retail
 - Retail store and consumer goods facility access coordination
 - Industry conference and event attendance arrangements
 - Technical transportation and retail logistics support
-- Retail travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_225_RETAIL_AND_CONSUMER_GOODS_TRAVEL.md
+- Retail travel experience and professional enhancement

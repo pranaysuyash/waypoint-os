@@ -200,10 +200,15 @@ def test_f36_survey_is_staged_not_dispatched(session_client):
     assert feedback["dispatched"] is False
 
 
-def test_f36_scorecard_labeled_demo_static(session_client):
+def test_f36_scorecard_honest_aggregation(session_client):
+    """Scorecard aggregates from stored responses and labels its source —
+    the fabricated demo rows are gone (superseded by the E-10 build)."""
     resp = session_client.get("/api/v1/feedback/supplier-scorecard", headers=_headers())
     assert resp.status_code == 200
-    assert resp.json()["data_source"] == "demo_static"
+    data = resp.json()
+    assert data["data_source"] == "computed_from_responses"
+    assert data["total_feedback_submissions"] == 0
+    assert data["suppliers"] == []
 
 
 # ---------------------------------------------------------------- F-37 slice

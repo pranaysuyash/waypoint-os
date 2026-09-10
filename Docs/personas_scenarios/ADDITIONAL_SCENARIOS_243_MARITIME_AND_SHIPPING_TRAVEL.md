@@ -15,5 +15,4 @@ Maritime travel involves specialized knowledge of shipping protocols, maritime s
 - Port and shipping conference access coordination
 - Maritime facility and event attendance arrangements
 - Technical transportation and maritime logistics support
-- Maritime travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_243_MARITIME_AND_SHIPPING_TRAVEL.md
+- Maritime travel experience and professional enhancement

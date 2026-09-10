@@ -15,5 +15,4 @@ Wellness travel requires matching traveler goals with authentic retreat experien
 - Credible wellness retreat selection and booking
 - Transportation coordination to retreat locations
 - Personalized wellness activity and dietary arrangements
-- Post-retreat integration and follow-up support</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_166_WELLNESS_AND_SPA_RETREAT_BOOKING.md
+- Post-retreat integration and follow-up support

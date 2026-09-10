@@ -15,5 +15,4 @@ Travelers increasingly prioritize sustainability, and providing eco-friendly opt
 - Carbon footprint analysis for all transportation options
 - Recommendations of certified sustainable accommodations
 - Integration of carbon offset programs into booking process
-- Educational information about sustainable travel choices</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_148_SUSTAINABLE_TRAVEL_OPTION_OPTIMIZATION.md
+- Educational information about sustainable travel choices

@@ -15,5 +15,4 @@ Government travel involves specialized knowledge of public sector protocols, gov
 - Government facility and public sector conference access coordination
 - Policy meeting and event attendance arrangements
 - Technical transportation and government logistics support
-- Government travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_231_GOVERNMENT_AND_PUBLIC_SECTOR_TRAVEL.md
+- Government travel experience and professional enhancement

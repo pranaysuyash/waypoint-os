@@ -15,5 +15,4 @@ Backpacking travel involves budget constraints, safety considerations, and indep
 - Budget accommodation and transportation arrangements
 - Safety information and resource coordination
 - Flexible itinerary and independent travel support
-- Affordable travel logistics and cost management</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_198_BACKPACKING_AND_BUDGET_TRAVEL.md
+- Affordable travel logistics and cost management

@@ -15,5 +15,4 @@ Corporate group travel involves multiple stakeholders and budget considerations,
 - Negotiated group rates for transportation and accommodations
 - Centralized booking and communication system
 - Event registration and logistics coordination
-- Comprehensive expense tracking and reporting for reimbursement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_155_CORPORATE_GROUP_TRAVEL_MANAGEMENT.md
+- Comprehensive expense tracking and reporting for reimbursement

@@ -131,9 +131,25 @@ def test_capability_routers_batch_end_to_end(session_client):
     assert survey_res.status_code == 200
     assert "https://feedback.waypointos.com" in survey_res.json()["survey_url"]
 
+    # Record a real response first (E-10): the scorecard aggregates only from
+    # stored responses — the old "average_agency_nps >= 80" expectation relied
+    # on the fabricated demo rows that no longer exist.
+    response_res = session_client.post(
+        f"/api/v1/feedback/{trip_id}/response",
+        json={
+            "nps_score": 9,
+            "supplier_ratings": [{"supplier_name": "Emirates", "category": "AIRLINE", "score": 5}],
+        },
+        headers={"X-Agency-ID": "agency_batch_test"},
+    )
+    assert response_res.status_code == 200
+    assert response_res.json()["memory_writes_persisted"] >= 1
+
     scorecard_res = session_client.get(
         "/api/v1/feedback/supplier-scorecard",
         headers={"X-Agency-ID": "agency_batch_test"},
     )
     assert scorecard_res.status_code == 200
-    assert scorecard_res.json()["average_agency_nps"] >= 80
+    assert scorecard_res.json()["data_source"] == "computed_from_responses"
+    assert scorecard_res.json()["total_feedback_submissions"] >= 1
+    assert scorecard_res.json()["average_agency_nps"] == 9

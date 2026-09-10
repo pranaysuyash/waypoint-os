@@ -188,5 +188,4 @@ Frontend (Next.js) ← HTTP → Spine API (FastAPI) ← Python → Core Logic
 - **Service Mesh**: Consider Istio/Linkerd for service discovery and observability
 - **API Versioning**: Implement proper API versioning for future changes
 - **Caching**: Add response caching for expensive operations
-- **Rate Limiting**: Implement request rate limiting at service level</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/architecture/adr/ADR-002-SPINE-API-ARCHITECTURE.md
+- **Rate Limiting**: Implement request rate limiting at service level

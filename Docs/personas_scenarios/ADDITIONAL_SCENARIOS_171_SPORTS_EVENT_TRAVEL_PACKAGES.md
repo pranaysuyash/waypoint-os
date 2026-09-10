@@ -15,5 +15,4 @@ Sports event travel requires coordination of tickets, timing, and logistics that
 - Event ticket and hospitality package procurement
 - Strategic accommodation placement near venues
 - Transportation coordination aligned with event schedules
-- Event-specific amenities and fan experience enhancements</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_171_SPORTS_EVENT_TRAVEL_PACKAGES.md
+- Event-specific amenities and fan experience enhancements

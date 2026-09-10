@@ -15,5 +15,4 @@ Ecotourism involves environmental responsibility, conservation awareness, and su
 - Eco-friendly transportation and accommodation arrangements
 - Conservation project and volunteer opportunity coordination
 - Sustainable travel education and awareness support
-- Environmental impact minimization and carbon offset services</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_192_ECOTOURISM_AND_SUSTAINABLE_TRAVEL.md
+- Environmental impact minimization and carbon offset services

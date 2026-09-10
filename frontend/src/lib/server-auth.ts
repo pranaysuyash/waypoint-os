@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
+import { spineUrl } from "@/lib/proxy-core";
 import type { AuthSession } from "@/types/auth-session";
-
-const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
 export async function loadServerAuthSession(): Promise<AuthSession | null> {
   try {
@@ -15,7 +14,9 @@ export async function loadServerAuthSession(): Promise<AuthSession | null> {
       cookieParts.push(`refresh_token=${refreshToken}`);
     }
 
-    const response = await fetch(`${SPINE_API_URL}/api/auth/me`, {
+    // spineUrl() applies the validated backend base from proxy-core.ts.
+    const meUrl = spineUrl("/api/auth/me");
+    const response = await fetch(meUrl, {
       method: "GET",
       headers: {
         Accept: "application/json",

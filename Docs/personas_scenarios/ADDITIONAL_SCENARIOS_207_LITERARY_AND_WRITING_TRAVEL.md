@@ -15,5 +15,4 @@ Literary travel involves specialized knowledge of publishing events, author comm
 - Literary festival and writing retreat access coordination
 - Author home and museum visit arrangements
 - Publishing industry networking and event support
-- Literary travel experience and creative enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_207_LITERARY_AND_WRITING_TRAVEL.md
+- Literary travel experience and creative enhancement

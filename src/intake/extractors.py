@@ -2256,9 +2256,21 @@ def _extract_passport_visa(text: str) -> Dict[str, Any]:
         # which would otherwise invert them; and treat "no visa(s) yet" /
         # "don't have a visa" as required-but-not-applied rather than
         # not_required. Both inversions existed before this fix.
+        # Review cycle 1 (2026-09-09): (a) negated "visa-free" phrases
+        # ("don't have visa-free transit") must resolve to required, not
+        # not_required — a substring ordering alone cannot fix that, so they
+        # get an explicit pre-check; (b) "visa pending" means APPLIED and
+        # in-process — its own status, distinct from not_applied (which the
+        # decision engine treats as a critical booking blocker at
+        # decision.py's visa_not_applied check).
         not_required_forms = ("no visa required", "no visa needed", "visa not required", "visa-free", "visa free")
-        not_applied_forms = ("no visa yet", "no visas yet", "visa pending", "visa not applied", "haven't got visa", "haven't got a visa", "don't have visa", "don't have a visa")
-        if any(p in text_lower for p in not_required_forms):
+        not_applied_forms = ("no visa yet", "no visas yet", "visa not applied", "haven't got visa", "haven't got a visa", "don't have visa", "don't have a visa")
+        negated_visa_free = re.search(r"(?:don'?t|doesn'?t|not|never)\s+(?:have\s+)?(?:a\s+)?visa[-\s]?free", text_lower)
+        if negated_visa_free:
+            results["visa_status"] = {"requirement": "required", "status": "not_applied"}
+        elif "visa pending" in text_lower or "visa is pending" in text_lower:
+            results["visa_status"] = {"requirement": "required", "status": "pending"}
+        elif any(p in text_lower for p in not_required_forms):
             results["visa_status"] = {"requirement": "not_required"}
         elif "approved" in text_lower or "got visa" in text_lower:
             results["visa_status"] = {"requirement": "required", "status": "approved"}

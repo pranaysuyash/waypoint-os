@@ -15,5 +15,4 @@ Defense travel involves specialized knowledge of security protocols, defense saf
 - Defense facility and security conference access coordination
 - Military installation and event attendance arrangements
 - Technical transportation and defense logistics support
-- Defense travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_232_DEFENSE_AND_SECURITY_TRAVEL.md
+- Defense travel experience and professional enhancement

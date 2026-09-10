@@ -15,5 +15,4 @@ Hospitality travel involves specialized knowledge of tourism protocols, hospital
 - Hotel property and tourism conference access coordination
 - Hospitality facility and event attendance arrangements
 - Technical transportation and hospitality logistics support
-- Hospitality travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_234_HOSPITALITY_AND_TOURISM_TRAVEL.md
+- Hospitality travel experience and professional enhancement

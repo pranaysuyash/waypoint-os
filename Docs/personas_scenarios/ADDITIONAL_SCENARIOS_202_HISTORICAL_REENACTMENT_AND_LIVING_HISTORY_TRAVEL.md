@@ -15,5 +15,4 @@ Historical travel involves period authenticity, equipment coordination, and even
 - Historical reenactment event access and participation coordination
 - Costume and equipment rental and transportation arrangements
 - Period-specific accommodation and experience support
-- Living history museum and educational program access</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_202_HISTORICAL_REENACTMENT_AND_LIVING_HISTORY_TRAVEL.md
+- Living history museum and educational program access

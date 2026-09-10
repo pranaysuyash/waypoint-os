@@ -15,5 +15,4 @@ Aerospace travel involves specialized knowledge of aviation protocols, aerospace
 - Aerospace facility and aviation conference access coordination
 - Aircraft manufacturing plant and event attendance arrangements
 - Technical transportation and aerospace logistics support
-- Aerospace travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_242_AEROSPACE_AND_AVIATION_TRAVEL.md
+- Aerospace travel experience and professional enhancement

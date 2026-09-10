@@ -15,5 +15,4 @@ Family travel involves diverse needs across age groups, accessibility considerat
 - Family-friendly accommodation and activity arrangements
 - Multigenerational accessibility and mobility support
 - Age-appropriate experience and entertainment coordination
-- Family group logistics and bonding opportunity management</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_194_FAMILY_AND_MULTIGENERATIONAL_TRAVEL.md
+- Family group logistics and bonding opportunity management

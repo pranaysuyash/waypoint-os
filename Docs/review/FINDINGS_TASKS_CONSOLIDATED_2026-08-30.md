@@ -1,3 +1,9 @@
+<!-- SUPERSEDED AS CANONICAL (2026-09-09): finding identity + lifecycle state now live in the
+append-only store `Docs/review/FINDINGS_STORE.jsonl`, managed by `scripts/findings.py`
+(generated view: `Docs/review/FINDINGS_LIVE.md`). This file is retained as a frozen
+historical view; its rows were imported into the store with their legacy IDs as aliases.
+Do not update lifecycle state here — use the CLI. -->
+
 # Consolidated Findings & Tasks Register — Explicit + Implicit (2026-08-30)
 
 **Purpose:** one list of every finding/task that can or should be **explored** (researched + documented) or **implemented**, consolidated from:

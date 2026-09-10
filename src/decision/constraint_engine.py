@@ -17,7 +17,7 @@ from src.schemas.constraints import (
     ConstraintType,
     ConstraintViolation,
 )
-from src.schemas.journey_graph import JourneyDependencyGraph, NodeType
+from src.schemas.journey_graph import DependencyRelation, JourneyDependencyGraph, NodeType
 
 # Recognised Schengen area countries and major gateway destinations
 SCHENGEN_DESTINATIONS = {
@@ -91,18 +91,42 @@ GROUND_COMMITMENT_TYPES: Set[Any] = {
     NodeType.HOTEL_CHECKIN,
 }
 
-# Heuristic default minutes from transport arrival to a ground commitment
-# when the node carries no explicit transfer requirement. FLIGHT includes
+# Node types whose END gates a downstream ground commitment in section 1b.
+# TRANSFER is included so a transfer-end -> commitment gap is at least
+# advisory, with a small default (the transfer already absorbed egress).
+GROUND_ARRIVAL_GATING_TYPES: Set[Any] = TRANSPORT_ARRIVAL_TYPES | {NodeType.TRANSFER}
+
+# Heuristic default minutes from arrival to a ground commitment when the
+# node carries no explicit transfer requirement. FLIGHT includes
 # immigration + baggage + city transfer; rail/ferry/cruise include station
-# exit only. These defaults produce SOFT (advisory) violations — only an
-# explicit per-node requirement can produce a hard physical reject.
+# exit only; TRANSFER end is already at street level. These defaults produce
+# SOFT (advisory) violations — only an explicit per-node requirement can
+# produce a hard physical reject.
 GROUND_ACCESS_DEFAULT_MINUTES: Dict[str, int] = {
     NodeType.FLIGHT.value: 90,
     NodeType.RAIL.value: 45,
     NodeType.RAIL_HIGH_SPEED.value: 45,
     NodeType.FERRY.value: 45,
     NodeType.CRUISE.value: 45,
+    NodeType.TRANSFER.value: 15,
 }
+
+# Maximum hours from first arrival to the first hotel check-in before the
+# arrival night counts as uncovered (TS-01). 12h tolerates normal daytime
+# waits and just-past-midnight check-ins after late landings; anything longer
+# means the traveler has nowhere to sleep for a full night-cycle.
+MAX_ARRIVAL_TO_CHECKIN_GAP_HOURS: float = 12.0
+
+# Minimum connection wait (hours) before a lodging-less transit layover
+# earns a SOFT operator suggestion (transit room / lounge upsell). Below
+# this it is a normal connection and stays silent. Never a hard gate —
+# owner-confirmed policy 2026-09-09.
+LONG_LAYOVER_ADVISORY_MIN_HOURS: float = 6.0
+
+# Minimum connection minutes for surface modes (rail/ferry/cruise) to a
+# pickup or onward leg. Airport MCT defaults (45/90m) are calibrated for
+# terminal transit; station/port egress is far shorter (review cycle 2).
+SURFACE_MODE_CONNECT_MIN_MINUTES: int = 20
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -205,25 +229,29 @@ def _node_declared_pax(node: Any) -> Optional[int]:
 
 
 def _node_age_bounds(node: Any) -> Tuple[Optional[int], Optional[int]]:
-    """(min_age, max_age) product rules a node declares, e.g. fare or ticketed-entry age categories."""
+    """(min_age, max_age) product eligibility bounds a node declares.
+
+    Only unambiguous whole-party bounds count as HARD: ``min_age`` /
+    ``max_age`` mean "every participant on this product must be within the
+    range." Fare-CATEGORY definitions (``child_fare_min_age``,
+    ``infant_max_age``) describe a fare class's boundary, not eligibility of
+    the whole party — a family flight legitimately carries an infant-fare
+    line for the 2-year-old and adult fares for the parents — so they are
+    deliberately NOT hard bounds here (review cycle 1, 2026-09-09).
+    """
     meta = node.metadata or {}
-    bounds: List[Optional[int]] = []
-    for key in ("min_age", "child_fare_min_age", "infant_max_age"):
-        raw = meta.get(key)
-        try:
-            bounds.append(int(raw) if raw is not None else None)
-        except (TypeError, ValueError):
-            bounds.append(None)
-    min_age = bounds[0]
-    if min_age is None:
-        min_age = bounds[1]
-    # infant_max_age expresses "this product only covers ages <= X"
-    max_age = bounds[2]
-    if "max_age" in meta:
-        try:
+    min_age: Optional[int] = None
+    max_age: Optional[int] = None
+    try:
+        if meta.get("min_age") is not None:
+            min_age = int(meta["min_age"])
+    except (TypeError, ValueError):
+        min_age = None
+    try:
+        if meta.get("max_age") is not None:
             max_age = int(meta["max_age"])
-        except (TypeError, ValueError):
-            pass
+    except (TypeError, ValueError):
+        max_age = None
     return min_age, max_age
 
 
@@ -332,16 +360,32 @@ class ConstraintEngine:
             curr_node = sorted_nodes[i]
             next_node = sorted_nodes[i + 1]
 
-            # If adjacent nodes are connecting flights or flight -> transfer
-            if curr_node.node_type == NodeType.FLIGHT and next_node.node_type in (NodeType.FLIGHT, NodeType.TRANSFER):
-                buffer_minutes = int((next_node.start_time - curr_node.end_time).total_seconds() / 60.0)
+            # If adjacent nodes are connecting transport legs or transport -> transfer.
+            # Any transport mode gates the connection (rail/ferry -> transfer
+            # overlaps are as impossible as flight ones; review cycle 1).
+            if curr_node.node_type in TRANSPORT_ARRIVAL_TYPES and next_node.node_type in (NodeType.FLIGHT, NodeType.TRANSFER):
+                # Undated nodes cannot participate in a temporal check —
+                # abstain rather than crash (review cycle 2; from_dict can
+                # legitimately produce per-field None times).
+                if curr_node.end_time is None or next_node.start_time is None:
+                    continue
+                buffer_minutes = int(
+                    (_as_utc(next_node.start_time) - _as_utc(curr_node.end_time)).total_seconds() / 60.0
+                )
                 is_international = "international" in curr_node.title.lower() or "international" in next_node.title.lower()
 
-                # Check for granular terminal MCT if available
-                airport = curr_node.location[:3].upper() if len(curr_node.location) >= 3 else "LHR"
-                from_term = curr_node.metadata.get("terminal")
-                to_term = next_node.metadata.get("terminal")
-                min_mct = cls.get_terminal_mct(airport, from_term, to_term, is_international=is_international)
+                if curr_node.node_type == NodeType.FLIGHT:
+                    # Check for granular terminal MCT if available
+                    airport = curr_node.location[:3].upper() if len(curr_node.location) >= 3 else "LHR"
+                    from_term = curr_node.metadata.get("terminal")
+                    to_term = next_node.metadata.get("terminal")
+                    min_mct = cls.get_terminal_mct(airport, from_term, to_term, is_international=is_international)
+                else:
+                    # Surface modes (rail/ferry/cruise): station/port egress is
+                    # far shorter than airport MCT — the 45/90m airport
+                    # defaults would hard-fail normal pre-booked pickups
+                    # (review cycle 2).
+                    min_mct = SURFACE_MODE_CONNECT_MIN_MINUTES
 
                 if buffer_minutes < 0:
                     # Impossible overlap (teleportation)
@@ -402,7 +446,7 @@ class ConstraintEngine:
             curr_node = sorted_nodes[i]
             next_node = sorted_nodes[i + 1]
 
-            if curr_node.node_type not in TRANSPORT_ARRIVAL_TYPES:
+            if curr_node.node_type not in GROUND_ARRIVAL_GATING_TYPES:
                 continue
             if next_node.node_type not in GROUND_COMMITMENT_TYPES:
                 continue
@@ -417,6 +461,14 @@ class ConstraintEngine:
             heuristic_required = (
                 explicit_required if explicit_required is not None else mode_default
             )
+            if curr_node.node_type == NodeType.TRANSFER and next_node.node_type == NodeType.HOTEL_CHECKIN:
+                # Door drop-off: a transfer ending at the hotel with check-in
+                # at that instant is not a venue-egress gap, so the 15m
+                # heuristic default must not fire (it would put a standing
+                # advisory on every compiled proposal). HARD checks — negative
+                # gap and explicit per-node requirements — still apply to
+                # this pair (review cycle 3).
+                heuristic_required = None
 
             if gap_minutes < 0:
                 hard_violations.append(
@@ -481,39 +533,138 @@ class ConstraintEngine:
                     )
                 )
 
-        # 1c. First-Night Lodging Coverage (TS-01). If the traveler arrives on
-        # date D but the first hotel check-in at that destination begins on a
-        # later date, the arrival night has no accommodation.
+        # 1c. First-Night Lodging Coverage (TS-01). Every transport arrival
+        # must have lodging active within a bounded window: some HOTEL_CHECKIN
+        # interval [start, end] must have started by arrival + 12h and not
+        # ended before the arrival. Point-comparison against a single check-in
+        # is wrong in both directions (a 23:30 landing followed by a 00:30
+        # check-in is the same night; a mid-trip hotel change is not an
+        # uncovered arrival), so the rule is interval coverage per arrival.
         arrival_nodes = [n for n in sorted_nodes if n.node_type in TRANSPORT_ARRIVAL_TYPES and n.end_time is not None]
-        checkin_nodes = [n for n in sorted_nodes if n.node_type == NodeType.HOTEL_CHECKIN and n.start_time is not None]
-        for checkin in checkin_nodes:
-            prior_arrivals = [a for a in arrival_nodes if _as_utc(a.end_time) <= _as_utc(checkin.start_time)]
-            if not prior_arrivals:
+        # Lodging intent is declared by either vocabulary: HOTEL_CHECKIN
+        # events or HOTEL_STAY intervals both count as coverage (review
+        # cycle 2). An open-ended stay (end_time None) is treated leniently —
+        # we cannot prove it ended, so it covers; incomplete data abstains
+        # toward non-blocking rather than toward false rejects.
+        lodging_nodes = [
+            n
+            for n in sorted_nodes
+            if n.node_type in (NodeType.HOTEL_CHECKIN, NodeType.HOTEL_STAY) and n.start_time is not None
+        ]
+        # Abstain when the itinerary declares no lodging at all: a lodging
+        # expectation cannot be inferred for day trips, cruise-only, or
+        # partial graphs — flagging absent lodging would fabricate intent.
+        if not lodging_nodes or not arrival_nodes:
+            arrival_nodes = []
+        max_gap = timedelta(hours=MAX_ARRIVAL_TO_CHECKIN_GAP_HOURS)
+        # Return legs: an arrival that is the target of a RETURN_LEG_OF edge
+        # is the homeward leg — no lodging is expected after it. Fallback
+        # when the graph carries no edges: skip the final arrival by end_time
+        # (handles return-leg-followed-by-home-transfer shapes; review cycle 2).
+        return_leg_ids = {e.to_node_id for e in graph.edges if e.relation == DependencyRelation.RETURN_LEG_OF}
+        final_arrival = max(arrival_nodes, key=lambda a: _as_utc(a.end_time)) if arrival_nodes else None
+        # Transit continuations: an arrival followed by a departing TRANSPORT
+        # leg within its 12h window is a connection, not a stranded night —
+        # the onward leg's own arrival carries the lodging question. Only
+        # transport legs qualify: a TRANSFER ends nowhere coverage-checkable,
+        # so including it would exempt the canonical "lands → transfer → no
+        # hotel that night" case (review cycle 3). Overnight layovers with no
+        # onward transport departure and no lodging are still flagged.
+        departure_nodes = [
+            n
+            for n in sorted_nodes
+            if n.node_type in TRANSPORT_ARRIVAL_TYPES and n.start_time is not None
+        ]
+        for arrival in arrival_nodes:
+            if arrival.node_id in return_leg_ids:
                 continue
-            first_arrival = min(prior_arrivals, key=lambda a: _as_utc(a.end_time))
-            arrival_day = _as_utc(first_arrival.end_time).date()
-            checkin_day = _as_utc(checkin.start_time).date()
-            if checkin_day > arrival_day:
-                nights = (checkin_day - arrival_day).days
-                hard_violations.append(
-                    ConstraintViolation(
-                        constraint_id=f"UNCOVERED_FIRST_NIGHT_{checkin.node_id}",
-                        name="Arrival Night Has No Accommodation",
-                        category=ConstraintCategory.CAPACITY_ROOMING,
-                        constraint_type=ConstraintType.HARD,
-                        severity="blocking",
-                        affected_elements=[first_arrival.node_id, checkin.node_id],
-                        description=(
-                            f"Traveler arrives {first_arrival.title} on {arrival_day.isoformat()} "
-                            f"but the first hotel check-in ({checkin.title}) begins "
-                            f"{checkin_day.isoformat()} — {nights} night(s) uncovered."
-                        ),
-                        relaxation_option=(
-                            f"Book the arrival night at {first_arrival.location or 'the arrival city'} "
-                            f"or move check-in to {arrival_day.isoformat()}."
-                        ),
+            arrival_t = _as_utc(arrival.end_time)
+            # Final-arrival fallback (no RETURN_LEG_OF edge): treat the last
+            # arrival as homeward ONLY when every lodging interval has already
+            # ended before it. Lodging scheduled after the final arrival proves
+            # it is a destination-side arrival and must be coverage-checked
+            # (review cycle 3 refinement — a bare last-arrival skip swallowed
+            # genuine one-way/outbound uncovered nights).
+            if arrival is final_arrival and not any(
+                _as_utc(c.start_time) > arrival_t for c in lodging_nodes
+            ):
+                continue
+            window_end = arrival_t + max_gap
+            onward_departures = sorted(
+                (
+                    d
+                    for d in departure_nodes
+                    if d.node_id != arrival.node_id and arrival_t < _as_utc(d.start_time) <= window_end
+                ),
+                key=lambda d: _as_utc(d.start_time),
+            )
+            covered = any(
+                _as_utc(c.start_time) <= window_end
+                and (c.end_time is None or _as_utc(c.end_time) >= arrival_t)
+                for c in lodging_nodes
+            )
+            if onward_departures:
+                # Transit continuation (owner-confirmed policy, 2026-09-09):
+                # an onward connection within the window never blocks — the
+                # lodging question transfers to the next arrival. When the
+                # connection is long and no transit lodging covers it, surface
+                # a SOFT operator suggestion (transit-room upsell), not a
+                # feasibility gate.
+                if covered:
+                    continue
+                next_departure = onward_departures[0]
+                wait_hours = (_as_utc(next_departure.start_time) - arrival_t).total_seconds() / 3600.0
+                if wait_hours >= LONG_LAYOVER_ADVISORY_MIN_HOURS:
+                    soft_violations.append(
+                        ConstraintViolation(
+                            constraint_id=f"LONG_LAYOVER_NO_HOTEL_{arrival.node_id}",
+                            name="Long Layover Without Transit Hotel",
+                            category=ConstraintCategory.TEMPORAL_PACING,
+                            constraint_type=ConstraintType.SOFT,
+                            severity="advisory",
+                            affected_elements=[arrival.node_id, next_departure.node_id],
+                            description=(
+                                f"{wait_hours:.0f}h connection at {arrival.location or 'this stop'} "
+                                f"({arrival.title} arrives {arrival.end_time.strftime('%H:%M')}, "
+                                f"{next_departure.title} departs {next_departure.start_time.strftime('%H:%M')}) "
+                                "with no hotel covering the wait."
+                            ),
+                            relaxation_option=(
+                                f"Offer the customer a transit hotel or lounge at "
+                                f"{arrival.location or 'the connection city'} for the "
+                                f"~{wait_hours:.0f}h layover."
+                            ),
+                        )
                     )
+                continue
+            if covered:
+                continue
+            later_checkins = sorted(
+                (c for c in lodging_nodes if _as_utc(c.start_time) > arrival_t),
+                key=lambda c: _as_utc(c.start_time),
+            )
+            next_checkin = later_checkins[0] if later_checkins else None
+            hard_violations.append(
+                ConstraintViolation(
+                    constraint_id=f"UNCOVERED_FIRST_NIGHT_{arrival.node_id}",
+                    name="Arrival Night Has No Accommodation",
+                    category=ConstraintCategory.CAPACITY_ROOMING,
+                    constraint_type=ConstraintType.HARD,
+                    severity="blocking",
+                    affected_elements=[arrival.node_id] + ([next_checkin.node_id] if next_checkin else []),
+                    description=(
+                        f"Traveler arrives {arrival.title} at {arrival.end_time.strftime('%H:%M')} "
+                        f"but no hotel check-in is active within {MAX_ARRIVAL_TO_CHECKIN_GAP_HOURS:g}h "
+                        "of that arrival — the arrival night is uncovered."
+                        + (f" First check-in afterwards: {next_checkin.title}." if next_checkin else "")
+                    ),
+                    relaxation_option=(
+                        f"Book the arrival night at {arrival.location or 'the arrival city'} "
+                        f"or move check-in of {next_checkin.title if next_checkin else 'the first hotel'} "
+                        f"within {MAX_ARRIVAL_TO_CHECKIN_GAP_HOURS:g}h of arrival."
+                    ),
                 )
+            )
 
         # 2. Regulatory Passport Validity & Schengen Rules
         trip_start: Optional[datetime] = sorted_nodes[0].start_time if sorted_nodes else None
@@ -639,13 +790,18 @@ class ConstraintEngine:
                             )
                         )
 
-                # Declared ticket pax vs actual party size
+                # Declared ticket pax vs actual party size. Over-booking
+                # (pax > party) is always a hard error — the supplier will
+                # reject or mischarge. Under-coverage is hard on whole-party
+                # products (transport, lodging) but only advisory on optional
+                # nodes where partial bookings are legitimate (spa for 2 of 4,
+                # parents' dinner while kids stay in; review cycle 1).
                 declared_pax = _node_declared_pax(node)
-                if declared_pax is not None and declared_pax != effective_party_size:
+                if declared_pax is not None and declared_pax > effective_party_size:
                     hard_violations.append(
                         ConstraintViolation(
-                            constraint_id=f"PAX_MISMATCH_{node.node_id}",
-                            name="Booked Traveler Count Mismatch",
+                            constraint_id=f"PAX_OVERBOOKED_{node.node_id}",
+                            name="Booked Traveler Count Exceeds Party",
                             category=ConstraintCategory.COMMERCIAL_SUPPLIER_POLICY,
                             constraint_type=ConstraintType.HARD,
                             severity="blocking",
@@ -660,6 +816,49 @@ class ConstraintEngine:
                             ),
                         )
                     )
+                elif declared_pax is not None and declared_pax < effective_party_size:
+                    whole_party_product = node.node_type in (
+                        TRANSPORT_ARRIVAL_TYPES
+                        | {NodeType.HOTEL_CHECKIN, NodeType.HOTEL_STAY, NodeType.TRANSFER}
+                    )
+                    if whole_party_product:
+                        hard_violations.append(
+                            ConstraintViolation(
+                                constraint_id=f"PAX_MISMATCH_{node.node_id}",
+                                name="Booked Traveler Count Mismatch",
+                                category=ConstraintCategory.COMMERCIAL_SUPPLIER_POLICY,
+                                constraint_type=ConstraintType.HARD,
+                                severity="blocking",
+                                affected_elements=[node.node_id],
+                                description=(
+                                    f"{node.title} is booked for {declared_pax} traveler(s) "
+                                    f"but the whole-party product must cover {effective_party_size}."
+                                ),
+                                relaxation_option=(
+                                    f"Re-book {node.title} for {effective_party_size} traveler(s) "
+                                    "before any payment is taken."
+                                ),
+                            )
+                        )
+                    else:
+                        soft_violations.append(
+                            ConstraintViolation(
+                                constraint_id=f"PAX_PARTIAL_{node.node_id}",
+                                name="Partial-Party Booking on Optional Product",
+                                category=ConstraintCategory.COMMERCIAL_SUPPLIER_POLICY,
+                                constraint_type=ConstraintType.SOFT,
+                                severity="advisory",
+                                affected_elements=[node.node_id],
+                                description=(
+                                    f"{node.title} is booked for {declared_pax} of {effective_party_size} "
+                                    "travelers. Correct if intentional (optional activity for part of the party)."
+                                ),
+                                relaxation_option=(
+                                    f"Confirm whether {node.title} should cover all "
+                                    f"{effective_party_size} travelers."
+                                ),
+                            )
+                        )
 
                 # Product age bounds (fare / ticketed-entry age categories)
                 if travelers:

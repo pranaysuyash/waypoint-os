@@ -15,5 +15,4 @@ Cruise travel involves multiple transportation modes and complex logistics that 
 - Seamless airport-to-port transportation coordination
 - Pre- and post-cruise accommodation arrangements
 - Shore excursion and onboard experience bookings
-- Cruise line policy expertise and issue resolution</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_158_CRUISE_TRAVEL_SPECIALIST_SERVICES.md
+- Cruise line policy expertise and issue resolution

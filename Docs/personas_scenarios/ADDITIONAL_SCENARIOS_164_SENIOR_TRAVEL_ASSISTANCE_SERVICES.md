@@ -15,5 +15,4 @@ Senior travelers often have specific health and mobility needs that require thou
 - Accessible transportation and accommodation arrangements
 - Medical and health support service coordination
 - Simplified booking and communication processes
-- Emergency assistance and companion travel options</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_164_SENIOR_TRAVEL_ASSISTANCE_SERVICES.md
+- Emergency assistance and companion travel options

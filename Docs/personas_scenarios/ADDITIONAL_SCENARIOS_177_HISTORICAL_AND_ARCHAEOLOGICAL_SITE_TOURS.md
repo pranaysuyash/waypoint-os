@@ -15,5 +15,4 @@ Historical travel requires expert interpretation and educational context to brin
 - Guided tours with expert historians and archaeologists
 - Site access and special permit coordination
 - Educational accommodation and resource provision
-- Historical context and interpretation services</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_177_HISTORICAL_AND_ARCHAEOLOGICAL_SITE_TOURS.md
+- Historical context and interpretation services

@@ -15,5 +15,4 @@ Mining travel involves specialized knowledge of extractive protocols, mining saf
 - Mine and extraction facility access coordination
 - Mining conference and industry event attendance arrangements
 - Technical transportation and mining logistics support
-- Mining travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_223_MINING_AND_EXTRACTIVE_INDUSTRIES_TRAVEL.md
+- Mining travel experience and professional enhancement

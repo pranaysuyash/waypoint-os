@@ -15,5 +15,4 @@ Luxury travelers expect seamless, personalized service that anticipates their ne
 - Private and exclusive transportation arrangements
 - Bespoke accommodation and experience curation
 - 24/7 personal concierge and security coordination
-- Complete discretion and privacy protection</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_160_LUXURY_TRAVEL_CONCIERGE_SERVICES.md
+- Complete discretion and privacy protection

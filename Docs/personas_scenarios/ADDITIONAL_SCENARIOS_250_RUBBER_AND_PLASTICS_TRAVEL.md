@@ -15,5 +15,4 @@ Rubber travel involves specialized knowledge of plastics protocols, rubber safet
 - Rubber plant and plastics conference access coordination
 - Polymer facility and event attendance arrangements
 - Technical transportation and rubber logistics support
-- Rubber travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_250_RUBBER_AND_PLASTICS_TRAVEL.md
+- Rubber travel experience and professional enhancement

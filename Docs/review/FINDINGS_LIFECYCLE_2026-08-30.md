@@ -223,3 +223,44 @@ Per doctrine §16.9, recurring gaps become explicit amendments. Proposed text fo
 Companion amendments D-01 (absence claims need executed evidence) and D-05 (completion-claim standard) remain open for Pranay's decision; this tooling implements D-01/D-05 mechanically for findings rows regardless.
 
 ## Checklist applied: IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md
+
+
+---
+
+## v2 (2026-09-09) — the lifecycle is now a store, not a convention
+
+The v1 design (markdown register + role-based checker) served its window but
+exhibited structural failures once multiple agent streams wrote findings in
+parallel: ID collisions across registers (two different findings both called
+F-20), state scattered across addenda, a hand-curated canonical-file list
+(a healthy 67-row register was role-de-scoped to "historical" while an agent
+was still writing to it), and a CI gate chasing a moving file list.
+
+**v2 makes the state machine structural:**
+
+| Concern | v1 (markdown) | v2 (store) |
+|---|---|---|
+| Canonical source | hand-curated register files | append-only `FINDINGS_STORE.jsonl` event log |
+| Identity | register-local IDs (collide) | store-minted `FND-NNNN`, never reused; legacy IDs = aliases |
+| State | prose markers in table cells | projected from events (`open / deferred / closed` + disposition) |
+| Closure evidence | convention | enforced at write time (fail-closed) |
+| Multi-agent writes | last-write-wins on files | exclusive file lock per store write |
+| Reading | open the register | generated `FINDINGS_LIVE.md` (DO NOT EDIT) or `list --json` |
+| CI gate | checker parses whichever files are listed | `findings.py validate` reads the store: structure, monotonic IDs, alias uniqueness, staleness |
+
+**Usage:** every command in the `scripts/findings.py` docstring. Agents: mint new
+findings with `open`; import legacy rows with `import --alias`; close with evidence;
+re-verify stale rows; never edit `FINDINGS_STORE.jsonl` or `FINDINGS_LIVE.md` by hand.
+
+**Historical registers** (`FINDINGS_REGISTER_2026-08-31.md`,
+`FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md`, per-stream registers) are frozen
+narrative views: their rows were imported with legacy IDs as aliases; their prose
+remains the detailed evidence trail behind each store row. Do not add new lifecycle
+rows there.
+
+**CI wiring (one line, deferred for the same coordination reason as v1):**
+
+```yaml
+      - name: Findings lifecycle gate (v2)
+        run: python3 scripts/findings.py validate
+```

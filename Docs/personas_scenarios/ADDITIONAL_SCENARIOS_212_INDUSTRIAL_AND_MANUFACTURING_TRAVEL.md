@@ -15,5 +15,4 @@ Industrial travel involves specialized knowledge of manufacturing processes, saf
 - Factory tour and facility access coordination
 - Industrial exhibition and trade show attendance arrangements
 - Technical transportation and equipment logistics support
-- Manufacturing travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_212_INDUSTRIAL_AND_MANUFACTURING_TRAVEL.md
+- Manufacturing travel experience and professional enhancement

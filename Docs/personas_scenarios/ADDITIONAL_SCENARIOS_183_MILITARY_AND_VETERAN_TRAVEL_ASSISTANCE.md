@@ -15,5 +15,4 @@ Military travel involves unique benefits, restrictions, and support services tha
 - Space-A flight and military transportation coordination
 - Military lodging and benefit utilization
 - Veteran service organization support and resources
-- Military family travel requirement assistance</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_183_MILITARY_AND_VETERAN_TRAVEL_ASSISTANCE.md
+- Military family travel requirement assistance

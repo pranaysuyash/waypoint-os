@@ -92,10 +92,15 @@ def test_sc961_digital_nomad_seed():
         # required / not applied
         ("Trip to Tokyo June 10 to 12 2027. No visas yet.", {"requirement": "required", "status": "not_applied"}),
         ("Trip to Tokyo June 10 to 12 2027. We don't have a visa yet.", {"requirement": "required", "status": "not_applied"}),
-        ("Trip to Tokyo June 10 to 12 2027. Visa pending with the consulate.", {"requirement": "required", "status": "not_applied"}),
+        # required / pending (applied, in process — must NOT be the critical
+        # not_applied state; review cycle 1)
+        ("Trip to Tokyo June 10 to 12 2027. Visa pending with the consulate.", {"requirement": "required", "status": "pending"}),
         # not required (must not be inverted by the 'required' substring)
         ("Trip to Paris June 10 to 12 2027. No visa required for our passports.", {"requirement": "not_required"}),
         ("Trip to Paris June 10 to 12 2027. Visa not required.", {"requirement": "not_required"}),
+        # negated visa-free: the traveler does NOT have visa-free access, so
+        # a visa IS required (review cycle 1 — ordering alone inverted this)
+        ("Trip to London June 10 to 12 2027. We don't have visa-free transit.", {"requirement": "required", "status": "not_applied"}),
         # approved
         ("Trip to Tokyo June 10 to 12 2027. Visa approved last week.", {"requirement": "required", "status": "approved"}),
     ],
@@ -104,6 +109,25 @@ def test_visa_status_negation_forms(note, expected):
     envelope = SourceEnvelope.from_freeform(note, source="agency_notes", actor="agent")
     packet = ExtractionPipeline().extract([envelope], stage="booking")
     assert packet.facts["visa_status"].value == expected
+
+
+@pytest.mark.parametrize(
+    "note",
+    [
+        # VA-07 across ALL destination passes, not just the capitalized
+        # regex pass (review cycle 1): verbless and verb-gated passes also
+        # promoted "No" (a GeoNames city — alternate name of Ho, Ghana).
+        "No trip booked yet, still deciding between Japan and Korea.",
+        "Going to no particular destination, open to ideas for June 2027.",
+        "No holiday planned this year, maybe next year.",
+    ],
+)
+def test_negation_token_never_a_destination(note):
+    envelope = SourceEnvelope.from_freeform(note, source="agency_notes", actor="agent")
+    packet = ExtractionPipeline().extract([envelope], stage="booking")
+    destinations = packet.facts.get("destination_candidates")
+    values = destinations.value if destinations else []
+    assert "No" not in values, f"negation token leaked into destinations: {values}"
 
 
 def test_visa_status_discovery_stage_is_concern_flag_only():

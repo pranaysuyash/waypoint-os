@@ -15,5 +15,4 @@ Volunteer travel involves organizational partnerships, project coordination, and
 - Volunteer program placement and orientation coordination
 - Community service accommodation and logistics arrangements
 - Organizational support and partnership coordination
-- Volunteer project impact and safety management</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_197_VOLUNTEER_AND_COMMUNITY_SERVICE_TRAVEL.md
+- Volunteer project impact and safety management

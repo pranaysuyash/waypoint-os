@@ -1365,8 +1365,10 @@ class OptimisticSyncRequest(BaseModel):
     actor_role: Optional[str] = Field(
         None,
         description=(
-            "'operator' or 'customer' — drives merge precedence "
-            "(commercial fields: operator>customer; preference fields: customer>operator). Defaults to operator."
+            "'operator' or 'customer' — drives merge precedence (commercial fields: "
+            "provider>operator>tool>customer; preference fields: customer>operator>machines). "
+            "Defaults to operator. Internal writer roles (system/tool/provider) are not "
+            "client-submittable and fold to operator on this surface."
         ),
     )
     expected_packet_version: Optional[int] = Field(

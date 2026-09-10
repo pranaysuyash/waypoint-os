@@ -15,5 +15,4 @@ Photography travel involves specialized equipment, location permissions, and vis
 - Photography location access and permit coordination
 - Equipment transportation and insurance arrangements
 - Location scouting and visual project support
-- Documentary and filming logistics management</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_196_PHOTOGRAPHY_AND_DOCUMENTARY_TRAVEL.md
+- Documentary and filming logistics management

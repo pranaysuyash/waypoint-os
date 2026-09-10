@@ -15,5 +15,4 @@ Energy travel involves specialized knowledge of utility infrastructure, safety p
 - Power plant and utility facility access coordination
 - Energy conference and industry event attendance arrangements
 - Technical transportation and infrastructure logistics support
-- Energy travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_215_ENERGY_AND_UTILITIES_TRAVEL.md
+- Energy travel experience and professional enhancement

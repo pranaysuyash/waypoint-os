@@ -15,5 +15,4 @@ Corporate travel involves premium service requirements, expense controls, and bu
 - Premium business class flight and accommodation arrangements
 - Business meeting and event coordination
 - Corporate travel policy compliance and expense management
-- Productivity-focused travel logistics and support</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_185_CORPORATE_EXECUTIVE_AND_BUSINESS_CLASS_TRAVEL.md
+- Productivity-focused travel logistics and support

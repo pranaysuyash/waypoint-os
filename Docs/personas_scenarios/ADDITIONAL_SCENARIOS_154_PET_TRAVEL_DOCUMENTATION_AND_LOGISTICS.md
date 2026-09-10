@@ -15,5 +15,4 @@ Pet travel involves complex regulations and documentation that vary by destinati
 - Complete documentation package for pet travel requirements
 - Coordination with veterinarians for health certificates
 - Pet-friendly accommodation and transportation arrangements
-- Emergency veterinary care coordination at destination</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_154_PET_TRAVEL_DOCUMENTATION_AND_LOGISTICS.md
+- Emergency veterinary care coordination at destination

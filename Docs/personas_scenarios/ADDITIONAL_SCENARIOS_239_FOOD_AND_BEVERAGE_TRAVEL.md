@@ -15,5 +15,4 @@ Food travel involves specialized knowledge of culinary protocols, food safety, a
 - Food processing facility and beverage conference access coordination
 - Culinary research center and event attendance arrangements
 - Technical transportation and food logistics support
-- Food travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_239_FOOD_AND_BEVERAGE_TRAVEL.md
+- Food travel experience and professional enhancement

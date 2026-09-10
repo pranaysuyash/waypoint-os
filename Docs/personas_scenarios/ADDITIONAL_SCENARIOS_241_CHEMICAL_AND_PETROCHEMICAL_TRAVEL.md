@@ -15,5 +15,4 @@ Chemical travel involves specialized knowledge of petrochemical protocols, chemi
 - Chemical plant and petrochemical conference access coordination
 - Research laboratory and event attendance arrangements
 - Technical transportation and chemical logistics support
-- Chemical travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_241_CHEMICAL_AND_PETROCHEMICAL_TRAVEL.md
+- Chemical travel experience and professional enhancement

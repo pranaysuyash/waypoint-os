@@ -15,5 +15,4 @@ Pharmaceutical travel involves specialized knowledge of research protocols, labo
 - Research facility and laboratory access coordination
 - Pharmaceutical conference and industry event attendance arrangements
 - Technical transportation and research logistics support
-- Biotech travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_216_PHARMACEUTICAL_AND_BIOTECH_TRAVEL.md
+- Biotech travel experience and professional enhancement

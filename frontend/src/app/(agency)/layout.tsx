@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { spineUrl } from "@/lib/proxy-core";
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { Providers } from '@/components/providers';
 import { Shell } from '@/components/layouts/Shell';
@@ -29,7 +30,9 @@ export default async function AgencyLayout({
     }
 
     try {
-      const response = await fetch(`${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/api/auth/me`, {
+      // spineUrl() applies the validated backend base from proxy-core.ts.
+      const meUrl = spineUrl("/api/auth/me");
+      const response = await fetch(meUrl, {
         method: "GET",
         headers: {
           Accept: "application/json",

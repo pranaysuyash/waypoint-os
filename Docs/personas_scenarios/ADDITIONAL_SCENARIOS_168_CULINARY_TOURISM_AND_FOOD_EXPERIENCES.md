@@ -15,5 +15,4 @@ Culinary tourism offers cultural insights through food, requiring knowledgeable 
 - Authentic cooking class and chef experience arrangements
 - Food tour and local market visit coordination
 - Restaurant reservations with culinary expertise
-- Dietary requirement accommodation and safety considerations</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_168_CULINARY_TOURISM_AND_FOOD_EXPERIENCES.md
+- Dietary requirement accommodation and safety considerations

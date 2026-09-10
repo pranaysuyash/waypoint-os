@@ -21,9 +21,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parse as parseSetCookie } from "set-cookie-parser";
 
-const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 const PROXY_TIMEOUT_MS = 120_000;
 const IS_DEV = process.env.NODE_ENV !== "production";
+
+/**
+ * Validated backend base URL — the single source for spine API URLs.
+ * Rejects non-http(s) schemes and embedded credentials at module load so a
+ * bad SPINE_API_URL env var fails loudly instead of enabling requests to
+ * unexpected schemes/origins.
+ */
+const SPINE_BASE = (() => {
+  const raw = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error(`SPINE_API_URL protocol must be http(s), got ${parsed.protocol}`);
+    }
+    if (parsed.username || parsed.password) {
+      throw new Error("SPINE_API_URL must not embed credentials");
+    }
+    return parsed.toString().replace(/\/+$/, "");
+  } catch (err) {
+    if (process.env.NODE_ENV === "production") {
+      throw err;
+    }
+    return "http://127.0.0.1:8000";
+  }
+})();
+
+/** Join base URL and path, normalising slashes */
+function joinUrl(baseUrl: string, path: string): string {
+  return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
+}
+
+/** Build an absolute backend URL from a backend path (validated base). */
+export function spineUrl(path: string): string {
+  return joinUrl(SPINE_BASE, path);
+}
 
 /**
  * Headers from the backend that we safely copy to the browser response.
@@ -49,11 +83,6 @@ export interface ProxyOptions {
   errorFallback?: (status: number, error: unknown) => NextResponse;
   cacheControl?: string | null;
   timeoutMs?: number;
-}
-
-/** Join base URL and path, normalising slashes */
-function joinUrl(baseUrl: string, path: string): string {
-  return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
 
 export function forwardAuthHeaders(req: NextRequest): Record<string, string> {
@@ -89,7 +118,7 @@ function buildBackendUrl(
     for (const p of stripParams) params.delete(p);
   }
   const query = params.toString();
-  return `${joinUrl(SPINE_API_URL, backendPath)}${query ? `?${query}` : ""}`;
+  return `${joinUrl(SPINE_BASE, backendPath)}${query ? `?${query}` : ""}`;
 }
 
 async function buildFetchOptions(

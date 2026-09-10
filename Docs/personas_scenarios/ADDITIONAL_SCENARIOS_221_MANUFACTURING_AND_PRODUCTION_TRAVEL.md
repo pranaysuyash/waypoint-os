@@ -15,5 +15,4 @@ Manufacturing travel involves specialized knowledge of industrial protocols, fac
 - Factory and production facility access coordination
 - Industrial conference and industry event attendance arrangements
 - Technical transportation and production logistics support
-- Manufacturing travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_221_MANUFACTURING_AND_PRODUCTION_TRAVEL.md
+- Manufacturing travel experience and professional enhancement

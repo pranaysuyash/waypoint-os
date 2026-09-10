@@ -15,5 +15,4 @@ Remote work travel allows professionals to explore while maintaining career obli
 - Verified high-speed internet and workspace availability
 - Co-working space recommendations and memberships
 - Work visa and permit coordination for extended stays
-- Balance of work and leisure activities in itinerary</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_152_REMOTE_WORK_TRAVEL_SETUP.md
+- Balance of work and leisure activities in itinerary

@@ -15,5 +15,4 @@ Media travel involves specialized knowledge of press access, credential requirem
 - Press credential and media access coordination
 - Press event and conference attendance arrangements
 - Media transportation and logistics support
-- Journalism travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_211_JOURNALISM_AND_MEDIA_TRAVEL.md
+- Journalism travel experience and professional enhancement

@@ -15,5 +15,4 @@ Scientific travel involves complex logistics for equipment, permits, and institu
 - Research permit and institutional access coordination
 - Laboratory and research facility visit arrangements
 - Specialized equipment transportation services
-- Academic conference and collaboration support</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_182_SCIENTIFIC_RESEARCH_AND_ACADEMIC_TRAVEL.md
+- Academic conference and collaboration support

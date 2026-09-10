@@ -15,5 +15,4 @@ Family travel requires balancing individual needs with group cohesion, ensuring 
 - Age-appropriate activity recommendations for all family members
 - Coordinated scheduling that allows family time together
 - Flexible booking options for changing family needs
-- Emergency contact coordination for separated family members</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_151_FAMILY_TRAVEL_ITINERARY_COORDINATION.md
+- Emergency contact coordination for separated family members

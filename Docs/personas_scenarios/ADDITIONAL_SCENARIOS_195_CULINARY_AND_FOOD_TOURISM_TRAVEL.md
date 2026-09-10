@@ -15,5 +15,4 @@ Culinary travel involves food culture knowledge, reservation coordination, and a
 - Culinary tour experience and restaurant reservation coordination
 - Cooking class and workshop participation arrangements
 - Food festival and gastronomic event access
-- Authentic local cuisine exploration and experience support</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_195_CULINARY_AND_FOOD_TOURISM_TRAVEL.md
+- Authentic local cuisine exploration and experience support

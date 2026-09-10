@@ -15,5 +15,4 @@ Insurance travel involves specialized knowledge of risk management protocols, in
 - Insurance conference and risk assessment site access coordination
 - Industry event and conference attendance arrangements
 - Technical transportation and insurance logistics support
-- Insurance travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_227_INSURANCE_AND_RISK_MANAGEMENT_TRAVEL.md
+- Insurance travel experience and professional enhancement

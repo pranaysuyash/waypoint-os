@@ -356,5 +356,4 @@ def should_require_owner_review(trip: Trip, strategy: StrategyOutput) -> bool:
 4. **Week 3**: Enhanced features and testing
 5. **Week 4**: Production deployment and monitoring
 
-**Ready to proceed with Wave 1 implementation?**</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/DASHBOARD_GOVERNANCE_WIRING_PLAN_2026-04-20.md
+**Ready to proceed with Wave 1 implementation?**

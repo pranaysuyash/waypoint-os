@@ -15,5 +15,4 @@ Healthcare travel involves specialized knowledge of medical protocols, healthcar
 - Medical facility and pharmaceutical conference access coordination
 - Healthcare research center and event attendance arrangements
 - Technical transportation and healthcare logistics support
-- Healthcare travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_237_HEALTHCARE_AND_PHARMACEUTICAL_TRAVEL.md
+- Healthcare travel experience and professional enhancement

@@ -566,3 +566,78 @@ class TestR15ProductionDefaults:
         # If spacy/model is missing this must NOT raise RuntimeError; it returns None.
         result = pg._get_nlp_model()
         assert result is None or hasattr(result, "pipe")
+
+
+# ---------------------------------------------------------------------------
+# R-15 2.5: the fail-open admission and the misconfiguration block must be
+# observable in the audit chain, not only in process logs.
+# ---------------------------------------------------------------------------
+
+class TestPrivacyGuardAuditEmission:
+    def _trip_with_pii(self):
+        # Layer 1 scans top-level raw_input/raw_note fields.
+        return {"id": "trip_audit_pii", "raw_note": "contact operator@example.com about the itinerary"}
+
+    def _events_since(self, before_hash: str | None):
+        from spine_api import persistence
+
+        events = persistence.AuditStore.get_events(limit=10000)
+        if before_hash is None:
+            return events
+        # Walk backwards until the pre-call chain head — robust even when the
+        # store exceeds the query limit.
+        new_events = []
+        for e in reversed(events):
+            if isinstance(e, dict) and e.get("current_hash") == before_hash:
+                break
+            new_events.append(e)
+        return list(reversed(new_events))
+
+    def _chain_head(self) -> str | None:
+        from spine_api import persistence
+
+        events = persistence.AuditStore.get_events(limit=1)
+        if events and isinstance(events[-1], dict):
+            return events[-1].get("current_hash")
+        return None
+
+    def test_beta_admission_emits_audit_event(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+        from src.security import privacy_guard
+
+        before_hash = self._chain_head()
+        privacy_guard.check_trip_data(self._trip_with_pii())  # must not raise
+        new_events = self._events_since(before_hash)
+        emitted = [
+            e for e in new_events
+            if isinstance(e, dict) and e.get("event_type") == "privacy_guard_admitted_pii_shape"
+        ]
+        assert emitted, "expected privacy_guard_admitted_pii_shape audit event"
+        assert emitted[-1]["details"]["blocked"] is False
+
+    def test_clean_pass_emits_no_event(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+        from src.security import privacy_guard
+
+        before_hash = self._chain_head()
+        # Structured, no user freeform: freeform raw_note/raw_input is itself
+        # PII-shaped by design, so a "clean" pass must carry none.
+        privacy_guard.check_trip_data(
+            {"id": "trip_audit_clean", "destination": "Nowhere", "stage": "discovery"}
+        )
+        new_events = self._events_since(before_hash)
+        leaks = [
+            e for e in new_events
+            if isinstance(e, dict) and str(e.get("event_type", "")).startswith("privacy_guard")
+        ]
+        assert not leaks, f"clean pass must stay silent: {leaks}"
+
+    def test_production_plaintext_block_emits_audit_event(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "production")
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+        from src.security import privacy_guard
+
+        with pytest.raises(privacy_guard.PrivacyGuardError):
+            privacy_guard.check_trip_data(self._trip_with_pii())

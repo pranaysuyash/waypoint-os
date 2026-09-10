@@ -25,7 +25,7 @@ import secrets
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 _TOKEN_BYTES = 32
 _TOKEN_FILE = Path("data") / "public_checker" / "access_tokens.json"

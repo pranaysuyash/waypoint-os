@@ -15,5 +15,4 @@ Non-profit travel involves specialized knowledge of humanitarian protocols, NGO 
 - Humanitarian project and NGO conference access coordination
 - Community development site and event attendance arrangements
 - Technical transportation and non-profit logistics support
-- Non-profit travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_230_NON_PROFIT_AND_NGO_TRAVEL.md
+- Non-profit travel experience and professional enhancement

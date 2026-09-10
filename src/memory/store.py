@@ -27,6 +27,7 @@ from src.memory.models import (
 )
 from src.memory.provenance import ProvenanceEngine
 from src.memory.retriever import HybridMemoryRetriever
+from src.memory.sanitizer import MemorySanitizer
 from src.memory.supersession import SupersessionEngine
 
 logger = logging.getLogger(__name__)
@@ -96,11 +97,27 @@ class MemoryStore:
         category_hint: Optional[str] = None,
         explicit_confidence: Optional[float] = None,
         is_safety_critical: bool = False,
+        half_life_days: Optional[float] = None,
     ) -> Tuple[Optional[BaseMemoryItem], str]:
         """
         Ingests a candidate fact through the Write Eligibility Gate, checks for
         supersession conflicts, and persists the memory item.
+
+        Write-time hygiene (E-10): raw_text and payload are prompt-injection
+        sanitized BEFORE gate evaluation and hashing, so persisted summaries
+        and provenance hashes always describe sanitized content.
+
+        half_life_days: optional per-write decay override. When None, the
+        tier default applies (SEMANTIC → 730d, else never/episodic default).
+        Event-class bridges (e.g. feedback outcomes) pass explicit values —
+        a single mechanism (decay curve) then enforces "implicit signals need
+        repetition to matter" without a separate suppression system.
         """
+
+        raw_text = MemorySanitizer.sanitize_text(raw_text or "")
+        sanitized_payload = MemorySanitizer.sanitize_payload(payload or {})
+        payload = sanitized_payload if payload is not None else None
+
         eval_res = self.eligibility_gate.evaluate(
             raw_text=raw_text,
             source_type=source_type,
@@ -129,10 +146,15 @@ class MemoryStore:
             tier=eval_res.tier,
             entity_id=entity_id,
             category=eval_res.extracted_category,
-            summary=eval_res.sanitized_summary,
+            summary=MemorySanitizer.sanitize_text(eval_res.sanitized_summary),
             payload=payload_dict,
             provenance=prov,
-            half_life_days=None if is_safety_critical else (730.0 if eval_res.tier == MemoryTier.SEMANTIC else None),
+            half_life_days=(
+                half_life_days
+                if half_life_days is not None
+                else None if is_safety_critical
+                else (730.0 if eval_res.tier == MemoryTier.SEMANTIC else None)
+            ),
         )
 
         # Check supersession against existing memories for this entity

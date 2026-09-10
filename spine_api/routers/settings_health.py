@@ -26,18 +26,28 @@ def _check_webhook_health(url: str, timeout_seconds: float = 5.0) -> Dict[str, A
     if not url:
         return {"status": "unconfigured", "detail": "No URL configured"}
     try:
-        import urllib.request
         import urllib.error
 
-        req = urllib.request.Request(url, method="HEAD")
-        req.add_header("User-Agent", "WaypointOS-HealthCheck/1.0")
+        from src.security.url_guard import URLBlockedError, guarded_urlopen
+
         start = time.monotonic()
-        resp = urllib.request.urlopen(req, timeout=timeout_seconds)
+        resp = guarded_urlopen(
+            url,
+            timeout=timeout_seconds,
+            method="HEAD",
+            headers={"User-Agent": "WaypointOS-HealthCheck/1.0"},
+        )
         elapsed_ms = round((time.monotonic() - start) * 1000, 1)
         return {
             "status": "healthy",
             "http_status": resp.status,
             "latency_ms": elapsed_ms,
+        }
+    except URLBlockedError as e:
+        # Configured webhook points at a non-public target (SSRF guard).
+        return {
+            "status": "blocked",
+            "detail": f"URL rejected by SSRF guard: {e.reason}",
         }
     except urllib.error.HTTPError as e:
         elapsed_ms = round((time.monotonic() - start) * 1000, 1)

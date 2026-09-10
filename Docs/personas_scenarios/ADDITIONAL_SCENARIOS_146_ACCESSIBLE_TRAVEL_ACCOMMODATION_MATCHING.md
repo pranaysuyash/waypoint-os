@@ -14,5 +14,4 @@ Ensuring accessible accommodations prevents travel disruptions and provides peac
 ### Success criteria
 - Accommodation recommendations include verified accessibility features
 - Property confirmation of accessibility requirements before booking
-- Seamless coordination with transportation and activity providers for accessibility continuity</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_146_ACCESSIBLE_TRAVEL_ACCOMMODATION_MATCHING.md
+- Seamless coordination with transportation and activity providers for accessibility continuity

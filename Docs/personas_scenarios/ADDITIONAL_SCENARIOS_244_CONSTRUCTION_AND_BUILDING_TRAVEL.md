@@ -15,5 +15,4 @@ Construction travel involves specialized knowledge of building protocols, constr
 - Construction site and building conference access coordination
 - Architectural firm and event attendance arrangements
 - Technical transportation and construction logistics support
-- Construction travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_244_CONSTRUCTION_AND_BUILDING_TRAVEL.md
+- Construction travel experience and professional enhancement

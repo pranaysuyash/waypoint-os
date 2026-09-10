@@ -15,5 +15,4 @@ Educational travel combines learning objectives with travel logistics, requiring
 - Coordination with educational institutions for curriculum alignment
 - Qualified educational guides and supervision arrangements
 - Safety protocols and emergency response systems
-- Academic documentation and credit arrangements</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_157_STUDENT_EDUCATIONAL_TRAVEL_PROGRAMS.md
+- Academic documentation and credit arrangements

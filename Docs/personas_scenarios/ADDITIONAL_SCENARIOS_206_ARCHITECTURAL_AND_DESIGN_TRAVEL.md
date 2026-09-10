@@ -15,5 +15,4 @@ Architectural travel involves specialized knowledge of building access, design h
 - Architectural tour and museum access coordination
 - Design professional networking and event arrangements
 - Specialized architectural transportation and logistics support
-- Design travel experience and educational enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_206_ARCHITECTURAL_AND_DESIGN_TRAVEL.md
+- Design travel experience and educational enhancement

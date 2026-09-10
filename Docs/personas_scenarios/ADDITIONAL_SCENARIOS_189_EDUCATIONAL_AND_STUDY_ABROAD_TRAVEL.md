@@ -15,5 +15,4 @@ Educational travel involves visa complexities, institutional coordination, and a
 - Student visa and enrollment process coordination
 - Educational accommodation and housing arrangements
 - Institutional support and academic program coordination
-- Study abroad logistics and safety management</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_189_EDUCATIONAL_AND_STUDY_ABROAD_TRAVEL.md
+- Study abroad logistics and safety management

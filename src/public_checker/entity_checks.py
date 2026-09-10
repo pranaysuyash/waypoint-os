@@ -131,8 +131,13 @@ def extract_lodging_names(text: str) -> List[str]:
 
 
 def _http_get_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"})
-    with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:  # nosec - fixed https base
+    from src.security.url_guard import guarded_urlopen
+
+    with guarded_urlopen(
+        url,
+        timeout=_TIMEOUT_SECONDS,
+        headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
+    ) as response:
         return json.loads(response.read().decode("utf-8"))
 
 

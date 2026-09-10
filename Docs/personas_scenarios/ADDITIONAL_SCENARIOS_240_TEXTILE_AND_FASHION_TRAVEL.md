@@ -15,5 +15,4 @@ Textile travel involves specialized knowledge of fashion protocols, textile safe
 - Textile mill and fashion conference access coordination
 - Design studio and event attendance arrangements
 - Technical transportation and textile logistics support
-- Textile travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_240_TEXTILE_AND_FASHION_TRAVEL.md
+- Textile travel experience and professional enhancement

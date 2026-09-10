@@ -15,5 +15,4 @@ Electronics travel involves specialized knowledge of semiconductor protocols, el
 - Electronics plant and semiconductor conference access coordination
 - Research facility and event attendance arrangements
 - Technical transportation and electronics logistics support
-- Electronics travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_246_ELECTRONICS_AND_SEMICONDUCTOR_TRAVEL.md
+- Electronics travel experience and professional enhancement

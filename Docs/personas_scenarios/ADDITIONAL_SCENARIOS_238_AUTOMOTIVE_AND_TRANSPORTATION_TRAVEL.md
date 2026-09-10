@@ -15,5 +15,4 @@ Automotive travel involves specialized knowledge of vehicle protocols, automotiv
 - Automotive plant and transportation conference access coordination
 - Vehicle testing facility and event attendance arrangements
 - Technical transportation and automotive logistics support
-- Automotive travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_238_AUTOMOTIVE_AND_TRANSPORTATION_TRAVEL.md
+- Automotive travel experience and professional enhancement

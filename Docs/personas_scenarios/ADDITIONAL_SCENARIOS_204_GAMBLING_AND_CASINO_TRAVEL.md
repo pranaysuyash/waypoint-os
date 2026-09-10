@@ -15,5 +15,4 @@ Casino travel involves gaming regulations, tournament coordination, and entertai
 - Casino resort package and accommodation arrangements
 - Poker tournament and gaming event access coordination
 - Transportation to gaming venues and logistics support
-- Gambling travel experience and entertainment enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_204_GAMBLING_AND_CASINO_TRAVEL.md
+- Gambling travel experience and entertainment enhancement

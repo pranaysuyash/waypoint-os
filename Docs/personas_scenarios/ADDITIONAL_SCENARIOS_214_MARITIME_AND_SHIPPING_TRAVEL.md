@@ -15,5 +15,4 @@ Maritime travel involves specialized knowledge of shipping industry access, vess
 - Port visit and shipyard tour access coordination
 - Maritime conference and industry event attendance arrangements
 - Vessel transportation and maritime logistics support
-- Shipping travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_214_MARITIME_AND_SHIPPING_TRAVEL.md
+- Shipping travel experience and professional enhancement

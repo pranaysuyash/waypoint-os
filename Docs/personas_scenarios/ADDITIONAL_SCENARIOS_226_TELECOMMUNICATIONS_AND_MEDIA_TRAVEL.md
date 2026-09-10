@@ -15,5 +15,4 @@ Telecommunications travel involves specialized knowledge of media protocols, tel
 - Telecom facility and media studio access coordination
 - Industry conference and event attendance arrangements
 - Technical transportation and telecommunications logistics support
-- Telecommunications travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_226_TELECOMMUNICATIONS_AND_MEDIA_TRAVEL.md
+- Telecommunications travel experience and professional enhancement

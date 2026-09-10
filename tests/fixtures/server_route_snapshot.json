@@ -1,5 +1,5 @@
 {
-  "route_count": 361,
+  "route_count": 366,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -474,6 +474,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/public-checker/disputes",
+      "name": "post_public_checker_dispute",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/public-checker/events",
       "name": "post_public_checker_event",
       "methods": [
@@ -510,6 +518,30 @@
       "name": "run_public_checker",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public-checker/trip/{trip_id}",
+      "name": "delete_public_checker_trip_by_token",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public-checker/trip/{trip_id}",
+      "name": "get_public_checker_trip_by_token",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public-checker/trip/{trip_id}/export",
+      "name": "export_public_checker_trip_by_token",
+      "methods": [
+        "GET"
       ],
       "operation_id": null
     },
@@ -1478,6 +1510,14 @@
       "name": "get_supplier_scorecard",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/feedback/{trip_id}/response",
+      "name": "record_feedback_response",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },

@@ -15,5 +15,4 @@ Financial travel involves specialized knowledge of banking regulations, investme
 - Financial conference and banking institution access coordination
 - Investment event and industry networking attendance arrangements
 - Industry transportation and financial logistics support
-- Financial travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_218_FINANCIAL_AND_BANKING_TRAVEL.md
+- Financial travel experience and professional enhancement

@@ -15,5 +15,4 @@ Real estate travel involves specialized knowledge of property markets, investmen
 - Property tour and investment viewing access coordination
 - Real estate conference and market event attendance arrangements
 - Market transportation and property logistics support
-- Real estate travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_219_REAL_ESTATE_AND_PROPERTY_TRAVEL.md
+- Real estate travel experience and professional enhancement

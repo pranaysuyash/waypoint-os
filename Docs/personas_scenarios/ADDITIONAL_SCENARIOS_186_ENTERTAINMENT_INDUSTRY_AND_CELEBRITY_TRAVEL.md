@@ -15,5 +15,4 @@ Entertainment travel involves privacy requirements, security coordination, and i
 - Private and discreet transportation arrangements
 - Security team coordination and privacy accommodations
 - Entertainment industry production schedule support
-- Discreet and professional service delivery</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_186_ENTERTAINMENT_INDUSTRY_AND_CELEBRITY_TRAVEL.md
+- Discreet and professional service delivery

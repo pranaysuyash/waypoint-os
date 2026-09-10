@@ -1036,7 +1036,7 @@ const sevBadgeBg  = { Critical: 'rgba(248,81,73,0.1)', Warning: 'rgba(210,153,34
 const sevBadgeBdr = { Critical: 'rgba(248,81,73,0.22)', Warning: 'rgba(210,153,34,0.25)', Info: 'rgba(88,166,255,0.22)' } as const;
 const sevBadgeTxt = { Critical: T.red, Warning: T.amber, Info: T.blue } as const;
 
-// EX-05 legal-disclaimer draft (policy-reviewed copy pending owner sign-off).
+// EX-05 legal disclaimer — OWNER-APPROVED AS-IS (Pranay, 2026-09-09).
 // Mounted on the result view and the upload footer; asserted by honesty-sweep.
 const CHECKER_DISCLAIMER =
   'Automated guidance based on what you provided and public data sources — not legal, visa, or booking advice. Verify with official sources and your travel advisor before you pay or travel.';
@@ -2374,7 +2374,17 @@ function ResultsFindingsSection({
                     </div>
                     <button
                       type='button'
-                      onClick={() => setDisputed((state) => ({ ...state, [key]: !state[key] }))}
+                      onClick={() => {
+                        setDisputed((state) => ({ ...state, [key]: !state[key] }));
+                        if (!isDisputed && analysis?.trip_id) {
+                          // Second-Opinion Escrow v0: best-effort, quarantined server-side.
+                          void api.post('/api/public-checker/disputes', {
+                            trip_id: analysis.trip_id,
+                            finding_text: item.slice(0, 500),
+                            verdict: 'disagree',
+                          }).catch(() => undefined);
+                        }
+                      }}
                       style={{
                         alignSelf: 'center',
                         fontSize: 11,
@@ -2670,7 +2680,15 @@ function ResultsView({
       try {
         if (!isMounted) return;
         setReportStorage((state) => ({ ...state, loading: true }));
-        const response = await fetch(`/api/public-checker/${tripId}`);
+        const accessToken = (() => {
+        try { return sessionStorage.getItem(`checker_access_${tripId}`); } catch { return null; }
+      })();
+      const response = await fetch(
+        accessToken
+          ? `/api/public-checker/trip/${tripId}`
+          : `/api/public-checker/${tripId}`,
+        accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
+      );
         if (!response.ok) throw new Error('Could not read report metadata');
         const payload = await response.json();
         if (!isMounted) return;
@@ -2708,7 +2726,15 @@ function ResultsView({
     setManageBusy('export');
     setManageMessage(null);
     try {
-      const response = await fetch(`/api/public-checker/${tripId}/export`);
+      const accessToken = (() => {
+        try { return sessionStorage.getItem(`checker_access_${tripId}`); } catch { return null; }
+      })();
+      const response = await fetch(
+        accessToken
+          ? `/api/public-checker/trip/${tripId}/export`
+          : `/api/public-checker/${tripId}/export`,
+        accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
+      );
       if (!response.ok) throw new Error('Export failed');
       const payload = await response.json();
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -2742,7 +2768,18 @@ function ResultsView({
     setManageBusy('delete');
     setManageMessage(null);
     try {
-      const response = await fetch(`/api/public-checker/${tripId}`, { method: 'DELETE' });
+      const accessToken = (() => {
+        try { return sessionStorage.getItem(`checker_access_${tripId}`); } catch { return null; }
+      })();
+      const response = await fetch(
+        accessToken
+          ? `/api/public-checker/trip/${tripId}`
+          : `/api/public-checker/${tripId}`,
+        {
+          method: 'DELETE',
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        },
+      );
       if (!response.ok) throw new Error('Delete failed');
       setManageMessage('Deleted.');
       onReset();
@@ -3087,6 +3124,13 @@ function CheckerPage() {
         strict_leakage: true,
         scenario_id: null,
       });
+      if (result.access_token && result.trip_id) {
+        try {
+          sessionStorage.setItem(`checker_access_${result.trip_id}`, result.access_token);
+        } catch {
+          // storage unavailable — manage-data panel degrades, report still renders
+        }
+      }
       dispatch({ type: 'analysisSucceeded', analysis: result });
     } catch (error) {
       dispatch({

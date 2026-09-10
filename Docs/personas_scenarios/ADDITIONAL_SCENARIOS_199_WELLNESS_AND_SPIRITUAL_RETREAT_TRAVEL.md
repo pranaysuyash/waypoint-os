@@ -15,5 +15,4 @@ Wellness travel involves specialized accommodations, spiritual guidance, and hea
 - Wellness retreat accommodation and program arrangements
 - Spiritual practice facility and meditation center coordination
 - Holistic health experience and therapy access
-- Peaceful environment and wellness activity support</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_199_WELLNESS_AND_SPIRITUAL_RETREAT_TRAVEL.md
+- Peaceful environment and wellness activity support

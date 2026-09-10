@@ -523,6 +523,22 @@ def _block_message(reason: str) -> str:
     )
 
 
+
+def _emit_audit_event(event_type: str, details: Dict[str, Any]) -> None:
+    """Best-effort emission into the AuditStore hash chain (R-15 2.5).
+
+    Lazy import: spine_api.persistence imports this module, so a module-level
+    import would be circular. Audit failures are logged and swallowed — the
+    guard observes the write path and must never become the outage.
+    """
+    try:
+        from spine_api.persistence import AuditStore
+
+        AuditStore.log_event(event_type, "system", dict(details))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("privacy_guard: audit event %s could not be written — %s", event_type, exc)
+
+
 def check_trip_data(trip_data: Dict[str, Any]) -> None:
     """Check trip data before persistence.
 
@@ -557,6 +573,10 @@ def check_trip_data(trip_data: Dict[str, Any]) -> None:
                 "is a plaintext file store. Refusing to persist real-user PII "
                 "(fail-closed)."
             )
+            _emit_audit_event(
+                "privacy_guard_blocked",
+                {"mode": "production", "store": "plaintext", "findings": reason, "blocked": True},
+            )
             raise PrivacyGuardError(_block_message(reason))
         return
 
@@ -569,6 +589,13 @@ def check_trip_data(trip_data: Dict[str, Any]) -> None:
             "privacy_guard: AUDIT — real-PII-shaped data persisted in %s mode "
             "(not blocked; encryption/RLS is the boundary): %s",
             _data_privacy_mode(), reason,
+        )
+        # R-15 2.5: the fail-open admission must be observable in the audit
+        # chain, not only in process logs — this is the guard admitting
+        # PII-shaped data past the non-blocking layer.
+        _emit_audit_event(
+            "privacy_guard_admitted_pii_shape",
+            {"mode": _data_privacy_mode(), "findings": reason, "blocked": False},
         )
 
 

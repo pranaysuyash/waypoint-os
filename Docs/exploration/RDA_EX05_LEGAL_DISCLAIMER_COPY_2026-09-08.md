@@ -31,3 +31,7 @@ Requirements for the real copy owner:
 - Result view renders disclaimer text (extend `honesty-sweep.test.tsx` with an assertion that the disclaimer string is present — inverse of the removal assertions).
 - Export payload includes the disclaimer line.
 - Live-check advisory cards render the "advisory, not verified" qualifier.
+
+## Sign-off (2026-09-09)
+
+Owner approved the Placement-1 text **as-is** for the result view and the upload footer ("ok" on the quoted copy): guidance framing, no legal/visa/booking advice, verify-with-official-sources. Mounted and asserted by `honesty-sweep.test.tsx` (phrase + double-mount + no-training-claim). Any future wording change must update the sweep assertions in the same change.

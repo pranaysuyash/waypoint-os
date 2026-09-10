@@ -15,5 +15,4 @@ Cultural immersion creates memorable, transformative travel experiences that fos
 - Personalized activity recommendations based on cultural interests
 - Arrangements with authentic local providers and artisans
 - Cultural context and preparation information provided
-- Post-activity feedback and adjustment capabilities</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_150_CULTURAL_IMMERSION_ACTIVITY_CURATION.md
+- Post-activity feedback and adjustment capabilities

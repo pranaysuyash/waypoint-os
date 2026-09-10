@@ -15,5 +15,4 @@ Agricultural travel involves specialized knowledge of farming protocols, agricul
 - Farm and agricultural facility access coordination
 - Farming conference and industry event attendance arrangements
 - Technical transportation and agricultural logistics support
-- Agriculture travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_222_AGRICULTURE_AND_FARMING_TRAVEL.md
+- Agriculture travel experience and professional enhancement

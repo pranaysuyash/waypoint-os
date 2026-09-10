@@ -15,5 +15,4 @@ Thermal travel involves specialized knowledge of mineral compositions, therapeut
 - Thermal bath and mineral spring access coordination
 - Spa treatment and therapeutic experience reservations
 - Transportation to wellness destinations and logistics support
-- Therapeutic travel experience and relaxation enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_205_THERMAL_AND_MINERAL_SPRINGS_TRAVEL.md
+- Therapeutic travel experience and relaxation enhancement

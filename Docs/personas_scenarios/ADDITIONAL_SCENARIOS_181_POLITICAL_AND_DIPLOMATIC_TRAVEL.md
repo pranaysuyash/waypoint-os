@@ -15,5 +15,4 @@ Diplomatic travel involves security protocols, protocol requirements, and intern
 - Diplomatic service and protocol coordination
 - Secure transportation and accommodation arrangements
 - International diplomatic requirement compliance
-- Discreet and professional service delivery</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_181_POLITICAL_AND_DIPLOMATIC_TRAVEL.md
+- Discreet and professional service delivery

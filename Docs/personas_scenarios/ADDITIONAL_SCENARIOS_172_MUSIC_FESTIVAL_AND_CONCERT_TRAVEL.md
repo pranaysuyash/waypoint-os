@@ -15,5 +15,4 @@ Music festivals often occur in remote locations with unique logistical challenge
 - Festival ticket package procurement with VIP options
 - Camping and on-site accommodation coordination
 - Transportation arrangements for remote venue access
-- Festival amenities and survival guide provision</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_172_MUSIC_FESTIVAL_AND_CONCERT_TRAVEL.md
+- Festival amenities and survival guide provision

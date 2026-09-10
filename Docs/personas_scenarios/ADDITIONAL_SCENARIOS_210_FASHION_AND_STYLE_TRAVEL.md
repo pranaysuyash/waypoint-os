@@ -15,5 +15,4 @@ Fashion travel involves specialized knowledge of fashion industry events, design
 - Fashion week and design show access coordination
 - Textile market and boutique visit arrangements
 - Fashion industry networking and event support
-- Style travel experience and trend exploration enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_210_FASHION_AND_STYLE_TRAVEL.md
+- Style travel experience and trend exploration enhancement

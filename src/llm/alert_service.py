@@ -103,14 +103,25 @@ class WebhookChannel:
 
         for url in self.urls:
             try:
-                req = urllib.request.Request(url, data=body, headers=headers, method="POST")
-                ctx = ssl.create_default_context()
-                with urllib.request.urlopen(req, timeout=self.timeout, context=ctx) as resp:
+                from src.security.url_guard import URLBlockedError, guarded_urlopen
+
+                # Webhook URLs come from env config; the SSRF guard refuses
+                # non-public targets so a mistyped/malicious env var cannot
+                # turn the alert channel into an internal-network probe.
+                with guarded_urlopen(
+                    url,
+                    timeout=self.timeout,
+                    data=body,
+                    headers=headers,
+                    method="POST",
+                ) as resp:
                     if resp.status < 300:
                         any_ok = True
                         logger.info("alert_webhook.delivered url=%s status=%d", url, resp.status)
                     else:
                         logger.warning("alert_webhook.failed url=%s status=%d", url, resp.status)
+            except URLBlockedError as exc:
+                logger.warning("alert_webhook.blocked url=%s reason=%s", url, exc.reason)
             except (OSError, ValueError) as exc:
                 logger.warning("alert_webhook.error url=%s error=%s", url, exc)
 

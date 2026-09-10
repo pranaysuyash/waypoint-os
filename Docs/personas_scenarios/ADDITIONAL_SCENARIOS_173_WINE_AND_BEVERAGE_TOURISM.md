@@ -15,5 +15,4 @@ Beverage tourism involves responsible consumption coordination, transportation l
 - Guided tour arrangements at production facilities
 - Transportation coordination between beverage venues
 - Winery or brewery accommodation bookings
-- Designated driver and responsible consumption services</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_173_WINE_AND_BEVERAGE_TOURISM.md
+- Designated driver and responsible consumption services

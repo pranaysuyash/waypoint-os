@@ -15,5 +15,4 @@ Medical tourism involves complex coordination between healthcare providers, trav
 - Accreditation verification of medical facilities
 - Comprehensive pre- and post-treatment travel arrangements
 - Medical record translation and coordination services
-- Follow-up care planning with home healthcare providers</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_162_MEDICAL_TOURISM_COORDINATION.md
+- Follow-up care planning with home healthcare providers

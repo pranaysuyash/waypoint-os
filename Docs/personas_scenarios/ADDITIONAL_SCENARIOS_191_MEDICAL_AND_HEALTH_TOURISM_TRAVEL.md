@@ -15,5 +15,4 @@ Medical travel involves healthcare coordination, recovery planning, and medical 
 - Medical appointment and procedure coordination
 - Recovery accommodation and wellness retreat arrangements
 - Health-focused transportation and accessibility services
-- Medical tourism logistics and patient care support</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_191_MEDICAL_AND_HEALTH_TOURISM_TRAVEL.md
+- Medical tourism logistics and patient care support

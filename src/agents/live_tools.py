@@ -243,8 +243,13 @@ class OpenMeteoWeatherTool:
         return first
 
     def _get_json(self, url: str) -> dict[str, Any]:
-        request = urllib.request.Request(url, headers={"User-Agent": "travel-agency-agent/0.1"})
-        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+        from src.security.url_guard import guarded_urlopen
+
+        with guarded_urlopen(
+            url,
+            timeout=self.timeout_seconds,
+            headers={"User-Agent": "travel-agency-agent/0.1"},
+        ) as response:
             return json.loads(response.read().decode("utf-8"))
 
 
@@ -750,8 +755,13 @@ def _number(value: Any) -> float | None:
 
 
 def _get_json(url: str, timeout_seconds: float, headers: dict[str, str] | None = None) -> dict[str, Any]:
-    request = urllib.request.Request(url, headers=headers or {"User-Agent": "travel-agency-agent/0.1"})
-    with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+    from src.security.url_guard import guarded_urlopen
+
+    with guarded_urlopen(
+        url,
+        timeout=timeout_seconds,
+        headers=headers or {"User-Agent": "travel-agency-agent/0.1"},
+    ) as response:
         return json.loads(response.read().decode("utf-8"))
 
 

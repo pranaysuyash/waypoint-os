@@ -15,5 +15,4 @@ Photography travel requires specialized permissions, equipment logistics, and lo
 - Photography and filming permit arrangements
 - Equipment transportation and storage coordination
 - Local fixer and guide services for access
-- Optimal scheduling for lighting and weather conditions</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_169_PHOTOGRAPHY_AND_DOCUMENTARY_TRAVEL.md
+- Optimal scheduling for lighting and weather conditions

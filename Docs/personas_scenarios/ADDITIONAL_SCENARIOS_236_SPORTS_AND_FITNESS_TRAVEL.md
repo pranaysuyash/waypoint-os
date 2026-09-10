@@ -15,5 +15,4 @@ Sports travel involves specialized knowledge of athletic protocols, sports safet
 - Sports facility and fitness conference access coordination
 - Athletic training center and event attendance arrangements
 - Technical transportation and sports logistics support
-- Sports travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_236_SPORTS_AND_FITNESS_TRAVEL.md
+- Sports travel experience and professional enhancement

@@ -15,5 +15,4 @@ Self-drive travel requires careful route planning, vehicle preparation, and emer
 - Vehicle rental with comprehensive insurance arrangements
 - Scenic route planning and navigation support
 - Accommodation booking along planned routes
-- Emergency roadside assistance and breakdown services</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_179_ROAD_TRIP_AND_SELF_DRIVE_ADVENTURES.md
+- Emergency roadside assistance and breakdown services

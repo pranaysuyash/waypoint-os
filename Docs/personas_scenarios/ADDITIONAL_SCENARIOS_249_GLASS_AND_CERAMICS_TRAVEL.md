@@ -15,5 +15,4 @@ Glass travel involves specialized knowledge of ceramics protocols, glass safety,
 - Glass factory and ceramics conference access coordination
 - Manufacturing facility and event attendance arrangements
 - Technical transportation and glass logistics support
-- Glass travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_249_GLASS_AND_CERAMICS_TRAVEL.md
+- Glass travel experience and professional enhancement

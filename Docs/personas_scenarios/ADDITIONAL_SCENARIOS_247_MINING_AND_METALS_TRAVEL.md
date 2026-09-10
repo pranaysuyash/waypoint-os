@@ -15,5 +15,4 @@ Mining travel involves specialized knowledge of metals protocols, mining safety,
 - Mining site and metals conference access coordination
 - Extraction facility and event attendance arrangements
 - Technical transportation and mining logistics support
-- Mining travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_247_MINING_AND_METALS_TRAVEL.md
+- Mining travel experience and professional enhancement

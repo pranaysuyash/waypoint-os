@@ -15,5 +15,4 @@ Backpacking travel allows for authentic, immersive experiences but requires care
 - Cost-effective transportation and accommodation options
 - Free or low-cost activity recommendations
 - Safety planning for independent travel
-- Flexible itinerary allowing for spontaneous changes</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_163_BACKPACKING_BUDGET_TRAVEL_PLANNING.md
+- Flexible itinerary allowing for spontaneous changes

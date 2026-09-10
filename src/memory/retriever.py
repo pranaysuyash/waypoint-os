@@ -13,7 +13,7 @@ import math
 from typing import List, Tuple
 
 from src.memory.decay_engine import MemoryDecayEngine
-from src.memory.models import BaseMemoryItem
+from src.memory.models import SOURCE_CONFIDENCE_WEIGHTS, BaseMemoryItem
 from src.memory.sanitizer import MemorySanitizer
 
 DEFAULT_TOKEN_BUDGET = 800
@@ -64,9 +64,17 @@ class HybridMemoryRetriever:
                 continue
 
             sim = self._compute_lexical_similarity(query, f"{item.summary} {item.category}")
-            conf = item.provenance.confidence_score
+            # F-13 slice (E-10 E10.5): source-trust weighting. The decay engine
+            # treats provenance confidence as base activation, so confidence
+            # flows through BOTH the activation term (35%) and the direct
+            # confidence term (20%) — 55% of the blend. Trust scales the whole
+            # confidence-derived contribution, so an agent-inferred memory can
+            # never outrank a traveler-stated one at equal similarity/recency.
+            source_trust = SOURCE_CONFIDENCE_WEIGHTS.get(item.provenance.source_type, 0.6)
+            activation *= source_trust
+            conf = item.provenance.confidence_score * source_trust
 
-            # Blended score: 45% similarity, 35% recency activation, 20% source confidence
+            # Blended score: 45% similarity, 35% (trust-weighted) recency activation, 20% (trust-weighted) source confidence
             combined_score = round(0.45 * sim + 0.35 * activation + 0.20 * conf, 4)
 
             if combined_score >= min_score:

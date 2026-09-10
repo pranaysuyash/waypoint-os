@@ -15,5 +15,4 @@ Legal travel involves specialized knowledge of compliance protocols, legal safet
 - Legal conference and compliance audit access coordination
 - Regulatory meeting and event attendance arrangements
 - Technical transportation and legal logistics support
-- Legal travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_228_LEGAL_AND_COMPLIANCE_TRAVEL.md
+- Legal travel experience and professional enhancement

@@ -15,5 +15,4 @@ Religious travel involves deep spiritual significance and cultural sensitivity, 
 - Expert guidance on religious sites and traditions
 - Culturally sensitive accommodation and transportation arrangements
 - Coordination with religious authorities and local communities
-- Respect for religious practices and observances throughout the journey</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_165_RELIGIOUS_AND_SPIRITUAL_TRAVEL_PILGRIMAGES.md
+- Respect for religious practices and observances throughout the journey

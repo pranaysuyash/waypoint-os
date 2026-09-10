@@ -15,5 +15,4 @@ Humanitarian travel involves high-risk environments that require security coordi
 - Humanitarian organization coordination and deployment support
 - Secure transportation to crisis and conflict zones
 - Crisis area accommodation and logistics arrangements
-- Emergency evacuation and security procedure coordination</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_184_HUMANITARIAN_AND_AID_WORKER_TRAVEL.md
+- Emergency evacuation and security procedure coordination

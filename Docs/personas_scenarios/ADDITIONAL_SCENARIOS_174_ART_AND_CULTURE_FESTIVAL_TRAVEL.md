@@ -15,5 +15,4 @@ Art and culture festivals require specialized access arrangements, timing coordi
 - Festival pass and VIP access procurement
 - Gallery and exhibition visit coordination
 - Artist event and workshop arrangements
-- Cultural context and interpretation services</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_174_ART_AND_CULTURE_FESTIVAL_TRAVEL.md
+- Cultural context and interpretation services

@@ -42,48 +42,42 @@ Score progression recorded in the transcript: 6/10 (business-flow level) → 8/1
 
 Prefix **TS-** (training-session-sourced, 2026-09-09). No collisions with existing register prefixes (checked).
 
-### TS-01 — IMPLEMENT (S per check, M total) · Hard itinerary-feasibility validators: the timing/transfer/capacity family
+### TS-01 — IMPLEMENT (S per check, M total) · Hard itinerary-feasibility validators: the timing/transfer/capacity family — **DONE 2026-09-09 (same session)**
 
-The tutor's canonical example — *flight lands 10:40, Disney booking 11:00, 70-minute transfer → a validator must reject it* — plus his validation list. Verified current state:
+The tutor's canonical example — *flight lands 10:40, Disney booking 11:00, 70-minute transfer → a validator must reject it* — plus his validation list. Verified current state **before** implementation:
 
 | Check | Status | Evidence |
 |---|---|---|
-| Flight connection MCT (hard) | ✅ exists | `src/decision/constraint_engine.py:165-232` (+ terminal MCT matrix `:48-83`; `src/logistics/connection_risk.py:334`) |
-| Overlapping bookings / teleportation (hard) | ✅ exists | `constraint_engine.py:184-186` `SPATIAL_OVERLAP` |
-| Passport validity vs destination (hard) | ✅ exists | `constraint_engine.py:230-252`; `spine_api/services/visa_radar.py` |
-| Total cost ≤ approved budget | ✅ exists | budget gate (F-18 green honestly) |
-| **Arrival→first-activity transfer buffer (hard)** | ❌ absent | `src/logistics/timed_entry.py:48-101` buffer is **advisory only** and not chained to flight-arrival nodes |
-| **Hotel check-in time vs arrival** | ❌ absent | `HOTEL_CHECKIN` is a node type only (`src/schemas/journey_graph.py:23`), no check-in-time validation |
-| **Hotel occupancy vs party size (hard)** | ❌ absent | `src/logistics/rooming_list.py` allocates rooms, never validates against max-occupancy |
-| **Child-age rules vs fare/product** | ❌ absent vs fares | child-age enforced vs *activities* only (`src/suitability/models.py:37-38`); `src/distribution/fare_rules_engine.py` is markup/ADM risk only |
+| Flight connection MCT (hard) | ✅ existed | `src/decision/constraint_engine.py:165-232` (+ terminal MCT matrix `:48-83`; `src/logistics/connection_risk.py:334`) |
+| Overlapping bookings / teleportation (hard) | ✅ existed | `constraint_engine.py:184-186` `SPATIAL_OVERLAP` |
+| Passport validity vs destination (hard) | ✅ existed | `constraint_engine.py:230-252`; `spine_api/services/visa_radar.py` |
+| Total cost ≤ approved budget | ✅ existed | budget gate (F-18 green honestly) |
+| **Arrival→first-activity transfer buffer (hard)** | ✅ **implemented** | `GROUND_OVERLAP_` (hard, starts-before-arrival) / `GROUND_ACCESS_DEFICIT_` (hard, explicit `required_transfer_minutes`/`recommended_arrival_buffer_minutes` unmet) / `GROUND_BUFFER_TIGHT_` (soft advisory — heuristic FLIGHT 90m / RAIL·FERRY·CRUISE 45m defaults never hard-reject) in `constraint_engine.py` §1b |
+| **Hotel check-in vs arrival** | ✅ **implemented** | `UNCOVERED_FIRST_NIGHT_` hard check, §1c — interval coverage (>12h arrival→check-in with no onward leg = uncovered night); plus owner-confirmed soft companion (2026-09-09): `LONG_LAYOVER_NO_HOTEL_` advisory for ≥6h lodging-less layovers with an onward connection (transit-room upsell, never a block) |
+| **Hotel occupancy vs party size (hard)** | ✅ **implemented** | `OCCUPANCY_EXCEEDED_` (CAPACITY_ROOMING — first producer of that dormant category); metadata shapes `max_guests`/`capacity`/`rooms[]`/`room_count`×`max_occupancy_per_room`; abstains without declared capacity |
+| **Child-age rules vs fare/product** | ✅ **implemented** | `AGE_RULE_` (COMMERCIAL_SUPPLIER_POLICY) on node `min_age`/`max_age`/`infant_max_age` metadata + `PAX_MISMATCH_` (declared ticket pax vs party — the tutor's "traveler count matches tickets") |
 
-Canonical home: extend `src/decision/constraint_engine.py` (beside MCT/overlap/passport) so every validator family lives in one engine; chain `timed_entry` buffers to flight-arrival journey nodes. Pure deterministic, provider-independent, fully testable — **the highest-value transcript item and the recommended next unit**. Aligns with the doctrine line the tutor emphasized: *use AI for ambiguity, deterministic software for truth you can calculate.*
+Callers extended: `evaluate_itinerary_graph(..., party_size=)` (compiler passes `traveler_count`; router already passes `travelers`). Tests: `tests/test_constraint_engine_feasibility.py` (31 tests, paired fail/pass per family — S1+S3 style); existing constraint suites untouched-green. **Every check abstains without declared data — no fabricated supplier-side facts.** Hardened through 4 review cycles (cycle-1 P0: multi-check-in false-reject → interval coverage; cycle-2 P1: return-leg/transit false-positives → RETURN_LEG_OF + refined final-arrival discriminator + transit exemption; cycle-3 P1s: transit-exemption set and door-drop-off scope narrowed) — full findings and final mergeable sign-off in `Docs/review/TS_REGISTER_EXECUTION_HANDOFF_2026-09-09.md`.
 
-### TS-02 — EXPLORE (S) → IMPLEMENT later · Quote-freshness / recheck-before-execution contract
+### TS-02 — EXPLORE (S) → IMPLEMENT later · Quote-freshness / recheck-before-execution contract — **DOC DELIVERED 2026-09-09**
 
-The tutor's `APPROVED → freshness recheck → if materially changed, back to AWAITING_CUSTOMER_APPROVAL` state has a token but no logic: `revalidate_quote_before_payment` exists only as a next-action priority-band entry (`src/orchestration/travel_next_action.py:18`, band 60); fulfillment charges the stored `selected_total_price_usd` with **no staleness gate** (`src/orchestration/booking_fulfillment.py:202,318`); `price_lock_expires_at` is written/read but the endpoints are preview-only (A5 reclassified). Explore-first because "stale" needs defining for simulated inventory (deterministic preview = no real rate to recheck); the real recheck lands with a live rate source. Fold the design into **B6/B7 provider work** and ADR-008 money rungs. Output: a freshness contract doc (what TTL, what delta counts as "materially changed", which rung blocks execution).
+Contract design at `Docs/exploration/TS02_QUOTE_FRESHNESS_CONTRACT_2026-09-09.md`: freshness classes (fresh/stale/unknown), staleness gates by commitment rung, materially-changed re-approval rule (delta = owner DECIDE), deterministic-no-LLM recheck, `revalidate_quote_before_payment` token→logic wiring, and the small honest implementable-now slice (schema fields + labeled panel copy). Full recheck engine intentionally deferred to the B6/B7 provider lane — no recheck theater against simulated inventory.
 
-### TS-03 — EXPLORE (M) → IMPLEMENT (M-L) · Multi-modal intake completion
+### TS-03 — EXPLORE (M) → IMPLEMENT (M-L) · Multi-modal intake completion — **DOC DELIVERED 2026-09-09**
 
-The transcript's input model — *raw messages, attachments, voice notes, links* — is the demand-capture funnel for the **D-01-decided open verifier + marketplace**, and it is the weakest intake surface today:
+Plan at `Docs/exploration/TS03_MULTIMODAL_INTAKE_COMPLETION_2026-09-09.md`: modality priority (image/PDF via the **existing operator vision lane** extended to customer inbound — no second extractor; voice gated on WhatsApp-native transcripts DECIDE; URL last, SSRF-allowlist prerequisite), attachment-envelope schema, PII posture, upload-validation gates, prompt-injection fixtures, and S1–S5 sizing. Strategic anchor: D-01 open verifier/marketplace where a competitor-quote screenshot is both demand capture and checker input.
 
-- **Images/PDF:** real vision extraction exists (OpenAI + Gemini, `src/extraction/vision_client.py:238-250`) but only via the **operator** trip-documents flow (`spine_api/routers/trip_documents.py:225,484,649`); the customer-message path (`src/intake/` inbound parse) is text-only. `/api/v1/multimodal/image-ocr` accepts only **pre-OCR'd text** (`spine_api/routers/multimodal.py:211-258`).
-- **Voice:** no ASR anywhere; `voice-note` endpoint and `process_voice_memo` both require a pre-supplied transcript (`multimodal.py:161-208`, `src/intake/audio_intake.py:50`). WhatsApp webhook handles delivery statuses only, no inbound media (`spine_api/routers/messaging.py:125-166`).
-- **URLs:** no fetching of customer-shared links anywhere in intake (URL fetching exists only in agent live-tools / public checker).
+### TS-04 — EXPLORE (S-M) · Provenance actor vocabulary for tool/provider writes — **IMPLEMENTED 2026-09-09 (same session)**
 
-Explore first: modality priority for an Indian proprietor-agency funnel (screenshot of a competitor quote is likely #1), ASR provider DECIDE (Whisper vs Deepgram vs WhatsApp-native transcripts), **SSRF allowlist design for URL fetch** (directly adjacent to the open Mimosa SSRF findings on fetch surfaces), PII posture for voice/images. Then implement by extending the existing vision/trip-documents lane into the customer inbound path rather than building a parallel one.
+`spine_api/services/field_merge.py` extended: canonical vocabulary `operator | customer | system | tool | provider`; precedence now **commercial: provider > operator > tool/system > customer** (provider facts are authoritative) and **preference: customer > operator > machines** (machines never override wants). Trust boundary preserved: internal roles are not client-submittable — `normalize_actor_role` folds a client-claimed `provider` to operator, and `resolve_field_merge(..., allow_internal_actors=True)` is the server-side-writer-only escape hatch; stored provenance is parsed against the full vocabulary so a stored `provider` actor keeps its rank in later merges. Contract description updated (`spine_api/contract.py`). Tests: `tests/test_field_merge_actor_vocabulary.py` (16 tests incl. the escalation-guard test); legacy operator/customer behavior regression-guarded.
 
-### TS-04 — EXPLORE (S-M) · Provenance actor vocabulary for tool/provider writes
+### TS-05 — EXPLORE / design-note (park until real providers) · Pipeline parallel orchestration & speculative execution — **DOC DELIVERED (parked) 2026-09-09**
 
-`_field_provenance` models only operator/customer actors (`spine_api/services/field_merge.py:20-36`); packet-level provenance is rich but tool/provider-sourced writes to trip state don't uniformly carry per-field provenance. The tutor: *"the proposal must retain provenance to the authoritative source behind each important fact."* Design: extend the actor vocabulary (tool/provider/system subclasses) or route provider writes through evidence packets so the two provenance systems converge.
+Design note at `Docs/exploration/TS05_PARALLEL_ORCHESTRATION_DESIGN_NOTE_2026-09-09.md`: records the tutor's decision factors as the unpark checklist, the proposed shape (single bounded `TaskGroup` around provider I/O only; deterministic phases stay sequential), explicit out-of-scope (no actor framework — runtime roadmap Layer 3 owns durability), and the revisit trigger (live provider >2s median latency or WhatsApp-corridor UX pressure).
 
-### TS-05 — EXPLORE / design-note (park until real providers) · Pipeline parallel orchestration & speculative execution
+### TS-06 — EXPLORE (S) · Candidate route-structure planning with incremental refinement — **GAP CONFIRMED, design delivered 2026-09-09**
 
-`run_spine_once` is strictly sequential (Phase 1 extraction → … → Phase 10 fixture compare, `src/intake/orchestration.py:181-614`); no fan-out, no speculative execution, no downstream cancellation anywhere (asyncio.gather exists only in the stress simulator). The tutor's decision checklist is the design brief: *parallelize independent work when expected latency benefit exceeds expected cost of wasted work* — as a function of latency, API cost, gate-failure probability, wasted-work consequence, downstream reusability, UX. **Honest recommendation: park.** Today's pipeline is local-deterministic + one LLM extraction call; parallelism buys little and adds cancellation complexity. Value arrives when external provider tools land (B6/B7) — e.g. entry-check as a cheap early gate with speculative flight/Disney feasibility in flight, cancel-on-gate-fail. Reconcile with `MULTI_AGENT_RUNTIME_ROADMAP.md` Layer 3 (durable orchestration = queues/retries/outbox, a different axis than intra-pipeline parallelism).
-
-### TS-06 — EXPLORE (S) · Candidate route-structure planning with incremental refinement
-
-Tutor's weakest-score area in the owner's answer: route design has hard deps (cities, duration, party) and **soft deps** (exact flights, hotels) — the system should generate candidate structures (Tokyo 4N/Kyoto 3N vs 3N/4N) *before* exact flights and refine dramatically when flight data arrives (arrival Tokyo 10:00 / return Osaka 23:00 → open-jaw Tokyo→Kyoto→Osaka instead of backtracking). The route-feasibility matrix (`ROUTE_FEASIBILITY_AND_GEOSPATIAL_AVIATION_PIPELINE_2026-09-02.md`) **validates** routes (MCT, zigzag, transit visas) but does not **generate/refine candidate structures** under soft dependencies. Verify what Phase 4.6 plan-candidate (`orchestration.py:528`) does today, then design the incremental-refinement seam.
+Verification: `build_plan_candidate` is a single snapshot (not candidates), `SessionStrategy` is action sequencing (not geography), `BRANCH_OPTIONS` has no producer, and the route-feasibility matrix validates but never generates. Design at `Docs/exploration/TS06_CANDIDATE_ROUTE_STRUCTURES_2026-09-09.md`: deterministic candidate-structure enumerator (night-splits over hard constraints) + open-jaw/backtrack refinement on flight arrival, skeletons as partial `JourneyDependencyGraph`s, LLM narrates but never alters skeletons, finally a producer for `BRANCH_OPTIONS`. Sized M+M+M+S; recommended post-TS-01 (reuses the constraint engine), near marketplace proposal work.
 
 ---
 

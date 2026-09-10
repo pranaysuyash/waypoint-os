@@ -15,5 +15,4 @@ Adventure travel involves high-risk activities, specialized equipment, and safet
 - Adventure activity booking and professional guide coordination
 - Specialized equipment rental and transportation arrangements
 - Safety training and certification requirement support
-- Extreme sports logistics and risk management</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_200_ADVENTURE_AND_EXTREME_SPORTS_TRAVEL.md
+- Extreme sports logistics and risk management

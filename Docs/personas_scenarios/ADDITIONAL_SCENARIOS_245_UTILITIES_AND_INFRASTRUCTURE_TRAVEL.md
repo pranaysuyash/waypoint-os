@@ -15,5 +15,4 @@ Utilities travel involves specialized knowledge of infrastructure protocols, uti
 - Utility plant and infrastructure conference access coordination
 - Power facility and event attendance arrangements
 - Technical transportation and utilities logistics support
-- Utilities travel experience and professional enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_245_UTILITIES_AND_INFRASTRUCTURE_TRAVEL.md
+- Utilities travel experience and professional enhancement

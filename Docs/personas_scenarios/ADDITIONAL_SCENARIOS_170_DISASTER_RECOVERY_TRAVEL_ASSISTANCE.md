@@ -15,5 +15,4 @@ Disaster situations create urgent travel needs that require rapid response, flex
 - Real-time monitoring of travel advisories and emergency situations
 - Emergency evacuation and rebooking arrangements
 - Insurance claim coordination and documentation
-- Ongoing support and alternative accommodation during recovery</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_170_DISASTER_RECOVERY_TRAVEL_ASSISTANCE.md
+- Ongoing support and alternative accommodation during recovery

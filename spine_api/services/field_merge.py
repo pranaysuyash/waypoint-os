@@ -10,12 +10,21 @@ tracks for approvals (F-03) and memory (F-13), but at the trip-field level.
 
 Precedence contract:
 - Preference fields (what the customer wants): the customer's own voice wins.
-  Customer > operator.
+  Customer > operator > machines (tool/provider/system never override wants).
 - Commercial/structured fields (budget numbers, dates, party, identity):
-  the operator's corrected values outrank customer restatements.
-  Operator > customer.
+  provider facts are authoritative (provider > operator > tool/system > customer).
+  An operator correction still outranks a customer restatement; a deterministic
+  pipeline value outranks a customer restatement but not an operator's.
 - Unknown fields: operator > customer (conservative default; conflicts are
   still recorded so the classification can be corrected later).
+
+Actor vocabulary (TS-04, 2026-09-09): operator, customer, system, tool,
+provider. Only operator/customer are client-submittable on the
+/optimistic-sync surface; system/tool/provider are internal-writer roles
+(server-side provider adapters, deterministic tools, platform bookkeeping)
+and require ``allow_internal_actors=True`` so a client can never claim
+provider rank. Stored provenance is always parsed against the full
+vocabulary — a stored 'provider' actor keeps its rank in later merges.
 
 Provenance is stored under the reserved packet key `_field_provenance` as
 {field: {actor, actor_id, at, superseded}}. Every applied overwrite records
@@ -30,7 +39,17 @@ from typing import Any, Dict, List, Optional
 
 ACTOR_OPERATOR = "operator"
 ACTOR_CUSTOMER = "customer"
-VALID_ACTOR_ROLES = (ACTOR_OPERATOR, ACTOR_CUSTOMER)
+ACTOR_SYSTEM = "system"
+ACTOR_TOOL = "tool"
+ACTOR_PROVIDER = "provider"
+
+# Canonical vocabulary for recorded/stored provenance actors.
+VALID_ACTOR_ROLES = (ACTOR_OPERATOR, ACTOR_CUSTOMER, ACTOR_SYSTEM, ACTOR_TOOL, ACTOR_PROVIDER)
+
+# Roles a client may claim on the /optimistic-sync surface. Everything else
+# (system/tool/provider) is an internal-writer role and folds to operator
+# when supplied externally — a client must not be able to claim provider rank.
+CLIENT_ACTOR_ROLES = (ACTOR_OPERATOR, ACTOR_CUSTOMER)
 
 # Reserved packet metadata key — never accept it from client updates.
 PROVENANCE_KEY = "_field_provenance"
@@ -82,10 +101,11 @@ COMMERCIAL_FIELDS = frozenset(
 )
 
 _PRECEDENCE_RANK = {
-    # preference class: customer outranks operator
-    "preference": {ACTOR_CUSTOMER: 2, ACTOR_OPERATOR: 1},
-    # commercial class (and unknown-field default): operator outranks customer
-    "commercial": {ACTOR_OPERATOR: 2, ACTOR_CUSTOMER: 1},
+    # preference class: customer outranks operator; machines never override wants
+    "preference": {ACTOR_CUSTOMER: 3, ACTOR_OPERATOR: 2, ACTOR_PROVIDER: 1, ACTOR_TOOL: 1, ACTOR_SYSTEM: 1},
+    # commercial class: provider facts are authoritative, then operator,
+    # then deterministic tools/system, then customer restatements
+    "commercial": {ACTOR_PROVIDER: 4, ACTOR_OPERATOR: 3, ACTOR_TOOL: 2, ACTOR_SYSTEM: 2, ACTOR_CUSTOMER: 1},
 }
 
 
@@ -95,14 +115,19 @@ def _field_class(field_name: str) -> str:
     return "commercial"
 
 
-def normalize_actor_role(actor_role: Optional[str]) -> str:
+def normalize_actor_role(actor_role: Optional[str], *, allow_internal: bool = False) -> str:
     """Map a request-supplied actor role onto the canonical vocabulary.
 
-    Unknown/absent roles default to the operator (the optimistic-sync surface
-    is operator-facing by construction; customer-sourced merges must say so).
+    Unknown/absent roles default to the operator. With ``allow_internal=True``
+    (server-side writers only) the full vocabulary — including the
+    system/tool/provider internal-writer roles — is accepted; on the client
+    surface those roles fold to operator so a client can never claim
+    provider precedence.
     """
-    if actor_role and actor_role.strip().lower() in VALID_ACTOR_ROLES:
-        return actor_role.strip().lower()
+    role = (actor_role or "").strip().lower()
+    valid = VALID_ACTOR_ROLES if allow_internal else CLIENT_ACTOR_ROLES
+    if role in valid:
+        return role
     return ACTOR_OPERATOR
 
 
@@ -144,14 +169,20 @@ def resolve_field_merge(
     actor_role: Optional[str],
     actor_id: Optional[str],
     now_iso: str,
+    allow_internal_actors: bool = False,
 ) -> FieldMergeResult:
     """Merge `updates` into `packet` under the precedence contract.
 
     Returns a new packet dict (input not mutated). Applied overwrites record
     provenance including the superseded value; precedence rejections are
     returned as conflicts with the kept value.
+
+    ``allow_internal_actors=True`` is for server-side writers (provider
+    adapters, deterministic tools, platform bookkeeping) that need to write
+    under the system/tool/provider roles. Client-facing callers must leave it
+    False so claimed internal roles fold to operator.
     """
-    role = normalize_actor_role(actor_role)
+    role = normalize_actor_role(actor_role, allow_internal=allow_internal_actors)
     merged = dict(packet)
     existing_provenance = dict(packet.get(PROVENANCE_KEY) or {})
     applied: List[str] = []
@@ -164,7 +195,7 @@ def resolve_field_merge(
                     field=field_name,
                     requested_value="<reserved>",
                     kept_value=None,
-                    kept_actor="system",
+                    kept_actor=ACTOR_SYSTEM,
                     incoming_actor=role,
                     field_class="reserved",
                     reason="provenance metadata key is system-owned",
@@ -176,7 +207,10 @@ def resolve_field_merge(
         prior = existing_provenance.get(field_name)
         incoming_rank = _PRECEDENCE_RANK[field_class].get(role, 1)
         if prior is not None:
-            stored_actor = normalize_actor_role(prior.get("actor"))
+            # Stored actors are parsed against the FULL vocabulary: a stored
+            # 'provider'/'tool' actor keeps its rank in later comparisons even
+            # when the current writer is a client-restricted caller.
+            stored_actor = normalize_actor_role(prior.get("actor"), allow_internal=True)
             stored_rank = _PRECEDENCE_RANK[field_class].get(stored_actor, 1)
             if incoming_rank < stored_rank:
                 conflicts.append(
@@ -195,13 +229,15 @@ def resolve_field_merge(
                 )
                 continue
         elif (
-            role == ACTOR_CUSTOMER
-            and field_class == "commercial"
+            field_class == "commercial"
             and merged.get(field_name) not in (None, "", [], {})
+            and incoming_rank < _PRECEDENCE_RANK["commercial"][ACTOR_OPERATOR]
         ):
             # Pre-merge-system (unattributed) commercial value: conservative default
-            # treats it as operator-owned rather than letting a customer restatement
-            # clobber it. Blank commercial fields stay customer-fillable.
+            # treats it as operator-owned rather than letting a lower-rank writer
+            # (customer restatement, or a tool/system writer — review cycle 1)
+            # clobber it. Provider facts (rank above operator) still apply.
+            # Blank commercial fields stay fillable by anyone.
             conflicts.append(
                 MergeConflict(
                     field=field_name,
@@ -212,7 +248,7 @@ def resolve_field_merge(
                     field_class=field_class,
                     reason=(
                         "commercial field has an unattributed stored value; "
-                        "customer update rejected under operator-conservative default"
+                        f"'{role}' update rejected under operator-conservative default"
                     ),
                 )
             )

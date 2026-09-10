@@ -15,5 +15,4 @@ Adventure sports require specialized equipment that must be properly fitted and 
 - Equipment rental from certified, reputable providers
 - Proper sizing and safety equipment verification
 - Coordination with activity providers for equipment delivery
-- Insurance coverage for rented equipment</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_153_ADVENTURE_SPORT_EQUIPMENT_RENTAL.md
+- Insurance coverage for rented equipment

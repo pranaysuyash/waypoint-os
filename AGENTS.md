@@ -589,6 +589,30 @@ Before removing **any** code (function, type, component, export), apply this wor
 - All commits are authored by the project owner only.
 - Commit messages should be concise and descriptive without external credits.
 
+## Findings Lifecycle (Canonical — v2 Store, 2026-09-09)
+
+Finding identity and lifecycle state live in the append-only store
+`Docs/review/FINDINGS_STORE.jsonl`, managed exclusively through
+`scripts/findings.py`. The generated view is `Docs/review/FINDINGS_LIVE.md`;
+markdown registers (`FINDINGS_REGISTER_2026-08-31.md`,
+`FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md`, per-stream registers) are frozen
+historical views. Spec + rationale: `Docs/review/FINDINGS_LIFECYCLE_2026-08-30.md` §v2.
+
+**Rules (binding for all agents):**
+
+1. **Never hand-edit** `FINDINGS_STORE.jsonl` or `FINDINGS_LIVE.md`. All writes go
+   through the CLI: `python3 scripts/findings.py open|close|defer|reverify|note|alias|import`.
+2. **New findings**: `python3 scripts/findings.py open --title "..." --priority P1 --actor <your-name>`.
+   IDs are minted (`FND-NNNN`) — never invent IDs, never reuse legacy register IDs
+   (A-18, F-01, …) for new findings; they are aliases of imported rows.
+3. **Closing requires evidence** (doc path, commit, or verification output) — the store
+   rejects closures without it. Deferred findings require a reason + reopen condition.
+4. **Stale open findings fail CI** (`findings.py validate`, > 45 days): re-verify with
+   `reverify <id> --evidence ...` or close. Do not bulk-edit dates to silence the gate.
+5. **`--actor` is your agent/session identity** — audit trails depend on it.
+6. Do not create new markdown findings registers; lifecycle rows in new markdown files
+   are not canonical and will not be gated.
+
 ## Current Project Guardrails
 
 - Preserve existing `memory/` contents; do not remove memory artifacts unless explicitly instructed.

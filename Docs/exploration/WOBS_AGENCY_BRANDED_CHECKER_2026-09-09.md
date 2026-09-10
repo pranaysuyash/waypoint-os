@@ -260,3 +260,27 @@ Adopted design:
 - Open decision for later: publishing API docs + issuing API keys turns the checker into third-party infrastructure (LLM vendors calling self-verify — Future Self's leapfrog). That is a **product exposure decision** (auth model, rate economics, abuse posture), gated on the same launch decision as everything else. Not buildable meaningfully pre-exposure; recorded as the standing post-launch option.
 
 **Evidence (this increment):** 8 re-verify/fingerprint tests + 190-test backend sweep + ruff clean + frontend tsc clean 46/46 (fingerprint shown in Provenance bar; route-map + middleware allowlists updated for re-verify).
+
+### Part 3.6 — Completion wave: EX-04 tokens, retention, dispute escrow (2026-09-09, "complete the implementations and the exploration work")
+
+**EX-04 capability tokens (closes AUD-04 — the live-probed anonymous 401 defect):**
+- `spine_api/services/public_checker_access.py`: opaque bearer tokens (32-byte urlsafe), **stored hashed** (raw token never persists), bound to one trip, TTL-bounded by retention, revocable; constant-time verification; fail-closed on any mismatch.
+- Every run now issues `access_token` + `retention_days` on the response (contract + spine.ts extended).
+- Token-authorized routes (middleware-prefixed `/api/public-checker/trip/`, enforced again in-router): `GET trip/{id}`, `GET trip/{id}/export`, `DELETE trip/{id}` (delete cascades artifacts + tokens). The authed agency-scoped routes are untouched.
+- Frontend: token captured to sessionStorage on run; report fetch, export, and delete use the token route with `Authorization: Bearer` when present (old paths remain the fallback for authed contexts). The anonymous owner can now actually use "Manage your saved data" — the erasure path is exercisable.
+
+**Retention (D-03 implemented with EX-02 defaults, env-tunable):**
+- `PUBLIC_CHECKER_RETENTION_DAYS` (default 90; 0 = disabled) bounds trip rows, tokens, and consent-gated upload artifacts: `sweep_expired_public_checker_trips()` deletes by age, public-checker-source-scoped only, and cascades token revocation. Deliberately **file-store-only v0** — SQL lifecycle belongs to the durable-store endgame (E-G), recorded.
+- `.1` event-segment age pruning: `prune_old_event_segments(max_age_days=180)` closes the FT-06/EX-10 age gap (size rotation shipped earlier).
+- Invocation: sweep is explicit-invocation/tool-ready (wiring into a background loop waits for the loop-owner decision; automatic startup sweep is an env-toggle away and intentionally default-off).
+
+**Second-Opinion Escrow v0 (dispute path):**
+- `POST /api/public-checker/disputes {trip_id, finding_text, verdict}` (public, kill-switched, 6/min) records the client-claimed disagreement with **`verified: false`, `origin: client`** — quarantined honestly: disputes become corpus rows only after server-side confirmation. The frontend "Looks fine" button now posts best-effort (silent fail).
+
+**Exploration completeness (EXPLORATION §59, WOBS):** Covered — engine reality, rule taxonomy, scoring, tenancy, funnel/sealed metrics, marketplace mechanics, matching, disputes, retention, tokens, exposure envelope. Not covered: scheduled re-verification loop (trigger: retention live + loop owner), API-keys layer (trigger: exposure GO), multi-party warranty (trigger: first accepted routed brief). High-value unknowns: B9 demand landscape (Oct 6), D-03 numbers ratification (defaults now live as env), real-traffic conversion. Blind spots: no real-user UX observation yet; non-India market fit unexamined.
+
+**Evidence:** access/retention 11 tests, sealed-metrics 5, marketplace API 7, marketplace units 19, re-verify/fingerprint 8, entity 16, live-checker wiring 10, honesty-sweep suite 46/46 frontend, tsc clean; backend sweep 190; ruff clean after 2 F401 fixes.
+
+### Part 3.7 — Disclaimer sign-off (2026-09-09)
+
+Owner approved the EX-05 disclaimer text **as-is** for both mounts (result view + upload footer). The "pending owner sign-off" label is closed; code comment + EX-05 doc record the approval. Honesty-sweep continues to assert the binding phrase ("not legal, visa, or booking advice") — future wording edits must update the sweep in the same change. Pre-exposure punch-list item 5 of 5 now closed; remaining pre-flip items are mechanical (retention automation wiring, robots/sitemap, host env) and gated only on the exposure-scope choice itself (hold / checker-only GO / GO + spend-test), which remains open.

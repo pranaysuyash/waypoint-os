@@ -15,5 +15,4 @@ Festival travel involves ticket availability, crowd management, and event-specif
 - Festival ticket and event access coordination
 - Festival accommodation and camping arrangements
 - Transportation to event venues and logistics support
-- Music and arts festival experience enhancement</content>
-<parameter name="filePath">/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/ADDITIONAL_SCENARIOS_201_MUSIC_AND_ARTS_FESTIVAL_TRAVEL.md
+- Music and arts festival experience enhancement
