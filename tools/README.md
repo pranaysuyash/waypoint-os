@@ -2,6 +2,34 @@
 
 This directory stores reusable helper utilities for this project.
 
+## Envelope-Fragment Stripper: `strip_envelope_fragments.py`
+
+Purpose:
+
+- Detect and repair AI tool-call envelope tails (`</content>` followed by
+  `<parameter name="filePath">...`) accidentally written into Markdown
+  documents by batch agent writes.
+- Strict tail-only auto-fix: repairs only when the entire post-`</content>`
+  remainder is exactly the single envelope line and each marker occurs once;
+  anything else is reported for manual review, never guessed.
+- Markdown code spans/fences are exempt from detection (docs about this
+  defect legitimately quote the markers).
+
+Usage:
+
+```bash
+python3 tools/strip_envelope_fragments.py --dry-run   # report only
+python3 tools/strip_envelope_fragments.py             # apply strict repair
+python3 tools/strip_envelope_fragments.py --check      # exit 1 if any marker remains (CI gate)
+```
+
+Notes:
+
+- Defect class introduced at scale in commit c7fa31d (2026-04-23): 108 files
+  carried the envelope tail + an absolute local path at EOF.
+- Wired into CI (`docs-quality` job runs `--check` on every push/PR).
+- Incident record: Docs/travel_agency_process_issue_review_2026-09-10.md.
+
 ## Git Classification Ledger Validator: `check_worktree_classification.py`
 
 Purpose:
@@ -668,4 +696,3 @@ Safety notes:
   contention failure or environment error.
 - `--workers N` forwards through the `PROBE_WORKERS` env var to the test
   module (`WORKERS = int(os.environ.get("PROBE_WORKERS", "4"))`).
-

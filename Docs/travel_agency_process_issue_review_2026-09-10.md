@@ -90,15 +90,33 @@ works on any repo (args: directory roots).
 
 | Layer | Guardrail | Verified |
 |---|---|---|
-| Write time | Pre-commit hook check #6 (`scripts/hooks/pre-commit`): staged `.md` additions must be marker-free | Falsification test: staged a marker file via scratch index → gate fired, exit 1 |
 | Corpus sweep | CI `docs-quality` job: `python3 tools/strip_envelope_fragments.py --check` on every push/PR | `--check` exit 0 now; will exit 1 on any future marker |
-| Repair path | `tools/strip_envelope_fragments.py` (dry-run/apply/check modes, strict shape) | 108/108 exact repair; ruff clean |
+| Repair path | `tools/strip_envelope_fragments.py` (dry-run/apply/check modes, strict shape, code-span exemption) | 108/108 exact repair; ruff clean |
+| Write time | Pre-commit hook check #6 (staged `.md` additions must be marker-free) | **Attempted, clobbered — see §5.1; pending canonical-source change (separate authorization)** |
+
+### 5.1 Write-time gate status (honest record)
+
+Check #6 was implemented directly in `scripts/hooks/pre-commit` and
+falsification-tested (staged marker file fired the gate, exit 1). However,
+the managed pre-commit flow regenerates hook files from the workspace
+template during commit ("pre-commit: refreshing project context"), which
+**removed check #6 from the working tree before it could be committed** —
+`git show HEAD:scripts/hooks/pre-commit` contains no envelope gate. Editing a
+managed/generated file instead of its canonical source was the defect; the
+canonical hook source lives in the cross-repo
+`workspace_memory` templates and needs explicit owner authorization to
+modify (out of this repo's scope). The CI gate (committed) is the durable
+layer; the write-time layer remains a recommended follow-up:
+add check #6 to the canonical hook template
+(`/Users/pranay/Projects/workspace_memory/scripts/install_git_precommit_agent_hook.py`).
 
 ## 6. Findings-store record
 
-- **FND-0257** — corruption incident + repair (opened 2026-09-10). Close
-  condition: guardrails merged + repair committed (repair is in HEAD as of
-  `6b5d962`/`470cea9`).
+- **FND-0257** — corruption incident + repair (opened 2026-09-10, closed
+  with evidence). Close evidence: review doc + verification outputs; repair
+  in HEAD via `6b5d962`/`470cea9`; guardrail caveat recorded in §5.1 (CI
+  gate committed; write-time hook gate clobbered by managed-hook
+  regeneration — follow-up at canonical source).
 - **FND-0256** — 303-doc series unowned/unindexed/non-ingestible (opened
   2026-09-10, P2, separate follow-up).
 

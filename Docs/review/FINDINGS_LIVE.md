@@ -1,6 +1,6 @@
 # Findings — Live View (GENERATED — DO NOT EDIT)
 
-**Generated:** 2026-09-10T06:33:47+00:00 by `scripts/findings.py render` — this file is a projection of the
+**Generated:** 2026-09-10T07:02:04+00:00 by `scripts/findings.py render` — this file is a projection of the
 append-only event store `Docs/review/FINDINGS_STORE.jsonl`. **The store is canonical;**
 edit state only through the CLI (`open` / `close` / `defer` / `reverify` / `import`).
 

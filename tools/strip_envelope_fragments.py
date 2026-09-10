@@ -46,8 +46,18 @@ ENVELOPE_TAIL = re.compile(
     r'</content>\s*\n<parameter name="filePath">[^\n]*\s*$'
 )
 
-# Any envelope-ish marker anywhere (detection for --check / review lists)
-ANY_MARKER = re.compile(r'</content>|<parameter name="filePath"')
+# Any envelope-ish marker anywhere (detection for --check / review lists).
+# Markdown code spans/blocks are exempted: documentation about this defect
+# legitimately quotes the markers (see Docs/travel_agency_process_issue_review_2026-09-10.md),
+# and machine-quoted text is not a write-path defect.
+_CODE_FENCE = re.compile(r"```.*?```", re.DOTALL)
+_INLINE_CODE = re.compile(r"`[^`\n]*`")
+ANY_MARKER = re.compile(r"</content>|<parameter name=\"filePath\"")
+
+
+def _strip_quoted_markdown(text: str) -> str:
+    """Remove fenced blocks and inline code spans before marker detection."""
+    return _INLINE_CODE.sub("", _CODE_FENCE.sub("", text))
 
 
 def classify(path: Path) -> str:
@@ -56,7 +66,7 @@ def classify(path: Path) -> str:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
         return f"unreadable:{exc}"
-    if not ANY_MARKER.search(text):
+    if not ANY_MARKER.search(_strip_quoted_markdown(text)):
         return "clean"
     if ENVELOPE_TAIL.search(text):
         # Strict shape requires the marker set exactly once each.
