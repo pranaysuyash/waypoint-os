@@ -230,11 +230,20 @@ def _stored_graph_payload(trip_record: dict, trip_id: str) -> Dict[str, Any]:
     )
     provider_connected = confirmation_attests_live and not node_contradicts
 
+    # TS-08: trip-level component-state verdict (PENDING_BOOKING / BOOKED /
+    # BOOKING_EXCEPTION / None), derived from stored nodes only — abstains
+    # when the trip declares no non-void nodes.
+    from src.schemas.journey_graph import JourneyDependencyGraph
+
+    graph = JourneyDependencyGraph.from_stored(trip_id, nodes=nodes, edges=edges)
+    commitment_verdict = graph.aggregate_commitment()
+
     return {
         "status": "success",
         "trip_id": trip_id,
         "destination": destination,
         "provider_connected": provider_connected,
+        "commitment_verdict": commitment_verdict,
         "reality_tier": (
             booking_confirmation.get("reality_tier")
             if isinstance(booking_confirmation, dict) and booking_confirmation.get("reality_tier")

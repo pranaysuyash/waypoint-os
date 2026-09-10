@@ -270,7 +270,21 @@ export interface DecisionOutput {
   follow_up_questions: FollowUpQuestion[];
   rationale: Rationale;
   confidence: ConfidenceScorecard;
-  branch_options: string[];
+  branch_options: Array<
+    | string
+    | {
+        label: string;
+        description?: string;
+        route_structure?: {
+          cities: string[];
+          nights: number[];
+          open_jaw_aligned: boolean | null;
+          score: number;
+          label: string;
+        };
+        [key: string]: unknown;
+      }
+  >;
   commercial_decision: string;
   budget_breakdown: BudgetBreakdownResult | null;
 }

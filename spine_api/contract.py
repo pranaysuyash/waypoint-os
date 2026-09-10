@@ -16,8 +16,11 @@ Analytics domain models live in src/analytics/models.py and are re-exported here
 
 from __future__ import annotations
 
+import base64
+import binascii
+
 from typing import Any, Dict, List, Literal, Optional, Union
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.intake.constants import DecisionState
 
@@ -1333,6 +1336,53 @@ class AssignInboxResponse(BaseModel):
 # Multi-channel Inbound & Optimistic State Sync Models
 # =============================================================================
 
+class InboundAttachment(BaseModel):
+    """TS-03 S1 (2026-09-10): one customer-supplied attachment on an inbound
+    inquiry (screenshot of a competitor quote, a vendor PDF). Transported
+    base64; persisted via the canonical document-storage lane and recorded on
+    the trip manifest — extraction stays in the operator lane (stage-gated),
+    never auto-applied at intake.
+    """
+
+    kind: Literal["image", "pdf"]
+    mime: str = Field(..., description="image/jpeg | image/png | application/pdf")
+    filename: Optional[str] = None
+    data_b64: str = Field(..., min_length=1, description="Base64-encoded file bytes")
+
+    @field_validator("mime")
+    @classmethod
+    def _validate_mime(cls, value: str) -> str:
+        # Kind pairing and allowlist are enforced by the model_validator below.
+        return value.strip().lower()
+
+    @model_validator(mode="after")
+    def _validate_kind_mime_and_size(self) -> "InboundAttachment":
+        allowed = {"image": {"image/jpeg", "image/png"}, "pdf": {"application/pdf"}}
+        if self.mime not in allowed.get(self.kind, set()):
+            raise ValueError(f"mime {self.mime!r} not allowed for attachment kind {self.kind!r}")
+        try:
+            decoded = base64.b64decode(self.data_b64, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("data_b64 is not valid base64") from exc
+        if not decoded:
+            raise ValueError("attachment data is empty")
+        if len(decoded) > _INBOUND_ATTACHMENT_MAX_BYTES:
+            raise ValueError(
+                f"attachment exceeds {_INBOUND_ATTACHMENT_MAX_BYTES} bytes "
+                f"(got {len(decoded)})"
+            )
+        return self
+
+    @property
+    def decoded_bytes(self) -> bytes:
+        return base64.b64decode(self.data_b64, validate=True)
+
+
+# 5 MiB per attachment — enough for phone screenshots and vendor PDFs,
+# small enough to keep the JSON body bounded.
+_INBOUND_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024
+
+
 class InboundInquiryRequest(BaseModel):
     channel: Literal["whatsapp_web", "email", "voice_note", "manual_paste", "chrome_extension"] = "chrome_extension"
     raw_text: str = Field(..., min_length=3, description="Unstructured inbound chat or email text")
@@ -1341,6 +1391,9 @@ class InboundInquiryRequest(BaseModel):
     agent_notes: Optional[str] = None
     strict_leakage: bool = False
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    # TS-03 S1: attachment envelope (max 5 per inquiry). Persisted via the
+    # canonical document-storage lane; not part of the text pipeline.
+    attachments: List[InboundAttachment] = Field(default_factory=list, max_length=5)
 
 
 class InboundInquiryResponse(BaseModel):
@@ -1355,6 +1408,10 @@ class InboundInquiryResponse(BaseModel):
     internal_bundle: Optional[Dict[str, Any]] = None
     safety: SafetyResult = Field(default_factory=SafetyResult)
     created_at: str
+    # TS-03 S1: how many attachments were accepted and persisted (0 when the
+    # inquiry carried none; less than requested count signals storage
+    # degradation, never a failed parse — the trip is already saved).
+    attachments_accepted: int = 0
 
 
 class OptimisticSyncRequest(BaseModel):

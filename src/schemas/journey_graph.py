@@ -396,6 +396,34 @@ class JourneyDependencyGraph:
             operator_summary=summary,
         )
 
+    def aggregate_commitment(self) -> Optional[str]:
+        """Trip-level verdict over per-node commitment statuses (TS-08 / E-8).
+
+        The tutor's partial-booking shape — flight CONFIRMED, hotel CONFIRMED,
+        Disney failed — has no first-class trip state today; this aggregates
+        node commitments into one:
+
+        - ``PENDING_BOOKING`` — active nodes exist but none is booked/ticketed
+        - ``BOOKED``          — every active node is booked or ticketed
+        - ``BOOKING_EXCEPTION`` — some committed, some not (partial booking;
+                                  a component that failed stays uncommitted
+                                  while siblings are ticketed)
+        - ``None``            — no active (non-void) nodes: abstain
+
+        ``void`` nodes (reversed commitments) are excluded from the verdict.
+        Aligned with the dormant lifecycle vocabulary documented in
+        ``TRIP_LIFECYCLE_STATE_CONTRACTS_2026-09-02.md`` addendum (2026-09-10).
+        """
+        active = [n for n in self.nodes.values() if n.commitment_status != "void"]
+        if not active:
+            return None
+        committed = [n for n in active if n.commitment_status in ("booked", "ticketed")]
+        if not committed:
+            return "PENDING_BOOKING"
+        if len(committed) == len(active):
+            return "BOOKED"
+        return "BOOKING_EXCEPTION"
+
     def topological_sort(self) -> List[JourneyNode]:
         """
         Return nodes sorted in topological chronological order using Kahn's algorithm.

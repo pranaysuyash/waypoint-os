@@ -42,11 +42,31 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 
 # Exact envelope tail. `</content>` at end of a line, then exactly one
-# `<parameter name="filePath">` line running to EOF (no closing tag was
-# ever written). Trailing whitespace tolerated, nothing else.
+# `<parameter name="filePath">` line (leading whitespace tolerated — the
+# sibling-repo corpus of the same 2026-04-23 defect serializes indented)
+# running to EOF (no closing tag was ever written). Trailing whitespace
+# tolerated, nothing else.
 ENVELOPE_TAIL = re.compile(
-    r'</content>\s*\n<parameter name="filePath">[^\n]*\s*$'
+    r'</content>\s*\n[ \t]*<parameter name="filePath">[^\n]*\s*$'
 )
+
+# Mid-document envelope fragment: the corrupted tail sits *between* two
+# halves of the document (a later write appended content after the welded
+# tail). Repairable only when the parameter line's path is self-referential
+# — it names this very file — which proves the bytes are write-path
+# artifacts, not authored content. Basename comparison ignores stale
+# directories (files were moved after the defect, e.g. into archive/) and
+# normalizes markdown escaping observed in the corpus (`\_` -> `_`,
+# `**` -> `__`).
+MID_DOC_FRAGMENT = re.compile(
+    r'</content>[ \t]*\n[ \t]*<parameter name="filePath">([^\n]*?)[ \t]*\n'
+)
+
+
+def _self_referential(param_path: str, file: Path) -> bool:
+    """True when the envelope's filePath parameter names `file` itself."""
+    normalized = param_path.replace("\\", "").replace("**", "__")
+    return Path(normalized).name == file.name
 
 # Any envelope-ish marker anywhere (detection for --check / review lists).
 # Markdown code spans/blocks are exempted: documentation about this defect
@@ -75,21 +95,49 @@ def classify(path: Path) -> str:
         if text.count("</content>") == 1 and text.count('<parameter name="filePath"') == 1:
             return "fixable"
         return "review"
+    # Mid-document fragment (later write appended content past the welded
+    # tail): repairable only when the fragment names this very file.
+    m = MID_DOC_FRAGMENT.search(text)
+    if m and text.count("</content>") == 1 and text.count('<parameter name="filePath"') == 1:
+        if _self_referential(m.group(1), path):
+            return "fixable"
     return "review"
 
 
 def fix(path: Path) -> tuple[str, int]:
-    """Apply the strict tail strip. Returns (status, bytes_removed)."""
+    """Apply the strict tail strip (or guarded mid-document splice).
+
+    Returns (status, bytes_removed).
+    """
     text = path.read_text(encoding="utf-8")
     match = ENVELOPE_TAIL.search(text)
-    if not match:
-        return "review", 0
-    fixed = text[: match.start()] + "\n"
-    if fixed == text:
-        return "already-clean", 0
-    removed = len(text) - len(fixed)
-    path.write_text(fixed, encoding="utf-8")
-    return "fixed", removed
+    if match:
+        fixed = text[: match.start()] + "\n"
+        if fixed == text:
+            return "already-clean", 0
+        removed = len(text) - len(fixed)
+        path.write_text(fixed, encoding="utf-8")
+        return "fixed", removed
+
+    # Mid-document fragment: excise exactly the marker line + parameter
+    # line and re-join the halves with exactly one blank line. Without this
+    # normalization, a following `---` line would turn the preceding prose
+    # into a setext heading (silent markdown corruption), and a following
+    # heading would lose its required blank line.
+    m = MID_DOC_FRAGMENT.search(text)
+    if m and _self_referential(m.group(1), path):
+        before = text[: m.start()].rstrip("\n")
+        after = text[m.end():].lstrip("\n")
+        fixed = before + "\n\n" + after
+        if not fixed.endswith("\n"):
+            fixed += "\n"
+        if fixed == text:
+            return "already-clean", 0
+        removed = len(text) - len(fixed)
+        path.write_text(fixed, encoding="utf-8")
+        return "fixed", removed
+
+    return "review", 0
 
 
 def _display(path: Path) -> str:

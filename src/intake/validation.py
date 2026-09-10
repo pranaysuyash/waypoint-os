@@ -69,6 +69,84 @@ DISCOVERY_MVB = QUOTE_READY
 NUMERIC_BUDGET_MODES = frozenset({"audit", "coordinator_group"})
 
 
+# --- TS-07: operation-keyed field requiredness (2026-09-10) -------------------
+#
+# The tutor's model (training-session register TS-07; lifecycle-contracts
+# addendum 2026-09-10): a field is not globally required=true. Requiredness
+# is keyed to the OPERATION the next step needs, so NEEDS_INFORMATION blocks
+# only dependent work — child ages matter for fare_quote and booking but not
+# rough planning. This map is the canonical vocabulary; INTAKE_MINIMUM and
+# QUOTE_READY remain the tier-level sets consumed by validate_packet (extend,
+# do not fork).
+OPERATIONS = ("planning", "fare_quote", "entry_validation", "booking")
+
+FIELD_REQUIRED_FOR: Dict[str, frozenset] = {
+    # Intake minimum: the trip is not understandable without these.
+    "destination_candidates": frozenset({"planning", "fare_quote", "booking"}),
+    "date_window": frozenset({"planning", "fare_quote", "booking"}),
+    # Quote-ready extras: needed to price, not to plan.
+    "origin_city": frozenset({"fare_quote", "booking"}),
+    "party_size": frozenset({"fare_quote", "booking"}),
+    "budget_raw_text": frozenset({"fare_quote"}),
+    "trip_purpose": frozenset({"fare_quote", "booking"}),
+    # Booking-stage facts (mirrors decision.py's critical document risks).
+    "passport_status": frozenset({"entry_validation", "booking"}),
+    "visa_status": frozenset({"entry_validation", "booking"}),
+}
+
+# Advisory-only fields: never block an operation; they shape quality.
+PREFERENCE_FIELDS = frozenset({
+    "hotel_preference",
+    "room_preference",
+    "seat_preference",
+    "dietary_requirements",
+    "pace_preference",
+    "activity_preferences",
+})
+
+
+def classify_missing_fields(packet: CanonicalPacket) -> Dict[str, Dict[str, Any]]:
+    """Tutor-model classifier for the NEEDS_INFORMATION state (TS-07).
+
+    For every field in FIELD_REQUIRED_FOR that is missing from the packet,
+    returns ``{field: {"required_for": [...], "blocks_count": N, "class":
+    "BLOCKING_FOR_<first-op>"}}``. Preference fields missing from the packet
+    are classified ``PREFERENCE`` (never blocking). Fields present are
+    omitted. Unknown fields are never invented here.
+    """
+    out: Dict[str, Dict[str, Any]] = {}
+    for field_name, ops in FIELD_REQUIRED_FOR.items():
+        if field_name in packet.facts:
+            continue
+        ordered_ops = [op for op in OPERATIONS if op in ops]
+        out[field_name] = {
+            "required_for": ordered_ops,
+            "blocks_count": len(ordered_ops),
+            "class": f"BLOCKING_FOR_{ordered_ops[0]}" if ordered_ops else "OPTIONAL",
+        }
+    for field_name in PREFERENCE_FIELDS:
+        if field_name not in packet.facts and field_name not in out:
+            out[field_name] = {
+                "required_for": [],
+                "blocks_count": 0,
+                "class": "PREFERENCE",
+            }
+    return out
+
+
+def question_priority_order(field_names: List[str]) -> List[str]:
+    """Order missing fields for the ask-customer decision (TS-07 / E-D input).
+
+    Most-blocking first (a field blocking planning+quote+booking outranks one
+    blocking only booking); ties keep caller order. Fields outside the
+    vocabulary keep their position relative to known fields (stable sort).
+    """
+    return sorted(
+        field_names,
+        key=lambda f: -len(FIELD_REQUIRED_FOR.get(f, frozenset())),
+    )
+
+
 @dataclass(slots=True)
 class ValidationIssue:
     """A single validation finding with severity."""

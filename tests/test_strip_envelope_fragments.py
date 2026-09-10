@@ -104,3 +104,80 @@ def test_multi_marker_file_is_review_not_fixable(tmp_path_factory):
     assert proc.returncode == 1
     assert "REVIEW" in proc.stdout, "multi-marker file must land in review class"
     assert doc.read_text(encoding="utf-8") == before, "review files are never written"
+
+
+def test_mid_document_self_referential_fragment_is_fixable(tmp_path_factory):
+    tmp = tmp_path_factory.mktemp("envelope_middoc")
+    doc = _make_doc(
+        tmp,
+        "MID_DOC.md",
+        "# First half\n\nProse ending.</content>\n"
+        '<parameter name="filePath">/Users/x/Projects/repo/MID_DOC.md\n\n'
+        "### Second half\n\nAppended later.\n",
+    )
+    proc = _run("--dry-run", tmp)
+    assert "WOULD FIX" in proc.stdout, "self-referential mid-doc fragment must classify fixable"
+    proc = _run(None, tmp)
+    assert proc.returncode == 0
+    after = doc.read_text(encoding="utf-8")
+    assert after == (
+        "# First half\n\nProse ending.\n\n### Second half\n\nAppended later.\n"
+    ), "splice must preserve both halves, joined by exactly one blank line"
+
+
+def test_mid_document_foreign_path_stays_review(tmp_path_factory):
+    tmp = tmp_path_factory.mktemp("envelope_foreign")
+    doc = _make_doc(
+        tmp,
+        "MID_DOC.md",
+        "# First half\n\nProse ending.</content>\n"
+        '<parameter name="filePath">/Users/x/Projects/repo/OTHER_FILE.md\n\n'
+        "### Second half\n\nAppended later.\n",
+    )
+    before = doc.read_text(encoding="utf-8")
+    proc = _run("--check", tmp)
+    assert proc.returncode == 1
+    assert "REVIEW" in proc.stdout, "non-self-referential fragment must stay review-class"
+    assert doc.read_text(encoding="utf-8") == before
+
+
+def test_indented_eof_tail_is_fixable(tmp_path_factory):
+    tmp = tmp_path_factory.mktemp("envelope_indent")
+    _make_doc(
+        tmp,
+        "INDENTED.md",
+        "# Some Doc\n\nBody text.</content>\n"
+        '  <parameter name="filePath">/Users/x/INDENTED.md\n',
+    )
+    proc = _run("--dry-run", tmp)
+    assert "WOULD FIX" in proc.stdout, "indented EOF tail (sibling-corpus shape) must be fixable"
+
+
+def test_stale_directory_self_reference_still_fixable(tmp_path_factory):
+    tmp = tmp_path_factory.mktemp("envelope_stale")
+    # File lives in tmp now; envelope path names an old directory, but the
+    # same basename — moved-after-defect, as seen in LFK's archive corpus.
+    _make_doc(
+        tmp,
+        "MOVED.md",
+        "# Doc\n\nProse.</content>\n"
+        '<parameter name="filePath">/Users/x/Projects/old_dir/MOVED.md\n\n'
+        "## Later section\n\nContent.\n",
+    )
+    proc = _run("--dry-run", tmp)
+    assert "WOULD FIX" in proc.stdout, "stale-directory self-reference must stay fixable"
+
+
+def test_escaped_self_reference_is_fixable(tmp_path_factory):
+    tmp = tmp_path_factory.mktemp("envelope_escaped")
+    # LFK corpus escaping: ** corruption for __, backslash-escaped
+    # underscores, and a stale directory — same basename though.
+    _make_doc(
+        tmp,
+        "ui__src__frontend__src__pages__Login.tsx.md",
+        "# Doc\n\nProse.</content>\n"
+        '<parameter name="filePath">/Users/x/docs/audit/ui**src**frontend**src**pages\\_\\_Login.tsx.md\n\n'
+        "## Later\n\nContent.\n",
+    )
+    proc = _run("--dry-run", tmp)
+    assert "WOULD FIX" in proc.stdout, "escaped/corrupted self-reference must stay fixable"

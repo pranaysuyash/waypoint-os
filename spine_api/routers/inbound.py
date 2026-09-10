@@ -13,6 +13,7 @@ Auth model:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import uuid
@@ -57,6 +58,35 @@ _IDEMPOTENCY = IdempotencyRegistry.get_instance()
 
 # In-memory pub/sub queues for SSE trip state listeners
 _TRIP_EVENT_LISTENERS: Dict[str, List[asyncio.Queue]] = {}
+
+
+async def _store_inbound_attachment(agency_id: str, trip_id: str, attachment) -> Dict[str, Any]:
+    """TS-03 S1: persist one inbound attachment via the canonical
+    document-storage lane and return its manifest entry.
+
+    Storage key shape mirrors the operator lane ({agency}/{trip}/{uuid}.{ext})
+    so the documents flow can adopt these files later without migration. The
+    bytes are content-addressed in the manifest for integrity checks.
+    """
+    from spine_api.services.document_storage import get_document_storage
+
+    storage = get_document_storage()
+    ext = {"image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf"}[attachment.mime]
+    attachment_id = f"att_{uuid.uuid4().hex[:12]}"
+    key = f"{agency_id}/{trip_id}/{attachment_id}.{ext}"
+    data = attachment.decoded_bytes
+    await storage.put(key, data)
+    return {
+        "attachment_id": attachment_id,
+        "kind": attachment.kind,
+        "mime": attachment.mime,
+        "filename": attachment.filename,
+        "storage_key": key,
+        "size_bytes": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "received_at": datetime.now(timezone.utc).isoformat(),
+        "source": "inbound_attachment",
+    }
 
 # PA-14: bounded SSE lifetime. Mirrors the max_iterations budget pattern from
 # routers/trip_observability.py:170-183 — the previous `while True` loop only
@@ -124,6 +154,12 @@ def parse_inbound_inquiry(
         "customer_contact": body.customer_contact,
         "agent_notes": body.agent_notes,
         "strict_leakage": body.strict_leakage,
+        # TS-03 S1: attachments participate in request identity — a retry
+        # with different attachment bytes is a different request, not a
+        # replay (sha256 digests, not the payloads themselves).
+        "attachments": [
+            hashlib.sha256(att.decoded_bytes).hexdigest() for att in body.attachments
+        ],
     }
     idem_key = IdempotencyRegistry.generate_key(
         f"agency:{agency_id}", "inbound_parse", idem_payload
@@ -222,6 +258,38 @@ def parse_inbound_inquiry(
         )
 
         TripStore.save_trip(trip_record, agency_id=agency_id)
+
+        # TS-03 S1: persist attachments via the canonical document-storage
+        # lane and record the manifest on the trip. Best-effort by the same
+        # rule as every post-save side effect: a storage failure must never
+        # fail the parse (the trip is already saved) — the response reports
+        # how many were accepted. Extraction stays in the operator lane
+        # (stage-gated); nothing is auto-applied to the packet at intake.
+        attachments_accepted = 0
+        attachment_manifest = []
+        for att in body.attachments:
+            try:
+                manifest_entry = asyncio.run(
+                    _store_inbound_attachment(agency_id, trip_id, att)
+                )
+                attachment_manifest.append(manifest_entry)
+                attachments_accepted += 1
+            except Exception:
+                logger.exception(
+                    "Inbound attachment persistence failed for trip %s (parse continues)",
+                    trip_id,
+                )
+        if attachment_manifest:
+            try:
+                TripStore.update_trip(
+                    trip_id, {"inbound_attachments": attachment_manifest}
+                )
+            except Exception:
+                logger.exception(
+                    "Attachment manifest write failed for trip %s (bytes remain in storage)",
+                    trip_id,
+                )
+        response.attachments_accepted = attachments_accepted
 
         # The trip is persisted and the idempotency key is closed atomically with
         # that fact: post-save side effects are best-effort, because a failure

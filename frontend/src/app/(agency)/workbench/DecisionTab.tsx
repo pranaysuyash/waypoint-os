@@ -149,7 +149,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
   const suitabilityFlags: SuitabilityFlagData[] = (decision as any).suitability_flags ?? [];
   const followupQuestions: FollowUpQuestion[] = (decision as any).follow_up_questions ?? [];
   const rationale: Rationale = (decision as any).rationale ?? {};
-  const branchOptions: string[] = (decision as any).branch_options ?? [];
+  const branchOptions: Array<string | { label: string; description?: string }> = (decision as any).branch_options ?? [];
   const budgetBreakdown: BudgetBreakdownResult | null = (decision as any).budget_breakdown ?? null;
   const budgetCurrency = budgetBreakdown?.currency as string | undefined;
 
@@ -206,12 +206,22 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
           <h3 className={styles.sectionTitle}>Branch Options</h3>
           <div className={styles.card}>
             <ul className={styles.list}>
-              {branchOptions.map((opt) => (
-                <li key={`branch-${opt}`} className={styles.listItem}>
-                  <span className={`${styles.listIcon} ${styles.iconInfo}`}>→</span>
-                  {opt}
-                </li>
-              ))}
+              {branchOptions.map((opt, i) => {
+                // Options arrive as strings or structured entries (budget
+                // tiers, TS-06 route structures); render both shapes.
+                const label = typeof opt === "string" ? opt : opt.label;
+                const description =
+                  typeof opt === "string" ? undefined : opt.description;
+                return (
+                  <li key={`branch-${i}-${label}`} className={styles.listItem}>
+                    <span className={`${styles.listIcon} ${styles.iconInfo}`}>→</span>
+                    <span>{label}</span>
+                    {description && (
+                      <span className={styles.muted}> — {description}</span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </div>

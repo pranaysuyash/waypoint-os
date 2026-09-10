@@ -15,13 +15,13 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-from .packet_models import (
-    CanonicalPacket,
+from .packet_models import (    CanonicalPacket,
     LifecycleInfo,
     Slot,
     AuthorityLevel,
 )
 from .constants import DecisionState, assert_valid_decision_state
+from .validation import FIELD_REQUIRED_FOR, question_priority_order
 from src.intake.config.agency_settings import AgencySettings
 from src.intake.telemetry import emit_ambiguity_synthesis
 
@@ -1990,6 +1990,27 @@ def _synthesize_destination_ambiguity(
 # SECTION 13: MAIN ENTRY POINT
 # =============================================================================
 
+def _derive_trip_nights(packet: CanonicalPacket) -> Optional[int]:
+    """Derive total trip nights from date_start/date_end (TS-06).
+
+    Abstains (None) on missing, unparseable, or non-positive spans — route
+    enrichment must never guess a duration.
+    """
+    from datetime import date
+
+    start_slot = resolve_field(packet, "date_start")
+    end_slot = resolve_field(packet, "date_end")
+    if not start_slot or not end_slot:
+        return None
+    try:
+        start = date.fromisoformat(str(start_slot.value)[:10])
+        end = date.fromisoformat(str(end_slot.value)[:10])
+    except (ValueError, TypeError):
+        return None
+    nights = (end - start).days
+    return nights if nights > 0 else None
+
+
 def run_gap_and_decision(
     packet: CanonicalPacket,
     feasibility_table: Optional[Dict[str, Any]] = None,
@@ -2156,7 +2177,12 @@ def run_gap_and_decision(
 
         # Hard blockers → ASK_FOLLOWUP
         elif hard_blockers:
-            for blocker in hard_blockers:
+            # TS-07 (2026-09-10): order the questions by operation impact —
+            # a field blocking planning+quote+booking is asked before one
+            # blocking only booking — and annotate each question with the
+            # operations the missing field blocks, so NEEDS_INFORMATION
+            # blocks only dependent work and the ask is prioritized.
+            for blocker in question_priority_order(list(hard_blockers)):
                 slot = resolve_field(packet, blocker)
                 # Check if a hypothesis exists (can't fill but can suggest)
                 hyp_slot = packet.hypotheses.get(blocker)
@@ -2189,6 +2215,7 @@ def run_gap_and_decision(
                     "can_infer": can_infer,
                     "inference_confidence": inference_conf,
                     "suggested_values": suggested,
+                    "required_for": sorted(FIELD_REQUIRED_FOR.get(blocker, frozenset())),
                 })
             decision_state = "ASK_FOLLOWUP"
 
@@ -2298,6 +2325,35 @@ def run_gap_and_decision(
 
     travel_next_action = travel_action_from_decision_state(decision_state or "ASK_FOLLOWUP")
     next_best_action = commercial_next_action
+
+    # --- Phase 12: Route-structure candidates (TS-06, 2026-09-10) -------------
+    # Multi-city trips with a known duration gain deterministic candidate
+    # structures (night-splits across city sequences) as branch_options —
+    # the first producer for the BRANCH_OPTIONS vocabulary. Additive data:
+    # this never changes decision_state; abstains silently when cities or
+    # nights cannot be resolved.
+    try:
+        from src.decision.route_structures import (
+            candidates_as_branch_options,
+            enumerate_route_structures,
+        )
+
+        dest_slot = resolve_field(packet, "destination_candidates")
+        cities = (
+            [c for c in dest_slot.value if isinstance(c, str) and c.strip()]
+            if dest_slot and isinstance(dest_slot.value, list)
+            else []
+        )
+        nights = _derive_trip_nights(packet)
+        if len(cities) >= 2 and nights and nights >= len(cities):
+            route_candidates = enumerate_route_structures(
+                cities=cities,
+                nights_total=nights,
+                max_candidates=2,
+            )
+            branch_options.extend(candidates_as_branch_options(route_candidates))
+    except Exception as exc:  # defensive: enrichment must never break the decision
+        logger.debug("Route-structure enrichment skipped: %s", exc)
 
     rationale = {
         "hard_blockers": hard_blockers,

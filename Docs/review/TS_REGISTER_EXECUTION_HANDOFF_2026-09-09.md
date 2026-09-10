@@ -61,3 +61,36 @@ Code ready: ✅. Feature ready: ✅ TS-01/TS-04; TS-02 recheck engine rides B6/B
 5. TS-03 S1–S3 (attachment envelope + vision-lane routing + injection fixtures) and TS-06 enumerator are the next implementation units, per the register's sequencing.
 
 **Checklist applied: IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md**
+
+---
+
+## Addendum (2026-09-10, later session) — second execution wave: TS-06/07/08 + TS-03 S1
+
+Owner directive: "no other agent is active, work on all pending." Executed after the two takeover commits (`1ceaf91` TS wave, `cd72d0b` scenario-series + persistence mypy fix).
+
+### Delivered
+
+| Item | What landed | Tests |
+|---|---|---|
+| **TS-08** | `IdempotencyStatus.UNKNOWN` (both backends): fenced `mark_unknown` / `resolve_unknown`, acquire-refusal, TTL-reclaim exemption; fulfillment router timeout/connection classification → 504 `outcome_unknown` (never blind retry) + UNKNOWN-key 409; `JourneyDependencyGraph.aggregate_commitment()` → PENDING_BOOKING/BOOKED/BOOKING_EXCEPTION; `commitment_verdict` on journey-graph GET | 20 |
+| **TS-07** | `FIELD_REQUIRED_FOR` operation-keyed map + `classify_missing_fields` + `question_priority_order` in `src/intake/validation.py`; consumer: hard-blocker follow-up questions ordered by blocked-ops and annotated `required_for` (decision states unchanged) | 9 |
+| **TS-06** | `src/decision/route_structures.py` deterministic enumerator (night-splits, min-nights, bounded permutations) + open-jaw refinement + `candidates_as_branch_options`; decision.py Phase-12 additive enrichment (multi-city + ISO dates → up to 2 route options; abstains otherwise); DecisionTab dual-shape render (fixes pre-existing dict-option `[object Object]` defect) + spine.ts union type | 14 |
+| **TS-03 S1** | `InboundAttachment` envelope (kind-paired mime allowlist, base64 + 5 MiB + count validation); `/parse` persists via canonical document-storage lane + `inbound_attachments` manifest (content-addressed); attachment digests in idempotency identity; best-effort post-save (storage failure never fails the parse) | 8 |
+
+### Verification
+
+- New suites: 51 tests green; blast radius (decision/intake/inbound/idempotency/journey-graph/fulfillment/documents): 259 + 194 + 549 green across focused runs; full backend suite (see commit message for the final count); `uv run mypy` clean; `uv run ruff check --fix .` clean; frontend `tsc --noEmit` clean + 1,380/1,380 vitest.
+- Review status: these items follow the same doctrine; TS-08's security-sensitive paths (TTL exemption, fenced resolution) are covered by explicit adversarial tests (stale-fence, both/neither-args, COMPLETED→mark_unknown refusal, expired-UNKNOWN-not-reclaimed with an expired-PENDING-still-reclaimed control).
+
+### Open seams (deliberate, named)
+
+1. **TS-03 S2**: merge extracted attachment facts into the packet as `tool`-actor writes via `resolve_field_merge(allow_internal_actors=True)` — manifest `storage_key` is the join; runs when the operator-lane extraction executes.
+2. **TS-03 S3**: screenshot-of-quote + OCR-injection fixtures into the E-H corpus once S2 runs.
+3. **TS-06 state wiring**: route options are additive data; promoting them to `BRANCH_OPTIONS` decision-state transitions is E-8/DECIDE-gated.
+4. **TS-08/E-8**: trip-level PERSISTED state (server-side `TripLifecycleState`) remains E-8's work; the vocabulary + derivation now exist.
+5. **TS-09**: retry-safety enum — lands with B6/B7 live providers.
+6. **Wave A remainder** (A2 EU261 migration, A4 confirmation encryption, A6 TierMetadata, A7 eval batch): untouched this session; A5 was already reclassified N/A-until-real-rate-source.
+
+### Next-unit recommendation
+
+Wave A top-down (A2 first per the roadmap's own rule), or TS-03 S2 if the marketplace funnel moves first.

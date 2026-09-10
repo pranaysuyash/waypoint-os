@@ -45,6 +45,13 @@ class IdempotencyStatus(str, Enum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    # TS-08 (2026-09-10): the provider call ended WITHOUT a definitive
+    # outcome (timeout, dropped connection). UNKNOWN is NOT retryable —
+    # re-executing could duplicate the side effect. Callers must resolve it
+    # via verification (replay stored confirmations / provider recheck) and
+    # then transition it to COMPLETED or FAILED via resolve_unknown().
+    # UNKNOWN records are exempt from TTL reclaim for the same reason.
+    UNKNOWN = "UNKNOWN"
 
 
 @dataclass(slots=True)
@@ -243,9 +250,12 @@ class SqlIdempotencyBackend:
             record = self._record_from_row(key, trip_id, action_name, row.request_hash, row)
             age_seconds = (now - self._as_utc(row.created_at)).total_seconds()
 
-            if age_seconds > row.ttl_seconds:
+            if age_seconds > row.ttl_seconds and row.status != IdempotencyStatus.UNKNOWN.value:
                 # Expired: reclaim with a guarded UPDATE so concurrent reclaims
                 # cannot both win (only one caller sees rowcount=1).
+                # UNKNOWN rows are exempt (TS-08): an expired-but-unresolved
+                # outcome must never be silently reset to PENDING — that is
+                # the duplicate-side-effect hazard UNKNOWN exists to prevent.
                 fencing_token = secrets.token_urlsafe(32)
                 result = await session.execute(
                     update(IdempotencyKey)
@@ -285,6 +295,14 @@ class SqlIdempotencyBackend:
 
             if record.status == IdempotencyStatus.COMPLETED:
                 logger.info("Idempotent hit: returning cached result for key=%s", key)
+                return False, record
+            if record.status == IdempotencyStatus.UNKNOWN:
+                # TS-08: outcome unresolved — never re-execute. The caller
+                # must verify (replay/recheck) and resolve_unknown() the row.
+                logger.warning(
+                    "Idempotency outcome UNKNOWN for key=%s: verification required before any retry",
+                    key,
+                )
                 return False, record
             if record.status == IdempotencyStatus.PENDING:
                 logger.warning(
@@ -375,6 +393,88 @@ class SqlIdempotencyBackend:
                 fencing_token,
             )
         )
+
+    def mark_unknown(
+        self,
+        key: str,
+        error_message: str,
+        *,
+        fencing_token: Optional[str] = None,
+    ) -> bool:
+        """Transition PENDING -> UNKNOWN (outcome unresolved, TS-08).
+
+        Used when a provider call ends without a definitive answer (timeout,
+        dropped connection). UNKNOWN blocks re-execution until resolved.
+        """
+        return self._run(
+            self._mark_async(
+                key,
+                IdempotencyStatus.UNKNOWN,
+                None,
+                error_message,
+                fencing_token,
+            )
+        )
+
+    def resolve_unknown(
+        self,
+        key: str,
+        *,
+        response_payload: Optional[Dict[str, Any]] = None,
+        error_message: Optional[str] = None,
+        fencing_token: Optional[str] = None,
+    ) -> bool:
+        """Resolve an UNKNOWN record to COMPLETED or FAILED (TS-08).
+
+        Exactly one of ``response_payload`` (verified success) or
+        ``error_message`` (verified non-occurrence) must be provided.
+        The transition is a fenced CAS on the UNKNOWN status so a stale
+        owner cannot close a newer owner's row.
+        """
+        if bool(response_payload) == bool(error_message):
+            raise ValueError(
+                "resolve_unknown requires exactly one of response_payload or error_message"
+            )
+        target = (
+            IdempotencyStatus.COMPLETED if response_payload else IdempotencyStatus.FAILED
+        )
+        return self._run(
+            self._resolve_unknown_async(key, target, response_payload, error_message, fencing_token)
+        )
+
+    async def _resolve_unknown_async(
+        self,
+        key: str,
+        target: IdempotencyStatus,
+        response_payload: Optional[Dict[str, Any]],
+        error_message: Optional[str],
+        fencing_token: Optional[str],
+    ) -> bool:
+        from sqlalchemy import update
+
+        from spine_api.models.idempotency import IdempotencyKey
+
+        await self._ensure_table()
+        now = datetime.now(timezone.utc)
+        session_maker = self._get_session_maker()
+        async with session_maker() as session:
+            if not fencing_token:
+                logger.warning("Rejected unfenced idempotency resolution key=%s", key)
+                return False
+            result = await session.execute(
+                update(IdempotencyKey)
+                .where(IdempotencyKey.key == key)
+                .where(IdempotencyKey.status == IdempotencyStatus.UNKNOWN.value)
+                .where(IdempotencyKey.fencing_token == fencing_token)
+                .values(
+                    status=target.value,
+                    completed_at=now,
+                    response_payload=response_payload,
+                    error_message=error_message,
+                )
+            )
+            await session.commit()
+            return result.rowcount == 1
 
     async def _mark_async(
         self,
@@ -486,14 +586,27 @@ class IdempotencyRegistry:
         with self._lock:
             record = self._records.get(key)
 
-            # Check if existing record expired
-            if record and (now - record.created_at) > record.ttl_seconds:
+            # Check if existing record expired. UNKNOWN is exempt (TS-08):
+            # an unresolved outcome must never be silently dropped and
+            # re-executed — that is the duplicate-side-effect hazard.
+            if (
+                record
+                and record.status != IdempotencyStatus.UNKNOWN
+                and (now - record.created_at) > record.ttl_seconds
+            ):
                 del self._records[key]
                 record = None
 
             if record is not None:
                 if record.status == IdempotencyStatus.COMPLETED:
                     logger.info("Idempotent hit: returning cached result for key=%s", key)
+                    return False, record
+                elif record.status == IdempotencyStatus.UNKNOWN:
+                    # Outcome unresolved: never re-execute without verification.
+                    logger.warning(
+                        "Idempotency outcome UNKNOWN for key=%s: verification required before any retry",
+                        key,
+                    )
                     return False, record
                 elif record.status == IdempotencyStatus.PENDING:
                     # Concurrent in-flight execution
@@ -566,4 +679,68 @@ class IdempotencyRegistry:
             record.status = IdempotencyStatus.FAILED
             record.completed_at = time.time()
             record.error_message = error_message
+            return True
+
+    def mark_unknown(
+        self,
+        key: str,
+        error_message: str,
+        *,
+        fencing_token: Optional[str] = None,
+    ) -> bool:
+        """PENDING -> UNKNOWN: outcome unresolved, not retryable (TS-08)."""
+        if self._backend is not None:
+            return self._backend.mark_unknown(
+                key, error_message, fencing_token=fencing_token
+            )
+        with self._lock:
+            record = self._records.get(key)
+            if (
+                record is None
+                or record.status != IdempotencyStatus.PENDING
+                or not fencing_token
+                or not hmac.compare_digest(record.fencing_token, fencing_token)
+            ):
+                return False
+            record.status = IdempotencyStatus.UNKNOWN
+            record.completed_at = time.time()
+            record.error_message = error_message
+            return True
+
+    def resolve_unknown(
+        self,
+        key: str,
+        *,
+        response_payload: Optional[Dict[str, Any]] = None,
+        error_message: Optional[str] = None,
+        fencing_token: Optional[str] = None,
+    ) -> bool:
+        """Resolve UNKNOWN -> COMPLETED or FAILED after verification (TS-08)."""
+        if self._backend is not None:
+            return self._backend.resolve_unknown(
+                key,
+                response_payload=response_payload,
+                error_message=error_message,
+                fencing_token=fencing_token,
+            )
+        if bool(response_payload) == bool(error_message):
+            raise ValueError(
+                "resolve_unknown requires exactly one of response_payload or error_message"
+            )
+        with self._lock:
+            record = self._records.get(key)
+            if (
+                record is None
+                or record.status != IdempotencyStatus.UNKNOWN
+                or not fencing_token
+                or not hmac.compare_digest(record.fencing_token, fencing_token)
+            ):
+                return False
+            if response_payload is not None:
+                record.status = IdempotencyStatus.COMPLETED
+                record.response_payload = response_payload
+            else:
+                record.status = IdempotencyStatus.FAILED
+                record.error_message = error_message
+            record.completed_at = time.time()
             return True

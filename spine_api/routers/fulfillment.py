@@ -135,6 +135,24 @@ async def fulfill_proposal(
                 replay = dict(existing.response_payload or {})
                 replay["idempotent_replay"] = True
                 return replay
+            if existing is not None and existing.status == IdempotencyStatus.UNKNOWN:
+                # TS-08: the previous attempt ended without a definitive
+                # outcome. Retrying blindly could duplicate the booking —
+                # refuse and require verification-driven resolution.
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "reason": "idempotency_outcome_unknown",
+                        "idempotency_key": idempotency_key,
+                        "outcome_unknown": True,
+                        "message": (
+                            "A previous attempt with this Idempotency-Key ended "
+                            "without a definitive outcome (timeout or dropped "
+                            "connection). Verify the booking state before "
+                            "retrying; the key must be resolved, not replayed."
+                        ),
+                    },
+                )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
@@ -148,6 +166,13 @@ async def fulfill_proposal(
         # registry's FAILED→retry semantics.
         if registry is not None and idem_key:
             registry.mark_failed(idem_key, reason, fencing_token=fencing_token)
+
+    def _mark_idempotency_unknown(reason: str) -> None:
+        # TS-08: the call ended WITHOUT a definitive outcome. UNKNOWN keys
+        # are not retryable — they block re-execution until resolved via
+        # verification (registry.resolve_unknown).
+        if registry is not None and idem_key:
+            registry.mark_unknown(idem_key, reason, fencing_token=fencing_token)
 
     authority_approval_id: Any = None
     try:
@@ -222,6 +247,25 @@ async def fulfill_proposal(
             detail=str(exc),
         )
     except Exception as exc:
+        # TS-08 classification: a timeout or connection-class failure means
+        # the provider may have processed the request — the outcome is
+        # UNKNOWN, not FAILED, and the key must block blind retries.
+        # Everything else is a definitive failure (retryable as FAILED).
+        if isinstance(exc, (TimeoutError, OSError)):
+            _mark_idempotency_unknown(f"outcome_unknown: {exc}")
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail={
+                    "error": "fulfillment_outcome_unknown",
+                    "outcome_unknown": True,
+                    "reason": str(exc),
+                    "message": (
+                        "The booking request ended without a definitive outcome. "
+                        "Do not retry blindly — verify the booking state first; "
+                        "this Idempotency-Key is locked until resolved."
+                    ),
+                },
+            )
         _mark_idempotency_failed(f"fulfillment_error: {exc}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
