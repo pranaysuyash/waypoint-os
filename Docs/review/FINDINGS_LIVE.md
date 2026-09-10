@@ -1,10 +1,10 @@
 # Findings — Live View (GENERATED — DO NOT EDIT)
 
-**Generated:** 2026-09-10T05:15:38+00:00 by `scripts/findings.py render` — this file is a projection of the
+**Generated:** 2026-09-10T06:33:47+00:00 by `scripts/findings.py render` — this file is a projection of the
 append-only event store `Docs/review/FINDINGS_STORE.jsonl`. **The store is canonical;**
 edit state only through the CLI (`open` / `close` / `defer` / `reverify` / `import`).
 
-**Counts:** 255 findings — closed 98 · deferred 10 · open 147 · stale open (> 45d): 0
+**Counts:** 257 findings — closed 99 · deferred 10 · open 148 · stale open (> 45d): 0
 
 ## Open
 
@@ -157,6 +157,7 @@ edit state only through the CLI (`open` / `close` / `defer` / `reverify` / `impo
 | FND-0248 | EX-14 | P2 | `TemporalObligation` primitive (ADHD provocation) — every deadline in the system (visa, price lock, payment, i | 2026-08-30 |
 | FND-0250 | EX-12 | P2 | Standing travel-intent subscriptions: warm plan shelf, trips materialize on trigger (src: A3) | 2026-08-30 |
 | FND-0251 | EX-13 | P2 | Git-like itinerary branch-and-merge with constraint re-validation on merge (src: A4) | 2026-08-30 |
+| FND-0256 | — | P2 | Scenario-doc series (303 ADDITIONAL_SCENARIOS stubs) is an unowned, untriaged intake pile: live-consumed by sc | 2026-09-10 |
 
 ## Deferred
 
@@ -173,7 +174,6 @@ edit state only through the CLI (`open` / `close` / `defer` / `reverify` / `impo
 
 ## Closed (recent 25)
 
-- **FND-0149** [closed] Payout ledger in-memory, fake-seeded, clock-derived collision ids, unauthed write — evidence: FINDINGS_REGISTER_2026-08-31.md (frozen historical view)
 - **FND-0150** [closed] `CAPABILITY_TOKEN_SECRET` committed default fallback — evidence: FINDINGS_REGISTER_2026-08-31.md (frozen historical view)
 - **FND-0151** [closed] Compiler mints signed share tokens for synthetic inventory; panel fulfill chain dead 404 wiring (ali — evidence: FINDINGS_REGISTER_2026-08-31.md (frozen historical view)
 - **FND-0152** [closed] Corporate policy override self-certifying (free-text approver, no role/dual-control) — evidence: FINDINGS_REGISTER_2026-08-31.md (frozen historical view)
@@ -198,3 +198,4 @@ edit state only through the CLI (`open` / `close` / `defer` / `reverify` / `impo
 - **FND-0242** [closed] Are the 4 RLS-exempt tables cross-tenant reachable? CLOSED 2026-08-30 — verdict: none reachable cros — evidence: FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md (frozen historical view)
 - **FND-0243** [closed] JDG IROPS trigger (narrowed) — design + schema exist with 4 importers; only the trigger is open. Whi — evidence: FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md (frozen historical view)
 - **FND-0247** [closed] Doctrine amendments (Pranay's decision): D-01 absence claims need executed evidence; D-02 finding li — evidence: FINDINGS_TASKS_CONSOLIDATED_2026-08-30.md (frozen historical view)
+- **FND-0257** [fixed] 108 docs carried committed tool-call envelope-tail corruption from 2026-04-23 batch write (c7fa31d); — evidence: Docs/travel_agency_process_issue_review_2026-09-10.md (repair 108/108 verified, guardrails hook+CI falsification-tested, tests 271/271); repair in HEAD via 6b5d962

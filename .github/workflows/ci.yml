@@ -54,6 +54,11 @@ jobs:
           ${{ steps.changed.outputs.files }}
           FILES
           npx -y markdownlint-cli2 "${files[@]}"
+      # Envelope-fragment gate (2026-09-10): full-corpus sweep for AI
+      # tool-call envelope tails (see FND-0257; defect class introduced at
+      # scale in c7fa31d). Fails on any marker anywhere under Docs/.
+      - name: Envelope-fragment gate (Docs/)
+        run: python3 tools/strip_envelope_fragments.py --check
       - name: Link check (changed files only)
         if: steps.changed.outputs.files != '[]'
         uses: lycheeverse/lychee-action@v2
