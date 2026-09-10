@@ -57,6 +57,11 @@ data/*
 !data/cities5000.txt
 !data/config/
 !data/config/seasonal_campaigns.json
+# seasonal_policy.json is runtime-loaded by ConfigStore
+# (spine_api/persistence.py SEASONAL_POLICY_FILE) — omitting it would make
+# containers silently serve the coerced default policy instead of the repo's
+# seeded one.
+!data/config/seasonal_policy.json
 
 # Keep the broad rule above as a default-deny guard, and name the high-risk
 # runtime directories explicitly so policy review catches future relocations.
@@ -89,6 +94,31 @@ data/test.db
 .vscode
 .mcp
 .qwen
+
+# Local agent/tool state and settings (doc F-05 §4.5). These carry workspace
+# permissions, local tool state, and per-agent config that must never reach a
+# build context or image layer.
+.claude/
+.agents/
+.agent/
+.clawpatch/
+
+# Root-level JS workspace. The frontend image builds from frontend/ (which has
+# its own node_modules rule above); a root-context build must not ship this.
+node_modules/
+
+# Local runtime output: request/server logs and scratch artifacts. Logs can
+# contain request bodies and credentials; nothing here is a build input.
+logs/
+output/
+
+# Test and lint caches are regenerated per machine; shipping them only bloats
+# the build context sent to the daemon.
+.pytest_cache/
+.ruff_cache/
+
+# Dev session artifacts that contain live cookies.
+dogfood_cookies.txt
 
 # OS
 .DS_Store

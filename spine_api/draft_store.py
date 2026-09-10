@@ -114,7 +114,9 @@ class Draft(BaseModel):
 
 
 def _draft_path(draft_id: str) -> Path:
-    return DRAFTS_DIR / f"{draft_id}.json"
+    from src.security.path_guard import safe_join
+
+    return safe_join(DRAFTS_DIR, f"{draft_id}.json")
 
 
 # ---------------------------------------------------------------------------

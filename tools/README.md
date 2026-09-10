@@ -696,3 +696,30 @@ Safety notes:
   contention failure or environment error.
 - `--workers N` forwards through the `PROBE_WORKERS` env var to the test
   module (`WORKERS = int(os.environ.get("PROBE_WORKERS", "4"))`).
+
+---
+
+## Feature List Generator: `feature_list_generate.py`
+
+**Purpose:** Derive the machine-readable JSON + CSV artifacts of a feature-list
+inventory from its markdown source of truth, with validation. Introduced with
+`Docs/status/FEATURE_LIST_V3_2026-09-03.md`; the markdown tables are canonical —
+never hand-edit the derived `.json`/`.csv`.
+
+**Usage:**
+
+```bash
+python3 tools/feature_list_generate.py \
+  --md Docs/status/FEATURE_LIST_V3_2026-09-03.md \
+  --json Docs/status/FEATURE_LIST_V3_2026-09-03.json \
+  --csv Docs/status/FEATURE_LIST_V3_2026-09-03.csv
+```
+
+**Notes:**
+
+- Parses `## X) Title` domain sections and 6-column tables
+  (`| ID | Feature | Status | Priority | What it does | Evidence |`).
+- Validates unique IDs, statuses (`LIVE`, `PARTIAL`, `GATED`, `SIMULATED`,
+  `STUB`, `SPEC`, `EXPLORE`), and priorities (`P0`–`P2`); exits non-zero on any
+  parse problem, so it doubles as a consistency check for future V4 refreshes.
+- Emits `metadata` + `counts` + full `records` in JSON; flat rows in CSV.

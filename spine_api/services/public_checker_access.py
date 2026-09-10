@@ -22,10 +22,11 @@ import hmac
 import json
 import os
 import secrets
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 _TOKEN_BYTES = 32
 _TOKEN_FILE = Path("data") / "public_checker" / "access_tokens.json"
@@ -230,3 +231,72 @@ def prune_old_event_segments(*, events_dir: Path, max_age_days: int = 180) -> in
         except OSError:
             continue
     return pruned
+
+
+# ---------------------------------------------------------------------------
+# Retention loop (GO punch-list item 1): daily sweep thread, mirroring the
+# server's daemon-thread pattern. Env-gated; default-on when retention > 0.
+# ---------------------------------------------------------------------------
+
+
+_sweep_thread: Optional[threading.Thread] = None
+_sweep_stop = threading.Event()
+
+
+def retention_sweep_enabled() -> bool:
+    if os.environ.get("PUBLIC_CHECKER_RETENTION_SWEEP_ENABLED", "1").strip().lower() in {"0", "false", "no", "off"}:
+        return False
+    return retention_days() > 0
+
+
+def _sweep_interval_seconds() -> int:
+    try:
+        return max(600, int(os.environ.get("PUBLIC_CHECKER_RETENTION_SWEEP_HOURS", "24")) * 3600)
+    except ValueError:
+        return 24 * 3600
+
+
+def _run_retention_sweep() -> Dict[str, int]:
+    """One sweep pass. Lazy imports avoid service-layer import cycles."""
+    try:
+        from spine_api import persistence as persistence_module
+    except (ImportError, ValueError):
+        import persistence as persistence_module  # type: ignore
+    from spine_api.product_b_events import ProductBEventStore
+
+    result = sweep_expired_public_checker_trips(
+        trips_dir=persistence_module.TRIPS_DIR,
+        public_checker_dir=persistence_module.PUBLIC_CHECKER_DIR,
+        max_age_days=retention_days(),
+    )
+    result["pruned_event_segments"] = prune_old_event_segments(
+        events_dir=ProductBEventStore.DATA_DIR, max_age_days=180
+    )
+    return result
+
+
+def _retention_loop() -> None:
+    while not _sweep_stop.is_set():
+        try:
+            _run_retention_sweep()
+        except Exception:
+            # Background thread must never crash (mirrors zombie reaper).
+            pass
+        _sweep_stop.wait(_sweep_interval_seconds())
+
+
+def start_retention_sweep_loop() -> None:
+    global _sweep_thread
+    if _sweep_thread is not None or not retention_sweep_enabled():
+        return
+    _sweep_stop.clear()
+    _sweep_thread = threading.Thread(target=_retention_loop, daemon=True, name="checker-retention-sweep")
+    _sweep_thread.start()
+
+
+def stop_retention_sweep_loop() -> None:
+    global _sweep_thread
+    _sweep_stop.set()
+    if _sweep_thread is not None:
+        _sweep_thread.join(timeout=2)
+        _sweep_thread = None

@@ -83,11 +83,13 @@ function SelectField({
   value,
   onChange,
   options,
+  hint,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
+  hint?: string;
 }) {
   return (
     <div>
@@ -103,6 +105,11 @@ function SelectField({
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
+      {hint && (
+        <p className='text-[10px] mt-1 leading-snug' style={{ color: 'var(--text-muted)' }}>
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -317,7 +324,7 @@ export function AiAgentTab() {
       <FeatureSection
         icon={Cpu}
         title='Model Preferences'
-        description='Choose which AI models power each capability'
+        description='Saved model preferences per capability. Fields marked Reserved are stored for future use and are not yet called at runtime.'
       >
         <div className='grid grid-cols-2 gap-3'>
           <SelectField
@@ -339,10 +346,11 @@ export function AiAgentTab() {
             options={MODEL_OPTIONS.map((m) => ({ value: m, label: m }))}
           />
           <SelectField
-            label='Checker Model'
+            label='Checker Model (Reserved)'
             value={settings.checker_model}
             onChange={(v) => handleUpdate({ checker_model: v })}
             options={MODEL_OPTIONS.map((m) => ({ value: m, label: m }))}
+            hint='Saved for future use — applies once AI-assisted checking is enabled. Today’s checker runs deterministically and does not call this model.'
           />
         </div>
       </FeatureSection>

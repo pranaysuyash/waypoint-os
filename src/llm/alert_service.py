@@ -83,8 +83,6 @@ class WebhookChannel:
         self.timeout = timeout_seconds
 
     def send(self, payload: AlertPayload) -> bool:
-        import urllib.request
-
         body = json.dumps({
             "event_type": payload.event_type,
             "severity": payload.severity,

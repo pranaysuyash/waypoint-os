@@ -98,3 +98,40 @@ Verification: `build_plan_candidate` is a single snapshot (not candidates), `Ses
 6. **TS-L1/L2** ride the tutoring cadence; promote exercise output into the lifecycle contracts doc.
 
 Rows above are source-registered here; promote into `FINDINGS_REGISTER_2026-08-31.md` / `OPEN_WORK_ROADMAP` when picked up (roadmap pointer added 2026-09-09).
+
+---
+
+## 6. Second session (2026-09-10) — state machines → idempotency → queues
+
+**Source:** `CHATGPT_SYSTEMS_TRAINING_TRANSCRIPT_2026-09-10_RAW.md` (segment 2: tutor's TS-L1 exercise + owner's 8/10 answer + corrections). All claims below code-verified 2026-09-10.
+
+### Validated doctrine (no new task)
+
+| # | Transcript concept | Repo status (verified 2026-09-10) |
+|---|---|---|
+| V-15 | **Idempotency & BOOKING_RESULT_UNKNOWN safety** (timeout ≠ failed; retry with same key returns the same booking) | The money path already implements the *machinery*: side-effect marker persisted BEFORE provider calls (`booking_fulfillment.py:252-274`), deterministic provider idempotency key `sha256("fulfill:{trip_id}:{proposal_token}")` (`:574-585`), in-lease recheck before retry (`:244-250`), idempotent replay repairing missing confirmations (`:498-571`), TTL stale-PENDING reclaim (`src/agents/idempotency.py:246-284`). **The vocabulary gap is real though** — see TS-08. |
+| V-16 | **Stage-dependent field requiredness** ("a field isn't globally required=true") | Two-tier version EXISTS: `validate_packet(packet, stage=...)` — discovery tier = INTAKE_MINIMUM errors + QUOTE_READY-as-warning; shortlist+ tier = full QUOTE_READY errors (`src/intake/validation.py:100-133`); NB01 DEGRADE = "saved but unquotable" (`gates.py:101-153`); booking-stage passport/visa risk checks (`decision.py:1279-1298`). The operation-keyed generalization is the gap → **TS-07**. |
+| V-17 | **Retry policies per operation; read vs write** | Per-agent `RetryPolicy(max_attempts, backoff)` + dead letters + zombie-lease sweeper + poisoned states exist (`src/agents/runtime.py:170-185,139-167,489-495`); SQL work coordinator + durable requeue-jobs queue with worker (`spine_api/services/agent_requeue_jobs.py`). No safety-classification vocabulary (auto / idempotent-only / never) anywhere → **TS-09**. |
+| V-18 | **Queues/workers/orchestrator** (booking as queued job) | Leases + requeue-jobs queue exist; **booking fulfillment executes in-request** (sole caller `spine_api/routers/fulfillment.py:155,196`); outbox ABSENT (comment-only, `src/analytics/review.py:167`). This is `MULTI_AGENT_RUNTIME_ROADMAP.md` Layer 3 (durable orchestration) — already registered there; the fulfillment-in-request fact sharpens its priority for the live-provider lane. |
+| — | **Route finalization before approval** ("if you're still deciding Tokyo-first, don't buy tickets") | Matches ratified progressive-commitment rungs (register §2 V-11): structure is fixed at proposal/quoted; booking rungs only execute the approved graph. |
+| — | **Visa as separate workstream with own lifecycle** | ABSENT: visa is a stateless point-in-time check (`visa_radar.py:31-46`) + intake fact + `verify_visa` task — no independent lifecycle. Cross-reference the visa audit's open VD-02/03/04 DECIDEs rather than a new item. |
+
+### New register items
+
+Prefix TS-, second session.
+
+### TS-07 — EXPLORE (S-M) · Operation-keyed field requiredness (`required_for`)
+
+The tutor's model: each missing field carries `required_for: [fare_quote, booking, entry_validation]` + a `blocked_operation` set, so NEEDS_INFORMATION freezes only dependent work ("only dependent work freezes"). Today requiredness is two-tier global (intake-minimum vs QUOTE_READY) plus ad-hoc booking-stage risk checks. Design direction: a per-field requiredness table keyed to operations (planning / fare_quote / entry_validation / booking), consumed by (a) the NEEDS_INFORMATION blocker derivation, (b) **question-asking priority — the E-D memory read-path slot spec already needs exactly this ranking to decide which question to ask first**, and (c) NB01/NB02 gates (extend, don't fork). Canonical home: `src/intake/validation.py` vocabulary + packet slot metadata.
+
+### TS-08 — EXPLORE (M), feeds E-8 · Component-state aggregation + unknown-outcome vocabulary (`BOOKING_EXCEPTION`)
+
+Two verified absences that belong to one design: (1) **no trip-level verdict rolls up per-node `commitment_status`** (quoted/held/booked/ticketed/void on `JourneyNode` — only a don't-overwrite guard reads it, `proposal_compiler.py:165-175`); flight ✅ hotel ✅ Disney ❌ has no first-class trip state (nearest: generic review `recovery`, `src/analytics/review.py:254-268`). (2) **no UNKNOWN outcome state** in the idempotency registry (`PENDING/COMPLETED/FAILED` only, `idempotency.py:44-48`) — a provider timeout is caught by one catch-all and marked FAILED (`spine_api/routers/fulfillment.py:224-229`); safety rests entirely on the marker + provider-key determinism, which is correct machinery wearing imprecise labels. Design: aggregate node commitments → trip verdict (`all-confirmed → BOOKED / partial → BOOKING_EXCEPTION`), add `UNKNOWN` idempotency outcome (recheck-before-retry semantics), promote the dormant `BOOKING_IN_PROGRESS` contract (§11 of the lifecycle doc) — this package **is the E-8 spec input**, now enriched by the training thread (see the contracts-doc addendum 2026-09-10).
+
+### TS-09 — EXPLORE (S), fold into B6/B7 · Operation retry-safety registry
+
+The tutor's table (search: auto-retry · WhatsApp: duplicate protection · charge/book: idempotency-only · cancel: very careful) has no repo equivalent: `idempotency_contract` is free-text prose per agent (`runtime.py:182`), tool contracts carry freshness but no safety class. Design: a small enum (`SAFE_RETRY / IDEMPOTENT_KEY_REQUIRED / MANUAL_ONLY`) on tool + provider-operation contracts, enforced at the call seam when live providers land (B6/B7). Pure vocabulary now; enforcement later. Also the natural home to record the read-vs-write boundary for the provider lane.
+
+### TS-L1 status — promotion executed (2026-09-10)
+
+The tutor's exercise happened and was answered (8/10). The corrected four-question contracts for `NEEDS_INFORMATION` and `BOOKING_IN_PROGRESS` are promoted as a dated addendum to `Docs/architecture/TRIP_LIFECYCLE_STATE_CONTRACTS_2026-09-02.md` (spec input for E-8, with `required_for`/`blocked_operation` and the component-state model). TS-L1 closed. TS-L2 (next tutoring module: deeper queues/orchestrator/HTTP verb semantics) remains open — repo artifacts to use as worked examples: `src/agents/idempotency.py`, `agent_requeue_jobs.py`, lease heartbeat, fulfillment replay.

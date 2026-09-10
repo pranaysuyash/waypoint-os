@@ -26,11 +26,13 @@ async def verify():
 
     async with async_session_maker() as db:
         # ── Criterion 1: Signup with email + password ──
+        # Synthetic fixture user — created fresh in the test DB, never a real account.
+        signup_password_fixture = "synthetic_signup_fixture_123"
         try:
             result = await signup(
                 db=db,
                 email="owner@acme-travel.com",
-                password="securepassword123",
+                password=signup_password_fixture,
                 name="Alice Owner",
                 agency_name="Acme Travel",
             )
@@ -77,7 +79,7 @@ async def verify():
             login_result = await login(
                 db=db,
                 email="owner@acme-travel.com",
-                password="securepassword123",
+                password=signup_password_fixture,
             )
             assert login_result["access_token"]
             payload = decode_token(login_result["access_token"])

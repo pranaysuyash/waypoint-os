@@ -37,8 +37,15 @@ class TestAlertPayload:
 
 
 class TestWebhookChannel:
+    """Webhook sends route through the SSRF guard (src.security.url_guard).
+
+    The guard's own behavior (private-target blocking, redirect
+    re-validation) is covered by test_url_guard.py; here we patch the guard's
+    transport seam so delivery semantics stay the focus.
+    """
+
     def test_send_success(self):
-        with patch("urllib.request.urlopen") as mock_open:
+        with patch("src.security.url_guard.guarded_urlopen") as mock_open:
             mock_resp = MagicMock()
             mock_resp.status = 200
             mock_resp.__enter__ = MagicMock(return_value=mock_resp)
@@ -53,7 +60,7 @@ class TestWebhookChannel:
             assert ch.send(payload) is True
 
     def test_send_failure_logs_and_returns_false(self):
-        with patch("urllib.request.urlopen", side_effect=ConnectionError("refused")):
+        with patch("src.security.url_guard.guarded_urlopen", side_effect=ConnectionError("refused")):
             ch = WebhookChannel(["https://bad.example.com"])
             payload = AlertPayload(
                 event_type=AlertEventType.BUDGET_EXCEEDED,
@@ -63,7 +70,7 @@ class TestWebhookChannel:
             assert ch.send(payload) is False
 
     def test_multiple_urls_all_tried(self):
-        with patch("urllib.request.urlopen") as mock_open:
+        with patch("src.security.url_guard.guarded_urlopen") as mock_open:
             mock_resp = MagicMock()
             mock_resp.status = 200
             mock_resp.__enter__ = MagicMock(return_value=mock_resp)
@@ -77,6 +84,27 @@ class TestWebhookChannel:
             )
             ch.send(payload)
             assert mock_open.call_count == 2
+
+    def test_blocked_url_is_skipped_not_raised(self):
+        """A guard-blocked webhook URL is logged and skipped; other URLs still deliver."""
+        from src.security.url_guard import URLBlockedError
+
+        def _fake_guarded_urlopen(url, **kwargs):
+            if "internal" in url:
+                raise URLBlockedError(url, "resolves to non-public address")
+            mock_resp = MagicMock()
+            mock_resp.status = 200
+            mock_resp.__enter__ = MagicMock(return_value=mock_resp)
+            mock_resp.__exit__ = MagicMock(return_value=False)
+            return mock_resp
+
+        with patch("src.security.url_guard.guarded_urlopen", side_effect=_fake_guarded_urlopen):
+            ch = WebhookChannel(["https://internal.example.com", "https://ok.example.com"])
+            payload = AlertPayload(
+                event_type=AlertEventType.GUARD_UNAVAILABLE,
+                agency_id="a1", title="T", detail="D",
+            )
+            assert ch.send(payload) is True
 
 
 class TestEmailChannel:

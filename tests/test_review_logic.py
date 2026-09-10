@@ -68,12 +68,17 @@ def test_audit_delta_capture(tmp_path, monkeypatch):
     
     process_review_action(trip_id, "reject", "Too expensive", "owner")
     
-    # Check audit log
+    # Check audit log — scoped to this trip: the canonical store merges SQL
+    # events from the whole process, so [0]-style reads are not test-scoped.
     events = AuditStore.get_events()
     assert len(events) > 0
-    payload = events[0]["details"]
-    assert "pre_state" in payload
-    assert "post_state" in payload
+    deltas = [
+        e for e in events
+        if (e.get("details") or {}).get("trip_id") == trip_id
+        and "pre_state" in (e.get("details") or {})
+    ]
+    assert deltas, "expected a review delta audit event for this trip"
+    payload = deltas[-1]["details"]
     assert payload["pre_state"]["review_status"] == "pending"
     assert payload["post_state"]["review_status"] == "rejected"
 

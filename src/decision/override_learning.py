@@ -651,9 +651,10 @@ def _rewrite_pattern_file(
     import os
     from pathlib import Path
     from spine_api.persistence import file_lock
+    from src.security.path_guard import safe_join
 
     patterns_dir = Path(override_store.OVERRIDES_PATTERNS_DIR)
-    pattern_file = patterns_dir / f"{decision_type}.jsonl"
+    pattern_file = safe_join(patterns_dir, f"{decision_type}.jsonl")
     with file_lock(pattern_file):
         tmp = pattern_file.with_suffix(".tmp")
         with open(tmp, "w") as f:

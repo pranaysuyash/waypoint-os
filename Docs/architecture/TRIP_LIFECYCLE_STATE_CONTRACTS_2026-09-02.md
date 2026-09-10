@@ -389,3 +389,44 @@ Each line is a decision the enforcement-gap matrix forces; none has a current ow
 | `spine_api/server.py` | Payment/refund typed vocabularies (:2540-2573) |
 | `Docs/TPM_TRAINING_BLUEPRINT_PRODUCT_MAPPING_2026-09-01.md` | Blueprint L2 vocabulary (:29), authority binding champion point (:63), dormant-state discipline (:76), §7 answer key (:117-128) |
 | `Docs/review/TPM_BLUEPRINT_TASKS_INVENTORY_2026-09-02.md` | E-8 (:34), E-14 (:40), I-1/I-2 sequencing inputs |
+
+---
+
+## Addendum (2026-09-10) — TS-L1 promotion: corrected contracts for NEEDS_INFORMATION and BOOKING_IN_PROGRESS
+
+**Origin:** the owner's training-thread exercise (transcript: `Docs/exploration/CHATGPT_SYSTEMS_TRAINING_TRANSCRIPT_2026-09-10_RAW.md`; register: `CHATGPT_SYSTEMS_TRAINING_SESSION_FINDINGS_2026-09-09.md` §6). The owner answered the tutor's five-question exercise for the two deliberately-contrasted states; the tutor's corrections are distilled here **as E-8 spec input**. This addendum refines Sections 3 (NEEDS_INFORMATION) and 11 (BOOKING_IN_PROGRESS); it does not replace them. Full-fidelity discussion trail lives in the raw transcript.
+
+### Taxonomy correction (applies to every contract in this doc)
+
+**State = what is currently true · Action = what the system does · Event = something observable that happened · Condition = something currently true (queryable) · Failure = an attempted action that did not work · Risk = something that might happen.** Software reacts to events and conditions, not risks — risks belong in operator copy and deadline recalculation, not in transition tables.
+
+### NEEDS_INFORMATION — refined contract
+
+**What is true:** the trip is understood well enough to continue eventually, but one or more required pieces are missing *for the next intended operation* — requiredness is operation-keyed, not global:
+
+```
+missing:
+  child_ages:        required_for [fare_quote, booking]   # planning may proceed
+  arrival_city:      required_for [early_planning]        # optional elsewhere
+  hotel_star_rating: class PREFERENCE                     # never blocks
+  passport_expiry:   required_for [entry_validation, booking]
+blocked_operations: [booking]        # only dependent work freezes
+```
+
+Today's implementation is two-tier (INTAKE_MINIMUM vs QUOTE_READY, `validation.py:100-133`) plus ad-hoc booking-stage risk checks (`decision.py:1279-1298`); the operation-keyed generalization is register **TS-07** and is also the ranking input the E-D memory read-path needs for question priority.
+
+**Allowed:** ask_customer, send_reminder, parse_new_message, update_trip_state, run_nonblocked_searches, operator_add_information, recalculate_deadlines. **Forbidden:** anything in `blocked_operations` (booking), and quote/booking tier actions per the intake-blocked invariant (§ invariant, `trip_status.py:93-105`).
+
+**Transitions — on resulting facts, not on history:** `information_received → update state → blockers resolved? → re-evaluate next state by rules`. Pre-planning → FEASIBILITY_CHECK; modifying an approved booking → change-validation; mid-execution → BOOKING_IN_PROGRESS. Do not "return to where we came from" blindly.
+
+### BOOKING_IN_PROGRESS — refined contract (E-8 target shape)
+
+**What is true:** the customer has approved a *specific* plan, required information is available, **commitment-grade availability has been revalidated** (freshness recheck — see TS-02 contract), and **at least one irreversible or externally visible booking action is underway**. Before that last condition, the trip is APPROVED/READY_TO_BOOK, not here. (Component-level truth already lives on journey nodes: `commitment_status ∈ quoted/held/booked/ticketed/void` — register TS-08 covers the missing trip-level aggregation.)
+
+**Allowed:** book_flight, book_hotel, reserve_transfer, purchase_attraction, submit_payment, verify_confirmation, record_booking_reference, retry_safe_operation. Route finalization is NOT allowed here — structure was fixed at proposal (progressive commitment; `PROGRESSIVE_COMMITMENT_JDG_2026-09-07.md`). Visa processing is a candidate separate workstream (own lifecycle; today stateless — visa audit VD rows).
+
+**Forbidden (concrete):** change travel dates without approval; switch hotel because the model prefers another; increase spend beyond the authorized threshold; add a traveler; change cabin/class; book an alternative after a failure without checking consequences; blindly retry an uncertain payment. (Autonomy rungs per ADR-008 §6.)
+
+**Events:** per-component SUCCEEDED/FAILED, PAYMENT_FAILED, PRICE_CHANGED, AVAILABILITY_LOST, PROVIDER_TIMEOUT, CUSTOMER_CHANGE_REQUESTED, BOOKING_CANCELLED_BY_PROVIDER — and **BOOKING_RESULT_UNKNOWN** (timeout means outcome unknown, never failed; retry only under idempotency). The repo's marker + provider-key + replay machinery (`booking_fulfillment.py:252-282,574-585,498-571`) implements the safety; TS-08 adds the explicit UNKNOWN vocabulary and the trip-level verdict (`all-confirmed → BOOKED / partial → BOOKING_EXCEPTION`).
+
+**Queue shape (Layer-3 alignment):** customer approval → PROPOSAL_APPROVED → READY_TO_BOOK → booking job queued → BOOKING_IN_PROGRESS → component events → orchestrator evaluates component state → BOOKED | BOOKING_EXCEPTION. Today fulfillment is in-request (`fulfillment.py:155,196`); the durable-queue move is runtime-roadmap Layer 3.

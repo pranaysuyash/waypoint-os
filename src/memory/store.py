@@ -40,7 +40,11 @@ class MemoryStore:
     STORE_FILE = DATA_DIR / "memory_store.jsonl"
 
     def __init__(self, data_file: Optional[Path] = None):
+        from src.security.path_guard import validate_filename
+
         self.file_path = data_file or self.STORE_FILE
+        # Canonical filename containment guard for the store file.
+        validate_filename(self.file_path.name, label="memory store file")
         self._memory_cache: Dict[str, List[BaseMemoryItem]] = {}  # agency_id -> items
         self.eligibility_gate = MemoryEligibilityGate()
         self.retriever = HybridMemoryRetriever()

@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Optional
 
-from sqlalchemy import String, DateTime, Index, Text, JSON
+from sqlalchemy import BigInteger, String, DateTime, Index, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from spine_api.core.database import Base, engine as _engine
@@ -73,6 +73,10 @@ class AuditLog(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
+    # Monotonic write-order sequence (A-04 3.4): the chain predecessor read and
+    # verification order by seq — created_at ties (concurrent writers) reorder
+    # arbitrarily under random-uuid id ordering. NULL = legacy pre-seq row.
+    seq: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     agency_id: Mapped[str] = mapped_column(
         String(36), nullable=False
     )

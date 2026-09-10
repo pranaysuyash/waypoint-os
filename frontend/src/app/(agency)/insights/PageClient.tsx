@@ -258,11 +258,11 @@ const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemb
       </td>
       
       <td className='py-3 text-center hidden lg:table-cell'>
-        <span className='text-ui-sm text-[#e6edf3]'>{member.avgResponseTime}h</span>
+        <span className='text-ui-sm text-[#e6edf3]'>{member.avgResponseTime != null ? `${member.avgResponseTime}h` : 'N/A'}</span>
       </td>
-      
+
       <td className='py-3 text-center hidden lg:table-cell'>
-        <span className='text-ui-sm text-[#e6edf3]'>{member.customerSatisfaction}/5</span>
+        <span className='text-ui-sm text-[#e6edf3]'>{member.customerSatisfaction != null ? `${member.customerSatisfaction}/5` : 'N/A'}</span>
       </td>
     </tr>
   );
@@ -353,8 +353,10 @@ export default function OwnerInsightsPage() {
     push(`/trips/${tripId}`);
   };
 
-  const maxStageTime = useMemo(() => 
-    safePipelineMetrics.length > 0 ? Math.max(...safePipelineMetrics.map(m => m.avgTimeInStage)) : 100
+  const maxStageTime = useMemo(() =>
+    safePipelineMetrics.length > 0
+      ? Math.max(...safePipelineMetrics.map(m => m.avgTimeInStage ?? 0))
+      : 100
   , [safePipelineMetrics]);
 
   return (
@@ -522,7 +524,7 @@ export default function OwnerInsightsPage() {
                 <div className='flex-1'>
                   <div className='flex items-center justify-between mb-1'>
                     <span className='text-ui-sm text-[#e6edf3]'>{stage.stageName}</span>
-                    <span className='text-ui-xs text-[#8b949e]'>{stage.tripCount} trips · {stage.exitRate}% exit</span>
+                    <span className='text-ui-xs text-[#8b949e]'>{stage.tripCount} trips · {stage.exitRate != null ? `${stage.exitRate}% exit` : 'no exit data'}</span>
                   </div>
                   <div className='h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
                     <div 
@@ -533,7 +535,7 @@ export default function OwnerInsightsPage() {
                 </div>
                 
                 <span className='ml-4 text-ui-xs text-[#8b949e] w-16 text-right'>
-                  {stage.avgTimeInStage}h
+                  {stage.avgTimeInStage != null ? `${stage.avgTimeInStage}h` : '—'}
                 </span>
               </div>
             ))}
@@ -578,7 +580,7 @@ export default function OwnerInsightsPage() {
                 userId: member.userId,
                 conversionRate: member.conversionRate,
                 avgResponseTime: member.avgResponseTime ?? null,
-                customerSatisfaction: member.customerSatisfaction,
+                customerSatisfaction: member.customerSatisfaction ?? null,
                 workloadScore: member.workloadScore,
               }))}
               onDrillDown={handleMetricDrillDown}

@@ -1,6 +1,5 @@
-from typing import Any, List
+from typing import Any, List, Optional
 from datetime import datetime, timezone
-import random
 
 from src.analytics.models import (
     InsightsSummary,
@@ -8,7 +7,6 @@ from src.analytics.models import (
     StageMetrics,
     TeamMemberMetrics,
     BottleneckAnalysis,
-    BottleneckCause,
     RevenueMetrics,
     MonthlyRevenue,
     OperationalAlert
@@ -22,6 +20,11 @@ STAGE_CONVERSION_PROBABILITIES = {
     "output": 0.90,
     "safety": 0.95,
 }
+
+# Non-terminal statuses that can act as pipeline stages (a trip can dwell in
+# them and later leave). Terminal statuses never "exit", so they are excluded
+# from bottleneck/timing analysis.
+_NON_TERMINAL_STAGES = ("new", "assigned", "in_progress")
 
 
 def _dict_payload(value: Any) -> dict:
@@ -38,11 +41,99 @@ def _trip_packet(trip: dict) -> dict:
     return extracted or _dict_payload(trip.get("packet"))
 
 
+def _parse_ts(value: Any) -> Optional[datetime]:
+    """Parse an ISO-8601 timestamp; None for absent/malformed values."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except ValueError:
+        return None
+
+
+def _trip_budget_value(trip: dict) -> float:
+    """Normalized budget value from the trip packet; 0.0 when absent/unparseable."""
+    budget = _dict_payload(_trip_packet(trip).get("budget"))
+    raw_val = budget.get("value", 0)
+    try:
+        return float(raw_val) if raw_val is not None else 0.0
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _stage_dwell_samples(trips: list) -> dict:
+    """Dwell-time evidence per status, from durable status_history.
+
+    Returns ``{status: {"exited": [hours...], "current": [hours...],
+    "entered": int, "exited_count": int}}``. ``exited`` holds completed dwells
+    (the trip later transitioned out); ``current`` holds censored dwells (the
+    trip is still in the status, measured to its last update). Entries without
+    parseable timestamps are skipped, never guessed.
+    """
+    dwell: dict = {}
+    for trip in trips:
+        history = trip.get("status_history") or []
+        if not isinstance(history, list):
+            continue
+        events = []
+        for entry in history:
+            if not isinstance(entry, dict):
+                continue
+            at = _parse_ts(entry.get("at"))
+            if at is None:
+                continue
+            events.append((at, str(entry.get("from") or ""), str(entry.get("to") or "")))
+        if not events:
+            continue
+        events.sort(key=lambda e: e[0])
+
+        created = _parse_ts(trip.get("created_at"))
+        updated = _parse_ts(trip.get("updated_at"))
+
+        def _record(status: str, hours: float, *, exited: bool) -> None:
+            if not status or hours < 0:
+                return
+            slot = dwell.setdefault(status, {"exited": [], "current": [], "entered": 0, "exited_count": 0})
+            if exited:
+                slot["exited"].append(hours)
+                slot["exited_count"] += 1
+            else:
+                slot["current"].append(hours)
+
+        # Dwell in the pre-history status (from creation to first transition).
+        first_at, _, first_to = events[0]
+        if created is not None and first_at > created:
+            _record(events[0][1], (first_at - created).total_seconds() / 3600, exited=True)
+
+        # Dwell between consecutive transitions.
+        for (_at, _from, _to), (next_at, _, _) in zip(events, events[1:]):
+            if next_at > _at:
+                _record(_to, (next_at - _at).total_seconds() / 3600, exited=True)
+
+        # Censored dwell in the current status (to last update).
+        last_at, _, last_to = events[-1]
+        censor = updated or datetime.now(timezone.utc)
+        if censor > last_at:
+            _record(last_to, (censor - last_at).total_seconds() / 3600, exited=False)
+
+    for slot in dwell.values():
+        slot["entered"] = slot["exited_count"] + len(slot["current"])
+    return dwell
+
+
+def _mean(values: list) -> Optional[float]:
+    return round(sum(values) / len(values), 1) if values else None
+
+
 def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
     """Compute actual pipeline metrics from trip data.
 
     Uses trip status, timestamps, and stage transitions to calculate
-    real velocity metrics instead of hardcoded values.
+    real velocity metrics. Every unavailable metric is None/0 — never a
+    fabricated placeholder.
     """
     total = len(trips)
     # Terminal/revenue statuses writers actually emit (F-35): no writer ever
@@ -57,60 +148,58 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
     )
 
     rate = (converted / total * 100) if total > 0 else 0
-    sum((_trip_analytics(t).get("margin_pct", 0) for t in trips))
 
-    if total == 0:
-        pipeline_velocity = PipelineVelocity(
-            stage1To2=0.0,
-            stage2To3=0.0,
-            stage3To4=0.0,
-            stage4To5=0.0,
-            stage5ToBooked=0.0,
-            averageTotal=0.0,
-        )
-    else:
-        # Calculate velocity from actual trip stage transitions
-        stage_times = {}
-        for stage in ["discovery", "packet", "decision", "strategy", "output", "booked"]:
-            times = []
-            for trip in trips:
-                created_at = trip.get("created_at")
-                updated_at = trip.get("updated_at")
-                trip_stage = trip.get("stage") or trip.get("status")
+    # Response time = hours from trip creation to the first recorded status
+    # transition (the first human/system action on the inquiry). None when no
+    # trip has both timestamps — never a random placeholder.
+    response_times: list = []
+    for trip in trips:
+        created = _parse_ts(trip.get("created_at"))
+        history = trip.get("status_history") or []
+        first_at = None
+        if isinstance(history, list):
+            for entry in history:
+                if isinstance(entry, dict):
+                    first_at = _parse_ts(entry.get("at"))
+                    if first_at is not None:
+                        break
+        if created is not None and first_at is not None and first_at > created:
+            response_times.append((first_at - created).total_seconds() / 3600)
+    avg_response_time = _mean(response_times)
 
-                if created_at and updated_at and trip_stage:
-                    try:
-                        created = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                        updated = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
-                        delta = (updated - created).total_seconds() / 3600 / 24  # days
-                        if delta > 0:
-                            times.append(delta)
-                    except (ValueError, AttributeError):
-                        pass
+    # Pipeline value = sum of real trip budgets for non-terminal trips.
+    pipeline_value = sum(
+        _trip_budget_value(t) for t in trips if t.get("status") not in _TERMINAL_STATUSES
+    )
 
-            if times:
-                stage_times[stage] = sum(times) / len(times)
-            else:
-                stage_times[stage] = 0.0
+    # Velocity from real status dwell times (days). Stage boundaries beyond
+    # the status vocabulary (strategy→output, output→booked) have no writer
+    # yet and stay 0.0 — honest absence, not fabricated spread.
+    dwell = _stage_dwell_samples(trips)
 
-        # Compute stage-to-stage transitions
-        average_total = sum(stage_times.values())
+    def _dwell_days(status: str) -> float:
+        samples = dwell.get(status, {}).get("exited", []) + dwell.get(status, {}).get("current", [])
+        mean_hours = _mean(samples)
+        return round(mean_hours / 24.0, 2) if mean_hours is not None else 0.0
 
-        pipeline_velocity = PipelineVelocity(
-            stage1To2=stage_times.get("discovery", 0.0) or 1.2,
-            stage2To3=stage_times.get("packet", 0.0) or 2.4,
-            stage3To4=stage_times.get("decision", 0.0) or 4.1,
-            stage4To5=stage_times.get("strategy", 0.0) or 0.5,
-            stage5ToBooked=stage_times.get("output", 0.0) or 1.1,
-            averageTotal=average_total if average_total > 0 else 9.3,
-        )
+    velocity_values = {
+        "stage1To2": _dwell_days("new"),
+        "stage2To3": _dwell_days("assigned"),
+        "stage3To4": _dwell_days("in_progress"),
+        "stage4To5": 0.0,
+        "stage5ToBooked": 0.0,
+    }
+    pipeline_velocity = PipelineVelocity(
+        **velocity_values,
+        averageTotal=round(sum(velocity_values.values()), 2),
+    )
 
     return InsightsSummary(
         totalInquiries=total,
         convertedToBooked=converted,
         conversionRate=round(rate, 1) if total > 0 else 0.0,
-        avgResponseTime=0.0 if total == 0 else round(random.uniform(2.5, 6.0), 1),
-        pipelineValue=0 if total == 0 else total * 15000,
+        avgResponseTime=avg_response_time,
+        pipelineValue=round(pipeline_value, 2),
         pipelineVelocity=pipeline_velocity,
     )
 
@@ -133,18 +222,21 @@ def compute_pipeline_metrics(trips: list, days: int = 30) -> List[StageMetrics]:
         if stage in stage_counts:
             stage_counts[stage] += 1
 
-    total_trips = len(trips)
+    # Real dwell/exit evidence from durable status_history. None when a
+    # stage has no evidence — the UI renders an explicit "no data" state.
+    dwell = _stage_dwell_samples(trips)
     for stage_id, stage_name in stages_config:
         count = stage_counts[stage_id]
-        # Only show timing data when there are actual trips; otherwise null/0
-        if count > 0 and total_trips > 0:
-            avg_time = round(random.uniform(1.0, 15.0), 1)
-            exit_rate = round(random.uniform(30.0, 95.0), 1)
-            avg_exit = round(random.uniform(2.0, 20.0), 1)
-        else:
-            avg_time = 0.0
-            exit_rate = 0.0
-            avg_exit = 0.0
+        slot = dwell.get(stage_id, {})
+        exited = slot.get("exited", [])
+        current = slot.get("current", [])
+        entered = slot.get("entered", 0)
+        exited_count = slot.get("exited_count", 0)
+
+        avg_time = _mean(exited + current) if (exited or current) else None
+        exit_rate = round(exited_count / entered * 100, 1) if entered > 0 else None
+        avg_exit = _mean(exited) if exited else None
+
         metrics.append(StageMetrics(
             stageId=str(stage_id),
             stageName=stage_name,
@@ -212,8 +304,9 @@ def compute_team_metrics(trips: list, members: list, days: int = 30) -> List[Tea
     team_metrics = []
     for uid, stats in agent_data.items():
         ratings = stats["ratings"]
-        # Use simple mean for CSAT; default to 4.5 if no ratings yet (baseline expectation)
-        csat = round(sum(ratings) / len(ratings), 1) if ratings else 4.5
+        # CSAT is the mean of real feedback ratings; None when no ratings
+        # exist — never a fabricated baseline.
+        csat = round(sum(ratings) / len(ratings), 1) if ratings else None
 
         active = stats["active"]
         completed = stats["completed"]
@@ -242,21 +335,49 @@ def compute_team_metrics(trips: list, members: list, days: int = 30) -> List[Tea
 
 
 def compute_bottlenecks(trips: list, days: int = 30) -> List[BottleneckAnalysis]:
+    """Identify the slowest non-terminal stage from real dwell evidence.
+
+    No dwell evidence → empty list (the UI shows its no-data state).
+    Causes are NOT fabricated: until per-delay cause data exists, the
+    bottleneck carries its real measured dwell time only.
+    """
+    dwell = _stage_dwell_samples(trips)
+    best: Optional[tuple] = None  # (avg_hours, stage_id, stage_name)
+    stage_names = {
+        "new": "Discovery & Intake",
+        "assigned": "Signal Extraction",
+        "in_progress": "Feasibility & Decision",
+    }
+    for stage_id in _NON_TERMINAL_STAGES:
+        slot = dwell.get(stage_id, {})
+        samples = slot.get("exited", []) + slot.get("current", [])
+        if not samples:
+            continue
+        avg_hours = _mean(samples)
+        if avg_hours is None:
+            continue
+        if best is None or avg_hours > best[0]:
+            best = (avg_hours, stage_id, stage_names[stage_id])
+
+    if best is None:
+        return []
+
+    avg_hours, stage_id, stage_name = best
+    if avg_hours > 72:
+        severity = "high"
+    elif avg_hours > 24:
+        severity = "medium"
+    else:
+        severity = "low"
+
     return [
         BottleneckAnalysis(
-            stageId="decision",
-            stageName="Feasibility & Decision",
-            avgTimeInStage=24.5,
+            stageId=stage_id,
+            stageName=stage_name,
+            avgTimeInStage=avg_hours,
             isBottleneck=True,
-            severity="medium",
-            primaryCauses=[
-                BottleneckCause(
-                    cause="Missing Budget Clarification",
-                    percentage=45.0,
-                    affectedTrips=12,
-                    suggestedAction="Request budget minimums upfront"
-                )
-            ]
+            severity=severity,
+            primaryCauses=[],
         )
     ]
 

@@ -74,6 +74,49 @@ def test_registry_failed_allows_retry():
     assert record is not None and record.status == IdempotencyStatus.PENDING
 
 
+def test_registry_stale_owner_cannot_complete_reclaimed_row():
+    """In-memory twin of the SQL fencing regression (misc-probes S8 / N-06-R1).
+
+    After a TTL reclaim, the stale owner and the reclaimed owner are BOTH
+    pending, so a status-only guard would let the stale owner's late
+    completion overwrite the reclaimed owner's row. The generation
+    (fencing) token must fence that write: the stale owner's mark no-ops.
+    """
+    registry = IdempotencyRegistry()
+    key = IdempotencyRegistry.generate_key("t", "action", {"x": 9})
+    acquired, stale_record = registry.try_acquire(
+        key, trip_id="t", action_name="action", payload={"x": 9}
+    )
+    assert acquired
+    assert stale_record is not None
+
+    # Age the pending record past its TTL so the next acquire reclaims it,
+    # exactly like the SQL backend's guarded-UPDATE reclaim.
+    registry._records[key].created_at -= stale_record.ttl_seconds + 2
+    acquired_again, fresh_record = registry.try_acquire(
+        key, trip_id="t", action_name="action", payload={"x": 9}
+    )
+    assert acquired_again
+    assert fresh_record is not None
+    assert fresh_record.fencing_token != stale_record.fencing_token
+
+    # Stale owner's late completion must NOT close the reclaimed owner's row.
+    assert (
+        registry.mark_completed(key, {"who": "stale-owner"}, fencing_token=stale_record.fencing_token)
+        is False
+    )
+    record = registry._records[key]
+    assert record.status == IdempotencyStatus.PENDING
+    assert record.response_payload is None
+
+    # The reclaimed owner completes normally.
+    assert (
+        registry.mark_completed(key, {"who": "reclaimed-owner"}, fencing_token=fresh_record.fencing_token)
+        is True
+    )
+    assert registry._records[key].response_payload == {"who": "reclaimed-owner"}
+
+
 def test_registry_completed_returns_cached():
     registry = IdempotencyRegistry()
     key = IdempotencyRegistry.generate_key("t", "action", {"x": 3})

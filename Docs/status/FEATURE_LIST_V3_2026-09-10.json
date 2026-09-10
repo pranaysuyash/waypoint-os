@@ -1,0 +1,1386 @@
+{
+  "metadata": {
+    "name": "FEATURE_LIST_V3_2026-09-03",
+    "date": "2026-09-03",
+    "source_doc": "Docs/status/FEATURE_LIST_V3_2026-09-03.md",
+    "generator": "tools/feature_list_generate.py",
+    "notes": "Derived from the markdown source of truth; regenerate, never hand-edit."
+  },
+  "counts": {
+    "total_features": 117,
+    "GATED": 5,
+    "LIVE": 103,
+    "PARTIAL": 6,
+    "SIMULATED": 2,
+    "STUB": 1
+  },
+  "records": [
+    {
+      "id": "A01",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "Auth lifecycle (signup, login, logout, refresh, me)",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "httpOnly-cookie JWT sessions for agencies and staff",
+      "evidence": [
+        "`spine_api/routers/auth.py`",
+        "`frontend/src/app/(auth)/`"
+      ]
+    },
+    {
+      "id": "A02",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "Password reset + workspace-code join/validate",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Account recovery and invite-based team onboarding",
+      "evidence": [
+        "`spine_api/routers/auth.py`",
+        "`spine_api/routers/workspace.py`"
+      ]
+    },
+    {
+      "id": "A03",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "Multi-tenant RLS isolation + FORCE posture validation",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Per-agency row isolation, fail-closed startup checks on all tenant tables",
+      "evidence": [
+        "`spine_api/core/rls.py`",
+        "`spine_api/server.py:1175`",
+        "`scripts/check_rls_coverage.py`"
+      ]
+    },
+    {
+      "id": "A04",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "Workspace/member/role management",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Roster, invites, roles, capacity, specializations",
+      "evidence": [
+        "`spine_api/routers/team.py`",
+        "`spine_api/models/tenant.py`"
+      ]
+    },
+    {
+      "id": "A05",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "Agency settings (30 endpoints)",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Operational, AI, autonomy, epistemic, comms, seasonal policy-as-data",
+      "evidence": [
+        "`spine_api/routers/settings.py`",
+        "`frontend/src/app/(agency)/settings/`"
+      ]
+    },
+    {
+      "id": "A06",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "Tier-gated feature matrix",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Plan tiers override manual feature toggles (e.g. frontier/negotiation locked on starter)",
+      "evidence": [
+        "`src/intake/config/agency_settings.py`"
+      ]
+    },
+    {
+      "id": "A07",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "Audit trail + tamper-evident hashing",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Append-only audit logs, per-trip agent events, SHA-256 chain (Rule 0.15)",
+      "evidence": [
+        "`spine_api/routers/audit.py`",
+        "`Docs/ADR_RULE_015_DECOUPLING_AND_AUDIT_CHAIN_HASHING_2026-07-29.md`"
+      ]
+    },
+    {
+      "id": "A08",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "Fail-closed startup assertions + rate limiting + body caps",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Boot-time env/secret/RLS validation; slowapi limits; ASGI body cap",
+      "evidence": [
+        "`spine_api/core/startup_assertions.py`",
+        "`spine_api/server.py:1362`"
+      ]
+    },
+    {
+      "id": "A09",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "OTel observability",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "OTLP gRPC spans, pipeline instrumentation, env-tunable batching",
+      "evidence": [
+        "`spine_api/server.py:93`",
+        "`Docs/OTEL_OBSERVABILITY_SETUP_2026-05-01.md`"
+      ]
+    },
+    {
+      "id": "A10",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "Human-AI authority boundaries",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "HMAC capability tokens, trust zones, dual-control signoffs",
+      "evidence": [
+        "`spine_api/routers/boundaries.py`",
+        "`src/services/boundary_engine.py`"
+      ]
+    },
+    {
+      "id": "A11",
+      "domain": "A) Platform, Identity & Tenancy",
+      "feature": "AI workforce governance registry",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Per-agent capability scoping, policy validation, execution limits",
+      "evidence": [
+        "`src/governance/registry.py`"
+      ]
+    },
+    {
+      "id": "B01",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Async spine run execution",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "POST /run returns queued immediately; daemon-thread pipeline, file ledger, first-class blocked state",
+      "evidence": [
+        "`spine_api/server.py:1927`",
+        "`spine_api/run_ledger.py`",
+        "`spine_api/run_state.py`"
+      ]
+    },
+    {
+      "id": "B02",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Multi-channel lead ingestion",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Freeform, structured JSON, social DM, voice notes, images",
+      "evidence": [
+        "`spine_api/routers/inbound.py`",
+        "`spine_api/routers/social_inbound.py`",
+        "`spine_api/routers/multimodal.py`"
+      ]
+    },
+    {
+      "id": "B03",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Destination extraction with GeoNames validation",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "590k-city validation, origin/destination context heuristics, city sets, past-mention filtering",
+      "evidence": [
+        "`src/intake/extractors.py:758`",
+        "`src/intake/geography.py`"
+      ]
+    },
+    {
+      "id": "B04",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Colloquial party/budget/date extraction",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Hinglish and colloquial composition, lakh/crore budgets, stretch max, date flexibility windows",
+      "evidence": [
+        "`src/intake/extractors.py:1090`",
+        "`src/intake/extractors.py:1516`"
+      ]
+    },
+    {
+      "id": "B05",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "MRZ passport parsing",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "ICAO 9303 TD3 parsing with checksum verification",
+      "evidence": [
+        "`src/intake/mrz.py`",
+        "`src/intake/mrz_parser_engine.py`"
+      ]
+    },
+    {
+      "id": "B06",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Vision/document extraction model chain",
+      "status": "GATED",
+      "priority": "P1",
+      "what_it_does": "Gemini/OpenAI fallback chain with retry; requires provider API key (excluded from CI runner)",
+      "evidence": [
+        "`src/extraction/model_chain.py`",
+        "`scripts/run_backend_tests.sh`"
+      ]
+    },
+    {
+      "id": "B07",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Epistemic provenance + conflict arbiter",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Field-level provenance, multi-turn contradiction detection, implicit needs, negative exclusions",
+      "evidence": [
+        "`src/intake/epistemic_engine.py`",
+        "`spine_api/routers/epistemic.py`"
+      ]
+    },
+    {
+      "id": "B08",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Validation tiers (INTAKE_MINIMUM / QUOTE_READY)",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Stage-tiered minimum viable booking data; missing minimum escalates but persists the lead",
+      "evidence": [
+        "`src/intake/validation.py`"
+      ]
+    },
+    {
+      "id": "B09",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "NB01 intake-completion gate",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "ESCALATE early-exit, DEGRADE partial save with generated follow-up questions",
+      "evidence": [
+        "`src/intake/gates.py:101`"
+      ]
+    },
+    {
+      "id": "B10",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Incomplete-lead persistence + never-clobber reprocess",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "ESCALATE runs persist incomplete leads and never overwrite promoted trips on reprocess",
+      "evidence": [
+        "`Docs/ADR_ESCALATE_LEAD_PERSISTENCE_2026-08-31.md`",
+        "`spine_api/services/pipeline_execution_service.py`"
+      ]
+    },
+    {
+      "id": "B11",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Draft lifecycle",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "open/processing/blocked/failed/promoted/merged/discarded, autosave with conflict detection, promote to trip",
+      "evidence": [
+        "`spine_api/draft_store.py`",
+        "`spine_api/routers/drafts.py`"
+      ]
+    },
+    {
+      "id": "B12",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Optimistic sync + repair deep-link",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Optimistic trip state push; repair banner deep-links to field-level intake fixes",
+      "evidence": [
+        "`spine_api/routers/inbound.py`",
+        "`frontend/src/lib/repair-deep-link.ts`"
+      ]
+    },
+    {
+      "id": "B13",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Public itinerary checker",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Anonymous checker with rate limiting, live Open-Meteo enrichment, retention sweep",
+      "evidence": [
+        "`spine_api/routers/public_checker.py`",
+        "`src/public_checker/live_checks.py`"
+      ]
+    },
+    {
+      "id": "B14",
+      "domain": "B) Lead Intake & Extraction",
+      "feature": "Voice copilot transcript extraction",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Consultation transcripts to structured intake packets",
+      "evidence": [
+        "`spine_api/services/voice_copilot.py`"
+      ]
+    },
+    {
+      "id": "C01",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "Gap-and-decision engine (10 phases)",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Ambiguity, budget feasibility/decomposition, contradictions, urgency, MVB blockers, question generation",
+      "evidence": [
+        "`src/intake/decision.py:1942`"
+      ]
+    },
+    {
+      "id": "C02",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "NB02 / D1 autonomy gate",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Per-agency tri-state autonomy policy (fully_human/hybrid/fully_autonomous) with hard STOP safety invariant",
+      "evidence": [
+        "`src/intake/gates.py:156`"
+      ]
+    },
+    {
+      "id": "C03",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "Suitability matrix D4/D6",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Activity catalog scoring, context penalties, confidence clamping, critical flags halt the spine",
+      "evidence": [
+        "`src/suitability/scoring.py:128`",
+        "`src/suitability/integration.py`"
+      ]
+    },
+    {
+      "id": "C04",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "Hybrid rules→cache→LLM decision engine",
+      "status": "GATED",
+      "priority": "P1",
+      "what_it_does": "Credential-gated LLM upgrade path with circuit breaker; default off (`USE_HYBRID_DECISION_ENGINE=1` to enable)",
+      "evidence": [
+        "`src/intake/decision.py:40`",
+        "`src/decision/hybrid_engine.py`"
+      ]
+    },
+    {
+      "id": "C05",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "Operator overrides + safety invariants",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Suppress/downgrade/acknowledge risk flags; document/visa/leakage flags can never be suppressed",
+      "evidence": [
+        "`src/decision/override_learning.py:54`"
+      ]
+    },
+    {
+      "id": "C06",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "Override learning + pattern mining",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Cross-trip override patterns (min strength 2) applied on every decision run",
+      "evidence": [
+        "`src/decision/override_learning.py:376`",
+        "`src/decision/pattern_matching.py`"
+      ]
+    },
+    {
+      "id": "C07",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "KDD override clustering",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Feature extraction, clustering, persisted override clusters + jobs API",
+      "evidence": [
+        "`src/analytics/kdd/`",
+        "`spine_api/routers/kdd.py`"
+      ]
+    },
+    {
+      "id": "C08",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "Commercial lifecycle scoring",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Ghost/window-shopper/churn/repeat risk feeding commercial action choice incl. Ghost Concierge recovery",
+      "evidence": [
+        "`src/intake/decision.py:1484`",
+        "`src/intake/lifecycle.py`"
+      ]
+    },
+    {
+      "id": "C09",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "Group consensus + Pareto resolution",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Multi-traveler preference harmonization with outlier protection",
+      "evidence": [
+        "`src/decision/group_consensus.py`",
+        "`src/decision/group_pareto_engine.py`"
+      ]
+    },
+    {
+      "id": "C10",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "Counterfactual recovery",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Three-way replanning alternatives on disruption or rejection",
+      "evidence": [
+        "`src/decision/counterfactual_recovery.py`",
+        "`spine_api/services/counterfactual_engine.py`"
+      ]
+    },
+    {
+      "id": "C11",
+      "domain": "C) Decision Engine & Suitability",
+      "feature": "Journey dependency graph + ripple",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "BFS dependency traversals, co-terminal transfer ripple propagation",
+      "evidence": [
+        "`src/schemas/journey_graph.py`",
+        "`spine_api/routers/journey_graph.py`"
+      ]
+    },
+    {
+      "id": "D01",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Proposal compiler",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Epistemic parse, inventory costing, margin optimization, JDG feasibility, shareable proposal",
+      "evidence": [
+        "`src/orchestration/proposal_compiler.py:64`"
+      ]
+    },
+    {
+      "id": "D02",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Session strategy + sanitized bundles",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Internal vs traveler-safe prompt bundles with forbidden-concept leakage scan",
+      "evidence": [
+        "`src/intake/strategy.py:972`",
+        "`src/intake/safety.py`"
+      ]
+    },
+    {
+      "id": "D03",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Tiered readiness computation",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Proposal/booking readiness tiers; never auto-advances stage",
+      "evidence": [
+        "`src/intake/readiness.py:276`"
+      ]
+    },
+    {
+      "id": "D04",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Public proposal portal",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Tokenized view, option recalculation, e-signature acceptance with audit",
+      "evidence": [
+        "`spine_api/routers/public_proposals.py`",
+        "`frontend/src/app/p/[token]/page.tsx`"
+      ]
+    },
+    {
+      "id": "D05",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Trust scorecard",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "\"Why this option\" explainability, internal + public proposal routes",
+      "evidence": [
+        "`spine_api/routers/trust_scorecard.py`"
+      ]
+    },
+    {
+      "id": "D06",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Booking-data collection links",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Single-use SHA-256 hashed tokens; traveler submits data + documents; operator accept/reject",
+      "evidence": [
+        "`spine_api/services/collection_service.py`",
+        "`spine_api/routers/public_collection.py`"
+      ]
+    },
+    {
+      "id": "D07",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Document upload validation + scanner",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Magic-byte validation, streaming size cap, scanner abstraction, extraction attempts",
+      "evidence": [
+        "`spine_api/services/document_service.py`",
+        "`spine_api/routers/trip_documents.py`"
+      ]
+    },
+    {
+      "id": "D08",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Luxury itinerary PDF / e-voucher compiler",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Vector HTML/CSS document generation for itineraries and vouchers",
+      "evidence": [
+        "`src/compilers/itinerary_export_engine.py`",
+        "`Docs/architecture/ADVANCED_INTERNAL_SYSTEMS_AND_COMPILERS_2026-09-03.md`"
+      ]
+    },
+    {
+      "id": "D09",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Pre-departure briefing cadence",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Automated D-7 / D-3 / D-1 traveler briefings",
+      "evidence": [
+        "`src/briefing/pre_departure_cadence.py`"
+      ]
+    },
+    {
+      "id": "D10",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Persona Council panel",
+      "status": "SIMULATED",
+      "priority": "P1",
+      "what_it_does": "Labeled demo council surface; not live inference",
+      "evidence": [
+        "`frontend/src/app/(agency)/workbench/PersonaCouncilPanel.tsx`",
+        "`Docs/exploration/AGENTIC_DEEP_AUDIT_SYNTHESIS_2026-08-31.md`"
+      ]
+    },
+    {
+      "id": "D11",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Frontier dashboard panel",
+      "status": "SIMULATED",
+      "priority": "P1",
+      "what_it_does": "Labeled demo frontier surface; orchestrator heuristics exist behind tier gates",
+      "evidence": [
+        "`frontend/src/components/workspace/FrontierDashboard.tsx`",
+        "`src/intake/frontier_orchestrator.py:45`"
+      ]
+    },
+    {
+      "id": "D12",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Time-travel scrubber + invertible history",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Undo/redo snapshot stack over trip state with UI scrubber",
+      "evidence": [
+        "`src/state/mutation_history_stack.py`",
+        "`frontend/src/app/(agency)/workbench/TimeTravelScrubber.tsx`"
+      ]
+    },
+    {
+      "id": "D13",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Traveler companion PWA",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Trip card, alerts, documents, emergency radio for travelers",
+      "evidence": [
+        "`frontend/src/app/(traveler)/companion/`"
+      ]
+    },
+    {
+      "id": "D14",
+      "domain": "D) Proposal, Content & Traveler Surfaces",
+      "feature": "Group share + deposit collection",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Tokenized passenger share pages, multi-payer split deposits",
+      "evidence": [
+        "`frontend/src/app/g/[token]/page.tsx`",
+        "`spine_api/routers/group_booking.py`"
+      ]
+    },
+    {
+      "id": "E01",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Risk-adjusted fee engine",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Severity-scaled service fee multipliers",
+      "evidence": [
+        "`src/fees/calculation.py`"
+      ]
+    },
+    {
+      "id": "E02",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Settlement engine",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "FX slippage buffers, VCC issuance, staged deposit/balance schedules, sub-agent splits",
+      "evidence": [
+        "`src/fees/settlement_engine.py`"
+      ]
+    },
+    {
+      "id": "E03",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Payment queue + tracking",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Bucketed payment queue (overdue/due-soon) and per-trip payment records",
+      "evidence": [
+        "`spine_api/services/payment_queue_service.py`",
+        "`spine_api/server.py:2577`"
+      ]
+    },
+    {
+      "id": "E04",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Commission reconciliation + split settlement",
+      "status": "PARTIAL",
+      "priority": "P1",
+      "what_it_does": "Supplier commission and IC split ledgers — in-memory store, not yet durable",
+      "evidence": [
+        "`spine_api/services/commission_reconciliation.py`",
+        "`spine_api/routers/commission.py`"
+      ]
+    },
+    {
+      "id": "E05",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Sub-agent IC payout portal",
+      "status": "PARTIAL",
+      "priority": "P2",
+      "what_it_does": "Advisor commission ledger + payout authorization — in-memory store",
+      "evidence": [
+        "`spine_api/routers/subagent_payouts.py`"
+      ]
+    },
+    {
+      "id": "E06",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "FX risk sentinel",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Dynamic FX exposure and hedging recommendations",
+      "evidence": [
+        "`spine_api/routers/fx_sentinel.py`"
+      ]
+    },
+    {
+      "id": "E07",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "India tax compliance (TCS 206C(1G) / GST)",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Statutory computation with sourcing cost ledger",
+      "evidence": [
+        "`src/fees/tax_compliance.py`",
+        "`spine_api/routers/tax_compliance.py`"
+      ]
+    },
+    {
+      "id": "E08",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Accounting export bridge",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Tally XML / QuickBooks JSON invoice export",
+      "evidence": [
+        "`src/accounting/export_bridge.py`"
+      ]
+    },
+    {
+      "id": "E09",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Negotiation suite (bargaining, fee-waiver, margin optimizer)",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Game-theoretic counter rounds, penalty-waiver requests, dynamic take-rate with 10 percent floor",
+      "evidence": [
+        "`src/negotiation/bargaining_engine.py:90`",
+        "`src/negotiation/margin_optimizer.py`"
+      ]
+    },
+    {
+      "id": "E10",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Price-lock sentinel",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "72h quote-window rate-drop audits, optimistic-locked re-lock with per-trip idempotency keys",
+      "evidence": [
+        "`spine_api/routers/price_lock.py:196`"
+      ]
+    },
+    {
+      "id": "E11",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Supplier contracts",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "DMC / preferred-supplier / wholesale contract registry backing price-lock",
+      "evidence": [
+        "`spine_api/routers/supplier.py`"
+      ]
+    },
+    {
+      "id": "E12",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Yield arbitrage",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Bedbank/GDS/CRS rate-parity scans, multi-property benchmark, re-ticketing",
+      "evidence": [
+        "`src/yield_arbitrage/rate_parity_engine.py`"
+      ]
+    },
+    {
+      "id": "E13",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Sourcing hierarchy resolver",
+      "status": "STUB",
+      "priority": "P2",
+      "what_it_does": "internal→preferred→network→open_market ladder defined; resolver intentionally not implemented (defaults to open_market)",
+      "evidence": [
+        "`src/intake/sourcing_path.py`"
+      ]
+    },
+    {
+      "id": "E14",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Payment mandates ledger",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Consent-digested payment mandate tracking",
+      "evidence": [
+        "`src/financial/payment_mandates.py`"
+      ]
+    },
+    {
+      "id": "E15",
+      "domain": "E) Pricing, Money & Suppliers",
+      "feature": "Charter aviation + empty-leg arbitrage",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Fleet selection, runway feasibility, FBO/eAPIS filings, empty-leg matching",
+      "evidence": [
+        "`src/charter/aviation_engine.py`",
+        "`spine_api/routers/charter_aviation.py`"
+      ]
+    },
+    {
+      "id": "F01",
+      "domain": "F) Distribution & GDS",
+      "feature": "Sabre sandbox adapter",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "BFM pricing + PNR create/delete against sandbox credentials",
+      "evidence": [
+        "`src/distribution/sabre_sandbox_adapter.py`",
+        "`spine_api/routers/gds_sandbox.py`"
+      ]
+    },
+    {
+      "id": "F02",
+      "domain": "F) Distribution & GDS",
+      "feature": "Amadeus sandbox adapter",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Offer search + order flows against sandbox credentials",
+      "evidence": [
+        "`src/distribution/amadeus_sandbox_adapter.py`"
+      ]
+    },
+    {
+      "id": "F03",
+      "domain": "F) Distribution & GDS",
+      "feature": "NDC 21.3 Offer/Order client",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "IATA NDC 21.3 offer/order lifecycle",
+      "evidence": [
+        "`src/distribution/ndc_client.py`"
+      ]
+    },
+    {
+      "id": "F04",
+      "domain": "F) Distribution & GDS",
+      "feature": "EDIFACT parser + ATPCO fare rules",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Cryptic-command PNR parsing, Cat 16/35 rules, ADM prevention",
+      "evidence": [
+        "`src/distribution/edifact_parser.py`",
+        "`src/distribution/fare_rules_engine.py`"
+      ]
+    },
+    {
+      "id": "F05",
+      "domain": "F) Distribution & GDS",
+      "feature": "Distribution API surface",
+      "status": "PARTIAL",
+      "priority": "P2",
+      "what_it_does": "GDS/NDC endpoints return PREVIEW_ONLY metadata; no live carrier connection",
+      "evidence": [
+        "`spine_api/routers/distribution.py:85`"
+      ]
+    },
+    {
+      "id": "F06",
+      "domain": "F) Distribution & GDS",
+      "feature": "GDS sandbox workbench panel",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Dual-GDS query UI for operators",
+      "evidence": [
+        "`frontend/src/app/(agency)/workbench/GDSSandboxPanel.tsx`"
+      ]
+    },
+    {
+      "id": "G01",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Ghost concierge",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Flight telemetry to connection-risk detection with proactive recovery actions",
+      "evidence": [
+        "`spine_api/services/ghost_concierge.py`"
+      ]
+    },
+    {
+      "id": "G02",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Disruption radar + rebooking copilot",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Flight disruption monitoring with re-booking options",
+      "evidence": [
+        "`spine_api/routers/disruption_radar.py`"
+      ]
+    },
+    {
+      "id": "G03",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "IROPS auto-healer",
+      "status": "PARTIAL",
+      "priority": "P1",
+      "what_it_does": "Deterministic recovery-plan preview only; strips operative actions until carrier connectivity lands",
+      "evidence": [
+        "`spine_api/routers/irops_healer.py:2`"
+      ]
+    },
+    {
+      "id": "G04",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Crisis ops + evacuation engine",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Multi-modal evacuation routing bypassing compromised airspace",
+      "evidence": [
+        "`spine_api/routers/crisis_ops.py`",
+        "`src/crisis/evacuation_engine.py`"
+      ]
+    },
+    {
+      "id": "G05",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Safety beacons + STEP manifests + ground dispatch",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "I-am-safe check-ins, consular manifests, driver dispatch with SOS messaging",
+      "evidence": [
+        "`src/crisis/safety_beacon.py`",
+        "`src/crisis/ground_dispatch.py`"
+      ]
+    },
+    {
+      "id": "G06",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Duty-of-care radar",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Crisis declaration, traveler beacons, escalation posture",
+      "evidence": [
+        "`src/orchestration/duty_of_care_radar.py`"
+      ]
+    },
+    {
+      "id": "G07",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Passenger rights claims",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "EU261 / US-DOT claim generation",
+      "evidence": [
+        "`src/decision/passenger_rights.py`",
+        "`spine_api/routers/passenger_rights.py`"
+      ]
+    },
+    {
+      "id": "G08",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Insurance CFAR sentinel",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "CFAR window and coverage deadline monitoring",
+      "evidence": [
+        "`spine_api/routers/insurance.py`"
+      ]
+    },
+    {
+      "id": "G09",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Loyalty programs",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Traveler loyalty account tracking",
+      "evidence": [
+        "`spine_api/routers/loyalty.py`"
+      ]
+    },
+    {
+      "id": "G10",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Post-trip feedback / NPS",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Post-trip feedback extraction and NPS capture",
+      "evidence": [
+        "`spine_api/routers/feedback.py`",
+        "`src/intake/extractors.py` post_trip mode"
+      ]
+    },
+    {
+      "id": "G11",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Perishable deadline sentinel",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Visa deadlines, ticketing TTLs, CFAR windows, deposit milestones, penalty cutoffs",
+      "evidence": [
+        "`src/monitoring/perishable_sentinel.py`"
+      ]
+    },
+    {
+      "id": "G12",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Corporate policy engine",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Seniority-tier class rules, per-diem caps, approval chains, duty-of-care grading",
+      "evidence": [
+        "`src/corporate/policy_engine.py`",
+        "`spine_api/routers/corporate_policy.py`"
+      ]
+    },
+    {
+      "id": "G13",
+      "domain": "G) In-Trip, Crisis & Duty of Care",
+      "feature": "Stress benchmark",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "500+ concurrent IROPS scenario simulation with P99 and VCC throughput",
+      "evidence": [
+        "`src/benchmarking/stress_simulator.py`",
+        "`spine_api/routers/stress_benchmark.py`"
+      ]
+    },
+    {
+      "id": "H01",
+      "domain": "H) Memory & CRM",
+      "feature": "5-tier traveler memory graph",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Working/episodic/semantic/procedural/preference tiers with authority weights, decay, supersession",
+      "evidence": [
+        "`src/memory/models.py`",
+        "`src/memory/store.py`"
+      ]
+    },
+    {
+      "id": "H02",
+      "domain": "H) Memory & CRM",
+      "feature": "Customer memory API",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Agent memory and CRM graph endpoints",
+      "evidence": [
+        "`spine_api/routers/customer_memory.py`"
+      ]
+    },
+    {
+      "id": "H03",
+      "domain": "H) Memory & CRM",
+      "feature": "Repeat-traveler relationship graph",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Cross-trip companion/family entities with recall card UI",
+      "evidence": [
+        "`src/memory/` semantic tier",
+        "`frontend/src/app/(agency)/workbench/RepeatTravelerRecallCard.tsx`"
+      ]
+    },
+    {
+      "id": "H04",
+      "domain": "H) Memory & CRM",
+      "feature": "GDPR Article 17 erasure",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Cascading erasure with signed forget certificates",
+      "evidence": [
+        "`src/memory/gdpr_engine.py`"
+      ]
+    },
+    {
+      "id": "H05",
+      "domain": "H) Memory & CRM",
+      "feature": "PII guard + retention enforcer + jurisdiction policy",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Regex+SpaCy PII detection, retention SLAs, GDPR/DPDP/US rules",
+      "evidence": [
+        "`src/security/privacy_guard.py`",
+        "`src/security/retention_enforcer.py`"
+      ]
+    },
+    {
+      "id": "H06",
+      "domain": "H) Memory & CRM",
+      "feature": "Memory architect panel",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Operator view of memory graph state",
+      "evidence": [
+        "`frontend/src/app/(agency)/workbench/MemoryArchitectPanel.tsx`"
+      ]
+    },
+    {
+      "id": "I01",
+      "domain": "I) Agent Runtime & Ops Reliability",
+      "feature": "Supervised product-agent fleet",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "FrontDoor triage, SalesActivation SLA follow-ups, FollowUp, QualityEscalation, DocumentReadiness, DestinationIntelligence, WeatherPivot",
+      "evidence": [
+        "`src/agents/runtime.py`"
+      ]
+    },
+    {
+      "id": "I02",
+      "domain": "I) Agent Runtime & Ops Reliability",
+      "feature": "Durable work leases + fencing tokens",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "SQL-backed leases with monotonic fencing vs split-brain/double-booking",
+      "evidence": [
+        "`spine_api/services/agent_work_coordinator.py`",
+        "`src/orchestration/agent_lease.py`"
+      ]
+    },
+    {
+      "id": "I03",
+      "domain": "I) Agent Runtime & Ops Reliability",
+      "feature": "Requeue worker + recovery agent + supervisor",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "5s requeue loop with SKIP LOCKED leasing, 300s stuck-trip recovery, 300s agent ticks",
+      "evidence": [
+        "`spine_api/services/agent_requeue_jobs.py`",
+        "`src/agents/recovery_agent.py`"
+      ]
+    },
+    {
+      "id": "I04",
+      "domain": "I) Agent Runtime & Ops Reliability",
+      "feature": "DLQ inspector + step checkpoints",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Poison-job inspection with redaction, counterfactual patch and replay, checkpoint/resume",
+      "evidence": [
+        "`src/agents/dlq_inspector.py`",
+        "`src/agents/checkpoints.py`"
+      ]
+    },
+    {
+      "id": "I05",
+      "domain": "I) Agent Runtime & Ops Reliability",
+      "feature": "Zombie reaper + integrity watchdog",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Child-process reaping (5s) and dashboard-sum drift detection (600s)",
+      "evidence": [
+        "`spine_api/server.py:1806`",
+        "`spine_api/watchdog.py`"
+      ]
+    },
+    {
+      "id": "I06",
+      "domain": "I) Agent Runtime & Ops Reliability",
+      "feature": "Resilience engine",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Circuit breakers, degradation hierarchy, failure quarantine, compensation",
+      "evidence": [
+        "`src/services/resilience_engine.py`",
+        "`spine_api/routers/resilience.py`"
+      ]
+    },
+    {
+      "id": "I07",
+      "domain": "I) Agent Runtime & Ops Reliability",
+      "feature": "Invertible state mutation stack",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Undo/redo snapshots over trip state",
+      "evidence": [
+        "`src/state/mutation_history_stack.py`",
+        "`spine_api/routers/trip_history.py`"
+      ]
+    },
+    {
+      "id": "I08",
+      "domain": "I) Agent Runtime & Ops Reliability",
+      "feature": "Agent intelligence graph builder",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "Living navigation graph over docs/code for agent orientation",
+      "evidence": [
+        "`tools/build_agent_intelligence_graph.py`",
+        "`Docs/context/AGENT_INTELLIGENCE_GRAPH.md`"
+      ]
+    },
+    {
+      "id": "J01",
+      "domain": "J) Evals & CI Quality Gates",
+      "feature": "D6 audit scaffold + gate snapshot",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Fixture runner, precision/recall metrics, gating categories block CI on failure",
+      "evidence": [
+        "`src/evals/audit/`",
+        "`scripts/verify_d6_gate_snapshot.py`"
+      ]
+    },
+    {
+      "id": "J02",
+      "domain": "J) Evals & CI Quality Gates",
+      "feature": "30-scenario NB02 decision corpus",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Scenarios graded live through run_gap_and_decision in CI",
+      "evidence": [
+        "`src/evals/rules/scenarios.py`",
+        "`data/fixtures/test_scenarios.py`"
+      ]
+    },
+    {
+      "id": "J03",
+      "domain": "J) Evals & CI Quality Gates",
+      "feature": "Extraction / pipeline / activity eval lanes",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Per-field P/R/F1 and activity gates; budget + colloquial currently gating",
+      "evidence": [
+        "`src/evals/rules/`",
+        "`src/evals/audit/manifest.yaml`"
+      ]
+    },
+    {
+      "id": "J04",
+      "domain": "J) Evals & CI Quality Gates",
+      "feature": "LLM-as-judge scoring",
+      "status": "GATED",
+      "priority": "P2",
+      "what_it_does": "Per-agent weighted rubrics via LLM or heuristics; shadow status",
+      "evidence": [
+        "`src/evals/judge/scorer.py`"
+      ]
+    },
+    {
+      "id": "J05",
+      "domain": "J) Evals & CI Quality Gates",
+      "feature": "Autoresearch + closed-loop learning",
+      "status": "GATED",
+      "priority": "P2",
+      "what_it_does": "Mutate-score-accept prompt/config search and fix-candidate shadow testing; experimental",
+      "evidence": [
+        "`src/evals/autoresearch_loop.py`",
+        "`src/agents/closed_loop_learning.py`"
+      ]
+    },
+    {
+      "id": "J06",
+      "domain": "J) Evals & CI Quality Gates",
+      "feature": "Findings store v2 + lifecycle CI gate",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Append-only findings JSONL, minted IDs, stale-finding validation",
+      "evidence": [
+        "`scripts/findings.py`",
+        "`Docs/review/FINDINGS_STORE.jsonl`"
+      ]
+    },
+    {
+      "id": "J07",
+      "domain": "J) Evals & CI Quality Gates",
+      "feature": "Route/OpenAPI snapshot parity + journey smoke in CI",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Server route fixtures regenerated via snapshot script; journey smoke + findings gate in CI",
+      "evidence": [
+        "`scripts/snapshot_server_routes.py`",
+        "`.github/workflows/ci.yml`"
+      ]
+    },
+    {
+      "id": "K01",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Workbench cockpit",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Intake/packet/safety/council/frontier tabs, run progress, pipeline flow, repair banner",
+      "evidence": [
+        "`frontend/src/app/(agency)/workbench/PageClient.tsx`"
+      ]
+    },
+    {
+      "id": "K02",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Lead inbox",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Priority/SLA projection, filters, assign/snooze, bulk ops",
+      "evidence": [
+        "`spine_api/routers/inbox.py`",
+        "`frontend/src/app/(agency)/inbox/`"
+      ]
+    },
+    {
+      "id": "K03",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Trip workspace stage tabs",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Intake/Details/Options/Quote Assessment/Output/Risk/Ops/Timeline with stage gating",
+      "evidence": [
+        "`frontend/src/app/(agency)/trips/[tripId]/layout.tsx`",
+        "`frontend/src/lib/planning-status.ts`"
+      ]
+    },
+    {
+      "id": "K04",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Quotes / Bookings / Payments / Reviews surfaces",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Commercial review, fulfillment records, payment tracking, approval queue",
+      "evidence": [
+        "`frontend/src/app/(agency)/quotes/`",
+        "`frontend/src/app/(agency)/bookings/`",
+        "`frontend/src/app/(agency)/payments/`",
+        "`frontend/src/app/(agency)/reviews/`"
+      ]
+    },
+    {
+      "id": "K05",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Insights + system dashboard",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Ops/performance/revenue analytics and system health views",
+      "evidence": [
+        "`frontend/src/app/(agency)/insights/`",
+        "`spine_api/routers/analytics.py`",
+        "`spine_api/routers/system_dashboard.py`"
+      ]
+    },
+    {
+      "id": "K06",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Settings sections",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Agency profile, AI/autonomy, team, integrations, security, seasonal",
+      "evidence": [
+        "`frontend/src/app/(agency)/settings/`"
+      ]
+    },
+    {
+      "id": "K07",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Auth surfaces",
+      "status": "LIVE",
+      "priority": "P0",
+      "what_it_does": "Login, signup, join-by-code, password reset",
+      "evidence": [
+        "`frontend/src/app/(auth)/`"
+      ]
+    },
+    {
+      "id": "K08",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Marketing landing v2–v5 + pricing",
+      "status": "LIVE",
+      "priority": "P1",
+      "what_it_does": "Landing iterations with v5 current; pricing page",
+      "evidence": [
+        "`frontend/src/app/v5/`",
+        "`frontend/src/app/pricing/`"
+      ]
+    },
+    {
+      "id": "K09",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Fast capture (intake/fast)",
+      "status": "PARTIAL",
+      "priority": "P1",
+      "what_it_does": "Social/DM paste capture direct to backend; flagged fabricated-success in PER-0100",
+      "evidence": [
+        "`frontend/src/app/intake/fast/`",
+        "`Docs/review/LAUNCH_READINESS_AUDIT_PER0100_2026-09-02.md`"
+      ]
+    },
+    {
+      "id": "K10",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Corporate offsites landing",
+      "status": "PARTIAL",
+      "priority": "P2",
+      "what_it_does": "Offsites funnel page; flagged fabricated-success in PER-0100",
+      "evidence": [
+        "`frontend/src/app/corporate/offsites/`"
+      ]
+    },
+    {
+      "id": "K11",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Scenario lab + dev scenarios",
+      "status": "GATED",
+      "priority": "P2",
+      "what_it_does": "Scenario replay/testing UI behind NEXT_PUBLIC_ENABLE_SCENARIO_LAB",
+      "evidence": [
+        "`frontend/src/app/(agency)/workbench/ScenarioLab.tsx`"
+      ]
+    },
+    {
+      "id": "K12",
+      "domain": "K) Operator & Public Web Surfaces",
+      "feature": "Knowledge base / seasons / suppliers surfaces",
+      "status": "LIVE",
+      "priority": "P2",
+      "what_it_does": "KB, seasonal campaigns, supplier roster management",
+      "evidence": [
+        "`frontend/src/app/(agency)/knowledge-base/`",
+        "`frontend/src/app/(agency)/seasons/`",
+        "`frontend/src/app/(agency)/suppliers/`"
+      ]
+    }
+  ]
+}

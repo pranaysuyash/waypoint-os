@@ -6,7 +6,7 @@ export interface TeamMember {
   name: string;
   conversionRate: number;
   avgResponseTime: number | null;
-  customerSatisfaction: number;
+  customerSatisfaction: number | null;
   workloadScore: number;
   userId?: string;
 }
@@ -188,7 +188,7 @@ export function TeamPerformanceChart({
                 onClick={() =>
                   handleMetricClick(agent.userId, {
                     type: 'csat',
-                    value: agent.customerSatisfaction,
+                    value: agent.customerSatisfaction ?? 0,
                     label: 'Customer Satisfaction',
                   })
                 }
@@ -199,17 +199,17 @@ export function TeamPerformanceChart({
                   <span className='text-xs text-[#8b949e]'>CSAT</span>
                   <span
                     className='text-sm font-semibold'
-                    style={{ color: getCsatColor(agent.customerSatisfaction) }}
+                    style={{ color: agent.customerSatisfaction != null ? getCsatColor(agent.customerSatisfaction) : '#8b949e' }}
                   >
-                    {agent.customerSatisfaction}/5
+                    {agent.customerSatisfaction != null ? `${agent.customerSatisfaction}/5` : 'N/A'}
                   </span>
                 </div>
                 <div className='h-2 bg-[#0f1115] rounded-full overflow-hidden'>
                   <div
                     className='h-full rounded-full transition-all'
                     style={{
-                      width: `${(agent.customerSatisfaction / 5) * 100}%`,
-                      background: getCsatColor(agent.customerSatisfaction),
+                      width: agent.customerSatisfaction != null ? `${(agent.customerSatisfaction / 5) * 100}%` : '0%',
+                      background: agent.customerSatisfaction != null ? getCsatColor(agent.customerSatisfaction) : '#8b949e',
                     }}
                   />
                 </div>

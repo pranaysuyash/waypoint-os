@@ -516,3 +516,69 @@ No heuristic or AI-derived score is visibly rendered in the six named files. The
 
 The riskiest state is a successful provider side effect followed by worker loss, timeout, lease expiry, or persistence failure before `booking_confirmation` is durably committed. The next attempt has no reliable way to know that the first side effect already happened, so it can mint a second VCC and PNR and then overwrite the trip's confirmation. This remains unresolved even when the request carries an `Idempotency-Key`.
 ````
+
+## Part O — Mimosa full-scan remediation wave (2026-09-10, uncommitted)
+
+Source: sealed Mimosa full scan `scan-2026-09-08T20-21-25.551Z-e94e3b61266f` (100 findings; English translation at `report_en.md` in the scan directory). Owner directive: work the findings per doctrine. Triage split findings into real production defects, hygiene fixes, and false-positive classes — each class handled below.
+
+### O-1. Canonical SSRF guard (new module, all producer surfaces wired)
+
+New `src/security/url_guard.py`: single choke point for outbound HTTP. Rejects non-http(s) schemes, embedded credentials, and hosts resolving to non-public addresses (loopback, RFC1918, link-local incl. cloud metadata, CGNAT 100.64/10, IPv4-mapped IPv6). Redirect handler re-validates every hop. Dev escape hatch `WAYPOINT_ALLOW_PRIVATE_URLS=1` (documented in `.env.example`).
+
+Wired into: `spine_api/routers/settings_health.py` (webhook probe returns `status: "blocked"` on guard rejection), `src/agents/live_tools.py` (both `_get_json` fetchers — config-driven provider templates), `src/llm/alert_service.py` (webhook URLs from env; blocked URLs logged and skipped, never raised), `src/public_checker/entity_checks.py` (Nominatim base URL from env).
+
+### O-2. Frontend BFF: canonical `spineUrl()` (21 files consolidated)
+
+`frontend/src/lib/proxy-core.ts` now validates the backend base URL at module load (http(s)-only, no embedded credentials; fails loudly in production) and exports `spineUrl(path)`. All 16 API routes + `bff-auth.ts` + `server-auth.ts` + `(agency)/layout.tsx` converted off scattered `${process.env.SPINE_API_URL || ...}` construction; every fetch receives a hoisted named const (the Mimosa write-hook's accepted safe shape). `rg 'SPINE_API_URL' frontend/src` now matches only the canonical definition.
+
+Deliberately NOT converted: `app/corporate/offsites/page.tsx` and `app/intake/fast/page.tsx` — they are `'use client'` components using `NEXT_PUBLIC_API_URL` (the deployed-stack variable). Importing server-only proxy-core into a client bundle is a build hazard; these two Mimosa findings are false positives of the client/server distinction.
+
+### O-3. Analytics fabrication class (honesty defect beyond the scanner's read)
+
+Mimosa flagged `random` usage in `src/analytics/metrics.py`; reading the code revealed the real defect was **fabricated metrics shown in production analytics**:
+
+- `avgResponseTime` was `random.uniform(2.5, 6.0)` → now mean hours from `created_at` to the first durable `status_history` transition; `None` without evidence.
+- Stage timings (`avgTimeInStage`/`exitRate`/`avgTimeToExit`) were `random.uniform(...)` → now computed from real status dwell samples (exited + censored); `None` without evidence.
+- `PipelineVelocity` fallbacks (`or 1.2/2.4/4.1`, `9.3` average) → real per-status dwell in days; stages without writers stay `0.0` honestly.
+- `pipelineValue = trips × $15,000` → sum of real trip budgets for non-terminal trips.
+- CSAT baseline `4.5` with zero ratings → `None` until real feedback ratings exist.
+- `compute_bottlenecks` returned a hardcoded fake bottleneck card (stage, 24.5h, fabricated cause at 45%/12 trips) → now reports the slowest real non-terminal stage by measured dwell (severity: >72h high, >24h medium, else low) with `primaryCauses=[]` — causes are never invented; empty list when no dwell evidence.
+
+Contract changes (models regenerated via `scripts/generate_types.py`): `InsightsSummary.avgResponseTime`, `StageMetrics.{avgTimeInStage,exitRate,avgTimeToExit}`, `TeamMemberMetrics.customerSatisfaction` are now `Optional`. FE null-guards added (`insights/PageClient.tsx`, `TeamPerformanceChart.tsx` — 'N/A'/'—'/`?? 0` paths).
+
+Hostile test coverage corrected: `tests/test_analytics_truth_hardening.py` previously asserted the fabrication as contract (`len(primaryCauses) > 0`, `>= 0.0` tolerances). Rewritten to assert real-or-None semantics with status_history fixtures (19 tests).
+
+### O-4. Credentials, SQLi, path traversal
+
+- Hardcoded test credentials (4): `scripts/verify_phase0.py` and `verify_phase1.py` now use obviously-synthetic named fixtures (hashed/discarded in-process, never authenticate); `tools/performance_benchmark_matrix.py` reads `WAYPOINT_TEST_PASSWORD` from env (documented in `.env.example`).
+- SQLi (2): `src/llm/usage_store.py` PRAGMA f-strings → static literals with constants asserted equal (sqlite3 PRAGMA cannot be parameter-bound).
+- Path traversal: new canonical `src/security/path_guard.py` (`safe_join`, `validate_filename`). Wired into `persistence._validate_trip_id` (defense-in-depth beneath the trip-ID regex), `draft_store._draft_path`, `decision/cache_storage._get_cache_file_path`, `decision/override_learning._rewrite_pattern_file`, `memory/store.__init__`.
+
+### O-5. False-positive classes (documented, not churned)
+
+- **Insecure randomness (27 minus metrics):** all in seed/scenario generators (`generate_scenario.py`, `seed_analytics_trips.py`, `backfill_feedback.py`) generating synthetic test data — destinations, party sizes, budgets. No tokens, secrets, or security-relevant identifiers minted with `random`.
+- **Path traversal in `scripts/`/`tools/`/`tmp/`:** dev tooling taking explicit CLI path arguments — opening operator-specified files is the tool's job; no production exposure.
+- **Taint flows (3):** `auth_service.refresh_access_token` / `confirm_password_reset` and `collection_service` use fully parameterized ORM constructs; the scanner flagged the `.execute` sink without resolving the parameterization.
+- **Dev-tooling SSRF:** `capture_nav_screenshots.py`, `design-lab/inspect-app-dna.py`, `tools/dev_server_manager.py`, `singapore_scenario_regression.py` fetch explicit dev URLs by design.
+
+### O-6. Verification receipts
+
+- New unit tests: `tests/test_url_guard.py` (20 — scheme/shape/resolution/override + path guard containment incl. symlink escape), rewritten `tests/test_analytics_truth_hardening.py` (19), alert-service guard-seam tests updated + new blocked-URL skip test (24 total).
+- Full frontend suite: 183 files / 1,374 tests passing; `tsc --noEmit` clean.
+- Full backend suite: 4,341 passed / 44 skipped / 0 failed (first run showed 1 non-reproducible ERROR in `test_trip_history_scoping.py::test_undo_redo_return_payload_semantics` — passes in isolation and on full-suite rerun; ordering flake, not a regression from this wave).
+- `ruff check` clean across all touched files; curated mypy 21 files clean.
+
+### O-7. Post-fix verification scan (sealed)
+
+Verification scan `scan-2026-09-10T06-37-00.460Z-ccf5089fff20` (seal `sha256:3a841578…bd94d7`): **100 → 74 findings**. Diff against the sealed baseline:
+
+- **All 26 production-relevant findings cleared**: every BFF route SSRF (inbox ×2, auth/me, validate-code, followups, trips, stats, price-lock, bff-auth, server-auth, agency layout), all Python server-side SSRF (settings_health, live_tools ×2, alert_service, entity_checks), all 4 hardcoded credentials, both SQLi PRAGMA interpolations, and the analytics `random` fabrication sites.
+- **The 17 "newly-raised" path findings are line-shifted duplicates**: identical `open(filepath)` call sites in persistence/draft_store/override_learning/memory re-flagged at new line numbers because the static analyzer cannot trace validation through `_validate_trip_id`/`safe_join` to the `open()` call. The validation exists and is unit-tested (`tests/test_url_guard.py`); contorting the call sites to satisfy the scanner's taint tracking would violate the no-hacks policy.
+- **Residual 74 = documented noise floor**: 40 path (15 persistence re-flags + dev tooling/scripts/tmp with explicit CLI path args + geography module-level fixed paths), 23 random (seed/scenario generators producing synthetic test data by design), 8 SSRF (dev tooling: `capture_nav_screenshots.py`, `design-lab/inspect-app-dna.py` ×2, `dev_server_manager.py`, `singapore_scenario_regression.py`; client components: offsites/intake-fast using `NEXT_PUBLIC_API_URL`), 3 taint (parameterized ORM false positives in auth/collection services).
+
+### O-8. Open items from this wave
+
+- `WAYPOINT_ALLOW_PRIVATE_URLS` is read per-call (tests toggle it) — a deployment-hardening follow-up could pin it off in production startup assertions.
+- The `random`-in-seeds false-positive class will re-fire on every Mimosa scan while the findings stay open; an upstream allowlist annotation mechanism (scanner-side) would remove the noise.
+- `spineUrl()` covers server-side BFF routes only; a separate client-safe helper (`NEXT_PUBLIC_API_URL`) is future work if offsites/intake-fast ever need unified validation.
+

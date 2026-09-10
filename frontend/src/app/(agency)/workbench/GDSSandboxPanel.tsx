@@ -88,7 +88,7 @@ export default function GDSSandboxPanel() {
         body: JSON.stringify({
           provider,
           offer_id: offerId,
-          traveler_name: 'Alex Morgan',
+          traveler_name: 'Sample Traveler',
         }),
       });
       if (res.ok) {

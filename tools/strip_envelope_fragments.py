@@ -90,6 +90,15 @@ def fix(path: Path) -> tuple[str, int]:
     return "fixed", removed
 
 
+def _display(path: Path) -> str:
+    """Repo-relative display path; absolute when the file lives in another
+    repo (the tool is also used cross-repo for sibling-repo sweeps)."""
+    try:
+        return str(path.relative_to(REPO))
+    except ValueError:
+        return str(path)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dry-run", action="store_true", help="report only, no writes")
@@ -121,7 +130,7 @@ def main() -> int:
         stats[status] = stats.get(status, 0) + 1
         if status == "fixable":
             if args.dry_run:
-                print(f"WOULD FIX: {path.relative_to(REPO)}")
+                print(f"WOULD FIX: {_display(path)}")
             else:
                 result, removed = fix(path)
                 if result == "review":  # reclassified on exact-match fail
@@ -129,10 +138,10 @@ def main() -> int:
                     stats[result] = stats.get(result, 0) + 1
                     stats["fixable"] = stats["fixable"] - 1
                     continue
-                print(f"FIXED: {path.relative_to(REPO)} ({removed} bytes removed)")
+                print(f"FIXED: {_display(path)} ({removed} bytes removed)")
         elif status == "review":
             review_paths.append(path)
-            print(f"REVIEW: {path.relative_to(REPO)}")
+            print(f"REVIEW: {_display(path)}")
 
     print(f"\nSummary: {dict(sorted(stats.items()))}")
     if review_paths:

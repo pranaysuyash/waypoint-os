@@ -271,9 +271,16 @@ def _safe_filename(name: str) -> str:
 
 
 def _validate_trip_id(trip_id: str) -> str:
-    """Validate trip IDs used in file-backed paths to prevent path traversal."""
-    value = str(trip_id or "").strip()
-    if not value or not _SAFE_TRIP_ID_RE.fullmatch(value):
+    """Validate trip IDs used in file-backed paths to prevent path traversal.
+
+    Delegates filename containment to the canonical path guard
+    (``src.security.path_guard``), then applies the stricter trip-ID format
+    regex on top.
+    """
+    from src.security.path_guard import validate_filename
+
+    value = validate_filename(str(trip_id or "").strip(), label="trip_id")
+    if not _SAFE_TRIP_ID_RE.fullmatch(value):
         raise ValueError("invalid trip_id format")
     return value
 
@@ -2407,67 +2414,226 @@ class AuditStore:
 
     @staticmethod
     def log_event(event_type: str, user_id: str, details: dict) -> dict:
-        """Log an audit event — append-only, crash-safe per event with SHA-256 chain hashing."""
-        with AuditStore._lock:
-            AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
-            # The lock must cover migration, predecessor read, hash creation,
-            # and append. Locking only the append permits chain forks under
-            # concurrent threads/processes.
-            with file_lock(AuditStore.AUDIT_FILE):
-                AuditStore._migrate_if_needed()
+        """Log an audit event to the canonical SQL store (A-04 3.4).
 
-                events = AuditStore._read_events()
-                last_event = events[-1] if events else None
-                previous_hash = (
-                    last_event.get("current_hash", "GENESIS_BLOCK_HASH")
-                    if last_event
-                    else "GENESIS_BLOCK_HASH"
-                )
+        Single-store consolidation: `audit_logs` (PostgreSQL) is the only
+        write target — the file chain is a frozen legacy archive read by
+        `get_events` for pre-consolidation history. The write carries the
+        RULE_015 hash chain (mirrors `core.audit.AuditContext.log`).
 
-                event_id = f"evt_{uuid4().hex[:12]}"
-                timestamp = datetime.now(timezone.utc).isoformat()
-                hash_payload = (
-                    f"{event_id}:{event_type}:{user_id}:{previous_hash}:{timestamp}:"
-                    f"{json.dumps(details, sort_keys=True)}"
-                )
-                current_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+        Loop-aware: safe from sync callers, async route handlers, and CLI
+        contexts (dispatches through the process-wide sync/async bridge,
+        which serializes writes so chain reads cannot race).
 
-                event = {
-                    "id": event_id,
-                    "event_type": event_type,
-                    "type": event_type,
-                    "user_id": user_id,
-                    "timestamp": timestamp,
-                    "details": details,
+        Degrades to the legacy file chain only when SQL is unreachable —
+        audit capture must never be lost to a database outage.
+        """
+        event_id = f"evt_{uuid4().hex[:12]}"
+        timestamp = datetime.now(timezone.utc).isoformat()
+        event = {
+            "id": event_id,
+            "event_type": event_type,
+            "type": event_type,
+            "user_id": user_id,
+            "timestamp": timestamp,
+            "details": details,
+        }
+        try:
+            persisted = _run_async_blocking(AuditStore._persist_sql_event(event))
+            if isinstance(persisted, dict):
+                event = persisted
+            AuditStore._write_count += 1
+        except Exception as exc:
+            # SQL unreachable: fall back to the legacy file chain so the
+            # event is captured (degraded, not lost).
+            logger.warning(
+                "AuditStore: SQL audit write failed (%s) — falling back to legacy file chain", exc
+            )
+            with AuditStore._lock:
+                AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+                with file_lock(AuditStore.AUDIT_FILE):
+                    AuditStore._migrate_if_needed()
+                    events = AuditStore._read_events()
+                    last_event = events[-1] if events else None
+                    previous_hash = (
+                        last_event.get("current_hash", "GENESIS_BLOCK_HASH")
+                        if last_event
+                        else "GENESIS_BLOCK_HASH"
+                    )
+                    hash_payload = (
+                        f"{event_id}:{event_type}:{user_id}:{previous_hash}:{timestamp}:"
+                        f"{json.dumps(details, sort_keys=True)}"
+                    )
+                    event["previous_hash"] = previous_hash
+                    event["current_hash"] = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+                    AuditStore._append_event(event, lock_held=True)
+                AuditStore._write_count += 1
+        return event
+
+    @staticmethod
+    async def _persist_sql_event(event: dict) -> None:
+        """Insert one audit event into `audit_logs` with RULE_015 chaining.
+
+        Hash payload mirrors `core.audit.AuditContext.log` so both writers
+        extend one verifiable chain.
+        """
+        from spine_api.core.audit import GENESIS_BLOCK_HASH
+
+        async_session = tripstore_session_maker()
+        try:
+            prev_rows = list(
+                (
+                    await async_session.execute(
+                        sa_text(
+                            "SELECT current_hash FROM audit_logs "
+                            "ORDER BY seq DESC NULLS LAST, created_at DESC, id DESC LIMIT 1"
+                        )
+                    )
+                ).scalars()
+            )
+            previous_hash = prev_rows[0] if prev_rows and prev_rows[0] else GENESIS_BLOCK_HASH
+
+            created_at = datetime.now(timezone.utc)
+            entry_id = event["id"]
+            action = str(event["event_type"])[:50]
+            agency_id = str(event.get("user_id") or "system")
+            changes = event.get("details") or {}
+            hash_payload = (
+                f"{entry_id}:{agency_id}:{event.get('user_id') or ''}:{action}:"
+                f"{previous_hash}:{created_at.isoformat()}:{json.dumps(changes, sort_keys=True)}"
+            )
+            current_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+            await async_session.execute(
+                sa_text(
+                    "INSERT INTO audit_logs "
+                    "(id, agency_id, user_id, action, resource_type, resource_id, "
+                    " changes, ip_address, user_agent, created_at, previous_hash, current_hash) "
+                    "VALUES (:id, :agency_id, :user_id, :action, :resource_type, :resource_id, "
+                    " CAST(:changes AS jsonb), :ip_address, :user_agent, :created_at, :previous_hash, :current_hash)"
+                ),
+                {
+                    "id": entry_id,
+                    "agency_id": agency_id,
+                    "user_id": event.get("user_id") or agency_id,
+                    "action": action,
+                    "resource_type": None,
+                    "resource_id": (changes or {}).get("trip_id"),
+                    "changes": json.dumps(changes or {}),
+                    "ip_address": None,
+                    "user_agent": None,
+                    "created_at": created_at,
                     "previous_hash": previous_hash,
                     "current_hash": current_hash,
-                }
-                AuditStore._append_event(event, lock_held=True)
-            AuditStore._write_count += 1
-            AuditStore._trim_if_needed()
-            return event
+                },
+            )
+            await async_session.commit()
+        except Exception:
+            await async_session.rollback()
+            raise
+        finally:
+            await async_session.close()
+        # Return the fully-hashed event so callers keep the historical
+        # contract (log_event's dict carries previous_hash/current_hash).
+        event["agency_id"] = agency_id
+        event["created_at"] = created_at.isoformat()
+        event["previous_hash"] = previous_hash
+        event["current_hash"] = current_hash
+        return event
+
+    @staticmethod
+    def _merged_events(limit: int) -> list:
+        """Legacy file events (frozen archive) + canonical SQL events, chronological."""
+        file_events = AuditStore._read_events()
+        sql_events: list = []
+        try:
+            sql_events = _run_async_blocking(AuditStore._get_sql_events(limit))
+        except Exception as exc:
+            logger.warning("AuditStore: SQL audit read failed — serving legacy file events only: %s", exc)
+        merged = sorted(
+            file_events + sql_events,
+            key=lambda e: e.get("timestamp") or e.get("created_at") or "",
+        )
+        return merged[-limit:]
+
+    @staticmethod
+    async def _get_sql_events(limit: int) -> list:
+        async_session = tripstore_session_maker()
+        try:
+            rows = list(
+                (
+                    await async_session.execute(
+                        sa_text(
+                            "SELECT id, agency_id, user_id, action, changes, ip_address, "
+                            "user_agent, created_at, previous_hash, current_hash, seq "
+                            "FROM audit_logs ORDER BY seq ASC NULLS FIRST, created_at ASC, id ASC"
+                        )
+                    )
+                ).mappings()
+            )
+        finally:
+            await async_session.close()
+        # Recent N in chronological order
+        rows = rows[-limit:] if limit and len(rows) > limit else rows
+        return [
+            {
+                "id": r["id"],
+                "event_type": r["action"],
+                "type": r["action"],
+                "user_id": r["user_id"] or r["agency_id"],
+                "agency_id": r["agency_id"],
+                "timestamp": r["created_at"].isoformat() if r["created_at"] else "",
+                "details": r["changes"] or {},
+                "previous_hash": r["previous_hash"],
+                "current_hash": r["current_hash"],
+            }
+            for r in rows
+        ]
 
     @staticmethod
     def get_events(limit: int = 100) -> list:
-        """Get recent events (up to `limit`)."""
-        events = AuditStore._read_events()
-        return events[-limit:]
+        """Get recent events (up to `limit`) — legacy archive + canonical SQL store."""
+        return AuditStore._merged_events(limit)
 
     @staticmethod
     def verify_chain(events: Optional[list[dict]] = None) -> dict[str, Any]:
         """Verify predecessor links and hashes for an audit-event sequence.
 
-        When ``events`` is omitted, the JSONL file is read while holding the
-        cross-process lock so a concurrent append cannot produce a partial
-        verification snapshot. The method never mutates the ledger.
+        Formula-aware: SQL-store events (carrying ``agency_id``) chain with the
+        ``AuditContext`` payload formula; legacy file events chain with the
+        historical file formula. When ``events`` is omitted, BOTH chains are
+        verified: the canonical SQL store and the frozen legacy file archive.
+        The method never mutates either ledger.
         """
         if events is None:
             AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
             with file_lock(AuditStore.AUDIT_FILE):
-                events = AuditStore._read_events()
+                file_events = AuditStore._read_events()
+            sql_errors: list[str] = []
+            sql_count = 0
+            sql_head = "GENESIS_BLOCK_HASH"
+            try:
+                sql_valid, sql_count, sql_head, sql_errors = _run_async_blocking(
+                    AuditStore._verify_sql_chain()
+                )
+                if not sql_valid:
+                    sql_errors = [f"[sql] {e}" for e in sql_errors]
+            except Exception as exc:
+                sql_errors = [f"[sql] verification unavailable: {exc}"]
+            file_result = AuditStore.verify_chain(file_events)
+            errors = file_result["errors"] + sql_errors
+            return {
+                "valid": not errors,
+                "event_count": file_result["event_count"] + sql_count,
+                "head_hash": sql_head if sql_count else file_result["head_hash"],
+                "errors": errors,
+            }
 
         errors: list[str] = []
-        previous_hash = "GENESIS_BLOCK_HASH"
+        # Anchor: full-chain verification (events=None callers) starts at
+        # GENESIS; an explicit event list is a SUBCHAIN — its first event's
+        # recorded predecessor is the trusted anchor (it links to whatever
+        # preceded it in the store).
+        previous_hash = events[0].get("previous_hash") or "GENESIS_BLOCK_HASH"
         for index, event in enumerate(events):
             event_id = event.get("id")
             event_type = event.get("event_type", event.get("type"))
@@ -2483,10 +2649,19 @@ class AuditStore:
                     f"expected {previous_hash}, got {recorded_previous}"
                 )
 
-            hash_payload = (
-                f"{event_id}:{event_type}:{user_id}:{recorded_previous}:"
-                f"{timestamp}:{json.dumps(details, sort_keys=True)}"
-            )
+            if "agency_id" in event:
+                # SQL-store formula (mirrors core.audit.AuditContext.log)
+                created_at = event.get("created_at") or timestamp
+                hash_payload = (
+                    f"{event_id}:{event['agency_id']}:{user_id or ''}:{event_type}:"
+                    f"{recorded_previous}:{created_at}:{json.dumps(details, sort_keys=True)}"
+                )
+            else:
+                # Legacy file-chain formula
+                hash_payload = (
+                    f"{event_id}:{event_type}:{user_id}:{recorded_previous}:"
+                    f"{timestamp}:{json.dumps(details, sort_keys=True)}"
+                )
             expected_current = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
             if recorded_current != expected_current:
                 errors.append(
@@ -2504,12 +2679,56 @@ class AuditStore:
         }
 
     @staticmethod
+    async def _verify_sql_chain() -> tuple[bool, int, str, list[str]]:
+        """Verify the SQL audit chain with the AuditContext payload formula."""
+        from spine_api.core.audit import GENESIS_BLOCK_HASH
+
+        async_session = tripstore_session_maker()
+        try:
+            rows = list(
+                (
+                    await async_session.execute(
+                        sa_text(
+                            "SELECT id, agency_id, user_id, action, changes, created_at, "
+                            "previous_hash, current_hash FROM audit_logs "
+                            "ORDER BY seq ASC NULLS FIRST, created_at ASC, id ASC"
+                        )
+                    )
+                ).mappings()
+            )
+        finally:
+            await async_session.close()
+
+        errors: list[str] = []
+        previous_hash = GENESIS_BLOCK_HASH
+        for index, row in enumerate(rows):
+            if row["previous_hash"] != previous_hash:
+                errors.append(
+                    f"event {index} ({row['id']}) predecessor mismatch: "
+                    f"expected {previous_hash}, got {row['previous_hash']}"
+                )
+            created_at = row["created_at"].isoformat() if row["created_at"] else ""
+            changes = row["changes"] if isinstance(row["changes"], dict) else (json.loads(row["changes"]) if row["changes"] else {})
+            hash_payload = (
+                f"{row['id']}:{row['agency_id']}:{row['user_id'] or ''}:{row['action']}:"
+                f"{row['previous_hash']}:{created_at}:{json.dumps(changes, sort_keys=True)}"
+            )
+            expected_current = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+            if row["current_hash"] != expected_current:
+                errors.append(
+                    f"event {index} ({row['id']}) hash mismatch: "
+                    f"expected {expected_current}, got {row['current_hash']}"
+                )
+            previous_hash = row["current_hash"]
+        return (not errors, len(rows), previous_hash, errors)
+
+    @staticmethod
     def get_events_for_trip(trip_id: str) -> list:
         """Get events for a specific trip. Chronological order."""
-        events = AuditStore._read_events()
+        events = AuditStore._merged_events(limit=10000)
         return [
             e for e in events
-            if e.get("details", {}).get("trip_id") == trip_id
+            if (e.get("details") or {}).get("trip_id") == trip_id
         ]
 
     @staticmethod

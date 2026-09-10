@@ -141,7 +141,43 @@ async def _seed_agency_if_missing() -> int:
             }
         )
     )
+    _seed_marketplace_profile(agency_id)
     return 0
+
+
+def _seed_marketplace_profile(agency_id: str) -> None:
+    """GO punch-list item 5 (WOBS Part 3.7): seed the agency's marketplace
+    profile so an onboarded receiver can appear in matched-choice results.
+    Idempotent; failure is non-fatal (matched-choice degrades to waitlist)."""
+    try:
+        from spine_api.services.agency_marketplace import (
+            AgencyMarketplaceProfile,
+            AgencyMarketplaceStore,
+        )
+
+        existing = [
+            p
+            for p in AgencyMarketplaceStore.list_profiles()
+            if p.agency_id == agency_id
+        ]
+        if existing:
+            print(json.dumps({"ok": True, "marketplace_profile": "exists", "agency_id": agency_id}))
+            return
+        AgencyMarketplaceStore.upsert_profile(
+            AgencyMarketplaceProfile(
+                agency_id=agency_id,
+                display_name="Waypoint Trips Desk",
+                places_covered=[],
+                customer_types=[],
+                services=[],
+                languages=["English"],
+                response_sla_hours=48,
+                blurb="Placeholder profile — edit places/customer-types/services when the receiver agreement is signed.",
+            )
+        )
+        print(json.dumps({"ok": True, "marketplace_profile": "seeded", "agency_id": agency_id}))
+    except Exception as exc:  # non-fatal: matched-choice degrades to waitlist
+        print(json.dumps({"ok": False, "marketplace_profile": "failed", "error": str(exc)}))
 
 
 def main() -> int:

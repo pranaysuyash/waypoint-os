@@ -33,7 +33,10 @@ class InsightsSummary(BaseModel):
     totalInquiries: int = Field(default=0)
     convertedToBooked: int = Field(default=0)
     conversionRate: float = Field(default=0.0)
-    avgResponseTime: float = Field(default=0.0)
+    avgResponseTime: Optional[float] = Field(
+        default=None,
+        description="Hours from creation to first status transition; None until timing data exists",
+    )
     pipelineValue: float = Field(default=0.0)
     pipelineVelocity: PipelineVelocity = Field(default_factory=PipelineVelocity)
 
@@ -42,9 +45,15 @@ class StageMetrics(BaseModel):
     stageId: str
     stageName: str
     tripCount: int
-    avgTimeInStage: float
-    exitRate: float
-    avgTimeToExit: float
+    avgTimeInStage: Optional[float] = Field(
+        default=None, description="Mean dwell hours from status_history; None without evidence"
+    )
+    exitRate: Optional[float] = Field(
+        default=None, description="Percent of entrants that exited the stage; None without evidence"
+    )
+    avgTimeToExit: Optional[float] = Field(
+        default=None, description="Mean dwell hours among exited trips; None without evidence"
+    )
 
 
 class TeamMemberMetrics(BaseModel):
@@ -55,7 +64,9 @@ class TeamMemberMetrics(BaseModel):
     completedTrips: int
     conversionRate: float
     avgResponseTime: Optional[float] = Field(default=None, description="Not yet computed from real data")
-    customerSatisfaction: float
+    customerSatisfaction: Optional[float] = Field(
+        default=None, description="Mean of real feedback ratings; None until ratings exist"
+    )
     currentWorkload: Literal["under", "optimal", "over", "critical"]
     workloadScore: float
 

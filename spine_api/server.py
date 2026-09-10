@@ -1323,6 +1323,11 @@ async def lifespan(app: FastAPI):
         if _requeue_worker_service is not None:
             _requeue_worker_service.start()
         _zombie_reaper_start()
+        try:
+            from spine_api.services.public_checker_access import start_retention_sweep_loop
+            start_retention_sweep_loop()
+        except Exception:
+            logger.exception("checker retention sweep loop failed to start")
 
     # Wire per-agency usage guards so each agency gets its own rate limits,
     # budget caps, and alert destinations.
@@ -1371,6 +1376,11 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if not os.environ.get("RUNNING_TESTS"):
         _zombie_reaper_stop()
+        try:
+            from spine_api.services.public_checker_access import stop_retention_sweep_loop
+            stop_retention_sweep_loop()
+        except Exception:
+            pass
         if _requeue_worker_service is not None:
             _requeue_worker_service.stop()
         _agent_supervisor.stop()

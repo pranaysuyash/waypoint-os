@@ -182,6 +182,30 @@ EOF
     echo "pre-commit: possible duplicate/versioned route file added. Extend the canonical route instead." >&2
     exit 1
   fi
+
+  # 6) Envelope-fragment gate: block staged Markdown that newly introduces AI
+  #    tool-call envelope markers (`</content>` / `<parameter name="filePath">`).
+  #    Defect class: 2026-04-23 batch-write incident (108 docs in
+  #    travel_agency_agent; same markers in 4 sibling repos), record:
+  #    travel_agency_agent Docs/travel_agency_process_issue_review_2026-09-10.md.
+  #    Introduction-only semantics: files already carrying markers in HEAD can
+  #    be edited or repaired without blocking; markdown code fences and inline
+  #    code spans that legitimately quote the markers are exempt. Probe-first
+  #    like checks 3/4: absent python3/checker is SKIPPED, not failed. The
+  #    checker is independently tested (workspace_memory tests/
+  #    test_check_staged_envelope.py, 10 falsification cases).
+  _staged_md="$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -E '\.md$' || true)"
+  if [ -n "$_staged_md" ]; then
+    _envelope_checker="/Users/pranay/Projects/workspace_memory/scripts/check_staged_envelope.py"
+    if command -v python3 >/dev/null 2>&1 && [ -f "$_envelope_checker" ]; then
+      if ! python3 "$_envelope_checker"; then
+        echo "pre-commit: envelope-fragment gate blocked this commit. See the checker output above." >&2
+        exit 1
+      fi
+    else
+      echo "pre-commit: envelope checker unavailable; skipping envelope-fragment gate." >&2
+    fi
+  fi
 # <<< PROJECTS_AGENT_PRECOMMIT_END <<<
 
 exit 0

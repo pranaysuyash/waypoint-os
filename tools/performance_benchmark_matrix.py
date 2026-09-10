@@ -35,7 +35,9 @@ RUNTIME_SMOKE = REPO_ROOT / "tools" / "runtime_smoke_matrix.py"
 
 DEFAULT_BASE_URL = "http://127.0.0.1:3000"
 DEFAULT_EMAIL = "newuser@test.com"
-DEFAULT_PASSWORD = "testpass123"
+# Test-agency credential; override with WAYPOINT_TEST_PASSWORD for non-default
+# local environments instead of editing this file.
+DEFAULT_PASSWORD = os.environ.get("WAYPOINT_TEST_PASSWORD", "")
 
 DEFAULT_ENDPOINTS = (
     "/api/auth/me",

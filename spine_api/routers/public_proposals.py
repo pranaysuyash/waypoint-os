@@ -5,6 +5,14 @@ Allows travelers to:
 - View interactive proposals via secure public tokens (/p/{token})
 - Select options (room upgrades, excursions, transfer options) with real-time recalculation
 - Accept and e-sign proposals with audit logging
+
+Token revocation durability boundary (PT-05 / N-07): revocations are durable
+on ONE host — a JSON file behind an OS lock, reloaded before every
+verification (see the PT-05 block below). That is restart-safe and
+multi-worker-safe on a single machine. Multi-replica deployments must point
+PROPOSAL_REVOCATIONS_PATH at a shared volume mounted identically in every
+replica, or promote revocations to PostgreSQL (planned follow-up). See
+.env.example for the deployment guidance.
 """
 
 from __future__ import annotations

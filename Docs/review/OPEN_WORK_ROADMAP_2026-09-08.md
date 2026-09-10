@@ -61,14 +61,22 @@ From the owner's ChatGPT systems-training session (evidence-mapped register + ra
 
 | # | Class | Item | Status |
 |---|---|---|---|
-| TS-01 | IMPLEMENT | Hard itinerary-feasibility validators in `src/decision/constraint_engine.py`: ground-access transfer buffer (hard w/ explicit requirement, advisory w/ heuristic default), uncovered-first-night (>12h gap), hotel occupancy vs party (first `CAPACITY_ROOMING` producer), ticket-pax mismatch, product age rules — all abstain without declared data | **DONE** — `tests/test_constraint_engine_feasibility.py` (17 tests); compiler/router callers extended (`party_size` param) |
+| TS-01 | IMPLEMENT | Hard itinerary-feasibility validators in `src/decision/constraint_engine.py`: ground-access transfer buffer (hard w/ explicit requirement, advisory w/ heuristic default), uncovered-first-night (interval coverage + return-leg/transit discriminators), long-layover soft advisory (owner-confirmed), hotel occupancy vs party (first `CAPACITY_ROOMING` producer), ticket-pax mismatch, product age rules — all abstain without declared data | **DONE** — `tests/test_constraint_engine_feasibility.py` (35 tests) |
 | TS-02 | EXPLORE (park w/ B6/B7) | Quote-freshness / recheck-before-execution contract | **DOC DONE** — `Docs/exploration/TS02_QUOTE_FRESHNESS_CONTRACT_2026-09-09.md`; recheck engine deferred to live-provider lane |
 | TS-03 | EXPLORE → IMPLEMENT | Multi-modal intake completion (customer-path images/PDF via existing vision lane, voice ASR DECIDE, SSRF-gated URL) | **DOC DONE** — `Docs/exploration/TS03_MULTIMODAL_INTAKE_COMPLETION_2026-09-09.md` (S1–S5 plan; implement when marketplace funnel moves) |
 | TS-04 | IMPLEMENT | Per-field provenance actor vocabulary: operator/customer/system/tool/provider; commercial precedence provider>operator>tool>customer; client-claimed internal roles fold to operator | **DONE** — `tests/test_field_merge_actor_vocabulary.py` (16 tests incl. trust-boundary guard) |
 | TS-05 | EXPLORE (park) | Pipeline parallel orchestration / speculative execution design note | **DOC DONE (parked)** — `Docs/exploration/TS05_PARALLEL_ORCHESTRATION_DESIGN_NOTE_2026-09-09.md`; unpark trigger = live provider >2s latency |
 | TS-06 | EXPLORE | Candidate route-structure generation + incremental refinement (gap confirmed: plan-candidate is a single snapshot; `BRANCH_OPTIONS` has no producer) | **DOC DONE** — `Docs/exploration/TS06_CANDIDATE_ROUTE_STRUCTURES_2026-09-09.md`; implement post-TS-01 near marketplace proposals |
 
-Owner-learning (not agent work): TS-L1 tutor exercise on NEEDS_INFORMATION / BOOKING_IN_PROGRESS — the answer promotes into the dormant lifecycle-state contracts and feeds E-8; TS-L2 next tutoring module (events/queues/retries/idempotency) can use repo artifacts (`src/agents/idempotency.py`, leases/heartbeats, SQL idempotency backend) as worked examples.
+Owner-learning (not agent work): TS-L1 **CLOSED 2026-09-10** — tutor exercise answered (8/10); corrected four-question contracts for NEEDS_INFORMATION / BOOKING_IN_PROGRESS promoted as a dated addendum to `TRIP_LIFECYCLE_STATE_CONTRACTS_2026-09-02.md` (E-8 spec input); TS-L2 open (next tutoring module: queues/orchestrator/HTTP semantics — repo artifacts as worked examples).
+
+**Second-session register (2026-09-10; transcript `Docs/exploration/CHATGPT_SYSTEMS_TRAINING_TRANSCRIPT_2026-09-10_RAW.md`, register §6):** V-15..V-18 validated (idempotency marker/replay machinery, two-tier stage validation, retry/queue machinery all exist); new gaps:
+
+| # | Class | Item | Size | Note |
+|---|---|---|---|---|
+| TS-07 | EXPLORE | Operation-keyed field requiredness (`required_for` + `blocked_operation` — beyond the two-tier INTAKE_MINIMUM/QUOTE_READY model) | S-M | doubles as the E-D question-priority ranking input |
+| TS-08 | EXPLORE (feeds E-8) | Component-state aggregation (`BOOKED` / `BOOKING_EXCEPTION` trip verdict over journey-node commitment_status) + explicit `UNKNOWN` idempotency outcome (timeout ≠ failed; safety machinery exists, vocabulary absent — `idempotency.py:44-48`, `fulfillment.py:224-229`) | M | promotes dormant BOOKING_IN_PROGRESS; contracts-doc addendum 2026-09-10 is the spec |
+| TS-09 | EXPLORE (fold into B6/B7) | Operation retry-safety registry (`SAFE_RETRY / IDEMPOTENT_KEY_REQUIRED / MANUAL_ONLY` on tool/provider contracts; today free-text prose only, `runtime.py:182`) | S | enforcement lands with live providers |
 
 ## Wave C — DECIDE (owner-gated; research exists or probes ready)
 
@@ -123,3 +131,17 @@ Random-document audit of `Docs/personas_scenarios/AREA_DEEP_DIVE_VISA_IMMIGRATIO
 - **IMPLEMENT — DONE same session (all tests green, full suite 4,161/0):** VA-01 US-default removal on visa radar request, VA-02 honesty rebadge ("Real-Time"→heuristic scope), VA-03 `registry_match` fallback flag, VA-04 corpus seeds SC-960/SC-961 (+`tests/test_visa_scenario_seeds.py`), VA-05 vaccination category marked dormant, **VA-06 visa-extractor negation inversion (both directions wrong — found during execution)**, **VA-07 "No"-as-destination leak (GeoNames city collision)**.
 - **EXPLORE — DONE (docs):** VE-01 data-source landscape (`Docs/exploration/VISA_DATA_SOURCE_LANDSCAPE_2026-09-09.md`), VE-02 transit-visa design (blocked on VD-02), VE-04 scenario-graduation protocol (**owner decision requested**), VE-05 passport-PII flow audit.
 - **DECIDE — open:** VD-01 `visa_workflow.py` orphan (badge PREVIEW_ONLY recommended), VD-02 live visa data source, VD-03 invitation-letter workflow, VD-04 courier/embassy manifest. All deferred off the marketplace-pilot critical path per PER-0100 lens.
+
+---
+
+## Addendum (2026-09-10) — Mimosa full-scan remediation wave COMPLETE (closes the scanner gate above)
+
+Full receipts in the PER-0443 register **Part O**. The 2026-09-09 gate table's OPEN rows are now closed:
+
+- **inbox route SSRF (P1): CLOSED** — all 16 BFF API routes + `bff-auth.ts` + `server-auth.ts` + agency layout now build URLs through the canonical validated `spineUrl()` from `proxy-core.ts` (http(s)-only, no embedded credentials, fails loudly in production).
+- **offsites page SSRF (P2): FALSE POSITIVE, closed with reasoning** — `'use client'` component using `NEXT_PUBLIC_API_URL` (the deployed-stack variable); importing server-only proxy-core into a client bundle is a build hazard. A client-safe helper is registered as future work.
+- **design-lab SSRF: FALSE POSITIVE class** — dev-only tooling fetching explicit dev URLs.
+- **Credential-shaped test literals: already fixed** (prior session) and the 4 remaining script credentials fixed this wave (synthetic fixtures + `WAYPOINT_TEST_PASSWORD` env).
+- **Beyond the gate table:** canonical SSRF guard (`src/security/url_guard.py`) wired into settings_health/live_tools/alert_service/entity_checks; canonical path guard (`src/security/path_guard.py`) wired into persistence/draft/cache/override/memory stores; **analytics fabrication class eliminated** (random.uniform response times, invented stage timings, 4.5 CSAT baseline, trips×$15k pipeline value, hardcoded fake bottleneck — all now real-or-None with FE 'N/A' guards; hostile test coverage rewritten); usage_store PRAGMA interpolation removed.
+
+Verification: FE 183 files / 1,374 tests + tsc clean; BE full suite green (receipt in Part O); ruff + scoped mypy clean. Post-fix Mimosa verification scan pending — run before the next commit gate claim.

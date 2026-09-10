@@ -106,14 +106,12 @@
       "status": "shadow"
     },
     "gap_decision": {
-      "authoritative_for_public_surface": false,
+      "authoritative_for_public_surface": true,
       "blocks_ci": false,
       "meets_thresholds": true,
       "metrics": null,
-      "reasons": [
-        "category_status_shadow"
-      ],
-      "status": "shadow"
+      "reasons": [],
+      "status": "gating"
     },
     "logistics": {
       "authoritative_for_public_surface": false,
@@ -273,7 +271,7 @@
     "total_fixtures": 50
   },
   "fixture_root": "data/fixtures/audit",
-  "generated_at": "2026-09-06T19:09:04.910641+00:00",
+  "generated_at": "2026-09-10T13:54:42.957224+00:00",
   "manifest_version": 1,
   "pipeline_health": {
     "actual_source": "expected_fixture_mirror",
@@ -297,7 +295,7 @@
   "routing_health": {
     "alerts": [],
     "blocks_ci": false,
-    "checked_at": "2026-09-06T19:09:03.258529+00:00",
+    "checked_at": "2026-09-10T13:54:41.454133+00:00",
     "metrics_snapshot": {
       "correct_escalation_count": null,
       "cost_usd": {

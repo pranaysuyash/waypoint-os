@@ -56,10 +56,10 @@ class DecisionCacheStorage:
             return self._locks[decision_type]
 
     def _get_cache_file_path(self, decision_type: str) -> Path:
-        """Get the cache file path for a decision type."""
-        # Sanitize decision_type for filename
-        safe_name = decision_type.replace("/", "_").replace("\\", "_")
-        return self.cache_dir / f"{safe_name}.json"
+        """Get the cache file path for a decision type (canonical path guard)."""
+        from src.security.path_guard import safe_join
+
+        return safe_join(self.cache_dir, f"{decision_type}.json")
 
     def get(self, cache_key: str, decision_type: str) -> Optional[CachedDecision]:
         """

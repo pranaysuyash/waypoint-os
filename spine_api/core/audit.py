@@ -90,7 +90,7 @@ class AuditContext:
         prev_hashes: list[Optional[str]] = list(
             await self._db.scalars(
                 select(AuditLog.current_hash)
-                .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+                .order_by(AuditLog.seq.desc().nullslast(), AuditLog.created_at.desc(), AuditLog.id.desc())
                 .limit(1)
             )
         )

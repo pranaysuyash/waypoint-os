@@ -38,6 +38,19 @@ image = "ghcr.io/your-org/spine-api:latest"
   # runs older than 30 days, hard-capped per pass). Dev compose keeps this
   # OFF so local history is never pruned implicitly.
   WAYPOINT_RUN_LEDGER_GC = "1"
+  # WOBS GO punch-list (Part 3.7): public checker exposure envelope.
+  # Kill switch stays at "1" (surface ON); a live incident flips it to "0"
+  # via `fly env set PUBLIC_CHECKER_ENABLED=0 && fly deploy` — no redeploy
+  # of code required beyond config propagation.
+  PUBLIC_CHECKER_ENABLED = "1"
+  # D-03 retention (EX-02 defaults): trips + tokens expire at 90 days; the
+  # daily sweep thread prunes trips, tokens, consented upload artifacts, and
+  # rotated event segments. Set "0" only with a documented rationale.
+  PUBLIC_CHECKER_RETENTION_DAYS = "90"
+  PUBLIC_CHECKER_RETENTION_SWEEP_ENABLED = "1"
+  PUBLIC_CHECKER_RETENTION_SWEEP_HOURS = "24"
+  # Ghost Hotel Test (entity existence via OSM Nominatim, advisory-only).
+  ENTITY_CHECK_ENABLED = "1"
   # Set PUBLIC_CHECKER_AGENCY_ID, DATABASE_URL, REDIS_URL, JWT_SECRET,
   # PROPOSAL_SIGNING_KEY, and SPINE_API_CORS with `fly secrets set`.
 

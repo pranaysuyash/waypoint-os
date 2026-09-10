@@ -266,6 +266,10 @@ export interface CounterfactualReplanningResponse {
   }[];
   recommended_strategy: string;
   generated_at: string;
+  reality_tier?: string;
+  provider_connected?: boolean;
+  used_stored_graph?: boolean;
+  heuristic_scores?: boolean;
 }
 export interface CreateSeasonalCampaignRequest {
   name: string;
@@ -538,7 +542,10 @@ export interface InsightsSummary {
   totalInquiries?: number;
   convertedToBooked?: number;
   conversionRate?: number;
-  avgResponseTime?: number;
+  /**
+   * Hours from creation to first status transition; None until timing data exists
+   */
+  avgResponseTime?: number | null;
   pipelineValue?: number;
   pipelineVelocity?: PipelineVelocity;
 }
@@ -645,7 +652,7 @@ export interface OptimisticSyncRequest {
   actor_id?: string | null;
   client_timestamp?: string | null;
   /**
-   * 'operator' or 'customer' — drives merge precedence (commercial fields: operator>customer; preference fields: customer>operator). Defaults to operator.
+   * 'operator' or 'customer' — drives merge precedence (commercial fields: provider>operator>tool>customer; preference fields: customer>operator>machines). Defaults to operator. Internal writer roles (system/tool/provider) are not client-submittable and fold to operator on this surface.
    */
   actor_role?: string | null;
   /**
@@ -933,10 +940,16 @@ export interface RoutingHealthTriageBatchResponseItem {
 }
 /**
  * Returned immediately by POST /run — the run is queued, poll for status.
+ *
+ * PA-13 (additive): ``idempotent_replay`` is True only when the request
+ * carried an ``Idempotency-Key`` header whose key had already COMPLETED, and
+ * the original run_id/state are being replayed. Fresh runs always report
+ * False, so existing consumers are unaffected.
  */
 export interface RunAcceptedResponse {
   run_id: string;
   state?: string;
+  idempotent_replay?: boolean;
 }
 export interface RunMeta {
   stage?: string;
@@ -980,6 +993,9 @@ export interface RunStatusResponse {
   }[];
   hard_blockers?: string[];
   soft_blockers?: string[];
+  report_fingerprint?: string | null;
+  access_token?: string | null;
+  retention_days?: number | null;
   frontier_result?: FrontierOrchestrationResult | null;
 }
 export interface SeasonDispatchRequest {
@@ -1073,6 +1089,10 @@ export interface SpineRunRequest {
   } | null;
   itinerary_text?: string | null;
   retention_consent?: boolean;
+  /**
+   * Owner-declared plan origin for the source-keyed corpus (WOBS P3): 'self' | 'ai' | 'vendor'.
+   */
+  declared_plan_source?: string | null;
   stage?: string;
   operating_mode?: string;
   strict_leakage?: boolean;
@@ -1123,9 +1143,18 @@ export interface StageMetrics {
   stageId: string;
   stageName: string;
   tripCount: number;
-  avgTimeInStage: number;
-  exitRate: number;
-  avgTimeToExit: number;
+  /**
+   * Mean dwell hours from status_history; None without evidence
+   */
+  avgTimeInStage?: number | null;
+  /**
+   * Percent of entrants that exited the stage; None without evidence
+   */
+  exitRate?: number | null;
+  /**
+   * Mean dwell hours among exited trips; None without evidence
+   */
+  avgTimeToExit?: number | null;
 }
 export interface SuitabilityAcknowledgeRequest {
   acknowledged_flags: string[];
@@ -1200,7 +1229,10 @@ export interface TeamMemberMetrics {
    * Not yet computed from real data
    */
   avgResponseTime?: number | null;
-  customerSatisfaction: number;
+  /**
+   * Mean of real feedback ratings; None until ratings exist
+   */
+  customerSatisfaction?: number | null;
   currentWorkload: "under" | "optimal" | "over" | "critical";
   workloadScore: number;
 }

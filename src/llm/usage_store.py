@@ -179,8 +179,12 @@ class LLMUsageStore:
                 return
             conn = self._connect()
             try:
-                conn.execute(f"PRAGMA journal_mode={_WAL_MODE}")
-                conn.execute(f"PRAGMA busy_timeout={_BUSY_TIMEOUT_MS}")
+                # PRAGMA statements cannot be parameter-bound in sqlite3; these
+                # are static literals (no interpolation) keyed to the constants
+                # above, asserted so the two can never drift apart.
+                assert _WAL_MODE == "on" and _BUSY_TIMEOUT_MS == 5000
+                conn.execute("PRAGMA journal_mode=on")
+                conn.execute("PRAGMA busy_timeout=5000")
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS usage_events (
                         id           INTEGER PRIMARY KEY AUTOINCREMENT,

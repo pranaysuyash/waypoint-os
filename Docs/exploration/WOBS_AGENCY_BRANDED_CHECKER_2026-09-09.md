@@ -284,3 +284,15 @@ Adopted design:
 ### Part 3.7 — Disclaimer sign-off (2026-09-09)
 
 Owner approved the EX-05 disclaimer text **as-is** for both mounts (result view + upload footer). The "pending owner sign-off" label is closed; code comment + EX-05 doc record the approval. Honesty-sweep continues to assert the binding phrase ("not legal, visa, or booking advice") — future wording edits must update the sweep in the same change. Pre-exposure punch-list item 5 of 5 now closed; remaining pre-flip items are mechanical (retention automation wiring, robots/sitemap, host env) and gated only on the exposure-scope choice itself (hold / checker-only GO / GO + spend-test), which remains open.
+
+### Part 3.8 — Exposure punch-list executed (2026-09-09, "complete these")
+
+1. **Retention automation wired:** daily sweep thread (`start_retention_sweep_loop`, mirrors the zombie-reaper daemon pattern) started/stopped in the server lifecycle; env-gated (`PUBLIC_CHECKER_RETENTION_SWEEP_ENABLED`, default on when retention > 0; `PUBLIC_CHECKER_RETENTION_SWEEP_HOURS` default 24). Sweep pass = expired trips + token revocation + consented uploads + 180-day rotated-segment prune.
+2. **robots + sitemap:** `frontend/src/app/robots.ts` (allow all, disallow /api//trips//overview//inbox//settings; sitemap ref) and `sitemap.ts` (/ 1.0, /itinerary-checker 0.9 daily, /pricing, /signup, /login) — `NEXT_PUBLIC_SITE_URL` env-driven.
+3. **Host env config:** fly.toml `[env]` now carries PUBLIC_CHECKER_ENABLED=1, RETENTION_DAYS=90, SWEEP_ENABLED/HOURS, ENTITY_CHECK_ENABLED=1 — kill-switch procedure documented (`fly env set PUBLIC_CHECKER_ENABLED=0 && fly deploy`); secrets stay in `fly secrets set`.
+4. **Receiver onboarding path:** `scripts/bootstrap_public_checker_agency.py` now seeds an editable marketplace profile (idempotent, non-fatal) — any agreed agency becomes a matched-choice receiver in one command; profile fields edited before traffic.
+5. **Runbook:** `Docs/runbooks/PUBLIC_CHECKER_EXPOSURE_RUNBOOK.md` — prerequisites, secrets, ordered deploy steps, sealed-counter verification checks, kill switch/rollback, monitoring, known boundaries (SQL-side sweep = E-G).
+
+**Evidence:** 160-test backend sweep green post-wiring; ruff clean (2 F401/E402 fixed). Validation on first real deploy stamps the runbook §7.
+
+**GO state:** every mechanical item is done. The exposure flip itself remains a one-line owner decision per the runbook.

@@ -75,9 +75,9 @@ if str(spine_api_dir) not in sys.path:
 # We MUST do this at module level (not inside a fixture) because test files
 # import OverrideStore etc. at module import time, before any fixture runs.
 #
-# NOTE: forced assignment (not setdefault) because
-# spine_api/core/audit_bridge.py may have already imported
-# spine_api.persistence, creating a separate sys.modules entry.
+# NOTE: forced assignment (not setdefault) because other spine_api modules may
+# have already imported spine_api.persistence under a different sys.modules
+# key, creating a separate module entry.
 # We also set spine_api.persistence as a package attribute because
 # ``from spine_api import persistence`` uses the package's __dict__,
 # not sys.modules, when resolving the submodule.

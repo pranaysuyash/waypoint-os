@@ -76,11 +76,12 @@ categories:
   # test_scenarios.py) is graded LIVE against run_gap_and_decision via
   # _run_scenario_baseline() in snapshot.py — composite fixture accuracy
   # (decision_state + hard_blockers + contradictions) feeds min_accuracy.
-  # Currently SHADOW: the honest composite accuracy at introduction (0.57 —
-  # the corpus expectations were authored against earlier NB02 semantics)
-  # does not meet the 0.95 gating bar, so results are reported and
-  # hash-tracked without blocking CI. Flip to gating once the 13 drifting
-  # scenarios are triaged against the current engine.
+  # GATING since 2026-09-10: the N-01 triage (Docs/exploration/
+  # N01_SCENARIO_TRIAGE_2026-09-02.md) fixed the three decision-layer
+  # defects (high-priority contradiction escalation, budget OR-group,
+  # blank-value guard) and corrected 6 corpus fixtures; the lane now grades
+  # 30/30 (composite 1.0) against the live engine. blocks_ci when the
+  # composite falls below min_accuracy.
   gap_decision:
-    status: shadow
+    status: gating
     min_accuracy: 0.95

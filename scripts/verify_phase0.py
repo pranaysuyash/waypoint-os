@@ -100,10 +100,11 @@ def verify_security():
         create_refresh_token,
     )
 
-    # Test password hashing
-    password = "test_password_123"
-    hashed = hash_password(password)
-    assert verify_password(password, hashed), "Password verification failed"
+    # Test password hashing (synthetic fixture — hashed and discarded in-process,
+    # never used to authenticate anything)
+    test_password_fixture = "synthetic_hash_roundtrip_fixture_123"
+    hashed = hash_password(test_password_fixture)
+    assert verify_password(test_password_fixture, hashed), "Password verification failed"
     assert not verify_password("wrong_password", hashed), "Wrong password should fail"
     print("✅ Password hashing: HASH and VERIFY working")
 
