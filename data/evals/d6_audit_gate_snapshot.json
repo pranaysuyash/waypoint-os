@@ -271,7 +271,7 @@
     "total_fixtures": 50
   },
   "fixture_root": "data/fixtures/audit",
-  "generated_at": "2026-09-10T13:54:42.957224+00:00",
+  "generated_at": "2026-09-10T19:02:24.296173+00:00",
   "manifest_version": 1,
   "pipeline_health": {
     "actual_source": "expected_fixture_mirror",
@@ -295,7 +295,7 @@
   "routing_health": {
     "alerts": [],
     "blocks_ci": false,
-    "checked_at": "2026-09-10T13:54:41.454133+00:00",
+    "checked_at": "2026-09-10T19:02:23.350321+00:00",
     "metrics_snapshot": {
       "correct_escalation_count": null,
       "cost_usd": {

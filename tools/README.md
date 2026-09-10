@@ -9,25 +9,43 @@ Purpose:
 - Detect and repair AI tool-call envelope tails (`</content>` followed by
   `<parameter name="filePath">...`) accidentally written into Markdown
   documents by batch agent writes.
-- Strict tail-only auto-fix: repairs only when the entire post-`</content>`
-  remainder is exactly the single envelope line and each marker occurs once;
-  anything else is reported for manual review, never guessed.
+- Two auto-fix classes, both provably-safe shapes only:
+  1. **Strict EOF tail** — the entire post-`</content>` remainder is exactly
+     the single envelope line (leading indent tolerated) running to EOF,
+     each marker occurring exactly once.
+  2. **Guarded mid-document splice** — the welded tail sits between two
+     halves of the document (a later write appended content past it).
+     Repairable only when the parameter line's path is **self-referential**
+     (names this very file, modulo markdown escaping / stale directories) —
+     proving the bytes are write-path artifacts, not authored content. The
+     fragment is excised and the halves re-joined with exactly one blank
+     line (prevents setext-heading corruption when the following line is
+     `---`).
+- Anything else is reported for manual review, never guessed.
 - Markdown code spans/fences are exempt from detection (docs about this
   defect legitimately quote the markers).
+- `--check` and `--dry-run` NEVER write — only plain apply mode mutates
+  files (CI runs `--check` on every push and must not repair mid-gate).
 
 Usage:
 
 ```bash
-python3 tools/strip_envelope_fragments.py --dry-run   # report only
+python3 tools/strip_envelope_fragments.py --dry-run   # report only, never writes
 python3 tools/strip_envelope_fragments.py             # apply strict repair
-python3 tools/strip_envelope_fragments.py --check      # exit 1 if any marker remains (CI gate)
+python3 tools/strip_envelope_fragments.py --check      # detect only, never writes; exit 1 if dirty (CI gate)
 ```
 
 Notes:
 
 - Defect class introduced at scale in commit c7fa31d (2026-04-23): 108 files
   carried the envelope tail + an absolute local path at EOF.
+- Cross-repo sweep 2026-09-10/11: 42 sibling-repo files repaired with this
+  tool (EchoPanel 19, learning_for_kids 21, metaextract 1 mid-doc splice,
+  caption-art 1) — the sibling corpus revealed the indented and mid-document
+  shape variants the original matcher refused.
 - Wired into CI (`docs-quality` job runs `--check` on every push/PR).
+- Contract tests: tests/test_strip_envelope_fragments.py (10 cases pinning
+  write-mode gating, splice join quality, and the self-reference guard).
 - Incident record: Docs/travel_agency_process_issue_review_2026-09-10.md.
 
 ## Git Classification Ledger Validator: `check_worktree_classification.py`
