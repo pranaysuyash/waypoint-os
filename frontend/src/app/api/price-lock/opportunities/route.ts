@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
+import { spineUrl } from "@/lib/proxy-core";
 
 /**
  * BFF proxy for price-lock opportunities (I-2 freshness card): forwards the
@@ -8,7 +9,7 @@ import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
  */
 export async function GET(request: NextRequest) {
   try {
-    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/api/v1/price-lock/opportunities`;
+    const spineApiUrl = spineUrl("/api/v1/price-lock/opportunities");
     const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
 
     if (!response.ok) {

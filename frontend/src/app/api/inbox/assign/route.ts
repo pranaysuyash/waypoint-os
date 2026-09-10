@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
+import { spineUrl } from "@/lib/proxy-core";
 
 /**
  * POST /api/inbox/assign - proxy to backend /inbox/assign.
@@ -9,7 +10,7 @@ import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
  */
 export async function POST(request: NextRequest) {
   try {
-    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/inbox/assign`;
+    const spineApiUrl = spineUrl("/inbox/assign");
 
     const response = await fetch(
       spineApiUrl,

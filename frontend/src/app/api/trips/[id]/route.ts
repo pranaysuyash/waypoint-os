@@ -8,6 +8,7 @@ import {
   refreshAuthCookies,
 } from "@/lib/bff-auth";
 import { transformSpineTripToTrip } from "@/lib/bff-trip-adapters";
+import { spineUrl } from "@/lib/proxy-core";
 
 async function fetchWithAuthRetry(
   request: NextRequest,
@@ -42,9 +43,8 @@ export async function GET(
   try {
     const { id } = await params;
     
-    const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     // Forward request to spine_api
-    const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
+    const spineApiUrl = spineUrl(`/trips/${encodeURIComponent(id)}`);
 
     const { response, refreshedCookies } = await fetchWithAuthRetry(
       request,
@@ -128,8 +128,7 @@ export async function PATCH(
     );
 
     // Forward request to spine_api
-    const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
-    const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
+    const spineApiUrl = spineUrl(`/trips/${encodeURIComponent(id)}`);
 
     const { response, refreshedCookies } = await fetchWithAuthRetry(
       request,

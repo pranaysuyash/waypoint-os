@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
+import { spineUrl } from "@/lib/proxy-core";
 
 /**
  * Inbox API route - thin BFF pass-through.
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.toString();
-    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/inbox${query ? `?${query}` : ""}`;
+    const spineApiUrl = spineUrl(`/inbox${query ? `?${query}` : ""}`);
 
     const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
 
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       agent_id: params?.agentId || params?.assignTo || "system",
     };
 
-    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/inbox/bulk`;
+    const spineApiUrl = spineUrl("/inbox/bulk");
     const response = await fetch(spineApiUrl, {
       ...bffFetchOptions(request, "POST"),
       headers: {

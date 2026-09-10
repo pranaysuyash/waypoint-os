@@ -41,3 +41,10 @@ The feedback loop is now closed end-to-end: a post-trip response enters through 
 3. **Traveler self-service survey** (public-token response path) + **real dispatch** — the URL remains an honest placeholder; both are connectivity-class work.
 4. **Auto-trigger** (window-end derived per E-9) — the trigger remains manual.
 5. Implicit-signal class (re-booking patterns) — future rails needed; only correction + outcome classes exist today.
+
+## 6. Commit + verification record
+
+- **Commit `6b5d962`** (pushed to master) — includes this build plus parallel-stream files staged in the same tree (findings store, public-checker access/retention tests, envelope-fragment tool).
+- **Full suite: 4,274 passed / 44 skipped / 0 failed.** Loop tests 12/12; capability-batch on the honest contract; snapshots regenerated.
+- **Hook note (honest):** the Mimosa pre-commit scanner hit a buffer limit (`scanner_enobufs`) and the commit proceeded under its compatibility policy with the instruction to re-run a full audit and not claim project-wide safety. Accordingly: no project-wide security claim is made here. The compensating gates that DID run clean on this diff: full test suite, ruff, findings-register validator, doctrine attestation (19/19 diff-aware), and a secrets sweep of the staged tree (no `.env`/credentials; only tracked `.env.example` modified by the parallel stream). The Mimosa full audit should be re-run from the plugin environment at next opportunity.
+

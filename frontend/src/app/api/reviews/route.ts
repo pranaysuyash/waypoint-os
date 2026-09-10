@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import type { TripReview, ReviewStatus } from "@/types/governance";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
+import { spineUrl } from "@/lib/proxy-core";
 
 // ============================================================================
 // SPINE API RAW TYPES
@@ -77,9 +78,9 @@ function transformReviewToFrontendFormat(review: SpineReview): TripReview {
 
 export async function GET(request: NextRequest) {
   try {
-    const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
+    const reviewsUrl = spineUrl("/analytics/reviews");
     const response = await fetch(
-      `${SPINE_API_URL}/analytics/reviews`,
+      reviewsUrl,
       { ...bffFetchOptions(request, "GET"), cache: "no-store" }
     );
 

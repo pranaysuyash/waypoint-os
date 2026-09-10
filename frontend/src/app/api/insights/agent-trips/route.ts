@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
-
-const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
+import { spineUrl } from "@/lib/proxy-core";
 
 interface TripData {
   tripId: string;
@@ -30,8 +29,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const drillDownUrl = spineUrl(`/analytics/agent/${encodeURIComponent(agentId)}/drill-down?metric=${metric}`);
     const response = await fetch(
-      `${SPINE_API_URL}/analytics/agent/${encodeURIComponent(agentId)}/drill-down?metric=${metric}`,
+      drillDownUrl,
       { ...bffFetchOptions(request, "GET"), cache: "no-store" }
     );
 

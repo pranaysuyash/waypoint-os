@@ -5,6 +5,7 @@ import {
   isWorkspaceTrip,
 } from "@/lib/bff-trip-adapters";
 import { WORKSPACE_TRIP_STATUSES } from "@/lib/trip-domain";
+import { spineUrl } from "@/lib/proxy-core";
 import type { SpineRunRequest } from "@/types/generated/spine-api";
 
 // Kill switch for call capture feature
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     const query = upstreamParams.toString();
-    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/trips${query ? `?${query}` : ""}`;
+    const spineApiUrl = spineUrl(`/trips${query ? `?${query}` : ""}`);
 
     const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Forward to spine API /run endpoint (async pipeline execution)
-    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/run`;
+    const spineApiUrl = spineUrl("/run");
     const response = await fetch(
       spineApiUrl,
       { ...bffFetchOptions(req, "POST", undefined, { "Content-Type": "application/json" }, spinRequest), cache: "no-store" },

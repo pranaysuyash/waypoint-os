@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
+import { spineUrl } from "@/lib/proxy-core";
 
 export async function PATCH(
   request: NextRequest,
@@ -8,7 +9,7 @@ export async function PATCH(
   try {
     const { tripId } = await params;
     const body = await request.json();
-    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/followups/${tripId}/reschedule`;
+    const spineApiUrl = spineUrl(`/followups/${tripId}/reschedule`);
     const response = await fetch(
       spineApiUrl,
       {

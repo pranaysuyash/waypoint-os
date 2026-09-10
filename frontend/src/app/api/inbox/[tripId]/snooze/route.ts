@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, validateOrigin, isAuthStatus } from "@/lib/bff-auth";
-
-const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
+import { spineUrl } from "@/lib/proxy-core";
 
 export async function POST(
   request: NextRequest,
@@ -19,8 +18,9 @@ export async function POST(
       return bffJson({ error: "snoozeUntil is required" }, 400);
     }
 
+    const snoozeUrl = spineUrl(`/trips/${encodeURIComponent(tripId)}/snooze`);
     const response = await fetch(
-      `${SPINE_API_URL}/trips/${encodeURIComponent(tripId)}/snooze`,
+      snoozeUrl,
       { ...bffFetchOptions(request, "POST", "access_only", {}, { snooze_until: snoozeUntil }), cache: "no-store" }
     );
 

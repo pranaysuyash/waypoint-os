@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
+import { spineUrl } from "@/lib/proxy-core";
 
 /**
  * BFF proxy for trip stats (F-40): forwards the authenticated request to the
@@ -8,7 +9,7 @@ import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
  */
 export async function GET(request: NextRequest) {
   try {
-    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/stats`;
+    const spineApiUrl = spineUrl("/stats");
     const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
 
     if (!response.ok) {

@@ -5,15 +5,15 @@ import {
   isWorkspaceTrip,
 } from "@/lib/bff-trip-adapters";
 import { WORKSPACE_TRIP_STATUS_LIST, WORKSPACE_TRIP_STATUSES } from "@/lib/trip-domain";
-
-const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
+import { spineUrl } from "@/lib/proxy-core";
 
 const PIPELINE_ORDER = WORKSPACE_TRIP_STATUS_LIST;
 
 export async function GET(request: NextRequest) {
   try {
+    const tripsUrl = spineUrl(`/trips?status=${WORKSPACE_TRIP_STATUSES}&limit=10000`);
     const response = await fetch(
-      `${SPINE_API_URL}/trips?status=${WORKSPACE_TRIP_STATUSES}&limit=10000`,
+      tripsUrl,
       {
         ...bffFetchOptions(request, "GET"),
         cache: "no-store",

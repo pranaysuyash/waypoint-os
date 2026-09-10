@@ -14,13 +14,14 @@
 
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson } from "@/lib/bff-auth";
+import { spineUrl } from "@/lib/proxy-core";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
-  const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/api/auth/validate-code/${encodeURIComponent(code)}`;
+  const spineApiUrl = spineUrl(`/api/auth/validate-code/${encodeURIComponent(code)}`);
 
   try {
     const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });

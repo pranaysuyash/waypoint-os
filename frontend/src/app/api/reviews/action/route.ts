@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, validateOrigin, isAuthStatus } from "@/lib/bff-auth";
-
-const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
+import { spineUrl } from "@/lib/proxy-core";
 
 export async function POST(request: NextRequest) {
   const csrf = validateOrigin(request);
@@ -23,8 +22,9 @@ export async function POST(request: NextRequest) {
       return bffJson({ error: "reviewId is required" }, 400);
     }
 
+    const reviewActionUrl = spineUrl(`/trips/${encodeURIComponent(reviewId)}/review/action`);
     const response = await fetch(
-      `${SPINE_API_URL}/trips/${encodeURIComponent(reviewId)}/review/action`,
+      reviewActionUrl,
       { ...bffFetchOptions(request, "POST", "access_only", {}, {
         action,
         notes,
