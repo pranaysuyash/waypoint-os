@@ -25,3 +25,9 @@
 - Zero remediation required from the TS wave.
 
 **Committed state at scan time:** `1ceaf91` (pushed). Parallel scenario-series work was dirty-in-tree during the scan; if that wave commits code, the next deep scan should re-baseline against this seal.
+
+## Second scan (post-`b78e69c`, 2026-09-10T18:54Z)
+
+**Seal:** `sha256:dfddd481ccbd1125b2fab1ff407fde03eeb44ee9cb87ae9a7ae4831fd8b19781`
+**Trigger:** post-push hook directive after wave-2 (`b78e69c`: UNKNOWN idempotency, commitment aggregation, required_for, route structures, inbound attachments).
+**Result: 113 findings — byte-identical count and class distribution to the first post-push scan.** Wave 2 (TS-06/07/08 + TS-03 S1, 22 files, +1,833/−56) introduced **zero new findings**. The 113 comprise the same triaged set: 16 drafts.py tenant-binding false positives (verified against the agency_id guards), 29 role-check mediums (C1-gated follow-up), 68 prior noise floor. Evidence boundary remains static-only.
