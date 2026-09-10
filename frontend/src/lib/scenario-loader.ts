@@ -91,7 +91,15 @@ function extractDocTitle(content: string, fallback: string): string {
   return content.match(/^#\s+(.+)$/m)?.[1]?.trim() || fallback;
 }
 
-function extractDocScenarioDescription(content: string): string {
+/**
+ * Extract the canonical scenario description from a scenario doc.
+ * Tier 1: explicit `**Scenario**:` line. Tier 2: first 3 prose lines of the
+ * `## Situation` section. Shared by the dev UI scenario list and the
+ * dev-scenario-generator's docs mode so both consumers parse docs through
+ * one definition (the 302/303 skip drift — FND-0256 B3b — came from two
+ * private parsers disagreeing).
+ */
+export function extractDocScenarioDescription(content: string): string {
   const explicitScenario = content.match(/^\*\*Scenario\*\*:\s*(.+)$/m)?.[1]?.trim();
   if (explicitScenario) return explicitScenario;
 

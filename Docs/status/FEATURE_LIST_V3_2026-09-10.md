@@ -1,14 +1,14 @@
 # Feature List V3 — Runtime Truth Inventory
 
-Date: 2026-09-03
+Date: 2026-09-10
 Status: Active working inventory (supersedes FEATURE_LIST_V2_2026-05-12 as the current view; V2 is preserved unchanged as history)
 Purpose: Canonical per-domain feature inventory with honest wiring status, priority, and code evidence.
-Derived artifacts: `Docs/status/FEATURE_LIST_V3_2026-09-03.json`, `Docs/status/FEATURE_LIST_V3_2026-09-03.csv` (generated from this file by `tools/feature_list_generate.py` — edit this MD, then regenerate; never hand-edit the derived files).
-Companion map: [CODEBASE_FEATURES_FLOWS_LOOPS_MAP_2026-09-03](../architecture/CODEBASE_FEATURES_FLOWS_LOOPS_MAP_2026-09-03.md) — flows/loops context for everything listed here.
+Derived artifacts: `Docs/status/FEATURE_LIST_V3_2026-09-10.json`, `Docs/status/FEATURE_LIST_V3_2026-09-10.csv` (generated from this file by `tools/feature_list_generate.py` — edit this MD, then regenerate; never hand-edit the derived files).
+Companion map: [CODEBASE_FEATURES_FLOWS_LOOPS_MAP_2026-09-03](../architecture/CODEBASE_FEATURES_FLOWS_LOOPS_MAP_2026-09-03.md) — flows/loops context for everything listed here (see also its [drift addendum](../architecture/CODEBASE_FEATURES_FLOWS_LOOPS_MAP_DRIFT_2026-09-06.md)).
 
 ## Method
 
-1. Four parallel read-only Explore sweeps on 2026-09-03 (agent core `src/`, backend `spine_api/`, frontend `frontend/`, docs/tests/tools), synthesized into the companion map.
+1. Four parallel read-only Explore sweeps on 2026-09-03 (agent core `src/`, backend `spine_api/`, frontend `frontend/`, docs/tests/tools), synthesized into the companion map; feature rows re-verified against the tree on 2026-09-10.
 2. Wiring-status spot verification (not assumed): hybrid engine default `decision.py:40`, distribution + IROPS `PREVIEW_ONLY` markers, in-memory commission ledgers, sourcing-hierarchy stub, tier-gated frontier flag, simulated-surface labels from the 2026-08-31 agentic deep audit and PER-0100 launch audit.
 3. V2 (2026-05-12, 60 features) reviewed for continuity; every V2 LIVE feature re-evidenced or superseded below.
 

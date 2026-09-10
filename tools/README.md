@@ -703,16 +703,16 @@ Safety notes:
 
 **Purpose:** Derive the machine-readable JSON + CSV artifacts of a feature-list
 inventory from its markdown source of truth, with validation. Introduced with
-`Docs/status/FEATURE_LIST_V3_2026-09-03.md`; the markdown tables are canonical —
+`Docs/status/FEATURE_LIST_V3_2026-09-10.md`; the markdown tables are canonical —
 never hand-edit the derived `.json`/`.csv`.
 
 **Usage:**
 
 ```bash
 python3 tools/feature_list_generate.py \
-  --md Docs/status/FEATURE_LIST_V3_2026-09-03.md \
-  --json Docs/status/FEATURE_LIST_V3_2026-09-03.json \
-  --csv Docs/status/FEATURE_LIST_V3_2026-09-03.csv
+  --md Docs/status/FEATURE_LIST_V3_2026-09-10.md \
+  --json Docs/status/FEATURE_LIST_V3_2026-09-10.json \
+  --csv Docs/status/FEATURE_LIST_V3_2026-09-10.csv
 ```
 
 **Notes:**

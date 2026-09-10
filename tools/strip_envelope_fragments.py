@@ -24,7 +24,9 @@ convention (clean siblings end with \\n).
 Usage:
     python3 tools/strip_envelope_fragments.py            # apply (default)
     python3 tools/strip_envelope_fragments.py --dry-run  # report only
-    python3 tools/strip_envelope_fragments.py --check    # exit 1 if any
+    python3 tools/strip_envelope_fragments.py --check    # detection only,
+                                                          # never writes;
+                                                          # exit 1 if any
                                                           # file still dirty
 
 Exit codes: 0 clean / 1 dirty (or error) / 2 manual-review needed.
@@ -105,7 +107,8 @@ def main() -> int:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="exit 1 if any file under Docs/ still carries envelope markers",
+        help="detection only (exit 1 if any file under the roots still carries "
+        "envelope markers); never writes — safe for CI/pre-commit",
     )
     parser.add_argument(
         "roots",
@@ -129,7 +132,10 @@ def main() -> int:
         status = classify(path)
         stats[status] = stats.get(status, 0) + 1
         if status == "fixable":
-            if args.dry_run:
+            # Writes are a positive opt-in: only plain apply mode mutates
+            # files. --dry-run reports; --check detects (CI/pre-commit uses
+            # --check and must never repair mid-gate).
+            if args.dry_run or args.check:
                 print(f"WOULD FIX: {_display(path)}")
             else:
                 result, removed = fix(path)

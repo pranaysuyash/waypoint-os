@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "name": "FEATURE_LIST_V3_2026-09-03",
-    "date": "2026-09-03",
-    "source_doc": "Docs/status/FEATURE_LIST_V3_2026-09-03.md",
+    "name": "FEATURE_LIST_V3_2026-09-10",
+    "date": "2026-09-10",
+    "source_doc": "Docs/status/FEATURE_LIST_V3_2026-09-10.md",
     "generator": "tools/feature_list_generate.py",
     "notes": "Derived from the markdown source of truth; regenerate, never hand-edit."
   },

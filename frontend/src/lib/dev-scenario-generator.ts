@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
-import { inferScenarioConfigFromText } from "./scenario-loader";
+import { extractDocScenarioDescription, inferScenarioConfigFromText } from "./scenario-loader";
 
 const REPO_ROOT = join(process.cwd(), "..");
 const FIXTURES_DIR = join(REPO_ROOT, "data", "fixtures", "scenarios");
@@ -115,7 +115,22 @@ function fixtureTemplates(prompt: string): Omit<DevScenarioPayload, "persisted_f
   return out;
 }
 
-function docsTemplates(prompt: string): Omit<DevScenarioPayload, "persisted_fixture">[] {
+// Docs-schema contract (canonical definition shared with scenario-loader):
+// Tier 1 — a `Customer:`/`Message:`/`Input:` line with a quoted message of
+//          >=40 chars (crafted customer voice; the richest raw_note seed).
+// Tier 2 — `**Scenario**:` line, else first prose lines of `## Situation`
+//          (the ADDITIONAL_SCENARIOS stub shape; FND-0256 B3b-1).
+// Candidates must yield >=60 chars of raw_note text. Docs matching neither
+// tier are skipped (schema documented in
+// Docs/review/SERIES_LIFECYCLE_DECISION_PACKAGE_2026-09-10.md).
+const MIN_RAW_NOTE_CHARS = 60;
+
+/**
+ * Scan Docs/personas_scenarios for ingestible scenario templates against the
+ * documented docs-schema contract (tiers above). Exported for direct,
+ * deterministic testing of the tier logic (FND-0256 B3b-1).
+ */
+export function docsTemplates(prompt: string): Omit<DevScenarioPayload, "persisted_fixture">[] {
   const files = readdirSync(DOCS_SCENARIO_DIR).filter((f) => f.endsWith(".md"));
   const out: Omit<DevScenarioPayload, "persisted_fixture">[] = [];
 
@@ -125,8 +140,14 @@ function docsTemplates(prompt: string): Omit<DevScenarioPayload, "persisted_fixt
       const titleMatch = text.match(/^#\s+(.+)$/m);
       const quoteMatch = text.match(/(?:Customer|Message|Input)\s*[:\-]\s*"([^"]{40,})"/i);
       const bulletMatch = text.match(/^-\s+(?:Customer|Message|Input)\s*[:\-]\s*(.+)$/im);
-      const candidate = quoteMatch?.[1] ?? bulletMatch?.[1];
-      if (!candidate || candidate.trim().length < 60) continue;
+      // Tier 1 first (crafted customer quote), then the shared-docs tier
+      // (Scenario/Situation prose) so stub-format docs are ingestible.
+      // Explicit tiers — not a `??` chain: extractDocScenarioDescription
+      // returns "" (not null) when unmatched, and a tier-1 match must win
+      // even if shorter than tier-2 prose.
+      const tier1 = quoteMatch?.[1] ?? bulletMatch?.[1] ?? "";
+      const candidate = tier1 || extractDocScenarioDescription(text);
+      if (candidate.trim().length < MIN_RAW_NOTE_CHARS) continue;
       const config = inferScenarioConfigFromText(`${titleMatch?.[1] ?? file} ${text}`);
 
       out.push({

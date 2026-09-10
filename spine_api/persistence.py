@@ -2471,7 +2471,7 @@ class AuditStore:
         return event
 
     @staticmethod
-    async def _persist_sql_event(event: dict) -> None:
+    async def _persist_sql_event(event: dict) -> dict:
         """Insert one audit event into `audit_logs` with RULE_015 chaining.
 
         Hash payload mirrors `core.audit.AuditContext.log` so both writers
@@ -2620,7 +2620,7 @@ class AuditStore:
             except Exception as exc:
                 sql_errors = [f"[sql] verification unavailable: {exc}"]
             file_result = AuditStore.verify_chain(file_events)
-            errors = file_result["errors"] + sql_errors
+            errors: list = file_result["errors"] + sql_errors
             return {
                 "valid": not errors,
                 "event_count": file_result["event_count"] + sql_count,
@@ -2628,7 +2628,7 @@ class AuditStore:
                 "errors": errors,
             }
 
-        errors: list[str] = []
+        errors = []
         # Anchor: full-chain verification (events=None callers) starts at
         # GENESIS; an explicit event list is a SUBCHAIN — its first event's
         # recorded predecessor is the trusted anchor (it links to whatever
