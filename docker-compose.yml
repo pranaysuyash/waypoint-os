@@ -30,6 +30,10 @@ services:
       # when the secret is absent.
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in your deploy environment or .env}
       - PROPOSAL_SIGNING_KEY=${PROPOSAL_SIGNING_KEY:?Set PROPOSAL_SIGNING_KEY in your deploy environment or .env}
+      # FND-0262: without ENCRYPTION_KEY the encryption layer falls back to a
+      # key committed to the repo; the startup assertion refuses prod-mode
+      # boots without it, so compose fails fast here instead.
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in your deploy environment or .env}
       - PUBLIC_CHECKER_AGENCY_ID=${PUBLIC_CHECKER_AGENCY_ID:?Set PUBLIC_CHECKER_AGENCY_ID to an existing agency}
       - SPINE_API_CORS=${SPINE_API_CORS:?Set SPINE_API_CORS to the browser origin}
       # PT-08: SQL-backed idempotency is required for multi-worker or
@@ -65,6 +69,10 @@ services:
       - PUBLIC_CHECKER_AGENCY_ID=${PUBLIC_CHECKER_AGENCY_ID:?Set PUBLIC_CHECKER_AGENCY_ID to an existing agency}
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in your deploy environment or .env}
       - PROPOSAL_SIGNING_KEY=${PROPOSAL_SIGNING_KEY:?Set PROPOSAL_SIGNING_KEY in your deploy environment or .env}
+      # FND-0262: without ENCRYPTION_KEY the encryption layer falls back to a
+      # key committed to the repo; the startup assertion refuses prod-mode
+      # boots without it, so compose fails fast here instead.
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in your deploy environment or .env}
     depends_on:
       postgres:
         condition: service_healthy

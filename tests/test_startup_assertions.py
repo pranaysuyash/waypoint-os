@@ -22,6 +22,7 @@ from spine_api.core.startup_assertions import (
     _check_tripstore_backend,
     _check_redis_url,
     _check_public_proposal_demo_mode,
+    _check_encryption_key,
     auth_bypass_enabled,
 )
 from spine_api.core.middleware import _is_public_path
@@ -255,6 +256,73 @@ class TestPublicProposalDemoMode:
             passed, msg = _check_public_proposal_demo_mode()
             assert passed
             assert "development" in msg
+
+
+class TestEncryptionKeyCheck:
+    """FND-0262: prod-like boots require an explicit, real ENCRYPTION_KEY."""
+
+    def test_dev_without_key_is_allowed(self):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
+            passed, msg = _check_encryption_key()
+            assert passed
+            assert "fallback allowed" in msg
+
+    def test_production_without_privacy_mode_fails(self):
+        with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=True):
+            passed, msg = _check_encryption_key()
+            assert not passed
+            assert "DATA_PRIVACY_MODE" in msg
+
+    def test_production_dogfood_mode_fails(self):
+        # The FND-0262 scenario exactly: ENVIRONMENT=production but the
+        # forgotten DATA_PRIVACY_MODE leaves the committed dev key active.
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATA_PRIVACY_MODE": "dogfood",
+            "ENCRYPTION_KEY": "DoHtVQD_0aw4_pYhZlJTUHZYjHGZCI34Pbr4JFO6zIQ=",
+        }, clear=True):
+            passed, msg = _check_encryption_key()
+            assert not passed
+            assert "DATA_PRIVACY_MODE" in msg
+
+    def test_production_without_key_fails(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATA_PRIVACY_MODE": "production",
+        }, clear=True):
+            passed, msg = _check_encryption_key()
+            assert not passed
+            assert "ENCRYPTION_KEY is not set" in msg
+
+    def test_committed_dev_key_rejected_in_production(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "staging",
+            "DATA_PRIVACY_MODE": "production",
+            "ENCRYPTION_KEY": "v-k_y8Y5C8h7_5x6pQWzD9T-4G_MvR_Wf-1h-K_N-P8=",
+        }, clear=True):
+            passed, msg = _check_encryption_key()
+            assert not passed
+            assert "committed development key" in msg
+
+    def test_invalid_fernet_key_rejected(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATA_PRIVACY_MODE": "production",
+            "ENCRYPTION_KEY": "not-a-fernet-key",
+        }, clear=True):
+            passed, msg = _check_encryption_key()
+            assert not passed
+            assert "not a valid Fernet key" in msg
+
+    def test_valid_key_passes_in_production(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATA_PRIVACY_MODE": "production",
+            "ENCRYPTION_KEY": "DoHtVQD_0aw4_pYhZlJTUHZYjHGZCI34Pbr4JFO6zIQ=",
+        }, clear=True):
+            passed, msg = _check_encryption_key()
+            assert passed
+            assert "valid" in msg
 
 class TestStartupAssertionRunner:
     """Integration test for the full assertion runner."""

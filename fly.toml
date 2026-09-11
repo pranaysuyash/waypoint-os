@@ -34,6 +34,10 @@ image = "ghcr.io/your-org/spine-api:latest"
   # startup when enabled).
   TRIPSTORE_BACKEND = "sql"
   SPINE_API_IDEMPOTENCY_BACKEND = "sql"
+  # FND-0262: pin the encryption posture explicitly. Without production mode
+  # the encryption layer falls back to a committed dev key. ENCRYPTION_KEY
+  # itself is a secret — provide it via `fly secrets set ENCRYPTION_KEY=...`.
+  DATA_PRIVACY_MODE = "production"
   # PA-12: opt the deployment into the throttled lazy run-ledger GC (terminal
   # runs older than 30 days, hard-capped per pass). Dev compose keeps this
   # OFF so local history is never pruned implicitly.
@@ -52,7 +56,7 @@ image = "ghcr.io/your-org/spine-api:latest"
   # Ghost Hotel Test (entity existence via OSM Nominatim, advisory-only).
   ENTITY_CHECK_ENABLED = "1"
   # Set PUBLIC_CHECKER_AGENCY_ID, DATABASE_URL, REDIS_URL, JWT_SECRET,
-  # PROPOSAL_SIGNING_KEY, and SPINE_API_CORS with `fly secrets set`.
+  # PROPOSAL_SIGNING_KEY, ENCRYPTION_KEY, and SPINE_API_CORS with `fly secrets set`.
 
 [http_service]
   internal_port = 8000

@@ -234,6 +234,60 @@ def _check_public_proposal_demo_mode() -> Tuple[bool, str]:
     )
 
 
+def _check_encryption_key() -> Tuple[bool, str]:
+    """ENCRYPTION_KEY must be a real key in production-like environments.
+
+    FND-0262 (2026-09-11): ``src/security/encryption.py`` falls back to a
+    committed static dev key whenever ``ENCRYPTION_KEY`` is unset and
+    ``DATA_PRIVACY_MODE != "production"``. Because ``DATA_PRIVACY_MODE``
+    itself defaults to "dogfood", a deployment that sets
+    ``ENVIRONMENT=production`` but forgets ``DATA_PRIVACY_MODE`` would
+    silently encrypt booking confirmations (incl. VCC ids) with a key that
+    ships in git. This assertion closes that window: production-like envs
+    must pin ``DATA_PRIVACY_MODE=production`` AND provide a strong,
+    non-committed ``ENCRYPTION_KEY``.
+    """
+    import base64
+
+    env = os.environ.get("ENVIRONMENT", "development").strip().lower()
+    if env not in {"production", "staging"}:
+        key = os.environ.get("ENCRYPTION_KEY", "").strip()
+        if key:
+            return True, "ENCRYPTION_KEY is set."
+        return True, "ENCRYPTION_KEY not set (development/test dev-key fallback allowed)."
+
+    mode = os.environ.get("DATA_PRIVACY_MODE", "").strip().lower()
+    if mode != "production":
+        return False, (
+            f"DATA_PRIVACY_MODE='{mode or 'not set'}' in ENVIRONMENT='{env}'. "
+            "Production-like deployments must set DATA_PRIVACY_MODE=production, "
+            "otherwise the encryption layer falls back to the committed dev key."
+        )
+
+    key = os.environ.get("ENCRYPTION_KEY", "").strip()
+    if not key:
+        return False, (
+            "ENCRYPTION_KEY is not set in a production-like environment. "
+            "Without it, data at rest (booking confirmations, VCC ids) is "
+            "encrypted with a key committed to the repository."
+        )
+    if key == "v-k_y8Y5C8h7_5x6pQWzD9T-4G_MvR_Wf-1h-K_N-P8=":
+        return False, (
+            "ENCRYPTION_KEY is the committed development key. "
+            "Generate a fresh key: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        )
+    try:
+        raw = base64.urlsafe_b64decode(key.encode())
+        if len(raw) != 32:
+            raise ValueError(f"decodes to {len(raw)} bytes")
+    except Exception as exc:
+        return False, (
+            f"ENCRYPTION_KEY is not a valid Fernet key ({exc}). "
+            "Generate one: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        )
+    return True, "ENCRYPTION_KEY is set, valid, and not a known default."
+
+
 # ─────────────────────────────────────────────────────────────
 # Runner
 # ─────────────────────────────────────────────────────────────
@@ -244,6 +298,7 @@ _ASSERTIONS = [
     ("DATABASE_URL", _check_database_url),
     ("SECRET_KEY", _check_secret_key),
     ("PROPOSAL_SIGNING_KEY", _check_proposal_signing_key),
+    ("ENCRYPTION_KEY", _check_encryption_key),
     ("PUBLIC_PROPOSAL_DEMO_MODE", _check_public_proposal_demo_mode),
     ("AUTH_SAFETY", _check_auth_not_disabled_in_production),
     ("TRIPSTORE_BACKEND", _check_tripstore_backend),

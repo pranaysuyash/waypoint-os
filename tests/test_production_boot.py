@@ -25,6 +25,10 @@ def test_production_boot_assertions_pass_with_sql_backend():
         # PT-08: cross-process intake idempotency is required in production
         # (mirrors docker-compose/fly/render which pin this).
         "SPINE_API_IDEMPOTENCY_BACKEND": "sql",
+        # FND-0262: prod-like boots require the explicit encryption posture —
+        # production privacy mode plus a real (non-committed) Fernet key.
+        "DATA_PRIVACY_MODE": "production",
+        "ENCRYPTION_KEY": "DoHtVQD_0aw4_pYhZlJTUHZYjHGZCI34Pbr4JFO6zIQ=",
     }
     with patch.dict(os.environ, prod_env):
         run_startup_assertions(strict=True)
@@ -40,6 +44,9 @@ def test_production_boot_assertions_pass_with_postgres_alias():
         "TRIPSTORE_BACKEND": "postgres",
         "PUBLIC_CHECKER_AGENCY_ID": "agency_prod_01",
         "SPINE_API_IDEMPOTENCY_BACKEND": "sql",
+        # FND-0262: explicit encryption posture (see test above).
+        "DATA_PRIVACY_MODE": "production",
+        "ENCRYPTION_KEY": "DoHtVQD_0aw4_pYhZlJTUHZYjHGZCI34Pbr4JFO6zIQ=",
     }
     with patch.dict(os.environ, prod_env):
         run_startup_assertions(strict=True)
