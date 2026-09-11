@@ -2270,12 +2270,15 @@ def run_gap_and_decision(
                         "suggested_values": suggested,
                     })
                 decision_state = "ASK_FOLLOWUP"
-            else:
-                # Confidence below threshold but no blockers
-                if overall_confidence < 0.6:
-                    decision_state = "PROCEED_INTERNAL_DRAFT"
-                else:
-                    decision_state = "PROCEED_TRAVELER_SAFE"
+            # The elif chain above is exhaustive: branch 1 fires iff there are
+            # neither blocking ambiguities nor soft blockers, so any fall-through
+            # implies soft_blockers or blocking_ambiguities is non-empty.
+            # A separate overall_confidence < 0.6 floor was previously codified
+            # here but was unreachable dead code (N01 triage, 2026-09-02 §2.2):
+            # fully-populated low-confidence packets are traveler-safe by corpus
+            # contract (scenario `basic_minimal_safe`, the designated low-
+            # confidence edge, asserts PROCEED_TRAVELER_SAFE at conf 0.496), so
+            # no independent confidence gate is applied at this branch point.
 
     # --- Phase 10: Risk flags (reuse cached feasibility) ---
     risk_flags = generate_risk_flags(packet, stage, cached_feasibility=feasibility)

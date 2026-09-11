@@ -40,7 +40,13 @@ from .packet_models import (
     SubGroup,
 )
 from .normalizer import Normalizer
-from .geography import is_known_city, is_known_destination, get_city_country
+from .geography import (
+    COUNTRY_CANONICAL_ALIASES,
+    get_city_country,
+    get_country_iso_code,
+    is_known_city,
+    is_known_destination,
+)
 
 _MONTH_NAMES = frozenset({
     "january", "february", "march", "april", "may", "june",
@@ -69,7 +75,29 @@ _ROLE_INSTRUCTION_RE = re.compile(
     r"\b(?:system|developer|assistant|instructions?)\s*:[^.!?\n]*(?:[.!?]|$)",
     re.IGNORECASE,
 )
-_REAL_NOTE_LABEL_RE = re.compile(r"\b(?:real\s+)?note\s*:\s*", re.IGNORECASE)
+# "Real note:" / "Real plan:" / "Enquiry:" are metadata labels marking where
+# the traveler's own note begins — not destinations.  Keep the payload while
+# stripping the label word itself, which otherwise collides with tiny
+# GeoNames entries ("Real", Spain; "Plan" is also in the union).
+_REAL_NOTE_LABEL_RE = re.compile(
+    r"\b(?:real\s+)?(?:notes?|plans?|trips?|requests?|enquir(?:y|ies)|inquir(?:y|ies))\s*:\s*",
+    re.IGNORECASE,
+)
+
+# Quoted and forwarded material is prior context, not the traveler's own
+# voice (X-01).  Email quote lines ("> old plan: ...") and the header block
+# after a forwarded-message delimiter ("----- Forwarded message -----" /
+# From:/Sent:/To:/Subject:/Date:) are clearly-delimited non-traveler
+# segments, so they are dropped from the extraction view before any scan.
+_QUOTED_LINE_RE = re.compile(r"^\s*>+\s?")
+_FORWARDED_DELIMITER_RE = re.compile(
+    r"^\s*[-–—_=*]{2,}\s*(?:begin\s+)?forwarded\s+message\s*[-–—_=*]{2,}\s*$",
+    re.IGNORECASE,
+)
+_FORWARDED_HEADER_LINE_RE = re.compile(
+    r"^\s*(?:from|sent|to|cc|bcc|reply\s*-\s*to|subject|date|importance)\s*:",
+    re.IGNORECASE,
+)
 
 
 def _prepare_extraction_text(text: Any) -> Tuple[str, Dict[str, int]]:
@@ -89,10 +117,32 @@ def _prepare_extraction_text(text: Any) -> Tuple[str, Dict[str, int]]:
 
     # Role-labelled lines are untrusted instruction channels.  Drop the line
     # before the inline pass so a multi-line prompt cannot leak through.
+    # Quoted lines ("> ...") and forwarded-message header blocks are prior
+    # context rather than the traveler's voice and are demoted the same way;
+    # the quoted/forwarded BODY that follows a blank line is kept so a
+    # legitimate note pasted inside a forward still extracts (adv_struct_003).
     lines = normalized.splitlines(keepends=True)
     kept_lines: List[str] = []
     removed_spans = 0
+    in_forwarded_headers = False
     for line in lines:
+        if _QUOTED_LINE_RE.match(line):
+            removed_spans += 1
+            continue
+        if _FORWARDED_DELIMITER_RE.match(line):
+            in_forwarded_headers = True
+            removed_spans += 1
+            continue
+        if in_forwarded_headers:
+            if not line.strip():
+                # Blank line ends the header block; the forwarded body follows.
+                in_forwarded_headers = False
+                kept_lines.append(line)
+                continue
+            if _FORWARDED_HEADER_LINE_RE.match(line):
+                removed_spans += 1
+                continue
+            in_forwarded_headers = False
         if re.match(r"^\s*(?:system|developer|assistant|instructions?)\s*:", line, re.IGNORECASE):
             removed_spans += 1
             continue
@@ -178,7 +228,10 @@ _NON_DESTINATION_PLACEHOLDERS = frozenset({
 # Matches capitalized place names (single or multi-word)
 _DESTINATION_RE = re.compile(
     # Do not treat the "Let" prefix of the contraction "Let's" as a city.
-    r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?!['’][A-Za-z])\b",
+    # Hyphenated place names ("Winston-Salem") join as one token, mirroring
+    # the spaced multi-word alternative — without the hyphen branch the name
+    # fragments into two independent candidates ("Winston" + "Salem").
+    r"\b[A-Z][a-z]+(?:[-][A-Z][a-z]+|\s+[A-Z][a-z]+)*(?!['’][A-Za-z])\b",
 )
 
 # Travel-context patterns for lowercase destination extraction.
@@ -191,9 +244,11 @@ _SOMEWHERE_DEST_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Pattern 3: "or" pattern (semi-open destination)
+# Pattern 3: "or"/"and" pattern (semi-open destination). Hyphenated names
+# ("Winston-Salem and Charlotte") must stay whole — a split yields "Salem",
+# which is a real validating city and silently poisons candidates.
 _OR_DESTINATION_RE = re.compile(
-    r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)(?:\s+(?:or|and)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*).*?)\b",
+    r"\b([A-Z][a-z]+(?:-[A-Z][a-z]+)*(?:\s+[A-Z][a-z]+(?:-[A-Z][a-z]+)*)*)(?:\s+(?:or|and)\s+([A-Z][a-z]+(?:-[A-Z][a-z]+)*(?:\s+[A-Z][a-z]+)*).*?)\b",
 )
 
 # Destination metadata labels to exclude (caller, referral, etc.)
@@ -342,7 +397,12 @@ _TODDLER_AGE_RE = re.compile(r"toddler\s+(?:age\s+)?(\d+)", re.IGNORECASE)
 _ELDERLY_RE = re.compile(rf"(?:(({_COUNT_TOKEN_RE})\s+))?(?:elderly|seniors?|grandparents?|grandma|grandpa|grandmother|grandfather)", re.IGNORECASE)
 _ELDERLY_AGE_RE = re.compile(r"\b(?:elderly|seniors?)\b", re.IGNORECASE)
 _PEOPLE_RE = re.compile(
-    rf"({_COUNT_TOKEN_RE})\s*(?:[-–—]?\s*)?(?:people|persons?|pax|travelers?|travellers?)",
+    rf"({_COUNT_TOKEN_RE})\s*(?:[-–—]?\s*)?"
+    # "guests?" is a party count ("25 guests from Delhi"), but "guest
+    # list/house/room/book/bedroom/bathroom" prose is not — the lookahead
+    # keeps those clean. _GUEST_PROSE_SUFFIXES below is the shared source.
+    r"(?:people|persons?|pax|travelers?|travellers?"
+    r"|guests?(?!\s*(?:lists?|houses?|rooms?|books?|bed(?:room)?s?|bath(?:room)?s?)\b))",
     re.IGNORECASE,
 )
 
@@ -446,14 +506,17 @@ _TRAVEL_VERB_DEST_RE = re.compile(
     r"(?:want to go|go to|travel to|visit|flying to|trip to|holiday in|vacation in"
     r"|planning to go to|planning to visit|head to|going to"
     r"|wanna do|do|hitting|hit|covering|cover|check out|keen on|down for)\s+"
-    r"([a-z]+(?:\s+[a-z]+)*)",
+    # Hyphen branch keeps hyphenated place names whole ("trip to winston-salem").
+    r"([a-z]+(?:-[a-z]+)*(?:\s+[a-z]+(?:-[a-z]+)*)*)",
 )
 
 # Colloquial city-set separator: "tokyo + kyoto + osaka", "tokyo, kyoto and
 # osaka". Every element must independently validate as a known destination,
 # so activity phrases like "a cooking class" can never slip through.
+# Hyphens are part of a name ("viña-del-mar" style compounds) — without them
+# a hyphenated element silently fails validation and drops from the set.
 # (Splitting lives in _extract_city_set, which keeps "or" runs separate.)
-_CITY_SET_ELEMENT_RE = re.compile(r"^[a-z]+(?:\s+[a-z]+){0,2}$")
+_CITY_SET_ELEMENT_RE = re.compile(r"^[a-z]+(?:-[a-z]+)?(?:\s+[a-z]+){0,2}$")
 
 # "somewhere" counts as open destination intent only in a destination-ish
 # position — directly after a travel verb/marker, or followed by a place
@@ -471,14 +534,14 @@ _SOMEWHERE_OPEN_RE = re.compile(
 # Pattern 2: Destination before Hinglish/Odia travel verbs.
 # "singapore jana hai", "bali jaiba"
 _HINGLISH_DEST_RE = re.compile(
-    r"([a-z]+(?:\s+[a-z]+)*)\s+"
+    r"([a-z]+(?:-[a-z]+)*(?:\s+[a-z]+(?:-[a-z]+)*)*)\s+"
     r"(?:jana hai|jaana hai|jao|jana|janahi|jiba|jib)",
 )
 
 # Pattern 3: After origin marker ("se"/"ru") before travel verb.
 # "bangalore se singapore jana hai", "bangalore ru sri lanka jiba"
 _ORIGIN_DEST_RE = re.compile(
-    r"(?:se |ru )\s*([a-z]+(?:\s+[a-z]+)*)\s+"
+    r"(?:se |ru )\s*([a-z]+(?:-[a-z]+)*(?:\s+[a-z]+(?:-[a-z]+)*)*)\s+"
     r"(?:jana hai|jana|jiba|jib|go|travel|visit)",
 )
 
@@ -503,6 +566,16 @@ _CITY_SET_TRAILING_SEASON_RE = re.compile(
     r"(?:spring|summer|fall|autumn|winter))\b.*$",
     re.IGNORECASE,
 )
+# A set element ending in a month/season phrase ("thailand in december",
+# "kyoto june 2027", "goa next winter") carries a time tail, not a place.
+_CITY_SET_TIME_TAIL_RE = re.compile(
+    r"(?:\b(?:in|during|for|around|next|this|coming|late|early|mid)\s+)?"
+    r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|"
+    r"dec(?:ember)?|spring|summer|fall|autumn|winter)\b"
+    r"(?:\s+(?:20\d{2}))?\s*$",
+    re.IGNORECASE,
+)
 
 _STRUCTURED_UNSAFE_VALUE_RE = re.compile(
     r"(?:;|--|/\*|\*/|\b(?:drop|delete|insert|update|select)\s+(?:table|from|into)\b|"
@@ -510,14 +583,21 @@ _STRUCTURED_UNSAFE_VALUE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A canonical geo field shorter than this is a fragment, not a place.  The
+# geography union contains 1-2 letter GeoNames entries ("Ba", Fiji), so a
+# truncated import ("Ba", "B") would otherwise validate at full confidence
+# (X-08).  Real structured imports always name a place with 3+ characters.
+_MIN_STRUCTURED_PLACE_LEN = 3
+
 
 def _structured_destination_values(value: Any) -> List[str]:
     """Validate and normalize structured destination input.
 
     Structured authority does not mean arbitrary strings are destinations.
     Only strings that resolve through the canonical geography layer are
-    promoted to ``destination_candidates``; malformed or SQL-shaped values
-    remain absent and therefore visible as an intake unknown.
+    promoted to ``destination_candidates``; malformed, fragment-length, or
+    SQL-shaped values remain absent and therefore visible as an intake
+    unknown.
     """
     raw_values: List[Any]
     if isinstance(value, str):
@@ -529,13 +609,17 @@ def _structured_destination_values(value: Any) -> List[str]:
 
     output: List[str] = []
     for raw in raw_values:
-        if not isinstance(raw, str) or _STRUCTURED_UNSAFE_VALUE_RE.search(raw):
+        if (
+            not isinstance(raw, str)
+            or len(raw.strip()) < _MIN_STRUCTURED_PLACE_LEN
+            or _STRUCTURED_UNSAFE_VALUE_RE.search(raw)
+        ):
             continue
         # Comma-separated structured exports are common; each candidate still
         # needs independent geography validation.
         for item in re.split(r"\s*,\s*", raw):
             item = item.strip()
-            if not item:
+            if not item or len(item) < _MIN_STRUCTURED_PLACE_LEN:
                 continue
             normalized, _ = Normalizer.normalize_city(item)
             candidate = normalized or item
@@ -545,7 +629,11 @@ def _structured_destination_values(value: Any) -> List[str]:
 
 
 def _structured_origin_value(value: Any) -> Optional[str]:
-    if not isinstance(value, str) or _STRUCTURED_UNSAFE_VALUE_RE.search(value):
+    if (
+        not isinstance(value, str)
+        or len(value.strip()) < _MIN_STRUCTURED_PLACE_LEN
+        or _STRUCTURED_UNSAFE_VALUE_RE.search(value)
+    ):
         return None
     normalized, _ = Normalizer.normalize_city(value.strip())
     candidate = normalized or value.strip()
@@ -589,8 +677,8 @@ def _classify_date_year(text: str) -> Optional[str]:
     The extractor must preserve what the traveler said, even when it is stale
     or implausibly distant.  This side-channel lets validation/policy surface
     the problem instead of silently treating an impossible date as current.
-    A five-year planning horizon is intentionally conservative for an intake
-    quote while still allowing normal long-range group bookings.
+    The sane intake window is the current year through current+3 (X-03):
+    quoted years outside it are flagged, never rewritten.
     """
     years = [int(match.group(1)) for match in _YEAR_RE.finditer(text)]
     if not years:
@@ -598,7 +686,7 @@ def _classify_date_year(text: str) -> Optional[str]:
     current_year = datetime.now().year
     if any(year < current_year for year in years):
         return "past_year"
-    if any(year > current_year + 5 for year in years):
+    if any(year > current_year + 3 for year in years):
         return "implausible_year"
     return None
 
@@ -836,11 +924,49 @@ def _last_word_destination(element: str) -> Optional[str]:
     if not words:
         return None
     last = words[-1]
-    if not last.isalpha():
+    # Hyphenated compounds ("winston-salem") are single place names; a plain
+    # isalpha() rejects them and silently fragments the city set.
+    if not last.replace("-", "").isalpha():
         return None
     if len(words) >= 2 and words[-2].lower() in _CITY_SET_PRE_GUARD_WORDS:
         return None
-    title = last.title()
+    title = "-".join(part.title() for part in last.split("-"))
+    if not _is_valid_destination_candidate(title, element):
+        return None
+    return title
+
+
+def _city_set_lead_destination(element: str) -> Optional[str]:
+    """Retry a failed separator element via its LEAD word (N-09b).
+
+    A legitimate set member can carry a trailing time phrase the tail
+    strippers do not cover ("thailand in december"); the whole element and
+    its final word both fail and the run would silently truncate.  The lead
+    word is retried ONLY when the element ends in a month/season tail —
+    the actual N-09b failure shape — and under the same guards as the
+    verb-pass span candidates (articles, stop words, months and seasons are
+    never promoted), so prose and activity elements still cannot form sets.
+    """
+    if not _CITY_SET_TIME_TAIL_RE.search(element):
+        return None
+    words = element.split()
+    if not words:
+        return None
+    lead = words[0]
+    if not lead.isalpha():
+        return None
+    lower = lead.lower()
+    if lower in _STOP_WORDS or lower in _MONTH_NAMES or lower in _SEASON_NAMES:
+        return None
+    # A two-word lead that itself resolves is the real member ("abu dhabi in
+    # december" → "Abu Dhabi", not the fragment "Abu" via the single-word
+    # retry). Mirrors the multi-word element path, which already keeps
+    # hyphen/space-separated 2-word destinations intact.
+    if len(words) >= 2 and words[1].isalpha():
+        pair_title = f"{words[0].title()} {words[1].title()}"
+        if _is_valid_destination_candidate(pair_title, element):
+            return pair_title
+    title = lead.title()
     if not _is_valid_destination_candidate(title, element):
         return None
     return title
@@ -916,6 +1042,10 @@ def _extract_city_set(text_lower: str, full_text: str) -> Optional[Tuple[List[st
                 dest = title
         if dest is None:
             dest = _last_word_destination(element)
+        if dest is None:
+            # Trailing phrase on a real member ("thailand in december"):
+            # retry the lead word before breaking the run (N-09b).
+            dest = _city_set_lead_destination(element)
         if dest is not None and _is_past_trip_mention(full_text, element):
             dest = None
         if dest is not None and _is_origin_candidate(full_text, dest):
@@ -1178,6 +1308,64 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     return [], "open" if (open_intent or "any" in text_lower) else "undecided", None
 
 
+# D-03 (ratified default, option b per D-04 research): a country mention whose
+# cities are all inside it becomes a containing fact, never a sibling
+# candidate. Longest aliases first so "united kingdom" wins over "uk".
+_COUNTRY_MENTION_RE = re.compile(
+    r"\b(?:" + "|".join(
+        sorted((re.escape(alias) for alias in COUNTRY_CANONICAL_ALIASES), key=len, reverse=True)
+    ) + r")\b"
+)
+
+
+def _resolve_destination_country(destination_text: str, candidates: List[str]) -> Optional[str]:
+    """D-03 containment resolution: the canonical country name when the text
+    names a country AND every geographically-resolvable destination candidate
+    sits inside it.
+
+    Returns the canonical country alias ("Japan") or None. None means no
+    containment claim:
+    - country-only notes keep the country as the destination candidate itself
+      (existing contract — "10 days in Japan, you pick" -> ["Japan"]);
+    - city candidates spanning another country (or unresolvable via
+      ``get_city_country``) are left untouched rather than guessed;
+    - city-level country aliases (Dubai / Singapore / Abu Dhabi) are city
+      commitments, never containers.
+    """
+    if len(candidates) < 2:
+        return None
+    mention = _COUNTRY_MENTION_RE.search(destination_text.lower())
+    if not mention:
+        return None
+    alias = mention.group(0)
+    canonical = COUNTRY_CANONICAL_ALIASES.get(alias)
+    if not canonical:
+        return None
+    country_iso = get_country_iso_code(alias)
+    if not country_iso:
+        return None
+    # A second, different country alias among the candidates is genuine
+    # multi-country scope — no containment projection. But city-level
+    # country aliases (Dubai / Abu Dhabi / Singapore) resolve to no country
+    # ISO, and candidates inside the mentioned country resolve to the SAME
+    # ISO — neither is a second country, so "UAE trip covering Dubai and
+    # Abu Dhabi" stays one contained country instead of misfiring on the
+    # aliases these cities share via COUNTRY_CANONICAL_ALIASES.
+    for candidate in candidates:
+        if candidate == canonical:
+            continue
+        candidate_iso = get_country_iso_code(candidate)
+        if candidate_iso is None or candidate_iso == country_iso:
+            continue
+        return None
+    city_candidates = [c for c in candidates if c != canonical]
+    resolved = [get_city_country(c) for c in city_candidates]
+    resolving = [iso for iso in resolved if iso]
+    if not resolving or any(iso != country_iso for iso in resolving):
+        return None
+    return canonical
+
+
 # =============================================================================
 # SECTION 2: DATE EXTRACTION
 # =============================================================================
@@ -1287,6 +1475,67 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
     if modifier_month:
         return modifier_month.group(0).strip(), None, None, "flexible"
 
+    return None
+
+
+# D-01 (ratified default): explicit trip duration stated by the traveler —
+# "10-12 days", "10 days", "7 nights", "1-2 weeks", "two weeks". The range
+# form is tried first so "10-12 days" is never read as the single form
+# "12 days". Number words reuse the party count vocabulary.
+_TRIP_DURATION_RANGE_RE = re.compile(
+    rf"\b(?P<low>{_COUNT_TOKEN_RE})\s*(?:-|–|—|\bto\b)\s*(?P<high>{_COUNT_TOKEN_RE})"
+    r"\s+(?P<unit>days?|nights?|weeks?)\b",
+    re.IGNORECASE,
+)
+_TRIP_DURATION_SINGLE_RE = re.compile(
+    rf"\b(?P<count>{_COUNT_TOKEN_RE})\s+(?P<unit>days?|nights?|weeks?)\b",
+    re.IGNORECASE,
+)
+# "within 2 days" / "next 10 days" are relative-time phrases, not trip length.
+_TRIP_DURATION_GUARD_RE = re.compile(r"\b(?:within|next)\s+$", re.IGNORECASE)
+
+
+def _extract_trip_duration(text: str) -> Optional[Dict[str, Any]]:
+    """D-01: explicit traveler-stated trip length as a day range.
+
+    Returns ``{"min": int, "max": int, "raw_text": str}`` or None. Only
+    explicit "N days / N nights / N weeks" phrasings are parsed — duration is
+    never silently projected from ISO date windows (that projection is a
+    separate, undecided contract). Weeks convert at 7 days; nights keep the
+    stated count.
+    """
+    if not text:
+        return None
+
+    def _count(token: str) -> Optional[int]:
+        value = _count_token_to_int(token)
+        return value if value and value > 0 else None
+
+    for match in _TRIP_DURATION_RANGE_RE.finditer(text):
+        if _TRIP_DURATION_GUARD_RE.search(text[max(0, match.start() - 8):match.start()]):
+            continue
+        low = _count(match.group("low"))
+        high = _count(match.group("high"))
+        if low and high and high >= low:
+            unit = match.group("unit").lower()
+            return {
+                "min": low * 7 if unit.startswith("week") else low,
+                "max": high * 7 if unit.startswith("week") else high,
+                "raw_text": match.group(0).strip(),
+            }
+
+    for match in _TRIP_DURATION_SINGLE_RE.finditer(text):
+        if _TRIP_DURATION_GUARD_RE.search(text[max(0, match.start() - 8):match.start()]):
+            continue
+        count = _count(match.group("count"))
+        if count:
+            unit = match.group("unit").lower()
+            day_value = count * 7 if unit.startswith("week") else count
+            return {
+                "min": day_value,
+                "max": day_value,
+                "raw_text": match.group(0).strip(),
+            }
     return None
 
 
@@ -1882,10 +2131,11 @@ def _extract_party(text: str) -> Dict[str, Any]:
     if explicit_party_size and explicit_party_size > 0:
         party_size = explicit_party_size
 
-    # Fallback: "N people"
+    # Fallback: "N people" / "N guests"
     if party_size == 0:
         pax_match = re.search(
-            rf"(?P<count>{_COUNT_TOKEN_RE})\s*(?:[-–—]?\s*)?(?:people|persons?|pax|travelers?|travellers?)",
+            rf"(?P<count>{_COUNT_TOKEN_RE})\s*(?:[-–—]?\s*)?(?:people|persons?|pax|travelers?|travellers?"
+            r"|guests?(?!\s*(?:lists?|houses?|rooms?|books?|bed(?:room)?s?|bath(?:room)?s?)\b))",
             text_lower,
         )
         if pax_match:
@@ -2481,6 +2731,17 @@ class ExtractionPipeline:
             ):
                 pass
             else:
+                # D-03: a country mention contained by its own cities becomes
+                # a separate destination_country fact and is dropped from the
+                # flat candidate list. Country-only notes keep the country as
+                # the candidate itself (existing contract).
+                destination_country_scope = _resolve_destination_country(
+                    text, dest_candidates
+                )
+                if destination_country_scope and destination_country_scope in dest_candidates:
+                    dest_candidates = [
+                        c for c in dest_candidates if c != destination_country_scope
+                    ]
                 packet.set_fact("destination_candidates", self._make_slot(
                     dest_candidates if dest_candidates else [],
                     0.7 if dest_status == "semi_open" else 0.5,
@@ -2488,6 +2749,15 @@ class ExtractionPipeline:
                     dest_raw or "not specified",
                     eid,
                 ))
+                if destination_country_scope:
+                    country_mention = re.search(
+                        rf"\b{re.escape(destination_country_scope)}\b", text, re.IGNORECASE
+                    )
+                    packet.set_fact("destination_country", self._make_slot(
+                        destination_country_scope, 0.85, AuthorityLevel.EXPLICIT_USER,
+                        country_mention.group(0) if country_mention else destination_country_scope,
+                        eid,
+                    ))
                 packet.set_fact("destination_status", self._make_slot(
                     dest_status, 0.8, AuthorityLevel.EXPLICIT_USER,
                     "Derived from destination text", eid,
@@ -2497,6 +2767,12 @@ class ExtractionPipeline:
             # normalization can lose (e.g., "maybe somewhere like Andaman?").
             if dest_raw:
                 for amb in Normalizer.detect_ambiguities("destination_candidates", dest_raw):
+                    # D-02 types belong to the budget field family — a city-set
+                    # raw element can carry a preceding flights clause
+                    # ("...includes flights. thinking tokyo") which must not
+                    # be mis-attributed to destination_candidates.
+                    if amb.ambiguity_type == "flights_inclusiveness_unknown":
+                        continue
                     packet.add_ambiguity(amb)
             # Also run ambiguity detection on the relevant source text span
             # around the destination mention for richer detection.
@@ -2508,6 +2784,11 @@ class ExtractionPipeline:
             dest_context = _extract_relevant_span(text, dest_raw or "", window=80)
             if dest_status != "definite" and dest_context and dest_context != dest_raw:
                 for amb in Normalizer.detect_ambiguities("destination_candidates", dest_context):
+                    # D-02 types belong to the budget field family — the
+                    # flights clause often precedes the destination span and
+                    # must not be mis-attributed to destination_candidates.
+                    if amb.ambiguity_type == "flights_inclusiveness_unknown":
+                        continue
                     # Avoid duplicate ambiguity types
                     if not any(a.ambiguity_type == amb.ambiguity_type for a in packet.ambiguities):
                         packet.add_ambiguity(amb)
@@ -2548,6 +2829,17 @@ class ExtractionPipeline:
             packet.set_fact("date_confidence", self._make_slot(
                 conf, 0.9, AuthorityLevel.EXPLICIT_USER,
                 "Derived from date parsing", eid,
+            ))
+
+        # D-01: explicit trip duration ("10-12 days") as an informational
+        # traveler-stated fact. Not part of INTAKE_MINIMUM/QUOTE_READY this
+        # wave; duration is never silently projected from date windows.
+        duration_result = _extract_trip_duration(text)
+        if duration_result:
+            packet.set_fact("trip_duration_days", self._make_slot(
+                {"min": duration_result["min"], "max": duration_result["max"]},
+                0.9, AuthorityLevel.EXPLICIT_USER,
+                duration_result.get("raw_text", ""), eid,
             ))
 
         # Year safety is independent of whether the rest of the date phrase
@@ -2620,6 +2912,23 @@ class ExtractionPipeline:
                 "Derived from budget context" if is_inferred_scope else budget_scope, eid,
                 epistemic_status=EpistemicStatus.ASSUMED if is_inferred_scope else EpistemicStatus.FACT,
             ))
+
+        # D-02: budget-vs-flights inclusiveness ("not sure if that includes
+        # flights" / "including flights" / "excluding flights"). Trigger
+        # patterns live in the Normalizer ambiguity table; the clause-scoped
+        # span keeps unrelated "maybe"-style patterns from firing on the
+        # whole note. This is an ambiguity, never a fact — the operator
+        # confirms the flight scope.
+        flights_clause_match = re.search(
+            r"[^.!?\n]{0,80}\b(?:flights?|airfare|air\s+fares?|airfares?)\b[^.!?\n]{0,80}",
+            text_lower,
+        )
+        if flights_clause_match:
+            for amb in Normalizer.detect_ambiguities("budget_raw_text", flights_clause_match.group(0)):
+                if amb.ambiguity_type == "flights_inclusiveness_unknown" and not any(
+                    a.ambiguity_type == "flights_inclusiveness_unknown" for a in packet.ambiguities
+                ):
+                    packet.add_ambiguity(amb)
 
 
 

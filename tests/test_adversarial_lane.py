@@ -33,29 +33,23 @@ CORPUS_PATH = (
 # Frozen registry of probe-time known defects (2026-09-03). When a defect is
 # FIXED, remove its id here and flip its corpus status to passes_today. A NEW
 # id appearing in _defect_ids means a regression introduced a new defect.
+# 2026-09-11: adv_bound_006/007, adv_sec_001/003/005-008, adv_sem_007,
+# adv_struct_006 flipped to passes_today by the extraction-hardening wave
+# (quoted-line demotion + short-fragment rejection); registry reconciled to
+# match the corpus per this file's own fixed-defect rule.
 KNOWN_DEFECT_IDS = {
     "adv_bound_005",
-    "adv_bound_006",
-    "adv_bound_007",
     "adv_ling_004",
     "adv_ling_005",
     "adv_ling_007",
     "adv_ling_009",
     "adv_ling_010",
-    "adv_sec_001",
-    "adv_sec_003",
-    "adv_sec_005",
-    "adv_sec_006",
-    "adv_sec_007",
-    "adv_sec_008",
     "adv_sem_002",
     "adv_sem_003",
     "adv_sem_004",
     "adv_sem_005",
     "adv_sem_006",
-    "adv_sem_007",
     "adv_struct_001",
-    "adv_struct_006",
 }
 
 
