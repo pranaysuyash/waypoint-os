@@ -1371,6 +1371,14 @@ class InboundAttachment(BaseModel):
                 f"attachment exceeds {_INBOUND_ATTACHMENT_MAX_BYTES} bytes "
                 f"(got {len(decoded)})"
             )
+        # FND-0267: mime is client-asserted; verify the declared magic bytes so
+        # a renamed executable cannot enter the storage lane as "image/png".
+        for prefix in _INBOUND_ATTACHMENT_MAGIC.get(self.mime, set()):
+            if not decoded.startswith(prefix):
+                raise ValueError(
+                    f"attachment bytes do not match declared mime {self.mime!r} "
+                    "(magic-byte mismatch)"
+                )
         return self
 
     @property
@@ -1378,9 +1386,21 @@ class InboundAttachment(BaseModel):
         return base64.b64decode(self.data_b64, validate=True)
 
 
-# 5 MiB per attachment — enough for phone screenshots and vendor PDFs,
-# small enough to keep the JSON body bounded.
-_INBOUND_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024
+# FND-0267: 3 MiB per attachment. The ASGI body middleware caps non-public
+# request bodies at 5 MB of *base64 text*; the previously documented 5×5 MiB
+# envelope was unreachable (a single 5 MiB attachment base64-encodes to
+# ~6.7 MB and died with an opaque 413 before validation). 3.5 MiB of decoded
+# total base64-encodes to ~4.67 MB, which fits the middleware cap with JSON
+# headroom — the documented envelope now matches physical reality.
+_INBOUND_ATTACHMENT_MAX_BYTES = 3 * 1024 * 1024
+_INBOUND_ATTACHMENTS_TOTAL_MAX_BYTES = 3584 * 1024
+
+# Verified content signatures per declared mime (first bytes must match).
+_INBOUND_ATTACHMENT_MAGIC: Dict[str, set] = {
+    "image/jpeg": {b"\xff\xd8\xff"},
+    "image/png": {b"\x89PNG\r\n\x1a\n"},
+    "application/pdf": {b"%PDF"},
+}
 
 
 class InboundInquiryRequest(BaseModel):
@@ -1391,9 +1411,22 @@ class InboundInquiryRequest(BaseModel):
     agent_notes: Optional[str] = None
     strict_leakage: bool = False
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    # TS-03 S1: attachment envelope (max 5 per inquiry). Persisted via the
-    # canonical document-storage lane; not part of the text pipeline.
+    # TS-03 S1: attachment envelope (max 5 per inquiry, 3.5 MiB decoded total —
+    # FND-0267). Persisted via the canonical document-storage lane; not part of
+    # the text pipeline.
     attachments: List[InboundAttachment] = Field(default_factory=list, max_length=5)
+
+    @model_validator(mode="after")
+    def _validate_attachments_total_size(self) -> "InboundInquiryRequest":
+        total = 0
+        for attachment in self.attachments:
+            total += len(attachment.decoded_bytes)
+        if total > _INBOUND_ATTACHMENTS_TOTAL_MAX_BYTES:
+            raise ValueError(
+                f"total attachment payload exceeds "
+                f"{_INBOUND_ATTACHMENTS_TOTAL_MAX_BYTES} bytes (got {total})"
+            )
+        return self
 
 
 class InboundInquiryResponse(BaseModel):

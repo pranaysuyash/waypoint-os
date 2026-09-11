@@ -133,6 +133,10 @@ _FREEFORM_FIELD_NAMES = {
     "agent_notes",
     "agentNotes",
     "owner_note",
+    # FND-0267: customer-supplied attachment filenames are user-controlled
+    # free text (e.g. "john_doe_+919876543210_quote.png" on the TS-03 inbound
+    # manifest) and must be scanned like any other freeform field.
+    "filename",
 }
 
 

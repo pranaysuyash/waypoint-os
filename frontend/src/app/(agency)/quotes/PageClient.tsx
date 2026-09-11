@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
+import SimulatedBadge from '@/components/ui/SimulatedBadge';
 import { useTrip, useTrips } from '@/hooks/useTrips';
 import { formatTripPickerLabel } from '@/lib/trip-picker-label';
 import {
@@ -12,8 +13,6 @@ import {
   ShieldCheck,
   Sparkles,
   Share2,
-  Copy,
-  Check,
   CheckCircle2,
   Send,
   Layers,
@@ -51,7 +50,6 @@ export default function QuotesPageClient() {
   const effectiveSelectedTripId = selectedTripExists ? urlTripId : trips[0]?.id ?? '';
   const { data: selectedTrip } = useTrip(effectiveSelectedTripId || null);
 
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string>('v2');
   const [marginAdjustment, setMarginAdjustment] = useState<number>(15);
 
@@ -97,7 +95,7 @@ export default function QuotesPageClient() {
         marginPercent: marginAdjustment,
         taxPercent: 5,
         rackPrice: Math.round(baseBudget * (1 + marginAdjustment / 100) * 1.05),
-        status: 'sent',
+        status: 'draft',
         createdAt: '2026-08-29',
         highlights: ['5-Star Boutique Villa', 'Private Chauffeur Throughout', 'Curated Chef Tastings & Fast-Track Access'],
         inclusions: ['Breakfast & Curated Dining', 'Dedicated Private Vehicle', 'VIP Concierge & Skip-the-line Tickets'],
@@ -111,7 +109,7 @@ export default function QuotesPageClient() {
         marginPercent: 22,
         taxPercent: 5,
         rackPrice: Math.round(baseBudget * 1.6 * 1.22 * 1.05),
-        status: 'under_review',
+        status: 'draft',
         createdAt: '2026-08-30',
         highlights: ['Presidential / Overwater Suite', 'Helicopter Transfer & Yacht Charter', '24/7 Private Host & Michelin Dining'],
         inclusions: ['All-Inclusive Luxury Plan', 'Private Helicopter & Luxury Fleet', 'Private Yacht Day Tour & Bespoke Butler'],
@@ -120,13 +118,6 @@ export default function QuotesPageClient() {
   }, [selectedTrip, marginAdjustment]);
 
   const activeQuote = quoteVersions.find((q) => q.id === selectedVersionId) || quoteVersions[1] || quoteVersions[0];
-
-  const handleCopyProposalLink = (versionId: string) => {
-    const url = `https://waypoint.agency/proposals/${effectiveSelectedTripId}?v=${versionId}`;
-    navigator.clipboard?.writeText(url);
-    setCopiedId(versionId);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   return (
     <div className='p-6 space-y-6'>
@@ -138,6 +129,7 @@ export default function QuotesPageClient() {
           <h1 className='text-ui-xl font-semibold text-[#e6edf3] flex items-center gap-2'>
             <FileText className='size-6 text-[#58a6ff]' />
             Quotes & Commercial Proposals
+            <SimulatedBadge label='Sample data' />
           </h1>
           <p className='text-ui-sm text-[#8b949e] mt-1'>
             Multi-version proposal studio, wholesale net vs rack margin modeling, approval governance, and client links.
@@ -162,6 +154,24 @@ export default function QuotesPageClient() {
             </Link>
           </div>
         )}
+      </div>
+
+      {/* Honesty banner (FND-0260): this page is an illustrative pricing model. */}
+      <div
+        data-testid='quotes-sample-banner'
+        role='note'
+        className='rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200 space-y-1'
+      >
+        <p className='font-semibold uppercase tracking-wide'>Illustrative pricing model — not real quotes</p>
+        <p>
+          Every tier, price, margin, status, and date on this page is generated from a fixed example budget for
+          exploration only. No quote has been created, persisted, or sent to a client, and client web links are
+          unavailable until quotes are persisted by the spine. Real quote state lives in the{' '}
+          <Link href='/reviews' className='underline hover:text-amber-100'>
+            Quote Review queue
+          </Link>
+          .
+        </p>
       </div>
 
       {/* Trip Picker Selector */}
@@ -226,9 +236,9 @@ export default function QuotesPageClient() {
             <DollarSign className='size-4 text-[#3fb950]' />
           </div>
           <div className='text-2xl font-bold text-[#3fb950]'>
-            ${activeQuote?.rackPrice ? activeQuote.rackPrice.toLocaleString() : '4,850'}
+            ${activeQuote?.rackPrice ? activeQuote.rackPrice.toLocaleString() : '—'}
           </div>
-          <div className='text-xs text-[#8b949e]'>Includes Net + Markup + 5% GST</div>
+          <div className='text-xs text-[#8b949e]'>Illustrative net + markup + tax</div>
         </div>
 
         <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
@@ -250,7 +260,7 @@ export default function QuotesPageClient() {
           <div className='text-2xl font-bold text-[#a371f7] capitalize'>
             {activeQuote?.status.replace('_', ' ') || 'Ready'}
           </div>
-          <div className='text-xs text-[#8b949e]'>Client link tokenized & active</div>
+          <div className='text-xs text-[#8b949e]'>Illustrative model — nothing persisted or sent</div>
         </div>
       </div>
 
@@ -325,24 +335,13 @@ export default function QuotesPageClient() {
                           <td className='p-3.5 text-right'>
                             <button
                               type='button'
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopyProposalLink(q.id);
-                              }}
-                              className='p-1.5 text-xs text-[#58a6ff] hover:text-[#79b8ff] hover:bg-[#30363d] rounded inline-flex items-center gap-1 transition-colors'
-                              title='Copy Client Web Link'
+                              disabled
+                              title='Client web links unlock when quotes are persisted by the spine — this page is an illustrative model'
+                              data-testid='quotes-share-disabled'
+                              className='p-1.5 text-xs text-[#8b949e] rounded inline-flex items-center gap-1 cursor-not-allowed opacity-60'
                             >
-                              {copiedId === q.id ? (
-                                <>
-                                  <Check className='size-3.5 text-[#3fb950]' />
-                                  <span className='text-[11px] text-[#3fb950]'>Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Share2 className='size-3.5' />
-                                  <span className='text-[11px]'>Share</span>
-                                </>
-                              )}
+                              <Share2 className='size-3.5' />
+                              <span className='text-[11px]'>Share</span>
                             </button>
                           </td>
                         </tr>
@@ -440,7 +439,7 @@ export default function QuotesPageClient() {
                     </span>
                   </div>
                   <div className='flex justify-between text-[#8b949e]'>
-                    <span>Statutory Tax (GST/TCS 5%)</span>
+                    <span>Illustrative tax placeholder (5%)</span>
                     <span className='font-mono text-[#8b949e]'>
                       +${Math.round(activeQuote.netCost * (1 + marginAdjustment / 100) * 0.05).toLocaleString()}
                     </span>
@@ -458,11 +457,12 @@ export default function QuotesPageClient() {
               <div className='space-y-2 pt-2'>
                 <button
                   type='button'
-                  onClick={() => handleCopyProposalLink(activeQuote?.id || 'v2')}
-                  className='w-full py-2 bg-[#21262d] hover:bg-[#30363d] text-[#58a6ff] text-xs font-semibold rounded-md border border-[#30363d] flex items-center justify-center gap-1.5 transition-colors'
+                  disabled
+                  title='Client web links unlock when quotes are persisted by the spine — this page is an illustrative model'
+                  data-testid='quotes-client-link-disabled'
+                  className='w-full py-2 bg-[#21262d] text-[#8b949e] text-xs font-semibold rounded-md border border-[#30363d] flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60'
                 >
-                  {copiedId ? <Check className='size-3.5 text-[#3fb950]' /> : <Copy className='size-3.5' />}
-                  {copiedId ? 'Client Proposal URL Copied!' : 'Copy Interactive Web Link'}
+                  Client Web Link — unavailable for illustrative quotes
                 </button>
 
                 <Link

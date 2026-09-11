@@ -125,7 +125,11 @@ class TestLocalDocumentStorage:
             retrieved = asyncio.run(storage.get(key))
             assert retrieved == data
 
-    def test_soft_delete_retains_file(self):
+    def test_delete_tombstones_file(self):
+        # FND-0267 (2026-09-11): delete() now tombstones (renames to
+        # `<name>.tombstone`) instead of leaving the original bytes live
+        # forever. Live reads 404; the tombstone artifact remains until
+        # purge_tombstoned_documents() hard-deletes it after retention.
         from spine_api.services.document_storage import LocalDocumentStorage
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -138,9 +142,15 @@ class TestLocalDocumentStorage:
             result = asyncio.run(storage.delete(key))
 
             assert result is True
-            # File still exists on disk
+            # Original live bytes are gone from the live namespace...
             path = Path(tmpdir) / "agency1" / "trip1" / "testdoc.pdf"
-            assert path.exists()
+            assert not path.exists()
+            # ...get() now raises (previously silently returned deleted bytes)...
+            with pytest.raises(FileNotFoundError):
+                asyncio.run(storage.get(key))
+            # ...and the tombstone artifact exists for the retention purge.
+            tombstone = Path(tmpdir) / "agency1" / "trip1" / "testdoc.pdf.tombstone"
+            assert tombstone.exists()
 
     def test_signed_url_keyed_by_document_id(self):
         from spine_api.services.document_storage import LocalDocumentStorage

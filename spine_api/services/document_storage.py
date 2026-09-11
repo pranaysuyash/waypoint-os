@@ -133,11 +133,23 @@ class LocalDocumentStorage:
         return path.read_bytes()
 
     async def delete(self, key: str) -> bool:
-        """Soft-delete: return True but do NOT remove file from disk."""
+        """Tombstone-delete: rename the file to ``<name>.tombstone``.
+
+        FND-0267: the previous soft-delete returned True while leaving the
+        original bytes fully readable forever, so "deleted" documents were
+        indistinguishable from live ones and never left the disk. The
+        tombstone rename (a) removes the document from the live namespace
+        immediately, and (b) marks it for ``purge_tombstoned_documents()``,
+        which hard-deletes tombstones once their retention window passes.
+        Nothing re-reads a deleted key (no callers depend on post-delete
+        reads), so the rename is behavior-preserving for live reads.
+        """
         path = self._resolve(key)
         if not path.exists():
             return False
-        logger.info("Document soft-deleted (file retained): key=%s", key)
+        tombstone = path.with_name(path.name + ".tombstone")
+        os.rename(path, tombstone)
+        logger.info("Document tombstoned: key=%s", key)
         return True
 
     async def metadata(self, key: str) -> dict:
@@ -163,6 +175,33 @@ def verify_signed_url(document_id: str, operation: str, token: str, expires: str
         return False
 
     return _hmac_verify(document_id, operation, expires_ts, token)
+
+
+def purge_tombstoned_documents(root: Optional[Path] = None, older_than_hours: int = 168) -> int:
+    """Hard-delete tombstoned documents older than the retention window.
+
+    FND-0267 companion to the tombstone ``delete()``: bytes must eventually
+    leave the disk or "deleted" is a lie. Walks the storage tree for
+    ``*.tombstone`` files whose mtime is older than ``older_than_hours``
+    (default 7 days) and unlinks them. Returns the number of files purged.
+    Intentionally a explicit-call utility — wiring it into a scheduled sweep
+    is a retention-policy decision, not a side effect of this module.
+    """
+    base = (root or DOCUMENTS_DIR).resolve()
+    if not base.exists():
+        return 0
+    cutoff = datetime.now(timezone.utc).timestamp() - older_than_hours * 3600
+    purged = 0
+    for tombstone in base.rglob("*.tombstone"):
+        try:
+            if tombstone.stat().st_mtime < cutoff:
+                tombstone.unlink()
+                purged += 1
+        except OSError:
+            logger.exception("Failed to purge tombstone: %s", tombstone)
+    if purged:
+        logger.info("Purged %d tombstoned document(s) older than %dh", purged, older_than_hours)
+    return purged
 
 
 def get_document_storage() -> DocumentStorageBackend:

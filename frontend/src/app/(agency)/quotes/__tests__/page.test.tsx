@@ -67,6 +67,39 @@ describe('QuotesPageClient', () => {
     expect(screen.getByText('Essential Saver')).toBeInTheDocument();
     expect(screen.getByText('Ultra Prestige Suite')).toBeInTheDocument();
     expect(screen.getByText(/Live Margin & Fee Modeling/i)).toBeInTheDocument();
-    expect(screen.getByText(/Copy Interactive Web Link/i)).toBeInTheDocument();
+  });
+});
+
+describe('QuotesPageClient honesty (FND-0260)', () => {
+  it('badges the page as sample data and explains nothing is persisted or sent', () => {
+    render(<QuotesPageClient />);
+
+    // Canonical GM-01 sample-data badge next to the page title.
+    expect(screen.getByTestId('simulated-badge')).toHaveTextContent('Sample data');
+
+    // The illustrative-model banner explains exactly what is fake.
+    const banner = screen.getByTestId('quotes-sample-banner');
+    expect(banner).toHaveTextContent('Illustrative pricing model — not real quotes');
+    expect(banner).toHaveTextContent('No quote has been created, persisted, or sent to a client');
+
+    // No quote lifecycle is fabricated: statuses render as draft, not sent/reviewed.
+    expect(screen.queryByText(/^sent$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^under review$/i)).not.toBeInTheDocument();
+  });
+
+  it('never offers a copyable client link for an unpersisted quote', () => {
+    render(<QuotesPageClient />);
+
+    // The dead-domain share affordance is gone; the link buttons are disabled.
+    expect(document.body.innerHTML).not.toContain('waypoint.agency');
+    const shareButtons = screen.getAllByTestId('quotes-share-disabled');
+    expect(shareButtons.length).toBeGreaterThan(0);
+    for (const button of shareButtons) {
+      expect(button).toBeDisabled();
+    }
+    expect(screen.getByTestId('quotes-client-link-disabled')).toBeDisabled();
+    expect(
+      screen.getByText('Client Web Link — unavailable for illustrative quotes'),
+    ).toBeInTheDocument();
   });
 });

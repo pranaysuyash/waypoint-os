@@ -121,6 +121,13 @@ FEATURE_REGISTRY: Dict[str, FeatureRegistryEntry] = {
         honest_status="Simulated concurrency over in-process fixtures; measures engine throughput, not provider capacity",
         data_source="In-process fixture execution",
     ),
+    "yield_benchmark": FeatureRegistryEntry(
+        name="yield_benchmark",
+        tier=RealityTier.DETERMINISTIC_PREVIEW,
+        description="Multi-property bedbank vs GDS rate-parity benchmark simulation",
+        honest_status="Synthesized 100-property fixture benchmark; demonstrates parity-engine output shape, not live market rates",
+        data_source="In-process fixture properties (A6 Wave 1.4, FND-0261 follow-up)",
+    ),
     "itinerary_export": FeatureRegistryEntry(
         name="itinerary_export",
         tier=RealityTier.REAL,
