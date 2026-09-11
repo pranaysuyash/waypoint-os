@@ -12,10 +12,11 @@ from typing import List, Optional
 import logging
 
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from spine_api.core.auth import get_current_agency_id
 from spine_api.core.reality_tier import RealityTier, TierMetadata
-from spine_api.persistence import TEST_AGENCY_ID, TripStore
+from spine_api.persistence import TripStore
 
 logger = logging.getLogger("spine_api.routers.disruption_radar")
 
@@ -75,7 +76,7 @@ class ReBookResponse(BaseModel):
 
 @router.get("/alerts", response_model=List[DisruptionAlert])
 def list_disruption_alerts(
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """List preview alerts; no live feed is connected.
 
@@ -84,7 +85,6 @@ def list_disruption_alerts(
     CRITICAL cancellation per trip — an empty result is the honest empty,
     and unscoped CRITICAL fabrication trains operators to ignore urgency.
     """
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trips = TripStore.list_trips(agency_id=agency_id)
     now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -112,10 +112,9 @@ def list_disruption_alerts(
 @router.get("/{trip_id}/rebook-options", response_model=List[ReBookOption])
 def get_rebook_options(
     trip_id: str,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Return deterministic alternatives for operator review, never a quote."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -169,10 +168,9 @@ def get_rebook_options(
 def execute_rebook(
     trip_id: str,
     body: ReBookRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Refuse unverified rebooking; connected-provider execution is not wired."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")

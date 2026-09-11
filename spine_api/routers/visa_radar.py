@@ -14,8 +14,9 @@ evaluate e-Visa, ESTA, ETA, and Schengen requirements, and fetch destination ent
 
 from typing import Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from spine_api.core.auth import get_current_agency_id
 from spine_api.persistence import TripStore
 from spine_api.services.visa_radar import VisaCheckRequest, VisaCheckResult, audit_visa_and_passport_validity
 
@@ -37,7 +38,6 @@ class TripVisaRequirementsResponse(BaseModel):
 @router.post("/check", response_model=VisaCheckResult)
 def check_visa_and_passport_validity(
     body: VisaCheckRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
     """Audit traveler passport expiry and entry visa requirements for a destination."""
     return audit_visa_and_passport_validity(body)
@@ -47,21 +47,18 @@ def check_visa_and_passport_validity(
 def get_trip_visa_requirements(
     trip_id: str,
     passport_country: Optional[str] = None,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Fetch destination visa entry summary and curated consular application links for a trip.
 
     AT-11 (2026-09-07): no test-agency fallback — the agency scope must be
-    explicit. The traveler's passport country comes from the trip record (or
-    an explicit query param); when it is unknown the radar abstains from a
-    legal determination instead of assuming US nationality.
+    explicit. FND-0259 (2026-09-11): agency scope is JWT-membership-derived via
+    get_current_agency_id; a client-supplied X-Agency-ID is honored only in
+    pytest/auth-bypass mode. The traveler's passport country comes from the
+    trip record (or an explicit query param); when it is unknown the radar
+    abstains from a legal determination instead of assuming US nationality.
     """
-    if not x_agency_id:
-        raise HTTPException(
-            status_code=400,
-            detail="X-Agency-ID header is required for trip visa requirements",
-        )
-    trip = TripStore.get_trip_for_agency(trip_id, x_agency_id)
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 

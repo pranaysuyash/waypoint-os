@@ -8,9 +8,11 @@ calculates statutory compensation amounts per passenger, and auto-generates form
 from datetime import datetime, timezone
 from typing import List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.core.auth import get_current_agency_id
+from spine_api.persistence import AuditStore, TripStore
+from spine_api.services.passenger_rights_claims import evaluate_statutory_compensation
 
 router = APIRouter(prefix="/api/v1/passenger-rights", tags=["Passenger Rights Claim Engine"])
 
@@ -54,54 +56,35 @@ class GenerateClaimResponse(BaseModel):
     generated_at: str
 
 
-def _calculate_eu261_compensation(distance_km: float, delay_hours: float) -> float:
-    if delay_hours < 3.0:
-        return 0.0
-    if distance_km <= 1500:
-        return 250.0  # €250 for short flights <= 1500 km
-    elif distance_km <= 3500:
-        return 400.0  # €400 for intra-EU or flights 1500-3500 km
-    else:
-        return 600.0  # €600 for long-haul flights > 3500 km
-
-
 @router.post("/evaluate", response_model=ClaimEvaluationResponse)
 def evaluate_passenger_rights_claim(
     body: ClaimEvaluationRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
-    """Evaluate flight delay/cancellation for statutory passenger rights compensation (EU261 / US DOT)."""
-    fl = body.flight_number.upper().strip()
-    is_eu_or_uk = fl.startswith("BA") or fl.startswith("AF") or fl.startswith("LH") or fl.startswith("KL") or fl.startswith("IB") or fl.startswith("EI")
+    """Evaluate flight delay/cancellation for statutory passenger rights compensation (EU261 / US DOT).
 
-    if is_eu_or_uk:
-        framework = "EU261"
-        comp_eur = _calculate_eu261_compensation(body.distance_km, body.delay_hours)
-    else:
-        framework = "US_DOT"
-        comp_eur = 300.0 if body.delay_hours >= 4.0 else 0.0
-
-    is_eligible = comp_eur > 0
-    total_eur = comp_eur * body.passengers_count
-    total_usd = round(total_eur * 1.09, 2)  # EUR/USD ~ 1.09
-
-    reason = (
-        f"Eligible under {framework} for {body.delay_hours}h delay on {fl} ({body.distance_km:.0f} km flight)"
-        if is_eligible
-        else f"Ineligible under {framework}: delay duration ({body.delay_hours}h) below statutory 3h threshold"
+    A2 (2026-09-11): the statutory math is delegated to the canonical
+    ``evaluate_statutory_compensation`` in
+    ``spine_api.services.passenger_rights_claims`` — the router carries no
+    compensation arithmetic of its own.
+    """
+    result = evaluate_statutory_compensation(
+        flight_number=body.flight_number,
+        distance_km=body.distance_km,
+        delay_hours=body.delay_hours,
+        passengers_count=body.passengers_count,
     )
 
     return ClaimEvaluationResponse(
         ok=True,
         trip_id=body.trip_id,
-        flight_number=fl,
-        is_eligible=is_eligible,
-        regulatory_framework=framework if is_eligible else "NONE",
-        compensation_per_passenger_eur=comp_eur,
-        total_statutory_compensation_eur=total_eur,
-        total_claim_amount_usd=total_usd,
-        passengers_count=body.passengers_count,
-        claim_reason=reason,
+        flight_number=result["flight_number"],
+        is_eligible=result["is_eligible"],
+        regulatory_framework=result["regulatory_framework"],
+        compensation_per_passenger_eur=result["compensation_per_passenger_eur"],
+        total_statutory_compensation_eur=result["total_statutory_compensation_eur"],
+        total_claim_amount_usd=result["total_claim_amount_usd"],
+        passengers_count=result["passengers_count"],
+        claim_reason=result["claim_reason"],
     )
 
 
@@ -109,10 +92,9 @@ def evaluate_passenger_rights_claim(
 def generate_formal_airline_claim(
     trip_id: str,
     body: GenerateClaimRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Generate formal statutory airline claim document for delayed/cancelled flight."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")

@@ -18,10 +18,10 @@ booking totals to recorded payouts via ``reconcile_trip_commission``.
 
 from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from spine_api.core.auth import get_current_agency_id
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore
+from spine_api.persistence import AuditStore
 from spine_api.services.authority_approval_service import AuthorityApprovalLedger
 from spine_api.services.commission_reconciliation import (
     AdvisorPayoutLedger,
@@ -68,10 +68,10 @@ class RequestPayoutBody(BaseModel):
 @router.get("/{advisor_id}/ledger", response_model=AdvisorPayoutLedger)
 def get_advisor_ledger(
     advisor_id: str,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Retrieve commission statement, split breakdown, and payout balance for an IC advisor."""
-    return get_or_create_advisor_ledger(advisor_id, agency_id=x_agency_id or TEST_AGENCY_ID)
+    return get_or_create_advisor_ledger(advisor_id, agency_id=agency_id)
 
 
 @router.get("/reconciliation/{trip_id}")
@@ -91,10 +91,9 @@ def get_trip_commission_reconciliation(
 def request_advisor_payout(
     advisor_id: str,
     body: RequestPayoutBody,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Authorize and initiate a payout transfer from cleared commission funds."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     subject_id = body.request_id or f"{advisor_id}:{body.amount_cents}"
 
     # PA-08: enforce registry authority BEFORE recording any ledger movement.

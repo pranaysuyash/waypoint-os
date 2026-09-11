@@ -8,9 +8,10 @@ auto-generates personalized VIP experience add-on proposals (transfers, dining, 
 from datetime import datetime, timezone
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.core.auth import get_current_agency_id
+from spine_api.persistence import AuditStore, TripStore
 
 router = APIRouter(prefix="/api/v1/concierge-upsell", tags=["Concierge Up-Sell Engine"])
 
@@ -53,10 +54,9 @@ class DispatchUpsellResponse(BaseModel):
 @router.get("/{trip_id}/propose", response_model=UpsellProposalResponse)
 def propose_concierge_upsells(
     trip_id: str,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Auto-generate personalized VIP concierge experience add-on proposals for a trip."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -125,10 +125,9 @@ def propose_concierge_upsells(
 def dispatch_concierge_upsell_proposal(
     trip_id: str,
     body: DispatchUpsellRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Dispatch personalized VIP concierge experience proposals to client via email/WhatsApp."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")

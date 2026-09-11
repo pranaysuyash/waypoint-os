@@ -7,7 +7,7 @@ Allows searching airline award flight seat availability, calculating points tran
 
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header
+from fastapi import APIRouter
 
 
 router = APIRouter(prefix="/api/v1/loyalty", tags=["Loyalty & Award Ticket Engine"])
@@ -67,7 +67,6 @@ class CustomerLoyaltySummary(BaseModel):
 @router.post("/award-search", response_model=AwardSearchResponse)
 def search_award_availability(
     body: AwardSearchRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
     """Search airline award seat inventory and credit card point transfer options."""
     options = [
@@ -111,7 +110,6 @@ def search_award_availability(
 @router.get("/{customer_id}/balances", response_model=CustomerLoyaltySummary)
 def get_customer_loyalty_balances(
     customer_id: str,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
 ):
     """Loyalty balances are not a live FFN store (AT-13). Abstain instead of inventing 1K/Titanium."""
     return CustomerLoyaltySummary(

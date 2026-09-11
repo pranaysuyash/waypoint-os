@@ -10,10 +10,11 @@ calculations as a live rate, a confirmed hedge, or a financial effect.
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from spine_api.core.auth import get_current_agency_id
 from spine_api.core.reality_tier import RealityTier, TierMetadata
-from spine_api.persistence import TEST_AGENCY_ID, TripStore
+from spine_api.persistence import TripStore
 
 router = APIRouter(prefix="/api/v1/fx", tags=["Multi-Currency FX Sentinel"])
 
@@ -137,10 +138,9 @@ def get_live_fx_rates():
 
 @router.get("/exposures", response_model=List[TripFxExposure])
 def list_fx_exposures(
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Calculate illustrative exposure from local trip data and reference rates."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trips = TripStore.list_trips(agency_id=agency_id)
 
     exposures: List[TripFxExposure] = []
@@ -223,10 +223,9 @@ def list_fx_exposures(
 def lock_fx_rate_hedging(
     trip_id: str,
     body: LockFxRateRequest,
-    x_agency_id: Optional[str] = Header(None, alias="X-Agency-ID"),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Preview a hedge request without mutating the trip or contacting a provider."""
-    agency_id = x_agency_id or TEST_AGENCY_ID
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
