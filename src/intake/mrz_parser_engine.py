@@ -61,26 +61,22 @@ class ParsedPassportMRZ:
 
 
 class MRZParserEngine:
-    """ICAO 9303 7-3-1 Modulo-10 Checksum & Travel Document Parser."""
+    """ICAO 9303 7-3-1 Modulo-10 Checksum & Travel Document Parser.
+
+    FND-0271 (2026-09-11): the check-digit math is delegated to the canonical
+    ``src/intake/mrz.py`` implementation so there is exactly one ICAO 7-3-1
+    arithmetic source in the repo. This class keeps its public API and adds
+    OCR repair plus TD1/TD2/TD3 line parsing on top.
+    """
 
     WEIGHTS = (7, 3, 1)
 
     @classmethod
     def calculate_check_digit(cls, text: str) -> int:
-        """Calculates ICAO Doc 9303 check digit using weights 7, 3, 1 modulo 10."""
-        total = 0
-        for i, char in enumerate(text):
-            weight = cls.WEIGHTS[i % 3]
-            if char.isdigit():
-                val = int(char)
-            elif char.isalpha():
-                val = ord(char.upper()) - 55  # 'A' = 10, 'Z' = 35
-            elif char == "<":
-                val = 0
-            else:
-                val = 0
-            total += val * weight
-        return total % 10
+        """Calculates ICAO Doc 9303 check digit (canonical 7-3-1 implementation)."""
+        from src.intake.mrz import compute_mrz_check_digit
+
+        return compute_mrz_check_digit(text)
 
     @classmethod
     def verify_check_digit(cls, data_text: str, expected_digit: str) -> bool:

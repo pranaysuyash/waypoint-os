@@ -93,13 +93,14 @@ class FulfillmentResult:
     durable_confirmation: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        # A4 (2026-09-11): the raw VCC id and e-ticket number are excluded from
+        # the operator payload — no FE consumer reads them, and the durable,
+        # encrypted copy lives in booking_confirmations. last4 stays for display.
         return {
             "trip_id": self.trip_id,
             "proposal_token": self.proposal_token,
             "status": self.status,
             "pnr_locator": self.pnr_locator,
-            "e_ticket_number": self.e_ticket_number,
-            "vcc_card_id": self.vcc_card_id,
             "vcc_last4": self.vcc_last4,
             "total_charged_usd": self.total_charged_usd,
             "confirmed_journey_node_ids": self.confirmed_journey_node_ids,
@@ -378,13 +379,17 @@ class BookingFulfillmentEngine:
                 graph.add_node(flt_node)
                 stored_graph = graph.to_stored_payload()
                 snap_confirmation = snapshot.get("booking_confirmation") or {}
+                # A4 (2026-09-11): the trip JSONB lane is plaintext — the VCC id
+                # and e-ticket number are durably recorded (encrypted) in
+                # booking_confirmations via try_record_fulfillment_confirmation
+                # below, so they are no longer duplicated here. Replacing the
+                # whole dict also strips these keys from legacy rows on
+                # re-fulfillment. vcc_last4 stays for display.
                 updates = {
                     "booking_confirmation": {
                         "side_effects_started_at": snap_confirmation.get("side_effects_started_at") or now_iso,
                         "fulfillment_provider_key": provider_key,
                         "pnr_locator": gds_booking.pnr_locator,
-                        "e_ticket_number": gds_booking.e_ticket_number,
-                        "vcc_card_id": vcc.card_id,
                         "vcc_last4": vcc.last4,
                         "fulfilled_at": fulfilled_at_iso,
                         "total_charged_usd": proposal.selected_total_price_usd,

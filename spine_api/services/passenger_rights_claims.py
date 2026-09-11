@@ -10,7 +10,76 @@ Implements statutory compensation rules for:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
+
+# Carriers whose disruptions are adjudicated under EU261 regardless of route
+# (airport-based evaluation entry point below).
+EU261_CARRIERS = {"AF", "LH", "KL", "AZ", "IB", "TP", "LX", "OS", "EI", "BA"}
+
+# Flight-hint EU set — the historical router contract, preserved exactly so
+# evaluate_statutory_compensation is a behavior-preserving consolidation.
+_FLIGHT_HINT_EU_CARRIERS = {"BA", "AF", "LH", "KL", "IB", "EI"}
+
+_EUR_TO_USD = 1.09  # display conversion, matches the historical router contract
+
+
+def _eu261_tier_amount(distance_km: float) -> float:
+    """EU261/UK261 distance tiers: <1500km €250, ≤3500km €400, >3500km €600."""
+    if distance_km < 1500:
+        return 250.0
+    if distance_km <= 3500:
+        return 400.0
+    return 600.0
+
+
+def evaluate_statutory_compensation(
+    flight_number: str,
+    distance_km: float,
+    delay_hours: float,
+    passengers_count: int,
+) -> Dict[str, Any]:
+    """Flight-hint statutory evaluation (A2 consolidation, 2026-09-11).
+
+    Single canonical compensation calculator for the operator-facing
+    evaluate/generate-claim path. Semantics are exactly the historical router
+    contract (EU261 carrier-prefix set; €250/400/600 tiers at 3h+ delays;
+    US DOT $300 flat at 4h+; EUR→USD display conversion at 1.09) so callers
+    can delegate without a behavior change.
+    """
+    fl = flight_number.upper().strip()
+    is_eu_or_uk = any(fl.startswith(prefix) for prefix in _FLIGHT_HINT_EU_CARRIERS)
+
+    if is_eu_or_uk:
+        framework = "EU261"
+        comp_eur = _eu261_tier_amount(distance_km) if delay_hours >= 3.0 else 0.0
+    else:
+        framework = "US_DOT"
+        comp_eur = 300.0 if delay_hours >= 4.0 else 0.0
+
+    is_eligible = comp_eur > 0
+    total_eur = comp_eur * passengers_count
+    total_usd = round(total_eur * _EUR_TO_USD, 2)
+
+    if is_eligible:
+        reason = (
+            f"Eligible under {framework} for {delay_hours}h delay on {fl} ({distance_km:.0f} km flight)"
+        )
+    else:
+        threshold = "3h" if is_eu_or_uk else "4h"
+        reason = (
+            f"Ineligible under {framework}: delay duration ({delay_hours}h) below statutory {threshold} threshold"
+        )
+
+    return {
+        "flight_number": fl,
+        "is_eligible": is_eligible,
+        "regulatory_framework": framework if is_eligible else "NONE",
+        "compensation_per_passenger_eur": comp_eur,
+        "total_statutory_compensation_eur": total_eur,
+        "total_claim_amount_usd": total_usd,
+        "passengers_count": passengers_count,
+        "claim_reason": reason,
+    }
 
 
 @dataclass(slots=True)

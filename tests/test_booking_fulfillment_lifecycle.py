@@ -114,12 +114,16 @@ async def test_acceptance_persists_durably_and_fulfillment_persists_with_readbac
 
     # Read-back verification (PA-05): the trip record must carry the executed
     # booking — the old code returned FULFILLED_CONFIRMED with this absent.
+    # A4 (2026-09-11): the plaintext trip lane no longer stores the raw VCC id
+    # or e-ticket number (durable encrypted copy lives in booking_confirmations);
+    # readback asserts the display-safe contract instead.
     persisted = TripStore.get_trip(trip_id)
     confirmation = persisted.get("booking_confirmation") or {}
     assert confirmation.get("pnr_locator") == result.pnr_locator
-    assert confirmation.get("e_ticket_number") == result.e_ticket_number
-    assert confirmation.get("vcc_card_id") == result.vcc_card_id
     assert confirmation.get("total_charged_usd") == 4500.0
+    assert "vcc_card_id" not in confirmation
+    assert "e_ticket_number" not in confirmation
+    assert confirmation.get("vcc_last4") == result.vcc_last4
     # Part-H P1: the blob carries the reality gate so traveler UI can tell a
     # preview from a live booking.
     assert confirmation.get("reality_tier") == "deterministic_preview"
@@ -157,7 +161,7 @@ async def test_fulfillment_replays_existing_confirmation_without_second_vcc():
     )
     assert first.idempotent_replay is False
     first_pnr = first.pnr_locator
-    first_vcc = first.vcc_card_id
+    first_vcc_last4 = first.vcc_last4
 
     second = await BookingFulfillmentEngine.fulfill_accepted_proposal(
         trip_id=trip_id,
@@ -166,13 +170,18 @@ async def test_fulfillment_replays_existing_confirmation_without_second_vcc():
     )
     assert second.idempotent_replay is True
     assert second.pnr_locator == first_pnr
-    assert second.vcc_card_id == first_vcc
+    # AT-03: no second VCC was minted — proven by the identical PNR + last4.
+    # (The raw id is deliberately not reconstructable from the plaintext lane
+    # after A4; instrument determinism is covered by the adapter idempotency
+    # test below.)
+    assert second.vcc_last4 == first_vcc_last4
     assert second.status == "FULFILLED_CONFIRMED"
 
     persisted = TripStore.get_trip(trip_id)
     confirmation = persisted.get("booking_confirmation") or {}
     assert confirmation.get("pnr_locator") == first_pnr
-    assert confirmation.get("vcc_card_id") == first_vcc
+    assert confirmation.get("vcc_last4") == first_vcc_last4
+    assert "vcc_card_id" not in confirmation
 
 
 @pytest.mark.asyncio
@@ -297,7 +306,10 @@ def test_fulfillment_router_endpoint(client: TestClient):
     fulfillment = data["fulfillment"]
     assert fulfillment["status"] == "FULFILLED_CONFIRMED"
     assert fulfillment["pnr_locator"] is not None
-    assert fulfillment["vcc_card_id"] is not None
+    # A4: the operator payload carries display-safe VCC data only.
+    assert "vcc_card_id" not in fulfillment
+    assert "e_ticket_number" not in fulfillment
+    assert fulfillment["vcc_last4"] is not None
     assert fulfillment["total_charged_usd"] == 3500.0
     # PA-05: the response truthfully labels the sim tier.
     assert fulfillment["reality_tier"] == "deterministic_preview"
@@ -341,10 +353,10 @@ def test_fulfillment_router_idempotency_key_replay(client: TestClient):
     second_payload = second.json()
     assert second_payload["idempotent_replay"] is True
     assert second_payload["fulfillment"]["pnr_locator"] == first_pnr
-    assert (
-        second_payload["fulfillment"]["vcc_card_id"]
-        == first_payload["fulfillment"]["vcc_card_id"]
-    )
+    # A4: replay identity is asserted on display-safe fields; the raw VCC id
+    # is absent from both payloads.
+    assert second_payload["fulfillment"]["vcc_last4"] == first_payload["fulfillment"]["vcc_last4"]
+    assert "vcc_card_id" not in second_payload["fulfillment"]
 
 
 def test_fulfillment_router_idempotency_key_body_mismatch(client: TestClient):
