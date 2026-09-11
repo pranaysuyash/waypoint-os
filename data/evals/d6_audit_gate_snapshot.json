@@ -1,4 +1,48 @@
 {
+  "adversarial_health": {
+    "actual_source": "live_extraction_pipeline",
+    "baseline_drifted": false,
+    "blocks_ci": false,
+    "by_taxonomy_class": {
+      "boundary": {
+        "fixture_accuracy": 1.0,
+        "fixtures_passing": 6,
+        "total_fixtures": 6
+      },
+      "linguistic": {
+        "fixture_accuracy": 1.0,
+        "fixtures_passing": 3,
+        "total_fixtures": 3
+      },
+      "security_adjacent": {
+        "fixture_accuracy": 1.0,
+        "fixtures_passing": 6,
+        "total_fixtures": 6
+      },
+      "semantic": {
+        "fixture_accuracy": 1.0,
+        "fixtures_passing": 1,
+        "total_fixtures": 1
+      },
+      "structural": {
+        "fixture_accuracy": 1.0,
+        "fixtures_passing": 5,
+        "total_fixtures": 5
+      }
+    },
+    "evidence_tier": 2,
+    "expected_baseline_accuracy": 1.0,
+    "fixtures_failing": 0,
+    "fixtures_passing": 21,
+    "live_grading": true,
+    "note": "Live in-process adversarial property grading (E-08 promoted gating_candidate records, property contract per E-11 section 4.4).",
+    "overall_accuracy": 1.0,
+    "properties_violated": 0,
+    "property_accuracy": 1.0,
+    "status": "passing",
+    "total_fixtures": 21,
+    "total_properties_checked": 28
+  },
   "budget_health": {
     "actual_source": "live_pipeline",
     "baseline_drifted": true,
@@ -66,6 +110,14 @@
         "category_status_shadow"
       ],
       "status": "shadow"
+    },
+    "adversarial": {
+      "authoritative_for_public_surface": true,
+      "blocks_ci": false,
+      "meets_thresholds": true,
+      "metrics": null,
+      "reasons": [],
+      "status": "gating"
     },
     "budget": {
       "authoritative_for_public_surface": true,
@@ -263,7 +315,7 @@
     "expected_baseline_f1": 1.0,
     "fixture_accuracy": 1.0,
     "live_grading": false,
-    "note": "Baseline using expected outputs as actuals (golden fixtures carry no raw_input; document vision extraction has no deterministic producer).",
+    "note": "Baseline using expected outputs as actuals (fixtures carry authored raw_input, but the deterministic pipeline emits no document facts \u2014 document vision extraction has no deterministic producer).",
     "overall_f1": 1.0,
     "overall_precision": 1.0,
     "overall_recall": 1.0,
@@ -271,7 +323,7 @@
     "total_fixtures": 50
   },
   "fixture_root": "data/fixtures/audit",
-  "generated_at": "2026-09-10T19:02:24.296173+00:00",
+  "generated_at": "2026-09-11T13:24:04.163314+00:00",
   "manifest_version": 1,
   "pipeline_health": {
     "actual_source": "expected_fixture_mirror",
@@ -295,7 +347,7 @@
   "routing_health": {
     "alerts": [],
     "blocks_ci": false,
-    "checked_at": "2026-09-10T19:02:23.350321+00:00",
+    "checked_at": "2026-09-11T13:24:03.450456+00:00",
     "metrics_snapshot": {
       "correct_escalation_count": null,
       "cost_usd": {

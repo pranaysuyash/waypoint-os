@@ -8,9 +8,9 @@
   },
   "counts": {
     "total_features": 117,
-    "GATED": 5,
-    "LIVE": 103,
-    "PARTIAL": 6,
+    "GATED": 6,
+    "LIVE": 94,
+    "PARTIAL": 14,
     "SIMULATED": 2,
     "STUB": 1
   },
@@ -328,11 +328,12 @@
       "id": "C02",
       "domain": "C) Decision Engine & Suitability",
       "feature": "NB02 / D1 autonomy gate",
-      "status": "LIVE",
+      "status": "PARTIAL",
       "priority": "P0",
-      "what_it_does": "Per-agency tri-state autonomy policy (fully_human/hybrid/fully_autonomous) with hard STOP safety invariant",
+      "what_it_does": "Per-agency autonomy policy with hard STOP safety invariant. Shipped: per-decision-state `auto/review/block` gates. NOT shipped: ADR-008 `money_execution_mode` rungs (fully_human/hybrid/fully_autonomous) — ratified 2026-09-09, unimplemented (FND-0261)",
       "evidence": [
-        "`src/intake/gates.py:156`"
+        "`src/intake/config/agency_settings.py:55-115`",
+        "`src/intake/gates.py:156`; `Docs/architecture/adr/ADR-008-AGENCY_BOUNDARY_AND_AUTONOMY_RUNGS_2026-09-06.md`"
       ]
     },
     {
@@ -539,11 +540,11 @@
       "id": "D09",
       "domain": "D) Proposal, Content & Traveler Surfaces",
       "feature": "Pre-departure briefing cadence",
-      "status": "LIVE",
+      "status": "PARTIAL",
       "priority": "P2",
-      "what_it_does": "Automated D-7 / D-3 / D-1 traveler briefings",
+      "what_it_does": "Automated D-7 / D-3 / D-1 traveler briefings. ORPHANED (FND-0261): module implemented but has no router, scheduler, or pipeline caller — nothing automates the cadence",
       "evidence": [
-        "`src/briefing/pre_departure_cadence.py`"
+        "`src/briefing/pre_departure_cadence.py` (zero non-test importers)"
       ]
     },
     {
@@ -689,11 +690,11 @@
       "id": "E08",
       "domain": "E) Pricing, Money & Suppliers",
       "feature": "Accounting export bridge",
-      "status": "LIVE",
+      "status": "PARTIAL",
       "priority": "P2",
-      "what_it_does": "Tally XML / QuickBooks JSON invoice export",
+      "what_it_does": "Tally XML / QuickBooks JSON invoice export. ORPHANED (FND-0261): module implemented but no endpoint exposes the export",
       "evidence": [
-        "`src/accounting/export_bridge.py`"
+        "`src/accounting/export_bridge.py` (zero non-test importers)"
       ]
     },
     {
@@ -756,11 +757,11 @@
       "id": "E14",
       "domain": "E) Pricing, Money & Suppliers",
       "feature": "Payment mandates ledger",
-      "status": "LIVE",
+      "status": "GATED",
       "priority": "P2",
-      "what_it_does": "Consent-digested payment mandate tracking",
+      "what_it_does": "Consent-digested payment mandate tracking. Default-off pending ADR-008 ratification (open P0 FND-0185 / AT-15) — not \"live with no special gate\" (FND-0261)",
       "evidence": [
-        "`src/financial/payment_mandates.py`"
+        "`src/financial/payment_mandates.py`; `Docs/review/FINDINGS_LIVE.md` FND-0185"
       ]
     },
     {
@@ -779,21 +780,21 @@
       "id": "F01",
       "domain": "F) Distribution & GDS",
       "feature": "Sabre sandbox adapter",
-      "status": "LIVE",
+      "status": "PARTIAL",
       "priority": "P2",
-      "what_it_does": "BFM pricing + PNR create/delete against sandbox credentials",
+      "what_it_does": "BFM pricing + PNR create/delete shapes via deterministic sandbox adapter. No credentials are ever read; endpoints return `provider_connected: false` with `computation_method: \"deterministic sandbox adapter; no network call\"` (FND-0261)",
       "evidence": [
         "`src/distribution/sabre_sandbox_adapter.py`",
-        "`spine_api/routers/gds_sandbox.py`"
+        "`spine_api/routers/gds_sandbox.py:33-45`"
       ]
     },
     {
       "id": "F02",
       "domain": "F) Distribution & GDS",
       "feature": "Amadeus sandbox adapter",
-      "status": "LIVE",
+      "status": "PARTIAL",
       "priority": "P2",
-      "what_it_does": "Offer search + order flows against sandbox credentials",
+      "what_it_does": "Offer search + order flow shapes via deterministic sandbox adapter. No credentials are ever read; endpoints return `provider_connected: false` (FND-0261)",
       "evidence": [
         "`src/distribution/amadeus_sandbox_adapter.py`"
       ]
@@ -847,22 +848,23 @@
       "id": "G01",
       "domain": "G) In-Trip, Crisis & Duty of Care",
       "feature": "Ghost concierge",
-      "status": "LIVE",
+      "status": "PARTIAL",
       "priority": "P1",
-      "what_it_does": "Flight telemetry to connection-risk detection with proactive recovery actions",
+      "what_it_does": "Flight telemetry to connection-risk detection with proactive recovery actions. ORPHANED (FND-0261): zero serving-path callers — `/ghost/*` routes only insert/read a `GhostWorkflow` row and never invoke the engine",
       "evidence": [
-        "`spine_api/services/ghost_concierge.py`"
+        "`spine_api/services/ghost_concierge.py` (zero non-test importers)"
       ]
     },
     {
       "id": "G02",
       "domain": "G) In-Trip, Crisis & Duty of Care",
       "feature": "Disruption radar + rebooking copilot",
-      "status": "LIVE",
+      "status": "PARTIAL",
       "priority": "P2",
-      "what_it_does": "Flight disruption monitoring with re-booking options",
+      "what_it_does": "Flight disruption preview alerts + deterministic rebooking options. Router self-describes: \"no live feed is connected\", every response tagged `DETERMINISTIC_PREVIEW`; rebook refuses to mutate booking state (FND-0261 — G03's honesty applied here)",
       "evidence": [
-        "`spine_api/routers/disruption_radar.py`"
+        "`spine_api/routers/disruption_radar.py:2",
+        "80`"
       ]
     },
     {
@@ -1148,9 +1150,9 @@
       "id": "I08",
       "domain": "I) Agent Runtime & Ops Reliability",
       "feature": "Agent intelligence graph builder",
-      "status": "LIVE",
+      "status": "PARTIAL",
       "priority": "P2",
-      "what_it_does": "Living navigation graph over docs/code for agent orientation",
+      "what_it_does": "Living navigation graph over docs/code for agent orientation. Developer tooling only (FND-0261): no CI job, no runtime/API/UI surface — artifact generated on demand",
       "evidence": [
         "`tools/build_agent_intelligence_graph.py`",
         "`Docs/context/AGENT_INTELLIGENCE_GRAPH.md`"

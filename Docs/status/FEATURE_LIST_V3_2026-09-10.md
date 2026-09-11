@@ -11,6 +11,7 @@ Companion map: [CODEBASE_FEATURES_FLOWS_LOOPS_MAP_2026-09-03](../architecture/CO
 1. Four parallel read-only Explore sweeps on 2026-09-03 (agent core `src/`, backend `spine_api/`, frontend `frontend/`, docs/tests/tools), synthesized into the companion map; feature rows re-verified against the tree on 2026-09-10.
 2. Wiring-status spot verification (not assumed): hybrid engine default `decision.py:40`, distribution + IROPS `PREVIEW_ONLY` markers, in-memory commission ledgers, sourcing-hierarchy stub, tier-gated frontier flag, simulated-surface labels from the 2026-08-31 agentic deep audit and PER-0100 launch audit.
 3. V2 (2026-05-12, 60 features) reviewed for continuity; every V2 LIVE feature re-evidenced or superseded below.
+4. **Wiring-evidence rule (2026-09-11, FND-0261):** a `LIVE` row requires a serving-path caller — a mounted router endpoint consumed by the frontend/runtime, or a scheduled runtime caller — not merely module existence. The 2026-09-11 Elena-council audit found rows labeled LIVE on module existence alone; those rows are corrected below (C02, D09, E08, E14, F01, F02, G01, G02, I08) and orphaned implementations are marked `PARTIAL` with the missing caller stated.
 
 ## Status Legend
 
@@ -20,7 +21,7 @@ Companion map: [CODEBASE_FEATURES_FLOWS_LOOPS_MAP_2026-09-03](../architecture/CO
 - `SIMULATED` — demo/in-memory surface, not live inference (labeled per the honesty wave).
 - `STUB` — interface exists, resolver/body intentionally not implemented yet.
 
-Counts (authoritative, generated): 117 features — 103 LIVE, 6 PARTIAL, 5 GATED, 2 SIMULATED, 1 STUB.
+Counts (authoritative, generated): 117 features — 94 LIVE, 14 PARTIAL, 6 GATED, 2 SIMULATED, 1 STUB. (Corrected 2026-09-11 per FND-0261: 9 rows moved out of LIVE after serving-path-caller verification.)
 
 ---
 
@@ -64,7 +65,7 @@ Counts (authoritative, generated): 117 features — 103 LIVE, 6 PARTIAL, 5 GATED
 | ID | Feature | Status | Priority | What it does | Evidence |
 |---|---|---|---|---|---|
 | C01 | Gap-and-decision engine (10 phases) | LIVE | P0 | Ambiguity, budget feasibility/decomposition, contradictions, urgency, MVB blockers, question generation | `src/intake/decision.py:1942` |
-| C02 | NB02 / D1 autonomy gate | LIVE | P0 | Per-agency tri-state autonomy policy (fully_human/hybrid/fully_autonomous) with hard STOP safety invariant | `src/intake/gates.py:156` |
+| C02 | NB02 / D1 autonomy gate | PARTIAL | P0 | Per-agency autonomy policy with hard STOP safety invariant. Shipped: per-decision-state `auto/review/block` gates. NOT shipped: ADR-008 `money_execution_mode` rungs (fully_human/hybrid/fully_autonomous) — ratified 2026-09-09, unimplemented (FND-0261) | `src/intake/config/agency_settings.py:55-115`, `src/intake/gates.py:156`; `Docs/architecture/adr/ADR-008-AGENCY_BOUNDARY_AND_AUTONOMY_RUNGS_2026-09-06.md` |
 | C03 | Suitability matrix D4/D6 | LIVE | P0 | Activity catalog scoring, context penalties, confidence clamping, critical flags halt the spine | `src/suitability/scoring.py:128`, `src/suitability/integration.py` |
 | C04 | Hybrid rules→cache→LLM decision engine | GATED | P1 | Credential-gated LLM upgrade path with circuit breaker; default off (`USE_HYBRID_DECISION_ENGINE=1` to enable) | `src/intake/decision.py:40`, `src/decision/hybrid_engine.py` |
 | C05 | Operator overrides + safety invariants | LIVE | P0 | Suppress/downgrade/acknowledge risk flags; document/visa/leakage flags can never be suppressed | `src/decision/override_learning.py:54` |
@@ -87,7 +88,7 @@ Counts (authoritative, generated): 117 features — 103 LIVE, 6 PARTIAL, 5 GATED
 | D06 | Booking-data collection links | LIVE | P0 | Single-use SHA-256 hashed tokens; traveler submits data + documents; operator accept/reject | `spine_api/services/collection_service.py`, `spine_api/routers/public_collection.py` |
 | D07 | Document upload validation + scanner | LIVE | P1 | Magic-byte validation, streaming size cap, scanner abstraction, extraction attempts | `spine_api/services/document_service.py`, `spine_api/routers/trip_documents.py` |
 | D08 | Luxury itinerary PDF / e-voucher compiler | LIVE | P2 | Vector HTML/CSS document generation for itineraries and vouchers | `src/compilers/itinerary_export_engine.py`, `Docs/architecture/ADVANCED_INTERNAL_SYSTEMS_AND_COMPILERS_2026-09-03.md` |
-| D09 | Pre-departure briefing cadence | LIVE | P2 | Automated D-7 / D-3 / D-1 traveler briefings | `src/briefing/pre_departure_cadence.py` |
+| D09 | Pre-departure briefing cadence | PARTIAL | P2 | Automated D-7 / D-3 / D-1 traveler briefings. ORPHANED (FND-0261): module implemented but has no router, scheduler, or pipeline caller — nothing automates the cadence | `src/briefing/pre_departure_cadence.py` (zero non-test importers) |
 | D10 | Persona Council panel | SIMULATED | P1 | Labeled demo council surface; not live inference | `frontend/src/app/(agency)/workbench/PersonaCouncilPanel.tsx`, `Docs/exploration/AGENTIC_DEEP_AUDIT_SYNTHESIS_2026-08-31.md` |
 | D11 | Frontier dashboard panel | SIMULATED | P1 | Labeled demo frontier surface; orchestrator heuristics exist behind tier gates | `frontend/src/components/workspace/FrontierDashboard.tsx`, `src/intake/frontier_orchestrator.py:45` |
 | D12 | Time-travel scrubber + invertible history | LIVE | P2 | Undo/redo snapshot stack over trip state with UI scrubber | `src/state/mutation_history_stack.py`, `frontend/src/app/(agency)/workbench/TimeTravelScrubber.tsx` |
@@ -105,21 +106,21 @@ Counts (authoritative, generated): 117 features — 103 LIVE, 6 PARTIAL, 5 GATED
 | E05 | Sub-agent IC payout portal | PARTIAL | P2 | Advisor commission ledger + payout authorization — in-memory store | `spine_api/routers/subagent_payouts.py` |
 | E06 | FX risk sentinel | LIVE | P2 | Dynamic FX exposure and hedging recommendations | `spine_api/routers/fx_sentinel.py` |
 | E07 | India tax compliance (TCS 206C(1G) / GST) | LIVE | P1 | Statutory computation with sourcing cost ledger | `src/fees/tax_compliance.py`, `spine_api/routers/tax_compliance.py` |
-| E08 | Accounting export bridge | LIVE | P2 | Tally XML / QuickBooks JSON invoice export | `src/accounting/export_bridge.py` |
+| E08 | Accounting export bridge | PARTIAL | P2 | Tally XML / QuickBooks JSON invoice export. ORPHANED (FND-0261): module implemented but no endpoint exposes the export | `src/accounting/export_bridge.py` (zero non-test importers) |
 | E09 | Negotiation suite (bargaining, fee-waiver, margin optimizer) | LIVE | P1 | Game-theoretic counter rounds, penalty-waiver requests, dynamic take-rate with 10 percent floor | `src/negotiation/bargaining_engine.py:90`, `src/negotiation/margin_optimizer.py` |
 | E10 | Price-lock sentinel | LIVE | P1 | 72h quote-window rate-drop audits, optimistic-locked re-lock with per-trip idempotency keys | `spine_api/routers/price_lock.py:196` |
 | E11 | Supplier contracts | LIVE | P1 | DMC / preferred-supplier / wholesale contract registry backing price-lock | `spine_api/routers/supplier.py` |
 | E12 | Yield arbitrage | LIVE | P2 | Bedbank/GDS/CRS rate-parity scans, multi-property benchmark, re-ticketing | `src/yield_arbitrage/rate_parity_engine.py` |
 | E13 | Sourcing hierarchy resolver | STUB | P2 | internal→preferred→network→open_market ladder defined; resolver intentionally not implemented (defaults to open_market) | `src/intake/sourcing_path.py` |
-| E14 | Payment mandates ledger | LIVE | P2 | Consent-digested payment mandate tracking | `src/financial/payment_mandates.py` |
+| E14 | Payment mandates ledger | GATED | P2 | Consent-digested payment mandate tracking. Default-off pending ADR-008 ratification (open P0 FND-0185 / AT-15) — not "live with no special gate" (FND-0261) | `src/financial/payment_mandates.py`; `Docs/review/FINDINGS_LIVE.md` FND-0185 |
 | E15 | Charter aviation + empty-leg arbitrage | LIVE | P2 | Fleet selection, runway feasibility, FBO/eAPIS filings, empty-leg matching | `src/charter/aviation_engine.py`, `spine_api/routers/charter_aviation.py` |
 
 ## F) Distribution & GDS
 
 | ID | Feature | Status | Priority | What it does | Evidence |
 |---|---|---|---|---|---|
-| F01 | Sabre sandbox adapter | LIVE | P2 | BFM pricing + PNR create/delete against sandbox credentials | `src/distribution/sabre_sandbox_adapter.py`, `spine_api/routers/gds_sandbox.py` |
-| F02 | Amadeus sandbox adapter | LIVE | P2 | Offer search + order flows against sandbox credentials | `src/distribution/amadeus_sandbox_adapter.py` |
+| F01 | Sabre sandbox adapter | PARTIAL | P2 | BFM pricing + PNR create/delete shapes via deterministic sandbox adapter. No credentials are ever read; endpoints return `provider_connected: false` with `computation_method: "deterministic sandbox adapter; no network call"` (FND-0261) | `src/distribution/sabre_sandbox_adapter.py`, `spine_api/routers/gds_sandbox.py:33-45` |
+| F02 | Amadeus sandbox adapter | PARTIAL | P2 | Offer search + order flow shapes via deterministic sandbox adapter. No credentials are ever read; endpoints return `provider_connected: false` (FND-0261) | `src/distribution/amadeus_sandbox_adapter.py` |
 | F03 | NDC 21.3 Offer/Order client | LIVE | P2 | IATA NDC 21.3 offer/order lifecycle | `src/distribution/ndc_client.py` |
 | F04 | EDIFACT parser + ATPCO fare rules | LIVE | P2 | Cryptic-command PNR parsing, Cat 16/35 rules, ADM prevention | `src/distribution/edifact_parser.py`, `src/distribution/fare_rules_engine.py` |
 | F05 | Distribution API surface | PARTIAL | P2 | GDS/NDC endpoints return PREVIEW_ONLY metadata; no live carrier connection | `spine_api/routers/distribution.py:85` |
@@ -129,8 +130,8 @@ Counts (authoritative, generated): 117 features — 103 LIVE, 6 PARTIAL, 5 GATED
 
 | ID | Feature | Status | Priority | What it does | Evidence |
 |---|---|---|---|---|---|
-| G01 | Ghost concierge | LIVE | P1 | Flight telemetry to connection-risk detection with proactive recovery actions | `spine_api/services/ghost_concierge.py` |
-| G02 | Disruption radar + rebooking copilot | LIVE | P2 | Flight disruption monitoring with re-booking options | `spine_api/routers/disruption_radar.py` |
+| G01 | Ghost concierge | PARTIAL | P1 | Flight telemetry to connection-risk detection with proactive recovery actions. ORPHANED (FND-0261): zero serving-path callers — `/ghost/*` routes only insert/read a `GhostWorkflow` row and never invoke the engine | `spine_api/services/ghost_concierge.py` (zero non-test importers) |
+| G02 | Disruption radar + rebooking copilot | PARTIAL | P2 | Flight disruption preview alerts + deterministic rebooking options. Router self-describes: "no live feed is connected", every response tagged `DETERMINISTIC_PREVIEW`; rebook refuses to mutate booking state (FND-0261 — G03's honesty applied here) | `spine_api/routers/disruption_radar.py:2,80` |
 | G03 | IROPS auto-healer | PARTIAL | P1 | Deterministic recovery-plan preview only; strips operative actions until carrier connectivity lands | `spine_api/routers/irops_healer.py:2` |
 | G04 | Crisis ops + evacuation engine | LIVE | P1 | Multi-modal evacuation routing bypassing compromised airspace | `spine_api/routers/crisis_ops.py`, `src/crisis/evacuation_engine.py` |
 | G05 | Safety beacons + STEP manifests + ground dispatch | LIVE | P1 | I-am-safe check-ins, consular manifests, driver dispatch with SOS messaging | `src/crisis/safety_beacon.py`, `src/crisis/ground_dispatch.py` |
@@ -165,7 +166,7 @@ Counts (authoritative, generated): 117 features — 103 LIVE, 6 PARTIAL, 5 GATED
 | I05 | Zombie reaper + integrity watchdog | LIVE | P1 | Child-process reaping (5s) and dashboard-sum drift detection (600s) | `spine_api/server.py:1806`, `spine_api/watchdog.py` |
 | I06 | Resilience engine | LIVE | P1 | Circuit breakers, degradation hierarchy, failure quarantine, compensation | `src/services/resilience_engine.py`, `spine_api/routers/resilience.py` |
 | I07 | Invertible state mutation stack | LIVE | P2 | Undo/redo snapshots over trip state | `src/state/mutation_history_stack.py`, `spine_api/routers/trip_history.py` |
-| I08 | Agent intelligence graph builder | LIVE | P2 | Living navigation graph over docs/code for agent orientation | `tools/build_agent_intelligence_graph.py`, `Docs/context/AGENT_INTELLIGENCE_GRAPH.md` |
+| I08 | Agent intelligence graph builder | PARTIAL | P2 | Living navigation graph over docs/code for agent orientation. Developer tooling only (FND-0261): no CI job, no runtime/API/UI surface — artifact generated on demand | `tools/build_agent_intelligence_graph.py`, `Docs/context/AGENT_INTELLIGENCE_GRAPH.md` |
 
 ## J) Evals & CI Quality Gates
 
@@ -200,6 +201,7 @@ Counts (authoritative, generated): 117 features — 103 LIVE, 6 PARTIAL, 5 GATED
 
 ## Notes for V4
 
-- Re-verify the five GATED rows when their gates flip (hybrid engine, vision chain, judge, autoresearch, scenario lab) — each is a one-line status change plus evidence path.
-- E04/E05 need a durable ledger decision (they are the only money-path PARTIALs).
+- Re-verify the six GATED rows when their gates flip (hybrid engine, vision chain, judge, autoresearch, scenario lab, payment mandates/FND-0185) — each is a one-line status change plus evidence path.
+- Re-wire or retire the orphaned PARTIAL rows (D09 briefings, E08 accounting export, G01 ghost concierge) — each needs one serving-path caller to re-earn LIVE.
+- E04/E05 need a durable ledger decision (they are money-path PARTIALs; C02's ADR-008 rungs are the other unimplemented money-path slice).
 - F05/G03 unblock when real carrier connectivity lands; keep PREVIEW_ONLY until then.

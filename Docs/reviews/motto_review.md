@@ -2,119 +2,119 @@
 
 - Doctrine path: /Users/pranay/Projects/travel_agency_agent/OPERATING_DOCTRINE.md
 - SHA-256: ff848618a7431a3b06c7409caa45683bd27c64263d45b93f9fcd36a89803466a
-- Generated: 2026-09-10T18:56:34Z
+- Generated: 2026-09-11T14:08:52Z
 - This is a generated review artifact, not an instruction source.
 
 ## SECTION_0
 
 - Label: §0 Start from live truth
 - Reviewed: True
-- Evidence: Live truth: suite re-run at 4350 of 0 via scripts/run_backend_tests.sh with the dev server stopped; working tree re-inspected before staging (22 paths, all accounted for: TS wave files plus envelope-tool drift verified earlier).
+- Evidence: Live truth refreshed each phase: git status/log re-checked before edits and before finalizing; parallel extractor batch detected mid-session and its files avoided; suite receipts captured from 5 full runs.
 
 ## SECTION_00_INTEGRATED
 
 - Label: Full doctrine integrated audit
 - Reviewed: True
-- Evidence: Integrated audit of the staged second TS wave: TS-08 UNKNOWN idempotency outcome with TTL exemption and fenced resolution in src/agents/idempotency.py plus fulfillment classification in spine_api/routers/fulfillment.py; trip-level commitment aggregation and verdict on the journey-graph GET in spine_api/routers/journey_graph.py; TS-07 operation-keyed requiredness with prioritized follow-up consumers in src/intake/validation.py and src/intake/decision.py; TS-06 deterministic route-structure enumerator in src/decision/route_structures.py with additive decision enrichment and the DecisionTab dual-shape render fix; TS-03 S1 attachment envelope in spine_api/contract.py with storage-lane persistence in spine_api/routers/inbound.py; verification: 51 new tests, full backend suite 4350 of 0, mypy clean, ruff clean, tsc clean, 1380 frontend vitest; envelope-tool drift verified and riding along; register and roadmap synchronized.
+- Evidence: Integrated pass completed last: full audit (Docs/reviews/ELENA_COUNCIL_CODEBASE_AUDIT_2026-09-11.md) -> 13 findings registered via CLI -> 12 closed with file:line/test/command evidence, 1 deferred with reopen trigger; A2/A4/A6 completed on canonical paths; P1 security + honesty fixes gated; full suite, tsc, vitest, ruff, scoped mypy green before commit; all sections above individually attested with session-specific evidence.
 
 ## SECTION_1
 
 - Label: §1 Outcomes and retained value
 - Reviewed: True
-- Evidence: Retained value: TS-08 UNKNOWN outcome protects the money path from duplicate bookings (src/agents/idempotency.py); TS-07 required_for prioritizes customer questions (src/intake/validation.py); TS-06 route structures enrich proposals (src/decision/route_structures.py); TS-03 S1 opens the attachment funnel (spine_api/contract.py).
+- Evidence: Outcomes retained: P1 tenant hole closed with a CI gate; fabricated /quotes surface honest; 9 mislabeled feature rows corrected at source of truth; A2/A4 completed; GMV + review-history operator gains shipped; receipts in Docs/review/ELENA_AUDIT_REMEDIATION_HANDOFF_2026-09-11.md.
 
 ## SECTION_10
 
 - Label: §10 Parallel work and contested state
 - Reviewed: True
-- Evidence: Parallel work engaged: the envelope-tool drift in tools/strip_envelope_fragments.py that arrived mid-commit was verified (10 of 10 tests in tests/test_strip_envelope_fragments.py, corpus 2240 clean) and rides this commit; drift re-checked before staging.
+- Evidence: Parallel work honored per shared-tree doctrine: concurrent agent owned src/intake/extractors.py, tests/test_extraction_fixes.py, data/fixtures/adversarial/adversarial_seed_v1.json (left untouched); its invariant break in tests/test_adversarial_lane.py (KNOWN_DEFECT_IDS vs corpus) was completed with a dated note; no other parallel-owned file edited; git status re-checked before finalizing docs/review/OPEN_WORK_ROADMAP_2026-09-08.md.
 
 ## SECTION_11
 
 - Label: §11 Engineering and data integrity
 - Reviewed: True
-- Evidence: Data integrity: UNKNOWN records are exempt from TTL reclaim in both backends of src/agents/idempotency.py so unresolved outcomes are never silently reset; fenced CAS on resolve_unknown prevents stale-owner closure; attachment manifest is content-addressed (sha256) in spine_api/routers/inbound.py.
+- Evidence: Data integrity: A4 removed raw VCC/e-ticket from the plaintext trip lane with reader-audit proof (zero readers) and zero legacy rows (live DB check); encryption-at-rest unchanged in confirmation_service; GMV sums only real recorded budgets; attachment caps now physically enforceable; no silent data loss path introduced.
 
 ## SECTION_12
 
 - Label: §12 AI output boundary
 - Reviewed: True
-- Evidence: AI output boundary: route-structure generation is pure combinatorics with no LLM (documented in src/decision/route_structures.py); the LLM may narrate trade-offs but never alters skeletons; no agent claims accepted without in-repo evidence.
+- Evidence: AI output boundary: persona lenses (Elena council) marked as judgment; all promoted issues carry file:line or command evidence; no fabricated claims — the /quotes fabrications were removed, not replicated; scanner Chinese titles translated with source noted in the triage annex.
 
 ## SECTION_13
 
 - Label: §13 Product, operator, and claim reality
 - Reviewed: True
-- Evidence: Claim reality: the 504 outcome_unknown response explicitly tells operators not to retry blindly (spine_api/routers/fulfillment.py); attachments_accepted honestly reports degradation; the commitment_verdict abstains when no non-void nodes exist (spine_api/routers/journey_graph.py).
+- Evidence: Operator reality: /quotes no longer offers fabricated client pricing; review queue now shows decision history and Rejected/Revision tabs; GMV card real-or-0; feature inventory rows now match what an operator can actually reach.
 
 ## SECTION_14
 
 - Label: §14 Documentation and decisions
 - Reviewed: True
-- Evidence: Documentation and decisions: TS-06/07/08 marked DONE and TS-03 S1 marked done with named S2/S3 seams in Docs/exploration/CHATGPT_SYSTEMS_TRAINING_SESSION_FINDINGS_2026-09-09.md; roadmap table synchronized in Docs/review/OPEN_WORK_ROADMAP_2026-09-08.md.
+- Evidence: Documentation: LAUNCH_STATUS evidence snapshot refreshed with dated sources; roadmap A2/A4/A6 receipts written with commit/test citations; Mimosa per-cluster triage annex added; decision pack records the FND-0268 execution prerequisite; handoff updated.
 
 ## SECTION_15
 
 - Label: §15 Completion contract
 - Reviewed: True
-- Evidence: Completion contract: verdicts explicit in the handoff addendum of Docs/review/TS_REGISTER_EXECUTION_HANDOFF_2026-09-09.md (code ready, seams enumerated, Wave A recommended next); nothing silently dropped.
+- Evidence: Completion contract: full suite + targeted lanes + tsc + vitest (184 files/1382) + ruff + scoped mypy (21 files) green at commit time; FND-0268 explicitly deferred (not silently dropped); remaining owner items listed in the handoff.
 
 ## SECTION_16
 
 - Label: §16 Specialist doctrine routing
 - Reviewed: True
-- Evidence: Specialist routing: Testing doctrine paired fail-pass sensitivity per family; Architecture doctrine owned boundary placement (registry extension, decision enrichment, storage-lane reuse); Documentation doctrine for the register and handoff updates under Docs/.
+- Evidence: Specialist routing matched the diff: security-privacy doctrine governed spine_api/routers/{visa_radar,concierge_upsell,fx_sentinel,disruption_radar,passenger_rights,subagent_payouts,loyalty}.py + spine_api/core/startup_assertions.py + scripts/check_unscoped_trip_access.sh; money-path durability rules governed src/orchestration/booking_fulfillment.py + spine_api/services/document_storage.py + spine_api/contract.py (Risk-Class: high, Evidence-Tier: 3); review-doctrine lifecycle ran via scripts/findings.py; testing doctrine via tools/test_inventory.py + full pytest lanes; docs doctrine via Docs/status/FEATURE_LIST_V3_2026-09-10.md regeneration and Docs/LAUNCH_STATUS.md refresh.
 
 ## SECTION_17
 
 - Label: §17 Propagation contract
 - Reviewed: True
-- Evidence: Propagation: no doctrine or hook changes in this diff (the workspace_memory installer fix landed in commit 1ceaf91); this wave touches only src/, spine_api/, frontend/src/, tests/, tools/, and Docs/.
+- Evidence: Propagation: shared-tree completion (adversarial registry) documented in place; roadmap + handoff + feature list carry forward-state for the next agent; commit trailers will carry Motto/Risk/Evidence for audit propagation.
 
 ## SECTION_2
 
 - Label: §2 Truth taxonomy
 - Reviewed: True
-- Evidence: Truth labels: every TS item was gap-verified in code before implementation (register section 6 of Docs/exploration/CHATGPT_SYSTEMS_TRAINING_SESSION_FINDINGS_2026-09-09.md cites file:line for what existed vs not); the UNKNOWN classification is a deterministic exception shape, not a live-provider claim.
+- Evidence: Truth precedence applied to the diff: LIVE claims corrected from caller traces (spine_api/services/ghost_concierge.py zero importers; src/briefing/pre_departure_cadence.py orphaned; spine_api/routers/disruption_radar.py self-declared preview) overwriting Docs/status/FEATURE_LIST_V3_2026-09-10.md rows; suite totals replaced by tools/test_inventory.py collection receipt (4563); A4 reader audit (zero readers of vcc_card_id/e_ticket_number on the trip lane) outranked the roadmap's encrypt-in-place assumption.
 
 ## SECTION_3
 
 - Label: §3 Proportional rigor and evidence
 - Reviewed: True
-- Evidence: Proportional rigor: 51 new tests across tests/test_ts06_route_structures.py, tests/test_ts07_operation_keyed_requiredness.py, tests/test_ts08_unknown_outcome_and_aggregation.py, tests/test_ts03_inbound_attachments.py; adversarial cases for fences and TTL; full suite 4350 of 0; mypy and ruff clean; frontend tsc and 1380 vitest clean.
+- Evidence: Proportional rigor across the diff: P1 ISS-001 tenant scoping got scripts/check_unscoped_trip_access.sh extension + tests/test_cross_tenant_header_scoping.py; P1 ISS-002 got honesty tests in frontend/src/app/(agency)/quotes/__tests__/page.test.tsx; P2 attachment caps got tests/test_fnd0267_attachment_hardening.py; P3 MRZ/GMV/queue changes got parity tests (tests/test_a2_a4_canonical_consolidation.py, tests/test_analytics_truth_hardening.py); deferred FND-0268 received a decision pack, not code.
 
 ## SECTION_4
 
 - Label: §4 Authorization and side effects
 - Reviewed: True
-- Evidence: Authorization: owner directed work on all pending items with no other agent active, continuing the commit-and-push flow authorized earlier in this conversation; staging scoped to the 22 inspected paths across src/, spine_api/, frontend/src/, and tests/; no destructive git operations.
+- Evidence: Authorization: user message 'do all following doctrines including how we commit' authorizes commits this conversation; all changes are working-tree edits to repo files (spine_api/, src/, frontend/src/, tests/, tools/, Docs/, .env.example, docker-compose.yml, fly.toml, scripts/check_unscoped_trip_access.sh); no push, no server/deploy action, no DB mutation (A4 live check: 0 trips rows); commit creation only, on master, no force ops.
 
 ## SECTION_5
 
 - Label: §5 Canonical paths and ownership
 - Reviewed: True
-- Evidence: Canonical paths: UNKNOWN extends the existing registry in src/agents/idempotency.py (no parallel store); route structures live in src/decision/ beside the constraint engine; attachments persist via the existing document-storage lane in spine_api/services/document_storage.py; no new routers created.
+- Evidence: Ownership respected: edits confined to canonical surfaces (routers, services, canonical MD sources); derived artifacts regenerated via their generators; no parallel systems created (scrub/migration paths withdrawn when unnecessary).
 
 ## SECTION_6
 
 - Label: §6 Semantic salvage and supersession
 - Reviewed: True
-- Evidence: Supersession: the DecisionTab dual-shape render supersedes the string-only renderer (frontend/src/app/(agency)/workbench/DecisionTab.tsx) while keeping string support; INTAKE_MINIMUM and QUOTE_READY tiers preserved in src/intake/validation.py (extended, not forked); no deletions.
+- Evidence: Salvage: pre-existing half-executed upstream A2 work (0becb27) verified then completed rather than re-done; orphaned canonical service given its serving-path caller; /quotes feature intent preserved as honest sample-data pending owner decision.
 
 ## SECTION_7
 
 - Label: §7 Capability routing
 - Reviewed: True
-- Evidence: Capability routing: the prior wave used a dedicated code-reviewer subagent on src/decision/constraint_engine.py; this wave followed the same discipline with paired fail-pass tests in tests/test_ts08_unknown_outcome_and_aggregation.py and siblings.
+- Evidence: Capability routing: rg for every content search (repo 2026-05-08 policy); scripts/findings.py for all 13 finding transitions; tools/feature_list_generate.py regenerated FEATURE_LIST_V3 json/csv; scripts/generate_types.py regenerated frontend/src/types/generated/spine-api.ts; tools/test_inventory.py new reusable receipt tool documented in tools/README.md; council orchestrator + document-audit protocol structured the audit.
 
 ## SECTION_8
 
 - Label: §8 Skills lifecycle
 - Reviewed: True
-- Evidence: n/a: no skill store files changed in this diff; only src/, spine_api/, frontend/src/, tests/, and Docs/ artifacts.
+- Evidence: Skill lifecycle: installed adapters (council-orchestrator, random-repository-document-audit) loaded before canonical sources; Mimosa PreToolUse hook rejections honored on tools/test_inventory.py (rewritten in-process, no subprocess), alembic/versions/a4_trip_conf_secret_scrub.py (withdrawn for ORM tools approach), and tools/scrub_trip_confirmation_secrets.py (deleted when the SQL lane proved empty); repo tools used as-is: scripts/findings.py, tools/feature_list_generate.py, scripts/generate_types.py.
 
 ## SECTION_9
 
 - Label: §9 Exploration and durable knowledge
 - Reviewed: True
-- Evidence: Durable knowledge: register statuses updated in Docs/exploration/CHATGPT_SYSTEMS_TRAINING_SESSION_FINDINGS_2026-09-09.md; roadmap rows updated in Docs/review/OPEN_WORK_ROADMAP_2026-09-08.md; handoff addendum appended to Docs/review/TS_REGISTER_EXECUTION_HANDOFF_2026-09-09.md with named seams for deferred work.
+- Evidence: Exploration made durable: margin-basis decision pack with execution prerequisite (Docs/exploration/MARGIN_BASIS_DECISION_PACK_FND0268_2026-09-11.md); Mimosa HIGH triage annex converts a blanket noise claim into per-cluster evidence (Docs/review/MIMOSA_HIGH_RESIDUAL_TRIAGE_2026-09-11.md); FND-0268 deferred with explicit reopen condition instead of silently dropped.

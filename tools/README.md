@@ -2,6 +2,34 @@
 
 This directory stores reusable helper utilities for this project.
 
+## Test Inventory Receipt: `test_inventory.py`
+
+Purpose:
+
+- Produce a **reproducible** count receipt for the test suite (FND-0264 /
+  ISS-007): collected tests via in-process `pytest --collect-only`, static
+  `def test_` count, skip/xfail markers per file, and the CI-excluded file
+  list.
+- Exists because handoff receipts quoted three different suite totals in
+  seven days while the green number was conditional (integration tests
+  auto-skip without a dev server; Postgres/LLM tests skip without
+  credentials). Quote this receipt instead of a bare total.
+
+**Usage:**
+
+```bash
+.venv/bin/python tools/test_inventory.py            # human summary
+.venv/bin/python tools/test_inventory.py --json     # machine-readable
+.venv/bin/python tools/test_inventory.py --json --out Docs/status/test_inventory_<date>.json
+```
+
+**Notes:**
+
+- Read-only: collects, never runs the suite, never mutates the tree.
+- Collection runs pytest in-process (no shell, no subprocess).
+- A receipt is timestamped; cite the file + `generated_at` when claiming
+  counts in handoffs.
+
 ## Envelope-Fragment Stripper: `strip_envelope_fragments.py`
 
 Purpose:

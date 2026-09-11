@@ -21,16 +21,21 @@ demonstrated.
 
 ## Evidence snapshot
 
-| Surface | Evidence | Interpretation |
+> **Refreshed 2026-09-11** (FND-0265): the 2026-09-04 numbers below were two findings-store
+> generations and three suite-total generations stale. Each row now carries its date and
+> source; the decision verdict and blocker set are unchanged by the refresh.
+
+| Surface | Evidence (dated) | Interpretation |
 |---|---|---|
-| Backend | 3,718 passed, 44 skipped, 0 failed via `scripts/run_backend_tests.sh` (69.30s) | Local contract green; not hosted proof |
-| Frontend | 174 files / 1,311 tests passed; typecheck and build passed | Local UI contract green; browser/device proof remains |
-| Frontend lint | 0 errors, 0 warnings | Lint-clean; behavior-sensitive dependency fixes are covered |
+| Backend | 2026-09-11 full suite at remediation tree (final gate): **4,593 passed / 22 skipped / 0 failed** (106s). Session runs also surfaced 2 test-contract updates (A4 plaintext-lane minimization) and 1 intermittent concurrency flake (`test_reconciliation_no_payouts`, failed 1 of 4 runs, passes isolated). Collected inventory receipt: 4,563 via `tools/test_inventory.py` (10 skip-marked files / 32 markers / 2 CI-excluded) | Local contract green; not hosted proof; cite the receipt, not a bare total (FND-0264) |
+| Frontend | 2026-09-11: 184 files / 1,382 tests passed; `tsc --noEmit` clean | Local UI contract green; browser/device proof remains |
+| Frontend lint | 2026-09-11: `ruff check src/ spine_api/ tests/ tools/` — all checks passed | Backend lint-clean at the same tree |
 | RAG | 14 focused tests passed; implementation claims corrected to local hash-vector/lexical heuristics | Truthful local behavior; no semantic-provider claim |
 | RLS | Live rollback-only write probe plus mock/catalog checks pass | Local PostgreSQL evidence; role/replica/hosted proof remains |
 | Simulator truth | Crisis 8, bookings 2, GDS/distribution 11, FX/IROPS API 8, financial routes 9, duty-of-care API 2, proposal/persona 13, suppliers/MRZ 4, simulated-panel suite 11, IROPS panel 3 focused tests | Local preview/label containment; provider-backed booking, GDS, FX, financial, IROPS, duty-of-care, supplier, and proposal state remains unproven |
-| Worktree | 496 live paths in final24 2026-09-04 ledger; 497 porcelain rows including ledger | Preserved custody; semantic ownership and release split remain open |
-| Findings | 183 lifecycle rows: 108 open, 69 closed, 6 deferred | The system is not launch-complete |
+| Feature inventory | 2026-09-11: 117 features — 94 LIVE / 14 PARTIAL / 6 GATED / 2 SIMULATED / 1 STUB (regenerated after FND-0261 corrections; wiring-evidence rule in the V3 Method) | Per-surface wiring truth lives in `Docs/status/FEATURE_LIST_V3_2026-09-10.md`; this file's blocker list (below) governs launch, not per-row labels |
+| Worktree | 2026-09-11: remediation wave (11 findings closed, uncommitted) + parallel extraction-hardening batch in flight; no release snapshot | Preserved custody; semantic ownership and release split remain open |
+| Findings | 2026-09-11 post-wave (`findings.py validate`): 271 lifecycle rows — 147 open, 114 closed, 10 deferred; 0 stale >45d; 0 warnings | The system is not launch-complete |
 
 ## Blockers before any public exposure
 
