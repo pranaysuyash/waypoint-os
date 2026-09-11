@@ -417,6 +417,25 @@ export interface HealthResponse {
   } | null;
   issues?: string[] | null;
 }
+/**
+ * TS-03 S1 (2026-09-10): one customer-supplied attachment on an inbound
+ * inquiry (screenshot of a competitor quote, a vendor PDF). Transported
+ * base64; persisted via the canonical document-storage lane and recorded on
+ * the trip manifest — extraction stays in the operator lane (stage-gated),
+ * never auto-applied at intake.
+ */
+export interface InboundAttachment {
+  kind: "image" | "pdf";
+  /**
+   * image/jpeg | image/png | application/pdf
+   */
+  mime: string;
+  filename?: string | null;
+  /**
+   * Base64-encoded file bytes
+   */
+  data_b64: string;
+}
 export interface InboundInquiryRequest {
   channel?: "whatsapp_web" | "email" | "voice_note" | "manual_paste" | "chrome_extension";
   /**
@@ -430,6 +449,16 @@ export interface InboundInquiryRequest {
   metadata?: {
     [k: string]: unknown;
   };
+  /**
+   * @maxItems 5
+   */
+  attachments?:
+    | []
+    | [InboundAttachment]
+    | [InboundAttachment, InboundAttachment]
+    | [InboundAttachment, InboundAttachment, InboundAttachment]
+    | [InboundAttachment, InboundAttachment, InboundAttachment, InboundAttachment]
+    | [InboundAttachment, InboundAttachment, InboundAttachment, InboundAttachment, InboundAttachment];
 }
 export interface InboundInquiryResponse {
   ok?: boolean;
@@ -449,6 +478,7 @@ export interface InboundInquiryResponse {
   } | null;
   safety?: SafetyResult;
   created_at: string;
+  attachments_accepted?: number;
 }
 export interface SafetyResult {
   strict_leakage?: boolean;
@@ -547,6 +577,10 @@ export interface InsightsSummary {
    */
   avgResponseTime?: number | null;
   pipelineValue?: number;
+  /**
+   * Gross merchandise value: sum of recorded trip budgets for terminal-status trips
+   */
+  gmv?: number;
   pipelineVelocity?: PipelineVelocity;
 }
 export interface PipelineVelocity {

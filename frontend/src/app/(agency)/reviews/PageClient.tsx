@@ -138,6 +138,22 @@ const ReviewCard = memo(function ReviewCard({
               <span className='text-ui-xs text-[#484f58] not-italic ml-2'>- {review.agentName}</span>
             </blockquote>
           )}
+
+          {/* Decision history (FND-0270): the last recorded decision is visible
+              on the card itself, not only on the trip page. */}
+          {(review.reviewedBy || review.reviewedAt) && (
+            <p className='text-ui-xs text-[#484f58] mt-2'>
+              Last decision:{' '}
+              {review.status ? <span className='text-[#8b949e] capitalize'>{review.status.replace('_', ' ')}</span> : null}
+              {review.reviewedBy ? <> by <span className='text-[#8b949e]'>{review.reviewedBy}</span></> : null}
+              {review.reviewedAt ? <> at <span className='text-[#8b949e]'>{new Date(review.reviewedAt).toLocaleString()}</span></> : null}
+            </p>
+          )}
+          {review.ownerNotes && (
+            <p className='text-ui-xs text-[#8b949e] mt-1'>
+              <span className='text-[#484f58]'>Owner notes:</span> {review.ownerNotes}
+            </p>
+          )}
           
           {review.riskFlags.length > 0 && (
             <div className='flex items-center gap-2 mt-2'>
@@ -343,6 +359,8 @@ export default function OwnerReviewsPage() {
           { key: 'all', label: 'All', count: reviews.length },
           { key: 'pending', label: 'Pending', count: pendingCount },
           { key: 'approved', label: 'Approved', count: approvedCount },
+          { key: 'rejected', label: 'Rejected', count: reviewCounts['rejected'] ?? 0 },
+          { key: 'revision_needed', label: 'Revision Needed', count: reviewCounts['revision_needed'] ?? 0 },
           { key: 'escalated', label: 'Escalated', count: escalatedCount },
         ].map((tab) => (
           <button

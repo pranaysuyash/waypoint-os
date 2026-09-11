@@ -200,3 +200,28 @@ def test_compute_bottlenecks_reports_slowest_real_stage_without_fabricated_cause
     assert bottleneck.severity == "high"
     # Causes are never fabricated — only measured dwell is reported.
     assert bottleneck.primaryCauses == []
+
+
+def test_aggregate_insights_gmv_sums_terminal_trip_budgets_only():
+    """FND-0269: GMV counts recorded budgets of terminal-status trips only."""
+    delivered = {
+        "id": "t1",
+        "status": "delivered",
+        "packet": {"budget": {"value": 4200}},
+    }
+    in_progress = {
+        "id": "t2",
+        "status": "in_progress",
+        "packet": {"budget": {"value": 9000}},
+    }
+    no_budget = {"id": "t3", "status": "completed"}
+    result = aggregate_insights([delivered, in_progress, no_budget])
+    assert result.gmv == 4200.0
+    # Pipeline value covers the non-terminal slice, unchanged.
+    assert result.pipelineValue == 9000.0
+
+
+def test_aggregate_insights_gmv_is_zero_without_terminal_trips():
+    trips = [{"id": "t1", "status": "new", "packet": {"budget": {"value": 5000}}}]
+    result = aggregate_insights(trips)
+    assert result.gmv == 0.0

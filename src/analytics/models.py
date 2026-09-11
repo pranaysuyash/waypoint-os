@@ -38,6 +38,13 @@ class InsightsSummary(BaseModel):
         description="Hours from creation to first status transition; None until timing data exists",
     )
     pipelineValue: float = Field(default=0.0)
+    # FND-0269 (2026-09-11): gross merchandise value = sum of recorded trip
+    # budgets for terminal-status trips (booked/delivered/completed). Real
+    # recorded values only; 0.0 when none exist — never a placeholder.
+    gmv: float = Field(
+        default=0.0,
+        description="Gross merchandise value: sum of recorded trip budgets for terminal-status trips",
+    )
     pipelineVelocity: PipelineVelocity = Field(default_factory=PipelineVelocity)
 
 

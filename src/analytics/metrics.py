@@ -172,6 +172,10 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
         _trip_budget_value(t) for t in trips if t.get("status") not in _TERMINAL_STATUSES
     )
 
+    # GMV (FND-0269): sum of real recorded trip budgets for terminal-status
+    # trips — the commercial value actually delivered, not a projection.
+    gmv = sum(_trip_budget_value(t) for t in trips if t.get("status") in _TERMINAL_STATUSES)
+
     # Velocity from real status dwell times (days). Stage boundaries beyond
     # the status vocabulary (strategy→output, output→booked) have no writer
     # yet and stay 0.0 — honest absence, not fabricated spread.
@@ -200,6 +204,7 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
         conversionRate=round(rate, 1) if total > 0 else 0.0,
         avgResponseTime=avg_response_time,
         pipelineValue=round(pipeline_value, 2),
+        gmv=round(gmv, 2),
         pipelineVelocity=pipeline_velocity,
     )
 

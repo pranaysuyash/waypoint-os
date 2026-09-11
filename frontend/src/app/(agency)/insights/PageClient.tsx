@@ -444,6 +444,14 @@ export default function OwnerInsightsPage() {
           trend='up'
           icon={CheckCircle}
         />
+
+        <StatCard
+          title='GMV (Delivered)'
+          value={`$${(summary.gmv ?? 0).toLocaleString()}`}
+          subtext='Recorded budgets of delivered trips'
+          trend='up'
+          icon={DollarSign}
+        />
         
         <StatCard
           title='Pipeline Value'
