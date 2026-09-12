@@ -12,6 +12,7 @@ Models supported:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Any, Dict, Optional
 
@@ -24,6 +25,8 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError
+
+logger = logging.getLogger(__name__)
 
 
 # OpenAI pricing in INR (approximate, per 1M tokens; 1 USD ≈ 83 INR)
@@ -81,6 +84,31 @@ def _supports_json_mode(model: str) -> bool:
     if model.startswith("gpt-4"):
         return False
     return True
+
+
+def _recover_json_object(text: str) -> Optional[Dict[str, Any]]:
+    """Extract a valid JSON object from a malformed LLM response.
+
+    Reasoning models on multi-vendor endpoints sometimes emit preamble before
+    the payload — including stray bare "{" tokens (observed on DeepSeek via
+    the HF router: '{\\n{...}'). Tries each "{" (first 5) as the start of a
+    balanced {...} block and returns the first candidate that parses as JSON.
+    Returns None when nothing recovers.
+    """
+    positions = [i for i, ch in enumerate(text) if ch == "{"]
+    for start in positions[:5]:
+        depth = 0
+        for idx in range(start, len(text)):
+            if text[idx] == "{":
+                depth += 1
+            elif text[idx] == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(text[start : idx + 1])
+                    except json.JSONDecodeError:
+                        break
+    return None
 
 
 class OpenAIClient(BaseLLMClient):
@@ -234,8 +262,17 @@ class OpenAIClient(BaseLLMClient):
             # Parse JSON
             try:
                 decision = json.loads(response_text)
-            except json.JSONDecodeError as e:
-                raise LLMResponseError(f"Failed to parse JSON response: {e}\nResponse: {response_text}")
+            except json.JSONDecodeError:
+                decision = _recover_json_object(response_text)
+                if decision is None:
+                    raise LLMResponseError(
+                        "Failed to parse JSON response (no recoverable JSON object)\n"
+                        f"Response: {response_text}"
+                    )
+                logger.warning(
+                    "Recovered JSON object from malformed LLM response "
+                    "(leading preamble stripped)"
+                )
 
             return decision
 
