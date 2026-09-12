@@ -135,7 +135,11 @@ class InstrumentedLLMClient:
             self._log.append(entry)
             PROMPT_DIR.mkdir(parents=True, exist_ok=True)
             digest = hashlib.sha256(f"{self._record_id}:{self._arm}:{len(self._log)}".encode()).hexdigest()[:12]
-            archive = PROMPT_DIR / f"{self._record_id}-{self._arm}-{digest}.json"
+            # Sanitize: arm ids like "openai/gpt-oss-20b:fastest" contain "/" and
+            # ":" — a raw "/" makes the archive path nested and the finally-block
+            # write raise, masking the successful LLM result (found 2026-09-12).
+            safe_arm = self._arm.replace("/", "_").replace(":", "_")
+            archive = PROMPT_DIR / f"{self._record_id}-{safe_arm}-{digest}.json"
             archive.write_text(json.dumps({
                 "arm": self._arm, "record_id": self._record_id,
                 "prompt": prompt, "response": result, "error": error,
@@ -250,8 +254,21 @@ class CriticClient(_PatternClientBase):
         return merged
 
 
+def _safe_name(model_id: str) -> str:
+    """Filesystem-safe dir name for a model spec (slashes/colons allowed in ids)."""
+    return (
+        model_id.replace("/", "_").replace(":", "_").replace("-", "_").replace(".", "_")
+    )
+
+
 def _build_client(provider: str, model: str) -> Any:
-    """Build an LLM client for an arm spec; supports the local ollama provider."""
+    """Build an LLM client for an arm spec.
+
+    Supported providers: standard src.llm providers (openai/gemini/local),
+    local-ollama (OpenAI-compatible local server), and hf-router (Hugging
+    Face Inference Providers — OpenAI-compatible endpoint with
+    :fastest/:cheapest/:preferred routing policies; needs HF_TOKEN env).
+    """
     from src.llm import create_llm_client
 
     if provider == "local-ollama":
@@ -261,6 +278,22 @@ def _build_client(provider: str, model: str) -> Any:
             model=model,
             api_key="ollama",
             base_url=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1"),
+        )
+    if provider == "hf-router":
+        from src.llm.openai_client import OpenAIClient
+
+        token = os.environ.get("HF_TOKEN")
+        if not token:
+            raise RuntimeError("HF_TOKEN not set (export from keychain or .env)")
+        return OpenAIClient(
+            model=model,
+            api_key=token,
+            # Reasoning models (gpt-oss, DeepSeek, Qwen3.5) burn completion
+            # budget on reasoning; 1024 left content empty (2026-09-12).
+            max_tokens=int(os.environ.get("HF_ROUTER_MAX_TOKENS", "4096")),
+            base_url=os.environ.get(
+                "HF_ROUTER_BASE_URL", "https://router.huggingface.co/v1"
+            ),
         )
     return create_llm_client(provider=provider, model=model)
 
@@ -459,7 +492,7 @@ def main() -> int:
         # the warm pass so warm measures THIS cold pass's cache entries only.
         for run_i in range(max(1, args.runs)):
             suffix = "" if run_i == 0 else f"-r{run_i}"
-            model_cache_dir = OUT_DIR / f"cache_{spec[1].replace('-', '_')}{suffix}"
+            model_cache_dir = OUT_DIR / f"cache_{_safe_name(spec[1])}{suffix}"
             if model_cache_dir.exists():
                 shutil.rmtree(model_cache_dir)
             arm_defs.append((f"B-{spec[1]}{suffix}", True, spec, model_cache_dir, "single"))
@@ -469,7 +502,7 @@ def main() -> int:
         if pattern == "single":
             continue
         for spec in pattern_specs:
-            pat_cache_dir = OUT_DIR / f"cache_{spec[1].replace('-', '_')}_{pattern}"
+            pat_cache_dir = OUT_DIR / f"cache_{_safe_name(spec[1])}_{pattern}"
             if pat_cache_dir.exists():
                 shutil.rmtree(pat_cache_dir)
             arm_defs.append((f"P-{pattern}-{spec[1]}", True, spec, pat_cache_dir, pattern))
