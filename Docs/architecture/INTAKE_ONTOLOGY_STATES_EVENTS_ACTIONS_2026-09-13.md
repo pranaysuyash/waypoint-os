@@ -180,3 +180,148 @@ an ad-hoc patch.
 - The LLM stays a *gated contributor of events*, never a state owner.
 - Reprocess = append; history is cumulative by construction; the packet is
   reproducible from the log at any point (replay = test).
+
+---
+
+## 8. v2 RECONCILIATION — against the taught systems model (2026-09-13)
+
+Re-look driven by Pranay's Waypoint training sessions (state machines,
+events vs conditions vs failures vs risks, idempotency, component states,
+queues, permission tiers, gates). Honest grading of §1–§7 against that
+model, then the corrections.
+
+### 8.1 Where v1 was right (confirmed by the teachings)
+
+- Event vocabulary + append-only log; "events update facts, state
+  transitions depend on the resulting facts and rules" — v1's projection
+  stance matches exactly.
+- Per-entity state machines ≈ the taught *component-level state* pattern.
+- L4-gated LLM ≈ "use AI for ambiguity; deterministic software for truth
+  you can calculate or verify."
+- Attributability contract ≈ the observability requirement ("who decided
+  what: customer / agent / rule engine / operator / supplier?").
+
+### 8.2 Corrections v1 missed — now adopted
+
+**(a) The full trip lifecycle is the aggregate state machine — and it is
+richer than the repo's current one.** v1 pointed at "the existing lead/trip
+machine" without reconciling. The taught lifecycle:
+`INTAKE → NEEDS_INFORMATION → FEASIBILITY_CHECK → PLANNING →
+AWAITING_CUSTOMER_APPROVAL → APPROVED(+freshness recheck) →
+BOOKING_IN_PROGRESS → BOOKED → CHANGE_REQUESTED → IN_TRIP → COMPLETED`,
+with `ESCALATED` as an exception state reachable from many states. Task
+opened (T-O1): reconcile the repo's status machine against this set — some
+taught states exist in the repo under other names, several do not exist at
+all (FEASIBILITY_CHECK, APPROVED-recheck, CHANGE_REQUESTED, IN_TRIP).
+
+**(b) The four-question template per state** (what is true / what can
+happen / what cannot happen / what moves us out). Every state in §2 now
+gets this block. The key taught insight v1 lacked: **NEEDS_INFORMATION
+does not freeze the system — only dependent work freezes** (non-blocked
+searches may continue). Sim #2's run froze *everything* on
+Travel-Dates+Purpose; under the v2 model the correct behavior is: enter
+`NEEDS_INFORMATION`, continue non-blocked work (e.g., destination
+confirmation), ask, and block only `fare_quote`/`booking`.
+
+**(c) `required_for` gates instead of global requiredness.** A field is not
+"required"; it is `required_for: [fare_quote, booking, entry_validation]`,
+and requiredness varies by lifecycle stage (child ages: important in
+planning, required at pricing, blocking at booking). This retroactively
+explains Sim #2's blocking semantics: blocking on Travel-Dates+Purpose at
+*intake* may have been stage-correct, but the banner rendered it as a
+global block. Task (T-O2): replace the packet's boolean missing-flags with
+`required_for` maps and render blockers per next-intended-step.
+
+**(d) Event vs Condition vs Failure vs Risk are four different things.**
+v1's vocabulary had only events. Adopted: *events* (observable, append to
+log: `customer_responded`, `fare_changed`, `reminder_timer_expired`),
+*conditions* (currently-true, derived: `customer_response_missing`,
+`fare > approved_budget`), *failures* (attempted-and-did-not-work:
+`ocr_failed`, `provider_call_failed` — also logged), *risks* (might happen
+— **not log events**; they materialize as conditions when thresholds/timers
+fire). The orchestrator reacts to events and conditions, never to risks
+directly.
+
+**(e) Decision layer made explicit: observe state → detect gap/problem →
+choose action.** v1 had actions but no decision layer. Adopted, including
+the taught distinctions: **dependency** (B needs A) vs **gate** (we make B
+wait for A because A decides whether B is worth doing — e.g., entry/visa
+feasibility before paid searches) vs **parallelizable**; **short-circuiting**
+(don't spend an LLM call on a corrupt input); **request failure vs goal
+failure** (this plan infeasible → NEEDS_REVISION with alternatives; goal
+infeasible → escalate/human).
+
+**(f) Permission tiers + read/write split + retry policies.** The action
+taxonomy (§4) gains three columns: `class` (read | recommend | write),
+`autonomy tier` (cost-of-mistake determines it — search is reversible,
+₹2L charge is not), and `retry policy` (free / with duplicate protection /
+only with idempotency key / very careful).
+
+**(g) Idempotency and `*_RESULT_UNKNOWN`.** v1 mentioned reprocess
+idempotency incidentally. Adopted formally: every write action carries an
+idempotency key; `BOOKING_RESULT_UNKNOWN` is its own component state
+(timeout ≠ failure); partial completion produces aggregate
+`BOOKING_EXCEPTION` with component states (`flight: CONFIRMED, hotel:
+CONFIRMED, disney: FAILED`) — v1's per-entity machines now extend to
+**BookingComponent** (`not_started → in_progress → confirmed | failed |
+result_unknown`) alongside the aggregate.
+
+**(h) Freshness as a fact state.** Approval→execution needs a recheck
+because prices/availability decay. Facts already carry `maturity` in the
+repo; adopted: fact states gain `fresh → stale`, and validation includes
+"evidence checked recently enough" as a deterministic check.
+
+**(i) Queues/jobs for side-effectful work.** Long-running or
+externally-visible work (booking, payments, reminders) is a **Job**
+(`queued → running → done | failed | unknown`), consumed by workers,
+emitting events — the web request never performs writes inline. Intake's
+LLM calls are read-class and stay inline (cheap, gated); booking is
+job-class. State consistency under concurrent mutators (customer WhatsApp +
+operator edit + provider event) is the orchestrator's conflict resolution,
+same precedence machinery as L3.
+
+**(j) Trip state vs customer memory, explicitly separated.** "Trip state =
+what is true now; customer memory = what may help decisions. Do not mix
+them." v1's Person entity conflated these (preferences can come from
+memory); now: trip-state facts and memory-enrichments are different planes,
+memory only *suggests* defaults, never asserts trip facts.
+
+**(k) Two output planes** — operator-facing and traveler-facing renderings
+of the same state (v1 had only the operator packet).
+
+### 8.3 Sim #2 re-read under v2
+
+- The run should have transitioned `INTAKE → NEEDS_INFORMATION` (event:
+  `lifecycle.changed`, plus `lead.persisted`) — FND-0272 is the missing
+  transition, not just a missing save.
+- Allowed actions in `NEEDS_INFORMATION` include `run_nonblocked_searches`
+  — the total freeze we observed was a v1-model artifact.
+- The banner must render `required_for(next-step)` open questions — the
+  four blocked items were conflated across stages (T-O2).
+- Meera's constraints bind to Person(Meera) with
+  `required_for: [itinerary, booking]` — attribution is not cosmetic; it is
+  what makes the constraint *enforceable* in later states.
+
+### 8.4 Updated migration
+
+- **Phase 0** (unchanged in code, reframed): `lead.persisted` = the
+  `INTAKE → NEEDS_INFORMATION` transition event; FND-0272 fix + A14 E2E.
+- **Phase 1** (landed): amount-scoped scope guard = A-merge precedence rule.
+- **Phase 2–4** (unchanged): cue-guards, speaker slots, invariants.
+- **Phase 2.5 (new, T-O1):** lifecycle reconciliation — map the repo status
+  machine to the taught lifecycle; name the deltas; propose additive states.
+- **Phase 4.5 (new, T-O2):** `required_for` gates replacing boolean
+  missing-flags; banner renders per-next-step blockers.
+- **Later:** booking-phase entities (BookingComponent, Job queue,
+  idempotency keys) apply the same ontology to the execution half; intake
+  realignment does not block on them.
+
+### 8.5 Source
+
+Taught model: Pranay's Waypoint systems-training sessions (state machines,
+orchestration, agent loops — "state = where the trip currently is; action =
+work performed in the state; event = something that happened; transition =
+event moves trip between states"; idempotency; component states; queues;
+permission levels). The teachings are design doctrine for this repo's
+intake/booking architecture — treated as owner doctrine, above persona
+judgment, and now encoded here as the ontology's v2 contract.
