@@ -7,8 +7,9 @@ the real product at `localhost:3005`, backend `:8000`, `TRIPSTORE_BACKEND=sql`)
 (bounded sim constructs — Priya/Arjun/Meera/Dev, verbatim scripts quoted
 in-full below). Draft: `draft_b4117a661e95`.
 
-**Verdict on the delegation capability: FAIL — Postpone.** 1 P0 regression +
-7 P1 findings, every one of them in the multi-actor class the council
+**Verdict on the delegation capability: FAIL — Postpone.** Originally reported
+as 1 P0 + 7 P1; the P0 was RETRACTED on 2026-09-13 (see §4 — verification
+error, leads persisted) leaving the standing count at 7 P1-class + P2s. every one of them in the multi-actor class the council
 predicted, plus one P0-adjacent data-corruption class the council did NOT
 predict (cross-voice field overwrites).
 
@@ -112,16 +113,38 @@ all six passes (no drift); Jain meal captured; "adventure activities" +
 on "MAX" was correct; no crashes; IMP-01's reprocess path never produced
 duplicate leads (idempotent, just… unpersisted, see F0/P0).
 
-## 4. The P0 in context (IMP-01 regression)
+## 4. The P0 in context — RETRACTED 2026-09-13 (verification error, not a product defect)
 
-IMP-01's shipped contract: a blocked run persists an incomplete lead
-(`save_processed_trip`, status=incomplete) so leads never vanish. Today the
-blocked run completed every stage **but no trip record exists** in the SQL
-store under the test agency — the only artifact is the UI draft. Suspect
-surface: the browser intake path may be skipping the ESCALATE persistence
-branch that the API/tests exercise (tests pass; the UI path diverges). This
-is precisely the verify-intent lesson: "tests green" ≠ "serving path
-behaves".
+**FND-0272 is retracted.** Phase 0 root-cause work proved all six leads WERE
+persisted: `waypoint_os.trips` rows `trip_8e33059fa847 … trip_2550fdb82576`
+(status=incomplete, one per reprocess). My "never persisted" conclusion came
+from two verification mistakes: (a) `trips` has **enforced RLS** keyed on
+`app.current_agency_id` — direct SQL without the session GUC sees zero rows,
+and asyncpg's autocommit negates transaction-local `set_config`; (b)
+`raw_input` is **encrypted at rest**, so inbox content search for
+"japan"/"organising" could never match. Lesson: verify through the service
+path (cookie-auth `GET /trips/{id}`) or set the session GUC. The API-green
+vs UI-path concern also dissolved: both paths hit the same `/run` endpoint.
+
+**What Phase 0 DID find (real defect → FND-0284, fixed):** the six runs
+created **six separate leads** — `_resolve_draft_reprocess_target` resolved
+the prior trip via ContextVar-based RLS `get_trip()`, which sees an
+RLS-filtered empty set in the pipeline executor, so the "never resurrect a
+dead id" branch created a new lead per reprocess. Fixed: the resolver now
+uses `get_trip_for_agency(trip_id, draft.agency_id)` (explicit RLS session;
+the method's own docstring warns about exactly this ContextVar hazard).
+3 structural regression tests; live verification after fix: two
+draft-linked reprocesses → `linked_trip_ids` length 1 (pass 2 preserved).
+
+**Also filed:** FND-0285 (P2) — encrypted `raw_input` means inbox search
+matches only customer-ref/derived fields, not note content; privacy-correct
+trade-off, flagged for an extracted-field search index.
+
+**Criteria re-grade under correction:** criterion 6 "no crashes / no
+fabrications" improves — the persistence half of the P0 was never a product
+failure; the fabrication findings (F1–F3) stand unchanged. Verdict remains
+**FAIL / Postpone** on the strength of FND-0273/0274/0275 (scope corruption,
+origin fabrication, transcript leak, dropped safety constraints).
 
 ## 5. Verdict
 

@@ -15,8 +15,8 @@ Legend: **[FND-x]** = already registered in the findings store ·
 
 | # | Item | Priority | Status / owner layer |
 |---|---|---|---|
-| A1 | **UI-path blocked-lead persistence** — root-cause the API-vs-browser divergence in ESCALATE persistence; restore `save_processed_trip` on the browser intake path | **P0** | [FND-0272] open |
-| A2 | **Origin cue-guard** — origin requires origin-cue verb (from/flying out of/departing/based in) + validated city; proposal verbs ("side trip", "add", "nightlife at") bind to destination candidates | P1 | [FND-0273 residual] [RL-2] open (scope half landed) |
+| A1 | ~~UI-path blocked-lead persistence~~ **RETRACTED** — leads persisted; initial check was an RLS/GUC verification error (FND-0272 closed 2026-09-13). Replacement defect: duplicate-lead reprocess → A1' | ~~P0~~ | [FND-0272 closed; FND-0284 fixed] |
+| A2' | **Origin cue-guard** — origin requires origin-cue verb (from/flying out of/departing/based in) + validated city; proposal verbs ("side trip", "add", "nightlife at") bind to destination candidates | P1 | [FND-0273 residual] [RL-2] open (scope half landed) |
 | A3 | **Amount-scoped budget scope** — cue phrases evaluated only in amount-bearing segments; explicit-total precedence | P1 | [FND-0273] **done** (Phase 1 landed + 8 tests) |
 | A4 | **Transcript-contamination guard** — `[speaker]:` lines and forwarded headers are transcript segments; labels/lines never enter packet fields; only intent content | P1 | [FND-0274] [RL-0] open |
 | A5 | **Per-traveler attribution slots** — `travelers[]` with dietary/mobility/occasion attributes; "I/my"→speaker, "we"→group; no-heights becomes a safety constraint flag (never dropped silently) | P1 | [FND-0275] [IDEA-134] [RL-3] open |
@@ -28,7 +28,7 @@ Legend: **[FND-x]** = already registered in the findings store ·
 | A11 | **Activity capture** — scuba/skiing/cooking class as structured activities with destination coupling, not prose in Trip Priorities | P2 | open (new) |
 | A12 | **Date-anchor constraint** — "trip must COVER April 14" as a hard date anchor distinct from a full date window; three-way constraint (spring ∩ ±1wk ∪ covers-Apr-14) representable | P1 | [FND-0275 adjacent] open |
 | A13 | **Conflict surfacing** — cross-voice contradictions (Dec-vs-spring, ryokan-vs-party-hostel) emit follow-up questions + advisor flags; never last-writer-wins | P1 | [FND-0273 adjacent] open |
-| A14 | **UI-path E2E regression test** — browser-level test that a blocked run persists a lead (companion to A1; API tests alone missed this) | P0 | [FND-0272 companion] open |
+| A14 | ~~Browser E2E for persistence~~ **RESOLVED BY EVIDENCE** — UI and API are one path (`/run` with draft_id); Phase 0 verified draft-linked reprocess preserves a single lead via API-level test after the FND-0284 fix | P0 | [FND-0272 companion] done |
 | A15 | **Promote the Family Summit thread to a golden fixture** in the colloquial/adversarial gates (failure-becomes-fixture doctrine; currently only string constants in a test) | P1 | open |
 | A16 | **Speaker-segment parser (L0 core)** — cheap deterministic parse of `[name]:` markers and forwarded headers; prerequisite for A4/A5 | P1 | [RL-0] open |
 | A17 | **Budget Flexibility authority merge** — soft→firm on "3.5L MAX" was correct; pin it with a test + define flexibility precedence (same invariant class as A8) | P2 | open (new) |
@@ -66,6 +66,16 @@ Legend: **[FND-x]** = already registered in the findings store ·
 - Reprocess idempotency (no duplicate leads across five reprocesses) — API
   level only; the UI-level companion is A14.
 - Jain meal captured from a second voice (worked, but unattributed — A5).
+
+## Phase 0 outcome addendum (2026-09-13)
+
+- A1 retracted (FND-0272 closed — RLS/GUC verification error; all six leads
+  persisted). New P1 found & FIXED during Phase 0: FND-0284 duplicate-leads
+  (resolver now uses explicit-agency RLS; 3 structural tests; live-verified:
+  two draft-linked reprocesses → one lead).
+- FND-0285 registered (P2): encrypted raw_input blocks inbox content search.
+- Realignment Phase 1 (scope guard) previously landed; Phase 2 (origin
+  cue-guard) is next implementation item.
 
 ## Current ledger
 

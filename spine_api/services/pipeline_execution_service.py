@@ -285,7 +285,19 @@ def _resolve_draft_reprocess_target(
         trip_id = getattr(draft, "promoted_trip_id", None) or (getattr(draft, "linked_trip_ids", None) or [None])[-1]
         if not trip_id:
             return None, None
-        existing = trip_store.get_trip(trip_id) or {}
+        # FND-0277 (Sim #2): this resolver runs in the pipeline executor where
+        # the request-scoped RLS ContextVar is not reliably set. ContextVar-
+        # based get_trip() then sees an RLS-filtered empty set and returns
+        # None — "never resurrect a dead id" — so every reprocess created a
+        # NEW lead instead of updating one (6 duplicates in Sim #2). Resolve
+        # with the explicit-agency RLS session instead; the draft carries the
+        # agency. Fallback keeps test doubles without the method working.
+        draft_agency_id = getattr(draft, "agency_id", None)
+        agency_lookup = getattr(trip_store, "get_trip_for_agency", None)
+        if draft_agency_id and callable(agency_lookup):
+            existing = agency_lookup(trip_id, draft_agency_id) or {}
+        else:
+            existing = trip_store.get_trip(trip_id) or {}
         if not existing:
             # Linked trip no longer exists — never resurrect a dead id.
             return None, None
