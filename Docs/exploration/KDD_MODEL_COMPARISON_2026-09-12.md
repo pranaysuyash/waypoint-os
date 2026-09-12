@@ -27,9 +27,9 @@ re-pull via `ollama pull <id>`.
 | gpt-4-turbo | API | - | 7.1 | kept-api | 0.222 | 0.222 | 1.0 | 0.125 | 1.0 | 4735 | 35 | Most conservative ladder model (under-flags) |
 | gpt-5.5 | API | - | 5.99 | kept-api | 0.154 | 0.318 | 1.0 | 0.083 | 0.5 | 5094 | 35 | Flagship under-flags: F1 0.154 — anti-recommendation |
 | gpt-5-nano | API | - | 0.009 | kept-api | 0.08 | 0.746 | 1.0 | 0.042 | 1.0 | 0 | 35 | Cache-collapse anomaly (2 escalations → all-cache replay) |
-| llama3.2:3b | local-8GB | 2.0 | 0.0 | kept | 0.737 |  | 1.0 | 0.583 | 0.357 | 2485 | 35 | LOCAL CHAMPION — recommended local default |
-| gemma3:12b | local-16GB | 8.1 | 0.0 | kept | 0.629 |  | 1.0 | 0.458 | 1.0 | 24350 | 35 | 16GB-tier representative |
-| qwen2.5vl:7b | local-vision | 6.0 | 0.0 | kept | 0.5 |  | 1.0 | 0.333 | 0.75 | 11417 | 35 | Vision-coupled (multimodal extraction feature); grade from 2-pass run |
+| llama3.2:3b | local-8GB | 2.0 | 0.0 | kept | 0.737 |  | 1.0 | 0.583 | 0.357 | 2485 | 35 | LOCAL CHAMPION — recommended local default; deleted from store 2026-09-12 (all hosted alternatives beat it; re-pull one-command) |
+| gemma3:12b | local-16GB | 8.1 | 0.0 | kept | 0.629 |  | 1.0 | 0.458 | 1.0 | 24350 | 35 | 16GB-tier representative; deleted from store 2026-09-12 (tested+graded, zero code refs) |
+| qwen2.5vl:7b | local-vision | 6.0 | 0.0 | kept | 0.5 |  | 1.0 | 0.333 | 0.75 | 11417 | 35 | Deleted from store 2026-09-12 (zero code references found; was kept as vision-coupled precaution); re-pull if multimodal extraction needs a local VLM |
 | gemma3:4b | local-8GB | 3.3 | 0.0 | deleted | 0.4 |  | 1.0 | 0.25 | 1.0 | 7089 | 35 | F1 0.400 |
 | aya-expanse:8b | local-multilingual | 5.1 | 0.0 | deleted | 0.4 |  | 1.0 | 0.25 | 0.833 | 22491 | 35 | Multilingual-special; slow (22.5s) |
 | qwen2.5:7b | local-16GB | 4.7 | 0.0 | deleted | 0.4 |  | 1.0 | 0.25 | 0.833 | 19683 | 35 | Bigger ≠ better: 0.400 at 19.7s |
@@ -41,6 +41,19 @@ re-pull via `ollama pull <id>`.
 | gpt-oss:20b | local-16GB | ~13-14 (pull) | 0.0 | blocked |  |  |  |  |  |  |  | 16GB MoE SOTA; pull killed at 13.8GB partial (disk crisis, owner hold); one-command: ollama pull gpt-oss:20b → run_local recipe |
 | qwen3:1.7b | local-4GB | 1.4 (pull) | 0.0 | blocked |  |  |  |  |  |  |  | Sub-2B tier candidate; pull aborted (load hold) |
 | gemma3:1b | local-1B/browser | 0.8 (pull) | 0.0 | blocked |  |  |  |  |  |  |  | Browser-adjacent tier; pull aborted (load hold) |
+| llama-3.1-8B:fastest | hf-router | - | 0.0 | kept-hosted | 0.8 |  | 1.0 | 0.667 | 0.438 | 1208 | 35 | 3-seed confirmed: F1 0.829/0.769/0.737 (±0.05), P=1.000 and 15 escalations every pass; beats-or-matches local champion (0.737) on all seeds |
+| llama-3.1-8B:cheapest | hf-router | - | 0.0 | kept-hosted | 0.629 |  | 1.0 | 0.458 | 0.636 | 5027 | 35 | Same weights as :fastest — F1 0.629 @ 5.0s (venue/quantization drift, single-pass caveat) |
+| gpt-oss-20b:fastest | hf-router | - | 0.0 | kept-hosted | 0.286 |  | 1.0 | 0.167 | 1.0 | 792 | 35 | Under-flags (R 0.167) at 792ms — quality is a model trait, hosting can't fix it |
+| gpt-oss-20b:cheapest | hf-router | - | 0.0 | kept-hosted | 0.286 |  | 1.0 | 0.167 | 1.0 | 3056 | 35 | Same F1 as :fastest; 3.9x slower |
+| Qwen3-4B-2507:fastest | hf-router | - | 0.0 | kept-hosted | 0.5 |  | 1.0 | 0.333 | 0.75 | 2178 | 35 | F1 0.500 |
+| Qwen3-4B-2507:cheapest | hf-router | - | 0.0 | kept-hosted | 0.345 |  | 1.0 | 0.208 | 0.8 | 2473 | 35 | F1 0.345 — :fastest beat :cheapest on all 3 models (3/3 direction) |
+| gemma-3-27b-it (hosted) | hf-router-large | 27B | 0.0 | kept-hosted | 0.629 |  | 1.0 | 0.458 | 0.818 | 6749 | 35 | BEST large model: F1 0.629 — still below hosted 8B (0.800) |
+| Qwen3-235B-A22B-2507 (hosted) | hf-router-large | 235B MoE | 0.0 | kept-hosted | 0.452 |  | 1.0 | 0.292 | 0.143 | 1458 | 35 | 235B flagship-class: F1 0.452, sev-agreement 0.14 (worst) |
+| gpt-oss-120b (hosted) | hf-router-large | 120B MoE | 0.0 | kept-hosted | 0.286 |  | 1.0 | 0.167 | 0.75 | 734 | 35 | F1 0.286 @ 734ms — 11 providers, fastest large arm, under-flags |
+| GLM-5.3-Flash (hosted) | hf-router-large | Flash | 0.0 | kept-hosted | 0.286 |  | 1.0 | 0.167 | 0.75 | 1859 | 35 | F1 0.286 |
+| Llama-3.3-70B (hosted) | hf-router-large | 70B | 0.0 | kept-hosted | 0.222 |  | 1.0 | 0.125 | 1.0 | 2205 | 35 | F1 0.222 — scale did not help llama family |
+| DeepSeek-V4-Flash (hosted) | hf-router-large | Flash | 0.0 | kept-hosted | 0.154 |  | 1.0 | 0.083 | 1.0 | 3656 | 35 | F1 0.154; 1M-ctx model; required the JSON-recovery fix (doubled-brace output) |
+| Qwen3.5-9B (hosted) | hf-router-large | 9B | 0.0 | failed-run | 0.154 |  | 1.0 | 0.083 | 1.0 | 23339 | 35 | Thinking model: 7/15 calls empty-content even at 4096 tokens, 23s/call — unrecoverable client-side; same anti-suitability as local qwen3.5 |
 
 ## Sheet 2 — decision-architecture patterns (pre-fix vs post-fix, F1)
 
@@ -70,6 +83,20 @@ re-pull via `ollama pull <id>`.
 | records.jsonl | 175 | superseded | v1 full matrix pre-fix (175 rows; incl. fabricated default-flags) |
 | records_final_patterns.jsonl | 350 | valid-reference | post-fix pattern matrix — pattern grades of record |
 | records_final_single.jsonl | 280 | valid-reference | post-fix variance run: 3 passes × mini+luna |
+| records_hf1_gptoss_cheapest.jsonl | 70 | unclassified |  |
+| records_hf1_gptoss_fastest.jsonl | 70 | unclassified |  |
+| records_hf1_llama8b_cheapest.jsonl | 70 | unclassified |  |
+| records_hf1_llama8b_fastest.jsonl | 70 | unclassified |  |
+| records_hf1_llama8b_multi.jsonl | 140 | unclassified |  |
+| records_hf1_qwen4b_cheapest.jsonl | 70 | unclassified |  |
+| records_hf1_qwen4b_fastest.jsonl | 70 | unclassified |  |
+| records_hf2_dsv4flash.jsonl | 70 | unclassified |  |
+| records_hf2_gemma27b.jsonl | 70 | unclassified |  |
+| records_hf2_glm53flash.jsonl | 70 | unclassified |  |
+| records_hf2_gptoss120b.jsonl | 70 | unclassified |  |
+| records_hf2_llama70b.jsonl | 70 | unclassified |  |
+| records_hf2_qwen235b.jsonl | 70 | unclassified |  |
+| records_hf2_qwen35_9b.jsonl | 70 | unclassified |  |
 | records_ladder.jsonl | 1225 | superseded | pre-fix 19-model ladder (replaced by ladder2 post-fix; kept for lineage) |
 | records_ladder2.jsonl | 1190 | valid-reference | post-fix 17-model ladder — the API grades of record |
 | records_loc_aya_8b.jsonl | 70 | valid-reference | deleted model, grade preserved |

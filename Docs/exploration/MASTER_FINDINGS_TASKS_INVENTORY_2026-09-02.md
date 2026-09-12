@@ -498,3 +498,63 @@ silently fail ollama pulls (foreground required); harness `--tag` per model is
 mandatory (the "w"-mode JSONL overwrote earlier arms once). Tier landscape
 (browser-WASM/WebGPU/8GB/16GB/MLX) + untested 2026-gen one-command pulls
 documented in KDD §9.3.
+
+**Multi-vendor serving experiment DESIGNED (2026-09-12, pre-experiment per
+owner):** `Docs/exploration/MULTI_VENDOR_SERVING_EXPERIMENT_DESIGN_2026-09-12.md`.
+Landscape researched: OpenRouter (7 routers + :nitro/:floor/:free variants,
+BYOK, ZDR), Groq (gpt-oss-20b ~1000 t/s, $0.075/$0.30/M — the exact model
+we couldn't fit locally), Cerebras (2000+ t/s, $5 free, OpenAI-compat), HF
+Inference Providers (router.huggingface.co/v1, :fastest/:cheapest policies,
+17 partners, works with the HF token we already hold), ollama-cloud (already
+in our store). xAI to-verify. Design: same-weights matrix across venues
+(Q10 quantization-drift on F1, Q11 latency frontier, Q12 cost/run, Q13
+router quality vs manual choice, Q14 privacy), reuses corpus+labels+grader+
+sheet; 4 phases; Phase 1 = HF-router only, near-zero cost, no new keys.
+Owner decisions requested: keys (OpenRouter/Groq/Cerebras), ~₹40–80 budget
+(or Phase-1-only ₹10–20), 14GB disk window for the local gpt-oss:20b leg.
+
+**Phase 1 (HF router) EXECUTED (2026-09-12):** keychain HF token discovered
+working; `hf-router/` provider added to harness; 6 arms (gpt-oss-20b,
+Qwen3-4B-2507, Llama-3.1-8B × :fastest/:cheapest). **Llama-3.1-8B:fastest F1
+0.800 @ 1.2s/call — beats local champion on both axes**; :fastest dominated
+:cheapest 3/3 (latency + directional quality); same-weights F1 drift up to
+0.171 across venues (single-pass caveat, multi-seed needed); hosted
+gpt-oss-20b confirms under-flagging is a model trait (0.286 even at 792ms);
+P=1.000 and 15-escalation engagement stable on all arms. Harness bug fixed:
+slash-containing arm ids broke prompt-archive paths (finally-block masked
+successful results). Spend ≈ a few cents. Comparison sheet now 39 rows with
+venue arms. Phases 2–4 (OpenRouter, multi-seed confirmation, Cerebras/xAI)
+ready on request. Design doc §6 = execution record.
+
+**Phase 1b (large models hosted) EXECUTED (2026-09-12):** 7 arms 20B→235B on
+HF router per owner's "don't limit to small models hosted" directive.
+**Headline: scale does NOT rescue the lane** — best large = gemma-3-27b 0.629
+< hosted Llama-3.1-8B 0.800 < nano tier 0.909; gpt-oss-120b 0.286 @ 734ms;
+Qwen3-235B 0.452 w/ worst severity calibration (0.14). Calibration is a model
+property, not scale. Production hardening landed: `_recover_json_object()`
+multi-vendor JSON repair in openai_client (DeepSeek doubled-brace; 6 unit
+tests) + 4096-token headroom for reasoning models. Qwen3.5-9B hosted =
+documented failed-run (empty content client-side-unrecoverable). One shell-
+quoting pass invalidated + re-run (zsh `$m:fastest` expansion). Sheet now 46
+rows. Recommendation stack updated (design doc §6.1).
+
+**Extreme-case reasoning tier SIMULATED + multi-seed confirmation (2026-09-12):**
+Owner asked whether reasoning models can serve in extreme cases despite poor
+default performance. Simulated second-opinion-on-negatives architecture
+(tier-1 llama-8B:fastest; tier-2 reviews only tier-1 lows, 19/35 records):
+gpt-oss-20b and Qwen3-235B recover +1 TP each (F1 0.800→0.829, severity
+correct); others +0. **Structural insight: conservative reasoning models are
+ideal tier-2 validators — they never override (P stays 1.000) and only
+augment. Worst standalone arm became best second opinion.** Honest verdict:
++0.029 is within the 3-seed variance band (tier-1 confirmed at F1
+0.829/0.769/0.737 ±0.05, P=1.000 + 15 escalations every pass) → not
+statistically justified on this corpus; kept as a policy knob for a
+reasoning-bound corpus. Multi-seed receipt: records_hf1_llama8b_multi.jsonl.
+
+**Local store fully pruned (2026-09-12, final):** all lane-tested local
+models deleted after grading — llama3.2:3b (champion), gemma3:12b, and
+qwen2.5vl:7b — following the owner directive; grades + one-command re-pull
+recipes preserved in the comparison sheet. Verified zero production code
+references before deletion. Store now: deepseek-ocr + nomic-embed only
+(untested, non-lane); ~16GB freed this step. All serving comparisons now run
+hosted; local re-pull is a documented one-command path per model.
