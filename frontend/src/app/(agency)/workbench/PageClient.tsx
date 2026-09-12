@@ -24,7 +24,6 @@ import { useSSEStream } from '@/hooks/useSSEStream';
 
 import { useUpdateTrip } from '@/hooks/useTrips';
 import { getWorkbenchBlockCopy, formatWorkbenchBlockReasonList, formatWorkbenchMissingFields } from '@/lib/workbench-blocking-copy';
-import { normalizeSafetyResult } from '@/lib/bff-trip-adapters';
 import type {
   SpineRunRequest,
   SpineStage,
@@ -44,7 +43,22 @@ import { buildRepairDeepLinkHref, getFirstRepairableFieldName } from '@/lib/repa
 import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { RunProgressPanel } from './RunProgressPanel';
+import {
+  REVIEW_MISSING_FIELDS_CONTROL_CLASSES,
+  extractCompletedTripIdFromDraft,
+  getPipelineStageForWorkbench,
+  safeParseJson,
+  toOperatingMode,
+  toSpineStage,
+  toWorkspaceTabId,
+  workspaceTabs,
+} from './workbench-state';
+
+export { extractCompletedTripIdFromDraft } from './workbench-state';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useHydrateStoreFromTrip } from '@/hooks/useHydrateStoreFromTrip';
+import { useWorkbenchRunSync } from '@/hooks/useWorkbenchRunSync';
+import { useWorkbenchDraftPersistence } from '@/hooks/useWorkbenchDraftPersistence';
 import { useAuthStore } from '@/stores/auth';
 import { ProtectedSurfaceNotice } from '@/components/auth/ProtectedSurfaceNotice';
 
@@ -66,169 +80,6 @@ const OutputPanel = dynamic(
 const FeedbackPanel = dynamic(
   () => import('@/components/workspace/panels/FeedbackPanel'),
 );
-
-// Safely parse structured JSON - returns null on invalid rather than throwing.
-function safeParseJson(raw: string): Record<string, unknown> | null {
-  if (!raw.trim()) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-
-const workspaceTabs = [
-  { id: 'intake', label: 'New Inquiry' },
-  { id: 'packet', label: 'Trip Details' },
-  { id: 'safety', label: 'Risk Review' },
-  { id: 'council', label: 'Persona Council' },
-  { id: 'frontier', label: 'Frontier OS' },
-] as const;
-
-type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
-
-const VALID_SPINE_STAGES = [
-  'discovery',
-  'shortlist',
-  'proposal',
-  'booking',
-] as const satisfies readonly SpineStage[];
-
-const VALID_SPINE_STAGES_SET = new Set<string>(VALID_SPINE_STAGES);
-function toSpineStage(value: string | null): SpineStage | null {
-  if (value && VALID_SPINE_STAGES_SET.has(value)) {
-    return value as SpineStage;
-  }
-  return null;
-}
-
-const VALID_OPERATING_MODES = [
-  'normal_intake',
-  'audit',
-  'emergency',
-  'follow_up',
-  'cancellation',
-  'post_trip',
-  'coordinator_group',
-  'owner_review',
-] as const satisfies readonly OperatingMode[];
-
-const VALID_OPERATING_MODES_SET = new Set<string>(VALID_OPERATING_MODES);
-function toOperatingMode(value: string | null): OperatingMode | null {
-  if (value && VALID_OPERATING_MODES_SET.has(value)) {
-    return value as OperatingMode;
-  }
-  return null;
-}
-
-const WORKSPACE_TAB_IDS_SET = new Set<string>(workspaceTabs.map((t) => t.id));
-function toWorkspaceTabId(value: string | null): WorkspaceTabId | null {
-  if (value && WORKSPACE_TAB_IDS_SET.has(value)) {
-    return value as WorkspaceTabId;
-  }
-  return null;
-}
-
-export function extractCompletedTripIdFromDraft(draft: Record<string, unknown> | null | undefined): string | null {
-  if (!draft || typeof draft !== "object") return null;
-
-  const promotedTripId = draft.promoted_trip_id;
-  if (typeof promotedTripId === "string" && promotedTripId.trim()) {
-    return promotedTripId.trim();
-  }
-
-  const runSnapshots = Array.isArray(draft.run_snapshots) ? draft.run_snapshots : [];
-  for (let index = runSnapshots.length - 1; index >= 0; index -= 1) {
-    const snapshotEntry = runSnapshots[index];
-    if (!snapshotEntry || typeof snapshotEntry !== "object") continue;
-
-    const record = snapshotEntry as Record<string, unknown>;
-    const snapshot = record.snapshot;
-    if (!snapshot || typeof snapshot !== "object") continue;
-
-    const tripId = (snapshot as Record<string, unknown>).trip_id;
-    if (typeof tripId === "string" && tripId.trim()) {
-      return tripId.trim();
-    }
-  }
-
-  return null;
-}
-
-/**
- * Derives the pipeline stage from actual trip/store state.
- * PipelineFlow shows processing progress (intake → packet → decision → strategy → safety),
- * not which tab the user clicked.
- * Output and Feedback are workspace sections, not core pipeline stages.
- * Frontier OS is surfaced in its own workbench tab when frontier output exists.
- */
-function getPipelineStageForWorkbench(
-  trip: Trip | null | undefined,
-  store: WorkbenchStore,
-): PipelineStageId {
-  if (store.result_safety || trip?.safety) return 'safety';
-  if (store.result_strategy || trip?.strategy) return 'strategy';
-  if (store.result_decision || trip?.decision) return 'decision';
-  if (store.result_packet || trip?.packet) return 'packet';
-  return 'intake';
-}
-
-function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
-  const {
-    setResultPacket,
-    setResultValidation,
-    setResultDecision,
-    setResultStrategy,
-    setResultInternalBundle,
-    setResultTravelerBundle,
-    setResultSafety,
-    setResultFees,
-    setResultFrontier,
-    setInputRawNote,
-    setInputOwnerNote,
-  } = useWorkbenchStore();
-  const hydratedRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!trip?.id) return;
-    if (hydratedRef.current === trip.id) return;
-
-    hydratedRef.current = trip.id;
-
-    // Always overwrite from current trip (prevent stale cross-trip data)
-    setResultPacket(trip.packet ?? null);
-    setResultValidation(trip.validation ?? null);
-    setResultDecision(trip.decision ?? null);
-    setResultStrategy(trip.strategy ?? null);
-    setResultInternalBundle(trip.internal_bundle ?? null);
-    setResultTravelerBundle(trip.traveler_bundle ?? null);
-    setResultSafety(normalizeSafetyResult(trip.safety));
-    setResultFees(trip.fees ?? null);
-    setResultFrontier(trip.frontier_result ?? null);
-    setInputRawNote(trip.customerMessage ?? '');
-    setInputOwnerNote(trip.agentNotes ?? '');
-  }, [
-    trip,
-    setInputRawNote,
-    setInputOwnerNote,
-    setResultPacket,
-    setResultValidation,
-    setResultDecision,
-    setResultStrategy,
-    setResultInternalBundle,
-    setResultTravelerBundle,
-    setResultSafety,
-    setResultFees,
-    setResultFrontier,
-  ]);
-}
-
-// IMP-05 (DEMO-06): shared styling for the blocked-banner "Review Missing Fields"
-// control, which renders as a Link to the editable repair surface when a trip
-// exists and as a tab-switch button when only a draft exists (pre-persistence).
-const REVIEW_MISSING_FIELDS_CONTROL_CLASSES =
-  'px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 text-[#f85149] text-ui-xs font-medium rounded-md hover:bg-[#f85149]/20 transition-colors';
 
 // react-doctor-disable-next-line react-doctor/prefer-useReducer — too many independent state slices to consolidate meaningfully
 function WorkbenchContent() {
@@ -470,135 +321,10 @@ function WorkbenchContent() {
     [pathname, replace, searchParams]
   );
 
-  // Populate store with validation/packet from run status so blocked runs
-  // still show specific field-level errors in the UI.
-  useEffect(() => {
-    if (spineRunState?.validation) {
-      setResultValidation(spineRunState.validation);
-    }
-    if (spineRunState?.packet) {
-      setResultPacket(spineRunState.packet);
-    }
-    if (
-      spineRunState?.decision_state ||
-      spineRunState?.follow_up_questions ||
-      spineRunState?.hard_blockers ||
-      spineRunState?.soft_blockers
-    ) {
-      const normalizedFollowUps = Array.isArray(spineRunState.follow_up_questions)
-        ? spineRunState.follow_up_questions.map((question) => {
-            const record = question as Record<string, unknown>;
-            return {
-              field_name: typeof record.field_name === 'string' ? record.field_name : '',
-              question: typeof record.question === 'string' ? record.question : '',
-              priority: typeof record.priority === 'string' ? record.priority : 'medium',
-              suggested_values: Array.isArray(record.suggested_values) ? record.suggested_values : [],
-            };
-          })
-        : [];
-      setResultDecision({
-        decision_state: spineRunState.decision_state ?? 'ASK_FOLLOWUP',
-        hard_blockers: spineRunState.hard_blockers ?? [],
-        soft_blockers: spineRunState.soft_blockers ?? [],
-        contradictions: [],
-        risk_flags: [],
-        follow_up_questions: normalizedFollowUps as DecisionOutput['follow_up_questions'],
-        rationale: {
-          hard_blockers: [],
-          soft_blockers: [],
-          contradictions: [],
-          confidence: 0,
-          confidence_scorecard: { data: 0, judgment: 0, commercial: 0 },
-          feasibility: '',
-        },
-        confidence: {
-          overall: NaN,
-          data_quality: NaN,
-          judgment_confidence: NaN,
-          commercial_confidence: NaN,
-        },
-        branch_options: [],
-        commercial_decision: 'NONE',
-        budget_breakdown: null,
-      });
-    }
-    setResultFrontier(spineRunState?.frontier_result ?? null);
-  }, [
-    spineRunState,
-    setResultValidation,
-    setResultPacket,
-    setResultDecision,
-    setResultFrontier,
-  ]);
-
-  // Update draft status based on run state, and refetch after terminal states
-  // to pick up backend lifecycle changes (version bumps, status updates).
-// react-doctor-disable-next-line react-doctor/no-cascading-set-state — multiple independent state slices updated
-  useEffect(() => {
-    if (!store.draft_id || !spineRunState?.state) return;
-    const runState = spineRunState.state;
-    if (runState === 'running' || runState === 'queued') {
-      setDraftStatus('processing');
-    } else if (runState === 'blocked') {
-      setDraftStatus('blocked');
-      // Refetch draft to get updated version from backend lifecycle
-      getDraft(store.draft_id).then((draft) => hydrateFromDraft(draft)).catch(() => {});
-    } else if (runState === 'failed') {
-      setDraftStatus('failed');
-      getDraft(store.draft_id).then((draft) => hydrateFromDraft(draft)).catch(() => {});
-    } else if (runState === 'completed') {
-      setDraftStatus('open');
-      getDraft(store.draft_id).then((draft) => hydrateFromDraft(draft)).catch(() => {});
-    }
-  }, [spineRunState?.state, store.draft_id, setDraftStatus, hydrateFromDraft]);
-
-  // Auto-switch to the tab containing errors when a run ends in blocked/failed state.
-  // This prevents the user from missing field-level validation errors that are rendered
-  // in the Trip Details (packet) tab or other stage-specific tabs.
-  const prevRunStateRef = useRef<string | null>(null);
-  const prevCompletedRunFrontierRef = useRef(false);
-  useEffect(() => {
-    const currentState = spineRunState?.state ?? null;
-    const prevState = prevRunStateRef.current;
-    const completedWithRunFrontier = currentState === 'completed' && Boolean(runFrontier);
-    const needsFollowUpReview =
-      currentState === 'completed' &&
-      (
-        spineRunState?.decision_state === 'ASK_FOLLOWUP' ||
-        (spineRunState?.hard_blockers?.length ?? 0) > 0 ||
-        (spineRunState?.soft_blockers?.length ?? 0) > 0
-      );
-
-    // Navigate the most useful tab after terminal transitions.
-    // Blocked/failed flows still land on Trip Details for immediate validation context.
-    // Completed runs with follow-up blockers land on Risk Review first unless the operator is already on Trip Details.
-    // Otherwise, completed runs with frontier output land on Frontier for immediate intelligence visibility.
-    if (
-      currentState !== prevState &&
-      (currentState === 'blocked' || currentState === 'failed')
-    ) {
-      handleTabChange('packet');
-    } else if (currentState !== prevState && needsFollowUpReview && activeTab !== 'packet') {
-      handleTabChange('safety');
-    } else if (
-      currentState === 'completed' &&
-      completedWithRunFrontier &&
-      currentState !== prevState &&
-      (!prevCompletedRunFrontierRef.current || prevState !== 'completed')
-    ) {
-      handleTabChange('frontier');
-    }
-
-    if (currentState !== 'completed') {
-      prevCompletedRunFrontierRef.current = false;
-    } else if (needsFollowUpReview) {
-      prevCompletedRunFrontierRef.current = false;
-    } else if (completedWithRunFrontier) {
-      prevCompletedRunFrontierRef.current = true;
-    }
-
-    prevRunStateRef.current = currentState;
-  }, [spineRunState, handleTabChange, runFrontier, activeTab]);
+  // Run-state -> store merge, draft lifecycle status, and terminal-tab
+  // auto-switch. Effects live in one hook, in their original declaration
+  // order, called at the same position the first effect previously occupied.
+  useWorkbenchRunSync({ spineRunState, activeTab, handleTabChange });
 
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -607,62 +333,21 @@ function WorkbenchContent() {
 
   // Ensure a draft exists before processing - creates one if needed.
   // Returns the draft_id to use, or null if there's no meaningful content.
-  const ensureDraftSaved = useCallback(async (): Promise<string | null> => {
-    const hasContent =
-      store.input_raw_note.trim() ||
-      store.input_owner_note.trim() ||
-      store.input_itinerary_text.trim() ||
-      (store.input_structured_json.trim() ? safeParseJson(store.input_structured_json) !== null : false);
-
-    if (!hasContent) return null;
-
-    if (store.draft_id) {
-      // Patch existing draft
-      const structured_json = safeParseJson(store.input_structured_json);
-      await patchDraft(store.draft_id, {
-        customer_message: store.input_raw_note || null,
-        agent_notes: store.input_owner_note || null,
-        structured_json,
-        itinerary_text: store.input_itinerary_text || null,
-        stage: spineStage,
-        operating_mode: currentMode,
-        scenario_id: currentScenario || null,
-        strict_leakage: store.strict_leakage,
-        expected_version: store.draft_version,
-        is_auto_save: false,
-      });
-      store.setSaveState('saved');
-      return store.draft_id;
-    }
-
-    // Create new draft (create endpoint doesn't accept structured_json/itinerary_text)
-    const result = await createDraft({
-      customer_message: store.input_raw_note || null,
-      agent_notes: store.input_owner_note || null,
-      stage: spineStage,
-      operating_mode: currentMode,
-      scenario_id: currentScenario || null,
-      strict_leakage: store.strict_leakage,
-    });
-    // Defer hydration so the same submit turn can continue straight into the
-    // Spine run. Immediate route/state churn here can pre-empt the first-submit
-    // flow before the run request is issued in the browser.
-    window.setTimeout(() => {
-      store.setDraftMeta({
-        draft_id: result.draft_id,
-        name: result.name,
-        status: result.status as DraftStatus,
-        version: 1,
-        created_at: result.created_at,
-      });
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('draft', result.draft_id);
-      if (!params.get('tab')) params.set('tab', 'intake');
-      window.history.replaceState(null, '', `?${params.toString()}`);
-      store.setSaveState('saved');
-    }, 0);
-    return result.draft_id;
-  }, [store, searchParams, spineStage, currentMode, currentScenario]);
+  // Draft create/patch/save lifecycle (manual save, ensure-saved-before-run,
+  // 5s debounced auto-save). Extracted verbatim into
+  // useWorkbenchDraftPersistence; called at the position the callbacks
+  // previously occupied so effect ordering is unchanged.
+  const { ensureDraftSaved, handleSaveDraft } = useWorkbenchDraftPersistence({
+    store,
+    searchParams,
+    replace,
+    isSpineRunning,
+    spineStage,
+    currentMode,
+    currentScenario,
+    setSaveSuccess,
+    setSaveError,
+  });
 
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
@@ -715,224 +400,6 @@ function WorkbenchContent() {
       setIsRunning(false);
     }
   }, [store, executeSpineRun, spineStage, currentMode, currentScenario, ensureDraftSaved, setIsRunning, setRunError, setRunSuccess, setCompletedTripId]);
-
-  // ==========================================================================
-  // Draft Save
-  // ==========================================================================
-
-  const handleSaveDraft = useCallback(async () => {
-    const isAuto = false;
-    if (store.save_state === 'saving') return;
-    store.setSaveState('saving');
-
-    try {
-      const structured_json = safeParseJson(store.input_structured_json);
-      const payload = {
-        customer_message: store.input_raw_note || null,
-        agent_notes: store.input_owner_note || null,
-        structured_json,
-        itinerary_text: store.input_itinerary_text || null,
-        stage: spineStage,
-        operating_mode: currentMode,
-        scenario_id: currentScenario || null,
-        strict_leakage: store.strict_leakage,
-      };
-
-      if (store.draft_id) {
-        const updated = await patchDraft(store.draft_id, {
-          ...payload,
-          expected_version: store.draft_version,
-          is_auto_save: isAuto,
-        });
-        store.setDraftMeta({
-          draft_id: store.draft_id,
-          name: (updated.name as string) || store.draft_name,
-          status: (updated.status as DraftStatus) || 'open',
-          version: (updated.version as number) || (store.draft_version ?? 0) + 1,
-          created_at: updated.updated_at as string,
-        });
-      } else {
-        const result = await createDraft({
-          customer_message: store.input_raw_note || null,
-          agent_notes: store.input_owner_note || null,
-          stage: spineStage,
-          operating_mode: currentMode,
-          scenario_id: currentScenario || null,
-          strict_leakage: store.strict_leakage,
-        });
-        store.setDraftMeta({
-          draft_id: result.draft_id,
-          name: result.name,
-          status: result.status as DraftStatus,
-          version: 1,
-          created_at: result.created_at,
-        });
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('draft', result.draft_id);
-        if (!params.get('tab')) params.set('tab', 'intake');
-        replace(`?${params.toString()}`, { scroll: false });
-      }
-
-      store.setSaveState('saved');
-      if (!isAuto) {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
-      }
-    } catch (err) {
-      const isConflict = err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409;
-      if (isConflict) {
-        store.setSaveState('conflict');
-      } else {
-        store.setSaveState('error');
-      }
-      if (!isAuto) {
-        setSaveError(
-          isConflict
-            ? 'Save conflict - draft was modified elsewhere. Refresh and try again.'
-            : 'Failed to save draft. Check connection and try again.',
-        );
-        setTimeout(() => setSaveError(null), 8000);
-      }
-    }
-  }, [store, searchParams, replace, spineStage, currentMode, currentScenario]);
-
-  // ----- Auto-save (5s debounce, guarded) -----
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevContentRef = useRef<string>('');
-
-  // Initialize prevContentRef after draft hydration so auto-save
-  // doesn't immediately save loaded content as new.
-  useEffect(() => {
-    if (store.draft_id && store.save_state === 'clean') {
-      const contentKey = JSON.stringify({
-        raw: store.input_raw_note,
-        owner: store.input_owner_note,
-        json: store.input_structured_json,
-        itin: store.input_itinerary_text,
-        stage: store.stage,
-        mode: store.operating_mode,
-        scenario: store.scenario_id,
-        strict: store.strict_leakage,
-      });
-      prevContentRef.current = contentKey;
-    }
-  }, [store.draft_id, store.save_state, store.input_raw_note, store.input_owner_note,
-      store.input_structured_json, store.input_itinerary_text, store.stage,
-      store.operating_mode, store.scenario_id, store.strict_leakage]);
-
-  const buildContentKey = useCallback(() => JSON.stringify({
-    raw: store.input_raw_note,
-    owner: store.input_owner_note,
-    json: store.input_structured_json,
-    itin: store.input_itinerary_text,
-    stage: spineStage,
-    mode: currentMode,
-    scenario: currentScenario,
-    strict: store.strict_leakage,
-  }), [store.input_raw_note, store.input_owner_note, store.input_structured_json,
-      store.input_itinerary_text, store.strict_leakage, spineStage, currentMode, currentScenario]);
-
-  useEffect(() => {
-    const hasContent =
-      store.input_raw_note.trim() ||
-      store.input_owner_note.trim() ||
-      store.input_structured_json.trim() ||
-      store.input_itinerary_text.trim();
-
-    if (!hasContent) return;
-    if (store.draft_status === 'processing' || store.draft_status === 'promoted') return;
-    if (isSpineRunning) return;
-    if (store.save_state === 'saving') return;
-
-    const contentKey = buildContentKey();
-    if (contentKey === prevContentRef.current) return;
-
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-
-    autoSaveTimerRef.current = setTimeout(() => {
-      (async () => {
-        setSaveState('saving');
-        try {
-          const structured_json = safeParseJson(store.input_structured_json);
-          const payload = {
-            customer_message: store.input_raw_note || null,
-            agent_notes: store.input_owner_note || null,
-            structured_json,
-            itinerary_text: store.input_itinerary_text || null,
-            stage: spineStage,
-            operating_mode: currentMode,
-            scenario_id: currentScenario || null,
-            strict_leakage: store.strict_leakage,
-          };
-
-          if (store.draft_id) {
-            const updated = await patchDraft(store.draft_id, {
-              ...payload,
-              expected_version: store.draft_version,
-              is_auto_save: true,
-            });
-            setDraftMeta({
-              draft_id: store.draft_id,
-              name: (updated.name as string) || store.draft_name,
-              status: (updated.status as DraftStatus) || 'open',
-              version: (updated.version as number) || (store.draft_version ?? 0) + 1,
-              created_at: updated.updated_at as string,
-            });
-          } else {
-            const result = await createDraft({
-              customer_message: payload.customer_message,
-              agent_notes: payload.agent_notes,
-              stage: payload.stage,
-              operating_mode: payload.operating_mode,
-              scenario_id: payload.scenario_id,
-              strict_leakage: payload.strict_leakage,
-            });
-            setDraftMeta({
-              draft_id: result.draft_id,
-              name: result.name,
-              status: result.status as DraftStatus,
-              version: 1,
-              created_at: result.created_at,
-            });
-            const params = new URLSearchParams(searchParams.toString());
-            params.set('draft', result.draft_id);
-            if (!params.get('tab')) params.set('tab', 'intake');
-            window.history.replaceState(null, '', `?${params.toString()}`);
-          }
-          // Mark as saved only after successful API call
-          setSaveState('saved');
-          prevContentRef.current = buildContentKey();
-        } catch (err) {
-          const isConflict = err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409;
-          setSaveState(isConflict ? 'conflict' : 'error');
-          // Do NOT update prevContentRef on failure - same content is retryable
-        }
-      })();
-    }, 5000);
-
-    return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    };
-  }, [
-    store.input_raw_note,
-    store.input_owner_note,
-    store.input_structured_json,
-    store.input_itinerary_text,
-    store.draft_id,
-    store.draft_name,
-    store.draft_status,
-    store.draft_version,
-    store.save_state,
-    isSpineRunning,
-    spineStage,
-    currentMode,
-    currentScenario,
-    store.strict_leakage,
-    searchParams,
-    buildContentKey,
-    setSaveState,
-    setDraftMeta,
-  ]);
 
   const handleSave = useCallback(async () => {
     if (!resolvedTripId) return;

@@ -1,5 +1,16 @@
 # Workbench Modularization — Council Decision (2026-09-12)
 
+> **Status addendum (2026-09-12, same day):** Tranches 0–2 EXECUTED.
+> T0.1 landed (vitest.setup N-08 in f8d8f73). T0.2: 9 characterization tests
+> green on pre-refactor HEAD (`__tests__/page-characterization.test.tsx`).
+> T1.1 `workbench-state.ts`, T1.2 `useHydrateStoreFromTrip`, T2.1
+> `useWorkbenchRunSync`, T2.2 `useWorkbenchDraftPersistence` (triplication
+> preserved; consolidation deferred) — all pure moves, gates green per slice.
+> PageClient.tsx: 1,463 → 930 lines (T2.3 Header/ActionBar split still open). Full FE suite at tranche end:
+> 185 files / 1,391 tests, zero regressions. `next build` deferred until the
+> parallel agent's in-flight edits land (tree ambiguity). Consolidation commit
+> (single buildDraftPayload) remains gated per §Execution plan T2.2.
+
 Council orchestrated via `$council-orchestrator` over the canonical persona repo
 (`/Users/pranay/Desktop/Understanding_Personas_sept6`, resolver confidence: high).
 Task: refactor very large files to modular structure without losing
