@@ -117,6 +117,45 @@ def test_registry_stale_owner_cannot_complete_reclaimed_row():
     assert registry._records[key].response_payload == {"who": "reclaimed-owner"}
 
 
+def test_registry_stale_owner_cannot_fail_reclaimed_row():
+    """mark_failed twin of the in-memory fencing regression (X-11).
+
+    After a TTL reclaim, both the stale and the reclaimed owner are PENDING;
+    the in-memory backend's mark path must therefore transition PENDING rows
+    only and fence on the generation token: the stale owner's late failure
+    no-ops (returns False) and the row stays pending for the reclaimed owner.
+    """
+    registry = IdempotencyRegistry()
+    key = IdempotencyRegistry.generate_key("t", "action", {"x": 10})
+    acquired, stale_record = registry.try_acquire(
+        key, trip_id="t", action_name="action", payload={"x": 10}
+    )
+    assert acquired
+    assert stale_record is not None
+
+    registry._records[key].created_at -= stale_record.ttl_seconds + 2
+    acquired_again, fresh_record = registry.try_acquire(
+        key, trip_id="t", action_name="action", payload={"x": 10}
+    )
+    assert acquired_again
+    assert fresh_record is not None
+    assert fresh_record.fencing_token != stale_record.fencing_token
+
+    assert (
+        registry.mark_failed(key, "stale boom", fencing_token=stale_record.fencing_token)
+        is False
+    )
+    record = registry._records[key]
+    assert record.status == IdempotencyStatus.PENDING
+    assert record.error_message is None
+
+    assert (
+        registry.mark_failed(key, "reclaimed boom", fencing_token=fresh_record.fencing_token)
+        is True
+    )
+    assert registry._records[key].status == IdempotencyStatus.FAILED
+
+
 def test_registry_completed_returns_cached():
     registry = IdempotencyRegistry()
     key = IdempotencyRegistry.generate_key("t", "action", {"x": 3})

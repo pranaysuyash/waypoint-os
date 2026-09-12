@@ -117,6 +117,27 @@ changes. A future owner should perform the required field-by-field
 supersession/call-site audit and consolidate the duplicate only after semantic
 ownership is established.
 
+### Consolidation audit completed (2026-09-11, Claude Code session)
+
+The deferred field-by-field supersession/call-site audit has been performed
+per the repo Supersession Workflow. Verdict: **the workspace-panels copy is a
+strict subset of the app-local canonical panel — deletion is correct and no
+merge is required.**
+
+| Dimension | workspace/panels copy (199 ln) | app-local canonical (207 ln, `096ceba`) |
+|---|---|---|
+| Call sites | **0 imports** anywhere in `frontend/src` | 3 live (PersonaCouncilPanel + contract + honesty tests) |
+| Export shape | named export | default export (all 3 call sites import default) |
+| Honesty contract | absent | SimulatedBadge + documented no-fabrication behavior |
+| Response shape | older (no `generated_at`, no `_meta`) | `generated_at`, `_meta.reality_tier`, `missing_for_upgrade` |
+| Swap typing | untyped `api.post` | typed `SupplierSwapResponse` |
+| Routes | same canonical routes | same + N-04 repaired contract |
+
+Deletion is executing this section's standing plan; the file remains
+recoverable from history (`git show HEAD:<path>`) at any time. The unstaged
+working-tree deletion observed 2026-09-11 belongs to the Elena
+audit-remediation lane and should ride its commit.
+
 The following remain open and are not proven by this repair:
 
 - real GDS/bedbank/Hotelbeds/WebBeds provider credentials, rate freshness, and

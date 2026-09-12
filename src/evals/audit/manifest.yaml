@@ -41,10 +41,16 @@ categories:
   # min_accuracy; precision/recall/severity_accuracy are reference-only.
   # If promoted to gating, blocks_ci when F1 falls below the threshold.
   extraction:
-    # Calibration-only until a deterministic document-vision producer is
-    # available.  The snapshot still records expected-vs-expected metrics to
-    # validate comparison logic, but those values cannot authorize a public
-    # surface or serve as a quality claim.
+    # Calibration-only until a deterministic text-path document producer is
+    # available.  Since N-02 (2026-09-11) every golden fixture carries an
+    # authored raw_input text layer (simulated OCR/confirmation text), so
+    # the corpus is runnable; but the deterministic note pipeline emits no
+    # document facts, so the live collector yields no genuine actuals and
+    # the snapshot still records expected-vs-expected metrics to validate
+    # comparison logic.  Those values cannot authorize a public surface or
+    # serve as a quality claim.  The lane flips to live grading
+    # automatically (no further changes) the moment a producer emits
+    # document facts.
     status: shadow
     min_precision: 0.85
     min_recall: 0.85
@@ -57,6 +63,20 @@ categories:
     # The fixture contract spans document vision, trip agents, and decision
     # stages that do not yet have one in-process producer.  Keep this lane
     # visible and hash-tracked without treating the mirror fallback as proof.
+    # N-03 note (2026-09-11): the three trip agents DO exist as deterministic
+    # rule engines (FrontDoorAgent / DocumentReadinessAgent /
+    # ConstraintFeasibilityAgent in src/agents/runtime.py), but the fixtures'
+    # expected_agents vocabulary was authored against imagined contracts —
+    # e.g. missing_fields lists ("travel_dates", "hotel_preference") the
+    # agents never emit (real names: "travel dates"; no hotel check) and
+    # values that contradict the fixtures' own raw_note, plus
+    # checklist_items vs the real "items" and feasibility_status vs the real
+    # "status" keys, and a trip_status/stage decision vocabulary the
+    # in-process DecisionResult does not emit.  Flipping live requires
+    # re-authoring the fixture expectations from real agent runs (data/
+    # fixtures/pipeline/pipeline_golden.json) plus a decision-stage
+    # producer; grading the imagined vocabulary as-is would measure the
+    # mismatch, not the product.
     status: shadow
     min_accuracy: 0.80
   # Colloquial extraction accuracy (DEMO-02 verb-object destinations, city
@@ -85,3 +105,17 @@ categories:
   gap_decision:
     status: gating
     min_accuracy: 0.95
+  # Adversarial-input regression lane (E-08 / E-11): the promoted
+  # gating_candidate records from data/fixtures/adversarial/
+  # adversarial_golden.json are probed live through the in-process intake
+  # pipeline via _run_adversarial_baseline() in snapshot.py and graded by
+  # PROPERTY contract (must_extract / must_not_extract / must_flag /
+  # graceful_unknowns / must_not_crash) — exact-field matching is
+  # deliberately not used for hostile inputs (E-11 design doc §4.2).
+  # GATING since 2026-09-11 with min_accuracy 1.0: all 21 promoted records
+  # passed an honest fresh probe at promotion time (post X-01/02/03/07/08
+  # fix wave), and the lane is a regression ratchet — any violated property
+  # means a fixed defect returned, so the gate blocks on any regression.
+  adversarial:
+    status: gating
+    min_accuracy: 1.0

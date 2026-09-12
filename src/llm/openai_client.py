@@ -26,18 +26,61 @@ except ImportError:
 from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError
 
 
-# OpenAI pricing in INR (approximate, as of 2024)
-# 1 USD ≈ 83 INR
+# OpenAI pricing in INR (approximate, per 1M tokens; 1 USD ≈ 83 INR)
+# Standard tier, short context. Sources: developers.openai.com/api/docs/pricing
+# (fetched 2026-09-11). Models not listed fall back to gpt-4o-mini pricing.
 PRICING = {
-    "gpt-4o-mini": {
-        "input_per_million": 0.15 * 83,   # ~₹12.5 per million tokens
-        "output_per_million": 0.60 * 83,  # ~₹49.8 per million tokens
-    },
+    "gpt-3.5-turbo": {"input_per_million": 0.50 * 83, "output_per_million": 1.50 * 83},
+    "gpt-4-turbo": {"input_per_million": 10.00 * 83, "output_per_million": 30.00 * 83},
     "gpt-4o": {
         "input_per_million": 2.50 * 83,   # ~₹207.5 per million
         "output_per_million": 10.00 * 83, # ~₹830 per million
     },
+    "gpt-4o-mini": {
+        "input_per_million": 0.15 * 83,   # ~₹12.5 per million tokens
+        "output_per_million": 0.60 * 83,  # ~₹49.8 per million tokens
+    },
+    "gpt-4.1": {"input_per_million": 2.00 * 83, "output_per_million": 8.00 * 83},
+    "gpt-4.1-mini": {"input_per_million": 0.40 * 83, "output_per_million": 1.60 * 83},
+    "gpt-4.1-nano": {"input_per_million": 0.10 * 83, "output_per_million": 0.40 * 83},
+    "gpt-5": {"input_per_million": 1.25 * 83, "output_per_million": 10.00 * 83},
+    "gpt-5-mini": {"input_per_million": 0.25 * 83, "output_per_million": 2.00 * 83},
+    "gpt-5-nano": {"input_per_million": 0.05 * 83, "output_per_million": 0.40 * 83},
+    "gpt-5.1": {"input_per_million": 1.25 * 83, "output_per_million": 10.00 * 83},
+    "gpt-5.2": {"input_per_million": 1.75 * 83, "output_per_million": 14.00 * 83},
+    "gpt-5.4": {"input_per_million": 2.50 * 83, "output_per_million": 15.00 * 83},
+    "gpt-5.4-mini": {"input_per_million": 0.75 * 83, "output_per_million": 4.50 * 83},
+    "gpt-5.4-nano": {"input_per_million": 0.20 * 83, "output_per_million": 1.25 * 83},
+    "gpt-5.5": {"input_per_million": 5.00 * 83, "output_per_million": 30.00 * 83},
+    "gpt-5.6-luna": {"input_per_million": 0.20 * 83, "output_per_million": 1.20 * 83},
+    "gpt-5.6-terra": {"input_per_million": 2.00 * 83, "output_per_million": 12.00 * 83},
+    "gpt-5.6-sol": {"input_per_million": 4.00 * 83, "output_per_million": 20.00 * 83},
+    "o3": {"input_per_million": 2.00 * 83, "output_per_million": 8.00 * 83},
+    "o3-mini": {"input_per_million": 1.10 * 83, "output_per_million": 4.40 * 83},
+    "o4-mini": {"input_per_million": 1.10 * 83, "output_per_million": 4.40 * 83},
+    "gpt-6-astra": {"input_per_million": 10.00 * 83, "output_per_million": 50.00 * 83},
 }
+
+
+# Model families whose Chat Completions contract differs from the classic one.
+# Reasoning models (gpt-5+, o-series) reject `max_tokens` (want
+# `max_completion_tokens`) and any `temperature` other than 1. Legacy gpt-4
+# (pre-turbo) rejects `response_format: json_object`.
+_REASONING_MODEL_PREFIXES = ("gpt-5", "gpt-6", "o1", "o3", "o4")
+
+
+def _is_reasoning_model(model: str) -> bool:
+    return model.startswith(_REASONING_MODEL_PREFIXES)
+
+
+def _supports_json_mode(model: str) -> bool:
+    # Legacy gpt-4 (gpt-4, gpt-4-0613) rejects response_format json_object;
+    # gpt-4-turbo, gpt-4o*, gpt-4.1*, gpt-3.5-turbo* and all newer support it.
+    if model.startswith(("gpt-4-turbo", "gpt-4o", "gpt-4.1")):
+        return True
+    if model.startswith("gpt-4"):
+        return False
+    return True
 
 
 class OpenAIClient(BaseLLMClient):
@@ -156,10 +199,12 @@ class OpenAIClient(BaseLLMClient):
         )
 
         try:
-            # Call the API
-            response = self._client.chat.completions.create(
-                model=self.model,
-                messages=[
+            # Model-aware request params: reasoning models (gpt-5+/o-series)
+            # require max_completion_tokens and reject temperature != 1;
+            # legacy gpt-4 rejects response_format json_object.
+            params: Dict[str, Any] = {
+                "model": self.model,
+                "messages": [
                     {
                         "role": "system",
                         "content": "You are a decision-making assistant. Always respond with valid JSON matching the provided schema.",
@@ -169,10 +214,17 @@ class OpenAIClient(BaseLLMClient):
                         "content": full_prompt,
                     },
                 ],
-                temperature=temperature if temperature is not None else self.temperature,
-                max_tokens=self.max_tokens,
-                response_format={"type": "json_object"},  # Request JSON response
-            )
+            }
+            if _is_reasoning_model(self.model):
+                params["max_completion_tokens"] = self.max_tokens
+            else:
+                params["temperature"] = (
+                    temperature if temperature is not None else self.temperature
+                )
+                params["max_tokens"] = self.max_tokens
+                if _supports_json_mode(self.model):
+                    params["response_format"] = {"type": "json_object"}
+            response = self._client.chat.completions.create(**params)
 
             # Parse response
             response_text = response.choices[0].message.content

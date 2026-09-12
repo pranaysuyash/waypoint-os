@@ -141,6 +141,14 @@ def _generate_risk_flags_with_hybrid_engine(
         try:
             result = engine.decide(decision_type, packet)
 
+            # Skip the engine's safe-default fallback: a "default" source means
+            # nothing actually assessed this decision (cache miss + rule miss +
+            # LLM abstained). Its boilerplate "unable to assess - medium" is
+            # not risk evidence — emitting it as a flag fabricates risk signals
+            # the deterministic baseline (arm A) never produces (KDD §7.4/§8).
+            if not result or not result.decision or result.source == "default":
+                continue
+
             # Convert hybrid engine result to risk flag format
             if result and result.decision:
                 risk_level = result.decision.get("risk_level", "low")

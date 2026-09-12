@@ -769,3 +769,78 @@ python3 tools/feature_list_generate.py \
   `STUB`, `SPEC`, `EXPLORE`), and priorities (`P0`–`P2`); exits non-zero on any
   parse problem, so it doubles as a consistency check for future V4 refreshes.
 - Emits `metadata` + `counts` + full `records` in JSON; flat rows in CSV.
+
+## generate_promptfoo_config.py
+
+**Purpose:** port the hybrid risk-flag eval lane (35-record corpus from the
+budget/colloquial golden fixtures) to a portable Promptfoo configuration —
+per `Docs/exploration/HYBRID_KDD_EXPERIMENT_2026-09-11.md` §7.3/§7.5 (OpenAI
+is winding down its Evals product in favor of Promptfoo).
+
+**Usage:**
+
+```bash
+python3 tools/generate_promptfoo_config.py
+PROMPTFOO_PYTHON="$PWD/.venv/bin/python" \
+  npx promptfoo eval -c data/experiments/hybrid_kdd_v1/promptfooconfig.yaml --no-cache
+```
+
+**What it emits:** `data/experiments/hybrid_kdd_v1/promptfooconfig.yaml`
+(35 test cases + assertions) and `promptfoo_provider.py` (python provider
+wrapping the repo's real extraction + hybrid decision pipeline).
+
+**Assertions:** output is JSON with a `risks` array, plus the no-spurious-visa
+invariant (`visa_timeline_risk` only when destination facts exist — KDD §7.4
+Q8). Not per-record ground truth; that belongs to the E-07 judge lane.
+
+**Notes:**
+
+- `PROMPTFOO_PYTHON` must point at the repo venv (provider imports need repo
+  dependencies; promptfoo's default worker python lacks them).
+- Without provider credentials the pipeline degrades deterministically
+  (safe-default decisions are not emitted as flags), so the lane is CI-safe
+  and free; with credentials set it exercises the real LLM escalation path.
+- Re-run the generator after fixture changes; do not hand-edit the generated
+  config/provider.
+
+## grade_kdd_flags.py
+
+**Purpose:** grade KDD experiment risk-flag arms against the curated
+ground-truth labels — completes KDD §7.5 item 2 (precision/recall/F1 per arm).
+
+**Usage:**
+
+```bash
+python3 tools/grade_kdd_flags.py                    # grade every records*.jsonl run
+python3 tools/grade_kdd_flags.py records_final_single.jsonl   # grade one run
+```
+
+**Labels:** `data/fixtures/risk_flags/ground_truth_labels.json` — note-level
+business reality (a flag is expected when an advisor reading the raw note would
+raise it), rubric fixed before any arm was scored. Matching is flag-name level;
+severity agreement reported as `severity_exact`.
+`traveler_safe_leakage_risk` (pipeline-integrity family) is excluded — see the
+labels file's `_meta.excluded_flags`.
+
+**Output:** per-arm P/R/F1 table + `data/experiments/hybrid_kdd_v1/grading_receipt.json`.
+
+**Caveats:** author-curated labels (documented bias mitigations in `_meta`);
+`budget_hard_001` labeled domestic-unknown; visa judgments assume
+Indian-passport travelers (corpus default).
+
+## build_model_comparison.py
+
+**Purpose:** regenerate the full model-comparison sheet — every model ever
+tested in the hybrid risk-flag lane (kept, deleted, failed, partial, blocked)
+— from the per-run JSONLs + a curated manifest. Nothing is lost when models
+are pruned from the local ollama store.
+
+**Usage:** `python3 tools/build_model_comparison.py`
+
+**Outputs:** `data/experiments/hybrid_kdd_v1/comparison_sheet.csv` and the
+table block in `Docs/exploration/KDD_MODEL_COMPARISON_2026-09-12.md`
+(includes the failure/ops log and one-command re-pull recipes).
+
+**Notes:** add new runs to the `MANIFEST` list in the script (id, tier, size,
+cost, status, run file, arm, notes), then regenerate. Grades are computed
+live via `grade_kdd_flags.py` logic against the ground-truth labels.

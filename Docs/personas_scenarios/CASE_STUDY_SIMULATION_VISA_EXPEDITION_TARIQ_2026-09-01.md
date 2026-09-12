@@ -1,5 +1,8 @@
 # Case Study: Visa & Document Concierge Simulation (Tariq Al-Mansoor — P6-EXPEDITION-01)
 
+> ⚠️ **SIMULATION RECORD** — capability claims in this document describe what the UI rendered during the simulation. Per `Docs/exploration/SIM_VS_REALITY_RECONCILIATION_2026-09-01.md`, 17/30 mechanism claims were simulated (sample data / deterministic fixtures), not production integrations. Read alongside that reconciliation.
+> *(Caveat added 2026-09-02 per shadow-audit item R-01; body content unchanged.)*
+
 **Persona Profile**: Tariq Al-Mansoor, Director of Document Compliance & Visa Concierge at Vanguard Polar & Remote Expeditions\
 **Simulation Date**: September 1, 2026\
 **Primary Scenario**: High-End Polar & Remote Expedition Document Verification with ICAO 9303 TD3 Checksums (`EXP-DOC-POLAR-01`)\

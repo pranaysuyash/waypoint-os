@@ -1,5 +1,8 @@
 # Case Study: Private Aviation & Empty-Leg Arbitrage Simulation (Captain Alexander Hayes — P7-AVIATION-01)
 
+> ⚠️ **SIMULATION RECORD** — capability claims in this document describe what the UI rendered during the simulation. Per `Docs/exploration/SIM_VS_REALITY_RECONCILIATION_2026-09-01.md`, 17/30 mechanism claims were simulated (sample data / deterministic fixtures), not production integrations. Read alongside that reconciliation.
+> *(Caveat added 2026-09-02 per shadow-audit item R-01; body content unchanged.)*
+
 **Persona Profile**: Captain Alexander Hayes, Managing Director of Air Charter Solutions at AeroLux Global Jet Partners\
 **Simulation Date**: September 1, 2026\
 **Primary Scenario**: On-Demand Super-Midsize Charter with Empty-Leg Repositioning Match (`EXP-AVIATION-TEB-MIA-01`)\

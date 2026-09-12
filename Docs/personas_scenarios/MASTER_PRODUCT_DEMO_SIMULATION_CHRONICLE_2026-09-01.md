@@ -1,5 +1,8 @@
 # Master Product Demo Simulation Chronicle: Real-World Computer-Use Walkthroughs
 
+> ⚠️ **SIMULATION RECORD** — capability claims in this document describe what the UI rendered during the simulation. Per `Docs/exploration/SIM_VS_REALITY_RECONCILIATION_2026-09-01.md`, 17/30 mechanism claims were simulated (sample data / deterministic fixtures), not production integrations. Read alongside that reconciliation.
+> *(Caveat added 2026-09-02 per shadow-audit item R-01; body content unchanged.)*
+
 **Document Version**: 2.0
 
 **Simulation Dates**: 2026-08-30 to 2026-09-01

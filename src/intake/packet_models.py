@@ -215,6 +215,7 @@ class Ambiguity:
         "budget_stretch_present",       # "can stretch if it's good"
         "composition_unclear",          # "3 of them I think"
         "destination_open",             # "somewhere with beaches"
+        "flights_inclusiveness_unknown",  # D-02: "not sure if that includes flights"
     ]
     raw_value: str
     normalized_value: Optional[str] = None

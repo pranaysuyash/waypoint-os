@@ -19,6 +19,11 @@ from .fixtures import AuditFixture, load_fixtures
 from .gates import evaluate_report_against_manifest
 from .manifest import load_manifest
 from .rules.activity import run_activity_fixture
+from .rules.adversarial import (
+    DEFAULT_ADVERSARIAL_GOLDEN_PATH,
+    load_adversarial_golden,
+    run_adversarial_eval,
+)
 from .rules.extraction import load_golden_dataset, run_extraction_eval
 from .rules.pipeline import load_pipeline_fixtures, run_pipeline_eval
 from .rules.scenarios import (
@@ -52,6 +57,7 @@ DEFAULT_COLLOQUIAL_GOLDEN_DATASET_PATH = Path(
 _COLLOQUIAL_FIELD_MAP = {
     "destination_candidates": "destination_candidates",
     "destination_status": "destination_status",
+    "destination_country": "destination_country",
     "party_size": "party_size",
     "party_composition": "party_composition",
     "budget_min": "budget_min",
@@ -61,6 +67,7 @@ _COLLOQUIAL_FIELD_MAP = {
     "date_window": "date_window",
     "date_confidence": "date_confidence",
     "date_flexibility": "date_flexibility",
+    "trip_duration_days": "trip_duration_days",
     "meal_preferences": "meal_preferences",
 }
 
@@ -161,6 +168,10 @@ EXPECTED_COLLOQUIAL_BASELINE_F1 = 1.0
 # the real decision engine by default, so an honest run legitimately drifts
 # from this constant (same semantics as the live budget lane).
 EXPECTED_SCENARIO_BASELINE_ACCURACY = 1.0
+# Adversarial-input lane (E-08): live property grading of the promoted
+# gating_candidate records, so 1.0 is the honest baseline — the lane is a
+# regression ratchet and any violated property means a defect returned.
+EXPECTED_ADVERSARIAL_BASELINE_ACCURACY = 1.0
 
 
 def _collect_live_colloquial_results(
@@ -221,21 +232,29 @@ def _collect_live_extraction_results(
     CanonicalPacket facts are mapped onto the golden field names so
     ``run_extraction_eval`` can grade them honestly.
 
-    The current golden dataset (50 passport/visa/insurance fixtures) is a
-    *document-vision* target set: it carries no ``raw_input`` at all, and
-    the deterministic note pipeline does not emit document fields
-    (``full_name``/``passport_number``/``visa_type``/... — those come from
-    the LLM vision chain, which is excluded from deterministic CI).  The
-    collector therefore returns an empty dict for today's dataset, which
-    keeps the extraction lane on the flagged expected-as-actual fallback
-    (see :func:`_run_extraction_baseline`) instead of silently pretending
-    to grade.  The moment a fixture carries ``raw_input`` (or the pipeline
-    grows document facts) it is graded live with no further changes.
+    Contract history (N-02, Docs/exploration/
+    MASTER_FINDINGS_TASKS_INVENTORY_2026-09-02.md): the 50 golden
+    passport/visa/insurance fixtures are *document-vision* targets whose
+    fields (``full_name``/``passport_number``/``visa_type``/...) come from
+    the LLM vision chain, which is human-gated, defaults to ``noop`` and is
+    excluded from deterministic CI.  Since 2026-09-11 every fixture carries
+    an authored ``raw_input`` text layer (simulated OCR / confirmation text
+    matching the expected fields), so the corpus is runnable — but the
+    deterministic note pipeline still emits no document facts.  A fixture
+    whose mapped actuals are all ``None`` therefore has no genuine
+    deterministic actual: emitting an all-None shell would grade as false
+    negatives (a category error — grading the note pipeline against
+    document expectations), so the fixture is skipped under the same
+    flagged-fallback contract as :func:`_collect_live_pipeline_results`.
+    The moment a deterministic text-path document producer emits packet
+    facts (any non-None actual), that fixture grades live with no further
+    changes and the lane leaves the flagged expected-as-actual fallback
+    (see :func:`_run_extraction_baseline`).
 
     Returns a dict keyed by ``fixture_id`` with the mapped extracted
     fields.  Returns an empty dict when the intake pipeline is not
     importable, the golden dataset is missing, or no fixture yields a
-    runnable live actual.
+    genuine live actual.
     """
     if not _HAS_INTAKE_PIPELINE or not golden_dataset_path.exists():
         return {}
@@ -246,7 +265,7 @@ def _collect_live_extraction_results(
         fixture_id = item["fixture_id"]
         raw_input = item.get("raw_input", "")
         if not raw_input:
-            # Vision-only document fixture: no input text exists to run.
+            # No input text exists to run.
             continue
         envelope = SourceEnvelope.from_freeform(
             raw_input,
@@ -261,6 +280,12 @@ def _collect_live_extraction_results(
                 extracted[golden_field] = _normalise_fact_value(slot.value)
             else:
                 extracted[golden_field] = None
+        if not any(value is not None for value in extracted.values()):
+            # No document field has a genuine deterministic actual — an
+            # all-None shell would grade as false negatives, so skip the
+            # fixture (flagged-fallback contract, matching the pipeline
+            # collector).
+            continue
         results[fixture_id] = extracted
     return results
 
@@ -370,8 +395,9 @@ def _run_extraction_baseline(
         actual_source = "caller_supplied_actuals"
     else:
         # Live-first: grade the real pipeline like the budget/colloquial
-        # gates do.  The golden dataset is a document-vision target set
-        # with no raw_input, so the live collector yields nothing today
+        # gates do.  The golden fixtures carry authored raw_input text
+        # (N-02, 2026-09-11) but the deterministic note pipeline emits no
+        # document facts, so the live collector yields no genuine actuals
         # and the flagged fallback below engages with the honest reason.
         live = _collect_live_extraction_results(golden_dataset_path)
         if live:
@@ -384,8 +410,9 @@ def _run_extraction_baseline(
             report = run_extraction_eval(fixtures, saved_results=saved)
             if _HAS_INTAKE_PIPELINE:
                 note = (
-                    "Baseline using expected outputs as actuals (golden fixtures "
-                    "carry no raw_input; document vision extraction has no "
+                    "Baseline using expected outputs as actuals (fixtures carry "
+                    "authored raw_input, but the deterministic pipeline emits no "
+                    "document facts — document vision extraction has no "
                     "deterministic producer)."
                 )
             else:
@@ -874,6 +901,99 @@ def _run_scenario_baseline(
     }
 
 
+def _run_adversarial_baseline(
+    *,
+    golden_path: Path = DEFAULT_ADVERSARIAL_GOLDEN_PATH,
+    adversarial_live_results: dict[str, list[str]] | None = None,
+) -> dict[str, Any]:
+    """Run the adversarial-input lane (E-08) against the real intake pipeline.
+
+    Live-by-default like the gap/decision scenario lane: the promoted
+    ``gating_candidate`` records in ``adversarial_golden.json`` are probed
+    through the in-process ``ExtractionPipeline`` and their property
+    contracts graded directly (E-11 design doc section 4.4) — no mirror of
+    expectations is involved on the normal path.  Fixture accuracy (fraction
+    of records whose full property contract holds) feeds the manifest
+    category ``adversarial``, which is a regression ratchet: any violated
+    property means a fixed defect returned, so the gate blocks at 1.0.
+
+    When the intake pipeline is not importable the comparison falls back to
+    a self-consistent baseline (expected-as-actual mirror) so CI without
+    full dependencies still validates grading logic; that fallback is
+    calibration-only and withholds public authority, like the other lanes.
+
+    Parameters
+    ----------
+    golden_path
+        Path to the promoted adversarial golden corpus.
+    adversarial_live_results
+        Optional pre-computed grades (fixture_id -> violation list) for
+        degraded-run simulations, mirroring how the other lanes accept
+        explicit live results.
+    """
+    if not golden_path.exists():
+        return {
+            "status": "unavailable",
+            "reason": "adversarial_golden_missing",
+            "total_fixtures": 0,
+            "overall_accuracy": 0.0,
+            "blocks_ci": False,
+        }
+    records = load_adversarial_golden(golden_path)
+    live_grading = False
+    actual_source = "expected_fixture_mirror"
+    if adversarial_live_results is not None:
+        report = run_adversarial_eval(records, saved_violations=adversarial_live_results)
+        note = "Pre-computed adversarial property grades used for accuracy evaluation."
+        live_grading = True
+        actual_source = "caller_supplied_actuals"
+    elif _HAS_INTAKE_PIPELINE:
+        report = run_adversarial_eval(records)
+        note = (
+            "Live in-process adversarial property grading (E-08 promoted "
+            "gating_candidate records, property contract per E-11 section 4.4)."
+        )
+        live_grading = True
+        actual_source = "live_extraction_pipeline"
+    else:
+        # Intake pipeline unavailable: grade expectations against themselves
+        # (self-consistent baseline, mirroring the other lanes'
+        # import-failure fallback semantics).
+        report = run_adversarial_eval(
+            records, saved_violations={r.fixture_id: [] for r in records}
+        )
+        note = (
+            "Baseline using expected outputs as actuals (intake pipeline "
+            "unavailable)."
+        )
+    summary = report.summary()
+    overall_acc = summary["fixture_accuracy"]
+    if overall_acc >= 0.95:
+        status = "passing"
+    elif overall_acc >= 0.80:
+        status = "warning"
+    else:
+        status = "failing"
+    return {
+        "status": status,
+        "overall_accuracy": overall_acc,
+        "property_accuracy": summary["property_accuracy"],
+        "total_properties_checked": summary["total_properties_checked"],
+        "properties_violated": summary["properties_violated"],
+        "total_fixtures": summary["total_fixtures"],
+        "fixtures_passing": summary["fixtures_passing"],
+        "fixtures_failing": summary["fixtures_failing"],
+        "by_taxonomy_class": summary["by_taxonomy_class"],
+        "blocks_ci": status == "failing",
+        "expected_baseline_accuracy": EXPECTED_ADVERSARIAL_BASELINE_ACCURACY,
+        "baseline_drifted": overall_acc != EXPECTED_ADVERSARIAL_BASELINE_ACCURACY,
+        "live_grading": live_grading,
+        "actual_source": actual_source,
+        "evidence_tier": 2 if live_grading else 0,
+        "note": note,
+    }
+
+
 def build_gate_snapshot(
     *,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
@@ -883,6 +1003,7 @@ def build_gate_snapshot(
     budget_live_results: dict[str, Any] | None = None,
     colloquial_live_results: dict[str, Any] | None = None,
     scenario_live_results: dict[str, dict[str, Any]] | None = None,
+    adversarial_live_results: dict[str, list[str]] | None = None,
 ) -> dict[str, Any]:
     fixtures = load_fixtures(fixture_root)
     manifest = load_manifest()
@@ -918,6 +1039,11 @@ def build_gate_snapshot(
         scenario_live_results=scenario_live_results,
     )
 
+    # --- adversarial-input regression gate (E-08, live property grading) ---
+    adversarial_health = _run_adversarial_baseline(
+        adversarial_live_results=adversarial_live_results,
+    )
+
     # --- manifest gate evaluation ---
     # Pass per-category accuracy values for categories that use
     # min_accuracy thresholds instead of the standard precision/recall/
@@ -938,6 +1064,9 @@ def build_gate_snapshot(
     scenario_acc = scenario_health.get("overall_accuracy")
     if scenario_acc is not None:
         category_accuracy["gap_decision"] = scenario_acc
+    adversarial_acc = adversarial_health.get("overall_accuracy")
+    if adversarial_acc is not None:
+        category_accuracy["adversarial"] = adversarial_acc
     # Public authority requires an independent actual producer.  Mirror
     # baselines are intentionally retained for evaluator calibration, but a
     # perfect expected-vs-expected score must never authorize a product
@@ -948,6 +1077,7 @@ def build_gate_snapshot(
         "budget": budget_health.get("actual_source") != "expected_fixture_mirror",
         "colloquial": colloquial_health.get("actual_source") != "expected_fixture_mirror",
         "gap_decision": scenario_health.get("actual_source") != "expected_fixture_mirror",
+        "adversarial": adversarial_health.get("actual_source") != "expected_fixture_mirror",
     }
     gate = evaluate_report_against_manifest(
         report,
@@ -973,6 +1103,13 @@ def build_gate_snapshot(
     if isinstance(gap_category, dict):
         scenario_health["blocks_ci"] = bool(gap_category.get("blocks_ci"))
 
+    # Same CI-impact sync for the adversarial lane (gating since 2026-09-11):
+    # a violated property must show up as a real blocker, not just a lane
+    # status.
+    adversarial_category = categories.get("adversarial")
+    if isinstance(adversarial_category, dict):
+        adversarial_health["blocks_ci"] = bool(adversarial_category.get("blocks_ci"))
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "manifest_version": manifest.version,
@@ -992,6 +1129,7 @@ def build_gate_snapshot(
         "budget_health": budget_health,
         "colloquial_health": colloquial_health,
         "scenario_health": scenario_health,
+        "adversarial_health": adversarial_health,
     }
 
 
@@ -1005,6 +1143,7 @@ def write_gate_snapshot(
     budget_live_results: dict[str, Any] | None = None,
     colloquial_live_results: dict[str, Any] | None = None,
     scenario_live_results: dict[str, dict[str, Any]] | None = None,
+    adversarial_live_results: dict[str, list[str]] | None = None,
 ) -> Path:
     snapshot = build_gate_snapshot(
         fixture_root=fixture_root,
@@ -1014,6 +1153,7 @@ def write_gate_snapshot(
         budget_live_results=budget_live_results,
         colloquial_live_results=colloquial_live_results,
         scenario_live_results=scenario_live_results,
+        adversarial_live_results=adversarial_live_results,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(snapshot, indent=2, sort_keys=True))
@@ -1119,6 +1259,24 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
             "evidence_tier": scenario_health.get("evidence_tier"),
             "hybrid_config": scenario_health.get("hybrid_config"),
         }
+    adversarial_health = snapshot.get("adversarial_health")
+    stable_adversarial: dict[str, Any] | None = None
+    if isinstance(adversarial_health, dict):
+        stable_adversarial = {
+            "status": adversarial_health.get("status"),
+            "overall_accuracy": adversarial_health.get("overall_accuracy"),
+            "property_accuracy": adversarial_health.get("property_accuracy"),
+            "expected_baseline_accuracy": adversarial_health.get("expected_baseline_accuracy"),
+            "baseline_drifted": adversarial_health.get("baseline_drifted"),
+            "total_fixtures": adversarial_health.get("total_fixtures"),
+            "fixtures_passing": adversarial_health.get("fixtures_passing"),
+            "fixtures_failing": adversarial_health.get("fixtures_failing"),
+            "blocks_ci": adversarial_health.get("blocks_ci"),
+            "live_grading": adversarial_health.get("live_grading"),
+            "actual_source": adversarial_health.get("actual_source"),
+            "evidence_tier": adversarial_health.get("evidence_tier"),
+            "by_taxonomy_class": adversarial_health.get("by_taxonomy_class"),
+        }
     return {
         "manifest_version": snapshot.get("manifest_version"),
         "fixture_root": snapshot.get("fixture_root"),
@@ -1130,6 +1288,7 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
         "budget_health": stable_budget,
         "colloquial_health": stable_colloquial,
         "scenario_health": stable_scenario,
+        "adversarial_health": stable_adversarial,
     }
 
 
@@ -1143,6 +1302,7 @@ def verify_gate_snapshot_file(
     budget_live_results: dict[str, Any] | None = None,
     colloquial_live_results: dict[str, Any] | None = None,
     scenario_live_results: dict[str, dict[str, Any]] | None = None,
+    adversarial_live_results: dict[str, list[str]] | None = None,
 ) -> tuple[bool, dict[str, Any], dict[str, Any] | None]:
     expected = build_gate_snapshot(
         fixture_root=fixture_root,
@@ -1152,6 +1312,7 @@ def verify_gate_snapshot_file(
         budget_live_results=budget_live_results,
         colloquial_live_results=colloquial_live_results,
         scenario_live_results=scenario_live_results,
+        adversarial_live_results=adversarial_live_results,
     )
     if not snapshot_path.exists():
         return False, expected, None

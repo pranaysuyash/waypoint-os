@@ -1,8 +1,35 @@
+# Project Memory Index
+
+> ## 🔴 CORRECTION (2026-09-02)
+>
+> This file previously asserted — via an unqualified annotation on the Business Model
+> Correction link — that the project is a "**white-label B2B SaaS platform**", presented
+> the **Single-Tenant MVP Strategy** as current direction, and surfaced the April
+> **₹999–₹19,999** pricing tiers without qualification.
+>
+> That framing is **stale**. The canonical record is `Docs/INDEX.md` § Business Model
+> (2026-04-13), which states the opposite and supersedes it:
+>
+> - **Platform-led SaaS** (like Calendly/Typeform/Notion), **NOT a white-label product**.
+>   White-label was an early (2026-04-12/13) hypothesis, re-thought the same week in
+>   `Docs/PLATFORM_LED_VS_WHITE_LABEL.md` — "give a platform, let them have workspaces
+>   like a normal SaaS."
+> - **Single-Tenant MVP Strategy is DEPRECATED** (exploratory draft, historical reference
+>   only). Current direction is **multi-tenant with full governance**.
+> - **Pricing:** the ₹999–₹19,999 tier doc is one historical input. The current working
+>   direction is the non-final draft `Docs/PRICING_PACKAGING_DISCUSSION_DRAFT_2026-04-17.md`
+>   — ₹6k default plan (1 owner/admin + 4 team), team packs, modular add-ons.
+>
+> This file is an **index/pointer layer**; when it disagrees with `Docs/INDEX.md`,
+> `Docs/INDEX.md` wins. Corrections are made by annotation (this note), not silent edits,
+> per the repo's preserve-history doctrine. Origin of the finding: shadow-audit item R-02,
+> `Docs/exploration/DOCS_CORPUS_SHADOW_AUDIT_2026-08-31.md` §3(a)3.
+
 - [Project Thesis](project_thesis.md) — Core philosophy and agency-centric model.
 - [Routing & Optimization Strategy](routing_and_optimization_strategy.md) — Architecture for dynamic routing and offline self-improvement.
 - [Codebase Analysis 2026-04-12](codebase_analysis_2026-04-12.md) — Comprehensive analysis: what's good, bad, and needs improvement.
 - [Full Documentation Wiki](../Docs/INDEX.md) — Exhaustive product and technical specs.
-- **[Business Model Correction](../Docs/BUSINESS_MODEL_CORRECTION.md)** — ⚠️ CRITICAL: This is a white-label B2B SaaS platform, NOT a direct-to-consumer agency.
+- [Business Model Correction](../Docs/BUSINESS_MODEL_CORRECTION.md) — Historical 2026-04-12/13 step: platform FOR agencies, not an agency. ⚠️ Its "white-label" framing was superseded on 2026-04-13 by Platform-Led vs White-Label — see correction note above.
 - [UX and User Experience](../Docs/UX_AND_USER_EXPERIENCE.md) — End-to-end flow analysis: what travelers see vs agents see.
 - [UX Message Templates](../Docs/UX_MESSAGE_TEMPLATES_AND_FLOWS.md) — Actual messages travelers receive, conversation patterns.
 - [UX Dashboards by Persona](../Docs/UX_DASHBOARDS_BY_PERSONA.md) — Different views for solo agents, agency owners, and juniors.
@@ -10,10 +37,10 @@
 - [UX Audit Mode](../Docs/UX_AUDIT_MODE_DEEP_DIVE.md) — Direct-to-consumer wedge feature.
 - [UX WhatsApp Integration](../Docs/UX_WHATSAPP_INTEGRATION_STRATEGY.md) — Individual founder vs business: manual MVP first.
 - [UX Multi-Channel Strategy](../Docs/UX_MULTI_CHANNEL_STRATEGY.md) — Omnichannel: portal links, email, SMS, not just WhatsApp.
-- **[Platform-Led vs White-Label](../Docs/PLATFORM_LED_VS_WHITE_LABEL.md)** — ⚠️ Be like Calendly/Typeform, not white-label. Single platform, no custom domains for MVP.
-- **[Single-Tenant MVP Strategy](../Docs/SINGLE_TENANT_MVP_STRATEGY.md)** — Start with one agency, add multi-tenant later.
-- **[GTM & Data Network Effects](../Docs/GTM_AND_DATA_NETWORK_EFFECTS.md)** — No recommendation engines needed. Tool value > data aggregation.
-- **[Pricing and Customer Acquisition](../Docs/PRICING_AND_CUSTOMER_ACQUISITION.md)** — ₹999-₹19,999 tiers, free trials, Facebook groups, host agencies.
+- **[Platform-Led vs White-Label](../Docs/PLATFORM_LED_VS_WHITE_LABEL.md)** — ⚠️ CURRENT framing: be like Calendly/Typeform/Notion — platform-led SaaS, single platform, no custom domains for MVP. This supersedes the white-label hypothesis.
+- [Single-Tenant MVP Strategy](../Docs/SINGLE_TENANT_MVP_STRATEGY.md) — ⚠️ **DEPRECATED** (exploratory draft, historical reference only). Current direction is multi-tenant with full governance (per `Docs/INDEX.md`).
+- [GTM & Data Network Effects](../Docs/GTM_AND_DATA_NETWORK_EFFECTS.md) — No recommendation engines needed. Tool value > data aggregation.
+- [Pricing and Customer Acquisition](../Docs/PRICING_AND_CUSTOMER_ACQUISITION.md) — Historical tiers ₹999-₹19,999. ⚠️ Superseded as working direction by the non-final ₹6k-default-plan draft: `../Docs/PRICING_PACKAGING_DISCUSSION_DRAFT_2026-04-17.md`.
 
 ## Strategic Docs (2026-04-14)
 
@@ -47,7 +74,7 @@
 ## Product Management (2026-04-14)
 
 - **[Product Gaps and Unknowns](../Docs/PM_PRODUCT_GAPS_AND_UNKNOWN.md)** — Roadmap gaps, assumptions, validation plan, moat strategy
-- **[PM Templates and Frameworks](../Docs/PM_TEMPLATES_AND_FRAMEWORKS.md)** — MVP scope, PRD, assumption log, experiment briefs, retrospectives
+- **[PM Templates and Frameworks](../Docs/PM_TEMPLATES_AND_FRAMEWORKS.md)** — MVP scope, PRD, assumption log, experiment brief, retrospectives
 
 ## Identity & Team Architecture (2026-04-28)
 

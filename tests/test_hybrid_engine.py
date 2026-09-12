@@ -266,6 +266,61 @@ class TestHybridDecisionEngine:
         assert result.decision["risk_level"] == "high"
         assert result.decision["reasoning"] == "LLM decision"
 
+    def test_abstention_gate_skips_llm_without_destination(self, mock_storage, mock_llm):
+        """KDD wave-2 §7.4: visa escalation must not fire on destination-less
+        packets — every 2024+ model emits a spurious visa flag there."""
+        from src.intake.packet_models import CanonicalPacket, Slot
+
+        destless_packet = CanonicalPacket(
+            packet_id="destless-packet",
+            facts={
+                "party_composition": Slot(
+                    value={"adults": 2},
+                    authority_level="explicit_user",
+                ),
+            },
+        )
+        mock_llm.set_decision({
+            "risk_level": "high",
+            "reasoning": "spurious flag the gate must prevent",
+        })
+
+        engine = HybridDecisionEngine(
+            cache_storage=mock_storage,
+            llm_client=mock_llm,
+            enable_cache=False,
+            enable_rules=False,
+            enable_llm=True,
+        )
+
+        result = engine.decide("visa_timeline_risk", destless_packet)
+
+        assert result.source == "default"
+        assert result.llm_used is False
+        # The gate skips the call entirely — cost stays at zero.
+        assert engine.metrics.llm_calls == 0
+
+    def test_abstention_gate_escalates_with_destination(self, mock_storage, sample_packet, mock_llm):
+        """Facts present → the gate must not interfere with normal escalation."""
+        mock_llm.set_decision({
+            "risk_level": "high",
+            "reasoning": "legitimate visa concern",
+        })
+
+        engine = HybridDecisionEngine(
+            cache_storage=mock_storage,
+            llm_client=mock_llm,
+            enable_cache=False,
+            enable_rules=False,
+            enable_llm=True,
+        )
+
+        result = engine.decide("visa_timeline_risk", sample_packet)
+
+        assert result.source == "llm"
+        assert result.llm_used is True
+        assert result.decision["risk_level"] == "high"
+
     def test_decide_with_default_fallback(self, mock_storage, sample_packet):
         """Test decision flow with default fallback."""
         # Mock LLM that's unavailable
@@ -617,3 +672,65 @@ class TestPromptFactDelimiting:
         assert len(set(nonces_a)) == len(nonces_a)
         assert len(set(nonces_b)) == len(nonces_b)
         assert set(nonces_a).isdisjoint(nonces_b)
+
+
+class TestDefaultDecisionNotEmittedAsFlag:
+    """KDD wave-2 §8: the engine's safe-default fallback ("unable to assess",
+    medium risk) must not be converted into a risk flag — an unassessed
+    decision is not risk evidence, and emitting it fabricates visa flags the
+    deterministic baseline never produces."""
+
+    def test_default_source_skips_flag_conversion(self):
+        import os
+
+        import src.intake.decision as decision_mod
+        from src.decision.hybrid_engine import DecisionResult
+        from src.intake.packet_models import CanonicalPacket, Slot
+
+        packet = CanonicalPacket(
+            packet_id="p",
+            facts={
+                "party_composition": Slot(
+                    value={"adults": 2}, authority_level="explicit_user"
+                ),
+            },
+        )
+
+        class DefaultOnlyEngine:
+            """Stub whose every decide() returns the safe default fallback."""
+
+            def __init__(self):
+                self.decided = []
+
+            def decide(self, decision_type, packet, schema=None, context=None):
+                self.decided.append(decision_type)
+                return DecisionResult(
+                    decision={
+                        "risk_level": "medium",
+                        "reasoning": "Unable to assess - verify visa requirements",
+                    },
+                    source="default",
+                    confidence=0.3,
+                    rule_hit=False,
+                    llm_used=False,
+                    decision_type=decision_type,
+                )
+
+        stub = DefaultOnlyEngine()
+        original_get = decision_mod._get_hybrid_engine
+        original_env = os.environ.get("USE_HYBRID_DECISION_ENGINE")
+        decision_mod._get_hybrid_engine = lambda: stub
+        os.environ["USE_HYBRID_DECISION_ENGINE"] = "1"
+        decision_mod._reset_hybrid_engine()
+        try:
+            risks = decision_mod.generate_risk_flags(packet, "discovery", None)
+        finally:
+            decision_mod._get_hybrid_engine = original_get
+            if original_env is None:
+                os.environ.pop("USE_HYBRID_DECISION_ENGINE", None)
+            else:
+                os.environ["USE_HYBRID_DECISION_ENGINE"] = original_env
+            decision_mod._reset_hybrid_engine()
+
+        assert stub.decided, "engine must still be consulted for every type"
+        assert risks == [], "default-source decisions must not become flags"

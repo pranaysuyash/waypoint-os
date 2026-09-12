@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Set, Optional, Dict, Any, List, Tuple
+from typing import FrozenSet, Set, Optional, Dict, Any, List, Tuple
 
 if sys.platform == "win32":
     import msvcrt
@@ -105,6 +105,54 @@ _COUNTRY_DESTINATIONS: Set[str] = {
 
 # Pre-built lowercase lookup for O(1) membership tests
 _COUNTRY_LOWER: Set[str] = {c.lower() for c in _COUNTRY_DESTINATIONS}
+
+# Canonical display casing: lowercase alias -> curated canonical name
+# ("uk" -> "UK", "south korea" -> "South Korea").
+COUNTRY_CANONICAL_ALIASES: Dict[str, str] = {c.lower(): c for c in _COUNTRY_DESTINATIONS}
+
+# ISO 3166-1 alpha-2 code per country alias. Powers destination containment
+# (D-03 / D-04 research): a city "is inside" a mentioned country when
+# get_city_country(city) == get_country_iso_code(country_alias).
+_COUNTRY_NAME_TO_ISO: Dict[str, str] = {
+    # Asia
+    "japan": "JP", "singapore": "SG", "thailand": "TH", "malaysia": "MY",
+    "vietnam": "VN", "indonesia": "ID", "philippines": "PH",
+    "south korea": "KR", "taiwan": "TW", "maldives": "MV",
+    "sri lanka": "LK", "nepal": "NP", "bhutan": "BT",
+    # Europe
+    "france": "FR", "italy": "IT", "spain": "ES", "germany": "DE",
+    "switzerland": "CH", "uk": "GB", "united kingdom": "GB",
+    "england": "GB", "scotland": "GB", "ireland": "IE",
+    "netherlands": "NL", "belgium": "BE", "austria": "AT",
+    "portugal": "PT", "greece": "GR",
+    # Americas
+    "usa": "US", "united states": "US", "canada": "CA", "mexico": "MX",
+    "brazil": "BR", "argentina": "AR", "peru": "PE", "chile": "CL",
+    # Middle East
+    "uae": "AE", "dubai": "AE", "abu dhabi": "AE", "qatar": "QA",
+    "oman": "OM", "turkey": "TR", "united arab emirates": "AE",
+    # Indian territories/regions
+    "andaman": "IN",
+    # Africa / Eurasia / Oceania (mirrors _COUNTRY_DESTINATIONS entries)
+    "south africa": "ZA", "egypt": "EG", "morocco": "MA", "kenya": "KE",
+    "tanzania": "TZ", "mauritius": "MU", "seychelles": "SC",
+    "namibia": "NA", "botswana": "BW", "rwanda": "RW", "uganda": "UG",
+    "zimbabwe": "ZW", "tunisia": "TN", "iceland": "IS", "georgia": "GE",
+    "azerbaijan": "AZ", "uzbekistan": "UZ", "kazakhstan": "KZ",
+    "bahrain": "BH", "saudi arabia": "SA", "nigeria": "NG",
+    "ethiopia": "ET", "ghana": "GH", "senegal": "SN", "croatia": "HR",
+    "serbia": "RS", "slovenia": "SI", "slovakia": "SK",
+    "czech republic": "CZ", "hungary": "HU", "moldova": "MD",
+    "australia": "AU", "new zealand": "NZ", "fiji": "FJ",
+}
+
+# Country aliases that are themselves city-level destinations (city-states /
+# primary cities). A mention of these is a city commitment, never a
+# containing-country scope, so they are excluded from D-03 containment
+# resolution even though they live in _COUNTRY_DESTINATIONS.
+_CITY_LEVEL_COUNTRY_ALIASES: FrozenSet[str] = frozenset({
+    "dubai", "abu dhabi", "singapore",
+})
 
 
 # =============================================================================
@@ -460,6 +508,26 @@ def get_city_country(name: str) -> Optional[str]:
     return _city_to_country.get(name) if _city_to_country else None
 
 
+def get_country_iso_code(name: str) -> Optional[str]:
+    """
+    Get the ISO 3166-1 alpha-2 code for a country alias ("japan" -> "JP").
+
+    Powers containment checks (D-03): a city belongs to a mentioned country
+    when ``get_city_country(city) == get_country_iso_code(country_alias)``.
+
+    Args:
+        name: Country alias (any casing), e.g. "Japan", "UK", "south korea"
+
+    Returns:
+        ISO alpha-2 code, or None when the alias is unknown or is a
+        city-level destination (Dubai/Abu Dhabi/Singapore).
+    """
+    lower = (name or "").strip().lower()
+    if lower in _CITY_LEVEL_COUNTRY_ALIASES:
+        return None
+    return _COUNTRY_NAME_TO_ISO.get(lower)
+
+
 def is_known_destination(name: str) -> bool:
     """
     Check if name is a known destination (city or commonly-used country).
@@ -590,8 +658,10 @@ __all__ = [
     "get_attribution_notice",
     "clear_cache",
     "get_city_country",
+    "get_country_iso_code",
     "resolve_destination_hierarchy",
     "COUNTRY_GATEWAYS",
+    "COUNTRY_CANONICAL_ALIASES",
     "_BLACKLIST",
     "_MIN_POPULATION",
 ]

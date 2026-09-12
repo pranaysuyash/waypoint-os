@@ -21,8 +21,11 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+# Add repo root (for src.* imports in the engine) and src (for this tool's
+# intake.* import style) to path.
+_repo_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(_repo_root / "src"))
+sys.path.insert(0, str(_repo_root))
 
 
 def load_scenarios() -> List[Dict[str, Any]]:

@@ -1,0 +1,61 @@
+{
+  "_meta": {
+    "name": "discovery-stage risk-flag ground truth (KDD §7.5 item 2)",
+    "author": "agent-curated (Pranay's session, 2026-09-12)",
+    "rubric": "Note-level business reality, NOT packet-level: a flag is expected when a competent travel advisor reading the raw note would raise it at discovery stage. This grades the FULL pipeline (extraction + decision) — extraction misses are counted as pipeline failures, which is the real-world measure. Severity: visa_timeline_risk is 'medium' when nothing is booked with ample lead time, 'high' when the note implies a tight window. Only flags observable at discovery stage are labeled (margin_risk is booking-stage; labeled N/A everywhere).",
+    "caveats": [
+      "Author-curated labels — the same agent designed the experiment and the rubric. Bias mitigations: rubric fixed BEFORE grading (this file was written before any graded run was scored); binary per flag+severity; rubric grounded in the corpus fixtures' own documented intent.",
+      "Visa judgment assumes Indian-passport travelers (agency corpus default): Schengen (Iceland/Greece/Portugal/Italy/Europe), Japan, Vietnam, Kenya, Costa Rica require advance visas; Bali/Thailand/Maldives/Singapore require visa-on-arrival or eVisa — all still flagged for lead-time planning.",
+      "budget_hard_001 'the coast' is treated as domestic-unknown (no visa flag); if the business intends coastal-international, flip this record and re-grade.",
+      "toddler_pacing_risk labeled for notes mentioning young children without age certainty (neg_002, neg_005) at medium."
+    ],
+    "flag_vocabulary": ["visa_timeline_risk", "elderly_mobility_risk", "toddler_pacing_risk", "composition_risk"],
+    "excluded_flags": {
+      "traveler_safe_leakage_risk": "Pipeline-integrity flag (internal-data boundary), not a travel-risk judgment. Emitted deterministically on records with blocking ambiguities; excluded from risk-flag precision/recall grading (2026-09-12, after first grading pass surfaced the vocabulary gap)."
+    }
+  },
+  "labels": {
+    "budget_simple_001":      {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_simple_002":      {"expected": {"visa_timeline_risk": "medium"}, "note": "'trip to Europe' — international; tests full-pipeline grading even though city-level extraction misses 'Europe'"},
+    "budget_simple_003":      {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_medium_001":      {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_medium_002":      {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_medium_003":      {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_hard_001":        {"expected": {}, "note": "'the coast' — domestic-unknown"},
+    "budget_hard_002":        {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_hard_003":        {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_hard_004":        {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_easy_001":        {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_easy_002":        {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_neg_001":         {"expected": {}},
+    "budget_neg_002":         {"expected": {"toddler_pacing_risk": "medium"}},
+    "budget_neg_003":         {"expected": {}},
+    "budget_neg_004":         {"expected": {}},
+    "budget_neg_005":         {"expected": {"toddler_pacing_risk": "medium"}},
+    "budget_neg_006":         {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_neg_007":         {"expected": {"visa_timeline_risk": "medium"}},
+    "budget_neg_008":         {"expected": {"visa_timeline_risk": "medium"}, "note": "Singapore; also exposes the dest='Of' extraction artifact"},
+    "colloq_dest_verb_object_001": {"expected": {"visa_timeline_risk": "medium"}},
+    "colloq_dest_hitting_001":     {"expected": {"visa_timeline_risk": "high"}, "note": "'next month' + nothing booked = tight window"},
+    "colloq_dest_covering_001":    {"expected": {"visa_timeline_risk": "medium"}},
+    "colloq_dest_city_set_001":    {"expected": {"visa_timeline_risk": "medium"}},
+    "colloq_party_friends_001":    {"expected": {}},
+    "colloq_party_of_us_001":      {"expected": {}},
+    "colloq_party_the_four_001":   {"expected": {}},
+    "colloq_party_of_n_001":       {"expected": {"visa_timeline_risk": "medium"}},
+    "colloq_party_mixed_001":      {"expected": {"visa_timeline_risk": "medium"}},
+    "colloq_party_member_ref_001": {"expected": {}},
+    "colloq_dates_season_001":     {"expected": {"visa_timeline_risk": "medium"}, "note": "cherry-blossom window = seasonal constraint, still medium"},
+    "colloq_dates_late_month_001": {"expected": {}},
+    "colloq_dates_flex_001":       {"expected": {}},
+    "colloq_budget_each_001":      {"expected": {}},
+    "colloq_full_note_001":        {"expected": {"visa_timeline_risk": "medium"}}
+  },
+  "summary": {
+    "records": 35,
+    "visa_justified": 22,
+    "visa_not_justified": 13,
+    "toddler_justified": 2,
+    "elderly_or_composition_justified": 0
+  }
+}

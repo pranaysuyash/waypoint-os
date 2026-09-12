@@ -1,5 +1,8 @@
 # Case Study: Live Product Demo Simulation — Marcus (Junior Agent / New Hire)
 
+> ⚠️ **SIMULATION RECORD** — capability claims in this document describe what the UI rendered during the simulation. Per `Docs/exploration/SIM_VS_REALITY_RECONCILIATION_2026-09-01.md`, 17/30 mechanism claims were simulated (sample data / deterministic fixtures), not production integrations. Read alongside that reconciliation.
+> *(Caveat added 2026-09-02 per shadow-audit item R-01; body content unchanged.)*
+
 **Date**: 2026-09-01
 **Simulation Mode**: Live Browser Computer-Use (`chrome-devtools-mcp`)
 **Persona**: Marcus Chen (`P3-JUNIOR-01`) — Junior Travel Associate

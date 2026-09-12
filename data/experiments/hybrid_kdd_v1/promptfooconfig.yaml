@@ -1,0 +1,130 @@
+description: Waypoint OS hybrid risk-flag lane (KDD §7.3 port)
+
+prompts:
+  - "{{note}}"
+
+providers:
+  - python:///Users/pranay/Projects/travel_agency_agent/data/experiments/hybrid_kdd_v1/promptfoo_provider.py
+
+defaultTest:
+  assert:
+    - type: is-json
+    - type: javascript
+      value: >-
+          const o = JSON.parse(output); Array.isArray(o.risks) && (o.has_destination || !o.risks.some(r => r.flag === 'visa_timeline_risk'))
+
+tests:
+  - description: budget_simple_001
+    vars:
+      note: "We want to go to Bali for 10 days. Budget is around $3000 total."
+  - description: budget_simple_002
+    vars:
+      note: "Looking for a trip to Europe, budget about 2000 per person."
+  - description: budget_simple_003
+    vars:
+      note: "Max budget is 5000 USD for the family trip to Japan."
+  - description: budget_medium_001
+    vars:
+      note: "We have between 4000 and 6000 to spend on a 2-week trip to Thailand."
+  - description: budget_medium_002
+    vars:
+      note: >-
+        My wife and I want to visit Iceland in December. We've been saving up and have about 7500 dollars to
+        work with. We like nice hotels but don't need anything crazy.
+  - description: budget_medium_003
+    vars:
+      note: "Budget is around \u20ac2500 for a trip to Portugal next spring."
+  - description: budget_hard_001
+    vars:
+      note: "We want something affordable for a quick getaway to the coast."
+  - description: budget_hard_002
+    vars:
+      note: "We want the best luxury resort in Maldives but our budget is only 3000 dollars."
+  - description: budget_hard_003
+    vars:
+      note: "Looking to spend about 200 bucks a day for a 10-day trip to Vietnam."
+  - description: budget_hard_004
+    vars:
+      note: >-
+        Originally I was thinking 5000 but after some research I think 8000 is more realistic for a family
+        of 4 to visit Costa Rica.
+  - description: budget_easy_001
+    vars:
+      note: "Trip budget: $4,500 for two people going to Greece."
+  - description: budget_easy_002
+    vars:
+      note: "We have 3500 to spend on a safari in Kenya."
+  - description: budget_neg_001
+    vars:
+      note: "We can travel any time between March and June for 10 days."
+  - description: budget_neg_002
+    vars:
+      note: "Family of 4 with two kids wants a beach trip."
+  - description: budget_neg_003
+    vars:
+      note: "Flights cost around 800 these days but we have not set a budget yet."
+  - description: budget_neg_004
+    vars:
+      note: "The hotel is 4 stars and we need 2 rooms."
+  - description: budget_neg_005
+    vars:
+      note: "We have 2 kids and want a resort with a pool."
+  - description: budget_neg_006
+    vars:
+      note: "A trip for a family of 4 to visit Costa Rica."
+  - description: budget_neg_007
+    vars:
+      note: "We went in 2019 and loved Italy; planning to return next year."
+  - description: budget_neg_008
+    vars:
+      note: "Thinking of Singapore, maybe 5-star hotels."
+  - description: colloq_dest_verb_object_001
+    vars:
+      note: "want to do japan"
+  - description: colloq_dest_hitting_001
+    vars:
+      note: "hitting bali next month"
+  - description: colloq_dest_covering_001
+    vars:
+      note: "covering tokyo and kyoto"
+  - description: colloq_dest_city_set_001
+    vars:
+      note: "thinking tokyo + kyoto + osaka, 10-12 days"
+  - description: colloq_party_friends_001
+    vars:
+      note: "me and 3 friends want a beach trip"
+  - description: colloq_party_of_us_001
+    vars:
+      note: "4 of us want a beach trip"
+  - description: colloq_party_the_four_001
+    vars:
+      note: "the four of us are going somewhere"
+  - description: colloq_party_of_n_001
+    vars:
+      note: "party of 4 to japan"
+  - description: colloq_party_mixed_001
+    vars:
+      note: "me and my wife and 2 friends want to do japan"
+  - description: colloq_party_member_ref_001
+    vars:
+      note: "one of us is terrified of heights"
+  - description: colloq_dates_season_001
+    vars:
+      note: "want to do japan next spring, maybe late march for the cherry blossoms"
+  - description: colloq_dates_late_month_001
+    vars:
+      note: "maybe late march"
+  - description: colloq_dates_flex_001
+    vars:
+      note: "dates flexible plus or minus a week"
+  - description: colloq_budget_each_001
+    vars:
+      note: "budget around 3.5k USD each, not sure if that includes flights"
+  - description: colloq_full_note_001
+    vars:
+      note: >-
+        hey! me and 3 friends want to do japan next spring, maybe late march for the cherry blossoms. flying
+        from SF. we are all pretty active, one friend is vegetarian. budget around 3.5k USD each, not sure
+        if that includes flights. thinking tokyo + kyoto + osaka, 10-12 days. one of us is terrified of
+        heights so no cable cars please. we saw this amazing ryokan on tiktok, no idea of the name. dates
+        flexible plus or minus a week. we also wanna do a cooking class somewhere. thx!!

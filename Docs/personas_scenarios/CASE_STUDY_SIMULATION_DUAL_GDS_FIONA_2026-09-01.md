@@ -1,5 +1,8 @@
 # Case Study: Dual-Stack Live GDS Sandbox Simulation (Fiona Gallagher — P10-GDS-01)
 
+> ⚠️ **SIMULATION RECORD** — capability claims in this document describe what the UI rendered during the simulation. Per `Docs/exploration/SIM_VS_REALITY_RECONCILIATION_2026-09-01.md`, 17/30 mechanism claims were simulated (sample data / deterministic fixtures), not production integrations. Read alongside that reconciliation.
+> *(Caveat added 2026-09-02 per shadow-audit item R-01; body content unchanged.)*
+
 **Persona Profile**: Fiona Gallagher, Director of Global Distribution & NDC Engineering at Amadeus-Sabre Multi-Host Solutions\
 **Simulation Date**: September 1, 2026\
 **Primary Scenario**: Dual-Host Sandbox Flight Query & Instant PNR / E-Ticket Issuance on JFK-LHR (`EXP-GDS-JFK-LHR-01`)\

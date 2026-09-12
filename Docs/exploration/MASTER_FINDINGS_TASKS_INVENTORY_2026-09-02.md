@@ -408,3 +408,93 @@ canonical path has a falsifiable contract, honest reality metadata, an owner,
 durable state and idempotency semantics, matching evidence tier, and a
 retirement or rollback path. Anything lacking one of those is labelled
 partial, deferred, or no-go—not promoted by local green tests alone.
+
+## KDD HYBRID EVAL LANE — COMMISSIONING (2026-09-11)
+
+Owner-ratified sequencing: ratification #1 (hybrid flag, ADR row A1 option b)
+advances via an evidence experiment before any posture change. Protocol and
+results: `Docs/exploration/HYBRID_KDD_EXPERIMENT_2026-09-11.md`; harness:
+`scripts/run_hybrid_kdd_experiment.py`.
+
+**Commissioning outcome (this date):**
+
+- Three latent engine defects found and fixed while commissioning — broken
+  `from llm import …` (LLM path never reachable; `LLM_AVAILABLE` stuck False),
+  `UnboundLocalError` in the `_call_llm` failure handler, and the lru-cached
+  env flag (harness now calls `_reset_hybrid_engine()` per arm). All are
+  in-blast-radius fixes for the experiment itself; 39 hybrid tests green.
+- Cache isolation added (per-model run-scoped `cache_<model>/`), making the
+  cold/warm passes measurement-valid.
+- Full dry run executed: 175 rows (35 records × 5 arms). Arm A baseline is
+  valid (6 risk flags on 6/35 records). Arm B is 401-contaminated — the
+  `.env` OpenAI key (sk-proj-…VeQA) is revoked/expired: 124/124 LLM attempts
+  rejected. Incidentally proves graceful failover (defaults, guards record
+  failures, no crash).
+- **Blocker:** valid `OPENAI_API_KEY` required for the model-comparison arms
+  (B1 gpt-4o-mini, B2 gpt-4o). One command re-runs the full matrix once the
+  key is in `.env`. Est. cost of the full matrix: ≈₹2–8.
+
+**Status:** arm A DONE (valid baseline). Arm B BLOCKED on credentials. The
+three engine fixes are regression-tested and lint-clean; full-suite receipt
+recorded in this file's verification section when the background run lands.
+
+**Verification receipt (2026-09-11, post-commissioning):** full backend suite
+**4,319 passed / 22 skipped / 0 failed**; Ruff clean on all touched files
+(`src/decision/hybrid_engine.py`, `scripts/run_hybrid_kdd_experiment.py`,
+`tools/validation/hybrid_engine_validator.py`); hybrid validator tool now
+runs standalone (dual sys.path fix: repo root for `src.*` engine imports +
+`src/` for the tool's `intake.*` style).
+
+**KDD full matrix VALID (2026-09-11, later same day):** key rotated; 175-row
+run with 16 real LLM escalations/arm. Results in KDD doc §6.4. Headlines:
+hybrid is strictly additive (A=6 flags → B=32, all added visa_timeline_risk,
+zero removed); gpt-4o-mini ≡ gpt-4o coverage at 19× lower cost (₹0.11 vs
+₹2.10/run) → mini recommended; warm cache 100% hit at ₹0; **new finding: LLM
+path lacks abstention** — spurious high-severity visa flag on a
+destination-less packet, propagated by cache to 7 identical-context records
+(cache amplifies precision defects). ADR A1 posture: stay OFF-by-default;
+opt-in only after abstention guard + lane re-run.
+
+**KDD wave 2 COMPLETE (2026-09-11): model ladder (19 models, 2022→2026) +
+architecture patterns.** Client made model-aware (gpt-5/6/o-series need
+max_completion_tokens + no temperature; legacy gpt-4 no json_mode) + PRICING
+extended to 24 models. Headlines: all models strictly additive vs arm A;
+aggressiveness varies 12× by model (4-turbo +3 vs nanos +35) with no
+monotonic era-quality signal; flagship models (6-astra ₹11.45/run) show no
+advantage over nano-class (₹0.09–0.28) → knee at nano/mini tier; warm cache
+₹0 at every tier; spurious dest-less visa flag emitted by EVERY 2024+ model
+(abstention is an architecture problem, not a model problem). Pattern
+verdicts: **guard (LLM+fact-gate) = free + surgical = recommended**; vote
+halves escalation at 2× cost; critic is model-dependent (terra rejected
+14/16 mini escalations, approved 20/22 of luna's) — not a reliable quality
+gate; llm_first disqualified (101–109 flag flood; rules are load-bearing).
+New: run-to-run LLM nondeterminism (+26 vs +15 same corpus) → multi-seed
+protocol required. Full results KDD doc §7.4; follow-ups §7.5 (engine-side
+guard, ground-truth labels, promptfoo CI port — promptfoo 0.123.0 available).
+
+**KDD §7.5 remediation LANDED (2026-09-11):** two-layer fix in production code
+— (1) engine abstention gate (`_FACT_REQUIREMENTS`: visa escalation requires
+destination fact; skips LLM call entirely when absent) and (2) default-source
+decisions no longer emitted as risk flags (an unassessed "unable to assess"
+medium is not evidence; conversion skips `source=="default"`). Live
+confirmation: spurious dest-less visa flags 11→0, total 32→19, escalations all
+destination-bearing; hybrid semantics now strictly additive over arm A.
+Harness gained `--runs N` multi-seed protocol. Promptfoo CI port shipped:
+`tools/generate_promptfoo_config.py` → 35-case lane, **35/35 pass in 1s at
+zero cost** (deterministic degradation without creds; documented venv
+requirement). 3 new engine/decision tests; related suites 146 green. Open
+from §7.5: ground-truth visa labels (E-07 judge), Gemini/local arms
+(credential-blocked).
+
+**Local-tier ladder DONE + pruned (2026-09-12, disk-pressure protocol):**
+8 local models test→graded→deleted per-model. **llama3.2:3b = local champion
+(F1 0.737, P=1.0, 2.0GB, 2.5s/call — recommended local default); gemma3:12b
+kept as 16GB rep (0.629); qwen2.5vl:7b kept (vision-feature-coupled); DELETED
+gemma3:4b, aya-expanse:8b, qwen2.5:7b/3b, mistral:7b (F1 0.34–0.40) → ~15GB
+freed, disk 421MB→31Gi.** Bigger ≠ better locally (7B/8B underperform the 3B
+while 8–9× slower — repeats the API-tier flagship pattern). P=1.000 everywhere:
+engine gate makes free local models precision-clean. Ops: background shells
+silently fail ollama pulls (foreground required); harness `--tag` per model is
+mandatory (the "w"-mode JSONL overwrote earlier arms once). Tier landscape
+(browser-WASM/WebGPU/8GB/16GB/MLX) + untested 2026-gen one-command pulls
+documented in KDD §9.3.

@@ -1,0 +1,501 @@
+{
+  "summary": {
+    "validation_date": "2026-09-11T19:40:33.438876",
+    "duration_seconds": 0.557024,
+    "total_scenarios": 14,
+    "total_decisions": 70,
+    "cache_hits": 0,
+    "rule_hits": 56,
+    "llm_calls": 0,
+    "default_fallbacks": 14,
+    "errors": 0,
+    "edge_cases_found": 14,
+    "cache_hit_rate": 0.0,
+    "rule_hit_rate": 0.8,
+    "llm_call_rate": 0.0,
+    "free_decision_rate": 0.8,
+    "total_cost_inr": 0.0,
+    "avg_cost_per_decision": 0.0
+  },
+  "errors": [],
+  "edge_cases": [
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    }
+  ],
+  "decisions": [
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "rule",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    }
+  ]
+}

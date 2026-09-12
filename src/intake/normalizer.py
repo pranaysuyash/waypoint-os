@@ -102,6 +102,17 @@ class Normalizer:
             r"\bany\s+(?:place|destination|where)",
             r"\bopen\s+to\s+suggestions\b",
         ],
+        # D-02 (DEMO-02 §6.4): budget-vs-flights inclusiveness is stated by the
+        # traveler but unresolved ("not sure if that includes flights") or
+        # explicitly scoped ("including/excluding flights"). Surfaced as an
+        # ambiguity — never a fact — so the operator confirms the flight
+        # scope instead of the pipeline guessing.
+        "flights_inclusiveness_unknown": [
+            r"\b(?:not\s+sure|unsure|unclear|includes?|including|excludes?|excluding|covers?|whether|if\s+that)\b"
+            r"[^.!?\n]{0,60}\b(?:flights?|airfare|air\s+fares?|airfares?)\b",
+            r"\b(?:flights?|airfare|airfares?)\b"
+            r"[^.!?\n]{0,60}\b(?:not\s+sure|unsure|unclear|whether|included|excluded)\b",
+        ],
     }
 
     # ------------------------------------------------------------------

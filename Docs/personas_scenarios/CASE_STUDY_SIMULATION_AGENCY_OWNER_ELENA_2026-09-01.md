@@ -1,5 +1,8 @@
 # Live Product Demo Simulation Case Study: Elena Rostova (Agency Owner & Managing Director `P2`)
 
+> ⚠️ **SIMULATION RECORD** — capability claims in this document describe what the UI rendered during the simulation. Per `Docs/exploration/SIM_VS_REALITY_RECONCILIATION_2026-09-01.md`, 17/30 mechanism claims were simulated (sample data / deterministic fixtures), not production integrations. Read alongside that reconciliation.
+> *(Caveat added 2026-09-02 per shadow-audit item R-01; body content unchanged.)*
+
 **Date:** September 1, 2026\
 **Persona ID:** `P2-OWNER-01`\
 **Persona Profile:** [Docs/personas/PERSONA_AGENCY_OWNER_ELENA.md](file:///Users/pranay/Projects/travel_agency_agent/Docs/personas/PERSONA_AGENCY_OWNER_ELENA.md)\

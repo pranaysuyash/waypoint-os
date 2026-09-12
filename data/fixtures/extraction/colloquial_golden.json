@@ -45,10 +45,12 @@
     "raw_input": "thinking tokyo + kyoto + osaka, 10-12 days",
     "expected_extracted_fields": {
       "destination_candidates": ["Tokyo", "Kyoto", "Osaka"],
-      "destination_status": "semi_open"
+      "destination_status": "semi_open",
+      "destination_country": null,
+      "trip_duration_days": {"min": 10, "max": 12}
     },
-    "expected_field_count": 2,
-    "tags": ["colloquial", "city_set", "destination"],
+    "expected_field_count": 3,
+    "tags": ["colloquial", "city_set", "trip_duration", "destination"],
     "document_type": "freeform_note"
   },
   {
@@ -215,9 +217,11 @@
       "date_window": "next spring (Mar-May), late march",
       "date_confidence": "flexible",
       "date_flexibility": "flexible",
+      "destination_country": "Japan",
+      "trip_duration_days": {"min": 10, "max": 12},
       "meal_preferences": "vegetarian"
     },
-    "expected_field_count": 12,
+    "expected_field_count": 14,
     "tags": ["colloquial", "end_to_end", "demo_regression", "full_note"],
     "document_type": "freeform_note"
   }

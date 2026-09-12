@@ -38,18 +38,38 @@ def _leaf_paths(value: object, prefix: str = "") -> set[str]:
     return paths
 
 
-def test_n02_corpus_has_no_retrievable_input_and_collector_stays_empty() -> None:
-    """N-02 must remain an explicit shadow gap until artifacts are supplied."""
+def test_n02_corpus_carries_raw_input_but_collector_stays_empty_until_producer() -> None:
+    """N-02 (2026-09-11): corpus is runnable, but no producer emits doc facts.
+
+    Every golden fixture now carries an authored ``raw_input`` text layer
+    (simulated OCR/confirmation text matching its expected fields), so the
+    lane is runnable for provider/producer enablement.  The deterministic
+    note pipeline emits no document facts, so the collector must still
+    return an empty dict — an all-None shell would grade as false negatives
+    (category error) — and expected labels must not be promoted to actuals.
+    """
     rows = json.loads(EXTRACTION_FIXTURES.read_text())
 
     assert len(rows) == 50
     assert {row["document_type"] for row in rows} == {"passport", "visa", "insurance"}
-    assert all(not row.get("raw_input") for row in rows)
+    assert all(isinstance(row.get("raw_input"), str) and row["raw_input"].strip() for row in rows)
+    # The authored text must actually carry each fixture's non-null expected
+    # field values so a future deterministic text producer can be graded
+    # against it without re-authoring.
+    for row in rows:
+        for field_name, expected in row["expected_extracted_fields"].items():
+            if expected is not None:
+                assert expected in row["raw_input"], (
+                    f"{row['fixture_id']}: expected {field_name}={expected!r} "
+                    "missing from authored raw_input"
+                )
     assert all(not row.get("input_ref") for row in rows)
     assert all(not row.get("input_sha256") for row in rows)
 
-    # No source artifact means no independent actuals.  An empty result is
-    # the safe signal; expected labels must not be promoted to actuals.
+    # No deterministic producer emits document facts yet.  An empty result
+    # is the safe signal; the lane stays on the flagged calibration
+    # fallback (evidence tier 0) and flips live automatically once a
+    # text-path document producer emits packet facts.
     assert _collect_live_extraction_results(EXTRACTION_FIXTURES) == {}
 
 

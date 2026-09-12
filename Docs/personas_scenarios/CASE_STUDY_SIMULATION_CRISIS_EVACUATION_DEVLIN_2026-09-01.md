@@ -1,5 +1,8 @@
 # Case Study: Geopolitical Crisis Evacuation & Medevac Simulation (Major Devlin Vance — P12-SECURITY-01)
 
+> ⚠️ **SIMULATION RECORD** — capability claims in this document describe what the UI rendered during the simulation. Per `Docs/exploration/SIM_VS_REALITY_RECONCILIATION_2026-09-01.md`, 17/30 mechanism claims were simulated (sample data / deterministic fixtures), not production integrations. Read alongside that reconciliation.
+> *(Caveat added 2026-09-02 per shadow-audit item R-01; body content unchanged.)*
+
 **Persona Profile**: Major Devlin Vance, Director of Tactical Risk & Medevac Logistics at Aegis Global Taskforce\
 **Simulation Date**: September 1, 2026\
 **Primary Scenario**: Multi-Modal Extraction during Category 5 Super Typhoon Ground Stop in Tokyo (`EXP-CRISIS-TYPHOON-01`)\

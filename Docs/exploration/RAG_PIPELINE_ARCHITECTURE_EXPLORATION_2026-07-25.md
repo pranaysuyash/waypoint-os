@@ -5,6 +5,43 @@
 **Status**: Exploration Completed — Ready for Discussion & Scoping  
 **Parent Index**: [Docs/EXPLORATION_TOPICS.md](../EXPLORATION_TOPICS.md) §6e  
 
+> ## ⚠️ Reality correction (2026-09-02)
+>
+> Shadow-audit items A-02/NEW-04 (`Docs/review/FINDINGS_REGISTER_2026-08-31.md`) and
+> `Docs/exploration/DOCS_CORPUS_SHADOW_AUDIT_2026-08-31.md` §2 verified this document's
+> capability vocabulary against code reality. Where this blueprint says:
+>
+> - **"Dense Semantic Retrieval (Vector Embeddings)"** → the implemented "dense" leg is a
+>   **deterministic md5 word-hash into a 64-dim hash-bucket vector** — no embedding model,
+>   no semantic similarity. Evidence: `src/rag/indexer.py:16-35` (`generate_local_embedding()`),
+>   fed as the "dense" leg by `src/rag/retriever.py:37-40`. The module's own docstring now
+>   states: *"a repeatable lexical-feature representation, not a semantic model embedding."*
+> - **"Knowledge Graph Traversal" / "multi-hop graph retrieval"** → the implemented "graph"
+>   leg is a **node-label substring boost**: when a knowledge-node label appears in the query
+>   text, chunks referencing that node get their fused score multiplied ×1.5. No edges are
+>   traversed; there is no multi-hop. Evidence: `src/rag/retriever.py:86-95`
+>   (*"Optional node-label/entity-reference boost (no edge traversal)"*).
+> - **"Sparse Lexical BM25"** → a **substring lexical heuristic**, explicitly annotated
+>   *"not standards-compliant BM25"* in `src/rag/retriever.py:49-50`.
+> - **Phases 2–3 files `citations.py`, `graph_store.py`, `graph_extractor.py`** → **do not
+>   exist**. `src/rag/` contains only `grounding.py indexer.py models.py retriever.py
+>   service.py store.py`. Citation formatting was folded into `src/rag/grounding.py:80`
+>   (`format_citation_text`); node/edge storage lives in `store.py` + `service.py:94-100`.
+> - **§4 "Current State: `specialty_knowledge.py` = static 5-item dictionary"** → stale in the
+>   opposite direction: the module is now 124 lines and **RAG-wired** (`src/intake/specialty_knowledge.py:3`
+>   imports `RAGService`).
+>
+> What **is** real and shipped: the 5-pillar framing, RRF fusion of the two legs
+> (`retriever.py:74-83`), strict `agency_id` tenant isolation, heuristic groundedness
+> evaluation with the 0.75 `must_confirm` threshold (`src/rag/grounding.py:13`), and
+> citation provenance formatting (`grounding.py:80`; tested in `tests/test_rag_grounding_pipeline.py`).
+> See also `ADR_RAG_GROUNDING_AND_CITATION_PROVENANCE_2026-07-29.md` (which inherits the
+> same "dense" mislabel in its vocabulary).
+>
+> The original 2026-07-25 text below is **preserved as historical blueprint context**, with
+> inline `[CORRECTION 2026-09-02: …]` notes at the affected lines. Do not cite this document's
+> mechanism vocabulary without reading the correction above first.
+
 ---
 
 ## 1. Executive Summary
@@ -30,8 +67,14 @@ This exploration establishes the **5-Pillar Knowledge Architecture** for Waypoin
 │                                   HYBRID GRAPH-VECTOR ENGINE                                     │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │  • Dense Semantic Retrieval (Vector Embeddings)                                                  │
+│    [CORRECTION 2026-09-02: implemented as md5 hash-bucket vectors — src/rag/indexer.py:16-35.    │
+│     Not semantic; no embedding model.]                                                           │
 │  • Sparse Lexical Retrieval (BM25 for exact hotel/flight/passport terms)                         │
+│    [CORRECTION 2026-09-02: substring lexical heuristic, not standards-compliant BM25 —           │
+│     src/rag/retriever.py:49-50.]                                                                 │
 │  • Knowledge Graph Traversal (Agency ➔ Supplier ➔ Destination ➔ Policy ➔ Customer)               │
+│    [CORRECTION 2026-09-02: implemented as node-label substring score boost ×1.5 —                │
+│     src/rag/retriever.py:86-95. No edges, no multi-hop.]                                         │
 │  • Grounded Citation & Provable Traceability Engine (Document ID, Page, Line, Confidence)        │
 │  • Multi-Tenant RLS Security (Strict agency_id isolation)                                        │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -46,8 +89,8 @@ To satisfy high-stakes travel agency operations, our RAG pipeline enforces 6 man
 ### 2.1 Searchable (Multi-Modal Hybrid Search)
 * **Problem**: Pure vector search misses exact terms (e.g., flight code "6E-204", hotel name "Amanpuri", passport number, PNR). Pure lexical search misses semantic intent (e.g., "quiet romantic beach resort with vegetarian food").
 * **Solution**: **Hybrid Retrieval** combining:
-  1. Dense Vector Similarity (e.g. `text-embedding-3-small` / bge-large-en).
-  2. Sparse Lexical BM25 Search.
+  1. Dense Vector Similarity (e.g. `text-embedding-3-small` / bge-large-en). *(as designed; as implemented 2026-09-02 this leg is the md5 hash-bucket vector of `src/rag/indexer.py:16-35` — a placeholder, not an embedding model)*
+  2. Sparse Lexical BM25 Search. *(as implemented: substring lexical heuristic, `src/rag/retriever.py:49-50` — not standards-compliant BM25)*
   3. Structured Metadata Filtering (`agency_id`, `destination`, `supplier_id`, `niche`, `date_range`).
   4. Reciprocal Rank Fusion (RRF) to merge dense and sparse results cleanly.
 
@@ -86,7 +129,7 @@ To satisfy high-stakes travel agency operations, our RAG pipeline enforces 6 man
 * **Solution**: **Knowledge Graph RAG**:
   * **Nodes**: `Agency`, `Supplier`, `Destination`, `Activity`, `Policy`, `Trip`, `Customer`, `Override`.
   * **Edges**: `LOCATED_IN`, `OFFERS_ACTIVITY`, `SUITABLE_FOR`, `GOVERNED_BY`, `OVERRODE_OPTION`, `PREFERRED_BY`.
-  * **Graph Traversal**: Combines vector similarity with multi-hop graph retrieval to answer complex contextual inquiries.
+  * **Graph Traversal**: Combines vector similarity with multi-hop graph retrieval to answer complex contextual inquiries. *(CORRECTION 2026-09-02: as implemented this is a node-label substring boost on the fused score, ×1.5 — `src/rag/retriever.py:86-95`; there is no edge traversal or multi-hop. Multi-hop remains blueprint.)*
 
 ---
 
@@ -180,7 +223,7 @@ The RAG pipeline directly upgrades existing core modules in `src/` and `spine_ap
 
 | Module | Current State | RAG Upgraded State |
 |--------|---------------|-------------------|
-| `src/intake/specialty_knowledge.py` | Static 5-item dictionary with naive string search | Dynamic RAG over indexed niche guides, regulatory docs, and supplier protocols |
+| `src/intake/specialty_knowledge.py` | Static 5-item dictionary with naive string search *(CORRECTION 2026-09-02: stale in the opposite direction — the module is now RAG-wired; `src/intake/specialty_knowledge.py:3` imports `RAGService`)* | Dynamic RAG over indexed niche guides, regulatory docs, and supplier protocols |
 | `src/agents/runtime.py` (`DocumentReadinessAgent`) | Hardcoded link to static markdown scenario file | RAG query over government visa advisories & passport 6-month validity rules by country pair |
 | `src/decision/hybrid_engine.py` | Rule matching + pattern cache | RAG-assisted contextual rule resolution for complex traveler preferences |
 | `spine_api/models/tenant.py` (`BookingDocument`) | Binary files stored, raw extract Fernet encrypted | Document chunking, vector indexing, and grounded citation mapping per trip document |
@@ -197,14 +240,14 @@ The RAG pipeline directly upgrades existing core modules in `src/` and `spine_ap
   └── Chunker & Embedder (`src/rag/indexer.py`)
 
   Phase 2: Grounding & Citation Engine
-  ├── Groundedness Evaluator (`src/rag/grounding.py`)
-  ├── Citation Formatter & Metadata Lineage (`src/rag/citations.py`)
-  └── Upgrade `specialty_knowledge.py` to RAG service
+  ├── Groundedness Evaluator (`src/rag/grounding.py`) ✅ shipped
+  ├── Citation Formatter & Metadata Lineage (`src/rag/citations.py`) *(CORRECTION 2026-09-02: never created — citation formatting folded into `src/rag/grounding.py:80`)*
+  └── Upgrade `specialty_knowledge.py` to RAG service ✅ shipped
 
   Phase 3: Knowledge Graph Integration (Graph RAG)
-  ├── Graph Nodes & Edges Store (`src/rag/graph_store.py`)
-  ├── Multi-Hop Graph + Vector Retriever (`src/rag/retriever.py`)
-  └── Entity Extractor (`src/rag/graph_extractor.py`)
+  ├── Graph Nodes & Edges Store (`src/rag/graph_store.py`) *(CORRECTION 2026-09-02: never created — node/edge tables live in `src/rag/store.py` + `service.py:94-100`)*
+  ├── Multi-Hop Graph + Vector Retriever (`src/rag/retriever.py`) ✅ shipped *(hybrid retriever only; no multi-hop — see correction at §2.6)*
+  └── Entity Extractor (`src/rag/graph_extractor.py`) *(CORRECTION 2026-09-02: never created)*
 
   Phase 4: Agent & Spine API Integration
   ├── DocumentReadinessAgent RAG Integration

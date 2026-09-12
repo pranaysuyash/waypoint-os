@@ -245,9 +245,10 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ],
 
   // ── Yield arbitrage (agency-scoped, data-dependent) ────────────────
-  // These entries mirror spine_api/routers/yield_arbitrage.py exactly.
-  // The former yield-arbitrage/rates/compare and reticket/execute paths were
-  // frontend-only inventions and remain intentionally unmapped.
+  // These entries mirror spine_api/routers/yield_arbitrage.py exactly
+  // (prefix /api/v1/yield; panel consumes GET arbitrage/{trip_id} and
+  // POST swap-supplier). Aligned 2026-09-11; the former invented
+  // yield-arbitrage/* paths stay denied.
   ["v1/yield/arbitrage/{trip_id}", { backendPath: "api/v1/yield/arbitrage/{trip_id}" }],
   ["v1/yield/swap-supplier", { backendPath: "api/v1/yield/swap-supplier" }],
 ];

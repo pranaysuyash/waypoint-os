@@ -1,7 +1,15 @@
 import '@testing-library/jest-dom';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { createElement } from 'react';
 import { afterEach, vi } from 'vitest';
+
+// N-08 (vitest contention flake): raise the default waitFor/findBy async
+// timeout from the 1000ms RTL default. Under machine contention the full
+// suite slows ~4x (observed 66s vs 17s wall), which makes 1s async waits
+// flake even when the UI updates correctly shortly after. Tests that need
+// a longer bound can still pass an explicit `timeout` option; this only
+// raises the floor. Test-infra only — no product code is affected.
+configure({ asyncUtilTimeout: 5000 });
 
 const gsapTween = {
   kill: vi.fn(),

@@ -1,5 +1,8 @@
 # Case Study: Supplier Automated Bargaining & Penalty Waiver Simulation (Lars Lindqvist — P11-DMC-01)
 
+> ⚠️ **SIMULATION RECORD** — capability claims in this document describe what the UI rendered during the simulation. Per `Docs/exploration/SIM_VS_REALITY_RECONCILIATION_2026-09-01.md`, 17/30 mechanism claims were simulated (sample data / deterministic fixtures), not production integrations. Read alongside that reconciliation.
+> *(Caveat added 2026-09-02 per shadow-audit item R-01; body content unchanged.)*
+
 **Persona Profile**: Lars Lindqvist, Global Contracting Director at Nordic Luxury Horizons\
 **Simulation Date**: September 1, 2026\
 **Primary Scenario**: Multi-Round B2B Concession Bargaining with Bali Luxury DMCs & Automated Marriott Penalty Waiver (`EXP-NEG-BALI-01`)\

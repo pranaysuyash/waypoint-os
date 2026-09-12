@@ -294,6 +294,63 @@ def test_sql_backend_stale_owner_cannot_complete_reclaimed_row(sqlite_sql_backen
     assert completed.response_payload == {"owner": "new"}
 
 
+def test_sql_backend_stale_owner_cannot_fail_reclaimed_row(sqlite_sql_backend):
+    """mark_failed twin of the fencing regression: after TTL reclaim, the
+    stale owner's FAILED CAS must no-op (row stays PENDING) and only the
+    reclaimed owner's token may close the row."""
+    backend = sqlite_sql_backend
+    key = "idem:t-fence-fail:act:ttl"
+
+    acquired_old, old_record = backend.try_acquire(
+        key, trip_id="t-old", action_name="act", payload={}, ttl_seconds=3600
+    )
+    assert acquired_old is True
+    assert old_record is not None
+
+    stale = datetime.now(timezone.utc) - timedelta(seconds=7200)
+
+    async def _age_row():
+        from sqlalchemy import update
+
+        from spine_api.models.idempotency import IdempotencyKey
+
+        async with backend._get_session_maker()() as session:
+            await session.execute(
+                update(IdempotencyKey)
+                .where(IdempotencyKey.key == key)
+                .values(created_at=stale)
+            )
+            await session.commit()
+
+    backend._run(_age_row())
+
+    acquired_new, new_record = backend.try_acquire(
+        key, trip_id="t-new", action_name="act", payload={}, ttl_seconds=3600
+    )
+    assert acquired_new is True
+    assert new_record is not None
+    assert new_record.fencing_token != old_record.fencing_token
+
+    # Stale owner's late failure must NOT close the reclaimed owner's row.
+    assert backend.mark_failed(key, "stale boom", fencing_token=old_record.fencing_token) is False
+    acquired_check, pending = backend.try_acquire(
+        key, trip_id="t-new", action_name="act", payload={}, ttl_seconds=3600
+    )
+    assert acquired_check is False
+    assert pending is not None
+    assert pending.status is IdempotencyStatus.PENDING
+    assert pending.error_message is None
+
+    assert backend.mark_failed(key, "new boom", fencing_token=new_record.fencing_token) is True
+    # FAILED allows exactly one retry with a fresh generation token.
+    retried, retry_record = backend.try_acquire(
+        key, trip_id="t-new", action_name="act", payload={}, ttl_seconds=3600
+    )
+    assert retried is True
+    assert retry_record is not None
+    assert retry_record.status is IdempotencyStatus.PENDING
+
+
 def test_sql_backend_durable_across_instances(sqlite_sql_backend):
     """A second backend over the same store sees the first one's reservation —
     the property the in-process registry cannot provide across workers."""

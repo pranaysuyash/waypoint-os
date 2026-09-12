@@ -4,6 +4,17 @@ These tests intentionally describe the pre-ratification boundary.  They do not
 claim that the observed aliases are the desired product contract; they prevent
 future work from silently treating compatibility fields as canonical truth
 until the owner-ratified migration is implemented.
+
+Update 2026-09-11: the ratified defaults now exist at the pipeline layer —
+``trip_duration_days`` fact (D-01, explicit phrasings only),
+``flights_inclusiveness_unknown`` budget-family ambiguity (D-02, never a
+fact), and the ``destination_country`` containing fact with containment-based
+candidate promotion (D-03, option b).  The extractor-function pins below
+remain valid: ``_extract_destination_candidates`` still returns flat
+candidates (the country projection happens in ``ExtractionPipeline``), no
+date-window duration projection exists, and no ``flights_inclusiveness``
+FACT is ever written.  Live contract behavior is covered by
+``TestContractDecisions`` in tests/test_extraction_fixes.py.
 """
 
 from datetime import datetime

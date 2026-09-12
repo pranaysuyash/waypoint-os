@@ -17,7 +17,7 @@ import os
 import time
 from datetime import datetime
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Optional, Callable, Tuple
 from dataclasses import dataclass
 
 from src.intake.packet_models import CanonicalPacket
@@ -45,7 +45,7 @@ except ImportError:
 
 
 try:
-    from llm import BaseLLMClient, create_llm_client
+    from src.llm import BaseLLMClient, create_llm_client
     LLM_AVAILABLE = True
 except ImportError:
     LLM_AVAILABLE = False
@@ -517,6 +517,22 @@ class HybridDecisionEngine:
 
         return None
 
+    # Fact-presence requirements per decision type (KDD wave-2 §7.4): the LLM
+    # path lacks abstention — every 2024+ model emits a spurious visa-timeline
+    # flag on destination-less packets. Escalation is skipped entirely when a
+    # required fact is absent (also saves the LLM call), falling through to
+    # the deterministic default instead.
+    _FACT_REQUIREMENTS: Dict[str, Tuple[str, ...]] = {
+        "visa_timeline_risk": ("destination_candidates",),
+    }
+
+    @staticmethod
+    def _fact_present(packet: CanonicalPacket, fact_name: str) -> bool:
+        fact = getattr(packet, "facts", {}).get(fact_name)
+        if fact is None:
+            return False
+        return bool(getattr(fact, "value", None))
+
     def _call_llm(
         self,
         decision_type: str,
@@ -528,10 +544,22 @@ class HybridDecisionEngine:
             logger.warning("LLM not available")
             return None
 
+        required_facts = self._FACT_REQUIREMENTS.get(decision_type, ())
+        missing = [f for f in required_facts if not self._fact_present(packet, f)]
+        if missing:
+            logger.debug(
+                "LLM escalation skipped for %s: missing required facts %s",
+                decision_type, missing,
+            )
+            return None
+
         estimated_cost = 0.0
         llm_model = "unknown"
 
         try:
+            # Bound before anything that can raise so the except handler's
+            # guard bookkeeping never hits UnboundLocalError.
+            usage_decision = None
             if not self.llm_client:
                 self.llm_client = create_llm_client()
 
@@ -546,7 +574,6 @@ class HybridDecisionEngine:
             completion_tokens_estimate = self.llm_client.count_tokens('{"result": "x"}')
             estimated_cost = self.llm_client.estimate_cost(prompt_tokens, completion_tokens_estimate)
 
-            usage_decision = None
             if _is_llm_guard_enabled() and get_usage_guard is not None:
                 try:
                     guard = get_usage_guard()
