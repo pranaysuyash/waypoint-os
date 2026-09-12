@@ -1,5 +1,7 @@
 # Extraction Realignment — layered regex → NLP → LLM architecture (2026-09-13)
 
+**Foundation:** superseded in framing by `INTAKE_ONTOLOGY_STATES_EVENTS_ACTIONS_2026-09-13.md` — the L0–L4 layers below are re-derived there as *actions* over an append-only event log with per-entity state machines. The phases remain valid as implementation slices.
+
 **Trigger:** Sim #2 "Family Summit" (live, 6-note multi-voice delegation)
 produced 1 P0 + 4 P1 failures (`Docs/sims/SIM2_FAMILY_SUMMIT_RESULTS_2026-09-12.md`,
 FND-0272…0276). Owner verdict: *"regex or just LLM is a bad choice — we need
