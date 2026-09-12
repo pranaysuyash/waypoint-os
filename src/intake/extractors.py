@@ -1865,23 +1865,60 @@ def _extract_budget_flexibility(text: str) -> str:
     return "unknown"
 
 
+_AMOUNT_RE = re.compile(r"(?:usd|eur|gbp|inr|chf|sgd|aud|cad|[$€£₹]|\b\d[\d,.]*\s*k?\b|\blakhs?\b|\b Lakhs?\b)", re.IGNORECASE)
+
+
+def _budget_scope_sentences(text: str) -> List[str]:
+    """Split into sentence-like segments, keep only amount-bearing ones.
+
+    Sim #2 (FND-0273): cue phrases like 'a day' scattered through a
+    multi-voice thread must not override an explicit total — scope cues are
+    only meaningful inside a sentence that carries a budget amount.
+    """
+    parts = re.split(r"(?<=[.!?])\s+|\n+", text)
+    return [p for p in parts if p and _AMOUNT_RE.search(p)]
+
+
 def _extract_budget_scope(text: str) -> str:
-    text_lower = text.lower()
-    if any(p in text_lower for p in ("per person", "per head", "per pax", "per traveller", "per traveler", "pp", "p/p", "a head", "a person")):
-        return "per_person"
-    if "per night" in text_lower or "a night" in text_lower:
-        return "per_night"
-    if re.search(r"\b(?:a|per)\s+day\b", text_lower):
-        return "daily"
-    # Explicit trip-total markers outrank a stray "each" elsewhere in the sentence
-    if _TOTAL_GROUP_RE.search(text_lower):
-        return "total"
-    if re.search(
-        r"(?:usd|eur|gbp|inr|chf|sgd|aud|cad|[$€£₹]|\b\d[\d,.]*\s*k?)\s*(?:each|pp|p/p|per\s+pax|per\s+person|per\s+head)\b"
-        r"|\beach\s+(?:person|traveler|traveller|adult|guest|of\s+us)\b",
-        text_lower,
-    ):
-        return "per_person"
+    # Realignment Phase 1 (2026-09-13): scope cues are only evaluated inside
+    # amount-bearing segments. Priya's "3.5 lakhs total … hard cap" must keep
+    # outranking Arjun's number-free "budget whatever, we'll manage" (Sim #2,
+    # FND-0273), and unrelated "a … day" phrases elsewhere in the thread must
+    # never flip the scope at all.
+    sentences = _budget_scope_sentences(text)
+    if not sentences:
+        return "unknown"
+
+    def scope_of(segment: str) -> str:
+        seg_lower = segment.lower()
+        if any(p in seg_lower for p in ("per person", "per head", "per pax", "per traveller", "per traveler", "pp", "p/p", "a head", "a person")):
+            return "per_person"
+        if "per night" in seg_lower or "a night" in seg_lower:
+            return "per_night"
+        if re.search(r"\b(?:a|per)\s+day\b", seg_lower):
+            return "daily"
+        # Explicit trip-total markers outrank a stray "each" elsewhere in the sentence
+        if _TOTAL_GROUP_RE.search(seg_lower):
+            return "total"
+        if re.search(
+            r"(?:usd|eur|gbp|inr|chf|sgd|aud|cad|[$€£₹]|\b\d[\d,.]*\s*k?)\s*(?:each|pp|p/p|per\s+pax|per\s+person|per\s+head)\b"
+            r"|\beach\s+(?:person|traveler|traveller|adult|guest|of\s+us)\b",
+            seg_lower,
+        ):
+            return "per_person"
+        return "unknown"
+
+    # Explicit total with an amount is authoritative: it wins over per-unit
+    # cues found in other amount-bearing segments (precedence, not
+    # last-writer-wins).
+    for segment in sentences:
+        scope = scope_of(segment)
+        if scope == "total":
+            return scope
+    for segment in sentences:
+        scope = scope_of(segment)
+        if scope != "unknown":
+            return scope
     return "unknown"
 
 
