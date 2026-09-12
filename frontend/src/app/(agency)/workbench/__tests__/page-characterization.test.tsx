@@ -18,7 +18,7 @@
  *   Unifying the two key builders is a BEHAVIOR commit, not a move commit.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import WorkbenchPage from '../page';
 
@@ -347,5 +347,67 @@ describe('WorkbenchPage characterization (pre-modularization baseline)', () => {
 
     expect(mockPatchDraft).not.toHaveBeenCalled();
     expect(mockSetSaveState).not.toHaveBeenCalledWith('saving');
+  });
+
+  // T6 — FND-0279: a freshly hydrated clean draft whose content already
+  // matches what a save would persist must NOT arm the autosave. The
+  // hydration init key and the arm key must use the same config derivation
+  // (the URL-derived values the save payload writes).
+  it('does not arm autosave for a clean hydrated draft with unchanged content', async () => {
+    vi.useFakeTimers();
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+    mockWorkbenchStore = makeStore({
+      draft_id: 'draft_hydrated_1',
+      draft_version: 4,
+      draft_status: 'open',
+      save_state: 'clean',
+      input_raw_note: 'Loaded inquiry text',
+      stage: 'discovery',
+      operating_mode: 'normal_intake',
+      scenario_id: null,
+    });
+
+    render(<WorkbenchPage />);
+
+    await vi.advanceTimersByTimeAsync(6000);
+
+    expect(mockPatchDraft).not.toHaveBeenCalled();
+    expect(mockSetSaveState).not.toHaveBeenCalledWith('saving');
+  });
+
+  // T7 — FND-0277 pre-consolidation baseline: the manual draft-save path
+  // patches the existing draft with is_auto_save: false and walks
+  // save_state saving -> saved. Pins behavior the consolidation commit
+  // must preserve exactly.
+  it('manually saves an existing draft with is_auto_save false and saved state', async () => {
+    vi.useFakeTimers();
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+    mockWorkbenchStore = makeStore({
+      draft_id: 'draft_manual_1',
+      draft_name: 'Manual One',
+      draft_version: 6,
+      draft_status: 'open',
+      save_state: 'dirty',
+      input_raw_note: 'Manual save content',
+    });
+    mockPatchDraft.mockResolvedValue({ name: 'Manual One', status: 'open', version: 7, updated_at: '2026-09-12T01:00:00Z' });
+
+    const { getByRole } = render(<WorkbenchPage />);
+
+    await vi.advanceTimersByTimeAsync(0);
+    mockSetSaveState.mockClear();
+
+    fireEvent.click(getByRole('button', { name: /save draft/i }));
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(mockPatchDraft).toHaveBeenCalledWith('draft_manual_1', expect.objectContaining({
+      customer_message: 'Manual save content',
+      stage: 'discovery',
+      operating_mode: 'normal_intake',
+      expected_version: 6,
+      is_auto_save: false,
+    }));
+    expect(mockSetSaveState).toHaveBeenCalledWith('saved');
   });
 });

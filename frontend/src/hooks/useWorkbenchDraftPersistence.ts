@@ -7,9 +7,11 @@
  *
  * Extracted from PageClient.tsx (council decision
  * Docs/architecture/WORKBENCH_MODULARIZATION_COUNCIL_DECISION_2026-09-12.md,
- * slice T2.2). Callback/effect bodies and dependency arrays are verbatim;
- * the three persistence strategies remain separate (triplication preserved)
- * — consolidating them is a separate behavior-gated commit, NOT this move.
+ * slice T2.2). Callback/effect bodies and dependency arrays are verbatim
+ * except the FND-0277 consolidation: the three persistence strategies now
+ * share one buildDraftPayload + one isConflictError predicate. Their FLOW
+ * SHAPES are deliberately NOT unified — the three URL-write mechanisms and
+ * the ensureDraftSaved setTimeout(0) deferral are load-bearing.
  *
  * Closure map (semantic-preservation requirement):
  * - refs owned here: autoSaveTimerRef (5s debounce timer, cleaned up on
@@ -17,17 +19,15 @@
  *   advanced on save failure so the same content stays retryable)
  * - timers: the auto-save 5000ms setTimeout; ensureDraftSaved's deliberate
  *   window.setTimeout(…, 0) deferral after draft creation is load-bearing
- *   for the first-submit flow and intentionally has no cleanup
+ *   and intentionally has no cleanup
  * - store actions: store.setSaveState / store.setDraftMeta (explicit calls),
  *   destructured setSaveState / setDraftMeta (auto-save path)
  * - URL writes: window.history.replaceState (ensureDraftSaved + auto-save,
  *   deliberately bypassing the router) vs router.replace (handleSaveDraft) —
  *   the three mechanisms must stay distinct
  * - injected UI setters: setSaveSuccess / setSaveError (handleSaveDraft only)
- * - one documented dep-array deviation: setSaveSuccess/setSaveError added to
- *   handleSaveDraft's dep list — they were component-scoped useState setters
- *   (stable by React contract) at the origin and are params here; identity
- *   semantics are unchanged
+ * - documented dep-array deviations: setSaveSuccess/setSaveError and later
+ *   added where used — all identity-stable, semantics unchanged
  */
 import { useCallback, useEffect, useRef } from 'react';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
@@ -35,6 +35,31 @@ import type { SpineStage, OperatingMode } from '@/types/spine';
 import type { WorkbenchStore, DraftStatus } from '@/stores/workbench';
 import { createDraft, patchDraft } from '@/lib/api-client';
 import { safeParseJson } from '@/app/(agency)/workbench/workbench-state';
+import { useTransientTimers } from '@/hooks/useTransientTimers';
+
+function buildDraftPayload(
+  store: WorkbenchStore,
+  spineStage: SpineStage,
+  currentMode: OperatingMode,
+  currentScenario: string,
+) {
+  return {
+    customer_message: store.input_raw_note || null,
+    agent_notes: store.input_owner_note || null,
+    structured_json: safeParseJson(store.input_structured_json),
+    itinerary_text: store.input_itinerary_text || null,
+    stage: spineStage,
+    operating_mode: currentMode,
+    scenario_id: currentScenario || null,
+    strict_leakage: store.strict_leakage,
+  };
+}
+
+function isConflictError(err: unknown): boolean {
+  return (
+    !!err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409
+  );
+}
 
 export function useWorkbenchDraftPersistence({
   store,
@@ -58,6 +83,7 @@ export function useWorkbenchDraftPersistence({
   setSaveError: (value: string | null) => void;
 }) {
   const { setSaveState, setDraftMeta } = store;
+  const { later } = useTransientTimers();
 
   const ensureDraftSaved = useCallback(async (): Promise<string | null> => {
     const hasContent =
@@ -70,16 +96,8 @@ export function useWorkbenchDraftPersistence({
 
     if (store.draft_id) {
       // Patch existing draft
-      const structured_json = safeParseJson(store.input_structured_json);
       await patchDraft(store.draft_id, {
-        customer_message: store.input_raw_note || null,
-        agent_notes: store.input_owner_note || null,
-        structured_json,
-        itinerary_text: store.input_itinerary_text || null,
-        stage: spineStage,
-        operating_mode: currentMode,
-        scenario_id: currentScenario || null,
-        strict_leakage: store.strict_leakage,
+        ...buildDraftPayload(store, spineStage, currentMode, currentScenario),
         expected_version: store.draft_version,
         is_auto_save: false,
       });
@@ -88,13 +106,14 @@ export function useWorkbenchDraftPersistence({
     }
 
     // Create new draft (create endpoint doesn't accept structured_json/itinerary_text)
+    const payload = buildDraftPayload(store, spineStage, currentMode, currentScenario);
     const result = await createDraft({
-      customer_message: store.input_raw_note || null,
-      agent_notes: store.input_owner_note || null,
-      stage: spineStage,
-      operating_mode: currentMode,
-      scenario_id: currentScenario || null,
-      strict_leakage: store.strict_leakage,
+      customer_message: payload.customer_message,
+      agent_notes: payload.agent_notes,
+      stage: payload.stage,
+      operating_mode: payload.operating_mode,
+      scenario_id: payload.scenario_id,
+      strict_leakage: payload.strict_leakage,
     });
     // Defer hydration so the same submit turn can continue straight into the
     // Spine run. Immediate route/state churn here can pre-empt the first-submit
@@ -122,17 +141,7 @@ export function useWorkbenchDraftPersistence({
     store.setSaveState('saving');
 
     try {
-      const structured_json = safeParseJson(store.input_structured_json);
-      const payload = {
-        customer_message: store.input_raw_note || null,
-        agent_notes: store.input_owner_note || null,
-        structured_json,
-        itinerary_text: store.input_itinerary_text || null,
-        stage: spineStage,
-        operating_mode: currentMode,
-        scenario_id: currentScenario || null,
-        strict_leakage: store.strict_leakage,
-      };
+      const payload = buildDraftPayload(store, spineStage, currentMode, currentScenario);
 
       if (store.draft_id) {
         const updated = await patchDraft(store.draft_id, {
@@ -149,12 +158,12 @@ export function useWorkbenchDraftPersistence({
         });
       } else {
         const result = await createDraft({
-          customer_message: store.input_raw_note || null,
-          agent_notes: store.input_owner_note || null,
-          stage: spineStage,
-          operating_mode: currentMode,
-          scenario_id: currentScenario || null,
-          strict_leakage: store.strict_leakage,
+          customer_message: payload.customer_message,
+          agent_notes: payload.agent_notes,
+          stage: payload.stage,
+          operating_mode: payload.operating_mode,
+          scenario_id: payload.scenario_id,
+          strict_leakage: payload.strict_leakage,
         });
         store.setDraftMeta({
           draft_id: result.draft_id,
@@ -172,10 +181,10 @@ export function useWorkbenchDraftPersistence({
       store.setSaveState('saved');
       if (!isAuto) {
         setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
+        later(() => setSaveSuccess(false), 3000);
       }
     } catch (err) {
-      const isConflict = err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409;
+      const isConflict = isConflictError(err);
       if (isConflict) {
         store.setSaveState('conflict');
       } else {
@@ -187,10 +196,10 @@ export function useWorkbenchDraftPersistence({
             ? 'Save conflict - draft was modified elsewhere. Refresh and try again.'
             : 'Failed to save draft. Check connection and try again.',
         );
-        setTimeout(() => setSaveError(null), 8000);
+        later(() => setSaveError(null), 8000);
       }
     }
-  }, [store, searchParams, replace, spineStage, currentMode, currentScenario, setSaveSuccess, setSaveError]);
+  }, [store, searchParams, replace, spineStage, currentMode, currentScenario, setSaveSuccess, setSaveError, later]);
 
   // ----- Auto-save (5s debounce, guarded) -----
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -198,6 +207,10 @@ export function useWorkbenchDraftPersistence({
 
   // Initialize prevContentRef after draft hydration so auto-save
   // doesn't immediately save loaded content as new.
+  // FND-0279: stage/mode/scenario must come from the SAME derivation the
+  // save payload uses (URL params), not from store copies — otherwise a
+  // freshly hydrated draft with store.scenario_id = null diverges from the
+  // arm key (null vs '') and spuriously autosaves ~5s after every load.
   useEffect(() => {
     if (store.draft_id && store.save_state === 'clean') {
       const contentKey = JSON.stringify({
@@ -205,16 +218,16 @@ export function useWorkbenchDraftPersistence({
         owner: store.input_owner_note,
         json: store.input_structured_json,
         itin: store.input_itinerary_text,
-        stage: store.stage,
-        mode: store.operating_mode,
-        scenario: store.scenario_id,
+        stage: spineStage,
+        mode: currentMode,
+        scenario: currentScenario,
         strict: store.strict_leakage,
       });
       prevContentRef.current = contentKey;
     }
   }, [store.draft_id, store.save_state, store.input_raw_note, store.input_owner_note,
-      store.input_structured_json, store.input_itinerary_text, store.stage,
-      store.operating_mode, store.scenario_id, store.strict_leakage]);
+      store.input_structured_json, store.input_itinerary_text, store.strict_leakage,
+      spineStage, currentMode, currentScenario]);
 
   const buildContentKey = useCallback(() => JSON.stringify({
     raw: store.input_raw_note,
@@ -249,17 +262,7 @@ export function useWorkbenchDraftPersistence({
       (async () => {
         setSaveState('saving');
         try {
-          const structured_json = safeParseJson(store.input_structured_json);
-          const payload = {
-            customer_message: store.input_raw_note || null,
-            agent_notes: store.input_owner_note || null,
-            structured_json,
-            itinerary_text: store.input_itinerary_text || null,
-            stage: spineStage,
-            operating_mode: currentMode,
-            scenario_id: currentScenario || null,
-            strict_leakage: store.strict_leakage,
-          };
+          const payload = buildDraftPayload(store, spineStage, currentMode, currentScenario);
 
           if (store.draft_id) {
             const updated = await patchDraft(store.draft_id, {
@@ -299,8 +302,7 @@ export function useWorkbenchDraftPersistence({
           setSaveState('saved');
           prevContentRef.current = buildContentKey();
         } catch (err) {
-          const isConflict = err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409;
-          setSaveState(isConflict ? 'conflict' : 'error');
+          setSaveState(isConflictError(err) ? 'conflict' : 'error');
           // Do NOT update prevContentRef on failure - same content is retryable
         }
       })();
@@ -309,6 +311,7 @@ export function useWorkbenchDraftPersistence({
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- dep list is a verbatim preservation contract; buildDraftPayload reads exactly the enumerated store fields (adding whole-`store` would widen re-arm semantics)
   }, [
     store.input_raw_note,
     store.input_owner_note,

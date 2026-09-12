@@ -37,7 +37,7 @@ import type {
   FeeCalculationResult,
 } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
-import { submitTripReviewAction, createDraft, getDraft, patchDraft, discardDraft, promoteDraft } from '@/lib/api-client';
+import { submitTripReviewAction, createDraft, getDraft, patchDraft, promoteDraft } from '@/lib/api-client';
 import { getTripRoute, getPostRunTripRoute, getWorkbenchTripId, getTripRepairRoute } from '@/lib/routes';
 import { buildRepairDeepLinkHref, getFirstRepairableFieldName } from '@/lib/repair-deep-link';
 import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench';
@@ -59,6 +59,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useHydrateStoreFromTrip } from '@/hooks/useHydrateStoreFromTrip';
 import { useWorkbenchRunSync } from '@/hooks/useWorkbenchRunSync';
 import { useWorkbenchDraftPersistence } from '@/hooks/useWorkbenchDraftPersistence';
+import { useTransientTimers } from '@/hooks/useTransientTimers';
 import { useAuthStore } from '@/stores/auth';
 import { ProtectedSurfaceNotice } from '@/components/auth/ProtectedSurfaceNotice';
 
@@ -66,7 +67,6 @@ const IntakeTab = dynamic(() => import('./IntakeTab'));
 const PacketTab = dynamic(() => import('./PacketTab'));
 const SafetyTab = dynamic(() => import('./SafetyTab'));
 const PersonaCouncilPanel = dynamic(() => import('./PersonaCouncilPanel'));
-const MemoryArchitectPanel = dynamic(() => import('./MemoryArchitectPanel').then(m => m.MemoryArchitectPanel));
 const FrontierDashboard = dynamic(() =>
   import('@/components/workspace/FrontierDashboard').then((mod) => ({
     default: mod.FrontierDashboard,
@@ -74,12 +74,6 @@ const FrontierDashboard = dynamic(() =>
 );
 const SettingsPanel = dynamic(() => import('./SettingsPanel'));
 const ScenarioLab = dynamic(() => import('./ScenarioLab'));
-const OutputPanel = dynamic(
-  () => import('@/components/workspace/panels/OutputPanel'),
-);
-const FeedbackPanel = dynamic(
-  () => import('@/components/workspace/panels/FeedbackPanel'),
-);
 
 // react-doctor-disable-next-line react-doctor/prefer-useReducer — too many independent state slices to consolidate meaningfully
 function WorkbenchContent() {
@@ -203,7 +197,6 @@ function WorkbenchContent() {
 
   // Draft hydration - load draft from backend and populate store
   const prevDraftRef = useRef<string | null>(null);
-  const draftLoadingRef = useRef(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const {
     clearDraft,
@@ -230,18 +223,15 @@ function WorkbenchContent() {
     if (draftParam === prevDraftRef.current) return;
     prevDraftRef.current = draftParam;
 
-    draftLoadingRef.current = true;
     setDraftError(null);
     getDraft(draftParam)
       .then((draft) => {
         hydrateFromDraft(draft);
         setCompletedTripId(extractCompletedTripIdFromDraft(draft));
-        draftLoadingRef.current = false;
       })
       .catch((err) => {
         setDraftError(err instanceof Error ? err.message : 'Failed to load draft');
         setCompletedTripId(null);
-        draftLoadingRef.current = false;
       });
   }, [draftParam, clearDraft, hydrateFromDraft]);
 
@@ -293,14 +283,8 @@ function WorkbenchContent() {
     [pathname, searchParams, replace, visibleTabs],
   );
 
-  // Auto-switch away from packet tab if trip/results disappear
-  const prevStageRef = useRef<string | null>(null);
-  useEffect(() => {
-    const currentStage = trip?.stage ?? null;
-    prevStageRef.current = currentStage;
-  }, [trip?.stage, activeTab, handleTabChange]);
-
   const [isRunning, setIsRunning] = useState(false);
+  const { later } = useTransientTimers();
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
   const inFlightRef = useRef(false);
@@ -387,19 +371,19 @@ function WorkbenchContent() {
       }
 
       setRunSuccess(true);
-      setTimeout(() => setRunSuccess(false), 3000);
+      later(() => setRunSuccess(false), 3000);
     } catch (err) {
       setRunError(
         err instanceof Error
           ? err.message
           : 'Processing failed. Please try again or contact support if the issue persists.',
       );
-      setTimeout(() => setRunError(null), 8000);
+      later(() => setRunError(null), 8000);
     } finally {
       inFlightRef.current = false;
       setIsRunning(false);
     }
-  }, [store, executeSpineRun, spineStage, currentMode, currentScenario, ensureDraftSaved, setIsRunning, setRunError, setRunSuccess, setCompletedTripId]);
+  }, [store, executeSpineRun, spineStage, currentMode, currentScenario, ensureDraftSaved, setIsRunning, setRunError, setRunSuccess, setCompletedTripId, later]);
 
   const handleSave = useCallback(async () => {
     if (!resolvedTripId) return;
@@ -410,12 +394,12 @@ function WorkbenchContent() {
     });
     if (result) {
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      later(() => setSaveSuccess(false), 3000);
     } else {
       setSaveError('Failed to save. Check connection and try again.');
-      setTimeout(() => setSaveError(null), 8000);
+      later(() => setSaveError(null), 8000);
     }
-  }, [resolvedTripId, saveTrip, store.input_raw_note, store.input_owner_note]);
+  }, [resolvedTripId, saveTrip, store.input_raw_note, store.input_owner_note, later]);
 
   const handleReset = useCallback(() => {
     store.resetAll();
@@ -710,7 +694,7 @@ function WorkbenchContent() {
                         setRunError(
                           err instanceof Error ? err.message : 'Promotion failed'
                         );
-                        setTimeout(() => setRunError(null), 8000);
+                        later(() => setRunError(null), 8000);
                         return;
                       }
                       push(getPostRunTripRoute({
