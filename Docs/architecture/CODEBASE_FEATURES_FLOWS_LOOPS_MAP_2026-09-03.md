@@ -273,3 +273,16 @@ Practical implications for anyone extending this codebase:
 - Canonical routing: `Docs/README.md` (knowledge-type → directory), `Docs/INDEX.md` (chronological working-doc index).
 - Product/thesis: `Docs/MASTER_PRODUCT_SPEC.md`; trip state rules: `Docs/TRIP_STATE_CONTRACT.md`; lead persistence: `Docs/ADR_ESCALATE_LEAD_PERSISTENCE_2026-08-31.md`; server decomposition plan (R-10): `Docs/architecture/SERVER_DECOMPOSITION_PLAN_2026-08-29.md`; tenancy models: `Docs/architecture/TENANCY_ISOLATION_MODELS_LEARNING_2026-08-31.md`; runtime contracts: `specs/`.
 - Recent hardening waves: `Docs/review/SECURITY_HONESTY_WAVE_HANDOFF_2026-09-02.md`, `Docs/architecture/SELF_CONTAINED_INTERNAL_ENGINES_HARDENING_2026-09-02.md`, `Docs/architecture/ADVANCED_INTERNAL_SYSTEMS_AND_COMPILERS_2026-09-03.md`.
+
+## 10. Addendum 2026-09-12 — workbench modularization (structure-only)
+
+`frontend/src/app/(agency)/workbench/PageClient.tsx` was decomposed via pure
+moves (no feature/flow changes): URL/stage/tab validators and pure helpers →
+`workbench-state.ts`; trip→store hydration → `hooks/useHydrateStoreFromTrip`;
+run-state merge + draft-status + terminal-tab auto-switch →
+`hooks/useWorkbenchRunSync`; draft create/patch/autosave lifecycle →
+`hooks/useWorkbenchDraftPersistence` (payload construction consolidated per
+FND-0277); transient toast timers → `hooks/useTransientTimers` (FND-0282).
+PageClient remains the composition root (1,463 → ~915 lines). Behavior
+contracts pinned by `workbench/__tests__/page-characterization.test.tsx`.
+Evidence: `Docs/architecture/WORKBENCH_MODULARIZATION_COUNCIL_DECISION_2026-09-12.md`.
