@@ -157,7 +157,11 @@ export default function PacketTab({ trip }: PacketTabProps) {
                 )}
                 {unknownFields.length > 0 && (
                   <p className="text-ui-xs text-[#8b949e]">
-                    Missing fields: {visibleMissingFields.map((unk) => labelOrTitle(FIELD_LABELS, unk.field_name)).join(', ')}
+                    Missing fields: {visibleMissingFields.map((unk) => {
+                      const label = labelOrTitle(FIELD_LABELS, unk.field_name);
+                      const blockMatch = unk.notes?.match(/\[BLOCKING_FOR_(\w+)\]/);
+                      return blockMatch ? `${label} [${blockMatch[1]}]` : label;
+                    }).join(', ')}
                     {hiddenMissingFieldCount > 0 ? ` +${hiddenMissingFieldCount} more` : ''}
                   </p>
                 )}
