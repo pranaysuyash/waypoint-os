@@ -2290,17 +2290,82 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
         normalized = _normalize_constraint(constraint)
         if normalized:
             hard.append(normalized)
+
+    # Fear-phrased safety constraints (FND-0275, Sim #2): "terrified of
+    # heights", "afraid of water", "scared of crowds" — no "no" prefix, so
+    # the negation scan never saw them. Safety-critical; must not drop.
+    # Terminator stops the object at the fear itself ("heights so please…"
+    # must not swallow the whole following clause).
+    for fear_match in re.finditer(
+        r"(?:terrified|afraid|scared|phobic)\s+of\s+([^.,;()\n]+?)"
+        r"(?:\s+(?:so|and|but|because|please|also)\b|[.,;()\n]|$)",
+        text_lower,
+    ):
+        fear_obj = fear_match.group(1).strip()
+        if fear_obj and fear_obj.split(None, 1)[0] not in _NEGATION_KNOWLEDGE_HEADWORDS:
+            hard.append(f"fear of {fear_obj}")
+
     if hard:
         results["hard_constraints"] = hard
 
+    # Occasion anchors (Sim #2): "10th anniversary on the trip (april 14th)",
+    # "anniversary is april 14" — a hard date the trip must cover, distinct
+    # from the travel window.
+    # Occasion anchors (Sim #2): "10th anniversary on the trip (april 14th)",
+    # "anniversary is april 14" — a hard date the trip must cover, distinct
+    # from the travel window. Both "april 14" and "14 april" orders supported.
+    _OCCASION_DATE = (
+        r"(?:\b(?:january|february|march|april|may|june|july|august|september|"
+        r"october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?"
+        r"|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|"
+        r"june|july|august|september|october|november|december))"
+    )
+    occasion_match = re.search(
+        r"(anniversary|birthday|honeymoon)\b[^.,;()\n]{0,40}?"
+        r"[(\s](" + _OCCASION_DATE + r")\b",
+        text_lower,
+    )
+    if occasion_match:
+        results["occasion"] = {
+            "type": occasion_match.group(1),
+            "date": occasion_match.group(2),
+        }
+
+    # Speaker self-identification (L2 attribution v1, Sim #2 FND-0275):
+    # "meera here", "it's arjun", "[forwarded voice note from X]" — notes in a
+    # delegation thread are per-speaker; captured now so a later travelers[]
+    # structure can bind facts to people. Multi-word names allowed.
+    speakers: List[str] = []
+    seen_lower = set()
+    for speaker_match in re.finditer(
+        r"(?:\bit'?s\s+([a-z][a-z'\s]{1,25}?)\s+here\b"
+        r"|([a-z][a-z'\s]{1,25}?)\s+here\b"
+        r"|(?:voice\s+note|message|note)\s+from\s+([a-z][a-z'\s]{1,25}?))\b"
+        r"(?=\s*[)\](.,;\n—–]|\s*$)",
+        text,
+        re.IGNORECASE,
+    ):
+        name = next(g for g in speaker_match.groups() if g)
+        name = re.sub(r"\s+", " ", name.strip().title())
+        if name and name.lower() not in seen_lower:
+            seen_lower.add(name.lower())
+            speakers.append(name)
+    if speakers:
+        results["speakers"] = speakers
+
     soft = []
-    want_match = re.findall(r"(?:want|prefer|like|interested\s+in)\s+([^.,]+)", text_lower)
+    want_match = re.findall(r"(?:want|prefer|like|love|interested\s+in)\s+([^.,]+)", text_lower)
     for pref in want_match:
         candidate = pref.strip()
         normalized = _normalize_constraint(candidate)
         # Guard against negation bleed-through from phrases like
         # "don't want it rushed", which should stay a hard constraint.
         if normalized == "relaxed pace":
+            continue
+        # Fragment guard (Sim #2, FND-0275): "that day would mean a lot"
+        # produced soft_preferences=['that'] — a single stop-word fragment
+        # is noise, not a preference.
+        if len(candidate.split()) < 2:
             continue
         soft.append(candidate)
     if soft:

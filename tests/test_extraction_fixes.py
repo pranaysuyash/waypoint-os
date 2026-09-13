@@ -1965,8 +1965,13 @@ class TestDemoNoteEndToEnd:
 
     def test_hard_constraints_drop_negation_false_positive(self, demo_packet):
         # "no idea of the name" reports the traveler's own missing info, not a
-        # prohibition — only the real "no cable cars please" constraint stays.
-        assert demo_packet.facts["hard_constraints"].value == ["cable cars please"]
+        # prohibition — only real constraints stay. Phase 3 (FND-0275) also
+        # captures the fear-phrased safety constraint the old extractor
+        # silently dropped ("one of us is terrified of heights").
+        assert demo_packet.facts["hard_constraints"].value == [
+            "cable cars please",
+            "fear of heights",
+        ]
 
     def test_intake_minimum_valid_no_errors(self, demo_packet):
         report = validate_packet(demo_packet, stage="discovery")
