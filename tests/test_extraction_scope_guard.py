@@ -141,3 +141,35 @@ class TestOriginCueGuard:
         )])
         origin = packet.facts.get("origin_city")
         assert origin is not None and str(origin.value).lower() == "bangalore"
+
+
+class TestAmbiguityVerbatimInvariant:
+    """Phase 4b (FND-0276): ambiguity raw quotes must be verbatim substrings
+    of the input — the '5 lakhs' corruption class must stay dead."""
+
+    def _amb_raws(self, text):
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+        return [(a.ambiguity_type, str(getattr(a, "raw_value", ""))) for a in packet.ambiguities]
+
+    def test_sim2_note1_ambiguities_verbatim_or_labeled(self):
+        """FND-0276 invariant: an ambiguity raw is either a verbatim input
+        substring or explicitly labeled as derived — never synthesized text
+        presented as a quotation."""
+        for amb_type, raw in self._amb_raws(PRIYA):
+            assert raw == "" or raw in PRIYA or raw.startswith("derived from"), (
+                f"unlabeled non-verbatim ambiguity raw for {amb_type}: {raw!r}"
+            )
+
+    def test_d02_does_not_fire_on_explicit_inclusion(self):
+        ambs = self._amb_raws(PRIYA)
+        assert not any(t == "flights_inclusiveness_unknown" for t, _ in ambs)
+
+    def test_d02_fires_verbatim_on_unresolved(self):
+        text = "budget around 3.5 lakhs, not sure if that includes flights, japan for 4"
+        ambs = [
+            (t, raw) for t, raw in self._amb_raws(text)
+            if t == "flights_inclusiveness_unknown"
+        ]
+        assert ambs, "unresolved flights scope must fire the ambiguity"
+        for _, raw in ambs:
+            assert raw in text, f"raw not verbatim: {raw!r}"

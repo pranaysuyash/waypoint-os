@@ -2927,10 +2927,17 @@ class ExtractionPipeline:
                     and a.field_name == "destination_candidates"
                     for a in packet.ambiguities
                 ):
+                    # FND-0276 verbatim invariant: quote the input span the
+                    # candidates came from when it's a verbatim substring;
+                    # otherwise label the rendering as derived — never show
+                    # synthesized text as if the traveler wrote it.
+                    raw_quote = dest_raw or " or ".join(dest_candidates)
+                    if raw_quote.lower() not in text.lower():
+                        raw_quote = f"derived from extracted candidates: {raw_quote}"
                     packet.add_ambiguity(Ambiguity(
                         field_name="destination_candidates",
                         ambiguity_type="unresolved_alternatives",
-                        raw_value=" or ".join(dest_candidates),
+                        raw_value=raw_quote,
                         confidence=0.8,
                     ))
 
