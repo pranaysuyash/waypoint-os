@@ -150,6 +150,15 @@ def _prepare_extraction_text(text: Any) -> Tuple[str, Dict[str, int]]:
         if re.match(r"^\s*(?:system|developer|assistant|instructions?)\s*:", line, re.IGNORECASE):
             removed_spans += 1
             continue
+        # FND-0274 (Sim #2): speaker-label prefixes ("[arjun]: text",
+        # "[forwarded voice note from X]: text") leak into packet fields when
+        # the label is concatenated with the constraint text. Strip the
+        # label, keep the content — the speaker attribution is handled
+        # separately by src/intake/attribution.py.
+        chat_label = re.match(r"^\s*\[[^\]]{1,60}\]:\s*(.+)", line)
+        if chat_label:
+            kept_lines.append(chat_label.group(1).lstrip() + "\n")
+            continue
         kept_lines.append(line)
     normalized = "".join(kept_lines)
 
@@ -3292,9 +3301,12 @@ class ExtractionPipeline:
         # Per-speaker fact bundles from the delegation thread. Personal facts
         # stay bound to the speaker; group facts (budget/window/party) remain
         # packet-level. Only emitted when at least one speaker is identified.
+        # Uses envelope.content (RAW text — _prepare_extraction_text may have
+        # stripped the speaker labels that attribution.py needs).
         try:
             from src.intake.attribution import build_travelers
-            travelers = build_travelers(text)
+            raw_content = envelope.content if isinstance(envelope.content, str) else str(envelope.content)
+            travelers = build_travelers(raw_content)
             if travelers:
                 packet.set_fact("travelers", self._make_slot(
                     travelers, 0.85, AuthorityLevel.EXPLICIT_USER,
