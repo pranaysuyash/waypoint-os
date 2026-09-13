@@ -12,6 +12,8 @@ Geography handling (v0.2.1):
 
 from __future__ import annotations
 
+import logging
+
 import re
 import unicodedata
 import uuid
@@ -40,6 +42,8 @@ from .packet_models import (
     SubGroup,
 )
 from .normalizer import Normalizer
+
+logger = logging.getLogger(__name__)
 from .geography import (
     COUNTRY_CANONICAL_ALIASES,
     get_city_country,
@@ -3232,6 +3236,21 @@ class ExtractionPipeline:
                     value, 0.8, AuthorityLevel.EXPLICIT_USER,
                     value, eid,
                 ))
+
+        # --- TRAVELERS (L2 attribution, Phase 3b / IDEA-134) ---
+        # Per-speaker fact bundles from the delegation thread. Personal facts
+        # stay bound to the speaker; group facts (budget/window/party) remain
+        # packet-level. Only emitted when at least one speaker is identified.
+        try:
+            from src.intake.attribution import build_travelers
+            travelers = build_travelers(text)
+            if travelers:
+                packet.set_fact("travelers", self._make_slot(
+                    travelers, 0.85, AuthorityLevel.EXPLICIT_USER,
+                    f"{len(travelers)} speaker-attributed traveler(s)", eid,
+                ))
+        except Exception as exc:  # attribution is additive; never crash intake
+            logger.warning("travelers attribution skipped: %s", exc)
 
         # --- GROUP BOOKING / PROCUREMENT SIGNALS ---
         rooming_matches = []
