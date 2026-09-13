@@ -2335,18 +2335,24 @@ class TestContractDecisions:
         assert "flights_inclusiveness" not in packet.facts
 
     def test_d02_excluding_flights_flagged(self):
+        # D-02 v2: explicit exclusion is also an assertion, not an unknown.
         packet = self._packet("budget 6000 USD excluding flights")
-        assert any(
+        assert not any(
             a.ambiguity_type == "flights_inclusiveness_unknown"
             for a in packet.ambiguities
         )
 
     def test_d02_including_flights_flagged(self):
+        # D-02 v2 (ontology refinement): explicit "including flights" is an
+        # assertion, not an unknown — it becomes budget scope=total (a fact)
+        # rather than an ambiguity. Only unresolved phrasings fire D-02.
         packet = self._packet("budget 6000 USD including flights")
-        assert any(
+        assert not any(
             a.ambiguity_type == "flights_inclusiveness_unknown"
             for a in packet.ambiguities
         )
+        scope = packet.facts.get("budget_scope")
+        assert scope is not None and scope.value == "total"
 
     def test_d02_no_ambiguity_without_flights_mention(self):
         packet = self._packet("budget around 4000 USD total for the trip")

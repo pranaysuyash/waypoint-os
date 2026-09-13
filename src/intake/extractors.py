@@ -3047,11 +3047,29 @@ class ExtractionPipeline:
             text_lower,
         )
         if flights_clause_match:
-            for amb in Normalizer.detect_ambiguities("budget_raw_text", flights_clause_match.group(0)):
-                if amb.ambiguity_type == "flights_inclusiveness_unknown" and not any(
-                    a.ambiguity_type == "flights_inclusiveness_unknown" for a in packet.ambiguities
-                ):
-                    packet.add_ambiguity(amb)
+            # D-02 explicit short-circuit (FND-0276): when the clause
+            # ASSERTS inclusiveness ("including flights", "flights
+            # included/excluded"), there is no ambiguity to confirm — the
+            # old code fired on "including" as if it were unresolved.
+            clause = flights_clause_match.group(0)
+            explicit_resolution = re.search(
+                r"\b(?:including|includes?|with)\s+(?:the\s+)?(?:flights?|airfare)"
+                r"|\b(?:flights?|airfare)\s+(?:are\s+|is\s+)?included\b"
+                r"|\bexcluding\s+(?:the\s+)?(?:flights?|airfare)"
+                r"|\b(?:flights?|airfare)\s+(?:are\s+|is\s+)?excluded\b",
+                clause,
+            )
+            unresolved_marker = re.search(
+                r"\b(?:not\s+sure|unsure|unclear|whether|if\s+that|no\s+idea)\b", clause
+            )
+            if explicit_resolution and not unresolved_marker:
+                pass  # explicit assertion — resolved, no ambiguity
+            else:
+                for amb in Normalizer.detect_ambiguities("budget_raw_text", clause):
+                    if amb.ambiguity_type == "flights_inclusiveness_unknown" and not any(
+                        a.ambiguity_type == "flights_inclusiveness_unknown" for a in packet.ambiguities
+                    ):
+                        packet.add_ambiguity(amb)
 
 
 
