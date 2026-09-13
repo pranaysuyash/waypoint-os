@@ -1726,6 +1726,10 @@ class TestColloquialDestination:
     # --- VFR: "visit family in <place>" means <place> IS the destination
     # --- (owner challenge 2026-09-13 — the old family-locative guard
     # --- suppressed a true positive on a top revenue segment) ---
+    # --- Subordinate case ("SE Asia trip, might visit family in chennai")
+    # --- RATIFIED keep-co-equal 2026-09-14 (blueprint Addendum 7): no
+    # --- secondary tier without a degraded consumer; reopen only on
+    # --- observed proposal-compiler noise.
     def test_family_visit_promotes_destination(self):
         candidates, status, _ = _extract_destination_candidates(
             "want to visit family in india"

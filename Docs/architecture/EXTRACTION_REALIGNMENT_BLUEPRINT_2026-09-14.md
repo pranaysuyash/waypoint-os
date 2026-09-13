@@ -692,3 +692,28 @@ seed record).
   Bangalore, ask "Starting from Bangalore itself, or somewhere else?",
   suggested_values=[Bangalore], can_infer=True);
 - ruff clean.
+
+
+---
+
+## Addendum 7 (2026-09-14): family-visit subordinate case — RATIFIED: keep as-is
+
+Owner decision (2026-09-14, in discussion of the VFR promotion wave):
+
+**"SE Asia trip, might visit family in Chennai" keeps promoting Chennai as
+a co-equal destination candidate.** No secondary-destination tier.
+
+Options considered:
+1. *Keep co-equal (ratified)* — honest semantics (the customer would visit
+   both); the multi-stop cost path already handles multiple candidates.
+2. *Secondary tier* — rejected: adds packet schema (a `secondary` flag or
+   parallel list) with no degraded consumer. Standing bar: schema is added
+   only when something downstream is demonstrably worse without it.
+
+Reopen trigger: if the proposal compiler is observed producing noisy
+itineraries from co-equal family stops, revisit with that run evidence —
+the tier gets built against a real consumer at that point.
+
+Related: origin-marker semantics (Addendum 6) are the model here — the
+extraction layer states what was said, downstream layers decide what it
+is worth. "Secondary" is a ranking concern, not an extraction concern.
