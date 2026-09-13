@@ -78,3 +78,37 @@ class TestTravelerBinding:
             assert "budget" not in bundle.lower(), "budget leaked into traveler"
             assert "party" not in bundle.lower(), "party leaked into traveler"
 
+
+class TestDecisionDownstream:
+    """Phase 3b downstream: per-traveler constraints surface as decision
+    risk flags (advisor-visible), and occasion anchors become coverage
+    requirements."""
+
+    def test_safety_constraint_becomes_risk_flag(self):
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(THREAD)])
+        from src.intake.decision import generate_risk_flags
+        risks = generate_risk_flags(packet, "discovery", None)
+        safety = [r for r in risks if r.get("flag") == "traveler_safety_constraint"]
+        assert safety, f"no traveler_safety_constraint in {[r.get('flag') for r in risks]}"
+        assert "Meera" in safety[0]["message"]
+        assert safety[0]["severity"] == "high"
+
+    def test_occasion_becomes_coverage_requirement(self):
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(THREAD)])
+        from src.intake.decision import generate_risk_flags
+        risks = generate_risk_flags(packet, "discovery", None)
+        occasion = [r for r in risks if r.get("flag") == "traveler_occasion_anchor"]
+        assert occasion, "no traveler_occasion_anchor risk flag"
+        assert "Meera" in occasion[0]["message"]
+        assert "april 14" in occasion[0]["message"]
+
+    def test_group_facts_not_double_flagged(self):
+        """Budget scope stays a packet fact — no traveler-safety flag may
+        reference the group budget (attribution contract)."""
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(THREAD)])
+        from src.intake.decision import generate_risk_flags
+        risks = generate_risk_flags(packet, "discovery", None)
+        for r in risks:
+            if r.get("flag") == "traveler_safety_constraint":
+                assert "3.5" not in r["message"] and "budget" not in r["message"].lower()
+

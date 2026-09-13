@@ -87,15 +87,17 @@ def extract_speaker_segments(text: str) -> List[Dict[str, Any]]:
             continue
 
         # 1) Forwarded header (most specific — checked before chat lines so
-        # "[forwarded voice note from X]:" isn't read as speaker "forwarded
-        # voice note from X").
+        # "[forwarded voice note from X]: <inline text>" keeps its inline
+        # content as the first attributed line instead of dropping it).
         header = _HEADER_RE.match(stripped)
         if header:
             speaker = _clean_name(header.group(1))
             if speaker:
                 flush()
                 current_speaker, current_lines = speaker, []
-                # The header itself carries no facts; following lines do.
+                inline = stripped[header.end():].strip()
+                if inline:
+                    current_lines.append(inline)
                 continue
 
         # 2) Chat-dump line: "[priya]: text"
@@ -148,8 +150,21 @@ def build_travelers(text: str) -> List[Dict[str, Any]]:
             travelers.append(entry)
 
         for constraint in intent.get("hard_constraints") or []:
-            if constraint not in entry["constraints"]:
-                entry["constraints"].append(constraint)
+            # Asymmetric containment dedup (Sim #2): "NO HEIGHTS" (chat) vs
+            # "fear of heights" (self-ID) — keep whichever is MORE
+            # informative. A new constraint subsumed by an existing one is
+            # skipped; an existing one subsumed by the new one is replaced.
+            kept: List[str] = []
+            subsumed = False
+            for existing in entry["constraints"]:
+                if constraint in existing:
+                    subsumed = True  # existing is more informative — keep it
+                elif existing in constraint:
+                    continue  # new is more informative — drop existing
+                kept.append(existing)
+            if not subsumed:
+                kept.append(constraint)
+            entry["constraints"] = kept
         if intent.get("meal_preferences") and not entry["meal_preferences"]:
             entry["meal_preferences"] = intent["meal_preferences"]
         for pref in intent.get("soft_preferences") or []:

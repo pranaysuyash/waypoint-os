@@ -1283,6 +1283,45 @@ def generate_risk_flags(
                             "message": f"Toddler ({min(young_ages)}yo) — flag pacing and transfer complexity",
                         })
 
+    # --- TRAVELER-ATTRIBUTED CONSTRAINTS (Phase 3b downstream, FND-0275) ---
+    # Per-person constraints from the travelers[] binding surface as
+    # advisor-visible risks so safety constraints (fear of heights, dietary)
+    # and occasion anchors survive into planning. Emitted once per traveler
+    # regardless of the hybrid/original branch above.
+    travelers_slot = packet.facts.get("travelers")
+    if travelers_slot and travelers_slot.value:
+        for traveler in travelers_slot.value:
+            if not isinstance(traveler, dict):
+                continue
+            name = traveler.get("name") or "traveler"
+            safety = [
+                c for c in (traveler.get("constraints") or [])
+                if isinstance(c, str) and any(
+                    k in c.lower()
+                    for k in ("fear of", "heights", "wheelchair", "mobility",
+                              "vegan", "jain", "halal", "allerg")
+                )
+            ]
+            if safety:
+                risks.append({
+                    "flag": "traveler_safety_constraint",
+                    "severity": "high",
+                    "message": (
+                        f"{name}: {', '.join(safety)} — activities and lodging "
+                        f"must respect these personal constraints"
+                    ),
+                })
+            occasion = traveler.get("occasion")
+            if occasion and occasion.get("date"):
+                risks.append({
+                    "flag": "traveler_occasion_anchor",
+                    "severity": "medium",
+                    "message": (
+                        f"{name}: {occasion.get('type')} on {occasion['date']} — "
+                        f"the itinerary must cover this date"
+                    ),
+                })
+
     # --- CRITICAL DOCUMENT RISKS: Always check (not in hybrid engine) ---
     passport = packet.facts.get("passport_status")
     visa = packet.facts.get("visa_status")

@@ -730,6 +730,9 @@ def _normalize_constraint(raw: str) -> str:
 # headword keeps real negations ("no cable cars") while dropping these.
 _NEGATION_KNOWLEDGE_HEADWORDS = frozenset({
     "idea", "ideas", "clue", "notion", "recollection",
+    # Idiom fragments: "no matter what" is emphasis, not a constraint
+    # (Sim #2, Dev: "the trip needs to cover april 14 no matter what").
+    "matter", "matter what", "doubt", "question",
 })
 
 
@@ -3066,7 +3069,6 @@ class ExtractionPipeline:
             flights_clauses.append((m.group(0), original_span))
         if flights_clauses:
             explicit_resolved = False
-            has_unresolved = False
             first_unresolved_original: Optional[str] = None
             for clause_lower, clause_original in flights_clauses:
                 explicit_resolution = re.search(
@@ -3083,8 +3085,6 @@ class ExtractionPipeline:
                 if explicit_resolution and not unresolved_marker:
                     explicit_resolved = True
                     break
-                if unresolved_marker:
-                    has_unresolved = True
                 if first_unresolved_original is None:
                     first_unresolved_original = clause_original
             if not explicit_resolved and flights_clauses:
@@ -3744,15 +3744,29 @@ class ExtractionPipeline:
     # ------------------------------------------------------------------
 
     def _identify_unknowns(self, packet: CanonicalPacket) -> None:
-        """Mark expected MVB fields that are not present."""
+        """Mark expected MVB fields that are not present.
+
+        T-O2 (ontology v2): each unknown carries its required_for stage gates
+        (TS-07 classifier) in notes, so NEEDS_INFORMATION renders per-stage
+        blockers ("blocking for booking") instead of a flat boolean list.
+        """
+        from .validation import classify_missing_fields
+
         discovery_mvb = [
             "destination_candidates", "origin_city", "date_window",
             "party_size", "budget_raw_text", "trip_purpose",
         ]
+        classified = classify_missing_fields(packet)
         existing_unknown_fields = {u.field_name for u in packet.unknowns}
         for field_name in discovery_mvb:
             if (
                 field_name not in packet.facts
                 and field_name not in existing_unknown_fields
             ):
-                packet.add_unknown(field_name, "not_present_in_source")
+                info = classified.get(field_name) or {}
+                required_for = info.get("required_for") or []
+                note = (
+                    f"required_for: {', '.join(required_for)} "
+                    f"[{info.get('class', 'OPTIONAL')}]" if required_for else None
+                )
+                packet.add_unknown(field_name, "not_present_in_source", notes=note)
