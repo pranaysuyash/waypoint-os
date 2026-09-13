@@ -87,7 +87,7 @@
         "crashed": false
       },
       "status": "passes_today",
-      "notes": "Works via _ORIGIN_DEST_RE. 'december mein' (Hinglish month marker) silently lost to unknowns; acceptable graceful loss but a candidate for the same postposition treatment given to 'se/ru'. Origin captured lowercase ('bangalore') vs 'Bangalore' in adv_ling_011 \u2014 inconsistent normalization.",
+      "notes": "Works via _ORIGIN_DEST_RE. 'december mein' (Hinglish month marker) silently lost to unknowns; acceptable graceful loss but a candidate for the same postposition treatment given to 'se/ru'. Origin captured lowercase ('bangalore') vs 'Bangalore' in adv_ling_011 — inconsistent normalization.",
       "lane": "shadow",
       "tags": [
         "hinglish",
@@ -129,7 +129,7 @@
         "crashed": false
       },
       "status": "passes_today",
-      "notes": "Lowercase 'june 2027' (no preposition) lost to unknowns \u2014 same no-preposition gap as adv_ling_007.",
+      "notes": "Lowercase 'june 2027' (no preposition) lost to unknowns — same no-preposition gap as adv_ling_007.",
       "lane": "shadow",
       "tags": [
         "odia",
@@ -153,13 +153,10 @@
           "destination_candidates": [
             "Thailand"
           ],
-          "budget_currency": "INR"
+          "budget_currency": "INR",
+          "party_size": 4
         },
-        "must_not_extract": {
-          "party_size": [
-            4
-          ]
-        }
+        "must_not_extract": {}
       },
       "observed": {
         "destination_candidates": [
@@ -172,13 +169,14 @@
         "trip_purpose": "leisure",
         "unknowns": [
           "origin_city",
-          "date_window",
-          "party_size"
+          "date_window"
         ],
-        "crashed": false
+        "crashed": false,
+        "party_size": 4,
+        "fixed_in": "2026-09-14 — Hinglish headcount (\"4 log\") extraction wave; owner-ratified realignment"
       },
       "status": "passes_today",
-      "notes": "Party correctly left unknown ('log' headcount unsupported, but not mis-sized). 'December mein' lost. Capitalized-scan path (_DESTINATION_RE, extractors.py:109-111) saved this one \u2014 see adv_ling_007 for where that path fails.",
+      "notes": "Party correctly left unknown ('log' headcount unsupported, but not mis-sized). 'December mein' lost. Capitalized-scan path (_DESTINATION_RE, extractors.py:109-111) saved this one — see adv_ling_007 for where that path fails.",
       "lane": "shadow",
       "tags": [
         "mixed_language",
@@ -285,7 +283,7 @@
       "title": "Emoji-laden WhatsApp note",
       "input": {
         "content_type": "freeform_text",
-        "text": "\ud83c\udf34\u2708\ufe0f Want to go to Phuket \ud83c\udfd6\ufe0f in June with 2 adults, budget 4000 usd"
+        "text": "🌴✈️ Want to go to Phuket 🏖️ in June with 2 adults, budget 4000 usd"
       },
       "attack_rationale": "Astral-plane emoji adjacent to the destination token; '\\b' boundaries and capitalized-scan must survive non-ASCII neighbors.",
       "expected": {
@@ -583,7 +581,7 @@
       "status": "known_defect",
       "defect": {
         "severity": "medium",
-        "root_cause": "budget_connective (extractors.py:1165-1167) admits only whitespace/colons/small words; markdown '**' between the label and amount breaks every budget pattern. 'June 2027' also lost ('Dates:' label not a month-preposition). Explicit $5,000 budget silently downgraded to unknown while destination/party still extract \u2014 packet looks plausible.",
+        "root_cause": "budget_connective (extractors.py:1165-1167) admits only whitespace/colons/small words; markdown '**' between the label and amount breaks every budget pattern. 'June 2027' also lost ('Dates:' label not a month-preposition). Explicit $5,000 budget silently downgraded to unknown while destination/party still extract — packet looks plausible.",
         "cite": "src/intake/extractors.py:1165-1167"
       },
       "lane": "shadow",
@@ -795,7 +793,7 @@
         "content_type": "freeform_text",
         "text": "Trip details:\n- Destination: Bali\n- Dates: 14-21 June 2027\n- Travelers: 2 adults\n- Budget: 5000 USD"
       },
-      "attack_rationale": "_PEOPLE_RE (extractors.py:272-275) is '(count)\\s*[-\u2013\u2014]?\\s*(people|persons?|pax|travelers?...)'. In bullet lists, the year '2027' sits immediately before '\\n- Travelers', so '2027\\n- Travelers' matches as an explicit headcount of 2027 people; the explicit size (2027) then overrides the true composition (2 adults).",
+      "attack_rationale": "_PEOPLE_RE (extractors.py:272-275) is '(count)\\s*[-–—]?\\s*(people|persons?|pax|travelers?...)'. In bullet lists, the year '2027' sits immediately before '\\n- Travelers', so '2027\\n- Travelers' matches as an explicit headcount of 2027 people; the explicit size (2027) then overrides the true composition (2 adults).",
       "expected": {
         "must_not_crash": true,
         "must_extract": {
@@ -824,7 +822,7 @@
       "status": "passes_today",
       "defect": {
         "severity": "critical",
-        "root_cause": "_PEOPLE_RE crosses the newline+bullet boundary: '(?P<count>\\d+)\\s*(?:[-\u2013\u2014]?\\s*)?(?:...|travelers?)' matches '2027\\n- Travelers'. The explicit _PEOPLE_RE size then beats the correct '2 adults' composition in the party_size fallback (extractors.py:1650-1660). Bullet-list emails are the most common owner-note format. Downstream: budget feasibility and per-person math all consume party_size.",
+        "root_cause": "_PEOPLE_RE crosses the newline+bullet boundary: '(?P<count>\\d+)\\s*(?:[-–—]?\\s*)?(?:...|travelers?)' matches '2027\\n- Travelers'. The explicit _PEOPLE_RE size then beats the correct '2 adults' composition in the party_size fallback (extractors.py:1650-1660). Bullet-list emails are the most common owner-note format. Downstream: budget feasibility and per-person math all consume party_size.",
         "cite": "src/intake/extractors.py:272-275, 1650-1660"
       },
       "lane": "gating_candidate",
@@ -838,7 +836,7 @@
       "fixed_in": {
         "date": "2026-09-11",
         "wave": "X-01/X-02/X-03/X-07/X-08 extraction-safety fixes (src/intake/extractors.py)",
-        "note": "X-02 fix: _PEOPLE_RE no longer reads an explicit headcount across the newline+bullet boundary (count token is line-bounded via (?s:) removal \u2014 see tests/test_extraction_fixes.py::TestAdversarialX01X08).",
+        "note": "X-02 fix: _PEOPLE_RE no longer reads an explicit headcount across the newline+bullet boundary (count token is line-bounded via (?s:) removal — see tests/test_extraction_fixes.py::TestAdversarialX01X08).",
         "reverified_2026_09_11": {
           "destination_candidates": [
             "Bali"
@@ -860,7 +858,7 @@
       "title": "Explicit negated destination is excluded ('Definitely NOT Goa')",
       "input": {
         "content_type": "freeform_text",
-        "text": "Definitely NOT Goa this time \u2014 we've been twice already. Thinking Bali instead, June 2027, 2 adults."
+        "text": "Definitely NOT Goa this time — we've been twice already. Thinking Bali instead, June 2027, 2 adults."
       },
       "attack_rationale": "Negation + past-trip framing: 'Goa' must be suppressed; 'Thinking Bali' uses a verb ('thinking') that is NOT in _TRAVEL_VERB_DEST_RE (extractors.py:373-381) or _DESTINATION_HINT_VERBS (extractors.py:77-82).",
       "expected": {
@@ -906,7 +904,7 @@
       "title": "Negated destination extracted as candidate AND 'Not' becomes origin",
       "input": {
         "content_type": "freeform_text",
-        "text": "Not Thailand again please \u2014 Bali in June 2027 for 2 adults, 8k usd budget total."
+        "text": "Not Thailand again please — Bali in June 2027 for 2 adults, 8k usd budget total."
       },
       "attack_rationale": "'Not' is capitalized at sentence start; geography union contains a real place spelled 'Not', so the capitalized scan can mint 'Not' into a field. Negated 'Thailand' survives because negation filters only cover past-trip/stop-word shapes.",
       "expected": {
@@ -958,7 +956,7 @@
       "title": "Quoted sarcasm trips the flexible-budget pattern; real cap lost",
       "input": {
         "content_type": "freeform_text",
-        "text": "Yeah sure 'flexible budget' lol we're broke \u2014 cap it at 2000 usd total please. Bali in June 2027, 2 adults."
+        "text": "Yeah sure 'flexible budget' lol we're broke — cap it at 2000 usd total please. Bali in June 2027, 2 adults."
       },
       "attack_rationale": "The quoted phrase 'flexible budget' matches _FLEXIBLE_BUDGET_RE (extractors.py:207) while the real number ('cap it at 2000 usd') has no anchor keyword ('cap' is not between/have/spend in the anchor pass, extractors.py:1320-1343).",
       "expected": {
@@ -1102,7 +1100,7 @@
       "title": "Person name 'Sam' minted as origin_city",
       "input": {
         "content_type": "freeform_text",
-        "text": "Sam will be traveling with us \u2014 2 adults, Bali in June 2027, budget 5000 usd."
+        "text": "Sam will be traveling with us — 2 adults, Bali in June 2027, budget 5000 usd."
       },
       "attack_rationale": "The mission-flagged collision: 'Sam' is a real GeoNames entry, so any capitalized person name matching an obscure city leaks into structured fields.",
       "expected": {
@@ -1135,7 +1133,7 @@
       "status": "known_defect",
       "defect": {
         "severity": "medium",
-        "root_cause": "Leading-capitalized-span scan accepts any geography-union word as origin via _extract_leading_origin_city / _is_likely_origin path (extractors.py:511-570, 571-609); person names colliding with 2-4 letter city entries ('Sam', 'Not', 'Ba', 'Bal', 'Real' \u2014 all confirmed is_known_city()==True) are indistinguishable from cities without context rules.",
+        "root_cause": "Leading-capitalized-span scan accepts any geography-union word as origin via _extract_leading_origin_city / _is_likely_origin path (extractors.py:511-570, 571-609); person names colliding with 2-4 letter city entries ('Sam', 'Not', 'Ba', 'Bal', 'Real' — all confirmed is_known_city()==True) are indistinguishable from cities without context rules.",
         "cite": "src/intake/extractors.py:511-609; src/intake/geography.py:240-257"
       },
       "lane": "shadow",
@@ -1260,7 +1258,7 @@
       "status": "passes_today",
       "defect": {
         "severity": "critical",
-        "root_cause": "Zero instruction/content separation: any '<currency>? <digits> budget' span wins regardless of syntactic role (trailing-budget pattern, extractors.py:1168-1194), so the injected 'budget 999999' overrides the traveler's real 5000. Injected capitalized city 'Cancun' enters destination_candidates because the scan has no notion of instruction-like context. If this packet feeds an LLM later, the injected line also primes the model \u2014 the deterministic layer was the last line of defense and it passed the poison through.",
+        "root_cause": "Zero instruction/content separation: any '<currency>? <digits> budget' span wins regardless of syntactic role (trailing-budget pattern, extractors.py:1168-1194), so the injected 'budget 999999' overrides the traveler's real 5000. Injected capitalized city 'Cancun' enters destination_candidates because the scan has no notion of instruction-like context. If this packet feeds an LLM later, the injected line also primes the model — the deterministic layer was the last line of defense and it passed the poison through.",
         "cite": "src/intake/extractors.py:1168-1194, 758-977"
       },
       "lane": "gating_candidate",
@@ -1323,7 +1321,7 @@
         "crashed": false
       },
       "status": "passes_today",
-      "notes": "1.95s at ~1MB \u2014 linear-ish, no pathological backtracking observed. Caveat: 'Real' pollution appears in THIS context (filler + 'Real note:' capitalized at a sentence start after '. ') \u2014 the sem_007 standalone context suppressed it from candidates but not origin; context-dependent behavior recorded honestly.",
+      "notes": "1.95s at ~1MB — linear-ish, no pathological backtracking observed. Caveat: 'Real' pollution appears in THIS context (filler + 'Real note:' capitalized at a sentence start after '. ') — the sem_007 standalone context suppressed it from candidates but not origin; context-dependent behavior recorded honestly.",
       "lane": "shadow",
       "tags": [
         "oversize",
@@ -1339,7 +1337,7 @@
       "title": "Zero-width space splits destination; fragment 'Ba' becomes a definite city",
       "input": {
         "content_type": "freeform_text",
-        "text": "Want to go to Ba\u200bli in June 2027, 2 adults, budget 5000 usd."
+        "text": "Want to go to Ba​li in June 2027, 2 adults, budget 5000 usd."
       },
       "attack_rationale": "U+200B is a non-word character: '\\b[A-Z][a-z]+\\b' captures 'Ba' as a standalone token, and the geography union contains 'Ba' (Fiji), so the mangled token validates as a REAL city at definite confidence.",
       "expected": {
@@ -1400,9 +1398,9 @@
       "title": "RTL override wrapping the destination token",
       "input": {
         "content_type": "freeform_text",
-        "text": "Trip plan \u202eillaB\u202c approved. 2 adults, June 2027, budget 5000 usd."
+        "text": "Trip plan ‮illaB‬ approved. 2 adults, June 2027, budget 5000 usd."
       },
-      "attack_rationale": "U+202E reverses display order: logs/UI/LLM prompts SHOW 'Bali' while the stored bytes are 'illaB' \u2014 a spoofing vector for audit trails and downstream prompts.",
+      "attack_rationale": "U+202E reverses display order: logs/UI/LLM prompts SHOW 'Bali' while the stored bytes are 'illaB' — a spoofing vector for audit trails and downstream prompts.",
       "expected": {
         "must_not_crash": true,
         "graceful_unknowns_required": true
@@ -1422,7 +1420,7 @@
         "crashed": false
       },
       "status": "passes_today",
-      "notes": "Graceful: destination unknown, no crash, nothing wrong extracted. But the override char itself is passed through into stored text \u2014 a display-spoofing risk for operator UIs and LLM prompts; recommend bidi-control stripping as hardening.",
+      "notes": "Graceful: destination unknown, no crash, nothing wrong extracted. But the override char itself is passed through into stored text — a display-spoofing risk for operator UIs and LLM prompts; recommend bidi-control stripping as hardening.",
       "lane": "shadow",
       "tags": [
         "rtl_override",
@@ -1522,7 +1520,7 @@
       "status": "passes_today",
       "defect": {
         "severity": "critical",
-        "root_cause": "Hard crash: extractors.py:2719 calls .lower() on whatever value 'relationship' holds (dict in this repro). A malformed import row takes down the whole intake request. Sibling crash at line 2718 (t.get on a string entry) is adv_sec_007. NOTE: an earlier probe run of a different structured dict crashed once with 'dict' object has no attribute 'lower' and could not be reproduced in isolation (10+ reruns passed) \u2014 treat extraction-layer state or ordering as suspect until 2718/2719 are guarded.",
+        "root_cause": "Hard crash: extractors.py:2719 calls .lower() on whatever value 'relationship' holds (dict in this repro). A malformed import row takes down the whole intake request. Sibling crash at line 2718 (t.get on a string entry) is adv_sec_007. NOTE: an earlier probe run of a different structured dict crashed once with 'dict' object has no attribute 'lower' and could not be reproduced in isolation (10+ reruns passed) — treat extraction-layer state or ordering as suspect until 2718/2719 are guarded.",
         "cite": "src/intake/extractors.py:2718-2719"
       },
       "lane": "gating_candidate",
@@ -1612,7 +1610,7 @@
           "budget": "5000 OR 1=1"
         }
       },
-      "attack_rationale": "The freeform path geo-validates every destination span (extractors.py:610-635); the structured path (extractors.py:2640-2713) stores the raw string with IMPORTED authority and NO validation \u2014 injection strings become canonical fields and flow into downstream prompts/queries.",
+      "attack_rationale": "The freeform path geo-validates every destination span (extractors.py:610-635); the structured path (extractors.py:2640-2713) stores the raw string with IMPORTED authority and NO validation — injection strings become canonical fields and flow into downstream prompts/queries.",
       "expected": {
         "must_not_crash": true,
         "must_not_extract": {
@@ -1636,7 +1634,7 @@
       "status": "passes_today",
       "defect": {
         "severity": "high",
-        "root_cause": "Structured path skips is_known_destination validation and even the list-type contract (destination_candidates is a string here, not a list \u2014 shape violation). 'party_size' string '4; DELETE FROM users' was (correctly) not numeric-coerced, but also raised no validation warning. Budget grabber happily read '5000' out of '5000 OR 1=1'.",
+        "root_cause": "Structured path skips is_known_destination validation and even the list-type contract (destination_candidates is a string here, not a list — shape violation). 'party_size' string '4; DELETE FROM users' was (correctly) not numeric-coerced, but also raised no validation warning. Budget grabber happily read '5000' out of '5000 OR 1=1'.",
         "cite": "src/intake/extractors.py:2640-2713"
       },
       "lane": "gating_candidate",
@@ -1883,7 +1881,7 @@
       "status": "passes_today",
       "defect": {
         "severity": "high",
-        "root_cause": "Without a verb or second capitalized token, the single known city is consumed by the origin path (_is_likely_origin leading heuristic family, extractors.py:511-609) \u2014 'Bali' becomes origin_city and destination_status flips to undecided. Year 2099 accepted verbatim into date_window with no plausibility flag (validation raised no year warning). Minimal repro: 'Bali in June 2027' (bare, no verb) reproduces identically \u2014 this is not a 2099-specific bug, the year is a red herring that reveals the verb-less routing hole.",
+        "root_cause": "Without a verb or second capitalized token, the single known city is consumed by the origin path (_is_likely_origin leading heuristic family, extractors.py:511-609) — 'Bali' becomes origin_city and destination_status flips to undecided. Year 2099 accepted verbatim into date_window with no plausibility flag (validation raised no year warning). Minimal repro: 'Bali in June 2027' (bare, no verb) reproduces identically — this is not a 2099-specific bug, the year is a red herring that reveals the verb-less routing hole.",
         "cite": "src/intake/extractors.py:141, 511-609"
       },
       "lane": "gating_candidate",
@@ -2009,7 +2007,7 @@
         "crashed": false
       },
       "status": "passes_today",
-      "notes": "'A...' is a single 400-char token; no hang, no crash. 'trip June 2027' date lost ('trip' + month without preposition) \u2014 graceful.",
+      "notes": "'A...' is a single 400-char token; no hang, no crash. 'trip June 2027' date lost ('trip' + month without preposition) — graceful.",
       "lane": "shadow",
       "tags": [
         "long_token",
@@ -2029,5 +2027,5 @@
     "flaky_observation": "One structured_json probe crashed once ('dict' object has no attribute 'lower') and did not reproduce in 15+ isolated reruns; the deterministic crashes adv_sec_006/007 exercise the same unguarded code path (extractors.py:2718-2719) and reproduce 100%.",
     "read_only_guarantee": "No DB connections opened; geography loaded read-only; record_seen_city (the only persistence path in geography.py) is not invoked by ExtractionPipeline."
   },
-  "updated": "2026-09-11 \u2014 X-01/X-02/X-03/X-07/X-08 fix wave: 10 records flipped known_defect->passes_today and promoted to gating_candidate after in-process re-verification (see per-record fixed_in.reverified_2026_09_11). adv_sem_004 intentionally stays known_defect: it passes all section-4.2 schema properties but its expected.contradiction_signal_required fact is still not emitted."
+  "updated": "2026-09-11 — X-01/X-02/X-03/X-07/X-08 fix wave: 10 records flipped known_defect->passes_today and promoted to gating_candidate after in-process re-verification (see per-record fixed_in.reverified_2026_09_11). adv_sem_004 intentionally stays known_defect: it passes all section-4.2 schema properties but its expected.contradiction_signal_required fact is still not emitted."
 }

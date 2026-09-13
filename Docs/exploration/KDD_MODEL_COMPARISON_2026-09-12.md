@@ -140,6 +140,11 @@ re-pull via `ollama pull <id>`.
 ## Re-pull recipes (any deleted/blocked model)
 
 ```bash
+# 2026-09-13: the runner now auto-fills missing keys from .env (shell env
+# wins). The dead ~/.zshenv key that silently 401-fallbacked a whole run
+# has been removed; the explicit export below is only needed for a
+# non-repo key.
+# export OPENAI_API_KEY=$(grep -m1 '^OPENAI_API_KEY=' .env | cut -d= -f2)
 ollama pull <model-id>
 .venv/bin/python scripts/run_hybrid_kdd_experiment.py --skip-baseline \
   --models "local-ollama/<model-id>" --tag "_loc_<safe-name>"

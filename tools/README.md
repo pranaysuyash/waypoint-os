@@ -844,3 +844,35 @@ table block in `Docs/exploration/KDD_MODEL_COMPARISON_2026-09-12.md`
 **Notes:** add new runs to the `MANIFEST` list in the script (id, tier, size,
 cost, status, run file, arm, notes), then regenerate. Grades are computed
 live via `grade_kdd_flags.py` logic against the ground-truth labels.
+
+## sim2_acceptance_probe.py
+
+**Purpose:** Reusable fresh-acceptance gate for the Sim #2 (Family Summit)
+defect classes plus the extraction-realignment wave's new contracts, run
+against the real in-process pipeline. Origin-fabrication, budget-scope
+overwrite, D-02 misfire, per-traveler attribution, anniversary survival,
+group-chat-dump attribution, direction intent ("X side"), VFR promotion,
+and past-trip memory/history-informed asks.
+
+**Usage:**
+```bash
+.venv/bin/python tools/sim2_acceptance_probe.py
+```
+
+**Output:** per-check PASS/FAIL lines with evidence, exit 0 only when all
+checks pass. Run after any change to `src/intake/extractors.py`,
+`src/intake/attribution.py`, or `src/intake/decision.py`.
+
+**Source of truth:** `Docs/sims/SIM2_FAMILY_SUMMIT_RESULTS_2026-09-12.md`
+(defect classes) and `Docs/architecture/EXTRACTION_REALIGNMENT_BLUEPRINT_2026-09-14.md`
+(new contracts). Note the verbatim persona scripts are embedded as constants
+so the probe stays deterministic and self-contained.
+
+**Example:**
+```
+== Sim #2 fresh acceptance probe ==
+  [PASS] 1. origin fabrication dead: origin_city=None
+  ...
+9/9 checks passed
+ALL GREEN
+```

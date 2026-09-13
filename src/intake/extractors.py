@@ -48,6 +48,7 @@ from .geography import (
     COUNTRY_CANONICAL_ALIASES,
     get_city_country,
     get_country_iso_code,
+    get_macro_region,
     is_known_city,
     is_known_destination,
 )
@@ -295,6 +296,70 @@ def _side_is_trip_compound(context_after_postposition: str) -> bool:
     return bool(
         _SIDE_TRIP_NOUN_RE.search(context_after_postposition[:40])
     )
+
+# Past-trip mentions are memories, never current destination intent:
+# "we went to japan, korea last year and loved it" must not open the
+# destination. The span runs from the past-trip verb to the first
+# past-time cue so suppression stays clause-scoped. Consumed by
+# _is_past_trip_mention (guard) and _extract_past_trip_places (capture).
+_PAST_TRIP_CLAUSE_RE = re.compile(
+    r"\b(?:went|visited|been|traveled|travelled)\b[^.!?;]{0,120}?"
+    r"(?:last\s+(?:year|month|week|summer|winter|spring|fall|autumn)"
+    r"|\b(?:19|20)\d{2}\b|\bago\b)",
+    re.IGNORECASE,
+)
+# Module-level (not per-call): the sweep consults this on every word, so
+# building it inside the function violated the constant-recreation rule.
+_SWEEP_STOP_WORDS = {
+    # English prepositions/conjunctions/articles/pronouns
+    "a", "an", "and", "as", "at", "be", "but", "by", "can", "de",
+    "do", "for", "from", "had", "has", "have", "he", "her", "him",
+    "his", "i", "if", "in", "is", "it", "its", "la", "le", "like",
+    "me", "my", "no", "not", "of", "on", "or", "our", "out", "per",
+    "she", "so", "the", "their", "them", "then", "there", "they",
+    "this", "to", "up", "us", "was", "we", "were", "will", "with",
+    "would", "you", "your", "off", "own", "same", "than", "too",
+    "very", "just", "also", "now", "get", "got", "one", "two",
+    "all", "any", "each", "few", "more", "most", "other", "some",
+    "such", "only", "about", "between", "through", "after", "before",
+    "being", "both", "did", "does", "doing", "during", "here", "how",
+    "into", "itself", "nor", "once", "over", "should", "under",
+    "until", "what", "when", "where", "which", "while", "who", "why",
+    "am", "are", "been", "was", "were", "been", "have", "having",
+    # Gen Z / casual
+    "wanna", "gonna", "trynna", "fr", "yall", "vibing", "vibe",
+    "lit", "the move", "bussin", "honestly", "literally",
+    # Hinglish
+    "chahiye", "log", "logon", "mein", "yahan", "wahan", "kar",
+    "ka", "ki", "ke", "hai", "hona", "jaldi", "accha", "theek",
+    "bhai", "yaar", "niklenge", "dosta",
+    # Travel noise
+    "trip", "travel", "vacation", "holiday", "tour", "visit",
+    "pax", "ppl", "people", "person", "adults", "adult", "kids",
+    "children", "child", "family", "friends", "friend", "couple",
+    "couples", "group", "budget", "total", "days", "day", "nights",
+    "night", "week", "weeks", "dates", "date", "flexible",
+    "including", "excluding", "needed", "want", "needs", "must",
+    "cover", "max", "min", "hard", "cap", "stuff", "things",
+    "dinner", "lunch", "food", "meal", "meals", "veg", "vegan",
+    # GeoNames collision words — the 590k-city database contains
+    # villages named after common English words; keep them out of
+    # the sweep. (True "Side, Turkey" positives go through the
+    # pattern paths, not this fallback.) Verified colliders from the
+    # KDD gate run 2026-09-13: "any time" swept up the village of
+    # Time and fabricated a destination on destination-less notes.
+    "need", "old", "side", "parks", "top", "set", "lie", "bad",
+    "ever", "let", "long", "made", "make", "man", "many", "much",
+    "part", "put", "say", "see", "since", "still", "tell", "time",
+    "turn", "well", "yes", "yet",
+    # Amenity/preference nouns — same collision class ("resort with a
+    # pool" swept up Pool, UK). Preference prose belongs to the
+    # interests lane; compound names (bigrams) stay unfiltered.
+    "bay", "bridge", "casino", "castle", "cathedral", "cave", "church",
+    "fort", "garden", "gym", "harbor", "hill", "island", "lake",
+    "market", "mountain", "park", "pool", "port", "ski", "snow",
+    "spa", "sun", "sunrise", "sunset", "temple", "valley", "yoga",
+}
 _MAYBE_RE = re.compile(r"\bmaybe\s+(\w+)", re.IGNORECASE)
 # "maybe somewhere like X" / "somewhere like X" — negative lookahead stops at
 # common trailing prepositions ("for", "with", etc.) to prevent over-capturing
@@ -413,8 +478,20 @@ _NUMBER_WORDS = {
     "eight": 8,
     "nine": 9,
     "ten": 10,
+    "ek": 1,
+    "do": 2,
+    "teen": 3,
+    "char": 4,
+    "chaar": 4,
+    "paanch": 5,
+    "panch": 5,
+    "chhe": 6,
+    "saat": 7,
+    "aath": 8,
+    "nau": 9,
+    "das": 10,
 }
-_COUNT_TOKEN_RE = r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)"
+_COUNT_TOKEN_RE = r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|ek|do|teen|cha{1,2}r|pa{1,2}nch|chhe|saat|aath|nau|das)"
 
 # People count patterns
 _ADULTS_RE = re.compile(rf"({_COUNT_TOKEN_RE})\s+adults?", re.IGNORECASE)
@@ -428,7 +505,7 @@ _PEOPLE_RE = re.compile(
     # "guests?" is a party count ("25 guests from Delhi"), but "guest
     # list/house/room/book/bedroom/bathroom" prose is not — the lookahead
     # keeps those clean. _GUEST_PROSE_SUFFIXES below is the shared source.
-    r"(?:people|persons?|pax|travelers?|travellers?"
+    r"(?:people|persons?|pax|travelers?|travellers?|ppl|log|loga|jan|bande|bando"
     r"|guests?(?!\s*(?:lists?|houses?|rooms?|books?|bed(?:room)?s?|bath(?:room)?s?)\b))",
     re.IGNORECASE,
 )
@@ -446,11 +523,11 @@ _GROUP_SIZE_RE = re.compile(rf"(?:family|group|party)\s+(?:\w+\s*)?(?:of\s+)?({_
 # "the four of us", bare "2 friends". Companion counts add to adults; a
 # whole-group count is evaluated as a max-fallback like the family/group path.
 _SELF_PLUS_FRIENDS_RE = re.compile(
-    rf"\b(?P<self>me|us)\s+(?:and|plus|\+)\s+(?P<count>{_COUNT_TOKEN_RE})\s+(?:friends?|others?|colleagues?|buddies?|mates?|people|persons?|travelers?|travellers?)\b",
+    rf"\b(?P<self>me|us|myself|i)\s+(?:and|n|&|\+|\bplus\b)\s+(?P<count>{_COUNT_TOKEN_RE})\s+(?:friends?|others?|colleagues?|buddies?|mates?|people|persons?|ppl|log|travelers?|travellers?)\b",
     re.IGNORECASE,
 )
 _FRIENDS_RE = re.compile(
-    rf"\b(?P<count>{_COUNT_TOKEN_RE})\s+(?:friends?|others?|colleagues?|buddies?|mates?)\b",
+    rf"\b(?P<count>{_COUNT_TOKEN_RE})\s+(?:friends?|others?|colleagues?|buddies?|mates?|ppl|log)\b",
     re.IGNORECASE,
 )
 _OF_US_RE = re.compile(
@@ -467,10 +544,12 @@ _PARTY_GROUP_SIGNAL_RE = re.compile(
     r"\b\d+\s+(?:friends?|others?|buddies?|mates?|colleagues?"
     r"|cousins?|siblings?|nephews?|nieces?|aunts?|uncles?|grandparents?"
     r"|kids?|children|sons?|daughters?|parents?|guests?|adults?|teens?|teenagers?"
-    r"|families?|classmates?|roommates?|flatmates?)\b"
-    r"|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+of\s+us\b"
+    r"|families?|classmates?|roommates?|flatmates?|ppl|log)\b"
+    r"|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|ek|do|teen|cha{1,2}r|pa{1,2}nch|\d+)\s+of\s+us\b"
     r"|\bparty\s+of\s+\w+"
-    r"|\bcouple\s+of\s+(?:friends|colleagues|people)\b",
+    r"|\bcouple\s+of\s+(?:friends|colleagues|people|ppl)\b"
+    r"|\b(?:the\s+)?(?:squad|gang|boys|girls|crew)\b"
+    r"|\b(?:one|some)\s+of\s+us\b",
     re.IGNORECASE,
 )
 
@@ -770,9 +849,13 @@ _PAST_TRIP_INDICATORS = frozenset({
 def _is_past_trip_mention(sentence: str, dest_match: str) -> bool:
     """Check if a destination mention is in the context of a past trip (not current intent).
 
-    Uses a narrow clause-level check: looks for past-trip indicators in the
-    same clause as the destination (comma-delimited or sentence-delimited),
-    not just a broad character window.
+    Two complementary checks, so both paths (pattern extraction and the
+    broad sweep) share one implementation:
+    1. Clause-level: a past-trip indicator in the same comma/sentence clause
+       as the destination ("we went to japan").
+    2. Span-level: the destination sits between a past-trip verb and the
+       first past-time cue ("we went to japan, korea last year" — "korea"
+       shares the verb and the cue but not a clause with either).
     """
     lowered = sentence.lower()
     match_idx = lowered.find(dest_match.lower())
@@ -794,7 +877,50 @@ def _is_past_trip_mention(sentence: str, dest_match: str) -> bool:
     for indicator in _PAST_TRIP_INDICATORS:
         if indicator in clause_context:
             return True
-    return False
+    return any(
+        m.start() <= match_idx < m.end()
+        for m in _PAST_TRIP_CLAUSE_RE.finditer(lowered)  # span-level branch
+    )
+
+
+def _extract_past_trip_places(sentence: str) -> List[Dict[str, Any]]:
+    """Capture past-trip destinations as travel-history facts — memories,
+    never current intent. "We went to japan, korea last year and loved it"
+    yields [{place: Japan, ...}, {place: Korea, ...}] with the clause, a
+    coarse sentiment cue, and the macro region for preference inference
+    ("do they prefer East Asian destinations?")."""
+    places: List[Dict[str, Any]] = []
+    seen: Set[str] = set()
+    _POSITIVE_CUES = re.compile(
+        r"\b(loved|enjoyed|amazing|wonderful|great|beautiful|fantastic|had a blast)\b",
+        re.IGNORECASE,
+    )
+    for span_match in _PAST_TRIP_CLAUSE_RE.finditer(sentence):
+        span_text = span_match.group(0)
+        # Sentiment often trails the time cue ("… last year and loved it"),
+        # so look a bounded, sentence-bounded window past the span end too.
+        trailing = re.split(r"[.!?]", sentence[span_match.end():span_match.end() + 60])[0]
+        sentiment = "positive" if _POSITIVE_CUES.search(span_text + trailing) else None
+        for word_match in re.finditer(r"[a-zA-Z][a-zA-Z'-]{1,30}", span_text):
+            word_clean = word_match.group(0).strip("'-").lower()
+            if len(word_clean) < 3 or word_clean in _SWEEP_STOP_WORDS:
+                continue
+            # Country-level names ("korea") aren't GeoNames cities but are
+            # valid history places when a macro region resolves them.
+            region = get_macro_region(word_clean)
+            if not is_known_destination(word_clean) and not region:
+                continue
+            title = word_clean.title()
+            if title in seen:
+                continue
+            seen.add(title)
+            places.append({
+                "place": title,
+                "clause": span_text.strip(),
+                "sentiment": sentiment,
+                "region": region,
+            })
+    return places
 
 
 def _is_likely_origin(text: str, dest_match: str) -> bool:
@@ -832,7 +958,12 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
     if re.search(r"\b(origin(?:\s+city)?|departure(?:\s+city)?|from\s+city|departing\s+from)\s*:\s*$", label_window):
         return True
 
-    # Hinglish/Odia postposition after: "Bangalore se", "Bangalore ru", "Bangalore side"
+    # Hinglish/Odia postposition after: "Bangalore se", "Bangalore ru",
+    # "Bangalore side". A non-compound "side" marks a location REFERENCE
+    # ("we are bangalore side, plan something") — never a destination
+    # candidate. This is exclusion only: whether an origin FACT exists is
+    # decided by the origin writer's marker semantics (Option 3: bare
+    # "side" yields a hypothesis, "side se"/"se"/"ru" yield facts).
     context_after = lowered[match_idx + len(dest_match):match_idx + len(dest_match) + 15]
     side_postposition = _SE_RU_SIDE_RE.search(context_after)
     if side_postposition:
@@ -1100,7 +1231,64 @@ def _extract_city_set(text_lower: str, full_text: str) -> Optional[Tuple[List[st
     return None
 
 
+def _is_direction_side_reference(candidate: str, text_lower: str) -> bool:
+    """True when a candidate appears as "<candidate> side" — Indian English
+    for "that way / somewhere around <candidate>" (Pranay, 2026-09-14:
+    "side jana hai" = heading that direction, destination not committed).
+
+    "okinawa side trip?" stays a destination: the following trip-noun makes
+    "side" an adjective on the compound, not the direction marker.
+    """
+    pattern = re.compile(r"\b" + re.escape(candidate.lower()) + r"\s+side\b")
+    match = pattern.search(text_lower)
+    if not match:
+        return False
+    return not _SIDE_TRIP_NOUN_RE.search(text_lower[match.end():match.end() + 40])
+
+
+_SIDE_INTENT_CUES_RE = re.compile(
+    r"\b(?:jaana|jana|jao|jiba|jib|going|plan|planning|trip|travel|visit"
+    r"|chahiye|niklenge|ghumne|chale)\b",
+    re.IGNORECASE,
+)
+
+
+def _has_bare_side_direction_intent(text_lower: str) -> bool:
+    """True when a non-compound "<place> side" reference coexists with a
+    travel-intent cue. Upstream exclusion (via _is_likely_origin) removes
+    such a place from candidates before this layer — the direction intent
+    must still report OPEN, not undecided."""
+    for match in re.finditer(r"\b[a-z][a-z'-]+\s+side\b", text_lower):
+        if _SIDE_TRIP_NOUN_RE.search(text_lower[match.end():match.end() + 40]):
+            continue  # "okinawa side trip?" compound — real destination
+        if _SIDE_INTENT_CUES_RE.search(text_lower):
+            return True
+    return False
+
+
 def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional[str]]:
+    """Public extraction entry: applies the direction-reference guard
+    ("<place> side" never fabricates a destination) on top of the raw
+    extraction, then reports OPEN intent when the guard removed everything —
+    the direction is real customer intent, so the intake must ask
+    "whereabouts near <place>?" instead of committing or going silent."""
+    candidates, status, raw = _extract_destination_candidates_unfiltered(text)
+    if not candidates:
+        if _has_bare_side_direction_intent(text.lower()):
+            return [], "open", None
+        return candidates, status, raw
+    text_lower = text.lower()
+    kept = [c for c in candidates if not _is_direction_side_reference(c, text_lower)]
+    if len(kept) == len(candidates):
+        return candidates, status, raw
+    if kept:
+        return kept, status, ", ".join(kept)
+    # Every candidate was a "<place> side" direction reference: intent is
+    # real, destination is unresolved — open the ask, never fabricate.
+    return [], "open", None
+
+
+def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], str, Optional[str]]:
     """
     Returns (candidates, status, raw_match).
     status: "definite" | "semi_open" | "open"
@@ -1330,6 +1518,59 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
         if len(candidates) >= 1:
             status = "definite" if len(candidates) == 1 else "semi_open"
             return candidates, status, ", ".join(raw_matches)
+
+    # --- BROAD DESTINATION SWEEP (FND-0286 fallback) ---
+    # If no pattern above matched, scan every word and bigram in the text
+    # against the geography database. This catches destinations mentioned
+    # without a recognized verb pattern — Hinglish ("bali chahiye"),
+    # activity-first ("scuba diving is a MUST, maldives"), space-separated
+    # ("tokyo kyoto osaka"), and informal party phrasings.
+    if not candidates:
+        sweep_candidates: List[str] = []
+        seen_sweep = set()
+        for match in re.finditer(r"[a-zA-Z][a-zA-Z'-]{1,30}", destination_text):
+            start = match.start()
+            word_clean = match.group(0).strip("'-").lower()
+            if len(word_clean) < 3 or word_clean in _SWEEP_STOP_WORDS or word_clean in _SEASON_NAMES:
+                continue
+            if word_clean in seen_sweep:
+                continue
+            # Same shared placeholder filter the pattern paths use —
+            # "Beach destination preferred" must not sweep up GeoNames'
+            # town of Beach (adv_struct_005). Bigrams stay unfiltered:
+            # compound names ("Virginia Beach") carry the placeholder as
+            # the first word.
+            if word_clean in _NON_DESTINATION_PLACEHOLDERS:
+                continue
+            # Shared past-trip checker (clause + span branches) — memories
+            # never become current intent.
+            if _is_past_trip_mention(destination_text, word_clean):
+                continue
+            if _is_likely_origin(destination_text, word_clean):
+                continue
+            if is_known_destination(word_clean):
+                title = word_clean.title()
+                if title not in seen_sweep:
+                    sweep_candidates.append(title)
+                    seen_sweep.add(title)
+                    seen_sweep.add(word_clean)
+        words = destination_text.split()
+        for i in range(len(words) - 1):
+            bigram = f"{words[i]} {words[i+1]}".strip(".,;:!?()[]").lower()
+            if bigram in seen_sweep:
+                continue
+            if _is_likely_origin(destination_text, bigram):
+                continue
+            if is_known_destination(bigram):
+                title = bigram.title()
+                if title not in seen_sweep:
+                    sweep_candidates.append(title)
+                    seen_sweep.add(title)
+                    seen_sweep.add(bigram)
+
+        if sweep_candidates:
+            status = "definite" if len(sweep_candidates) == 1 else "semi_open"
+            return sweep_candidates, status, " | ".join(sweep_candidates)
 
     # Open intent only when "somewhere" sits in a destination-ish position
     # (after a travel verb, or followed by a place qualifier). A bare
@@ -2080,14 +2321,19 @@ def _extract_party(text: str) -> Dict[str, Any]:
     # Family composition from natural language
     _FAMILY_PATTERNS = [
         (r"\b(?:me|myself|i)\b", "adults", 1),
-        (r"\bmy\s+(?:wife|husband|spouse)\b", "adults", 1),
+        (r"\b(?:my\s+)?(?:wife|husband|spouse|gf|girlfriend|bf|boyfriend|partner|fianc[eé]e?)\b", "adults", 1),
         (r"\bmy\s+(?:parents|mom\s+and\s+dad|mum\s+and\s+dad)\b", "adults", 2),
         (r"\bmy\s+(?:mother|father|mom|mum|dad)\b", "adults", 1),
         (r"\bmy\s+(?:grandparents?)\b", "elderly", 1),
     ]
+    has_partner = bool(re.search(r"\b(?:my\s+)?(?:wife|husband|spouse|gf|girlfriend|bf|boyfriend|partner|fianc[eé]e?)\b", text_lower))
     for pattern, group, count in _FAMILY_PATTERNS:
         if re.search(pattern, text_lower):
             composition[group] = composition.get(group, 0) + count
+
+    # Travel with partner/spouse implies speaker + partner (at least 2 adults)
+    if has_partner and composition.get("adults", 0) < 2:
+        composition["adults"] = 2
 
     # "me and 3 friends" → self + N companions. The bare-friends variant only
     # runs when the self-joined phrasing is absent, so the same companions are
@@ -2232,6 +2478,12 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
     purpose_patterns = {
         "pilgrimage": r"\b(pilgrimage|yatra|char dham|temple\s+visit)\b",
         "family leisure": r"\b(family\s+(?:leisure|vacation|holiday|trip))\b",
+        # VFR (visiting friends & relatives) is a real travel segment with
+        # its own visa/accommodation profile — "visit family in india"
+        # means India IS the destination (owner challenge, 2026-09-13).
+        "family_visit": r"\b(?:visit|visiting|see|seeing|meet)\s+"
+                        r"(?:my\s+|our\s+)?(?:family|relatives|grandparents|"
+                        r"grandma|grandparents|in[\s-]?laws|cousins?|parents)\b",
         "honeymoon": r"\b(honeymoon|romantic)\b",
         "business": r"\b(business|conference|meeting|corporate|company|work\s+trip|workshop|training|procurement|offsite|team\s+offsite|incentive)\b",
         "adventure": r"\b(adventure|trekking|rafting)\b",
@@ -3244,29 +3496,116 @@ class ExtractionPipeline:
                         origin_match.group(0), eid, extraction_mode=mode,
                     ))
 
-        # Hinglish/Odia origin: "Bangalore se", "Bangalore ru", "Bangalore side"
+        # Out of / Departure patterns: "flying out of blr", "departing from blr", "out of mumbai"
+        if not packet.facts.get("origin_city"):
+            out_of_match = re.search(
+                r"\b(?:flying\s+(?:out\s+of|from)|departing\s+(?:out\s+of|from)|leaving\s+(?:from|out\s+of)|out\s+of)\s+([A-Za-z]{3,})\b",
+                text,
+                re.IGNORECASE,
+            )
+            if out_of_match:
+                city_raw = out_of_match.group(1).strip()
+                city, was_normalized = Normalizer.normalize_city(city_raw)
+                if not was_normalized:
+                    city = city.title()
+                if is_known_city(city) or is_known_destination(city) or len(city_raw) == 3:
+                    packet.set_fact("origin_city", self._make_slot(
+                        city, 0.92, AuthorityLevel.EXPLICIT_USER,
+                        out_of_match.group(0), eid, extraction_mode=ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT,
+                    ))
+
+        # Route pattern: "blr to goa", "mumbai to bali", "sfo to tokyo", "delhi -> manali"
+        if not packet.facts.get("origin_city"):
+            route_match = re.search(
+                r"\b([A-Za-z]{3,})\s+(?:to|->|-->)\s+([A-Za-z]{3,})\b",
+                text,
+                re.IGNORECASE,
+            )
+            if route_match:
+                city1_raw = route_match.group(1).strip()
+                city2_raw = route_match.group(2).strip()
+                city1, norm1 = Normalizer.normalize_city(city1_raw)
+                city2, norm2 = Normalizer.normalize_city(city2_raw)
+                if not norm1:
+                    city1 = city1.title()
+                if not norm2:
+                    city2 = city2.title()
+                if (is_known_city(city1) or is_known_destination(city1) or len(city1_raw) == 3) and (
+                    is_known_city(city2) or is_known_destination(city2) or len(city2_raw) == 3
+                ):
+                    packet.set_fact("origin_city", self._make_slot(
+                        city1, 0.90, AuthorityLevel.EXPLICIT_USER,
+                        route_match.group(0), eid, extraction_mode=ExtractionMode.NORMALIZED if norm1 else ExtractionMode.DIRECT_EXTRACT,
+                    ))
+
+        # Hinglish/Odia origin: "Bangalore se", "Bangalore ru", "mumbai se goa"
         # Only try if origin not already set.
         # Single-word city only (multi-word like "New York se" is unlikely in Hinglish).
+        #
+        # Postposition semantics split (owner-ratified Option 3, 2026-09-14):
+        #   "se"/"ru" = explicit "from" marker  → FACT (0.85, unchanged).
+        #   "side"    = directional reference ("X side jaana hai" = heading
+        #               that way / somewhere around X) → SOFT HYPOTHESIS,
+        #               never a fact — origin anchors real money math
+        #               (flight distance, visa corridor). "X side se" carries
+        #               the explicit marker and upgrades to fact.
+        # "okinawa side trip?" is a noun compound (proposed destination),
+        # not the Hinglish origin postposition (FND-0284-family, Sim #2).
         if not packet.facts.get("origin_city"):
             postposition_match = re.search(
                 r"\b([A-Za-z]+)\s+(se|ru|side)\b",
                 text,
                 re.IGNORECASE,
             )
-            # "okinawa side trip?" is a noun compound (proposed destination),
-            # not the Hinglish origin postposition (FND-0284-family, Sim #2).
             if postposition_match and not (
                 postposition_match.group(2).lower() == "side"
                 and _side_is_trip_compound(text[postposition_match.end():])
             ):
                 city_raw = postposition_match.group(1).strip()
-                city, was_normalized = Normalizer.normalize_city(city_raw)
-                mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
-                if is_known_city(city) or len(city_raw.split()) > 1:
-                    packet.set_fact("origin_city", self._make_slot(
-                        city, 0.8, AuthorityLevel.EXPLICIT_USER,
-                        postposition_match.group(0), eid, extraction_mode=mode,
-                    ))
+                postposition = postposition_match.group(2).lower()
+                # Deictic origins like "yahan se" / "wahan se" mean "from here/there", not a city named Yahan
+                if city_raw.lower() not in ("yahan", "wahan", "idhar", "udhar", "here", "there"):
+                    city, was_normalized = Normalizer.normalize_city(city_raw)
+                    if not was_normalized:
+                        city = city.title()
+                    mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
+                    if is_known_city(city) or len(city_raw.split()) > 1 or len(city_raw) == 3:
+                        if postposition in ("se", "ru") or (
+                            postposition == "side"
+                            and re.match(
+                                r"^\s+(?:se|ru)\b",
+                                text[postposition_match.end():],
+                                re.IGNORECASE,
+                            )
+                        ):
+                            # Explicit "from" marker (also "X side se") → fact.
+                            packet.set_fact("origin_city", self._make_slot(
+                                city, 0.85, AuthorityLevel.EXPLICIT_USER,
+                                postposition_match.group(0), eid, extraction_mode=mode,
+                            ))
+                        else:
+                            # Bare "X side": directional — hypothesis, not fact.
+                            packet.set_hypothesis("origin_city", self._make_slot(
+                                city, 0.55, AuthorityLevel.SOFT_HYPOTHESIS,
+                                postposition_match.group(0), eid, extraction_mode=mode,
+                            ))
+
+        # Ensure origin city is never erroneously retained in destination candidates
+        if packet.facts.get("origin_city") and packet.facts.get("destination_candidates"):
+            origin_name = str(packet.facts["origin_city"].value).lower()
+            norm_origin, _ = Normalizer.normalize_city(origin_name)
+            norm_origin_lower = norm_origin.lower()
+            dest_slot = packet.facts["destination_candidates"]
+            current_dests = dest_slot.value
+            if isinstance(current_dests, list):
+                filtered_dests = []
+                for d in current_dests:
+                    d_norm, _ = Normalizer.normalize_city(str(d))
+                    if str(d).lower() == origin_name or d_norm.lower() == norm_origin_lower or str(d).lower() == norm_origin_lower:
+                        continue
+                    filtered_dests.append(d)
+                if len(filtered_dests) != len(current_dests):
+                    dest_slot.value = filtered_dests
 
         # --- MOBILITY / MEDICAL CONSTRAINTS ---
         mobility_match = re.search(r"((?:can'?t\s+walk|wheelchair|mobility|slow\s+pace|limited\s+mobility|ground\s+floor)[^.,]*)", text_lower)
@@ -3428,8 +3767,41 @@ class ExtractionPipeline:
         if revision_match:
             packet.revision_count = int(revision_match.group(1))
 
-        # --- PAST TRIPS (hook) ---
-        if "past trip" in text_lower or "previous trip" in text_lower:
+        # --- PAST TRIPS (travel history) ---
+        # Structured capture: destinations inside past-trip clauses become
+        # memory facts (place, clause, sentiment, macro region) so the
+        # decision layer can ask history-informed questions ("you loved
+        # Japan and Korea — somewhere similar?") and preference inference
+        # has real entities to work with. Memories are never destinations.
+        past_places = _extract_past_trip_places(text)
+        if past_places:
+            packet.set_fact("past_trips", self._make_slot(
+                past_places, 0.7,
+                AuthorityLevel.EXPLICIT_USER, text[:200], eid,
+            ))
+            # Region affinity: aggregated preference signal for downstream
+            # ranking consumers (suitability/proposal phases). A preference
+            # signal, never an extraction fact — destinations and dates are
+            # unaffected; consumer contract documented in the realignment
+            # blueprint Addendum 5.
+            affinity: Dict[str, Dict[str, Any]] = {}
+            for place in past_places:
+                region = place.get("region")
+                if not region:
+                    continue
+                bucket = affinity.setdefault(
+                    region, {"region": region, "trips": 0, "positive": 0, "places": []}
+                )
+                bucket["trips"] += 1
+                if place.get("sentiment") == "positive":
+                    bucket["positive"] += 1
+                bucket["places"].append(place.get("place"))
+            if affinity:
+                packet.set_fact("region_affinity", self._make_slot(
+                    sorted(affinity.values(), key=lambda b: -b["trips"]), 0.65,
+                    AuthorityLevel.EXPLICIT_USER, text[:200], eid,
+                ))
+        elif "past trip" in text_lower or "previous trip" in text_lower:
             trip_match = re.search(r"(past|previous)\s+trip[^.,:]*", text_lower)
             if trip_match:
                 packet.set_fact("past_trips", self._make_slot(

@@ -124,3 +124,51 @@ All 4 phases (Options A, B, C, and D) were fully implemented and verified agains
    - Verified strict startup assertion in `auth_bypass_enabled()` and degraded component reporting in `/health`.
    - Evidence: Backend on port 8000 and Frontend on port 3005 both returned 200 OK. Linter zero-warning policy verified via `uv run ruff check --fix .` (0 errors). Frontend typecheck verified via `tsc --noEmit` (0 errors).
 
+---
+
+## 6. Gap Closure Verification (G-1 through G-6)
+
+In accordance with the user directive to complete all remaining operational gaps, the following six production components were engineered, integrated, and verified:
+
+1. **G-5: Post-Ticketing Commission Reconciliation Hook**:
+   - Wired `reconcile_trip_commission()` directly into `BookingFulfillmentEngine.fulfill_accepted_proposal()` immediately following the AT-04 durable confirmation step.
+   - Augmented `FulfillmentResult` dataclass and its `.to_dict()` representation with `commission_reconciliation: Optional[Dict[str, Any]] = None`.
+   - Mismatches are reported without blocking confirmation, preserving agency revenue integrity while avoiding customer friction.
+   - Evidence: `TestPostTicketingCommissionHook` (5 tests passing in `tests/test_gap_closure_g1_g6.py`).
+
+2. **G-1: IROPS Autonomous 24/7 Continuous Watch Loop**:
+   - Engineered `src/orchestration/irops_watch_service.py` featuring an async background task that scans active trips for disruption signals on JDG flight and transfer nodes every 5 minutes (configurable via `IROPS_POLL_INTERVAL_SECONDS`).
+   - Autonomous execution: automatically triggers `IROPSAutoHealerEngine.execute_healing_protocol()` and persists non-destructive healing records to the trip.
+   - Exposed endpoints `POST /api/v1/irops-healer/watch/start`, `POST /api/v1/irops-healer/watch/stop`, and `GET /api/v1/irops-healer/watch/status`.
+   - Integrated start/stop hooks cleanly into the ASGI lifespan context manager in `spine_api/server.py`.
+   - Evidence: `TestIROPSWatchService` (7 tests passing in `tests/test_gap_closure_g1_g6.py`).
+
+3. **G-2: Pre-Departure Briefing PDF Bundle & Endpoints**:
+   - Implemented `src/briefing/pdf_renderer.py` using pure Python `reportlab` (zero system binary dependencies), creating branded, deterministic A4 briefing packages.
+   - Implemented `spine_api/routers/pre_departure.py` exposing:
+     - `GET /api/v1/trips/{trip_id}/pre-departure-bundle` (JSON data covering D-7, D-3, D-1 stages)
+     - `GET /api/v1/trips/{trip_id}/pre-departure-bundle.pdf` (streaming downloadable PDF with attachment disposition)
+   - Mounted router in `spine_api/server.py` with `_auth_or_skip` dependency.
+   - Evidence: `TestPreDeparturePDFRenderer` (4 tests passing) and `TestPreDepartureAPIEndpoints` (5 tests passing).
+
+4. **G-3: Hotelbeds / Bedsonline Wholesale Bed-Bank Adapter**:
+   - Implemented `src/distribution/hotelbeds_adapter.py` compliant with Hotelbeds developer API specification.
+   - Includes dynamic SHA-256 API signature calculation (`SHA256(apiKey + sharedSecret + timestamp)`).
+   - Supports dual-mode: live provider search/booking when credentials exist, and sorted, deterministic preview offers when unconfigured.
+   - Integrated directly into `AutonomousProposalCompiler.compile_from_intake` to replace hardcoded lodging stubs with dynamic wholesale rates and provider names.
+   - Evidence: `TestHotelbedsAdapterPreview` (5 tests passing) and `TestHotelbedsProposalCompilerIntegration` (2 tests passing).
+
+5. **G-6: Companion Pre-Departure UI Section & PDF Download**:
+   - Enhanced `frontend/src/app/(traveler)/companion/page.tsx` with a Pre-Departure Briefings section.
+   - Added stage tabs (D-7, D-3, D-1) rendering headlines, highlights, and action checklists with checkbox icons, plus emergency contacts.
+   - Added direct PDF download button linking to `/api/v1/trips/{trip_id}/pre-departure-bundle.pdf`.
+   - Type-safe integration verified via `npm --prefix frontend run typecheck` (0 errors).
+
+6. **G-4: Twilio Programmable Voice Carrier IVR Gateway**:
+   - Implemented `spine_api/routers/ivr_gateway.py` bridging the IVR bypass bot to real carrier telephony.
+   - Encodes carrier-specific DTMF trees (BA, DL, AF, AA, UA, LH) into TwiML `<Play digits="...">` with automated pauses.
+   - Exposes `POST /api/v1/ivr/calls/initiate`, `GET /api/v1/ivr/calls/{call_sid}/status`, and public webhook `POST /api/v1/ivr/webhook/status`.
+   - Mounted internal router under `_auth_or_skip` and public webhook on `public_router` in `server.py`.
+   - Evidence: `TestIVRGatewayPreviewMode` (4 tests passing).
+
+

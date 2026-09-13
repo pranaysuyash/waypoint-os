@@ -81,3 +81,112 @@ NEEDS_INFORMATION with INTAKE, has no feasibility gate, and no
 approval/booking distinction. The falsifier for the full lifecycle is:
 a production incident caused by a missing state transition (e.g., booking
 without feasibility check, or silent mutation of a booked trip).
+
+## §9 — Design exploration: the four-dimension problem (2026-09-14, pre-implementation)
+
+### The core finding
+
+The current system has **37 status values across 4 disconnected dimensions**:
+
+| Dimension | Values | Measures | Owned by |
+|---|---|---|---|
+| Lead status | 12 | Operator workflow visibility | inbox.py |
+| Processing stage | 4 | Pipeline computation phase | trip_lifecycle_service.py |
+| Decision state | 5 | AI confidence in the packet | decision.py |
+| CRM status | 16 | Sales funnel position | packet_models.py |
+
+None of these form a coherent state machine. They are set independently,
+read interchangeably by different consumers, and can contradict each other
+(e.g., decision_state=PROCEED while lead_status=incomplete).
+
+### The taught model's answer
+
+The training sessions established:
+- **State** = where the trip currently is (one canonical state per trip)
+- **Action** = work performed while in that state
+- **Event** = something that happened
+- **Transition** = event moves trip between states
+- **Risk** = might happen (not an event — produces conditions via thresholds)
+- **Condition** = currently true (derived, not stored)
+
+Four questions per state:
+1. What is true?
+2. What can happen?
+3. What cannot happen?
+4. What moves us out?
+
+### Design questions for discussion
+
+**Q1: One state or four?**
+The four dimensions measure different concerns. Should they be:
+(a) collapsed into one lifecycle state per trip, or
+(b) kept as four separate but synchronized dimensions?
+
+The taught model says ONE state — "what is currently true" is singular.
+The four current dimensions are views onto the same underlying truth.
+They should be *derived from* the lifecycle state, not stored independently.
+
+**Q2: How do transitions fire?**
+Three possible mechanisms:
+(a) Pipeline completion sets the state imperatively (current behavior)
+(b) Events are logged and the state is a projection (event sourcing)
+(c) A watchdog evaluates conditions and transitions when rules fire
+
+The taught model says: "events update facts; state transitions depend on
+the resulting facts and rules." This is (b) transitioning to (c) — events
+are the input, but the transition function checks rules against the
+resulting facts, not just the event itself.
+
+**Q3: What does NEEDS_INFORMATION actually mean?**
+Per the taught model: "the system understands the request, but cannot
+safely continue." Key insight: **only dependent work freezes** —
+non-blocked searches continue. The current pipeline blocks everything,
+which conflates "this specific operation is blocked" with "the entire
+trip is blocked."
+
+**Q4: How does FEASIBILITY_CHECK relate to the decision layer?**
+The decision layer (generate_risk_flags) already computes feasibility
+signals. But the taught model treats feasibility as a *lifecycle state*
+the trip dwells in while checks run, not a per-run computation. This
+means: a trip enters FEASIBILITY_CHECK and stays there until checks
+pass or fail — which may take multiple pipeline runs.
+
+**Q5: What enforces "only dependent work freezes"?**
+Each state's forbidden_actions list (from lifecycle_states.py) must be
+enforced by the pipeline executor, not just documented. Currently
+`execute_spine_pipeline` runs unconditionally — it needs a state gate
+that checks `can(action)` before dispatching.
+
+### Proposed architecture
+
+```text
+EVENT LOG (append-only per trip)
+  note.received, segment.parsed, fact.asserted, fact.conflicted,
+  question.raised, lifecycle.changed, ...
+       │
+       ▼
+LIFECYCLE STATE (derived, not stored)
+  lifecycle_state = project(events, rules)
+       │
+       ├── lead_status      ← derived (inbox rendering)
+       ├── pipeline_stage   ← derived (processing visibility)
+       ├── decision_state   ← derived (AI confidence signal)
+       └── crm_status       ← derived (sales funnel)
+       │
+       ▼
+ACTIONS (allowed by current state's permitted set)
+  extract, merge, search, book, escalate, ...
+```
+
+The lifecycle state becomes a **computed property** of the event log +
+current facts, not a mutable field. This eliminates the four-dimension
+contradiction because all four views are projections of one truth.
+
+### Implementation impact
+
+- `TripStore.save_trip` no longer sets status imperatively
+- `execute_spine_pipeline` checks `state.can(action)` before each stage
+- Inbox reads from the projection, not from a stored status column
+- The 37 existing status values become views onto 13 lifecycle states
+- Migration: map old statuses onto new states at read time (no data
+  migration needed); new trips use the state machine from creation

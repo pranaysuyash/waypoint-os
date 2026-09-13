@@ -40,6 +40,26 @@ from typing import Any, Dict, List, Optional, Tuple
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+
+def _load_env_file() -> None:
+    """Fill missing API keys from the repo .env (2026-09-13: a dead shell
+    key silently 401-fallbacked a whole run — LLM arms fell back in ~3ms).
+    Precedence: explicit shell env wins; .env only fills gaps."""
+    env_path = REPO / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip("'\"")
+        if key and value:
+            os.environ.setdefault(key, value)
+
+
+_load_env_file()
+
 os.environ.setdefault("TRIPSTORE_BACKEND", "file")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///")
 
@@ -278,6 +298,19 @@ def _build_client(provider: str, model: str) -> Any:
             model=model,
             api_key="ollama",
             base_url=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1"),
+        )
+    if provider == "openrouter":
+        from src.llm.openai_client import OpenAIClient
+
+        token = os.environ.get("OPENROUTER_API_KEY")
+        if not token:
+            raise RuntimeError("OPENROUTER_API_KEY not set")
+        return OpenAIClient(
+            model=model,
+            api_key=token,
+            base_url=os.environ.get(
+                "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+            ),
         )
     if provider == "hf-router":
         from src.llm.openai_client import OpenAIClient

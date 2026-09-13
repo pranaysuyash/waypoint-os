@@ -1975,6 +1975,55 @@ def generate_candidate_question(
         return f"From {candidates_str}, which destination interests you most?"
 
 
+def hypothesis_core_value(slot: Optional[Any]) -> Optional[Any]:
+    """Unwrap set_hypothesis's {"value": X, "_hypothesis_state": ...}
+    envelope into the bare hypothesis value; passes plain values through."""
+    if slot is None:
+        return None
+    value = getattr(slot, "value", None)
+    if isinstance(value, dict) and "value" in value:
+        return value.get("value")
+    return value
+
+
+def history_informed_destination_question(past_places: List[Any]) -> Optional[str]:
+    """History-informed destination ask: past-trip memories feed the
+    QUESTION, never the answer. "We went to japan, korea last year and
+    loved it" + missing destination → "You mentioned loving Japan and
+    Korea — thinking somewhere else in East Asia, or somewhere new?"
+
+    Memories are never suggested as destination values (that would
+    re-introduce the past-trip contamination the guards remove); only the
+    phrasing of the ask is informed. Returns None when no usable history."""
+    places: List[str] = []
+    regions: List[str] = []
+    positive = False
+    for entry in past_places[:3]:
+        if not isinstance(entry, dict):
+            continue
+        place = entry.get("place")
+        if not place:
+            continue
+        places.append(place)
+        if entry.get("region"):
+            regions.append(entry["region"])
+        if entry.get("sentiment") == "positive":
+            positive = True
+    if not places:
+        return None
+    if len(places) == 1:
+        names = places[0]
+    else:
+        names = f"{', '.join(places[:-1])} and {places[-1]}"
+    if positive:
+        stem = f"You mentioned loving {names}"
+    else:
+        stem = f"You've been to {names} before"
+    if regions and len(set(regions)) == 1:
+        return f"{stem} — thinking somewhere else in {regions[0]}, or somewhere new this time?"
+    return f"{stem} — thinking somewhere similar, or somewhere new this time?"
+
+
 # =============================================================================
 # SECTION 12: DESTINATION AMBIGUITY SYNTHESIS
 # =============================================================================
@@ -2233,11 +2282,19 @@ def run_gap_and_decision(
                 slot = resolve_field(packet, blocker)
                 # Check if a hypothesis exists (can't fill but can suggest)
                 hyp_slot = packet.hypotheses.get(blocker)
-                suggested = [hyp_slot.value] if hyp_slot and hyp_slot.value else []
+                hyp_core = hypothesis_core_value(hyp_slot)
+                suggested = [hyp_core] if hyp_core not in (None, "", [], {}) else []
                 can_infer = hyp_slot is not None
                 inference_conf = round(hyp_slot.confidence * 0.3, 2) if hyp_slot else 0.0
 
                 question_text = generate_question(blocker)
+                if blocker == "origin_city" and suggested:
+                    # Directional-origin hypothesis ("bangalore side jaana
+                    # hai" — owner-ratified Option 3): confirm the reference
+                    # area instead of anchoring money math on it silently.
+                    question_text = (
+                        f"Starting from {suggested[0]} itself, or somewhere else?"
+                    )
                 if blocker == "destination_candidates":
                     dest_slot = resolve_field(packet, "destination_candidates")
                     if dest_slot and isinstance(dest_slot.value, list) and len(dest_slot.value) >= 2:
@@ -2246,6 +2303,17 @@ def run_gap_and_decision(
                         suggested = candidates
                     elif not suggested and dest_slot and isinstance(dest_slot.value, list) and len(dest_slot.value) == 1:
                         suggested = dest_slot.value
+
+                    current_candidates = (
+                        dest_slot.value if dest_slot and isinstance(dest_slot.value, list) else []
+                    )
+                    if not current_candidates and not suggested:
+                        past_slot = packet.facts.get("past_trips")
+                        past_places = getattr(past_slot, "value", None) if past_slot else None
+                        if isinstance(past_places, list) and past_places:
+                            history_question = history_informed_destination_question(past_places)
+                            if history_question:
+                                question_text = history_question
 
                 elif blocker == "budget_min":
                     # Check for budget stretch ambiguity and generate appropriate question

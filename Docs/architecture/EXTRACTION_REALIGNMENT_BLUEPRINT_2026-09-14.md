@@ -387,3 +387,308 @@ the full pipeline). P-I comes last (it's the fallback for everything
 else). P-J is independent and small.
 
 Recommended order: P-A → P-C → P-E → P-F → P-B → P-D → P-G → P-H → P-I → P-J
+
+---
+
+## Addendum 2026-09-13 (session): sweep hardening + direction-intent contract
+
+Follow-on to FND-0286 guard work, closing the sweep-level gaps found by the
+adversarial corpus and extraction suites.
+
+### Owner correction: "<place> side" is direction intent (binding)
+
+First design treated "Bangalore side jaana hai" as noise to drop. Pranay
+corrected the semantics: **"X side jana hai" = "heading that way / somewhere
+around X"** — a real direction intent where the destination is NOT committed
+(not necessarily X itself, could be "around there"). Binding contract:
+
+- `<place> side` (+ motion verb, not a side-trip compound) NEVER fabricates
+  `<place>` as a destination candidate.
+- The intent is real, so the extractor returns status `open` — intake asks
+  "whereabouts near X?" instead of committing or going silent.
+- Implemented as a post-filter wrapper (`_extract_destination_candidates`)
+  over the raw extraction, so pattern paths and the broad sweep are both
+  covered; `_is_direction_side_reference` reuses `_SIDE_TRIP_NOUN_RE` so
+  "okinawa side trip?" stays a valid destination.
+
+### Sweep guards landed
+
+1. GeoNames collision stop words: need/old/side/parks/top/set/lie/bad —
+   the 590k-city DB contains villages named after common English words.
+   Tradeoff documented: bare "Side, Turkey" degrades to country-level in
+   the fallback sweep (compound bigrams unaffected).
+2. Shared placeholder filter (`_NON_DESTINATION_PLACEHOLDERS`) now applies
+   in the sweep word loop — bare "beach" no longer matches GeoNames Beach
+   (ND/NE); cures adv_struct_005, adversarial gate lane back to 21/21 @ 1.0.
+3. Family-locative prose guard: "<family noun> in/at/near <place>" within a
+   clause is visit-family context, not a committed destination ("want to
+   visit family in india" → no candidates). "family trip to japan" keeps
+   Japan (preposition gate: only in/at/near trigger the skip).
+4. Past-trip clause guard: "(we) went/visited/been ... last year|YYYY|ago"
+   spans are memories; destination words inside the span never form a city
+   set ("we went to japan, korea last year and loved it" → []).
+
+### Verification
+
+- extraction + adversarial corpus + gate lane + lifecycle suites: 421 passed
+- true-positive probes: se/jana-hai/chahiye paths, Virginia-Beach-class
+  bigrams, tokyo/kyoto/osaka city sets, bali chahiye, okinawa side-trip
+  compounds (both forms) — all preserved
+- ruff clean on touched files; findings note appended to FND-0286
+
+---
+
+## Addendum 2 (2026-09-13, session): the deterministic-rules learning
+
+Owner's framing: "we obviously need all that we discussed but also some
+deterministic rules we can put, adding as we find during tests." Agreed —
+and the arc's own data sharpens what kind of rules and where they sit.
+
+### Evidence from this arc (both failure worlds are on record)
+
+| World | Evidence | Failure mode |
+| ----- | -------- | ------------ |
+| Deterministic-only | FND-0286 baseline: 21/24 casual/Hinglish phrasings failed silently | Brittle recall; endless pattern whack-a-mole |
+| LLM-trusted, ungated | Sim #2: fabricated Origin (okinawa), transcript contamination, constraint drops | No hard guarantees; hallucinated facts enter the packet |
+| Layered (current) | P=1.000 KDD arms post-fix; adversarial gate 21/21 @ 1.0; 421-test green | The composition, not either layer alone |
+
+### What today's guards have in common
+
+All four (direction-side, family-locative, past-trip clause, placeholder
+filter) are **"never" invariants**, not "always" extractors. Deterministic
+layers do two different jobs, and the doctrine must name both:
+
+- **Fast paths** — positive extraction for canonical, high-frequency forms
+  ("singapore jana hai"). Cheap, instant, testable.
+- **Invariants** — negative guarantees that clip every producer: pattern
+  paths, the broad sweep, and LLM output. "We went to japan last year" is
+  not an intent no matter who claims it — regex, sweep, or gpt-5.x. This is
+  precisely what Sim #2 lacked: LLM output entered the packet with no
+  deterministic post-conditions.
+
+### The flywheel (incident → permanent constraint)
+
+1. Failure observed (test, sim, live note, adversarial record).
+2. Fixture added to the adversarial corpus / golden set (`passes_today`
+   property contract).
+3. Guard implemented as a **class** where possible (past-clause span,
+   locative+family, direction postposition), word-list only at the edges
+   (GeoNames collisions).
+4. Counter-tests prove true positives survive; note-level F1 re-run gates
+   recall regressions.
+5. The guard becomes spec: it now clips all future producers, including
+   any LLM worker (P-I) — which is why P-I's scope is now precise: recall
+   for the long tail, invoked on deterministic abstention, output passing
+   through the same invariant layer.
+
+Doctrine home: `Docs/V02_GOVERNING_PRINCIPLES.md` §1 (Deterministic-First).
+
+---
+
+## Addendum 3 (2026-09-13, session): VFR correction + travel-history asks
+
+Owner challenges on the guard wave produced two contract corrections and
+one new feature. Both corrections follow the same pattern: a guard built
+from an adversarial test turned out to be wrong about the world, and the
+owner's real-world semantics won.
+
+### Correction 1 — family visits ARE destinations (VFR)
+
+The family-locative guard suppressed "want to visit family in india" to
+[]. Owner challenge: India IS where they want to go — VFR (visiting
+friends & relatives) is one of the largest real travel segments, and
+asking "where would you like to go?" after the customer just said India
+is broken UX and lost momentum. New contract:
+
+- "visit/visiting/see/meet family|relatives|grandparents|in-laws|cousins
+  in <place>" → <place> promoted as destination candidate.
+- Purpose lane gains `family_visit` (VFR) — downstream this carries visa
+  (invitation letters) and accommodation (staying with family) semantics.
+- The guard's constants are deleted, not disabled — class-rule removal,
+  per the supersession discipline.
+
+Lesson recorded: the guard was class-shaped but wrong-valenced. Counter-
+tests protect against over-blocking only when someone writes them; the
+missing counter-test here was exactly "visit family in india" asserting
+PROMOTION.
+
+### Correction 2 — past-trip memories must resurface as preference asks
+
+Owner question: "can it help ask something like, based on the past, do
+they prefer East Asian destinations?" Yes — and suppression alone would
+have thrown the signal away. The past-trip guard now has a capture twin:
+
+- `_extract_past_trip_places()` walks past-trip spans and returns
+  structured history: `{place, clause, sentiment, region}` — "we went to
+  japan, korea last year and loved it" → Japan + Korea, positive, East
+  Asia. Country-level names ("korea") resolve via the new
+  `geography.COUNTRY_MACRO_REGIONS` / `get_macro_region()` (city →
+  country → macro region), so region affinity works without a region DB.
+- The packet's `past_trips` fact (previously a bare phrase-match hook)
+  now carries these structured entries.
+- Decision layer: when destination is missing and history exists, the
+  generic "where would you like to go?" becomes history-informed:
+  "You mentioned loving Japan and Korea — thinking somewhere else in
+  East Asia, or somewhere new this time?" Memories feed the QUESTION,
+  never `suggested_values` — suggesting them as answers would
+  re-introduce the contamination the guard removes.
+
+### Consolidation (doctrine self-application)
+
+The sweep's past-trip guard initially duplicated the pattern paths'
+checker — a one-stack violation caught within the hour. The span branch
+now lives inside `_is_past_trip_mention` (clause OR span), and the sweep
+calls the shared function. `_SWEEP_STOP_WORDS` moved to module level
+(perf doctrine: constant data is not rebuilt per call).
+
+### Verification
+
+- extraction + history-question + adversarial corpus + gate lane +
+  lifecycle + decision families: 1,236 passed / 0 failed; ruff clean.
+- Live probe: note → packet.past_trips=[Japan, Korea, positive, East
+  Asia] → destination candidates=[] → destination ask = history-informed
+  question (shown above).
+
+---
+
+## Addendum 4 (2026-09-13, session): gates run — both green, FND-0286 closed
+
+### Gate 1 — note-level KDD re-run (the falsification gate from Addendum 2)
+
+Reference: `records_ladder2.jsonl` (post-fix grades of record), champion
+arm B-gpt-4.1-nano F1 0.800 (P 0.769 / R 0.833).
+
+Fresh run after the guard wave: `records_sweepguard2.jsonl` —
+B-gpt-4.1-nano and B-gpt-5.4-nano both **F1 0.808 (P 0.750 / R 0.875,
+21tp/7fp/3fn)**: recall up (4→3 fn), precision within single-run
+variance, +1 TP vs reference, nothing lost.
+
+**The gate earned its keep before it passed.** The first fresh run
+collapsed (F1 0.065 — stale shell OPENAI_API_KEY → 401 fallback; the
+runner does not load `.env`) and the second exposed a real substrate
+defect: F1 dipped to 0.764 with four visa_timeline_risk FPs traced to
+garbage destinations — "any time" swept the village of **Time**, "resort
+with a pool" swept **Pool** (UK). Root cause = the same GeoNames
+collision class as the wave's stop-word fix, incomplete list. 48 more
+verified colliders added (prose + amenity nouns), substrate re-probed
+clean, gate re-run → 0.808. Exactly the doctrine's loop: incident →
+fixture-class guard → counter-tests → eval re-run.
+
+Also fixed en route (owner-directed, 2026-09-13): the runner does not
+load `.env`, and the shell inherited a DEAD `sk-proj` key from
+`~/.zshenv:3` that shadowed valid keys in every non-interactive zsh —
+that caused the 401-fallback run (preserved as
+`records_sweepguard.jsonl`). Fix: the dead export is commented out in
+`~/.zshenv` with a dated note (history preserved); the valid key lives
+canonical in the repo `.env` (verified HTTP 200, 136 models visible)
+and must be exported explicitly for experiment runs:
+`export OPENAI_API_KEY=$(grep -m1 '^OPENAI_API_KEY=' .env | cut -d= -f2)`.
+Note: the `~/.zshrc` agentrouter.org block was left untouched — that
+key targets a different provider, not api.openai.com.
+
+### Gate 2 — fresh Sim #2 acceptance
+
+New reusable probe `tools/sim2_acceptance_probe.py` (embedded verbatim
+persona scripts, real pipeline, deterministic, exit-code gate):
+**9/9 GREEN** — origin fabrication dead, budget scope stable under
+"budget whatever", D-02 fact-not-unknown, Meera's jain/no-heights
+attribution, anniversary survives Dev's ±1-week trade, chat-dump
+per-speaker binding, direction intent → open, VFR → India +
+family_visit, past-trip memory → history-informed ask with memories
+never offered as suggested values.
+
+### Dispositions
+
+- **FND-0286 CLOSED** with the gate + acceptance evidence (findings store).
+- Residual known noise: 1 FP (visa_timeline_risk on colloq_party_the_four_001)
+  on a single temperature>0 pass — tracked via normal variance, not a defect.
+- Still open (owner DECIDE): origin-path "X side" semantics; family-visit
+  subordinate-case handling. Engineering next: preference ranking reads
+  past_trips; lifecycle→runtime wiring.
+
+
+---
+
+## Addendum 5 (2026-09-13, session): region_affinity + runner env loading
+
+### region_affinity — the past_trips consumer contract
+
+The past-trip memory wave left one gap: `past_trips` fed the decision
+ask, but the ranking layers (suitability/proposal) had no signal to
+consume. Now the packet derives a `region_affinity` fact whenever past
+trips resolve to macro regions:
+
+```
+[{"region": "East Asia", "trips": 2, "positive": 2, "places": ["Japan", "Korea"]}]
+```
+
+Contract (binding for consumers):
+- It is a PREFERENCE signal — never an extraction fact. Destinations,
+  dates, and origins are unaffected; memories still never become
+  suggested values.
+- Semantics: `trips` = past trips in the region; `positive` = trips with
+  a positive sentiment cue; ordering is trips-descending.
+- Intended consumers: suitability scoring and proposal ranking may bias
+  toward high-affinity regions; the decision layer's confidence math
+  must NOT consume it (extraction confidence is certainty, not taste —
+  same wrong-valence lesson as the family-locative guard).
+- No unresolved region → no fact (never guess).
+
+### Experiment runner loads .env
+
+`scripts/run_hybrid_kdd_experiment.py` now fills missing keys from the
+repo `.env` (shell env still takes precedence). Reason: a dead shell key
+silently 401-fallbacked an entire gate run; the owner directed cleanup
+of `~/.zshenv` (done) and the runner now self-heals. The smoke-verified
+loader path: `records_envloader_smoke.jsonl` — real 4.1s call, zero
+errors, from a shell with no OPENAI_API_KEY.
+
+
+---
+
+## Addendum 6 (2026-09-14, session): origin "side" Option 3 — RATIFIED + implemented
+
+Owner ratified Option 3 in discussion (2026-09-14): the origin path splits
+the Hinglish postposition semantics that the destination side already had.
+
+### Binding contract (three-way)
+
+| Input shape | Origin outcome |
+| ----------- | -------------- |
+| "Bangalore **se**/ru ..." (explicit "from") | FACT @ 0.85 (unchanged) |
+| "Bangalore side jaana hai" (bare "side") | SOFT HYPOTHESIS @ 0.55 — never a fact; the ask renders "Starting from Bangalore itself, or somewhere else?" with can_infer=True, suggested_values=[Bangalore] |
+| "Bangalore side se ..." (side + explicit marker) | FACT @ 0.85 (marker upgrades) |
+| "okinawa side trip?" (trip compound) | nothing (existing `_side_is_trip_compound` guard) |
+
+Rationale: origin anchors real money math (flight distance, visa
+corridor). A direction reference entered the packet at 0.85 FACT-grade —
+wrong-but-confident silently skews quotes; the hypothesis lane preserves
+the (usually right) signal and asks one cheap confirm question.
+
+### Exclusion vs fact (architectural separation made explicit)
+
+`_is_likely_origin` (destination-exclusion gate) treats non-compound
+"side" as a location REFERENCE — "<place> side" is excluded from
+destination candidates regardless of fact/hypothesis status. Exclusion
+never creates an origin; only the marker semantics above do. A parallel
+tranche had narrowed this gate to se/ru-only, dropping "we are bangalore
+side, plan something" through to the destination sweep — restored, with
+the OPEN-intent path (`_has_bare_side_direction_intent`) keeping
+destination-less side notes at status OPEN rather than undecided.
+
+### Collateral record flip
+
+`adv_ling_003` ("humko Thailand beach villa chahiye, 4 log, ...") flipped
+from `must_not_extract: party_size` to `must_extract: party_size=4` —
+"4 log" Hinglish headcount is now correctly extracted by the FND-0286
+wave; the record's expectation predated the fix (`fixed_in` noted in the
+seed record).
+
+### Verification
+
+- 422 extraction/scope-guard/corpus tests + full -k decision net green
+  (1 known order-flake on price_lock, passes in isolation);
+- acceptance probe now **10/10** (check 10: origin fact None, hypothesis
+  Bangalore, ask "Starting from Bangalore itself, or somewhere else?",
+  suggested_values=[Bangalore], can_infer=True);
+- ruff clean.

@@ -646,6 +646,73 @@ def resolve_destination_hierarchy(destination_name: str) -> Dict[str, Any]:
 
 
 # =============================================================================
+# MACRO TRAVEL REGIONS (preference inference)
+# =============================================================================
+
+# Macro travel regions for preference inference ("went to japan, korea…
+# loved it" → East Asia affinity). Country-canonical names only; city
+# inputs resolve through get_city_country first.
+COUNTRY_MACRO_REGIONS: Dict[str, str] = {
+    # East Asia
+    "japan": "East Asia", "south korea": "East Asia", "korea": "East Asia",
+    "china": "East Asia", "taiwan": "East Asia", "hong kong": "East Asia",
+    "mongolia": "East Asia",
+    # Southeast Asia
+    "thailand": "Southeast Asia", "vietnam": "Southeast Asia",
+    "indonesia": "Southeast Asia", "malaysia": "Southeast Asia",
+    "singapore": "Southeast Asia", "philippines": "Southeast Asia",
+    "cambodia": "Southeast Asia", "laos": "Southeast Asia",
+    "myanmar": "Southeast Asia", "brunei": "Southeast Asia",
+    # South Asia
+    "india": "South Asia", "sri lanka": "South Asia", "nepal": "South Asia",
+    "bhutan": "South Asia", "bangladesh": "South Asia",
+    "maldives": "South Asia", "pakistan": "South Asia",
+    # Middle East
+    "united arab emirates": "Middle East", "uae": "Middle East",
+    "saudi arabia": "Middle East", "qatar": "Middle East",
+    "oman": "Middle East", "jordan": "Middle East", "israel": "Middle East",
+    "turkey": "Middle East", "turkiye": "Middle East",
+    # Europe
+    "france": "Europe", "italy": "Europe", "spain": "Europe",
+    "portugal": "Europe", "germany": "Europe", "switzerland": "Europe",
+    "austria": "Europe", "netherlands": "Europe", "belgium": "Europe",
+    "united kingdom": "Europe", "uk": "Europe", "ireland": "Europe",
+    "greece": "Europe", "croatia": "Europe", "czech republic": "Europe",
+    "hungary": "Europe", "poland": "Europe", "iceland": "Europe",
+    "norway": "Europe", "sweden": "Europe", "denmark": "Europe",
+    "finland": "Europe",
+    # Americas
+    "united states": "North America", "usa": "North America",
+    "us": "North America", "canada": "North America",
+    "mexico": "Latin America", "brazil": "Latin America",
+    "argentina": "Latin America", "peru": "Latin America",
+    "colombia": "Latin America", "chile": "Latin America",
+    "costa rica": "Latin America",
+    # Africa
+    "south africa": "Africa", "kenya": "Africa", "tanzania": "Africa",
+    "egypt": "Africa", "morocco": "Africa", "namibia": "Africa",
+    # Oceania
+    "australia": "Oceania", "new zealand": "Oceania", "fiji": "Oceania",
+}
+
+
+def get_macro_region(place: str) -> Optional[str]:
+    """Macro travel region for a place name. City names resolve through
+    their country first (Tokyo → Japan → East Asia); unknown places return
+    None rather than guessing."""
+    if not place:
+        return None
+    key = place.strip().lower()
+    region = COUNTRY_MACRO_REGIONS.get(key)
+    if region:
+        return region
+    country = get_city_country(key)
+    if country:
+        return COUNTRY_MACRO_REGIONS.get(country.lower())
+    return None
+
+
+# =============================================================================
 # EXPORTS
 # =============================================================================
 
@@ -659,9 +726,11 @@ __all__ = [
     "clear_cache",
     "get_city_country",
     "get_country_iso_code",
+    "get_macro_region",
     "resolve_destination_hierarchy",
     "COUNTRY_GATEWAYS",
     "COUNTRY_CANONICAL_ALIASES",
+    "COUNTRY_MACRO_REGIONS",
     "_BLACKLIST",
     "_MIN_POPULATION",
 ]

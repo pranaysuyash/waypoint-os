@@ -558,3 +558,17 @@ recipes preserved in the comparison sheet. Verified zero production code
 references before deletion. Store now: deepseek-ocr + nomic-embed only
 (untested, non-lane); ~16GB freed this step. All serving comparisons now run
 hosted; local re-pull is a documented one-command path per model.
+
+## FINDINGS STATUS CORRECTION (2026-09-14)
+
+FND-0273 and FND-0275 closed — both halves landed, tested, and live-verified
+(scope guard + origin cue-guard + per-traveler binding + decision risk flags).
+FND-0274 remains open: the L0 speaker-segment parser exists in
+`src/intake/attribution.py` (used by `build_travelers`) but the MAIN
+extraction path (`_extract_from_freeform`) still runs constraint and
+preference patterns on the full concatenated text, so transcript fragments
+can still appear in packet-level fields on multi-voice threads. The fix is
+to wire segment-scoped extraction into `_extract_from_freeform` (run
+constraints/preference patterns per speaker segment rather than on the raw
+concatenation), which requires care to preserve group-level facts. Tracked
+as the remaining FND-0274 implementation surface.

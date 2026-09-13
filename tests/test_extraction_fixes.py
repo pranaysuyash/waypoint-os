@@ -30,6 +30,7 @@ from src.intake.extractors import (
     _extract_budget,
     _extract_budget_scope,
     _extract_destination_candidates,
+    _extract_past_trip_places,
     _extract_dates,
     _extract_trip_intent,
     _extract_city_set,
@@ -738,11 +739,58 @@ class TestOriginHinglish:
 
     # --- New: Indian English "side" ---
     def test_bangalore_side_excludes_from_destination(self):
+        # "Bangalore side jaana hai" = "heading that way / somewhere around
+        # Bangalore" (Pranay, 2026-09-14): direction intent, destination not
+        # committed. Bangalore must never be fabricated as the destination;
+        # the intent must stay OPEN so intake asks "whereabouts near X?".
         candidates, status, raw = _extract_destination_candidates(
             "Bangalore side jaana hai"
         )
         lowered = [c.lower() for c in candidates]
         assert "bangalore" not in lowered, f"Bangalore should not be destination with 'side', got {candidates}"
+        assert status == "open", (
+            f"'X side' direction intent must report OPEN (ask for the "
+            f"destination), got status={status!r}"
+        )
+
+    # --- Option 3 (owner-ratified 2026-09-14): origin marker semantics ---
+    def test_side_direction_origin_is_hypothesis_not_fact(self):
+        # Bare "X side" is a direction reference — origin anchors real money
+        # math (flight distance, visa corridor), so it must stay a SOFT
+        # HYPOTHESIS, never a fact.
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform("Bangalore side jaana hai", "test")
+        packet = pipeline.extract([env])
+        assert packet.facts.get("origin_city") is None, (
+            f"bare 'X side' must not set an origin fact, got "
+            f"{packet.facts.get('origin_city')}"
+        )
+        hyp = packet.hypotheses.get("origin_city")
+        assert hyp is not None, "bare 'X side' must set an origin hypothesis"
+        core = hyp.value.get("value") if isinstance(hyp.value, dict) else hyp.value
+        assert core == "Bangalore", f"expected hypothesis Bangalore, got {core!r}"
+
+    def test_side_with_explicit_marker_is_fact(self):
+        # "X side se" carries the explicit "from" marker → fact.
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Bangalore side se jaana hai, 4 log, 3 din", "test"
+        )
+        packet = pipeline.extract([env])
+        origin = packet.facts.get("origin_city")
+        assert origin is not None, "'X side se' should set an origin fact"
+        assert origin.value == "Bangalore", f"Expected Bangalore, got {origin.value}"
+
+    def test_se_postposition_origin_still_fact(self):
+        # Regression: explicit "se" stays a fact (unchanged contract).
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "bangalore se singapore jana hai, 2 adults", "test"
+        )
+        packet = pipeline.extract([env])
+        origin = packet.facts.get("origin_city")
+        assert origin is not None, "'X se' must keep setting an origin fact"
+        assert origin.value == "Bangalore", f"Expected Bangalore, got {origin.value}"
 
 
 # ---------------------------------------------------------------------------
@@ -1670,9 +1718,30 @@ class TestColloquialDestination:
 
     # --- negative: activity verbs capture prose, not places ---
     def test_activity_prose_not_promoted(self):
-        for text in ["check out the ryokan on tiktok", "want to visit family in india"]:
-            candidates, _, _ = _extract_destination_candidates(text)
-            assert candidates == [], f"'{text}' should yield no destination, got {candidates}"
+        candidates, _, _ = _extract_destination_candidates(
+            "check out the ryokan on tiktok"
+        )
+        assert candidates == [], candidates
+
+    # --- VFR: "visit family in <place>" means <place> IS the destination
+    # --- (owner challenge 2026-09-13 — the old family-locative guard
+    # --- suppressed a true positive on a top revenue segment) ---
+    def test_family_visit_promotes_destination(self):
+        candidates, status, _ = _extract_destination_candidates(
+            "want to visit family in india"
+        )
+        assert candidates == ["India"], candidates
+        assert status == "definite"
+
+    def test_family_visit_purpose_detected(self):
+        result = _extract_trip_intent("want to visit family in india")
+        assert result["trip_purpose"] == "family_visit", result.get("trip_purpose")
+
+    def test_relatives_visit_promotes(self):
+        candidates, _, _ = _extract_destination_candidates(
+            "visiting relatives in goa for a week"
+        )
+        assert candidates == ["Goa"], candidates
 
     # --- negative: "or" is option semantics, never a committed city set ---
     def test_lowercase_or_pair_not_a_city_set(self):
@@ -1685,6 +1754,47 @@ class TestColloquialDestination:
             "we went to japan, korea last year and loved it"
         )
         assert candidates == [], candidates
+
+    # --- positive: past-trip memories are captured as travel-history facts
+    # --- (feeds history-informed asks: "loved Japan & Korea — somewhere
+    # --- similar in East Asia, or somewhere new?") ---
+    def test_past_places_captured_with_region_and_sentiment(self):
+        places = _extract_past_trip_places(
+            "we went to japan, korea last year and loved it"
+        )
+        names = {p["place"] for p in places}
+        assert names == {"Japan", "Korea"}, places
+        assert all(p["sentiment"] == "positive" for p in places), places
+        assert {p["region"] for p in places} == {"East Asia"}, places
+
+    def test_past_places_empty_for_current_intent(self):
+        assert _extract_past_trip_places("we want to visit japan") == []
+
+
+class TestRegionAffinityFact:
+    """region_affinity: aggregated preference signal derived from
+    past_trips — consumer contract for downstream ranking."""
+
+    def test_region_affinity_fact_derived(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "we went to japan, korea last year and loved it. "
+            "planning another trip soon, flexible dates."
+        )
+        packet = pipeline.extract([env])
+        affinity = packet.facts["region_affinity"].value
+        assert affinity == [{
+            "region": "East Asia", "trips": 2, "positive": 2,
+            "places": ["Japan", "Korea"],
+        }], affinity
+
+    def test_no_region_resolution_no_affinity_fact(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "we went to some small village last year and loved it."
+        )
+        packet = pipeline.extract([env])
+        assert "region_affinity" not in packet.facts or not packet.facts["region_affinity"].value
 
     # --- full demo note: city set wins, activity "somewhere" does not open ---
     def test_full_demo_note_city_set_wins_over_somewhere(self):
@@ -2513,3 +2623,95 @@ class TestReviewFollowUpExtraction:
     def test_legit_guest_count_still_works(self):
         result = _extract_party("25 guests from Delhi want rajasthan")
         assert result["party_size"] == 25, result
+
+
+class TestPartySizeInformalHinglish:
+    """FND-0287: Party size extraction on informal, Hindi/Hinglish, and slang phrasings."""
+
+    def test_party_partner_phrasings(self):
+        pipeline = ExtractionPipeline()
+        cases = [
+            ("trip with my gf", 2),
+            ("me and my girlfriend", 2),
+            ("me n my wife", 2),
+            ("me & my husband", 2),
+            ("looking for a resort for my partner and me", 2),
+            ("trip with my fiancé", 2),
+        ]
+        for phrase, expected in cases:
+            p = pipeline.extract([SourceEnvelope.from_freeform(phrase)])
+            slot = p.facts.get("party_size")
+            assert slot is not None, f"party_size should be extracted for '{phrase}'"
+            assert slot.value == expected, f"Expected {expected} for '{phrase}', got {slot.value}"
+
+    def test_party_hindi_log_and_ppl_abbreviation(self):
+        pipeline = ExtractionPipeline()
+        cases = [
+            ("4 log", 4),
+            ("chaar log", 4),
+            ("3 log trip", 3),
+            ("4 ppl traveling to goa", 4),
+            ("6 ppl", 6),
+            ("me and 3 others", 4),
+        ]
+        for phrase, expected in cases:
+            p = pipeline.extract([SourceEnvelope.from_freeform(phrase)])
+            slot = p.facts.get("party_size")
+            assert slot is not None, f"party_size should be extracted for '{phrase}'"
+            assert slot.value == expected, f"Expected {expected} for '{phrase}', got {slot.value}"
+
+    def test_party_slang_group_signals_recorded(self):
+        pipeline = ExtractionPipeline()
+        cases = [
+            "the squad is heading to goa",
+            "vacation with the gang",
+            "one of us has special dietary needs",
+        ]
+        for phrase in cases:
+            p = pipeline.extract([SourceEnvelope.from_freeform(phrase)])
+            unknown_notes = [u.notes for u in p.unknowns if u.field_name == "party_size"]
+            assert len(unknown_notes) > 0, f"Unparsed group signal should be recorded for '{phrase}'"
+            assert any("unparsed_group_phrasing" in n for n in unknown_notes)
+
+
+class TestOriginCityHinglishAndRoutePatterns:
+    """FND-0288: Origin city extraction on Hinglish, route, and airport code patterns."""
+
+    def test_route_pattern_origin_and_destination(self):
+        pipeline = ExtractionPipeline()
+        p = pipeline.extract([SourceEnvelope.from_freeform("blr to goa")])
+        origin = p.facts.get("origin_city")
+        dest = p.facts.get("destination_candidates")
+        assert origin is not None and origin.value == "Bangalore"
+        assert dest is not None and dest.value == ["Goa"]
+
+    def test_flying_out_of_airport_code(self):
+        pipeline = ExtractionPipeline()
+        p = pipeline.extract([SourceEnvelope.from_freeform("flying out of blr to goa")])
+        origin = p.facts.get("origin_city")
+        dest = p.facts.get("destination_candidates")
+        assert origin is not None and origin.value == "Bangalore"
+        assert dest is not None and dest.value == ["Goa"]
+
+        # Bare "flying out of blr" without destination
+        p2 = pipeline.extract([SourceEnvelope.from_freeform("flying out of blr")])
+        origin2 = p2.facts.get("origin_city")
+        dest2 = p2.facts.get("destination_candidates")
+        assert origin2 is not None and origin2.value == "Bangalore"
+        assert dest2 is None or dest2.value == []
+
+    def test_hinglish_se_origin_deduplicated_from_destination(self):
+        pipeline = ExtractionPipeline()
+        p = pipeline.extract([SourceEnvelope.from_freeform("mumbai se goa")])
+        origin = p.facts.get("origin_city")
+        dest = p.facts.get("destination_candidates")
+        assert origin is not None and origin.value == "Mumbai"
+        assert dest is not None and dest.value == ["Goa"]
+
+    def test_deictic_yahan_se_not_fake_city(self):
+        pipeline = ExtractionPipeline()
+        p = pipeline.extract([SourceEnvelope.from_freeform("yahan se goa jaana hai")])
+        origin = p.facts.get("origin_city")
+        dest = p.facts.get("destination_candidates")
+        assert origin is None or str(origin.value).lower() != "yahan"
+        assert dest is not None and "Goa" in dest.value

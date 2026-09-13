@@ -26,6 +26,36 @@ Ask only: **"Which layer owns this?"**
 **Prefer rules over LLMs.**
 Always attempt to solve a judgment or extraction task with deterministic rules first. Use LLMs only when the answer requires world knowledge, cross-field semantic judgment, or complex intent classification. Every repeated LLM judgment should be considered a candidate for graduation into a deterministic rule (see `src/decision/hybrid_engine.py`).
 
+**The two directions of the doctrine** (sharpened by the Sim #2 → extraction
+realignment arc, 2026-09; evidence in `EXTRACTION_REALIGNMENT_BLUEPRINT`):
+
+1. **Downward graduation** — a repeated LLM *success* becomes a deterministic
+   fast path (cheap, instant, testable).
+2. **Upward hardening** — every *failure* (test, sim, adversarial corpus)
+   becomes a deterministic **invariant**: a "never" rule that clips all
+   producers — pattern paths, the broad sweep, AND LLM output. LLM workers
+   are fallbacks for recall, never arbiters of invariants; their output must
+   pass through the same shared validation stack as every other producer.
+
+Disciplines that keep "add rules as tests find failures" from rotting:
+
+- **Class rules over word rules.** A structural pattern (past-clause span,
+  family-locative, direction postposition) generalizes; a word list is
+  unbounded whack-a-mole (GeoNames collisions prove the list never ends).
+  Keep converting word rules into class rules.
+- **One shared validation stack.** Guards are post-conditions on the output
+  boundary, not per-path patches. A producer that bypasses the shared filter
+  is a bug (see the sweep/placeholder fix, adv_struct_005).
+- **Every guard ships with a counter-test** ("family trip to japan" keeps
+  Japan; "Virginia Beach" keeps the bigram; "okinawa side trip?" keeps
+  Okinawa) and re-runs the note-level F1 eval — if recall drops materially,
+  the guard is wrong-shaped and gets redesigned, not waived.
+
+The deterministic layer is the floor and the guardrails; the LLM layer is
+the ceiling on recall for the long tail classes do not cover. Layering on
+deterministic abstention means most traffic never pays the LLM tax while
+100% of traffic gets invariant protection.
+
 ## The Clean Cut
 
 Everything the travel-agency OS needs gets modeled **now**.
