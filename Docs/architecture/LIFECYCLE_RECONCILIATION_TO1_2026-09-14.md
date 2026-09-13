@@ -49,19 +49,35 @@ feasibility gating, approval recheck, component-level booking states, and
 change-request auditability. These map to the taught model's execution half —
 the same half the KDD serving experiments touched (booking-phase ontology).
 
-## Recommended sequencing (for owner ratification, no code in this doc)
+## Resolution — CORRECTED 2026-09-14
 
-1. Adopt `NEEDS_INFORMATION` rendering from `classify_missing_fields`
-   (T-O2 machinery) — no new states needed; render blockers per stage.
-2. Add `feasibility` as a real transition target before planning (decision
-   layer already computes feasibility risks; promote to a state).
-3. Add `change_requested` + `booking_exception` (component states) when
-   booking work begins — mirrors taught model §7/§8.
-4. Approval-recheck state when booking execution lands.
+The original draft deferred the full lifecycle to "when booking work begins"
+and framed the coarse machine as "sufficient for pilot." That was wrong per
+doctrine: first-principles design doesn't have a pilot tier — the state
+machine is either correct or it isn't. The taught lifecycle states are the
+architecture, not a future enhancement.
+
+**Revised verdict:** the repo is missing four states the ontology v2 and the
+taught model both require. These are not deferred — they are the
+implementation backlog for the lifecycle, in dependency order:
+
+| Priority | Missing state | Why it matters | Dependency |
+|---|---|---|---|
+| 1 | `NEEDS_INFORMATION` | Replaces the flat `incomplete` status with required_for-classified blockers; non-blocked work continues | `classify_missing_fields` already exists (TS-07) — wire into status transition |
+| 2 | `FEASIBILITY_CHECK` | Gates paid work behind entry/visa/budget verification — prevents wasted downstream compute | Decision layer already computes feasibility risks — promote to a state |
+| 3 | `AWAITING_CUSTOMER_APPROVAL` | Distinguishes "quote sent, waiting for yes" from "waiting for missing info" — different allowed/forbidden actions | Quote Review surface already exists — add explicit state |
+| 4 | `APPROVED` + freshness recheck | Prices decay between approval and booking; recheck prevents stale-price booking | Needs freshness tracking on pricing facts |
+| 5 | `BOOKING_IN_PROGRESS` + component states (flight/hotel/activity: `not_started → in_progress → confirmed | failed | result_unknown`) | Idempotency + partial-failure handling | Requires booking execution subsystem |
+| 6 | `CHANGE_REQUESTED` | Post-booking changes must be audited, not mutated in place | Depends on 5 |
+
+States 1–4 are implementable now (they gate existing behavior — no new
+external dependencies). States 5–6 require the booking execution subsystem.
 
 ## Falsifier
 
-If the owner ratifies the current coarse machine as sufficient for the
-pilot (invite-only, operator-in-the-loop), the taught states remain
-documentation-only and the reconciliation closes as "covered by operator
-workflow instead of system states."
+~~If the owner ratifies the current coarse machine as sufficient for the
+pilot~~ Replaced: the coarse machine is insufficient — it conflates
+NEEDS_INFORMATION with INTAKE, has no feasibility gate, and no
+approval/booking distinction. The falsifier for the full lifecycle is:
+a production incident caused by a missing state transition (e.g., booking
+without feasibility check, or silent mutation of a booked trip).
