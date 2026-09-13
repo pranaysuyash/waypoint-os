@@ -58,3 +58,35 @@ def test_repeated_sweep_does_not_emit_duplicate_for_marked_asset() -> None:
 
     assert len(first) == 1
     assert second == []
+
+
+def test_jurisdiction_policy_sla_wiring() -> None:
+    """F-05: verify jurisdiction policy wires into RetentionEnforcer SLA resolution."""
+    eu_asset = RetentionEnforcer.register_asset(
+        asset_id="asset_eu_mrz",
+        trip_id="trip_eu",
+        customer_id="cust_eu",
+        category=RetentionCategory.PASSPORT_MRZ,
+        agency_id="agency_eu",
+        jurisdiction="eu",
+    )
+    assert eu_asset.jurisdiction == "eu"
+    assert eu_asset.agency_id == "agency_eu"
+    assert eu_asset.sla_days == 30
+
+    now = datetime(2026, 9, 4, tzinfo=timezone.utc)
+    expired_eu = RetentionEnforcer.register_asset(
+        asset_id="asset_eu_exp",
+        trip_id="trip_eu",
+        customer_id="cust_eu",
+        category=RetentionCategory.PASSPORT_MRZ,
+        created_at_iso=(now - timedelta(days=31)).isoformat(),
+        agency_id="agency_eu",
+        jurisdiction="eu",
+    )
+    certs = RetentionEnforcer.sweep_and_enforce_erasure(now_dt=now)
+    assert len(certs) == 1
+    assert certs[0].jurisdiction == "eu"
+    assert certs[0].agency_id == "agency_eu"
+    assert "PASSPORT_MRZ" in certs[0].reason
+    assert expired_eu.is_erased is True

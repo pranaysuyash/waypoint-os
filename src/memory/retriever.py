@@ -13,7 +13,7 @@ import math
 from typing import List, Tuple
 
 from src.memory.decay_engine import MemoryDecayEngine
-from src.memory.models import SOURCE_CONFIDENCE_WEIGHTS, BaseMemoryItem
+from src.memory.models import SOURCE_CONFIDENCE_WEIGHTS, BaseMemoryItem, MemorySourceType
 from src.memory.sanitizer import MemorySanitizer
 
 DEFAULT_TOKEN_BUDGET = 800
@@ -22,8 +22,44 @@ DEFAULT_TOKEN_BUDGET = 800
 class HybridMemoryRetriever:
     """Retrieves and ranks memory items with recency decay and token budget controls."""
 
+    SAFETY_CRITICAL_CATEGORIES = {
+        "dietary_safety", "medical", "mobility", "allergy", "disability", "accessibility"
+    }
+    SAFETY_CRITICAL_KEYWORDS = {
+        "allergy", "allergic", "anaphylaxis", "celiac", "wheelchair", "mobility",
+        "medical", "medication", "oxygen", "dialysis", "stretcher", "guide dog"
+    }
+    VERIFIED_SAFETY_SOURCES = {
+        MemorySourceType.TRAVELER_DIRECT,
+        MemorySourceType.VERIFIED_DOCUMENT,
+        MemorySourceType.AGENT_MANUAL,
+    }
+
     def __init__(self, token_budget: int = DEFAULT_TOKEN_BUDGET):
         self.token_budget = token_budget
+
+    def is_safety_critical(self, item: BaseMemoryItem) -> bool:
+        if getattr(item, "is_safety_critical", False):
+            return True
+        if item.category.lower() in self.SAFETY_CRITICAL_CATEGORIES:
+            return True
+        text = f"{item.summary} {item.category}".lower()
+        return any(k in text for k in self.SAFETY_CRITICAL_KEYWORDS)
+
+    def is_unverifiable_safety_claim(self, item: BaseMemoryItem) -> bool:
+        """F-13: Flag medical/mobility/dietary claims from unverified or low-confidence sources."""
+        if not self.is_safety_critical(item):
+            return False
+        if item.provenance.source_type not in self.VERIFIED_SAFETY_SOURCES:
+            return True
+        return item.provenance.confidence_score < 0.85
+
+    def get_quarantined_claims(self, memories: List[BaseMemoryItem]) -> List[BaseMemoryItem]:
+        """Returns all safety-critical claims quarantined due to unverified provenance."""
+        return [
+            m for m in memories
+            if not m.is_tombstone and not m.superseded_by_id and self.is_unverifiable_safety_claim(m)
+        ]
 
     @staticmethod
     def _estimate_tokens(text: str) -> int:
@@ -48,6 +84,7 @@ class HybridMemoryRetriever:
         memories: List[BaseMemoryItem],
         top_k: int = 10,
         min_score: float = 0.20,
+        quarantine_unverified_safety: bool = True,
     ) -> List[Tuple[BaseMemoryItem, float]]:
         """
         Retrieves top_k relevant memories within the configured token budget.
@@ -57,6 +94,10 @@ class HybridMemoryRetriever:
 
         for item in memories:
             if item.is_tombstone or item.superseded_by_id:
+                continue
+
+            # F-13: Quarantine unverified medical/mobility/safety claims at retrieval time
+            if quarantine_unverified_safety and self.is_unverifiable_safety_claim(item):
                 continue
 
             activation = MemoryDecayEngine.calculate_activation_strength(item)

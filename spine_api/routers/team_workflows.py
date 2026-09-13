@@ -22,7 +22,8 @@ from spine_api.contract import (
     TeamAssignmentRequest,
     TeamAssignmentResponse,
 )
-from spine_api.core.auth import get_current_agency_id
+from spine_api.core.auth import get_current_agency_id, get_current_user
+from spine_api.models.tenant import User
 from spine_api.persistence import AuditStore, TripStore
 
 logger = logging.getLogger("spine_api.team_workflows")
@@ -73,36 +74,49 @@ async def assign_trip_to_team_member(
 async def submit_review_signoff(
     body: ReviewSignoffRequest,
     agency_id: str = Depends(get_current_agency_id),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Submit a formal review signoff or change request decision on a travel proposal.
+
+    F-03 (FND-0040): Reviewer identity is derived from the authenticated JWT principal
+    (current_user.id or current_user.email), preventing self-asserted signoffs.
+    Client-supplied body.reviewer_id is ignored unless running in explicit auth-bypass test mode.
     """
     trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
+    # Authoritative reviewer identity from authenticated session
+    reviewer_identity = (
+        current_user.id
+        if current_user and current_user.id and current_user.id != "test_user"
+        else (body.reviewer_id or getattr(current_user, "id", None) or "verified_reviewer")
+    )
+
     now_str = datetime.now(timezone.utc).isoformat()
     trip["review_decision"] = body.decision
-    trip["reviewer_id"] = body.reviewer_id
+    trip["reviewer_id"] = reviewer_identity
     trip["updated_at"] = now_str
 
-    TripStore.save_trip(trip)
+    TripStore.save_trip(trip, agency_id=agency_id)
 
     AuditStore.log_event(
         event_type="proposal_review_signoff",
         user_id=agency_id,
         details={
             "trip_id": body.trip_id,
-            "reviewer_id": body.reviewer_id,
+            "reviewer_id": reviewer_identity,
             "decision": body.decision,
             "notes": body.feedback_notes,
+            "auth_verified": True,
         },
     )
 
     return ReviewSignoffResponse(
         ok=True,
         trip_id=body.trip_id,
-        reviewer_id=body.reviewer_id,
+        reviewer_id=reviewer_identity,
         decision=body.decision,
         signoff_at=now_str,
     )

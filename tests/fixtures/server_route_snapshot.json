@@ -1,5 +1,5 @@
 {
-  "route_count": 366,
+  "route_count": 374,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1738,6 +1738,30 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/irops-healer/watch/start",
+      "name": "start_irops_watch",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/irops-healer/watch/status",
+      "name": "irops_watch_status",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/irops-healer/watch/stop",
+      "name": "stop_irops_watch",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/ivr-bypass/calls/bridge",
       "name": "bridge_call_to_advisor",
       "methods": [
@@ -1758,6 +1782,30 @@
       "name": "get_supported_carriers",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/ivr/calls/initiate",
+      "name": "initiate_ivr_call",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/ivr/calls/{call_sid}/status",
+      "name": "get_call_status",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/ivr/webhook/status",
+      "name": "twilio_status_webhook",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },
@@ -2270,6 +2318,22 @@
       "name": "undo_trip_mutation",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/pre-departure-bundle",
+      "name": "get_pre_departure_bundle_json",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/pre-departure-bundle.pdf",
+      "name": "get_pre_departure_bundle_pdf",
+      "methods": [
+        "GET"
       ],
       "operation_id": null
     },

@@ -85,9 +85,17 @@ class AgencyAutonomyPolicy:
     auto_escalate_high_risk: bool = True
     checker_audit_threshold: float = 0.9  # Threshold for triggering secondary agent review
 
+    # ADR-008 Money Path Autonomy Rungs (AT-15 / FND-0185)
+    # Default fully_human: system never moves money alone without an authenticated human operator.
+    # hybrid: auto within governance-registry caps + required payment mandate (F-04).
+    # fully_autonomous: auto under registry authority, mandate recorded not required.
+    money_execution_mode: Literal["fully_human", "hybrid", "fully_autonomous"] = "fully_human"
+
     _STOP_NEEDS_REVIEW: str = field(default="block", repr=False)
 
     def __post_init__(self):
+        if self.money_execution_mode not in ("fully_human", "hybrid", "fully_autonomous"):
+            self.money_execution_mode = "fully_human"
         if self.approval_gates.get("STOP_NEEDS_REVIEW") != "block":
             self.approval_gates["STOP_NEEDS_REVIEW"] = "block"
 
@@ -132,6 +140,7 @@ class AgencyAutonomyPolicy:
             "learn_from_overrides",
             "auto_reprocess_on_edit",
             "allow_explicit_reassess",
+            "money_execution_mode",
         ):
             if key in data:
                 setattr(policy, key, data[key])

@@ -118,7 +118,33 @@ class AutonomousProposalCompiler:
 
         flight_cost = round(flight_price_per_pax * traveler_count, 2)
         lodging_days = max(1, (return_date - departure_date).days)
-        hotel_cost = round(450.0 * lodging_days, 2)
+
+        # G-3: Wholesale hotel rate shopping via Hotelbeds adapter.
+        # Falls back to $450/night synthetic rate when credentials are absent.
+        from src.distribution.hotelbeds_adapter import HotelbedsAdapter
+        try:
+            dest_city_code = dest_code  # Use same IATA city code
+            htb_adapter = HotelbedsAdapter()
+            htb_offers = htb_adapter.search_hotel_rates(
+                destination_code=dest_city_code,
+                check_in=departure_date.isoformat(),
+                check_out=return_date.isoformat(),
+                adults=traveler_count,
+            )
+            if htb_offers:
+                best_hotel = htb_offers[0]
+                hotel_cost = round(best_hotel.retail_rate_usd, 2)
+                hotel_provider = best_hotel.hotel_name
+                hotel_rate_key = best_hotel.rate_key
+            else:
+                hotel_cost = round(450.0 * lodging_days, 2)
+                hotel_provider = "Bedsonline Partner Hotel"
+                hotel_rate_key = ""
+        except Exception:
+            hotel_cost = round(450.0 * lodging_days, 2)
+            hotel_provider = "Bedsonline Partner Hotel"
+            hotel_rate_key = ""
+
         transfer_cost = 180.0
         net_supplier_cost = round(flight_cost + hotel_cost + transfer_cost, 2)
 
@@ -143,7 +169,16 @@ class AutonomousProposalCompiler:
 
         f_node = JourneyNode("N_FLT_01", NodeType.FLIGHT, f"Flight to {destination}", t_dep, t_arr, "NYC", provider=flight_provider)
         t_node = JourneyNode("N_TRF_01", NodeType.TRANSFER, "Chauffeur Airport Transfer", t_trans, t_trans + timedelta(hours=1), destination, provider="Blacklane")
-        h_node = JourneyNode("N_HTL_01", NodeType.HOTEL_CHECKIN, f"Luxury Hotel Stay ({destination})", t_hotel, t_hotel + timedelta(days=max(1, (return_date - departure_date).days)), destination, provider="Belmond")
+        h_node = JourneyNode(
+            "N_HTL_01",
+            NodeType.HOTEL_CHECKIN,
+            f"Hotel Stay ({destination}) — {hotel_provider}",
+            t_hotel,
+            t_hotel + timedelta(days=max(1, (return_date - departure_date).days)),
+            destination,
+            provider=hotel_provider,
+            metadata={"rate_key": hotel_rate_key} if hotel_rate_key else {},
+        )
 
         graph.add_node(f_node)
         graph.add_node(t_node)
@@ -221,7 +256,7 @@ class AutonomousProposalCompiler:
             provider_connected=False,
             breakdown_items=[
                 {"category": "Flights", "provider": flight_provider, "amount_usd": flight_cost},
-                {"category": "Lodging", "provider": "Belmond Luxury Properties", "amount_usd": hotel_cost},
+                {"category": "Lodging", "provider": hotel_provider, "amount_usd": hotel_cost},
                 {"category": "Transfers", "provider": "Private Chauffeur", "amount_usd": transfer_cost},
             ],
         )

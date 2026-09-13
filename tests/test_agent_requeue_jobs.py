@@ -523,3 +523,59 @@ class TestFactorySqlQueueMode:
         bundle = build_agent_runtime_from_config(config)
 
         assert bundle.recovery_agent is not None
+ 
+ 
+class TestPoisonedJobInspectRedactReplay:
+    def test_inspect_and_replay_poisoned_job(self):
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+        from src.agents.dlq_inspector import DLQInspector
+
+        store = RequeueJobStore()
+        payload = {
+            "traveler": "Alice",
+            "api_token": "sk-secret-12345",
+            "credit_card_pan": "4111111111111111",
+            "hotel_id": "ht_99",
+        }
+        accepted, job_id = store.enqueue(
+            trip_id="t_poison_inspect",
+            idempotency_key="poison:test:1",
+            reason="Unrecoverable GDS failure",
+            payload=payload,
+        )
+        assert accepted is True
+
+        # Fail and poison the job
+        store.fail(job_id, "Fatal supplier timeout", poison=True)
+
+        # Inspect poisoned job: verify sensitive fields redacted
+        detail = store.inspect_poisoned(job_id)
+        assert detail is not None
+        assert detail["status"] == "poisoned"
+        assert detail["trip_id"] == "t_poison_inspect"
+        assert detail["last_error"] == "Fatal supplier timeout"
+        assert detail["redacted_payload"]["hotel_id"] == "ht_99"
+        assert detail["redacted_payload"]["api_token"] == "[REDACTED_BY_DLQ_GUARD]"
+        assert detail["redacted_payload"]["credit_card_pan"] == "[REDACTED_BY_DLQ_GUARD]"
+
+        # Verify DLQInspector mirror has recorded it
+        dlq_record = DLQInspector.get_job(job_id)
+        assert dlq_record is not None
+        assert dlq_record.trip_id == "t_poison_inspect"
+
+        # Replay the poisoned job with patched payload
+        ok = store.replay_poisoned(job_id, patched_payload={"hotel_id": "ht_100", "provider": "NDC"})
+        assert ok is True
+
+        # Job is now back to pending
+        row = _fetch(job_id)
+        assert row is not None
+        assert row["status"] == "pending"
+        assert row["attempts"] == 0
+        assert row["last_error"] == ""
+        assert "ht_100" in row["payload"]
+
+        # Inspect non-poisoned job returns None
+        assert store.inspect_poisoned(job_id) is None
+        # Replay non-poisoned job returns False
+        assert store.replay_poisoned(job_id) is False

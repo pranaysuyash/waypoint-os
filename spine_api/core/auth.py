@@ -42,9 +42,11 @@ async def get_current_user(
     then load the user from the database.
     """
     # Per-request cache to avoid duplicate JWT decode + user DB reads when
-    # multiple dependencies request the current user in the same request.
-    cached_user = getattr(request.state, "current_user", None)
+    # multiple dependencies request the current user in the same request, or when
+    # AuthMiddleware already decoded and loaded the user into request.state.user.
+    cached_user = getattr(request.state, "current_user", None) or getattr(request.state, "user", None)
     if cached_user is not None:
+        request.state.current_user = cached_user
         return cached_user
 
     token = None

@@ -38,10 +38,12 @@ from spine_api.providers.stripe_issuing_adapter import (
     VirtualCardIssuanceRequest,
 )
 from spine_api.routers.public_proposals import _get_or_create_proposal
+from spine_api.services.commission_reconciliation import reconcile_trip_commission
 from spine_api.services.confirmation_service import try_record_fulfillment_confirmation
 from spine_api.services.payment_mandate_service import PaymentMandateLedger
 from src.distribution.amadeus_sandbox_adapter import AmadeusSandboxAdapter
 from src.governance.registry import AuthorityDenied, enforce_action_authority
+from src.intake.config.agency_settings import AgencySettingsStore
 from src.orchestration.agent_lease import DurableAgentLeaseManager, lease_heartbeat
 from src.schemas.journey_graph import (
     JourneyDependencyGraph,
@@ -91,6 +93,11 @@ class FulfillmentResult:
     # or an explicit ``recorded: False`` + reason when no database is
     # configured — never a silent skip).
     durable_confirmation: Optional[Dict[str, Any]] = None
+    # G-5: Post-ticketing commission reconciliation result. Every confirmed
+    # booking triggers reconcile_trip_commission() so the advisor ledger is
+    # immediately updated. The reconciliation outcome (matched / mismatch /
+    # no_payouts) travels on the result for auditability.
+    commission_reconciliation: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         # A4 (2026-09-11): the raw VCC id and e-ticket number are excluded from
@@ -111,6 +118,7 @@ class FulfillmentResult:
             "mandate_enforced": self.mandate_enforced,
             "idempotent_replay": self.idempotent_replay,
             "durable_confirmation": self.durable_confirmation,
+            "commission_reconciliation": self.commission_reconciliation,
         }
 
 
@@ -192,30 +200,56 @@ class BookingFulfillmentEngine:
                 },
             ) from exc
 
-        # 1d. F-04: consent-artifact mandate check (fail-fast phase). Whether a
-        # mandate exists and whether mandate-less movement is permitted is
-        # decided here; the headroom-consuming CAS runs inside the lease fence
-        # so a lease failure can never burn mandate headroom without a booking.
-        # Enforcement follows SPINE_API_REQUIRE_PAYMENT_MANDATES: default false
-        # until ADR-008 ratifies the R1 money-path rung; true refuses with an
-        # escalation-required 403 instead of moving money on no consent.
+        # 1d. ADR-008 & F-04: Money Path Autonomy Rungs (AT-15 / FND-0185).
+        # ADR-008 ratified money path as a per-agency tri-state setting:
+        # - fully_human (default): Every booking/payout/refund/VCC movement requires an authenticated
+        #   human operator as the approving principal (recorded in audit); system never moves money alone.
+        # - hybrid: Auto within governance-registry caps + required payment mandate (F-04).
+        # - fully_autonomous: Auto under registry authority, mandate recorded if present but not required.
+        # Enforcement follows agency_settings.autonomy.money_execution_mode;
+        # SPINE_API_REQUIRE_PAYMENT_MANDATES env var serves as fallback when hybrid/mandate is active.
         agency_scope = str(trip_record.get("agency_id") or "system")
+        agency_settings = AgencySettingsStore.load(agency_scope)
+        money_mode = agency_settings.autonomy.money_execution_mode
+
+        # Check for autonomous execution attempt
+        is_autonomous_agent = holder_id in ("fulfillment_agent", "system", "auto_fulfillment")
+
+        if money_mode == "fully_human" and is_autonomous_agent:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "money_execution_mode_refusal",
+                    "escalation_required": True,
+                    "money_execution_mode": "fully_human",
+                    "holder_id": holder_id,
+                    "message": (
+                        f"Agency '{agency_scope}' operates under 'fully_human' money execution mode (ADR-008). "
+                        "Autonomous agents cannot initiate bookings or move money without an authenticated "
+                        "human advisor as the approving principal. Escalate to an authenticated advisor."
+                    ),
+                },
+            )
+
+        agency_requires_mandate = money_mode == "hybrid" or (
+            os.environ.get("SPINE_API_REQUIRE_PAYMENT_MANDATES", "0").strip().lower() in ("1", "true", "yes")
+        )
+
         mandate_charge_cents = int(round(float(proposal.selected_total_price_usd) * 100))
         mandate = PaymentMandateLedger.resolve_for_trip(
             agency_id=agency_scope, trip_id=trip_id
         )
-        if mandate is None and os.environ.get(
-            "SPINE_API_REQUIRE_PAYMENT_MANDATES", "0"
-        ).strip().lower() in ("1", "true", "yes"):
+        if mandate is None and agency_requires_mandate:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "error": "payment_mandate_required",
                     "escalation_required": True,
+                    "money_execution_mode": money_mode,
                     "message": (
-                        "No active payment mandate exists for this trip and "
-                        "mandate enforcement is enabled. Fulfillment refuses to "
-                        "move money without a consent artifact (F-04)."
+                        f"No active payment mandate exists for trip '{trip_id}' and "
+                        f"mandate enforcement is required under '{money_mode}' mode (ADR-008 / F-04). "
+                        "Fulfillment refuses to move money without a consent artifact."
                     ),
                 },
             )
@@ -475,10 +509,33 @@ class BookingFulfillmentEngine:
                     "persisted_and_verified": True,
                     "mandate_id": mandate_id_for_audit,
                     "mandate_enforced": mandate_enforced,
+                    "money_execution_mode": money_mode,
                     "provider_idempotency_key": provider_key,
                     "durable_confirmation": durable_confirmation,
                 },
             )
+
+            # G-5: Post-ticketing commission reconciliation. Called AFTER the
+            # booking is confirmed and audited so a ledger failure never blocks
+            # the booking result — it's reported for operator attention.
+            commission_rec: Optional[Dict[str, Any]] = None
+            try:
+                commission_rec = reconcile_trip_commission(
+                    trip_id=trip_id,
+                    agency_id=agency_scope,
+                )
+                logger.info(
+                    "Commission reconciliation for trip %s: status=%s delta_usd=%s",
+                    trip_id,
+                    commission_rec.get("status"),
+                    commission_rec.get("delta_usd"),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "Commission reconciliation failed (non-blocking) for trip %s: %s",
+                    trip_id,
+                    exc,
+                )
 
             return FulfillmentResult(
                 trip_id=trip_id,
@@ -495,6 +552,7 @@ class BookingFulfillmentEngine:
                 mandate_id=mandate_id_for_audit,
                 mandate_enforced=mandate_enforced,
                 durable_confirmation=durable_confirmation,
+                commission_reconciliation=commission_rec,
             )
         finally:
             # 8. Release lease

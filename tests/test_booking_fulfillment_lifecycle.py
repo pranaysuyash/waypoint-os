@@ -32,14 +32,14 @@ def _env(monkeypatch):
     monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 
-def _seed_trip(prefix: str, destination: str = "Paris", cost: float = 4500.0) -> str:
+def _seed_trip(prefix: str, destination: str = "Paris", cost: float = 4500.0, agency_id: str = "system") -> str:
     """Create an additive per-test durable trip fixture (unique id, never
     touching any pre-existing trip record)."""
     trip_id = f"trip_{prefix}_{uuid.uuid4().hex[:10]}"
     TripStore.save_trip(
         {
             "id": trip_id,
-            "agency_id": "system",
+            "agency_id": agency_id,
             "status": "assigned",
             "destination": destination,
             "packet": {
@@ -56,7 +56,7 @@ def _seed_trip(prefix: str, destination: str = "Paris", cost: float = 4500.0) ->
                 }
             },
         },
-        agency_id="system",
+        agency_id=agency_id,
     )
     return trip_id
 
@@ -449,3 +449,84 @@ def test_amadeus_provider_idempotency_same_key_same_instruments():
     assert first.e_ticket_number == second.e_ticket_number
     assert first.booking_reference == second.booking_reference
     assert first.pnr_locator != other.pnr_locator
+
+
+@pytest.mark.asyncio
+async def test_fulfillment_money_execution_mode_fully_human_refuses_autonomous_agent():
+    """ADR-008 & FND-0185 (AT-15): In 'fully_human' mode (default), autonomous agents cannot initiate bookings."""
+    from src.intake.config.agency_settings import AgencySettings, AgencySettingsStore
+    from fastapi import HTTPException
+
+    agency_id = "agency_fully_human_test"
+    settings = AgencySettings(agency_id=agency_id)
+    settings.autonomy.money_execution_mode = "fully_human"
+    AgencySettingsStore.save(settings)
+
+    trip_id = _seed_trip("fh", destination="London", cost=1200.0, agency_id=agency_id)
+    token = generate_signed_proposal_token(trip_id=trip_id, agency_id=agency_id)
+    _accept(token, "John Connor", "john@resistance.net")
+
+    # Autonomous execution attempt must raise HTTP 403
+    with pytest.raises(HTTPException) as exc_info:
+        await BookingFulfillmentEngine.fulfill_accepted_proposal(
+            trip_id=trip_id,
+            proposal_token=token,
+            holder_id="fulfillment_agent",
+        )
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["error"] == "money_execution_mode_refusal"
+    assert exc_info.value.detail["money_execution_mode"] == "fully_human"
+
+    # Human advisor execution proceeds
+    human_result = await BookingFulfillmentEngine.fulfill_accepted_proposal(
+        trip_id=trip_id,
+        proposal_token=token,
+        holder_id="advisor_pranay",
+    )
+    assert human_result.status == "FULFILLED_CONFIRMED"
+
+
+@pytest.mark.asyncio
+async def test_fulfillment_money_execution_mode_hybrid_requires_payment_mandate():
+    """ADR-008 & FND-0185 (AT-15): In 'hybrid' mode, auto fulfillment is allowed if mandate is present."""
+    from src.intake.config.agency_settings import AgencySettings, AgencySettingsStore
+    from spine_api.services.payment_mandate_service import PaymentMandateLedger
+    from fastapi import HTTPException
+
+    agency_id = "agency_hybrid_test"
+    settings = AgencySettings(agency_id=agency_id)
+    settings.autonomy.money_execution_mode = "hybrid"
+    AgencySettingsStore.save(settings)
+
+    trip_id = _seed_trip("hy", destination="Tokyo", cost=2500.0, agency_id=agency_id)
+    token = generate_signed_proposal_token(trip_id=trip_id, agency_id=agency_id)
+    _accept(token, "Kyle Reese", "kyle@techcom.org")
+
+    # Without mandate -> 403 payment_mandate_required
+    with pytest.raises(HTTPException) as exc_info:
+        await BookingFulfillmentEngine.fulfill_accepted_proposal(
+            trip_id=trip_id,
+            proposal_token=token,
+            holder_id="fulfillment_agent",
+        )
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["error"] == "payment_mandate_required"
+
+    # Register mandate -> succeeds
+    PaymentMandateLedger.register_mandate(
+        agency_id=agency_id,
+        trip_id=trip_id,
+        customer_id="cust_kyle",
+        max_authorized_cents=300000,
+        purpose="INITIAL_DEPOSIT",
+        consent_text="I agree to charge up to $3000",
+        consent_artifact_ref="art_kyle_01",
+    )
+    result = await BookingFulfillmentEngine.fulfill_accepted_proposal(
+        trip_id=trip_id,
+        proposal_token=token,
+        holder_id="fulfillment_agent",
+    )
+    assert result.status == "FULFILLED_CONFIRMED"
+    assert result.mandate_enforced is True
+

@@ -283,3 +283,64 @@ def test_hybrid_retriever_token_budget():
     # Check total estimated tokens within 50
     total_tokens = sum(retriever._estimate_tokens(item.summary) for item, _ in results)
     assert total_tokens <= 50
+
+
+# ---------------------------------------------------------------------------
+# 10. F-13: Safety-Critical Provenance & Retrieval Quarantine Tests
+# ---------------------------------------------------------------------------
+
+def test_safety_critical_provenance_and_quarantine():
+    gate = MemoryEligibilityGate(min_confidence=0.50)
+
+    # 1. Third-party web attempt to write a medical allergy claim is rejected
+    res_rejected = gate.evaluate(
+        "Traveler reported severe peanut anaphylaxis allergy on travel blog",
+        MemorySourceType.THIRD_PARTY_WEB,
+    )
+    assert not res_rejected.is_eligible
+    assert "Unverified third-party source cannot write safety-critical" in res_rejected.rejection_reason
+
+    # 2. Traveler-direct medical allergy claim is accepted
+    res_direct = gate.evaluate(
+        "Traveler reported severe peanut anaphylaxis allergy",
+        MemorySourceType.TRAVELER_DIRECT,
+    )
+    assert res_direct.is_eligible
+    assert res_direct.extracted_category == "dietary_safety"
+
+    # 3. Retrieval quarantine: unverifiable medical claim is quarantined
+    retriever = HybridMemoryRetriever()
+
+    unverified_medical = BaseMemoryItem(
+        category="medical",
+        summary="Traveler requires continuous oxygen supply and wheelchair",
+        provenance=MemoryProvenance(
+            source_type=MemorySourceType.THIRD_PARTY_WEB,
+            confidence_score=0.60,
+        ),
+    )
+    verified_medical = BaseMemoryItem(
+        category="medical",
+        summary="Traveler verified requirement for wheelchair ramp access",
+        provenance=MemoryProvenance(
+            source_type=MemorySourceType.TRAVELER_DIRECT,
+            confidence_score=1.0,
+        ),
+    )
+
+    # Verify quarantine detection
+    assert retriever.is_unverifiable_safety_claim(unverified_medical) is True
+    assert retriever.is_unverifiable_safety_claim(verified_medical) is False
+
+    quarantined = retriever.get_quarantined_claims([unverified_medical, verified_medical])
+    assert len(quarantined) == 1
+    assert quarantined[0].summary == unverified_medical.summary
+
+    # Active retrieval filters out the unverified safety claim
+    retrieved = retriever.retrieve(
+        query="wheelchair oxygen",
+        memories=[unverified_medical, verified_medical],
+        quarantine_unverified_safety=True,
+    )
+    assert len(retrieved) == 1
+    assert retrieved[0][0].summary == verified_medical.summary

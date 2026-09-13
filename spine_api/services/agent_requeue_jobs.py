@@ -295,7 +295,7 @@ class RequeueJobStore:
         async with tripstore_session_maker() as session:
             async with session.begin():
                 result = await session.execute(
-                    text("SELECT attempts FROM agent_requeue_jobs WHERE id = :id FOR UPDATE"),
+                    text("SELECT attempts, trip_id, payload FROM agent_requeue_jobs WHERE id = :id FOR UPDATE"),
                     {"id": job_id},
                 )
                 row = result.mappings().first()
@@ -321,6 +321,22 @@ class RequeueJobStore:
                         "now": now,
                     },
                 )
+        if status == JOB_STATUS_POISONED and row is not None:
+            try:
+                from src.agents.dlq_inspector import DLQInspector
+                payload_dict = _safe_json_loads(str(row.get("payload") or "{}"))
+                trip_id = str(row.get("trip_id") or "")
+                DLQInspector.record_poisoned_job(
+                    job_id=job_id,
+                    agent_name="agent_requeue_jobs",
+                    trip_id=trip_id,
+                    error_message=error,
+                    stack_trace="",
+                    failed_payload=payload_dict,
+                    retry_count=attempts,
+                )
+            except Exception:
+                logger.exception("Failed to mirror poisoned job to DLQInspector: %s", job_id)
 
     # ── Snapshot ──────────────────────────────────────────────────────────
 
@@ -432,6 +448,98 @@ class RequeueJobStore:
             )
             for row in rows
         ]
+
+    def inspect_poisoned(self, job_id: str) -> Optional[dict[str, Any]]:
+        """Return a redacted detail view of a poisoned job, or None if not found/not poisoned."""
+        return _run_async_blocking(self._inspect_poisoned(job_id))
+
+    async def _inspect_poisoned(self, job_id: str) -> Optional[dict[str, Any]]:
+        from src.agents.dlq_inspector import DLQInspector
+
+        async with tripstore_session_maker() as session:
+            result = await session.execute(
+                text(
+                    """
+                    SELECT id, trip_id, reason, mode, status, attempts, max_attempts,
+                           payload, last_error, created_at, updated_at
+                    FROM agent_requeue_jobs
+                    WHERE id = :id AND status = :status
+                    """
+                ),
+                {"id": job_id, "status": JOB_STATUS_POISONED},
+            )
+            row = result.mappings().first()
+            if not row:
+                return None
+            raw_payload = _safe_json_loads(str(row.get("payload") or "{}"))
+            redacted_payload = DLQInspector._sanitize_payload(raw_payload)
+            return {
+                "job_id": str(row["id"]),
+                "trip_id": str(row["trip_id"]),
+                "reason": str(row["reason"]),
+                "mode": str(row["mode"]),
+                "status": str(row["status"]),
+                "attempts": int(row["attempts"]),
+                "max_attempts": int(row["max_attempts"]),
+                "redacted_payload": redacted_payload,
+                "last_error": str(row["last_error"]),
+                "created_at": str(row["created_at"]),
+                "updated_at": str(row["updated_at"]),
+            }
+
+    def replay_poisoned(
+        self, job_id: str, patched_payload: Optional[dict[str, Any]] = None
+    ) -> bool:
+        """Unpoison and re-queue a job as pending, optionally updating its payload."""
+        return _run_async_blocking(self._replay_poisoned(job_id, patched_payload))
+
+    async def _replay_poisoned(
+        self, job_id: str, patched_payload: Optional[dict[str, Any]]
+    ) -> bool:
+        from src.agents.dlq_inspector import DLQInspector
+
+        now = datetime.now(timezone.utc)
+        async with tripstore_session_maker() as session:
+            async with session.begin():
+                result = await session.execute(
+                    text("SELECT id, status, payload FROM agent_requeue_jobs WHERE id = :id FOR UPDATE"),
+                    {"id": job_id},
+                )
+                row = result.mappings().first()
+                if not row or row["status"] != JOB_STATUS_POISONED:
+                    return False
+
+                new_payload = (
+                    json.dumps(patched_payload)
+                    if patched_payload is not None
+                    else str(row.get("payload") or "{}")
+                )
+
+                await session.execute(
+                    text(
+                        """
+                        UPDATE agent_requeue_jobs
+                        SET status = :status,
+                            attempts = 0,
+                            last_error = '',
+                            locked_by = '',
+                            leased_until = NULL,
+                            payload = :payload,
+                            updated_at = :now
+                        WHERE id = :id
+                        """
+                    ),
+                    {
+                        "id": job_id,
+                        "status": JOB_STATUS_PENDING,
+                        "payload": new_payload,
+                        "now": now,
+                    },
+                )
+                # Synchronize with in-memory DLQ store if tracked
+                if DLQInspector.get_job(job_id) is not None:
+                    DLQInspector.replay_job(job_id, patched_payload=patched_payload)
+                return True
 
 
 # ── Worker ──────────────────────────────────────────────────────────────

@@ -18,7 +18,26 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  CheckSquare,
 } from 'lucide-react';
+
+// G-6: Pre-departure briefing types
+interface PreDepartureStage {
+  stage: string;
+  subject: string;
+  headline: string;
+  departure_date: string;
+  destination: string;
+  action_items: string[];
+  key_highlights: string[];
+  emergency_contacts: Record<string, string>;
+}
+
+interface PreDepartureBundleDTO {
+  trip_id: string;
+  reality_tier: string;
+  stages: PreDepartureStage[];
+}
 
 interface JourneyNodeDTO {
   node_id: string;
@@ -67,6 +86,9 @@ function TravelerCompanionContent({ tripId, shareToken }: TravelerCompanionConte
   const [sosDemoComplete, setSosDemoComplete] = useState(false);
   const [activeDay, setActiveDay] = useState(1);
   const [tripData, setTripData] = useState<TripGraphData | null>(null);
+  // G-6: pre-departure briefing bundle state
+  const [preDepartureBundle, setPreDepartureBundle] = useState<PreDepartureBundleDTO | null>(null);
+  const [activeBriefingStage, setActiveBriefingStage] = useState<number>(0);
   // The route key remounts this data-owning component for every exact
   // tripId+token identity, so transient request state cannot cross identities.
   const [tripRequestState, setTripRequestState] = useState<TripRequestState>(
@@ -179,6 +201,7 @@ function TravelerCompanionContent({ tripId, shareToken }: TravelerCompanionConte
       abortController.abort();
     };
   }, [shareToken, tripId]);
+
 
   const handleTriggerSOS = () => {
     setSosActive(true);
@@ -566,6 +589,101 @@ function TravelerCompanionContent({ tripId, shareToken }: TravelerCompanionConte
             </div>
           </div>
         </section>
+
+        {/* G-6: Pre-Departure Briefing Section */}
+        {(preDepartureBundle || isSampleDemo) && (
+          <section className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                Pre-Departure Briefings
+              </h3>
+              {tripId && (
+                <a
+                  href={`/api/v1/trips/${encodeURIComponent(tripId)}/pre-departure-bundle.pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 font-mono border border-indigo-700/40 rounded px-2 py-0.5"
+                >
+                  <Download className="w-3 h-3" /> PDF
+                </a>
+              )}
+            </div>
+
+            {/* Stage selector tabs */}
+            <div className="flex gap-1">
+              {(preDepartureBundle?.stages ?? [
+                { stage: 'D_MINUS_7', subject: '7 Days Before (sample)' },
+                { stage: 'D_MINUS_3', subject: '3 Days Before (sample)' },
+                { stage: 'D_MINUS_1', subject: 'Day Before (sample)' },
+              ]).map((s, idx) => (
+                <button
+                  key={s.stage}
+                  onClick={() => setActiveBriefingStage(idx)}
+                  className={`flex-1 text-[10px] font-mono py-1 rounded border transition-all ${
+                    activeBriefingStage === idx
+                      ? 'bg-indigo-600 border-indigo-500 text-white'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-600'
+                  }`}
+                >
+                  {s.stage === 'D_MINUS_7' ? 'D-7' : s.stage === 'D_MINUS_3' ? 'D-3' : 'D-1'}
+                </button>
+              ))}
+            </div>
+
+            {/* Stage content */}
+            {preDepartureBundle ? (
+              (() => {
+                const stage = preDepartureBundle.stages[activeBriefingStage];
+                if (!stage) return null;
+                return (
+                  <div className="space-y-3">
+                    <p className="text-[11px] text-indigo-300 font-semibold">{stage.headline}</p>
+                    {stage.key_highlights.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Highlights</p>
+                        <ul className="space-y-1">
+                          {stage.key_highlights.map((h, i) => (
+                            <li key={i} className="text-[11px] text-slate-300 flex gap-1.5">
+                              <span className="text-indigo-400 mt-0.5">•</span>{h}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {stage.action_items.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Action Checklist</p>
+                        <ul className="space-y-1">
+                          {stage.action_items.map((a, i) => (
+                            <li key={i} className="text-[11px] text-slate-300 flex gap-1.5 items-start">
+                              <CheckSquare className="w-3 h-3 text-emerald-400 mt-0.5 flex-shrink-0" />{a}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {Object.keys(stage.emergency_contacts).length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Emergency Contacts</p>
+                        {Object.entries(stage.emergency_contacts).map(([k, v]) => (
+                          <div key={k} className="flex justify-between text-[11px] py-0.5 border-b border-slate-800/60">
+                            <span className="text-slate-400">{k}</span>
+                            <span className="text-white font-mono">{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            ) : (
+              <p className="text-[11px] text-slate-500 italic">
+                Sample briefing — your full pre-departure guide will appear once your trip is confirmed.
+              </p>
+            )}
+          </section>
+        )}
       </main>
     </div>
   );

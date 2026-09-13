@@ -1381,6 +1381,11 @@ async def lifespan(app: FastAPI):
             stop_retention_sweep_loop()
         except Exception:
             pass
+        try:
+            from src.orchestration.irops_watch_service import stop_watch_service
+            stop_watch_service()
+        except Exception:
+            pass
         if _requeue_worker_service is not None:
             _requeue_worker_service.stop()
         _agent_supervisor.stop()
@@ -1502,6 +1507,8 @@ app.include_router(counterfactual_router.router, dependencies=[Depends(_auth_or_
 app.include_router(trip_documents_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(public_proposals_router.router)
 app.include_router(journey_graph_router.public_router)
+from spine_api.routers import ivr_gateway as ivr_gateway_router  # noqa: E402
+app.include_router(ivr_gateway_router.public_router)
 # PA-09 (2026-09-06): distribution / negotiation / crisis_ops / subagent_payouts
 # were mounted with NO include-level auth dependency — subagent_payouts in
 # particular is the advisor-payout (money-adjacent) surface. All four now use
@@ -1541,6 +1548,14 @@ app.include_router(trip_history_router.router, dependencies=[Depends(_auth_or_sk
 app.include_router(itinerary_export_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(yield_benchmark_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(fulfillment_router.router, dependencies=[Depends(_auth_or_skip)])
+
+# G-2: Pre-departure briefing bundle (JSON + PDF)
+from spine_api.routers import pre_departure as pre_departure_router  # noqa: E402
+app.include_router(pre_departure_router.router, dependencies=[Depends(_auth_or_skip)])
+
+# G-4: Twilio IVR gateway
+from spine_api.routers import ivr_gateway as ivr_gateway_router  # noqa: E402
+app.include_router(ivr_gateway_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):

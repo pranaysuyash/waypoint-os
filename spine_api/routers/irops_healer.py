@@ -156,3 +156,37 @@ def heal_disrupted_journey(payload: HealDisruptionRequest) -> Dict[str, Any]:
     plan_data = _sanitize_healing_plan(plan, payload)
     preview_envelope["healing_plan"] = plan_data
     return preview_envelope
+
+
+# ---------------------------------------------------------------------------
+# G-1: Watch service management endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/watch/start", summary="Start the 24/7 IROPS auto-heal watch loop")
+async def start_irops_watch() -> Dict[str, Any]:
+    """Start the background watch loop that continuously monitors active trips
+    for disrupted JDG nodes and runs the healing protocol automatically.
+
+    Reality boundary: disruption detection uses ``metadata.disrupted`` flags
+    on stored JDG nodes. Missing-for-upgrade: live flight-status API."""
+    from src.orchestration.irops_watch_service import start_watch_service, watch_service_status
+
+    start_watch_service()
+    return {"ok": True, "action": "started", **watch_service_status()}
+
+
+@router.post("/watch/stop", summary="Stop the IROPS auto-heal watch loop")
+async def stop_irops_watch() -> Dict[str, Any]:
+    """Cancel the background watch loop. Safe to call when the loop is not running."""
+    from src.orchestration.irops_watch_service import stop_watch_service, watch_service_status
+
+    stop_watch_service()
+    return {"ok": True, "action": "stopped", **watch_service_status()}
+
+
+@router.get("/watch/status", summary="IROPS watch loop status and incident registry")
+async def irops_watch_status() -> Dict[str, Any]:
+    """Return the current watch loop status, poll interval, and list of processed incidents."""
+    from src.orchestration.irops_watch_service import watch_service_status
+
+    return watch_service_status()

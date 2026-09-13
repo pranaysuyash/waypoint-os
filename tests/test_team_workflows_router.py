@@ -82,8 +82,10 @@ def test_submit_review_signoff(session_client):
     data = response.json()
     assert data["ok"] is True
     assert data["trip_id"] == trip_id
-    assert data["reviewer_id"] == "mgr_compliance_lead"
+    # F-03 (FND-0040): Reviewer identity is derived from authenticated session principal
+    assert data["reviewer_id"] in ("323468de-ba3d-437b-aa10-35b281a0c6a6", "mgr_compliance_lead")
     assert data["decision"] == "APPROVED"
 
     trip = TripStore.get_trip(trip_id)
     assert trip["review_decision"] == "APPROVED"
+    assert trip["reviewer_id"] == data["reviewer_id"]

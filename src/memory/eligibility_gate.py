@@ -110,6 +110,19 @@ class MemoryEligibilityGate:
         # 5. Classify memory tier and category
         tier, category = self._classify_tier_and_category(cleaned, category_hint)
 
+        # 6. F-13: Reject unverified third-party sources for safety-critical medical/mobility/dietary claims
+        is_safety = (
+            category in ("dietary_safety", "medical", "mobility")
+            or any(w in cleaned.lower() for w in ("allergy", "allergic", "wheelchair", "mobility", "medical", "anaphylaxis"))
+        )
+        if is_safety and source_type == MemorySourceType.THIRD_PARTY_WEB:
+            return EligibilityResult(
+                is_eligible=False,
+                tier=MemoryTier.WORKING,
+                confidence_score=confidence,
+                rejection_reason="Unverified third-party source cannot write safety-critical medical/mobility/dietary claims",
+            )
+
         return EligibilityResult(
             is_eligible=True,
             tier=tier,

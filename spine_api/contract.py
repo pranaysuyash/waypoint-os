@@ -1616,7 +1616,7 @@ class TeamAssignmentResponse(BaseModel):
 
 class ReviewSignoffRequest(BaseModel):
     trip_id: str
-    reviewer_id: str
+    reviewer_id: Optional[str] = None
     decision: str = "APPROVED"
     feedback_notes: Optional[str] = None
 

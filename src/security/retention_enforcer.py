@@ -25,6 +25,8 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Dict, List, Optional
 
+from src.security.jurisdiction_policy import get_jurisdiction_policy
+
 
 class RetentionCategory(str, Enum):
     PASSPORT_MRZ = "PASSPORT_MRZ"                # SLA: 30 days post trip completion
@@ -41,6 +43,8 @@ class RetainedDataAsset:
     category: RetentionCategory
     created_at_iso: str
     sla_days: int
+    agency_id: str = "system"
+    jurisdiction: str = "other"
     is_erased: bool = False
     erasure_certificate_id: Optional[str] = None
 
@@ -53,6 +57,8 @@ class ErasureCertificate:
     erased_at_iso: str
     tombstone_sha256: str
     reason: str
+    agency_id: str = "system"
+    jurisdiction: str = "other"
 
 
 class RetentionEnforcer:
@@ -79,6 +85,24 @@ class RetentionEnforcer:
     _CERTIFICATE_STORE: Dict[str, ErasureCertificate] = {}
 
     @classmethod
+    def resolve_sla_days(
+        cls,
+        category: RetentionCategory,
+        jurisdiction: Optional[str] = None,
+        custom_sla_days: Optional[int] = None,
+    ) -> int:
+        """Resolve SLA days with statutory overrides per jurisdiction policy (F-05)."""
+        if custom_sla_days is not None:
+            return custom_sla_days
+        base_sla = cls.DEFAULT_SLA_DAYS[category]
+        if jurisdiction:
+            policy = get_jurisdiction_policy(jurisdiction)
+            # If jurisdiction enforces strict retention_days, cap non-statutory categories
+            if policy.retention_days is not None and category != RetentionCategory.FINANCIAL_INVOICE:
+                return min(base_sla, policy.retention_days)
+        return base_sla
+
+    @classmethod
     def register_asset(
         cls,
         asset_id: str,
@@ -87,8 +111,15 @@ class RetentionEnforcer:
         category: RetentionCategory,
         created_at_iso: Optional[str] = None,
         custom_sla_days: Optional[int] = None,
+        agency_id: str = "system",
+        jurisdiction: Optional[str] = None,
     ) -> RetainedDataAsset:
-        sla = custom_sla_days or cls.DEFAULT_SLA_DAYS[category]
+        eff_jurisdiction = jurisdiction or "other"
+        sla = cls.resolve_sla_days(
+            category=category,
+            jurisdiction=eff_jurisdiction,
+            custom_sla_days=custom_sla_days,
+        )
         created = created_at_iso or datetime.now(timezone.utc).isoformat()
         asset = RetainedDataAsset(
             asset_id=asset_id,
@@ -97,6 +128,8 @@ class RetentionEnforcer:
             category=category,
             created_at_iso=created,
             sla_days=sla,
+            agency_id=agency_id,
+            jurisdiction=eff_jurisdiction,
         )
         cls._ASSET_REGISTRY[asset_id] = asset
         return asset
@@ -160,6 +193,8 @@ class RetentionEnforcer:
             erased_at_iso=now_iso,
             tombstone_sha256=tombstone_hash,
             reason=reason,
+            agency_id=asset.agency_id,
+            jurisdiction=asset.jurisdiction,
         )
 
         asset.is_erased = True

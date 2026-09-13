@@ -262,7 +262,11 @@ def reconcile_trip_commission(trip_id: str, agency_id: str) -> Dict[str, Any]:
         "status": "no_booking",
     }
 
-    trip = TripStore.get_trip(trip_id)
+    trip = (
+        TripStore.get_trip_for_agency(trip_id, agency_id)
+        if agency_id
+        else TripStore.get_trip(trip_id)
+    )
     if not trip:
         result["reason"] = f"Trip '{trip_id}' not found."
         return result
