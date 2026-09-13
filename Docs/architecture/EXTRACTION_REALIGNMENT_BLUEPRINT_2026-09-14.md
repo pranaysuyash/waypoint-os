@@ -717,3 +717,117 @@ the tier gets built against a real consumer at that point.
 Related: origin-marker semantics (Addendum 6) are the model here — the
 extraction layer states what was said, downstream layers decide what it
 is worth. "Secondary" is a ranking concern, not an extraction concern.
+
+---
+
+## Addendum 8 (2026-09-14): lifecycle ontology council — full decision record
+
+Owner directive: "implement it but not 14 or not 17 — check what and how
+many they should be; if needed call the council." Council convened via the
+council-orchestrator skill (smallest-sufficient-council model, evidence-first).
+
+### Census (what actually exists — runtime > source > docs)
+
+| Vocabulary | Where | Count | Notes |
+|---|---|---|---|
+| V1 taught machine | src/intake/lifecycle_states.py | 14 | zero runtime consumers; tests only |
+| V2 packet CRM statuses | src/intake/packet_models.py:260 | 16 | no production writer (test-only); name-collides with V1 (BOOKING_IN_PROGRESS, LOST) |
+| V3 runtime strings | spine_api/core/trip_status.py | ~11 + unknown pass-through | ONE enforced invariant (intake-blocked ↛ quote-capable); docstring itself defers full enforcement to a distribution harness that was never built |
+| V4 discovered by council | src/intake/lifecycle.py LeadStage | 6 | a FOURTH, duplicate lead machine — registered FND-0289 |
+
+### Council manifest
+
+- Lead: PER-0450 Travel State-Machine Architect (owns state semantics)
+- PER-0444 Travel Lifecycle Architect (lifecycle continuity; found V4 + post-trip gaps)
+- PER-0453 Travel Financial Systems Architect (money-load-bearing boundaries)
+- PER-0369 Customer Success Architect (relationship axis, CS systems)
+- PER-0274 Skeptical Customer Reviewer (counterposition, falsification)
+- Evidence precedence: runtime > tests > source/config > docs; personas are lenses.
+
+### Seat rulings (independently analyzed)
+
+- **PER-0450 (Lead, conf 0.8):** 12 enforced-eligible states; demote
+  NEEDS_INFORMATION (typed condition), FEASIBILITY_CHECK (planning stage),
+  NEEDS_REVISION (re-entry condition); ADD CANCELLED terminal (lead-death ≠
+  booked-trip cancellation — different refund/penalty obligations); ESCALATED
+  stays the single exception state (operator-owned entry/exit, no auto-exits);
+  V2 splits into a separate relationship machine + derived signals; V3 mapping
+  table with audit-gated ambiguous strings.
+- **PER-0444 (conf 0.82):** two axes formally (trip lifecycle restarts per
+  trip; relationship lifecycle persists); COMPLETED does double duty — split
+  ratified in model as RETURNED → ARCHIVED (dormant, no producers);
+  cancellation gap confirmed; LOST is trip-scoped; found V4 (LeadStage) as a
+  duplicate system; post-COMPLETED arc entirely unmapped prior to this.
+- **PER-0453 (conf 0.82):** five load-bearing boundaries (quote-existence,
+  authorization, recheck, commitment, post-commitment-delta); pre-quote states
+  financially inert (merge-safe); APPROVED must survive (consent-TTL anchor,
+  recheck enforcement point, rollback anchor — merging into AWAITING makes
+  overcharge/chargeback chains unconstructable); payment_status orthogonal
+  (two divergent vocabularies already exist — flagged); **ready_to_book is the
+  priority hazard** (readiness on a customer-visible dashboard with zero
+  authorization semantics — must never map to APPROVED).
+- **PER-0369 (conf 0.82/0.7):** minimal relationship stages = 6 (prospect,
+  booked_active, post_trip, repeat_client, dormant, lost/churned); GHOST_RISK
+  demoted to derived score (already computed in decision.py, never persisted);
+  ENGAGED_AFTER_QUOTE/QUOTE_SENT/WON = derived condition/deal events; hybrid
+  persistence (persist coarse stage + entered_at, derive signals, decay job,
+  invariants not adjacency table) — full derivation fails on retention-purge
+  and play-dedup evidence; LOST terminal at trip level, soft at relationship
+  level.
+- **PER-0274 skeptic (conf 0.82):** 9 of 14 V1 states have NO producer; only
+  6 strings have real triggering events; enforcement before the distribution
+  harness violates the runtime module's own documented gate; strict machine +
+  historical unknown strings = writer failures; operator hand-fixing is the
+  primary recovery path. Counter-proposal: ratify vocabulary as read-model
+  target, enforce predicates only. Self-acknowledged steelman: predicates cap
+  out; pre-launch (zero consumers, small data) is the cheapest moment to land
+  the machine — audit-only-first rollout resolves the timing.
+
+### Disagreements and resolutions
+
+| Issue | Position A | Position B | Resolution |
+|---|---|---|---|
+| Machine enforcement timing | Lead: gate replaces invariant now | Skeptic: predicates now, machine gated on distribution harness | **Staged ratchet**: gate classifies against the machine for EVERY write now; RAISE only the proven class (P1); machine-illegal pairs LOG + count; classes graduate to raise on harness evidence. Wired ≠ raising; dormant-but-tested vs forgotten. |
+| FEASIBILITY_CHECK / NEEDS_REVISION / NEEDS_INFORMATION | V1: states | Lead+Financial: conditions/stages | Demoted (financially inert; duplicate representations of signals with canonical homes). |
+| COMPLETED terminal | V1: terminal | PER-0444: does double duty | Split ratified IN MODEL (returned → archived), dormant until post-trip work exists. |
+| Cancellation | V1: absent | Both seats: gap | cancelled terminal added, distinct from lost. |
+| V2's 16 | Lead: 5 relationship states + derived | CS: 6 coarse stages + derived | CS set adopted (6); alignment is high — both demote GHOST_RISK and split the axes. |
+
+### Ratified answer to "how many"
+
+- **Trip-execution lifecycle: 12 enforced-eligible states** (intake, planning,
+  awaiting_customer_approval, approved, booking_in_progress, booked,
+  change_requested, in_trip, completed, cancelled, lost, escalated) + 2
+  dormant model extensions (returned, archived).
+- **Relationship lifecycle: 6 stages** (separate machine; not modeled in the
+  trip gate — implementation is a later slice with its decay job).
+- **Everything else is not a state**: conditions (needs_information,
+  quote_ready, freshness_recheck_pending, attention_needed, revision_pending),
+  derived scores (ghost_risk, churn_risk, window_shopper, repeat_likelihood),
+  deal events (quote_sent, won), timer conditions (retention_window).
+
+### Implementation (this commit)
+
+- spine_api/core/trip_lifecycle.py: machine (states/conditions/transitions/
+  operator-dynamic ESCALATED), V3→canonical mapping table with
+  financial-ruling encodings (ready_to_book → planning+quote_ready, NEVER
+  approved; in_progress/active audit-gated), staged
+  assess_transition (raise/log/allow).
+- spine_api/persistence.py `_apply_status_guard`: consults the machine on
+  every status write; machine-illegal pairs LOGGED + counted
+  (_LIFECYCLE_VIOLATION_COUNTS) — never raise; P1 unchanged.
+- tests/test_trip_lifecycle_gate.py: 16 contract tests (model shape, full
+  transition table, staged enforcement, mapping rulings).
+
+### Findings and open items
+
+- FND-0289 (new, P2): LeadStage duplicate vocabulary — supersede into the
+  relationship axis.
+- Docs/LEAD_LIFECYCLE_AND_RETENTION.md presents GHOST_RISK mid-funnel —
+  category error to correct when the relationship axis is implemented.
+- Two divergent payment_status vocabularies (packet vs payment_queue_service)
+  need one canonical enum before booking work.
+- Open (evidence-gated): distribution harness reading the violation counters;
+  per-class graduation to hard enforcement; relationship-axis implementation
+  (decay job, stage persistence); persisted-distribution audit to de-gate
+  in_progress/active mappings.

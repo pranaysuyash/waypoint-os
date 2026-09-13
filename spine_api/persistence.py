@@ -37,10 +37,31 @@ from spine_api.core.trip_status import (
     enforce_status_transition,
     record_status_transition,
 )
+from spine_api.core import trip_lifecycle
 from spine_api.models.trips import Trip
 from src.security.encryption import decrypt, encrypt
 
 logger = logging.getLogger(__name__)
+
+# Distribution-harness counters (Addendum 8): machine-violation classes are
+# logged, counted, and graduated to hard enforcement on evidence.
+_LIFECYCLE_VIOLATION_COUNTS: Dict[str, int] = {}
+
+
+def _consult_lifecycle_machine(old_status: Any, new_status: Any) -> None:
+    """Log-and-count machine-illegal transitions (staged enforcement — never
+    raises; the proven invariant raises via enforce_status_transition)."""
+    assessment = trip_lifecycle.assess_transition(old_status, new_status)
+    if assessment.verdict == "log":
+        key = f"{assessment.old_state or 'unclassified'}->{assessment.new_state or 'unclassified'}"
+        _LIFECYCLE_VIOLATION_COUNTS[key] = _LIFECYCLE_VIOLATION_COUNTS.get(key, 0) + 1
+        logger.warning(
+            "trip_lifecycle: machine-illegal transition %s (%s) — logged for "
+            "distribution harness [count=%d, audit_gated=%s]",
+            key, assessment.reason, _LIFECYCLE_VIOLATION_COUNTS[key],
+            assessment.audit_gated,
+        )
+
 
 TEST_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
 
@@ -52,12 +73,19 @@ def _apply_status_guard(trip_record: dict, updates: dict) -> None:
     intake-blocked → quote-capable invariant relative to the persisted status.
     On a legal transition, seeds updates['status_history'] from the persisted
     record and appends the audited entry (must run under the store's lock).
+
+    Council ratchet (2026-09-14, Addendum 8): every transition is also
+    classified against the canonical 12-state machine — machine-illegal
+    pairs among non-proven classes are LOGGED with a counter (never raise)
+    so the distribution harness can graduate classes to hard enforcement
+    on evidence. Unknown strings keep their pass-through contract.
     """
     new_status = updates.get("status")
     if new_status is None:
         return
     old_status = trip_record.get("status")
     enforce_status_transition(old_status, new_status)
+    _consult_lifecycle_machine(old_status, new_status)
     if old_status is None or str(old_status) == str(new_status):
         return
     history = list(trip_record.get("status_history") or [])
