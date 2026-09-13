@@ -268,6 +268,20 @@ _SALUTATION_RE = re.compile(
 _YEAR_RE = re.compile(r"\b(20\d{2})\b")
 _FROM_STARTING_DEPARTING_RE = re.compile(r'\b(from|starting|departing)\s+$', re.IGNORECASE)
 _SE_RU_SIDE_RE = re.compile(r'^\s+(se|ru|side)\b', re.IGNORECASE)
+_SIDE_TRIP_NOUN_RE = re.compile(
+    r"\s+(?:trip|tours?|visit|excursion|quest|detour|adventure|getaway|holiday|vacation|outing)\b",
+    re.IGNORECASE,
+)
+
+
+def _side_is_trip_compound(context_after_postposition: str) -> bool:
+    """True when "side" is an adjective on a following trip-noun ("okinawa
+    side trip?"), not the Hinglish origin postposition ("bangalore side" =
+    "from bangalore"). FND-0273-family, Sim #2: this distinction fabricated
+    Origin City: okinawa in two independent extraction paths."""
+    return bool(
+        _SIDE_TRIP_NOUN_RE.search(context_after_postposition[:40])
+    )
 _MAYBE_RE = re.compile(r"\bmaybe\s+(\w+)", re.IGNORECASE)
 # "maybe somewhere like X" / "somewhere like X" — negative lookahead stops at
 # common trailing prepositions ("for", "with", etc.) to prevent over-capturing
@@ -804,8 +818,11 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
 
     # Hinglish/Odia postposition after: "Bangalore se", "Bangalore ru", "Bangalore side"
     context_after = lowered[match_idx + len(dest_match):match_idx + len(dest_match) + 15]
-    if _SE_RU_SIDE_RE.search(context_after):
-        return True
+    side_postposition = _SE_RU_SIDE_RE.search(context_after)
+    if side_postposition:
+        if not (side_postposition.group(1).lower() == "side"
+                and _side_is_trip_compound(context_after[side_postposition.end():])):
+            return True
 
     # Agency/location descriptors like "Nairobi-based agency request" should not
     # be treated as trip destinations. The city is describing the source agency,
@@ -3107,7 +3124,12 @@ class ExtractionPipeline:
                 text,
                 re.IGNORECASE,
             )
-            if postposition_match:
+            # "okinawa side trip?" is a noun compound (proposed destination),
+            # not the Hinglish origin postposition (FND-0284-family, Sim #2).
+            if postposition_match and not (
+                postposition_match.group(2).lower() == "side"
+                and _side_is_trip_compound(text[postposition_match.end():])
+            ):
                 city_raw = postposition_match.group(1).strip()
                 city, was_normalized = Normalizer.normalize_city(city_raw)
                 mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT

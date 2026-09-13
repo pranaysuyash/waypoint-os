@@ -8,7 +8,14 @@ contract: budget scope is amount-scoped and explicit-total-precedence
 
 import re
 
-from src.intake.extractors import _extract_budget_scope, _budget_scope_sentences
+from src.intake.extractors import (
+    ExtractionPipeline,
+    SourceEnvelope,
+    _extract_budget_scope,
+    _budget_scope_sentences,
+    _side_is_trip_compound,
+    _is_likely_origin,
+)
 
 _AMOUNT_PROBE = re.compile(r"[$€£₹]|\d")
 
@@ -82,3 +89,55 @@ class TestBudgetScopeAmountScoping:
     def test_lakhs_marker_counts_as_amount(self):
         segments = _budget_scope_sentences("budget is 3.5 lakhs total including flights")
         assert len(segments) == 1
+
+
+class TestOriginCueGuard:
+    """Phase 2 (FND-0273 residual / Sim #2 okinawa-origin): 'X side trip' is a
+    noun compound proposing a DESTINATION, never an origin postposition. Both
+    extraction paths (candidate classification + Hinglish slot setter) must
+    respect the distinction. Real Hinglish postpositions must survive."""
+
+    def test_side_trip_not_origin_candidate(self):
+        assert _is_likely_origin(
+            "we NEED a scuba day (okinawa side trip?)", "okinawa"
+        ) is False
+
+    def test_side_visit_not_origin_candidate(self):
+        assert _is_likely_origin("maybe a goa side visit", "goa") is False
+
+    def test_hinglish_side_postposition_still_origin(self):
+        assert _is_likely_origin(
+            "we are bangalore side, plan something", "bangalore"
+        ) is True
+
+    def test_from_phrase_still_origin(self):
+        assert _is_likely_origin("flying from london", "london") is True
+
+    def test_se_postposition_still_origin(self):
+        assert _is_likely_origin("bangalore se niklenge", "bangalore") is True
+
+    def test_side_is_trip_compound_helper(self):
+        assert _side_is_trip_compound(" trip? and osaka")
+        assert _side_is_trip_compound(" visit planned")
+        assert not _side_is_trip_compound(", we'll manage")
+
+    def test_pipeline_no_origin_from_side_trip_thread(self):
+        """The exact Sim #2 thread shape must not fabricate Origin City."""
+        thread = (
+            "hi! i'm organising a japan trip for me and 3 friends — 2 couples. "
+            "we want to do tokyo + kyoto. budget is 3.5 lakhs total including "
+            "flights.\n\n[forwarded voice note from Arjun]:\nyo it's arjun. "
+            "also we NEED a scuba day (okinawa side trip?) and osaka nightlife "
+            "is non-negotiable."
+        )
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(thread)])
+        origin = packet.facts.get("origin_city")
+        assert origin is None or not origin.value
+
+    def test_pipeline_hinglish_origin_end_to_end(self):
+        """Real Hinglish origin must survive the guard end-to-end."""
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(
+            "bangalore se manali chahiye, 2 weeks, budget 1 lakh"
+        )])
+        origin = packet.facts.get("origin_city")
+        assert origin is not None and str(origin.value).lower() == "bangalore"
