@@ -3049,30 +3049,49 @@ class ExtractionPipeline:
         # span keeps unrelated "maybe"-style patterns from firing on the
         # whole note. This is an ambiguity, never a fact — the operator
         # confirms the flight scope.
-        flights_clause_match = re.search(
+        #
+        # FND-0276 Sim #2 replay: multi-voice threads contain SEVERAL
+        # flights clauses ("including flights" from the organizer,
+        # "cheaper flights" from a friend). Check every clause: an explicit
+        # assertion anywhere resolves the scope (no ambiguity); the
+        # ambiguity fires only if some clause is unresolved AND none
+        # asserts. Raw quotes are sliced from the ORIGINAL text (verbatim),
+        # not the lowercased scan string.
+        flights_clauses = []
+        for m in re.finditer(
             r"[^.!?\n]{0,80}\b(?:flights?|airfare|air\s+fares?|airfares?)\b[^.!?\n]{0,80}",
             text_lower,
-        )
-        if flights_clause_match:
-            # D-02 explicit short-circuit (FND-0276): when the clause
-            # ASSERTS inclusiveness ("including flights", "flights
-            # included/excluded"), there is no ambiguity to confirm — the
-            # old code fired on "including" as if it were unresolved.
-            clause = flights_clause_match.group(0)
-            explicit_resolution = re.search(
-                r"\b(?:including|includes?|with)\s+(?:the\s+)?(?:flights?|airfare)"
-                r"|\b(?:flights?|airfare)\s+(?:are\s+|is\s+)?included\b"
-                r"|\bexcluding\s+(?:the\s+)?(?:flights?|airfare)"
-                r"|\b(?:flights?|airfare)\s+(?:are\s+|is\s+)?excluded\b",
-                clause,
-            )
-            unresolved_marker = re.search(
-                r"\b(?:not\s+sure|unsure|unclear|whether|if\s+that|no\s+idea)\b", clause
-            )
-            if explicit_resolution and not unresolved_marker:
-                pass  # explicit assertion — resolved, no ambiguity
-            else:
-                for amb in Normalizer.detect_ambiguities("budget_raw_text", clause):
+        ):
+            original_span = text[m.start():m.end()]
+            flights_clauses.append((m.group(0), original_span))
+        if flights_clauses:
+            explicit_resolved = False
+            has_unresolved = False
+            first_unresolved_original: Optional[str] = None
+            for clause_lower, clause_original in flights_clauses:
+                explicit_resolution = re.search(
+                    r"\b(?:including|includes?|with)\s+(?:the\s+)?(?:flights?|airfare)"
+                    r"|\b(?:flights?|airfare)\s+(?:are\s+|is\s+)?included\b"
+                    r"|\bexcluding\s+(?:the\s+)?(?:flights?|airfare)"
+                    r"|\b(?:flights?|airfare)\s+(?:are\s+|is\s+)?excluded\b",
+                    clause_lower,
+                )
+                unresolved_marker = re.search(
+                    r"\b(?:not\s+sure|unsure|unclear|whether|if\s+that|no\s+idea)\b",
+                    clause_lower,
+                )
+                if explicit_resolution and not unresolved_marker:
+                    explicit_resolved = True
+                    break
+                if unresolved_marker:
+                    has_unresolved = True
+                if first_unresolved_original is None:
+                    first_unresolved_original = clause_original
+            if not explicit_resolved and flights_clauses:
+                for amb in Normalizer.detect_ambiguities(
+                    "budget_raw_text",
+                    first_unresolved_original or flights_clauses[0][1],
+                ):
                     if amb.ambiguity_type == "flights_inclusiveness_unknown" and not any(
                         a.ambiguity_type == "flights_inclusiveness_unknown" for a in packet.ambiguities
                     ):
@@ -3098,9 +3117,16 @@ class ExtractionPipeline:
         if explicit_budget_flex != "unknown":
             # Use full text for stretch extraction (don't truncate at punctuation)
             stretch_text = text_lower
-            
-            # Extract stretch ambiguity
+
+            # Extract stretch ambiguity. FND-0276 replay fix: this site scans
+            # the FULL text, so the detector's flights_inclusiveness pattern
+            # fired here too — bypassing the D-02 multi-clause gate above.
+            # flights_inclusiveness_unknown is owned exclusively by the D-02
+            # scan; unresolved_alternatives is owned by the destination pass.
+            _D02_OWNED = {"flights_inclusiveness_unknown"}
             for amb in Normalizer.detect_ambiguities("budget_flexibility", stretch_text):
+                if amb.ambiguity_type in _D02_OWNED:
+                    continue
                 packet.add_ambiguity(amb)
             
             # Extract explicit stretch maximum (Case B: "to 2.5L")

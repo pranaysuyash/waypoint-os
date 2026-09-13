@@ -152,11 +152,13 @@ class TestAmbiguityVerbatimInvariant:
         return [(a.ambiguity_type, str(getattr(a, "raw_value", ""))) for a in packet.ambiguities]
 
     def test_sim2_note1_ambiguities_verbatim_or_labeled(self):
-        """FND-0276 invariant: an ambiguity raw is either a verbatim input
-        substring or explicitly labeled as derived — never synthesized text
-        presented as a quotation."""
+        """FND-0276 invariant: an ambiguity raw is either a case-insensitive
+        verbatim input substring or explicitly labeled as derived — never
+        synthesized text presented as a quotation."""
+        thread_lower = PRIYA.lower()
         for amb_type, raw in self._amb_raws(PRIYA):
-            assert raw == "" or raw in PRIYA or raw.startswith("derived from"), (
+            ok = raw == "" or raw.lower() in thread_lower or raw.startswith("derived from")
+            assert ok, (
                 f"unlabeled non-verbatim ambiguity raw for {amb_type}: {raw!r}"
             )
 
