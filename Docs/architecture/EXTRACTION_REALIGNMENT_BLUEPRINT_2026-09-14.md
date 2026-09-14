@@ -940,3 +940,58 @@ need me or decisions." Executed via parallel seats + direct work:
 Remaining (needs owner/decisions/evidence): X-09 PII gate → hybrid-ON
 review; shadow→active flip (needs window data); suitability corpus; Slot 2
 FreshnessCard; relationship-axis trip-gate hooks; P-B/P-I/P-G/P-J.
+
+---
+
+## Addendum 11 (2026-09-14): FND-0268 margin basis — council verdict
+
+Three-seat council (PER-0453 financial Lead, commercial/growth seat,
+PER-0274 skeptic) on the owner-endorsed Option B. Verdict: **Option B
+ratified in amended form — "provenance now, gate when live."** The Lead's
+basis-branching floor comparison was OVERTURNED by the skeptic's
+falsification, and the commercial seat's basis-gated UX independently
+converged.
+
+### Decisive falsifications
+
+- Preview-tier margin is **structurally constant** (adapter pins retail at
+  1.15× net → fixed 13.04% hotel margin; $1250/$450/$180 fallbacks) — a
+  floor check would be silent-pass everywhere and false-positive only in
+  the optimizer's deliberate 10% policy minimum sliver, with a $0.01 cliff
+  at $10,000 jumping the floor $250→$1,200 (tier-boundary bug).
+- fee_matrix floors are **unvalidated** (bulk-commit literals, circular
+  test) — "gating one guess against another."
+- The decision pack's own rule — "real-or-None, no invented cost
+  fallbacks" — forbids floor comparisons on preview costs; PA-25 precedent
+  blocks simulated-inventory distribution rather than labeling it.
+
+### Ratified (binding)
+
+1. **Provenance now (landed):** per-component `cost_basis`
+   (preview|live|modeled_synthetic) on every breakdown item + derived
+   package `margin_basis` (weakest component: live > mixed > preview) in
+   the compiled package contract.
+2. **No floor comparison on any non-live basis** — gates require live cost
+   producers; preview costs may inform telemetry only. Margin excluded
+   from composite scores while non-live.
+3. **One pricing authority:** MarginOptimizer owns selling price;
+   fee_matrix = floor checker only, post-validation; margin_engine.py
+   (third engine) stays out of send paths.
+4. Gate wires at `compute_send_policy` (Elena's 15%/8% live there) when:
+   (a) a real wholesale-cost producer lands (B6/B7, ~2026-10-06),
+   (b) floors signed off as a versioned rules table, (c) tier-boundary
+   bug fixed. Until then the modeled-18% remains the documented
+   placeholder and any displayed floor renders "policy floor
+   (unvalidated)."
+5. Advisor-facing sub-floor surfaces are basis-gated: silent on preview;
+   active from the first live-basis send. Override-with-reason pattern
+   for valid thin-margin deals.
+
+### Findings registered
+
+- fee_matrix floor-validation + tier-boundary bug (P2).
+- margin_engine.py third-engine consolidation (P3).
+
+Reopen trigger: first live wholesale-cost component (B6/B7) → wire the
+gate at compute_send_policy with recalibrated thresholds; falsifier: any
+consumer treating preview-basis margin as authoritative.

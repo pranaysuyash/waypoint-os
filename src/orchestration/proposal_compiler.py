@@ -51,7 +51,14 @@ class CompiledProposalPackage:
     share_blocked_reason: Optional[str] = None
     reality_tier: str = RealityTier.DETERMINISTIC_PREVIEW.value
     provider_connected: bool = False
+    # FND-0268 council amendment (Addendum 9 → margin-basis decision):
+    # per-component cost basis (preview|live|modeled_synthetic) and the
+    # derived package margin_basis (min of components: live > mixed >
+    # preview). Binding contract: NO floor comparison may run against any
+    # margin whose cost basis is not live (PA-25 precedent — block, don't
+    # label); margin is excluded from composite scores while non-live.
     breakdown_items: List[Dict[str, Any]] = field(default_factory=list)
+    margin_basis: str = "preview"
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> Dict[str, Any]:
@@ -73,6 +80,7 @@ class CompiledProposalPackage:
             "share_blocked_reason": self.share_blocked_reason,
             "reality_tier": self.reality_tier,
             "provider_connected": self.provider_connected,
+            "margin_basis": self.margin_basis,
             "breakdown_items": self.breakdown_items,
             "created_at": self.created_at,
         }
@@ -146,6 +154,21 @@ class AutonomousProposalCompiler:
             hotel_rate_key = ""
 
         transfer_cost = 180.0
+        # Per-component cost basis (FND-0268 council amendment): flights carry
+        # the Amadeus lane's tier; lodging follows the Hotelbeds adapter's
+        # provider_connected state (live net rates vs preview fallback);
+        # transfers are a modeled constant. Package basis = weakest component
+        # (live > mixed > preview) — one live component inside synthetic ones
+        # must not make the package look live.
+        flight_basis = "preview" if flight_price_per_pax == 1250.0 else "live"
+        hotel_basis = "live" if htb_offers and getattr(htb_adapter, "provider_connected", False) else "preview"
+        component_bases = {flight_basis, hotel_basis, "modeled_synthetic"}
+        if component_bases == {"live"}:
+            margin_basis = "live"
+        elif "live" in component_bases:
+            margin_basis = "mixed"
+        else:
+            margin_basis = "preview"
         net_supplier_cost = round(flight_cost + hotel_cost + transfer_cost, 2)
 
         # 3. Dynamic Margin Take-Rate Optimization
@@ -254,9 +277,13 @@ class AutonomousProposalCompiler:
             share_blocked_reason=share_blocked_reason,
             reality_tier=RealityTier.DETERMINISTIC_PREVIEW.value,
             provider_connected=False,
+            margin_basis=margin_basis,
             breakdown_items=[
-                {"category": "Flights", "provider": flight_provider, "amount_usd": flight_cost},
-                {"category": "Lodging", "provider": hotel_provider, "amount_usd": hotel_cost},
-                {"category": "Transfers", "provider": "Private Chauffeur", "amount_usd": transfer_cost},
+                {"category": "Flights", "provider": flight_provider,
+                 "amount_usd": flight_cost, "cost_basis": flight_basis},
+                {"category": "Lodging", "provider": hotel_provider,
+                 "amount_usd": hotel_cost, "cost_basis": hotel_basis},
+                {"category": "Transfers", "provider": "Private Chauffeur",
+                 "amount_usd": transfer_cost, "cost_basis": "modeled_synthetic"},
             ],
         )
