@@ -90,6 +90,10 @@ class AgencyAutonomyPolicy:
     # hybrid: auto within governance-registry caps + required payment mandate (F-04).
     # fully_autonomous: auto under registry authority, mandate recorded not required.
     money_execution_mode: Literal["fully_human", "hybrid", "fully_autonomous"] = "fully_human"
+    # MarginPolicy overrides (Addendum 12): dimensioned rule rows scoped to
+    # this agency; resolution in src/fees/margin_policy.py. Audited on
+    # change by save().
+    margin_policy_overrides: List[Dict[str, Any]] = field(default_factory=list)
 
     _STOP_NEEDS_REVIEW: str = field(default="block", repr=False)
 
@@ -141,6 +145,7 @@ class AgencyAutonomyPolicy:
             "auto_reprocess_on_edit",
             "allow_explicit_reassess",
             "money_execution_mode",
+            "margin_policy_overrides",
         ):
             if key in data:
                 setattr(policy, key, data[key])
@@ -668,6 +673,17 @@ class AgencySettingsStore:
             logger.warning(
                 "AUDIT: money_execution_mode change for agency '%s': %r -> %r",
                 settings.agency_id, prev_mode, settings.autonomy.money_execution_mode,
+            )
+        try:
+            prev_overrides = previous.autonomy.margin_policy_overrides or []
+        except Exception:
+            prev_overrides = []
+        new_overrides = settings.autonomy.margin_policy_overrides or []
+        if (prev_overrides or []) != new_overrides:
+            logger.warning(
+                "AUDIT: margin_policy_overrides change for agency '%s': "
+                "%d rules -> %d rules",
+                settings.agency_id, len(prev_overrides), len(new_overrides),
             )
         conn = sqlite3.connect(_db_path())
         try:

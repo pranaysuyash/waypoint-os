@@ -10,7 +10,7 @@ Supports:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, List, Optional
 
 
 @dataclass(slots=True)
@@ -38,10 +38,33 @@ def calculate_package_pricing(
     wholesale_cost_usd: float,
     category: str = "custom_tour",
     custom_rules: Optional[List[FeeTierRule]] = None,
+    margin_policy_rule: Optional[Any] = None,
 ) -> PricingBreakdown:
     """
     Calculate retail price and agency margin applying fee matrix rules.
+
+    ADR-008 / Addendum 12: a resolved MarginPolicyRule (dimensioned,
+    versioned) takes precedence over the legacy literals — its numbers drive
+    the computation and its id + ruleset version become the applied_rule_id
+    provenance. Pricing authority stays with MarginOptimizer; this function
+    is the floor/markup checker.
     """
+    if margin_policy_rule is not None:
+        mpr = margin_policy_rule
+        markup_amt = round(wholesale_cost_usd * mpr.markup_pct, 2)
+        total_margin = markup_amt + mpr.flat_planning_fee_usd
+        if total_margin < mpr.min_margin_floor_usd:
+            markup_amt = mpr.min_margin_floor_usd - mpr.flat_planning_fee_usd
+        retail_price = round(wholesale_cost_usd + markup_amt + mpr.flat_planning_fee_usd, 2)
+        effective_margin_pct = round(((retail_price - wholesale_cost_usd) / retail_price) * 100, 2)
+        return PricingBreakdown(
+            wholesale_cost_usd=wholesale_cost_usd,
+            markup_amount_usd=round(markup_amt, 2),
+            flat_planning_fee_usd=mpr.flat_planning_fee_usd,
+            client_retail_price_usd=retail_price,
+            effective_agency_margin_pct=effective_margin_pct,
+            applied_rule_id=f"{mpr.rule_id}@{mpr.ruleset_version}",
+        )
     rules = custom_rules or [
         FeeTierRule(
             rule_id="tier_standard_custom_tour",
