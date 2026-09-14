@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from collections import defaultdict
 import threading
 
@@ -25,6 +25,11 @@ class DecisionMetrics:
     llm_used: bool = False
     error: Optional[str] = None
     cost_inr: float = 0.0
+    # E-C correlation context (COST_PER_OUTCOME_MODEL_2026-09-07 §3): optional
+    # join keys to the run/trip a decision belongs to. None when the caller
+    # has no correlation context available.
+    decision_id: Optional[str] = None
+    trip_id: Optional[str] = None
 
 
 @dataclass(slots=True)
@@ -106,8 +111,15 @@ class DecisionTelemetry:
         llm_used: bool = False,
         error: Optional[str] = None,
         cost_inr: float = 0.0,
+        decision_id: Optional[str] = None,
+        trip_id: Optional[str] = None,
     ) -> None:
-        """Record a decision metric."""
+        """Record a decision metric.
+
+        Args mirror the pre-correlation signature positionally; decision_id /
+        trip_id are keyword-only additions for E-C cost attribution and are
+        safe to omit.
+        """
         metric = DecisionMetrics(
             decision_type=decision_type,
             source=source,
@@ -117,6 +129,8 @@ class DecisionTelemetry:
             llm_used=llm_used,
             error=error,
             cost_inr=cost_inr,
+            decision_id=decision_id,
+            trip_id=trip_id,
         )
 
         with self._metrics_lock:
@@ -212,6 +226,64 @@ class DecisionTelemetry:
             cache_hit_rate_overall=by_source.get("cache", 0) / total,
         )
 
+    def get_cost_rollup(self, window_seconds: int = 3600) -> Dict[str, Any]:
+        """
+        Cost-per-decision rollup over the rolling metrics window (E-C step 3).
+
+        Answers "what did a decision cost?" (COST_PER_OUTCOME_MODEL_2026-09-07
+        §1, §3.3) from the same in-memory window get_snapshot reads.
+
+        Args:
+            window_seconds: Rolling window in seconds (default: 3600 = 1 hour)
+
+        Returns:
+            {
+                "total_cost_inr": float,
+                "decisions": int,
+                "cost_per_decision_inr": float,  # 0.0 when no decisions
+                "by_source": {
+                    <source>: {
+                        "cost_inr": float,
+                        "decisions": int,
+                        "cost_per_decision_inr": float,
+                    }, ...
+                },
+            }
+        """
+        cutoff_time = datetime.now() - timedelta(seconds=window_seconds)
+
+        with self._metrics_lock:
+            window_metrics = [
+                m for m in self._metrics
+                if m.timestamp >= cutoff_time
+            ]
+
+        total_cost = 0.0
+        by_source_cost: Dict[str, float] = defaultdict(float)
+        by_source_count: Dict[str, int] = defaultdict(int)
+
+        for m in window_metrics:
+            total_cost += m.cost_inr
+            by_source_cost[m.source] += m.cost_inr
+            by_source_count[m.source] += 1
+
+        count = len(window_metrics)
+        by_source: Dict[str, Dict[str, Any]] = {}
+        for source, source_count in by_source_count.items():
+            source_cost = by_source_cost[source]
+            by_source[source] = {
+                "cost_inr": source_cost,
+                "decisions": source_count,
+                "cost_per_decision_inr": source_cost / source_count,
+            }
+
+        return {
+            "total_cost_inr": total_cost,
+            "decisions": count,
+            "cost_per_decision_inr": total_cost / count if count else 0.0,
+            "by_source": by_source,
+        }
+
     def _empty_snapshot(self, window_seconds: int) -> TelemetrySnapshot:
         """Return empty snapshot when no metrics available."""
         return TelemetrySnapshot(
@@ -243,6 +315,9 @@ class DecisionTelemetry:
         Returns:
             String in Prometheus exposition format
         """
+        # Cost-per-decision gauge over the snapshot's own window so the
+        # exported value and the snapshot aggregates always agree (E-C step 4).
+        cost_rollup = self.get_cost_rollup(snapshot.window_duration_seconds)
         lines = [
             "# HELP hybrid_decision_total Total number of decisions",
             "# TYPE hybrid_decision_total counter",
@@ -270,6 +345,10 @@ class DecisionTelemetry:
             "# HELP hybrid_decision_cost_inr_total Total cost in INR",
             "# TYPE hybrid_decision_cost_inr_total counter",
             f"hybrid_decision_cost_inr_total {snapshot.total_cost_inr:.2f}",
+            "",
+            "# HELP hybrid_decision_cost_per_decision_inr Average cost per decision (INR) in the snapshot window",
+            "# TYPE hybrid_decision_cost_per_decision_inr gauge",
+            f"hybrid_decision_cost_per_decision_inr {cost_rollup['cost_per_decision_inr']:.4f}",
             "",
             "# HELP hybrid_decision_error_rate Error rate (0-1)",
             "# TYPE hybrid_decision_error_rate gauge",

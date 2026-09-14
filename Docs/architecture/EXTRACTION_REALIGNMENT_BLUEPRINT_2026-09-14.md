@@ -899,3 +899,44 @@ price-lock honestly R0+preview until a real rate source lands.
 Global reopen trigger: any evidence of a rung executing without its named
 seam (phantom events, denylist bypass, image-level mode drift) reopens the
 ADR in full.
+
+---
+
+## Addendum 10 (2026-09-14): no-decisions-needed batch — landed
+
+Owner directive: "do all implementation and exploration work that doesn't
+need me or decisions." Executed via parallel seats + direct work:
+
+1. **Distribution harness** (lifecycle graduation gate): 
+   spine_api/core/trip_lifecycle_harness.py — reads the write-gate violation
+   counters, ranks classes, graduation ledger (LOG→RAISE flips only via
+   reviewed `graduate_class`), graduation-ready listing. Tests landed.
+2. **E-C steps 2–3** (seat-built): decision_id minted per
+   run_gap_and_decision; telemetry context threading (decision_id/trip_id
+   through hybrid_engine.decide context); get_cost_rollup +
+   hybrid_decision_cost_per_decision_inr Prometheus gauge via
+   metrics_registry. Tier-3/SLM activation preconditions now partially
+   satisfied (decision_id + rollups landed; suitability corpus remains).
+3. **P-F airport codes** (seat died on limits — landed by hand):
+   src/intake/airport_codes.py (60+ curated IATA→city, membership-is-guard)
+   integrated into the destination sweep; "flying into SIN" → Singapore;
+   unknown 3-letter words can never become destinations via this path.
+4. **Relationship axis** (seat landed full module pre-limit):
+   src/memory/relationship_stages.py — 6 ratified stages, event-driven
+   transitions + audit dicts, invariant validation, time decay
+   (POST_TRIP→DORMANT), retention-window derived condition, win-back
+   re-entry. 35 tests. Integration wiring (trip-gate hooks) = later slice.
+5. **Hinglish extraction extensions**: past-trip verbs (gaye/gaya/ghumne
+   gaye/pahunche) + SOV backward span extension ("hum goa gaye the" → Goa);
+   Hinglish positive sentiment cues (bahut accha, mazaa aaya, mast…);
+   Hinglish pronoun + animal GeoNames colliders stopped (Hum/HR, Dog…).
+6. **GDPR X-14 propagation fix**: customer_memory forget now removes ALL
+   same-identity profiles in the agency (duplicate-key leak closed —
+   forgotten travelers were re-hydratable by email from duplicate keys);
+   propagated removals audited. Tests landed.
+7. **Housekeeping**: FND-0058 closed on the FND-0286 evidence chain;
+   FND-0050/0230 alias rows both confirmed closed (self-resolved).
+
+Remaining (needs owner/decisions/evidence): X-09 PII gate → hybrid-ON
+review; shadow→active flip (needs window data); suitability corpus; Slot 2
+FreshnessCard; relationship-axis trip-gate hooks; P-B/P-I/P-G/P-J.

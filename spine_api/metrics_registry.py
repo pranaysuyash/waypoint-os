@@ -167,11 +167,31 @@ def _usage_guard_spend_today_usd() -> float:
         return 0.0
 
 
+def _decision_cost_per_decision_inr() -> float:
+    """Average cost per decision over the telemetry's rolling hour window.
+
+    Reads the E-C rollup (src/decision/telemetry.py:
+    ``DecisionTelemetry.get_cost_rollup``); read failure or absent telemetry
+    yields 0 rather than failing the scrape.
+    """
+    try:
+        from src.decision.telemetry import get_telemetry
+
+        return float(
+            get_telemetry().get_cost_rollup(window_seconds=3600)[
+                "cost_per_decision_inr"
+            ]
+        )
+    except Exception:
+        return 0.0
+
+
 def collect_runtime_gauges() -> None:
     """Refresh the scrape-time gauges. Call immediately before render()."""
     set_gauge("spine_requeue_jobs_pending", _requeue_jobs_pending())
     set_gauge("spine_work_leases_active", _work_leases_active())
     set_gauge("spine_usage_guard_spend_today_usd", _usage_guard_spend_today_usd())
+    set_gauge("spine_decision_cost_per_decision_inr", _decision_cost_per_decision_inr())
     set_gauge("spine_process_uptime_seconds", time.time() - _PROCESS_START)
 
 
@@ -270,6 +290,12 @@ def _seed() -> None:
     _declare(
         "spine_usage_guard_spend_today_usd",
         "Usage-guard spend for today, summed across agencies (USD-equivalent).",
+        "gauge",
+    )
+    _declare(
+        "spine_decision_cost_per_decision_inr",
+        "Average cost per decision (INR) over the decision telemetry's "
+        "rolling hour window (E-C cost attribution).",
         "gauge",
     )
     _declare(

@@ -12,6 +12,7 @@ from collections.abc import Collection
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Dict, List, Literal, Optional, Tuple
+from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
@@ -288,6 +289,10 @@ class DecisionResult:
     commercial_next_action: Optional[str] = None
     travel_next_action: Optional[str] = None
     budget_breakdown: Optional[BudgetBreakdownResult] = None
+    # E-C cost attribution (COST_PER_OUTCOME_MODEL_2026-09-07 §3.2): minted
+    # once per run_gap_and_decision invocation; join key between cost and the
+    # audit event that explains the decision.
+    decision_id: Optional[str] = None
 
     def __post_init__(self) -> None:
         self.decision_state = assert_valid_decision_state(self.decision_state)
@@ -2136,6 +2141,10 @@ def run_gap_and_decision(
         unknown_penalty  = len(packet.unknowns) * 0.1
     Result clamped to [0.0, 1.0].
     """
+    # E-C correlation context (COST_PER_OUTCOME_MODEL_2026-09-07 §3.2):
+    # one decision_id per invocation, minted before any work so it is stable
+    # even if the pipeline short-circuits downstream.
+    decision_id = str(uuid4())
     stage = packet.stage
     mode = packet.operating_mode
     mvb = MVB_BY_STAGE.get(stage, MVB_BY_STAGE["discovery"])
@@ -2519,4 +2528,5 @@ def run_gap_and_decision(
         commercial_next_action=commercial_next_action,
         travel_next_action=travel_next_action,
         budget_breakdown=budget_breakdown,
+        decision_id=decision_id,
     )

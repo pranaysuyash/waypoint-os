@@ -502,7 +502,49 @@ async def forget_customer_gdpr(
 
     # Also remove from legacy store — scoped to the caller's agency (S-08), so
     # agency B cannot erase agency A's profile by guessing the customer id.
-    CUSTOMER_MEMORY_STORE.pop((agency_id, req.customer_id), None)
+    #
+    # X-14 propagation fix (ADR-008 council, Addendum 9): a customer may exist
+    # under MORE than one store key with the same contact identity (profile
+    # re-created under a fresh customer id). Forgetting only the exact key
+    # left duplicates hydratable by email/phone/name — a GDPR leak. Remove
+    # every profile in this agency whose contact identity matches the
+    # forgotten entity's stored contact fields.
+    forgotten_profile = CUSTOMER_MEMORY_STORE.pop((agency_id, req.customer_id), None)
+    match_fields = {
+        forgotten_profile.get(k)
+        for k in ("normalized_email", "normalized_phone")
+        if forgotten_profile and forgotten_profile.get(k)
+    }
+    _forgotten_name = (
+        (forgotten_profile or {}).get("name", "").strip().lower()
+        if forgotten_profile else None
+    )
+    stale_keys = []
+    for (profile_agency, profile_key), profile in CUSTOMER_MEMORY_STORE.items():
+        if profile_agency != agency_id:
+            continue
+        contact_match = (
+            profile.get("normalized_email") in match_fields
+            or profile.get("normalized_phone") in match_fields
+        )
+        name_match = (
+            _forgotten_name
+            and profile.get("name", "").strip().lower() == _forgotten_name
+        )
+        if contact_match or name_match:
+            stale_keys.append((profile_agency, profile_key))
+    for key in stale_keys:
+        CUSTOMER_MEMORY_STORE.pop(key, None)
+    if stale_keys:
+        AuditStore.log_event(
+            event_type="gdpr_memory_erased",
+            user_id=agency_id,
+            details={
+                "customer_id": req.customer_id,
+                "certificate_id": cert.certificate_id,
+                "propagated_removals": [list(k) for k in stale_keys],
+            },
+        )
 
     AuditStore.log_event(
         event_type="gdpr_memory_erased",

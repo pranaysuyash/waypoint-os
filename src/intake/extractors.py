@@ -52,6 +52,7 @@ from .geography import (
     is_known_city,
     is_known_destination,
 )
+from .airport_codes import resolve_airport_code
 
 _MONTH_NAMES = frozenset({
     "january", "february", "march", "april", "may", "june",
@@ -303,7 +304,7 @@ def _side_is_trip_compound(context_after_postposition: str) -> bool:
 # past-time cue so suppression stays clause-scoped. Consumed by
 # _is_past_trip_mention (guard) and _extract_past_trip_places (capture).
 _PAST_TRIP_CLAUSE_RE = re.compile(
-    r"\b(?:went|visited|been|traveled|travelled)\b[^.!?;]{0,120}?"
+    r"\b(?:went|visited|been|traveled|travelled|gaye|gaya|gayi|ghumne\s+gaye|pahunche)\b[^.!?;]{0,120}?"
     r"(?:last\s+(?:year|month|week|summer|winter|spring|fall|autumn)"
     r"|\b(?:19|20)\d{2}\b|\bago\b)",
     re.IGNORECASE,
@@ -350,6 +351,8 @@ _SWEEP_STOP_WORDS = {
     # Time and fabricated a destination on destination-less notes.
     "need", "old", "side", "parks", "top", "set", "lie", "bad",
     "ever", "let", "long", "made", "make", "man", "many", "much",
+    # Hinglish pronouns/self-words ("hum goa gaye") — GeoNames has Hum (HR).
+    "hum", "ham", "humlog", "humne", "hamne", "mera", "meri", "apna",
     "part", "put", "say", "see", "since", "still", "tell", "time",
     "turn", "well", "yes", "yet",
     # Amenity/preference nouns — same collision class ("resort with a
@@ -359,6 +362,9 @@ _SWEEP_STOP_WORDS = {
     "fort", "garden", "gym", "harbor", "hill", "island", "lake",
     "market", "mountain", "park", "pool", "port", "ski", "snow",
     "spa", "sun", "sunrise", "sunset", "temple", "valley", "yoga",
+    # Animal/common-noun colliders ("the dog has fleas" — Dog is a real
+    # GeoNames record; no traveler means it).
+    "dog", "cat", "cow",
 }
 _MAYBE_RE = re.compile(r"\bmaybe\s+(\w+)", re.IGNORECASE)
 # "maybe somewhere like X" / "somewhere like X" — negative lookahead stops at
@@ -892,11 +898,31 @@ def _extract_past_trip_places(sentence: str) -> List[Dict[str, Any]]:
     places: List[Dict[str, Any]] = []
     seen: Set[str] = set()
     _POSITIVE_CUES = re.compile(
-        r"\b(loved|enjoyed|amazing|wonderful|great|beautiful|fantastic|had a blast)\b",
+        r"\b(loved|enjoyed|amazing|wonderful|great|beautiful|fantastic|had a blast"
+        r"|mast|bahut\s+(?:accha|acha|badhiya|paisa\s+vasool)|zabardast|kamaal|"
+        r"accha\s+laga|acha\s+laga|mazaa\s+aaya|maza\s+aaya|sundar)\b",
         re.IGNORECASE,
     )
+    _HINGLISH_MOTION_VERBS = {"gaye", "gaya", "gayi", "pahunche"}
     for span_match in _PAST_TRIP_CLAUSE_RE.finditer(sentence):
         span_text = span_match.group(0)
+        # Hinglish is SOV: "hum goa gaye the" puts the place BEFORE the verb.
+        # When the span opens on a Hinglish motion verb, extend backward to
+        # the previous clause boundary (max 40 chars) to capture the place.
+        span_start = span_match.start()
+        first_word = span_text.split()[0].strip(",.;:!?").lower()
+        if first_word in _HINGLISH_MOTION_VERBS and span_start > 0:
+            back = max(
+                sentence.rfind(ch, max(0, span_start - 40), span_start)
+                for ch in (",", ".", ";", "!", "?")
+            )
+            back = back + 1 if back != -1 else max(0, span_start - 40)
+            span_text = sentence[back:span_match.end()]
+            span_match = type("M", (), {
+                "group": lambda self, i=0: span_text,
+                "start": lambda self, s=span_start - (span_match.start() - back): s,
+                "end": lambda self, e=span_match.end(): e,
+            })()
         # Sentiment often trails the time cue ("… last year and loved it"),
         # so look a bounded, sentence-bounded window past the span end too.
         trailing = re.split(r"[.!?]", sentence[span_match.end():span_match.end() + 60])[0]
@@ -1547,6 +1573,14 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
             if _is_past_trip_mention(destination_text, word_clean):
                 continue
             if _is_likely_origin(destination_text, word_clean):
+                continue
+            airport = resolve_airport_code(word_clean)
+            if airport:
+                city_title = airport["city"].title()
+                if city_title not in seen_sweep:
+                    sweep_candidates.append(city_title)
+                    seen_sweep.add(city_title)
+                    seen_sweep.add(word_clean)
                 continue
             if is_known_destination(word_clean):
                 title = word_clean.title()
@@ -3148,6 +3182,7 @@ class ExtractionPipeline:
                 packet.set_fact("destination_status", self._make_slot(
                     dest_status, 0.8, AuthorityLevel.EXPLICIT_USER,
                     "Derived from destination text", eid,
+                    epistemic_status=EpistemicStatus.INFERRED,
                 ))
             # Check for ambiguities on the ORIGINAL source phrasing, not just extracted values.
             # Using the source span catches natural-language vagueness that
@@ -3265,9 +3300,16 @@ class ExtractionPipeline:
                     budget_result["max"], 0.9, AuthorityLevel.EXPLICIT_USER,
                     budget_result.get("raw_text", ""), eid,
                 ))
+            raw_budget = budget_result.get("raw_text", "")
+            has_explicit_currency = bool(re.search(
+                r"(?:\b(?:usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|dollars?|bucks?|euros?|rupees?)\b|[₹\$€£₦])",
+                raw_budget,
+                re.IGNORECASE,
+            ))
             packet.set_fact("budget_currency", self._make_slot(
                 budget_result.get("currency", "INR"), 0.9, AuthorityLevel.EXPLICIT_USER,
-                budget_result.get("raw_text", ""), eid,
+                raw_budget, eid,
+                epistemic_status=EpistemicStatus.FACT if has_explicit_currency else EpistemicStatus.ASSUMED,
             ))
 
         date_flex = _extract_date_flexibility(text)

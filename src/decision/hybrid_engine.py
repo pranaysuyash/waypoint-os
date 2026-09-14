@@ -379,6 +379,8 @@ class HybridDecisionEngine:
                     latency_ms=latency_ms,
                     cache_hit=True,
                     cost_inr=0.0,
+                    decision_id=(context or {}).get("decision_id"),
+                    trip_id=(context or {}).get("trip_id"),
                 )
                 return DecisionResult(
                     decision=cached.decision,
@@ -408,6 +410,8 @@ class HybridDecisionEngine:
                     source="rule",
                     latency_ms=latency_ms,
                     cost_inr=0.0,
+                    decision_id=(context or {}).get("decision_id"),
+                    trip_id=(context or {}).get("trip_id"),
                 )
                 return DecisionResult(
                     decision=rule_result,
@@ -442,6 +446,8 @@ class HybridDecisionEngine:
                     latency_ms=latency_ms,
                     llm_used=True,
                     cost_inr=cost,
+                    decision_id=(context or {}).get("decision_id"),
+                    trip_id=(context or {}).get("trip_id"),
                 )
                 health_checker.record_llm_success()
                 return DecisionResult(
@@ -470,6 +476,8 @@ class HybridDecisionEngine:
             source="default",
             latency_ms=latency_ms,
             cost_inr=0.0,
+            decision_id=(context or {}).get("decision_id"),
+            trip_id=(context or {}).get("trip_id"),
         )
         return DecisionResult(
             decision=default,
