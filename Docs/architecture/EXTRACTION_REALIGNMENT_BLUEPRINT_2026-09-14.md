@@ -995,3 +995,31 @@ converged.
 Reopen trigger: first live wholesale-cost component (B6/B7) → wire the
 gate at compute_send_policy with recalibrated thresholds; falsifier: any
 consumer treating preview-basis margin as authoritative.
+
+
+---
+
+## Addendum 12 (2026-09-14): MarginPolicy — dimensioned, versioned, agency-configurable
+
+Owner question: "margins would be configurable by vendor type or specific
+vendors as well right? each agency negotiates prices by vendor, location,
+industry/category..." Ratified design (extends Addendum 11's versioned
+rules table — no new autonomy question):
+
+**src/fees/margin_policy.py** — resolution over dimensions, most-specific
+wins: agency (4) > vendor_id (3) > vendor_class (2) > location (1) >
+category (0.5), value band as filter; fail-safe fallthrough to platform
+defaults. Platform seed = fee_matrix's literals 1:1 (zero behavior change
+on introduction). Configurable per rule: markup %, min floor (pct + USD),
+flat planning fee, take-rate clamp bounds. MarginOptimizer keeps the
+computation (lead time/season/sensitivity are inputs, not config).
+
+Two-sided covenant (Addendum 11 restated): negotiated vendor prices are
+COST (adapter net rates, cost_basis provenance); margin policy is PRICE
+side. Config edits are R0 human actions, agency-scoped, fail-safe
+(defaults platform-owned; overrides never leak across agencies — tested).
+
+Integration slice (next): fee_matrix.calculate_package_pricing accepts the
+resolved rule (keeping applied_rule_id provenance); proposal compiler
+resolves per trip agency; agency overrides surface in AgencySettings
+(persisted via its audited save path).
