@@ -355,6 +355,32 @@ class TripEventLogger:
         )
 
     @staticmethod
+    def log_decision_route_health_alert(
+        trip_id: str,
+        routing_health: Dict[str, Any],
+        authority: Dict[str, Any],
+        workflow: str | None = None,
+        workflow_unit_id: str | None = None,
+        min_occurrences: int | None = None,
+        window_minutes: int | None = None,
+        metrics_snapshot: Dict[str, Any] | None = None,
+    ):
+        """Canonical name (ADR-008 item 6, Addendum 9): the metric measures
+        decision-execution route quality, not model-router health. Emits
+        event_type="decision_route_health_alert"; the legacy
+        routing_health_alert type remains as a documented alias."""
+        return TripEventLogger.log_routing_health_alert(
+            trip_id=trip_id,
+            routing_health=routing_health,
+            authority=authority,
+            workflow=workflow,
+            workflow_unit_id=workflow_unit_id,
+            min_occurrences=min_occurrences,
+            window_minutes=window_minutes,
+            metrics_snapshot=metrics_snapshot,
+        )
+
+    @staticmethod
     def log_routing_health_alert(
         trip_id: str,
         routing_health: Dict[str, Any],
@@ -409,7 +435,7 @@ class TripEventLogger:
             return
 
         AuditStore.log_event(
-            event_type="routing_health_alert",
+            event_type="decision_route_health_alert",
             user_id="system",
             details=details,
         )
@@ -499,7 +525,7 @@ class TripEventLogger:
         }
 
         AuditStore.log_event(
-            event_type="routing_health_paging_alert",
+            event_type="decision_route_health_paging_alert",
             user_id="system",
             details=details,
         )

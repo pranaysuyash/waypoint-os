@@ -96,6 +96,29 @@ def request_advisor_payout(
     """Authorize and initiate a payout transfer from cleared commission funds."""
     subject_id = body.request_id or f"{advisor_id}:{body.amount_cents}"
 
+    # ADR-008 item 1 (Addendum 9 amendment): payouts read the agency
+    # money_execution_mode — under fully_human, an automated payout identity
+    # is refused; only an authenticated advisor-initiated payout proceeds.
+    from src.intake.config.agency_settings import AgencySettingsStore
+
+    payout_mode = AgencySettingsStore.load(agency_id).autonomy.money_execution_mode
+    if payout_mode == "fully_human" and str(advisor_id) in (
+        "system", "auto_payout", "fulfillment_agent",
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "money_execution_mode_refusal",
+                "escalation_required": True,
+                "money_execution_mode": "fully_human",
+                "message": (
+                    f"Agency '{agency_id}' operates under 'fully_human' money "
+                    "execution mode (ADR-008): payouts require an authenticated "
+                    "human advisor as the approving principal."
+                ),
+            },
+        )
+
     # PA-08: enforce registry authority BEFORE recording any ledger movement.
     authority: Dict[str, Any]
     try:

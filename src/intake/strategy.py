@@ -12,6 +12,7 @@ passed to traveler-facing builders. Internal and traveler paths are SEPARATE.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Literal
 from enum import Enum
@@ -75,6 +76,7 @@ class PromptBlock:
     content: str
     audience: Literal["internal", "traveler"]
     metadata: Dict[str, Any] = field(default_factory=dict)
+
 
     def to_dict(self) -> dict:
         return {
@@ -257,17 +259,75 @@ QUESTION_PRIORITY_ORDER = {
 }
 
 
+logger = logging.getLogger(__name__)
+
+
 def sort_questions_by_priority(questions: List[dict]) -> List[dict]:
     """
     Sort questions constraint-first: composition → destination → origin → dates.
 
     This order ensures we gather the most blocking information first.
+
+    ADR-008 item 4 / E-D slot 1 (blueprint Addendum 9): memory may PROMOTE
+    an already-known unknown (reorder only — never answer, suppress, or
+    select inventory). Shadow-first: with MEMORY_SLOT_READ_MODE=shadow
+    (default) the promotion is computed and audited but NOT applied;
+    mode="active" applies the promotion-only reorder.
     """
     def sort_key(q: dict) -> int:
         field_name = q.get("field_name", "")
         return QUESTION_PRIORITY_ORDER.get(field_name, 999)
 
-    return sorted(questions, key=sort_key)
+    ordered = sorted(questions, key=sort_key)
+
+    # E-D slot 1 — shadow/active memory promotion (never touches facts).
+    try:
+        from src.memory.slot_candidates import (
+            apply_active,
+            apply_shadow,
+            memory_slot_candidates,
+        )
+
+        agency_id = _current_agency_for_slots()
+        if agency_id:
+            result = memory_slot_candidates(
+                store=_slot_store(),
+                agency_id=agency_id,
+                trip_id="",
+                unknowns=[{"field_name": q.get("field_name", "")} for q in ordered],
+            )
+            if result["shadow"]:
+                apply_shadow(ordered, result["candidates"],
+                             agency_id=agency_id, trip_id="")
+            else:
+                promoted = apply_active(ordered, result["candidates"])
+                promoted_names = {c["field_name"] for c in result["candidates"]}
+                return sorted(
+                    promoted,
+                    key=lambda q: (
+                        0 if q.get("field_name") in promoted_names else 1,
+                        sort_key(q),
+                    ),
+                )
+    except Exception:
+        logger.debug("memory slot promotion unavailable", exc_info=True)
+    return ordered
+
+
+def _current_agency_for_slots() -> Optional[str]:
+    """Agency scope for the slot read; None disables the slot read."""
+    try:
+        from spine_api.core.auth import _jwt_agency_id
+
+        return _jwt_agency_id.get()
+    except Exception:
+        return None
+
+
+def _slot_store():
+    from src.memory.store import MemoryStore
+
+    return MemoryStore()
 
 
 # =============================================================================

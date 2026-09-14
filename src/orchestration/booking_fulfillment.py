@@ -208,14 +208,50 @@ class BookingFulfillmentEngine:
         # - fully_autonomous: Auto under registry authority, mandate recorded if present but not required.
         # Enforcement follows agency_settings.autonomy.money_execution_mode;
         # SPINE_API_REQUIRE_PAYMENT_MANDATES env var serves as fallback when hybrid/mandate is active.
+        # Lifecycle precondition (ADR-008 council cross-link, Addendum 8+9):
+        # fulfillment is RAISE-class gated on the canonical 12-state machine —
+        # money moves only from approved / booking_in_progress / booked.
+        try:
+            from spine_api.core.trip_lifecycle import assess_transition
+
+            _trip_status = trip_record.get("status")
+            _assessment = assess_transition(_trip_status, _trip_status)
+            _life_state = _assessment.new_state
+            if _life_state is not None and _life_state not in (
+                "approved", "booking_in_progress", "booked",
+                "change_requested", "in_trip",
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "error": "lifecycle_precondition_refusal",
+                        "trip_status": _trip_status,
+                        "lifecycle_state": _life_state,
+                        "message": (
+                            f"Trip '{trip_record.get('trip_id') or trip_id}' is in "
+                            f"lifecycle state '{_life_state}'; fulfillment requires "
+                            "approved / booking_in_progress / booked (ADR-008 R1 seam, "
+                            "Addendum 8 canonical lifecycle)."
+                        ),
+                    },
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            logger.warning("lifecycle precondition check skipped (unclassifiable status)", exc_info=True)
+
         agency_scope = str(trip_record.get("agency_id") or "system")
         agency_settings = AgencySettingsStore.load(agency_scope)
         money_mode = agency_settings.autonomy.money_execution_mode
 
-        # Check for autonomous execution attempt
-        is_autonomous_agent = holder_id in ("fulfillment_agent", "system", "auto_fulfillment")
+        # ADR-008 item 1 amendment (Addendum 9): positive check — the
+        # approving principal must be a JWT-bound human ("user:<email>",
+        # bound at the fulfillment router). A client-asserted denylist let
+        # the fully_human gate pass by default. Only hybrid/fully_autonomous
+        # modes may run without one.
+        is_bound_human_principal = str(holder_id).startswith("user:")
 
-        if money_mode == "fully_human" and is_autonomous_agent:
+        if money_mode == "fully_human" and not is_bound_human_principal:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
@@ -225,8 +261,9 @@ class BookingFulfillmentEngine:
                     "holder_id": holder_id,
                     "message": (
                         f"Agency '{agency_scope}' operates under 'fully_human' money execution mode (ADR-008). "
-                        "Autonomous agents cannot initiate bookings or move money without an authenticated "
-                        "human advisor as the approving principal. Escalate to an authenticated advisor."
+                        "Money movements require an authenticated human advisor as the approving principal "
+                        "(JWT-bound at the fulfillment router); unauthenticated or system holders are refused. "
+                        "Escalate to an authenticated advisor."
                     ),
                 },
             )

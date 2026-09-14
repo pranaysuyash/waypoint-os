@@ -209,7 +209,7 @@ def _accept_and_fulfill(trip_id: str, token: str):
     )
     assert accepted.status == "accepted"
     return BookingFulfillmentEngine.fulfill_accepted_proposal(
-        trip_id=trip_id, proposal_token=token, holder_id="test_f04"
+        trip_id=trip_id, proposal_token=token, holder_id="user:advisor@test"
     )
 
 

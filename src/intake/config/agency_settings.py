@@ -657,6 +657,18 @@ class AgencySettingsStore:
     def save(cls, settings: AgencySettings) -> None:
         """Persist settings to SQLite."""
         cls._ensure_db()
+        # ADR-008 item 1 amendment (Addendum 9): mode changes are audited —
+        # previously the mode could flip with no audit trail.
+        try:
+            previous = cls.load(settings.agency_id)
+            prev_mode = previous.autonomy.money_execution_mode
+        except Exception:
+            prev_mode = None
+        if prev_mode is not None and prev_mode != settings.autonomy.money_execution_mode:
+            logger.warning(
+                "AUDIT: money_execution_mode change for agency '%s': %r -> %r",
+                settings.agency_id, prev_mode, settings.autonomy.money_execution_mode,
+            )
         conn = sqlite3.connect(_db_path())
         try:
             data = json.dumps(settings.to_dict(), indent=2)

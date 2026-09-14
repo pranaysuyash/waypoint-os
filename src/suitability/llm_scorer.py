@@ -1,6 +1,17 @@
 """
 suitability.llm_scorer — Tier 3 LLM Contextual Scorer.
 
+STATUS: PLANNED — deliberately unwired (ADR-008 §4.2, owner-ratified with
+amendments 2026-09-14, blueprint Addendum 9). Zero serving-path callers is
+the enforcement seam; do not wire without ALL of:
+  1. a suitability-surface labeled corpus (≥50 activity×participant×context
+     verdicts, fixed-before-grading rubric) graded through
+     tools/grade_kdd_flags.py at pre-registered thresholds (note-level risk
+     flags do NOT calibrate this decision surface);
+  2. E-C cost-per-decision attribution (decision_id + cost rollups);
+  3. a shadow-scoring run showing ≥ +0.05 marginal F1 over deterministic
+     tiers on the trigger band.
+
 Evaluates activity-participant suitability in deep tour/itinerary context,
 handling nuances that deterministic tag predicates and simple heuristics cannot.
 Integrates with the DecisionCacheStorage for ₹0 reuse of verified verdicts.

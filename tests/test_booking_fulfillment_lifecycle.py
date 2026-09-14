@@ -17,6 +17,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from spine_api.persistence import TripStore
+from spine_api.core.auth import get_current_user
 from spine_api.routers.fulfillment import router as fulfillment_router
 from spine_api.routers.public_proposals import (
     AcceptProposalRequest,
@@ -98,7 +99,7 @@ async def test_acceptance_persists_durably_and_fulfillment_persists_with_readbac
     result = await BookingFulfillmentEngine.fulfill_accepted_proposal(
         trip_id=trip_id,
         proposal_token=token,
-        holder_id="test_advisor",
+        holder_id="user:advisor@test",
     )
 
     assert result.status == "FULFILLED_CONFIRMED"
@@ -157,7 +158,7 @@ async def test_fulfillment_replays_existing_confirmation_without_second_vcc():
     first = await BookingFulfillmentEngine.fulfill_accepted_proposal(
         trip_id=trip_id,
         proposal_token=token,
-        holder_id="test_advisor",
+        holder_id="user:advisor@test",
     )
     assert first.idempotent_replay is False
     first_pnr = first.pnr_locator
@@ -166,7 +167,7 @@ async def test_fulfillment_replays_existing_confirmation_without_second_vcc():
     second = await BookingFulfillmentEngine.fulfill_accepted_proposal(
         trip_id=trip_id,
         proposal_token=token,
-        holder_id="test_advisor",
+        holder_id="user:advisor@test",
     )
     assert second.idempotent_replay is True
     assert second.pnr_locator == first_pnr
@@ -205,7 +206,7 @@ async def test_fulfillment_rejected_without_durable_acceptance():
         await BookingFulfillmentEngine.fulfill_accepted_proposal(
             trip_id=trip_id,
             proposal_token=token,
-            holder_id="test_advisor",
+            holder_id="user:advisor@test",
         )
 
 
@@ -229,7 +230,7 @@ async def test_fulfillment_raises_when_tripstore_write_fails():
             await BookingFulfillmentEngine.fulfill_accepted_proposal(
                 trip_id=trip_id,
                 proposal_token=token,
-                holder_id="test_advisor",
+                holder_id="user:advisor@test",
             )
     finally:
         TripStore.update_trip = staticmethod(original)
@@ -271,14 +272,23 @@ async def test_fulfillment_rejected_for_unknown_trip():
         await BookingFulfillmentEngine.fulfill_accepted_proposal(
             trip_id=ghost_trip,
             proposal_token=token,
-            holder_id="test_advisor",
+            holder_id="user:advisor@test",
         )
 
 
 @pytest.fixture()
 def client() -> TestClient:
+    # ADR-008 item 1: the approving principal is bound to the authenticated
+    # JWT user at the router — tests override the dependency with a stub
+    # principal exactly as the real auth dependency would provide.
     app = FastAPI()
     app.include_router(fulfillment_router)
+
+    class _StubUser:
+        email = "advisor@test"
+        id = "stub-user-1"
+
+    app.dependency_overrides[get_current_user] = lambda: _StubUser()
     with TestClient(app) as test_client:
         yield test_client
 
@@ -296,7 +306,7 @@ def test_fulfillment_router_endpoint(client: TestClient):
         json={
             "trip_id": trip_id,
             "proposal_token": token,
-            "holder_id": "api_client_advisor",
+            "holder_id": "user:api_client_advisor",
         },
     )
 
@@ -333,7 +343,7 @@ def test_fulfillment_router_idempotency_key_replay(client: TestClient):
     body = {
         "trip_id": trip_id,
         "proposal_token": token,
-        "holder_id": "api_client_advisor",
+        "holder_id": "user:api_client_advisor",
     }
 
     first = client.post(
@@ -417,7 +427,7 @@ async def test_fulfillment_merges_confirmed_leg_into_existing_graph():
     result = await BookingFulfillmentEngine.fulfill_accepted_proposal(
         trip_id=trip_id,
         proposal_token=token,
-        holder_id="test_advisor",
+        holder_id="user:advisor@test",
     )
     assert result.status == "FULFILLED_CONFIRMED"
 
@@ -481,7 +491,7 @@ async def test_fulfillment_money_execution_mode_fully_human_refuses_autonomous_a
     human_result = await BookingFulfillmentEngine.fulfill_accepted_proposal(
         trip_id=trip_id,
         proposal_token=token,
-        holder_id="advisor_pranay",
+        holder_id="user:advisor_pranay",
     )
     assert human_result.status == "FULFILLED_CONFIRMED"
 

@@ -831,3 +831,71 @@ council-orchestrator skill (smallest-sufficient-council model, evidence-first).
   per-class graduation to hard enforcement; relationship-axis implementation
   (decay job, stage persistence); persisted-distribution audit to de-gate
   in_progress/active mappings.
+
+---
+
+## Addendum 9 (2026-09-14): ADR-008 ratification council — full decision record
+
+Owner challenge accepted: ADR-008 (six open items) walked through a
+five-seat council re-derivation instead of a defaults walk. Manifest:
+PER-0700 (Lead, ADR author), PER-0453-equivalent financial-governance seat
+via LLM cost/outcome governance specialist, memory-architecture specialist,
+metrics/ops specialist folded into seats, PER-0274 skeptic. Every seam claim
+re-verified in-tree, 2026-09-14.
+
+### The falsifications (what a defaults walk would have missed)
+
+1. **Item 2 is contradicted by the repo itself.** ADR proposes prod default
+   "0" + startup rung log. Reality: Dockerfile:89 bakes
+   `USE_HYBRID_DECISION_ENGINE=1` (Fly inherits it — its PA-03 comment is
+   materially false), CI sets "1" explicitly "as the serving images",
+   compose/render set 0, code default is 0, the startup rung log exists
+   NOWHERE. Serving determinism is image-envelope-conditional — four
+   envelopes, three answers.
+2. **routing_health has ZERO producers.** Live alert + paging + operator
+   triage pipelines built on events that can never be emitted (phantom
+   surface). Meanwhile the minimal tier ladder the ADR offers as option A
+   already exists in hybrid_engine telemetry.
+3. **The ADR's cheapest clause was never executed:** Tier-3's required
+   PLANNED docstring declaration never landed.
+4. **ADR conditions dissolved by later work:** E-C cost model landed
+   (partially wired: usage_store run/trip correlation in serving path;
+   decision_id/rollups missing); calibrated labels landed for the WRONG
+   surface (note-level risk flags ≠ activity suitability verdicts); E-D
+   landed 09-08 making suitability a memory NON-slot (dissolving the
+   4.2→4.3 coupling) and E-10 landed 09-10 (governed write path) — the
+   "write-only machine" the archive clause threatens no longer exists.
+5. **Item 1's ratified seam is weaker than its text:** payouts never read
+   the mode; `holder_id` is a client-asserted denylist that PASSES by
+   default ("fulfillment_advisor" isn't in the autonomous list) and is
+   never bound to the JWT principal; settlement/refund executors don't
+   exist (overclaim); the mode lives in local SQLite (redeploys revert it);
+   no audit event on mode change; iROPS VCC minting bypasses the mode read.
+6. **Missing rungs (landed post-ADR, no §3 row):** iROPS auto-heal loop
+   (autonomous, persists healed plans, mints emergency VCCs — no mode read,
+   no registry call), agent memory write loop, the trip lifecycle write
+   gate itself, and price-lock R2 is decoration (preview-only endpoint).
+
+### Council ruling per item (reconciled)
+
+| # | Ruling | Key amendments |
+|---|---|---|
+| 1 | Ratified+implemented; **amend** | Bind holder_id to the JWT principal (delete the client field); payouts read + audit the mode; audit event on mode change; read-only mode exposure; settlement/refunds read the mode *when executors exist*; correct the overclaim |
+| 2 | **Falsified as written — owner decision** | (a) ratify hybrid-ON as declared posture (KDD F1 0.808 vs brittle rules-only; fail-closed proven; pennies/run) conditional on the X-09 PII-egress gate, with one declared mode identical in all five envelopes + startup rung log + fly.toml comment fix — or (b) flip Dockerfile to 0 + CI dual-mode + rung log. Council leans (a); rollback triggers recorded |
+| 3 | PLANNED, unwired — **amended** | Land the missing PLANNED docstring now; drop the 4.3 coupling (E-D forbids memory-feeding-suitability); wire gate = suitability-surface corpus (≥50 verdicts, fixed-before-grading) graded via the KDD harness + shadow scoring + cost thresholds; labels-for-the-wrong-surface noted |
+| 4 | WIRE — archive branch **struck** | E-D landed (spec + invariant "memory may rank questions, never select inventory"); E-10 landed (governed write path); archive would destroy tested value. Wire Slot 1 (strategy.py promotion-only question reorder) shadow-first (`MEMORY_SLOT_READ_MODE=shadow` + audit events), Slot 2 = E-D's display-only FreshnessCard; preconditions: E-D import-containment test, X-14 purge propagation, close the hydrate-trip GDPR leak |
+| 5 | Ratified as written | Badges + honesty CI + tier gate all real; amendment: frontier.py backend responses carry reality_tier (register rule 1) |
+| 6 | **Rename** (not implement-or-rename) | Metric measures decision-route quality with zero producers; the ladder already exists. Rename to decision_route_health with an event-type alias cycle; wire hybrid_engine telemetry into it; delete the phantom legacy_ops triage surface if unwired by cycle end |
+| 7 | Hold — **reason replaced, target ratified** | ADR reason falsified (cost model + KDD venue data landed). New reason: experiment cost ≠ production cost-per-outcome; no routing seam. Ratified benchmark: F1 ≥ 0.8, ≤ 3s/call, ≤ ₹0.50/run — hold becomes a check, not a debate |
+
+Also registered: missing-rung list (iROPS auto-heal → proposed R3 sim-tier
+with mandatory mode-read the day a real provider lands; memory write loop R3
+at the eligibility gate; lifecycle write gate added to §2 with graduation
+policy; **fulfillment must require approved/booking_in_progress at RAISE
+class** — cross-link to the 12-state machine ratified in Addendum 8);
+PA-26 corporate-policy R1 confirmed landed (stale parenthetical fixed);
+price-lock honestly R0+preview until a real rate source lands.
+
+Global reopen trigger: any evidence of a rung executing without its named
+seam (phantom events, denylist bypass, image-level mode drift) reopens the
+ADR in full.

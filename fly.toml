@@ -26,12 +26,13 @@ image = "ghcr.io/your-org/spine-api:latest"
   SPINE_API_WORKERS = "1"
   SPINE_API_RELOAD = "0"
   TRAVELER_SAFE_STRICT = "1"
-  # PA-03: USE_HYBRID_DECISION_ENGINE is deliberately NOT set here. The code
-  # default is now OFF so the serving spine stays deterministic by
-  # architecture, not by credential absence. Opt in explicitly (e.g.
-  # `fly env set USE_HYBRID_DECISION_ENGINE=1`) only with review — enabling
-  # it puts credential-gated LLM calls on the serving path (logged loudly at
-  # startup when enabled).
+  # ADR-008 item 2 (Addendum 9 amendment): every envelope declares its
+  # decision-path mode explicitly — zero implicit defaults. This envelope
+  # serves real traveler data, so it pins 0 until the X-09 PII-egress gate
+  # closes; the KDD gate (F1 0.808 champion) is the recorded evidence for
+  # the post-gate opt-in review. The startup rung log makes the effective
+  # mode observable at boot.
+  USE_HYBRID_DECISION_ENGINE = "0"
   TRIPSTORE_BACKEND = "sql"
   SPINE_API_IDEMPOTENCY_BACKEND = "sql"
   # FND-0262: pin the encryption posture explicitly. Without production mode

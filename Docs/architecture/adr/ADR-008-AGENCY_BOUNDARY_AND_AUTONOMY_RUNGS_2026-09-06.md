@@ -1,6 +1,6 @@
 # ADR-008: Agency Boundary & Autonomy Rungs (2026-09-06)
 
-**Status:** PROPOSED — exploration package E-A output (PER-0700). Ratification block at §6; nothing here is authoritative until ratified.
+**Status:** PARTIALLY RATIFIED — item 1 ratified 2026-09-09 (implemented: AgencySettings.money_execution_mode tri-state, default fully_human, enforced in booking_fulfillment + payouts); items 2–7 AMENDED AND RATIFIED 2026-09-14 by owner-directed council (PER-0700 lead + memory/LLM-governance/skeptic seats) — see §7 amendments and Docs/architecture/EXTRACTION_REALIGNMENT_BLUEPRINT_2026-09-14.md Addendum 9. Full record: five-seat council re-derived every item against post-ADR evidence; two items falsified as written (hybrid envelope contradiction; routing_health phantom pipeline).
 **Context:** the PER-0700 audit found the agency boundary is enforced *by accident* — determinism is credential-conditional (PA-03), the governance registry and dual-control keeper had zero enforcement callers (PA-08), and the DECIDE backlog (C-01…C-04, PA-36, PA-18, G-03) poses the same question four separate times: *which decisions may the system make alone, which need a human, and what seam enforces that?* This ADR answers once.
 **Numbering note:** ADR-003…005 are absent from `Docs/architecture/adr/` (G-15); 008 is the next free number regardless.
 
@@ -73,3 +73,37 @@ Product contracts (D-01…D-04), signup/business model (R-09/R-10), payment-exec
 | 7 | Fulfillment/payouts/refunds: **R1 default**, auto only under F-04 mandate | money path stays auto (not recommended) |
 
 On ratification: update the map honesty section + G-03 wording, wire §3 rows into the enforcing seams (PA-08 completion = the R1 seam), and record the decision per doctrine §16.9.
+
+
+---
+
+## 7. Ratification amendments (2026-09-14, council — blueprint Addendum 9)
+
+The owner-directed council re-derived items 2–7 against post-ADR evidence.
+Amendments supersede the §6 defaults. Evidence: five independent seat
+reports, file:line-verified 2026-09-14.
+
+| # | Amended decision | Enforcement seam | Reopen trigger |
+|---|---|---|---|
+| 1 | Money tri-state stands. AMENDMENTS: approving principal bound to the JWT user at the fulfillment router (client `holder_id` ignored — the client-asserted denylist passed the fully_human gate by default); payouts read + refuse on the mode; audit event on mode change; mode read-only exposed; settlement/refunds read the mode **when executors exist** (none today — overclaim corrected) | `booking_fulfillment.py` (positive `user:` principal check), `subagent_payouts.py` (mode read), `agency_settings.save` (change audit) | Any money movement without a mode read; any non-fully_human value in the store |
+| 2 | **Declared posture, zero implicit defaults.** Dockerfile no longer bakes `=1` (it silently made Fly prod hybrid-ON while its comment claimed deterministic); fly.toml pins `"0"` explicitly (real traveler data; X-09 PII-egress gate open); compose/render explicit `0`; CI `"1"` deliberately exercises hybrid (eval envelope); **startup rung log landed** in server lifespan | Startup rung log in `server.py` lifespan | PII-egress gate closes → opt-in review with KDD benchmark (champion F1 0.808, ₹0.09–0.28/run); any envelope observed running a mode different from its declaration |
+| 3 | Tier-3 stays **PLANNED, unwired**; gate rewritten: drop 4.3 coupling (E-D forbids memory-feeding-suitability); wire requires (i) suitability-surface corpus ≥50 verdicts graded via the KDD harness at pre-registered thresholds, (ii) E-C decision_id + cost rollups, (iii) shadow run ≥ +0.05 marginal F1 on the trigger band. **PLANNED docstring landed** in `llm_scorer.py` | Zero non-test importers (holds); import test added | Graded suitability corpus + thresholds met → shadow activation; any wiring without them → revert |
+| 4 | **WIRE** (archive branch struck — E-D spec + E-10 governed write path landed; the write-only machine no longer exists). Slot 1: promotion-only question reorder in `strategy.py`, shadow-first (`MEMORY_SLOT_READ_MODE`, default shadow, audit events). Slot 2: E-D display-only FreshnessCard (suitability is a NON-slot). Preconditions: import-containment test (landed: `tests/test_memory_slot_wiring.py`), X-14 purge propagation, close the hydrate-trip GDPR leak | `src/memory/slot_candidates.py` — the sole sanctioned read seam | Any inventory/price/selection influence (E-D invariant) = immediate revoke; trust-weighting regression = unwire |
+| 5 | Ratified as written — badges + honesty CI + tier gate real. Amendment: `frontier.py` responses carry `reality_tier` = PLANNED + TierMetadata (register rule 1) | `SimulatedBadge` + honesty test + backend tier field (landed) | Any frontier surface touching a real provider/credential without tier metadata |
+| 6 | **Implemented: producer wired + rename.** `src/decision/route_health.py` evaluates rolling decision-route metrics (fallback/error rates) after every `telemetry.record_decision`; emits deduped alerts via the existing paging logger. Renamed honestly: event types `decision_route_health_alert`/`_paging_alert`; legacy types readable via alias; `log_decision_route_health_alert` canonical, old name aliased | The telemetry→route_health seam (landed); legacy_ops accepts both types | Alert events without a decision-path source = phantom again; hybrid engine archived → seam void |
+| 7 | SLM **HOLD retained, reason replaced** (cost model + venue data landed, so the old reason is stale): experiment cost ≠ production cost-per-outcome; no routing seam. **Ratified benchmark:** F1 ≥ 0.8, ≤ 3s/call, ≤ ₹0.50/run on the KDD fixture — deployment re-enters as a check when E-C rollups + the item-6 seam exist | Item-6 seam + E-C rollups (both open) | Benchmark met + seams exist → deploy review |
+
+### 7.1 Missing rungs registered (landed post-ADR)
+
+- iROPS auto-heal loop → proposed **R3 sim-tier**; hard rule: any real-provider
+  healing action inherits the agency tri-state at that seam.
+- Agent memory write loop → **R3**; seam = eligibility gate (confidence ≥ 0.75).
+- Trip lifecycle write gate (Addendum 8) → §2-class invariant; LOG→RAISE
+  graduation per the distribution harness.
+- **Fulfillment lifecycle precondition (RAISE-class):** money moves only from
+  approved / booking_in_progress / booked (+ change_requested/in_trip flows) —
+  landed in booking_fulfillment, cross-links Addendum 8's machine to the money
+  seam.
+- §3 staleness fixes: PA-08 landed (R1 real); PA-26 landed (corporate-policy R1
+  real, unconditional dual-control); price-lock is honestly **R0+preview** until
+  a real rate source lands (R2 was decoration).

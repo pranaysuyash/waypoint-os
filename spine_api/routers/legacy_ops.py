@@ -196,7 +196,14 @@ def _build_routing_health_triage_event(
 def _is_routing_health_event(event: dict, agency_trip_ids: set[str], agency_id: str) -> bool:
     if not isinstance(event, dict):
         return False
-    if event.get("type") not in {"routing_health_alert", "routing_health_paging_alert"}:
+    # Alias cycle (ADR-008 item 6): canonical types are decision_route_health_*;
+    # legacy routing_health_* events remain readable for the rename window.
+    if event.get("type") not in {
+        "decision_route_health_alert",
+        "decision_route_health_paging_alert",
+        "routing_health_alert",
+        "routing_health_paging_alert",
+    }:
         return False
 
     details = event.get("details")

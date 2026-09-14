@@ -17,6 +17,7 @@ from sqlalchemy import select
 from spine_api.core.auth import get_current_agency_id, require_permission
 from spine_api.core.rls import get_rls_db
 from spine_api.models.frontier import GhostWorkflow, EmotionalStateLog, IntelligencePoolRecord
+from spine_api.core.reality_tier import RealityTier, TierMetadata
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/frontier", tags=["Frontier"])
@@ -44,6 +45,10 @@ class GhostWorkflowResponse(BaseModel):
     autonomic_level: int
     started_at: datetime
     completed_at: Optional[datetime] = None
+    # ADR-008 item 5 (Addendum 9): every frontier surface declares its
+    # reality tier — these are simulated/dev surfaces, never operator authority.
+    reality_tier: str = "simulated"
+    tier_metadata: Optional[Dict[str, Any]] = None
 
 
 class EmotionalLogRequest(BaseModel):
@@ -88,6 +93,14 @@ async def create_ghost_workflow(
     db.add(workflow)
     await db.commit()
     await db.refresh(workflow)
+    workflow.reality_tier = RealityTier.PLANNED.value
+    workflow.tier_metadata = TierMetadata.for_response(
+        RealityTier.PLANNED,
+        feature_name="frontier.ghost_workflow",
+        data_sufficient=True,
+        computation_method="simulated autonomic workflow (no provider execution)",
+        missing_for_upgrade=["real provider execution", "money_execution_mode seam"],
+    )
     return workflow
 
 
@@ -108,6 +121,14 @@ async def get_ghost_workflow(
     if not workflow or workflow.agency_id != agency_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
 
+    workflow.reality_tier = RealityTier.PLANNED.value
+    workflow.tier_metadata = TierMetadata.for_response(
+        RealityTier.PLANNED,
+        feature_name="frontier.ghost_workflow",
+        data_sufficient=True,
+        computation_method="simulated autonomic workflow (no provider execution)",
+        missing_for_upgrade=["real provider execution", "money_execution_mode seam"],
+    )
     return workflow
 
 

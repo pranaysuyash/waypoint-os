@@ -1260,6 +1260,20 @@ async def lifespan(app: FastAPI):
     run_startup_assertions(strict=True)
     log_feature_status()
 
+    # ADR-008 item 2 (Addendum 9): the startup rung log — the enforcement
+    # seam that makes the decision-path mode observable at boot. The image
+    # and every envelope declare USE_HYBRID_DECISION_ENGINE explicitly; this
+    # line records the EFFECTIVE mode + credential state so envelope drift
+    # is visible immediately.
+    _decision_rung = "hybrid/LLM enrichment ACTIVE — rung R3" if (
+        os.environ.get("USE_HYBRID_DECISION_ENGINE", "0") == "1"
+    ) else "deterministic core — rung R3 without enrichment (USE_HYBRID_DECISION_ENGINE=0)"
+    logger.warning(
+        "decision path: %s | llm credential present: %s",
+        _decision_rung,
+        bool(os.environ.get("OPENAI_API_KEY")),
+    )
+
     env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development")).lower().strip()
     from spine_api.core.startup_assertions import auth_bypass_enabled
 

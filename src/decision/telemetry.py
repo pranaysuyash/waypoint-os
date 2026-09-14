@@ -131,6 +131,22 @@ class DecisionTelemetry:
             if len(self._metrics) > self._max_metrics:
                 self._metrics = self._metrics[-self._max_metrics:]
 
+        # Route-health observer (ADR-008 item 6, Addendum 9): every decision
+        # path flows through this singleton, so this is the single producer
+        # seam for the alerting pipeline. Lazy import avoids a cycle;
+        # evaluation is exception-safe and never blocks the decision.
+        try:
+            from src.decision.route_health import record_and_evaluate
+
+            record_and_evaluate(
+                decision_type=decision_type,
+                source=source,
+                latency_ms=latency_ms,
+                error=error,
+            )
+        except Exception:  # pragma: no cover - observability must not fail
+            pass
+
     def get_snapshot(
         self,
         window_seconds: int = 300,  # 5 minutes default

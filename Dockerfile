@@ -86,6 +86,6 @@ ENV PYTHONUNBUFFERED=1 \
     SPINE_API_WORKERS=1 \
     SPINE_API_RELOAD=0 \
     TRAVELER_SAFE_STRICT=1 \
-    USE_HYBRID_DECISION_ENGINE=1
+    USE_HYBRID_DECISION_ENGINE=0
 
 CMD ["sh", "-c", "exec uvicorn spine_api.server:app --host 0.0.0.0 --port ${SPINE_API_PORT:-8000} --workers ${SPINE_API_WORKERS:-1}"]

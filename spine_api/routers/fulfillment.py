@@ -11,7 +11,8 @@ import hashlib
 import json
 import logging
 from typing import Any, Dict, Optional
-from fastapi import APIRouter, Header, HTTPException, status
+from spine_api.core.auth import get_current_user
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 from spine_api.services.authority_approval_service import AuthorityApprovalLedger
@@ -39,6 +40,16 @@ _FULFILLMENT_ACTION = "fulfill_accepted_proposal"
 # stale and becomes retryable.
 _FULFILLMENT_IDEMPOTENCY_TTL_SECONDS = 1800
 
+
+def _bound_holder_id(user) -> str:
+    """Approving principal derived from the authenticated JWT user — never
+    from a client-asserted field (ADR-008 item 1 amendment)."""
+    if user is None:
+        return "unauthenticated"
+    return f"user:{getattr(user, 'email', None) or getattr(user, 'id', 'unknown')}"
+
+
+
 _HOW_TO_RATIFY = (
     "Request a dual-control approval via POST /api/v1/boundaries/authority-approvals "
     "(action, subject_type, subject_id, amount_usd), then collect two DISTINCT "
@@ -50,12 +61,18 @@ _HOW_TO_RATIFY = (
 class FulfillProposalRequest(BaseModel):
     trip_id: str = Field(..., description="Unique trip identifier")
     proposal_token: str = Field(..., description="Cryptographically signed proposal capability token")
-    holder_id: str = Field("fulfillment_advisor", description="Agent or advisor executing fulfillment")
+    holder_id: Optional[str] = Field(
+        None,
+        description="DEPRECATED client assertion — ignored. The approving principal is "
+        "bound to the authenticated JWT user server-side (ADR-008 item 1 amendment: "
+        "a client-asserted denylist let the fully_human gate pass by default).",
+    )
 
 
 @router.post("/proposals/fulfill")
 async def fulfill_proposal(
     payload: FulfillProposalRequest,
+    user = Depends(get_current_user),
     idempotency_key: Optional[str] = Header(
         default=None,
         alias="Idempotency-Key",
@@ -180,7 +197,7 @@ async def fulfill_proposal(
             result = await BookingFulfillmentEngine.fulfill_accepted_proposal(
                 trip_id=payload.trip_id,
                 proposal_token=payload.proposal_token,
-                holder_id=payload.holder_id,
+                holder_id=_bound_holder_id(user),
             )
         except AuthorityApprovalRequired as exc:
             # Over-cap: a ratified dual-control approval for this exact trip
@@ -221,7 +238,7 @@ async def fulfill_proposal(
                 result = await BookingFulfillmentEngine.fulfill_accepted_proposal(
                     trip_id=payload.trip_id,
                     proposal_token=payload.proposal_token,
-                    holder_id=payload.holder_id,
+                    holder_id=_bound_holder_id(user),
                 )
     except HTTPException:
         # Authority denials (unregistered agent / forbidden action) arrive as

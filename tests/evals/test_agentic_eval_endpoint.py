@@ -466,7 +466,7 @@ def test_agentic_eval_endpoint_persists_routing_health_alert_event(
     assert response.json()["routing_health"]["status"] == "warning"
     assert len(persisted_events) == 1
     persisted = persisted_events[0]
-    assert persisted["event_type"] == "routing_health_alert"
+    assert persisted["event_type"] == "decision_route_health_alert"
     assert persisted["user_id"] == "system"
     assert persisted["details"]["trip_id"] == trip_id
     assert persisted["details"]["status"] == "warning"
@@ -643,7 +643,7 @@ def test_agentic_eval_endpoint_relogs_routing_health_alert_when_status_changes(
     assert response.status_code == 200
     assert response.json()["routing_health"]["status"] == "critical"
     assert len(persisted_events) == 1
-    assert persisted_events[0]["event_type"] == "routing_health_alert"
+    assert persisted_events[0]["event_type"] == "decision_route_health_alert"
     assert persisted_events[0]["details"]["status"] == "critical"
 
 
@@ -732,9 +732,9 @@ def test_agentic_eval_endpoint_emits_paging_alert_when_warning_persists_across_w
     assert response.json()["routing_health"]["status"] == "warning"
     assert len(persisted_events) == 2
     event_types = {item["event_type"] for item in persisted_events}
-    assert event_types == {"routing_health_alert", "routing_health_paging_alert"}
+    assert event_types == {"decision_route_health_alert", "decision_route_health_paging_alert"}
     paging_event = next(
-        item for item in persisted_events if item["event_type"] == "routing_health_paging_alert"
+        item for item in persisted_events if item["event_type"] == "decision_route_health_paging_alert"
     )
     assert paging_event["details"]["trip_id"] == trip_id
     assert paging_event["details"]["status"] == "warning"
@@ -850,7 +850,7 @@ def test_agentic_eval_endpoint_does_not_emit_duplicate_paging_alert_when_cooldow
     assert response.status_code == 200
     assert response.json()["routing_health"]["status"] == "warning"
     assert len(persisted_events) == 1
-    assert persisted_events[0]["event_type"] == "routing_health_alert"
+    assert persisted_events[0]["event_type"] == "decision_route_health_alert"
 
 
 def test_agentic_eval_endpoint_does_not_emit_for_healthy_routing_health(
