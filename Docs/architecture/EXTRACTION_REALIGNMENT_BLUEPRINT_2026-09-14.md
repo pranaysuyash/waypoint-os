@@ -1023,3 +1023,33 @@ Integration slice (next): fee_matrix.calculate_package_pricing accepts the
 resolved rule (keeping applied_rule_id provenance); proposal compiler
 resolves per trip agency; agency overrides surface in AgencySettings
 (persisted via its audited save path).
+
+
+### Addendum 12 addendum — supersession completed (owner challenge, 2026-09-14)
+
+Owner asked whether supersession/doctrine alignment was checked. Honest
+answer: the first integration LAYERED a branch (policy rule vs inline
+literals both live) instead of migrating. Post-challenge supersession
+applied per the workflow:
+
+- Field-by-field comparison: platform seed vs fee_matrix inline literals —
+  identical numbers (0.14/150/250, 0.11/250/1200, 0.03/50/50, same bands);
+  seed is a strict superset (adds floor_pct, vendor/location/agency dims,
+  take-rate clamps).
+- Call-site audit: calculate_package_pricing has ZERO production callers
+  (tests only) — no consumer depended on the legacy rule_id namespace.
+- Inline literals RETIRED: fee_matrix default ruleset now derives from
+  margin_policy.PLATFORM_DEFAULT_RULES via default_fee_tier_rules() —
+  single source of truth. Rule ids moved to the versioned namespace
+  (platform.custom_tour.0-10k…); the one legacy-id consumer was the
+  circular test, updated to the versioned ids with the namespace change
+  documented.
+- Doctrine alignment verified post-migration: Deterministic-First (pure
+  rules), Clean Cut (model versioned now), no-duplicate-API (retired the
+  duplicate), wrong-valence (policy-rule fast path emits id@version
+  provenance; legacy path emits bare id), code preservation (behavior
+  identical — only the provenance namespace changed).
+
+Residual honesty: floor_pct is a NEW dimension with the same unvalidated
+provenance as the USD floors — both stay pending the sign-off precondition
+from the FND-0268 amendment (versioned rules table + finance sign-off).

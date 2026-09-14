@@ -38,9 +38,15 @@ def test_policy_rule_drives_pricing_and_provenance():
     assert result.client_retail_price_usd == pytest.approx(1165.0)
 
 
-def test_no_policy_rule_keeps_legacy_literals():
+def test_no_policy_rule_keeps_legacy_behavior():
+    # Supersession (Addendum 12): the legacy literals retired — defaults now
+    # derive from the versioned policy seed. Numbers identical (0.14 markup,
+    # 150 fee, 250 floor); only the rule_id namespace is the versioned one.
     result = calculate_package_pricing(wholesale_cost_usd=5000.0, category="custom_tour")
-    assert result.applied_rule_id == "tier_standard_custom_tour"
+    # Legacy path reports the bare rule id; the @version suffix is the
+    # policy-rule fast-path's provenance format.
+    assert result.applied_rule_id == "platform.custom_tour.0-10k"
+    assert result.client_retail_price_usd == pytest.approx(5000.0 * 1.14 + 150.0)
     assert result.effective_agency_margin_pct > 0
 
 

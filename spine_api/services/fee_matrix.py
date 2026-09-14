@@ -34,6 +34,32 @@ class PricingBreakdown:
     applied_rule_id: str
 
 
+def default_fee_tier_rules() -> List[FeeTierRule]:
+    """Derive the default ruleset from MarginPolicy PLATFORM_DEFAULT_RULES —
+    single source of truth (supersession, Addendum 12). The policy seed is a
+    strict superset of the retired inline literals: identical numbers plus
+    the floor_pct/vendor/location/agency dimensions this checker consumes as
+    floor_pct when a resolved rule drives pricing."""
+    from src.fees.margin_policy import PLATFORM_DEFAULT_RULES
+
+    return [
+        FeeTierRule(
+            rule_id=r.rule_id,
+            category=r.category,
+            min_package_value_usd=r.min_package_value_usd,
+            max_package_value_usd=(
+                r.max_package_value_usd
+                if r.max_package_value_usd != float("inf")
+                else 10**9
+            ),
+            markup_percentage=r.markup_pct,
+            flat_planning_fee_usd=r.flat_planning_fee_usd,
+            minimum_margin_floor_usd=r.min_margin_floor_usd,
+        )
+        for r in PLATFORM_DEFAULT_RULES
+    ]
+
+
 def calculate_package_pricing(
     wholesale_cost_usd: float,
     category: str = "custom_tour",
@@ -65,35 +91,7 @@ def calculate_package_pricing(
             effective_agency_margin_pct=effective_margin_pct,
             applied_rule_id=f"{mpr.rule_id}@{mpr.ruleset_version}",
         )
-    rules = custom_rules or [
-        FeeTierRule(
-            rule_id="tier_standard_custom_tour",
-            category="custom_tour",
-            min_package_value_usd=0.0,
-            max_package_value_usd=10000.0,
-            markup_percentage=0.14,  # 14%
-            flat_planning_fee_usd=150.0,
-            minimum_margin_floor_usd=250.0,
-        ),
-        FeeTierRule(
-            rule_id="tier_high_value_custom_tour",
-            category="custom_tour",
-            min_package_value_usd=10000.0,
-            max_package_value_usd=100000.0,
-            markup_percentage=0.11,  # 11%
-            flat_planning_fee_usd=250.0,
-            minimum_margin_floor_usd=1200.0,
-        ),
-        FeeTierRule(
-            rule_id="tier_standalone_flights",
-            category="flights",
-            min_package_value_usd=0.0,
-            max_package_value_usd=50000.0,
-            markup_percentage=0.03,
-            flat_planning_fee_usd=50.0,
-            minimum_margin_floor_usd=50.0,
-        ),
-    ]
+    rules = custom_rules or default_fee_tier_rules()
 
     # Find matching rule
     matched_rule = next(
