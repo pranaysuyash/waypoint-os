@@ -69,3 +69,27 @@ def test_resolution_feeds_pricing_end_to_end():
     )
     assert result.applied_rule_id.startswith("agency-x.flights.negotiated@")
     assert result.client_retail_price_usd == pytest.approx(3000.0 * 1.05 + 20.0)
+
+
+def test_compiler_emits_policy_provenance_and_preview_gate():
+    """End-to-end: compile_from_intake resolves the dimensioned policy per
+    agency and emits provenance; the floor gate is skipped on preview basis
+    (real-or-None rule) and take-rate clamps come from the resolved rule."""
+    from datetime import date
+    from src.orchestration.proposal_compiler import AutonomousProposalCompiler
+
+    pkg = AutonomousProposalCompiler.compile_from_intake(
+        trip_id="trip-mp-wiring",
+        raw_intake_text="japan trip for 2",
+        destination="Japan",
+        departure_date=date(2027, 3, 10),
+        return_date=date(2027, 3, 20),
+        traveler_count=2,
+        agency_id="agency-x",
+        vendor_id="hotelbeds",
+        location="japan",
+    )
+    assert pkg.margin_policy_rule_id == "platform.custom_tour.0-10k"
+    assert pkg.margin_policy_version == "platform-v1-2026-09-14"
+    assert pkg.margin_floor_gate == "skipped_preview_basis"
+    assert pkg.margin_basis == "preview"

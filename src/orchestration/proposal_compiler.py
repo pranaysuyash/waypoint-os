@@ -59,6 +59,10 @@ class CompiledProposalPackage:
     # label); margin is excluded from composite scores while non-live.
     breakdown_items: List[Dict[str, Any]] = field(default_factory=list)
     margin_basis: str = "preview"
+    margin_policy_rule_id: Optional[str] = None
+    margin_policy_version: Optional[str] = None
+    margin_floor_gate: Optional[str] = None
+    margin_floor_reason: Optional[str] = None
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> Dict[str, Any]:
@@ -81,6 +85,10 @@ class CompiledProposalPackage:
             "reality_tier": self.reality_tier,
             "provider_connected": self.provider_connected,
             "margin_basis": self.margin_basis,
+            "margin_policy_rule_id": self.margin_policy_rule_id,
+            "margin_policy_version": self.margin_policy_version,
+            "margin_floor_gate": self.margin_floor_gate,
+            "margin_floor_reason": self.margin_floor_reason,
             "breakdown_items": self.breakdown_items,
             "created_at": self.created_at,
         }
@@ -101,6 +109,10 @@ class AutonomousProposalCompiler:
         price_sensitivity: float = 0.2,  # Luxury / Low sensitivity
         peak_season: bool = True,
         allow_share_for_simulated: bool = False,
+        agency_id: Optional[str] = None,
+        vendor_id: Optional[str] = None,
+        vendor_class: Optional[str] = None,
+        location: Optional[str] = None,
     ) -> CompiledProposalPackage:
         # 1. Epistemic extraction & constraint parsing
         epistemic_data = EpistemicArbiter.extract_implicit_and_negative_constraints(raw_intake_text)
@@ -160,7 +172,10 @@ class AutonomousProposalCompiler:
         # transfers are a modeled constant. Package basis = weakest component
         # (live > mixed > preview) — one live component inside synthetic ones
         # must not make the package look live.
-        flight_basis = "preview" if flight_price_per_pax == 1250.0 else "live"
+        # The Amadeus lane is SANDBOX-tier (AmadeusSandboxAdapter) — its
+        # offers are preview data even when they exist. "live" is reserved
+        # for a credential-connected real flight lane (none today).
+        flight_basis = "preview"
         hotel_basis = "live" if htb_offers and getattr(htb_adapter, "provider_connected", False) else "preview"
         component_bases = {flight_basis, hotel_basis, "modeled_synthetic"}
         if component_bases == {"live"}:
@@ -171,6 +186,26 @@ class AutonomousProposalCompiler:
             margin_basis = "preview"
         net_supplier_cost = round(flight_cost + hotel_cost + transfer_cost, 2)
 
+        # 3. Margin policy resolution (Addendum 12): agency/vendor/location/
+        # category dimensioned rules — take-rate clamps are policy params.
+        from src.fees.margin_policy import (
+            resolve_margin_policy,
+        )
+        try:
+            from spine_api.core.auth import _jwt_agency_id as _slot_agency
+
+            agency_scope = agency_id or _slot_agency.get() or "system"
+        except Exception:
+            agency_scope = agency_id or "system"
+        margin_rule = resolve_margin_policy(
+            category="custom_tour",
+            package_value_usd=net_supplier_cost,
+            agency_id=agency_scope,
+            vendor_id=vendor_id,
+            vendor_class=vendor_class,
+            location=location,
+        )
+
         # 3. Dynamic Margin Take-Rate Optimization
         lead_time_days = max(1, (departure_date - date.today()).days)
         margin_res = MarginOptimizer.calculate_optimal_margin(
@@ -178,10 +213,34 @@ class AutonomousProposalCompiler:
             lead_time_days=lead_time_days,
             customer_price_sensitivity=price_sensitivity,
             is_peak_season=peak_season,
+            min_margin_percent=margin_rule.take_rate_clamp_min,
+            max_margin_percent=margin_rule.take_rate_clamp_max,
         )
         gross_customer_price = round(margin_res.optimized_selling_price, 2)
         gross_margin = round(margin_res.gross_profit_usd, 2)
         take_rate = round(margin_res.effective_margin_percent * 100.0, 1)
+
+        # Floor gate (FND-0268 amended, Addendum 11): basis-branching.
+        # Preview/mixed basis -> the floor check is NOT a verdict (PA-25:
+        # block-don't-label applies to floor comparisons on invented costs);
+        # live basis -> floor comparison emits pass/review.
+        if margin_basis == "live":
+            floor_ok = gross_margin >= max(
+                margin_rule.min_margin_floor_usd,
+                net_supplier_cost * margin_rule.min_margin_floor_pct,
+            )
+            margin_floor_gate = "pass" if floor_ok else "review"
+            margin_floor_reason = (
+                "live-basis margin above policy floor"
+                if floor_ok else
+                f"live-basis margin {gross_margin} below policy floor"
+            )
+        else:
+            margin_floor_gate = "skipped_preview_basis"
+            margin_floor_reason = (
+                "floor comparison requires live cost basis "
+                "(preview costs carry no verdict — real-or-None rule)"
+            )
 
         # 4. Assemble Journey Dependency Graph
         graph = JourneyDependencyGraph(trip_id=trip_id)
@@ -278,6 +337,10 @@ class AutonomousProposalCompiler:
             reality_tier=RealityTier.DETERMINISTIC_PREVIEW.value,
             provider_connected=False,
             margin_basis=margin_basis,
+            margin_policy_rule_id=margin_rule.rule_id,
+            margin_policy_version=margin_rule.ruleset_version,
+            margin_floor_gate=margin_floor_gate,
+            margin_floor_reason=margin_floor_reason,
             breakdown_items=[
                 {"category": "Flights", "provider": flight_provider,
                  "amount_usd": flight_cost, "cost_basis": flight_basis},

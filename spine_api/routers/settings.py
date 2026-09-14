@@ -86,6 +86,11 @@ def _build_agency_settings_payload(settings) -> dict:
             "auto_reprocess_stages": settings.autonomy.auto_reprocess_stages,
             "min_proceed_confidence": settings.autonomy.min_proceed_confidence,
             "min_draft_confidence": settings.autonomy.min_draft_confidence,
+            # ADR-008 item 1 amendment (Addendum 9): read-only exposure —
+            # agency owners can SEE the effective mode; mutation stays off-API.
+            "money_execution_mode": settings.autonomy.money_execution_mode,
+            # Addendum 12: margin policy overrides (agency-scoped rules).
+            "margin_policy_overrides": settings.autonomy.margin_policy_overrides,
         },
         "epistemic": {
             "critical_slot_gate": getattr(epistemic_data, "critical_slot_gate", "block") if epistemic_data else "block",
