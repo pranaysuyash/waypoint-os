@@ -323,7 +323,7 @@
     "total_fixtures": 50
   },
   "fixture_root": "data/fixtures/audit",
-  "generated_at": "2026-09-11T13:24:04.163314+00:00",
+  "generated_at": "2026-09-15T16:37:25.504265+00:00",
   "manifest_version": 1,
   "pipeline_health": {
     "actual_source": "expected_fixture_mirror",
@@ -347,7 +347,7 @@
   "routing_health": {
     "alerts": [],
     "blocks_ci": false,
-    "checked_at": "2026-09-11T13:24:03.450456+00:00",
+    "checked_at": "2026-09-15T16:37:24.063657+00:00",
     "metrics_snapshot": {
       "correct_escalation_count": null,
       "cost_usd": {
@@ -410,9 +410,41 @@
     "hybrid_config": {
       "configured_value": "0",
       "default_enabled": false,
+      "degraded_parity": {
+        "credential_safe": true,
+        "divergent_scenarios": [],
+        "invariant": "flag ON + provider absent == flag OFF on authority axes",
+        "parity": "pass",
+        "scenarios_collected": {
+          "off": 30,
+          "on_degraded": 30
+        },
+        "scenarios_compared": 30
+      },
       "effective_enabled": false,
       "environment_variable": "USE_HYBRID_DECISION_ENGINE",
       "evaluation_contract": "deterministic_authority_axes",
+      "promotion_gate": {
+        "category": "gap_decision",
+        "conditions": [
+          {
+            "evidence": "hybrid_config.degraded_parity (this snapshot)",
+            "id": "degraded_parity_pass",
+            "met": true
+          },
+          {
+            "evidence": "key-gated KDD arm on data/fixtures/risk_flags/ground_truth_labels.json; pre-registered champion F1 >= 0.8 (records_* + tools/grade_kdd_flags.py receipt)",
+            "id": "provider_lane_kdd_grade",
+            "met": false
+          },
+          {
+            "evidence": "redact-before-enrich egress posture ratified (PII guard ADR addendum) + zero-retention provider terms",
+            "id": "pii_egress_authorized",
+            "met": false
+          }
+        ],
+        "current": "shadow"
+      },
       "provider_calls_authorized": false
     },
     "live_grading": true,

@@ -1,33 +1,465 @@
 {
-  "records_sweepguard2.jsonl::A": {
+  "records_or_newcheap.jsonl::B-ibm-granite/granite-4.0-h-micro": {
     "graded_records": 35,
-    "tp": 0,
-    "fp": 6,
-    "fn": 24,
-    "precision": 0.0,
-    "recall": 0.0,
-    "f1": 0.0,
-    "severity_exact": null,
+    "tp": 14,
+    "fp": 15,
+    "fn": 10,
+    "precision": 0.483,
+    "recall": 0.583,
+    "f1": 0.528,
+    "severity_exact": 1.0,
     "fp_examples": [
       [
-        "budget_neg_008",
-        "traveler_safe_leakage_risk(critical)"
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
       ],
       [
-        "colloq_dest_covering_001",
-        "traveler_safe_leakage_risk(critical)"
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
       ],
       [
-        "colloq_dest_city_set_001",
-        "traveler_safe_leakage_risk(critical)"
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
       ],
       [
-        "colloq_dates_late_month_001",
-        "traveler_safe_leakage_risk(critical)"
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
       ],
       [
-        "colloq_dates_flex_001",
-        "traveler_safe_leakage_risk(critical)"
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
+      ]
+    ],
+    "fn_examples": [
+      [
+        "budget_simple_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_simple_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_hard_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_neg_002",
+        "toddler_pacing_risk"
+      ],
+      [
+        "budget_neg_005",
+        "toddler_pacing_risk"
+      ]
+    ]
+  },
+  "records_or_newcheap.jsonl::B-ibm-granite/granite-4.0-h-micro-warm": {
+    "graded_records": 35,
+    "tp": 14,
+    "fp": 15,
+    "fn": 10,
+    "precision": 0.483,
+    "recall": 0.583,
+    "f1": 0.528,
+    "severity_exact": 1.0,
+    "fp_examples": [
+      [
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
+      ]
+    ],
+    "fn_examples": [
+      [
+        "budget_simple_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_simple_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_hard_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_neg_002",
+        "toddler_pacing_risk"
+      ],
+      [
+        "budget_neg_005",
+        "toddler_pacing_risk"
+      ]
+    ]
+  },
+  "records_or_newcheap.jsonl::B-inclusionai/ling-3.0-flash": {
+    "graded_records": 35,
+    "tp": 8,
+    "fp": 15,
+    "fn": 16,
+    "precision": 0.348,
+    "recall": 0.333,
+    "f1": 0.34,
+    "severity_exact": 0.875,
+    "fp_examples": [
+      [
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
+      ]
+    ],
+    "fn_examples": [
+      [
+        "budget_simple_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_simple_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_003",
+        "visa_timeline_risk"
+      ]
+    ]
+  },
+  "records_or_newcheap.jsonl::B-inclusionai/ling-3.0-flash-warm": {
+    "graded_records": 35,
+    "tp": 8,
+    "fp": 15,
+    "fn": 16,
+    "precision": 0.348,
+    "recall": 0.333,
+    "f1": 0.34,
+    "severity_exact": 0.875,
+    "fp_examples": [
+      [
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
+      ]
+    ],
+    "fn_examples": [
+      [
+        "budget_simple_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_simple_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_003",
+        "visa_timeline_risk"
+      ]
+    ]
+  },
+  "records_or_newcheap.jsonl::B-meta-llama/llama-3.1-8b-instruct": {
+    "graded_records": 35,
+    "tp": 8,
+    "fp": 15,
+    "fn": 16,
+    "precision": 0.348,
+    "recall": 0.333,
+    "f1": 0.34,
+    "severity_exact": 0.375,
+    "fp_examples": [
+      [
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
+      ]
+    ],
+    "fn_examples": [
+      [
+        "budget_simple_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_simple_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_simple_003",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_003",
+        "visa_timeline_risk"
+      ]
+    ]
+  },
+  "records_or_newcheap.jsonl::B-meta-llama/llama-3.1-8b-instruct-warm": {
+    "graded_records": 35,
+    "tp": 8,
+    "fp": 15,
+    "fn": 16,
+    "precision": 0.348,
+    "recall": 0.333,
+    "f1": 0.34,
+    "severity_exact": 0.375,
+    "fp_examples": [
+      [
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
+      ]
+    ],
+    "fn_examples": [
+      [
+        "budget_simple_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_simple_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_simple_003",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_003",
+        "visa_timeline_risk"
+      ]
+    ]
+  },
+  "records_or_newcheap.jsonl::B-mistralai/mistral-small-24b-instruct-2501": {
+    "graded_records": 35,
+    "tp": 15,
+    "fp": 15,
+    "fn": 9,
+    "precision": 0.5,
+    "recall": 0.625,
+    "f1": 0.556,
+    "severity_exact": 0.933,
+    "fp_examples": [
+      [
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
+      ]
+    ],
+    "fn_examples": [
+      [
+        "budget_simple_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_hard_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_hard_004",
+        "visa_timeline_risk"
+      ]
+    ]
+  },
+  "records_or_newcheap.jsonl::B-mistralai/mistral-small-24b-instruct-2501-warm": {
+    "graded_records": 35,
+    "tp": 16,
+    "fp": 15,
+    "fn": 8,
+    "precision": 0.516,
+    "recall": 0.667,
+    "f1": 0.582,
+    "severity_exact": 0.938,
+    "fp_examples": [
+      [
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
+      ]
+    ],
+    "fn_examples": [
+      [
+        "budget_simple_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_001",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_medium_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_hard_002",
+        "visa_timeline_risk"
+      ],
+      [
+        "budget_hard_004",
+        "visa_timeline_risk"
+      ]
+    ]
+  },
+  "records_or_newcheap.jsonl::B-qwen/qwen3.7-flash": {
+    "graded_records": 35,
+    "tp": 3,
+    "fp": 15,
+    "fn": 21,
+    "precision": 0.167,
+    "recall": 0.125,
+    "f1": 0.143,
+    "severity_exact": 1.0,
+    "fp_examples": [
+      [
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
+      ],
+      [
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
       ]
     ],
     "fn_examples": [
@@ -53,187 +485,57 @@
       ]
     ]
   },
-  "records_sweepguard2.jsonl::B-gpt-4.1-nano": {
+  "records_or_newcheap.jsonl::B-qwen/qwen3.7-flash-warm": {
     "graded_records": 35,
-    "tp": 21,
-    "fp": 7,
-    "fn": 3,
-    "precision": 0.75,
-    "recall": 0.875,
-    "f1": 0.808,
-    "severity_exact": 0.905,
+    "tp": 5,
+    "fp": 15,
+    "fn": 19,
+    "precision": 0.25,
+    "recall": 0.208,
+    "f1": 0.227,
+    "severity_exact": 1.0,
     "fp_examples": [
       [
-        "budget_neg_008",
-        "traveler_safe_leakage_risk(critical)"
+        "budget_simple_002",
+        "unacknowledged_critical_assumption(high)"
       ],
       [
-        "colloq_dest_covering_001",
-        "traveler_safe_leakage_risk(critical)"
+        "budget_simple_003",
+        "unacknowledged_critical_assumption(high)"
       ],
       [
-        "colloq_dest_city_set_001",
-        "traveler_safe_leakage_risk(critical)"
+        "budget_medium_001",
+        "unacknowledged_critical_assumption(high)"
       ],
       [
-        "colloq_party_the_four_001",
-        "visa_timeline_risk(medium)"
+        "budget_medium_002",
+        "unacknowledged_critical_assumption(high)"
       ],
       [
-        "colloq_dates_late_month_001",
-        "traveler_safe_leakage_risk(critical)"
+        "budget_medium_003",
+        "unacknowledged_critical_assumption(high)"
       ]
     ],
     "fn_examples": [
+      [
+        "budget_simple_001",
+        "visa_timeline_risk"
+      ],
       [
         "budget_simple_002",
         "visa_timeline_risk"
       ],
       [
-        "budget_neg_002",
-        "toddler_pacing_risk"
-      ],
-      [
-        "budget_neg_005",
-        "toddler_pacing_risk"
-      ]
-    ]
-  },
-  "records_sweepguard2.jsonl::B-gpt-4.1-nano-warm": {
-    "graded_records": 35,
-    "tp": 21,
-    "fp": 7,
-    "fn": 3,
-    "precision": 0.75,
-    "recall": 0.875,
-    "f1": 0.808,
-    "severity_exact": 0.905,
-    "fp_examples": [
-      [
-        "budget_neg_008",
-        "traveler_safe_leakage_risk(critical)"
-      ],
-      [
-        "colloq_dest_covering_001",
-        "traveler_safe_leakage_risk(critical)"
-      ],
-      [
-        "colloq_dest_city_set_001",
-        "traveler_safe_leakage_risk(critical)"
-      ],
-      [
-        "colloq_party_the_four_001",
-        "visa_timeline_risk(medium)"
-      ],
-      [
-        "colloq_dates_late_month_001",
-        "traveler_safe_leakage_risk(critical)"
-      ]
-    ],
-    "fn_examples": [
-      [
-        "budget_simple_002",
+        "budget_simple_003",
         "visa_timeline_risk"
       ],
       [
-        "budget_neg_002",
-        "toddler_pacing_risk"
-      ],
-      [
-        "budget_neg_005",
-        "toddler_pacing_risk"
-      ]
-    ]
-  },
-  "records_sweepguard2.jsonl::B-gpt-5.4-nano": {
-    "graded_records": 35,
-    "tp": 21,
-    "fp": 7,
-    "fn": 3,
-    "precision": 0.75,
-    "recall": 0.875,
-    "f1": 0.808,
-    "severity_exact": 0.762,
-    "fp_examples": [
-      [
-        "budget_neg_008",
-        "traveler_safe_leakage_risk(critical)"
-      ],
-      [
-        "colloq_dest_covering_001",
-        "traveler_safe_leakage_risk(critical)"
-      ],
-      [
-        "colloq_dest_city_set_001",
-        "traveler_safe_leakage_risk(critical)"
-      ],
-      [
-        "colloq_party_the_four_001",
-        "visa_timeline_risk(high)"
-      ],
-      [
-        "colloq_dates_late_month_001",
-        "traveler_safe_leakage_risk(critical)"
-      ]
-    ],
-    "fn_examples": [
-      [
-        "budget_simple_002",
+        "budget_medium_001",
         "visa_timeline_risk"
       ],
       [
-        "budget_neg_002",
-        "toddler_pacing_risk"
-      ],
-      [
-        "budget_neg_005",
-        "toddler_pacing_risk"
-      ]
-    ]
-  },
-  "records_sweepguard2.jsonl::B-gpt-5.4-nano-warm": {
-    "graded_records": 35,
-    "tp": 21,
-    "fp": 7,
-    "fn": 3,
-    "precision": 0.75,
-    "recall": 0.875,
-    "f1": 0.808,
-    "severity_exact": 0.762,
-    "fp_examples": [
-      [
-        "budget_neg_008",
-        "traveler_safe_leakage_risk(critical)"
-      ],
-      [
-        "colloq_dest_covering_001",
-        "traveler_safe_leakage_risk(critical)"
-      ],
-      [
-        "colloq_dest_city_set_001",
-        "traveler_safe_leakage_risk(critical)"
-      ],
-      [
-        "colloq_party_the_four_001",
-        "visa_timeline_risk(high)"
-      ],
-      [
-        "colloq_dates_late_month_001",
-        "traveler_safe_leakage_risk(critical)"
-      ]
-    ],
-    "fn_examples": [
-      [
-        "budget_simple_002",
+        "budget_medium_002",
         "visa_timeline_risk"
-      ],
-      [
-        "budget_neg_002",
-        "toddler_pacing_risk"
-      ],
-      [
-        "budget_neg_005",
-        "toddler_pacing_risk"
       ]
     ]
   }

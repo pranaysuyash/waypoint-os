@@ -324,5 +324,25 @@
    "full_note"
   ],
   "document_type": "freeform_note"
+ },
+ {
+  "fixture_id": "colloq_reading_collision_001",
+  "description": "Gazetteer collision: common-word toponym survives as candidate but downgrades to semi_open (operator confirms; agentic resolver supersedes when enabled)",
+  "difficulty": "hard",
+  "raw_input": "we are reading up on our options for the trip",
+  "expected_extracted_fields": {
+   "destination_candidates": [
+    "Reading"
+   ],
+   "destination_status": "semi_open"
+  },
+  "expected_field_count": 2,
+  "tags": [
+   "colloquial",
+   "destination",
+   "gazetteer_collision",
+   "hitl"
+  ],
+  "document_type": "freeform_note"
  }
 ]

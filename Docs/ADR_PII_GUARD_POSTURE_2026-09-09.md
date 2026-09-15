@@ -37,3 +37,46 @@ Additional decisions:
 
 - `tests/test_privacy_guard.py` — 58 passing, including the audit-emission tests: admission emits `privacy_guard_admitted_pii_shape` (`blocked: false`), clean passes emit nothing, production+plaintext block raises.
 - Emission goes to the AuditStore hash chain (`AuditStore.log_event`), preserving the tamper-evident property.
+
+---
+
+## Addendum 2026-09-15 — Egress direction: redact-before-enrich (ADR-008 §7 promotion gate condition)
+
+**Scope:** this ADR governed the *persistence* direction (data at rest). The
+hybrid decision engine (ADR-008 §4.1/§7 item 2) introduces the *egress*
+direction: traveler intake text flowing to an external LLM provider for risk
+enrichment. This addendum fixes the posture; implementation is the next
+increment and is a precondition of the D6 `promotion_gate` condition
+`pii_egress_authorized`.
+
+**Principle (owner-confirmed 2026-09-15):** the egress standard is the *same*
+standard as the booking-counterparty flow — purpose-scoped, minimized,
+contractually bounded — not "PII never leaves." Traveler PII legitimately
+flows to GDS/suppliers because that is the consented fulfillment purpose.
+Inference enrichment is a *different* purpose and needs its own scoping, not a
+blanket prohibition.
+
+**Design — pseudonymize-reattach:**
+
+1. **Minimize before the call.** Extend the Layer-1 detection vocabulary to an
+   *egress action*: deterministic redaction of direct identifiers (names,
+   phones, emails, passport/MRZ, addresses) into placeholder tokens
+   (`[[PERSON_1]]`, `[[PHONE_1]]`), keeping an in-process reattachment map
+   keyed by `decision_id` and discarded after the decision. The enrichment
+   task needs age bands, health context, and trip shape — not identities.
+2. **One authorized seam.** The hybrid engine's enrichment call site is the
+   only sanctioned egress point. A gate at that seam fails closed: if
+   redaction has not run for the payload, no provider call is made. An audit
+   event (`pii_egress_redacted`, redaction counts only) lands in the
+   AuditStore chain at the seam.
+3. **Contractual layer.** Provider terms must be zero-retention /
+   no-training (enterprise or equivalent tier). Venue selection is now a
+   first-order quality variable (KDD 2026-09-15: llama-3.1-8b graded F1 0.800
+   via one venue, 0.340 via another — same weights), so provider choice is a
+   joint quality-terms decision, recorded per envelope.
+4. **Notice.** The traveler privacy notice gains the enrichment purpose
+   (DPDP-consistent) before the posture activates on real traveler data.
+
+**Status: DESIGN, not wired.** The redaction filter, the fail-closed seam
+gate, and the audit event are the implementation increment; the promotion
+gate stays closed until they land and the terms are ratified.

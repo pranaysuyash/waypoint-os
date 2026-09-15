@@ -36,14 +36,21 @@ def test_x09_unset_mode_uses_serving_default_and_records_boundary(monkeypatch):
 
     health = _run_scenario_baseline()
 
-    assert health["hybrid_config"] == {
+    # ADR-008 §7 item 2 (2026-09-14) extended hybrid_config with the
+    # degraded-parity record and the machine-readable gap_decision promotion
+    # gate; the six X-09 keys remain the pinned base contract (superset).
+    assert {
         "environment_variable": "USE_HYBRID_DECISION_ENGINE",
         "configured_value": "1",
         "effective_enabled": True,
         "default_enabled": False,
         "evaluation_contract": "deterministic_authority_axes",
         "provider_calls_authorized": False,
-    }
+    }.items() <= health["hybrid_config"].items()
+    assert health["hybrid_config"]["degraded_parity"]["parity"] == "pass"
+    gate = health["hybrid_config"]["promotion_gate"]
+    assert gate["category"] == "gap_decision"
+    assert gate["current"] == "shadow"
 
 
 def test_x09_explicit_ci_mode_is_preserved_and_observable(monkeypatch):

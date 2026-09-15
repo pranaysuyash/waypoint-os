@@ -835,6 +835,56 @@ def _run_scenario_baseline(
         "evaluation_contract": "deterministic_authority_axes",
         "provider_calls_authorized": False,
     }
+    # ADR-008 §7 item 2 (2026-09-14): grade the degraded-mode authority
+    # invariant — flag ON + provider absent must be axis-identical to flag
+    # OFF. Credential-safe by construction (keys stripped in-process).
+    if _HAS_INTAKE_PIPELINE and fixtures_path.exists():
+        try:
+            from src.evals.audit.hybrid_parity import collect_hybrid_parity
+
+            hybrid_config["degraded_parity"] = collect_hybrid_parity(fixtures_path)
+        except Exception as exc:  # noqa: BLE001 — parity failure is a finding
+            hybrid_config["degraded_parity"] = {
+                "parity": "unknown",
+                "reason": f"parity_collector_error: {exc}",
+            }
+    else:
+        hybrid_config["degraded_parity"] = {
+            "parity": "unknown",
+            "reason": "decision_engine_unavailable",
+        }
+    parity_pass = hybrid_config["degraded_parity"].get("parity") == "pass"
+    # Machine-readable promotion contract: gap_decision stays shadow until
+    # every condition holds. Conditions mirror ADR-008 §7 items 1-2 and the
+    # ratified SLM benchmark shape (graded corpus + cost + fail-closed).
+    hybrid_config["promotion_gate"] = {
+        "category": "gap_decision",
+        "current": "shadow",
+        "conditions": [
+            {
+                "id": "degraded_parity_pass",
+                "met": parity_pass,
+                "evidence": "hybrid_config.degraded_parity (this snapshot)",
+            },
+            {
+                "id": "provider_lane_kdd_grade",
+                "met": False,
+                "evidence": (
+                    "key-gated KDD arm on data/fixtures/risk_flags/"
+                    "ground_truth_labels.json; pre-registered champion F1 >= 0.8 "
+                    "(records_* + tools/grade_kdd_flags.py receipt)"
+                ),
+            },
+            {
+                "id": "pii_egress_authorized",
+                "met": False,
+                "evidence": (
+                    "redact-before-enrich egress posture ratified "
+                    "(PII guard ADR addendum) + zero-retention provider terms"
+                ),
+            },
+        ],
+    }
     mirror = False
     live_grading = False
     actual_source = "expected_fixture_mirror"

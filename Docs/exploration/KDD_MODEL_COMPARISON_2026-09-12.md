@@ -81,6 +81,7 @@ re-pull via `ollama pull <id>`.
 | Run file | Rows | Status | Why |
 |---|---|---|---|
 | records.jsonl | 175 | superseded | v1 full matrix pre-fix (175 rows; incl. fabricated default-flags) |
+| records_envloader_smoke.jsonl | 6 | unclassified |  |
 | records_final_patterns.jsonl | 350 | valid-reference | post-fix pattern matrix — pattern grades of record |
 | records_final_single.jsonl | 280 | valid-reference | post-fix variance run: 3 passes × mini+luna |
 | records_hf1_gptoss_cheapest.jsonl | 70 | unclassified |  |
@@ -110,14 +111,35 @@ re-pull via `ollama pull <id>`.
 | records_local_ladder.jsonl | 140 | superseded | overwritten twice by tag reuse (retains 12b+mistral grades) |
 | records_ollama.jsonl | 105 | valid-reference | qwen2.5vl:7b 2-pass run (vision-coupled keeper) |
 | records_ollamasmoke.jsonl | 6 | smoke | 3-record ollama provider smoke |
+| records_or1_gptoss.jsonl | 70 | unclassified |  |
+| records_or1_llama8b.jsonl | 70 | unclassified |  |
+| records_or2_gptoss_nitro.jsonl | 70 | unclassified |  |
+| records_or2_variants.jsonl | 140 | unclassified |  |
+| records_or_newcheap.jsonl | 350 | unclassified |  |
 | records_patterns.jsonl | 350 | superseded | pre-fix pattern matrix |
 | records_patternsmoke.jsonl | 14 | smoke | 2-record pattern smoke (llm_first/guard/vote/critic wiring) |
 | records_postguard.jsonl | 70 | superseded | post-gate-layer-1 only (default-flag bug still live) |
 | records_postguard2.jsonl | 70 | valid-reference | both fixes live: spurious 11→0 confirmation |
+| records_rulesonly_realign.jsonl | 175 | unclassified |  |
 | records_seedsmoke.jsonl | 16 | smoke | --runs 3 variance-protocol smoke |
+| records_sweepguard.jsonl | 175 | unclassified |  |
+| records_sweepguard2.jsonl | 175 | unclassified |  |
 
 ## Failure / ops log (all documented, nothing hidden)
 
+- **2026-09-15 OpenRouter new-cheap ladder (`records_or_newcheap.jsonl`)** —
+  owner-directed test of newer/faster/cheaper free-tier venues:
+  mistral-small-24b 0.556–0.582 (best of batch), granite-4.0-h-micro 0.528
+  (P 1.0 — conservative), ling-3.0-flash 0.340, llama-3.1-8b **0.340 — venue
+  collapse from 0.800** on the HF-router venue (same weights; sev-agreement
+  0.38), qwen3.7-flash 0.143–0.227. Conclusions: (1) venue is a first-order
+  variable, comparable to model choice — grades are (model × venue), never
+  model alone; (2) no free-tier venue model beats the direct-API nano
+  champions (0.8–0.909); (3) at KDD scale (~₹3 per full nano pass) cost is
+  not the binding constraint — quality is. Rules-only re-baseline the same
+  day (`records_rulesonly_realign.jsonl`): arm A F1 0.000 (0/15/24) —
+  identical profile to the v1 era (0/6/24); the extraction realignment did
+  not reach risk-flag emission, so the hybrid marginal-value case stands.
 - **401 dry run** (2026-09-11): first full matrix ran with a revoked key —
   124/124 attempts failed; arm B measured "hybrid with dead LLM" (honest
   failover datapoint, records.jsonl superseded by records_final_*).
@@ -140,11 +162,6 @@ re-pull via `ollama pull <id>`.
 ## Re-pull recipes (any deleted/blocked model)
 
 ```bash
-# 2026-09-13: the runner now auto-fills missing keys from .env (shell env
-# wins). The dead ~/.zshenv key that silently 401-fallbacked a whole run
-# has been removed; the explicit export below is only needed for a
-# non-repo key.
-# export OPENAI_API_KEY=$(grep -m1 '^OPENAI_API_KEY=' .env | cut -d= -f2)
 ollama pull <model-id>
 .venv/bin/python scripts/run_hybrid_kdd_experiment.py --skip-baseline \
   --models "local-ollama/<model-id>" --tag "_loc_<safe-name>"

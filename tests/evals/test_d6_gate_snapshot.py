@@ -550,7 +550,7 @@ def test_build_gate_snapshot_includes_colloquial_health():
     snapshot = build_gate_snapshot()
     ch = snapshot["colloquial_health"]
     assert isinstance(ch, dict)
-    assert ch["total_fixtures"] == 15
+    assert ch["total_fixtures"] == 16
     # Live pipeline path: expected fixtures fully matched by the real extractor
     assert ch["note"].startswith("Live pipeline extraction results")
     assert ch["status"] == "passing"
@@ -582,7 +582,7 @@ def test_write_gate_snapshot_includes_colloquial_health(tmp_path: Path):
     write_gate_snapshot(output_path=output)
     payload = json.loads(output.read_text())
     assert "colloquial_health" in payload
-    assert payload["colloquial_health"]["total_fixtures"] == 15
+    assert payload["colloquial_health"]["total_fixtures"] == 16
 
 
 def test_verify_gate_snapshot_detects_colloquial_health_drift(tmp_path: Path):
@@ -659,3 +659,51 @@ def test_colloquial_live_collector_covers_every_fixture():
     first = next(iter(live.values()))
     assert "destination_candidates" in first
     assert "party_size" in first
+
+
+def test_build_gate_snapshot_hybrid_degraded_parity_and_promotion_gate():
+    """ADR-008 §7 item 2: the D6 snapshot grades the degraded-mode authority
+    invariant and embeds the machine-readable gap_decision promotion gate."""
+    import os
+
+    from src.evals.audit.hybrid_parity import collect_hybrid_parity
+    from src.evals.audit.snapshot import DEFAULT_SCENARIO_FIXTURES_PATH
+
+    snapshot = build_gate_snapshot()
+    # hybrid_config travels on scenario_health (X-09's vehicle); the
+    # categories["gap_decision"] view is a field allowlist without it.
+    hybrid_config = snapshot["scenario_health"].get("hybrid_config") or {}
+
+    parity = hybrid_config.get("degraded_parity")
+    assert isinstance(parity, dict), "hybrid_config.degraded_parity missing"
+    assert parity.get("credential_safe") is True
+    assert parity.get("parity") == "pass", (
+        f"degraded parity failed: divergent={parity.get('divergent_scenarios')}"
+    )
+    assert parity.get("scenarios_compared", 0) > 0
+
+    gate = hybrid_config.get("promotion_gate")
+    assert isinstance(gate, dict), "hybrid_config.promotion_gate missing"
+    assert gate.get("category") == "gap_decision"
+    assert gate.get("current") == "shadow"
+    condition_ids = {c["id"] for c in gate.get("conditions", [])}
+    assert {
+        "degraded_parity_pass",
+        "provider_lane_kdd_grade",
+        "pii_egress_authorized",
+    } <= condition_ids
+    parity_condition = next(
+        c for c in gate["conditions"] if c["id"] == "degraded_parity_pass"
+    )
+    assert parity_condition["met"] is (parity.get("parity") == "pass")
+
+    # The collector itself must be credential-safe and restore the env.
+    fake_key = "test-key-not-real"
+    os.environ["OPENAI_API_KEY"] = fake_key
+    try:
+        record = collect_hybrid_parity(DEFAULT_SCENARIO_FIXTURES_PATH)
+        assert os.environ.get("OPENAI_API_KEY") == fake_key, "env not restored"
+    finally:
+        os.environ.pop("OPENAI_API_KEY", None)
+    assert record["parity"] == "pass"
+    assert record["scenarios_compared"] > 0

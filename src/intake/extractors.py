@@ -371,6 +371,16 @@ _SWEEP_STOP_WORDS = {
     # GeoNames record; no traveler means it).
     "dog", "cat", "cow",
 }
+# Common-English-word toponyms: real GeoNames places whose names are
+# ordinary words. Unlike _SWEEP_STOP_WORDS (never a candidate), a single
+# sweep hit on one of these SURVIVES as a candidate but is downgraded to
+# semi_open — the operator confirms rather than the system silently
+# asserting a definite destination from a probable gazetteer collision.
+# The agentic context-resolver seam supersedes this heuristic when enabled.
+_COMMON_WORD_TOPONYMS = {
+    "reading", "nice", "bath", "ely", "hammer", "born", "burn",
+    "salems", "kitchens",
+}
 _MAYBE_RE = re.compile(r"\bmaybe\s+(\w+)", re.IGNORECASE)
 # "maybe somewhere like X" / "somewhere like X" — negative lookahead stops at
 # common trailing prepositions ("for", "with", etc.) to prevent over-capturing
@@ -1609,6 +1619,16 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
 
         if sweep_candidates:
             status = "definite" if len(sweep_candidates) == 1 else "semi_open"
+            # FND-0124/colloquial-gate follow-up: a single sweep candidate
+            # whose matched token is also a common English word ("Reading",
+            # "Nice", "Bath" — all real toponyms, all ordinary words) is a
+            # gazetteer collision, not an asserted destination. Downgrade to
+            # semi_open so the candidate reaches the operator as a
+            # confirmation ask, never a silent definite. The agentic
+            # context-resolver seam (whole-message reading) supersedes this
+            # heuristic when enabled.
+            if status == "definite" and sweep_candidates[0].lower() in _COMMON_WORD_TOPONYMS:
+                status = "semi_open"
             return sweep_candidates, status, " | ".join(sweep_candidates)
 
     # Open intent only when "somewhere" sits in a destination-ish position
