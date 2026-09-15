@@ -273,8 +273,13 @@ class BookingFulfillmentEngine:
         )
 
         mandate_charge_cents = int(round(float(proposal.selected_total_price_usd) * 100))
+        # FND-0221: the traveler-paid deposit/balance path may only be covered
+        # by deposit/balance/fee mandates — a payout-scope mandate (agency →
+        # advisor money) can never satisfy a customer charge, and vice versa.
         mandate = PaymentMandateLedger.resolve_for_trip(
-            agency_id=agency_scope, trip_id=trip_id
+            agency_id=agency_scope,
+            trip_id=trip_id,
+            allowed_scopes=("deposit", "balance", "fee"),
         )
         if mandate is None and agency_requires_mandate:
             raise HTTPException(
@@ -523,10 +528,19 @@ class BookingFulfillmentEngine:
 
             # Part-J #3: record the durable-confirmation outcome in the blob so
             # a replay can repair a missing SQL row instead of forgetting it.
+            # FND-0174: the blob also carries the same top-level
+            # ``confirmation_id`` projection-linkage convention the insurance
+            # projection uses, so every confirmation family exposes one
+            # uniform way to find its durable row. When the durable write
+            # degraded, the key is present with an explicit ``None`` — a
+            # silent blob-only confirmation is never left behind.
             confirmation_for_blob = dict(
                 (updated_trip or {}).get("booking_confirmation") or {}
             )
             confirmation_for_blob["sql_confirmation"] = durable_confirmation
+            confirmation_for_blob["confirmation_id"] = (
+                durable_confirmation.get("confirmation_id")
+            )
             TripStore.update_trip(trip_id, {"booking_confirmation": confirmation_for_blob})
 
             # 7. Audit logging
@@ -628,6 +642,11 @@ class BookingFulfillmentEngine:
             if repaired.get("recorded"):
                 merged_confirmation = dict(confirmation)
                 merged_confirmation["sql_confirmation"] = repaired
+                # FND-0174: repair also (re)writes the uniform projection
+                # linkage so the blob always points at its durable row.
+                merged_confirmation["confirmation_id"] = (
+                    repaired.get("confirmation_id")
+                )
                 TripStore.update_trip(trip_id, {"booking_confirmation": merged_confirmation})
             else:
                 logger.warning(

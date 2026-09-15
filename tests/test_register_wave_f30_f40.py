@@ -39,6 +39,14 @@ def wave_test_env(monkeypatch):
     monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 
+@pytest.fixture(autouse=True)
+def materialize_attach_tenant(boundary_principal_factory):
+    """F-31 (FND-0118): the F-31 attach test now exercises the canonical SQL
+    BookingConfirmation write, whose agency_id is an FK to agencies.id, so the
+    tenant must exist in SQL. Additive only (ON CONFLICT DO NOTHING)."""
+    boundary_principal_factory("usr_wave_f30_attach", AGENCY)
+
+
 def _headers() -> dict:
     return {"X-Agency-ID": AGENCY}
 
@@ -129,11 +137,15 @@ def test_f31_attach_policy_still_works(session_client):
             "trip_id": trip_id,
             "selected_plan_id": "ins_cfar_03",
             "policy_number": "POL-WAVE-1",
+            "insurance_provider": "Test Carrier Assurance",
             "premium_paid_usd": 100.0,
         },
         headers=_headers(),
     )
     assert resp.status_code == 200
+    # FND-0182: provider is agent-recorded, never carrier-verified by default.
+    assert resp.json()["provider_source"] == "agent_recorded"
+    assert resp.json()["carrier_confirmed"] is False
 
 
 # ---------------------------------------------------------------- F-32

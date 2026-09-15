@@ -461,24 +461,59 @@ async def extract_confirmation_data(
         "notes": f"Auto-extracted from {body.document_name or 'document snippet'}",
     }
 
+    # FND-0174 (AT-04) repair: the auto-record path is an ADOPTED caller of
+    # the canonical SQL confirmation machine. The F-31 service migration
+    # moved ``create_confirmation`` to a ``data: dict`` contract and this
+    # endpoint was left calling the pre-migration keyword signature (a
+    # guaranteed TypeError at runtime — a dead adoption path). The durable
+    # row now goes through the canonical service, the draft is recorded
+    # (draft→recorded) so the required execution event lands, and inference
+    # types outside CONFIRMATION_TYPES ("transfer"/"activity") clamp to
+    # "other" on the durable row while the fine-grained type stays in the
+    # extracted payload (and in the row notes) — never silently dropped.
     created_confirmation = None
     if body.auto_record and conf_num:
-        created_confirmation = await confirmation_service.create_confirmation(
-            db=db,
+        durable_type = (
+            conf_type if conf_type in confirmation_service.CONFIRMATION_TYPES else "other"
+        )
+        detail = await confirmation_service.create_confirmation(
+            db,
             trip_id=trip_id,
             agency_id=agency_id,
             created_by=membership.user_id,
-            confirmation_type=conf_type,
-            supplier_name=supplier_name or "Direct Supplier",
-            confirmation_number=conf_num,
-            notes=extracted_data["notes"],
-            task_id=body.task_id,
+            data={
+                "confirmation_type": durable_type,
+                "supplier_name": supplier_name or "Direct Supplier",
+                "confirmation_number": conf_num,
+                "notes": (
+                    f"{extracted_data['notes']}; extracted_type={conf_type}"
+                    if conf_type != durable_type
+                    else extracted_data["notes"]
+                ),
+                "task_id": body.task_id,
+            },
         )
+        created_confirmation = await confirmation_service.record_confirmation(
+            db,
+            confirmation_id=detail.id,
+            agency_id=agency_id,
+            recorded_by=membership.user_id,
+        )
+
+    # FND-0174 honesty marker: the response states the reality tier of the
+    # result — a durable SQL confirmation row, or an explicit preview with
+    # nothing persisted (never a silent blob-only write).
+    persistence = (
+        "sql_confirmation_recorded"
+        if created_confirmation is not None
+        else "preview_only"
+    )
 
     return {
         "ok": True,
         "trip_id": trip_id,
         "extracted": extracted_data,
-        "recorded_confirmation": _detail_to_dict(created_confirmation) if created_confirmation else None,
+        "persistence": persistence,
+        "recorded_confirmation": _summary_to_dict(created_confirmation) if created_confirmation else None,
     }
 

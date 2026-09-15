@@ -94,6 +94,11 @@ async def test_acceptance_persists_durably_and_fulfillment_persists_with_readbac
     assert "Sarah Connor" in stored.get("proposal_accepted_by", "")
     assert stored.get("proposal_acceptance_token") == token
     assert stored.get("proposal_esign_consent") is True
+    # FND-0174: the acceptance family carries explicit honest markers —
+    # durable trip-record authority, real asserted consent (never silently
+    # blob-only consequential state).
+    assert stored.get("proposal_acceptance_reality_tier") == "real"
+    assert stored.get("proposal_acceptance_storage") == "trip_record_durable"
 
     # 2. Fulfillment executes and persists booking_confirmation.
     result = await BookingFulfillmentEngine.fulfill_accepted_proposal(
@@ -137,6 +142,16 @@ async def test_acceptance_persists_durably_and_fulfillment_persists_with_readbac
     # a database session maker is configured; an explicit reason when not).
     assert isinstance(result.durable_confirmation, dict)
     assert result.durable_confirmation.get("recorded") in (True, False)
+    # FND-0174: the blob projection carries the uniform confirmation linkage
+    # key — non-null when the durable row landed, explicit None when the
+    # durable write degraded (never a silent blob-only confirmation).
+    assert "confirmation_id" in confirmation
+    if confirmation["sql_confirmation"].get("recorded"):
+        assert confirmation["confirmation_id"] == confirmation["sql_confirmation"][
+            "confirmation_id"
+        ]
+    else:
+        assert confirmation["confirmation_id"] is None
 
     # AT-01: the journey graph is persisted as the itinerary SSOT, not discarded.
     nodes = persisted.get("journey_graph_nodes") or []
@@ -246,26 +261,29 @@ async def test_fulfillment_rejected_for_unknown_trip():
     closed (the old code silently continued past the missing trip)."""
     from spine_api.routers.public_proposals import (
         PublicProposalView,
-        _PROPOSAL_REGISTRY,
+        _PROPOSAL_VIEW_CACHE,
     )
 
     ghost_trip = f"trip_ghost_{uuid.uuid4().hex[:10]}"
     token = generate_signed_proposal_token(trip_id=ghost_trip, agency_id="system")
 
-    # Registry-only accepted proposal for a trip that does not exist (stale
+    # Cache-only accepted proposal for a trip that does not exist (stale
     # state). Since PA-02 acceptance now refuses to persist without a durable
     # trip, this row is seeded directly to represent that stale state.
-    _PROPOSAL_REGISTRY[token] = PublicProposalView(
-        token=token,
-        trip_id=ghost_trip,
-        title="Ghost Trip Proposal",
-        destination="Nowhere",
-        duration_days=5,
-        traveler_name="Ghost Traveler",
-        base_price_usd=1000.0,
-        selected_total_price_usd=1000.0,
-        currency="USD",
-        status="accepted",
+    _PROPOSAL_VIEW_CACHE.set(
+        token,
+        PublicProposalView(
+            token=token,
+            trip_id=ghost_trip,
+            title="Ghost Trip Proposal",
+            destination="Nowhere",
+            duration_days=5,
+            traveler_name="Ghost Traveler",
+            base_price_usd=1000.0,
+            selected_total_price_usd=1000.0,
+            currency="USD",
+            status="accepted",
+        ),
     )
 
     with pytest.raises(ValueError, match="no persisted record"):

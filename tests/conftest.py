@@ -202,6 +202,176 @@ def session_client():
 
 
 # ---------------------------------------------------------------------------
+# Shared HTTP auth-boundary test seam (FND-0198 / EV-09).
+#
+# Non-autouse fixtures used by the corporate_policy and team_workflows
+# boundary test modules to run REAL-JWT requests (auth bypass explicitly
+# disabled), pin the file trip store, capture AuditStore.log_event calls,
+# and create additive second-tenant principals. Plain helpers are exposed
+# as fixture-returned callables so test modules never need cross-module
+# imports of fixture objects.
+# ---------------------------------------------------------------------------
+
+BOUNDARY_AGENCY_B = "agency_boundary_b"
+BOUNDARY_USER_B = "usr_boundary_b"
+
+
+@pytest.fixture()
+def auth_enforced(monkeypatch):
+    """Explicitly turn the local-only auth bypass OFF for real-JWT requests.
+
+    Uses the explicit ``0`` value (not delenv) so this stays deterministic even
+    when a module-level autouse fixture has set ``SPINE_API_DISABLE_AUTH=1``:
+    ``auth_bypass_enabled()`` treats only 1/true/yes/on as enabled, failing
+    closed on everything else.
+    """
+    monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "0")
+
+
+@pytest.fixture()
+def file_tripstore(monkeypatch):
+    """Pin the trip store to the file backend for boundary-trip fixtures."""
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+
+
+@pytest.fixture()
+def capture_audit_events(monkeypatch):
+    """Spy on AuditStore.log_event: record what handlers assert, write nothing.
+
+    This is the right seam for the "audit records the principal" requirement:
+    it proves which identity/tenant the ROUTER attributes to the event,
+    independent of the storage backend.
+    """
+    from spine_api.persistence import AuditStore
+
+    captured: list = []
+
+    def _spy(event_type, user_id, details):
+        captured.append(
+            {
+                "event_type": event_type,
+                "user_id": user_id,
+                "details": dict(details or {}),
+            }
+        )
+        return {"event_type": event_type, "user_id": user_id, "details": dict(details or {})}
+
+    monkeypatch.setattr(AuditStore, "log_event", _spy)
+    return captured
+
+
+@pytest.fixture()
+def boundary_principal_factory():
+    """Callable: idempotently create a second-tenant user/agency/membership.
+
+    Mirrors _ensure_test_principal with ON CONFLICT DO NOTHING so the shared
+    test database is never overwritten or truncated (additive only).
+    """
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from spine_api.core.database import DATABASE_URL
+
+    def _ensure(user_id: str, agency_id: str, role: str = "owner") -> None:
+        async def _run() -> None:
+            engine = create_async_engine(DATABASE_URL)
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(
+                        text(
+                            """
+                            INSERT INTO agencies (id, slug, name, plan, settings, is_test, jurisdiction, created_at)
+                            VALUES (:id, :slug, :name, 'internal', CAST(:settings AS JSONB), true, 'other', NOW())
+                            ON CONFLICT (id) DO NOTHING
+                            """
+                        ),
+                        {
+                            "id": agency_id,
+                            "slug": f"slug-{agency_id}",
+                            "name": f"Boundary Agency {agency_id}",
+                            "settings": '{"source":"boundary-test"}',
+                        },
+                    )
+                    await conn.execute(
+                        text(
+                            """
+                            INSERT INTO users (id, email, password_hash, name, is_active, platform_role, created_at)
+                            VALUES (:id, :email, :password_hash, :name, true, 'none', NOW())
+                            ON CONFLICT (id) DO NOTHING
+                            """
+                        ),
+                        {
+                            "id": user_id,
+                            "email": f"{user_id}@boundary.test",
+                            "password_hash": "not-a-real-hash-for-tests",
+                            "name": f"Boundary User {user_id}",
+                        },
+                    )
+                    await conn.execute(
+                        text(
+                            """
+                            INSERT INTO memberships (id, user_id, agency_id, role, is_primary, status, created_at)
+                            SELECT :id, :user_id, :agency_id, :role, true, 'active', NOW()
+                            WHERE NOT EXISTS (
+                                SELECT 1 FROM memberships
+                                WHERE user_id = CAST(:user_id AS VARCHAR(36))
+                                  AND agency_id = CAST(:agency_id AS VARCHAR(36))
+                            )
+                            """
+                        ),
+                        {
+                            "id": str(uuid.uuid4()),
+                            "user_id": user_id,
+                            "agency_id": agency_id,
+                            "role": role,
+                        },
+                    )
+            finally:
+                await engine.dispose()
+
+        asyncio.run(_run())
+
+    return _ensure
+
+
+@pytest.fixture()
+def boundary_trip_factory():
+    """Callable: create an isolated synthetic trip in the given agency (file backend)."""
+    from spine_api.persistence import TripStore
+
+    def _make(trip_id: str, agency_id: str, destination: str = "Zurich") -> dict:
+        trip = {
+            "id": trip_id,
+            "destination": destination,
+            "stage": "discovery",
+            "status": "active",
+            "packet": {"destination": destination, "agent_notes": "BOUNDARY TEST TRIP"},
+        }
+        TripStore.save_trip(trip, agency_id=agency_id)
+        return trip
+
+    return _make
+
+
+@pytest.fixture()
+def boundary_token_factory():
+    """Callable: mint a signed access token for an arbitrary principal/tenant."""
+    from datetime import timedelta
+
+    from spine_api.core.security import create_access_token
+
+    def _mint(user_id: str, agency_id: str, role: str = "owner", hours: int = 2) -> str:
+        return create_access_token(
+            user_id=user_id,
+            agency_id=agency_id,
+            role=role,
+            expires_delta=timedelta(hours=hours),
+        )
+
+    return _mint
+
+
+# ---------------------------------------------------------------------------
 # Pytest configuration
 # ---------------------------------------------------------------------------
 

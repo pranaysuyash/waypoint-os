@@ -80,6 +80,38 @@ class ConfirmationDetail:
 
 
 # ---------------------------------------------------------------------------
+# F-31 / FND-0118 typed attach failures
+# ---------------------------------------------------------------------------
+
+class ConfirmationAttachConflict(ValueError):
+    """A deliberate, non-double-attaching rejection of an insurance attach.
+
+    Raised when an active (non-void) insurance confirmation already occupies
+    the trip slot (explicit immutable-create contract from the F-31 design:
+    after A is replaced/voided, replaying A must not resurrect A, and a second
+    active policy must be rejected rather than silently attached), or when the
+    same confirmation key is currently in flight / unresolved.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        existing_confirmation_id: Optional[str] = None,
+    ) -> None:
+        super().__init__(message)
+        self.existing_confirmation_id = existing_confirmation_id
+
+
+class ConfirmationAttachUnavailable(ValueError):
+    """The durable confirmation store rejected the write; no evidence was recorded.
+
+    Adapters must fail closed on this: no successful response without durable
+    required evidence (F-31 design, attachment verification item 3).
+    """
+
+
+# ---------------------------------------------------------------------------
 # Validation helpers
 # ---------------------------------------------------------------------------
 
@@ -223,15 +255,23 @@ async def get_confirmation(
     return _to_detail(c)
 
 
-async def create_confirmation(
+async def create_confirmation_in_transaction(
     db: AsyncSession,
     *,
     trip_id: str,
     agency_id: str,
     created_by: str,
     data: dict,
-) -> ConfirmationDetail:
-    """Create a new confirmation with encrypted private fields."""
+) -> BookingConfirmation:
+    """Transactional internal: validate, build and stage a confirmation row and
+    emit its required creation event — WITHOUT committing.
+
+    F-31 (FND-0118): the canonical service internals participate in one
+    caller-owned transaction so evidence and the required execution event can
+    be committed coherently (or rolled back together, leaving no partial
+    state). The commit-owning public callers (:func:`create_confirmation`)
+    remain the stable API.
+    """
     c_type = data.get("confirmation_type", "")
     if c_type not in CONFIRMATION_TYPES:
         raise ValueError(f"Invalid confirmation_type: {c_type}")
@@ -272,10 +312,12 @@ async def create_confirmation(
         created_by=created_by,
     )
     db.add(c)
-    await db.commit()
-    await db.refresh(c)
+    # Flush (not commit): the PK must exist inside the caller's transaction so
+    # the required event can reference it, while a later failure still rolls
+    # the whole unit back atomically.
+    await db.flush()
 
-    # Emit event
+    # Emit required creation event inside the same caller-owned transaction.
     await execution_event_service.emit_event(
         db,
         agency_id=agency_id,
@@ -291,8 +333,34 @@ async def create_confirmation(
         source="agent_action",
         event_metadata={"confirmation_type": c_type},
     )
-    await db.commit()
+    return c
 
+
+async def create_confirmation(
+    db: AsyncSession,
+    *,
+    trip_id: str,
+    agency_id: str,
+    created_by: str,
+    data: dict,
+) -> ConfirmationDetail:
+    """Create a new confirmation with encrypted private fields.
+
+    F-31 (FND-0118) deliberate migration: the historical split-commit sequence
+    (row commit, then event emission, then a second commit) is replaced by one
+    atomic commit of the row and its required creation event, via
+    :func:`create_confirmation_in_transaction`. The public contract is
+    unchanged.
+    """
+    c = await create_confirmation_in_transaction(
+        db,
+        trip_id=trip_id,
+        agency_id=agency_id,
+        created_by=created_by,
+        data=data,
+    )
+    await db.commit()
+    await db.refresh(c)
     return _to_detail(c)
 
 
@@ -395,6 +463,44 @@ async def update_confirmation(
 # State machine transitions
 # ---------------------------------------------------------------------------
 
+async def record_confirmation_in_transaction(
+    db: AsyncSession,
+    confirmation: BookingConfirmation,
+    *,
+    recorded_by: str,
+) -> BookingConfirmation:
+    """Transactional internal: draft → recorded without committing.
+
+    State-machine validation and the required event happen inside the
+    caller-owned transaction (F-31 / FND-0118 migration).
+    """
+    old_status = confirmation.confirmation_status
+    allowed = CONFIRMATION_VALID_TRANSITIONS.get(old_status, set())
+    if "recorded" not in allowed:
+        raise ValueError(f"Cannot record from {old_status}")
+
+    confirmation.confirmation_status = "recorded"
+    confirmation.recorded_by = recorded_by
+    confirmation.recorded_at = datetime.now(timezone.utc)
+
+    await execution_event_service.emit_event(
+        db,
+        agency_id=confirmation.agency_id,
+        trip_id=confirmation.trip_id,
+        subject_type="booking_confirmation",
+        subject_id=confirmation.id,
+        event_type="confirmation_recorded",
+        event_category="confirmation",
+        status_from=old_status,
+        status_to="recorded",
+        actor_type="agent",
+        actor_id=recorded_by,
+        source="agent_action",
+        event_metadata={"confirmation_type": confirmation.confirmation_type},
+    )
+    return confirmation
+
+
 async def record_confirmation(
     db: AsyncSession,
     *,
@@ -413,33 +519,9 @@ async def record_confirmation(
     if not c:
         raise ValueError("Confirmation not found")
 
-    old_status = c.confirmation_status
-    allowed = CONFIRMATION_VALID_TRANSITIONS.get(old_status, set())
-    if "recorded" not in allowed:
-        raise ValueError(f"Cannot record from {old_status}")
-
-    c.confirmation_status = "recorded"
-    c.recorded_by = recorded_by
-    c.recorded_at = datetime.now(timezone.utc)
+    await record_confirmation_in_transaction(db, c, recorded_by=recorded_by)
     await db.commit()
     await db.refresh(c)
-
-    await execution_event_service.emit_event(
-        db,
-        agency_id=agency_id,
-        trip_id=c.trip_id,
-        subject_type="booking_confirmation",
-        subject_id=c.id,
-        event_type="confirmation_recorded",
-        event_category="confirmation",
-        status_from=old_status,
-        status_to="recorded",
-        actor_type="agent",
-        actor_id=recorded_by,
-        source="agent_action",
-        event_metadata={"confirmation_type": c.confirmation_type},
-    )
-    await db.commit()
 
     return _to_summary(c)
 
@@ -477,7 +559,7 @@ async def try_record_fulfillment_confirmation(
         "recorded by booking fulfillment engine (AT-04)"
     )
     try:
-        from spine_api.core.rls import rls_session
+        # rls_session was already probe-imported above; reuse that binding.
 
         # Part-L A3 (2026-09-08): fulfillment runs OUTSIDE request context
         # (background/engine path), so the bare session maker has no RLS
@@ -485,6 +567,30 @@ async def try_record_fulfillment_confirmation(
         # security. The canonical rls_session binds the agency explicitly —
         # same isolation, background-safe.
         async with rls_session(agency_id) as db:
+            # FND-0174: convergent replay repair. If a flight confirmation
+            # row for this trip already exists (e.g. the blob-side
+            # ``sql_confirmation`` marker was lost in the same crash that
+            # lost the first record attempt, or a repair runs twice), re-link
+            # the EXISTING durable row instead of colliding with
+            # ``uq_bc_trip_type_active`` — repair must converge on the
+            # durable truth, never double-record it.
+            existing = (
+                await db.execute(
+                    select(BookingConfirmation).where(
+                        BookingConfirmation.agency_id == agency_id,
+                        BookingConfirmation.trip_id == trip_id,
+                        BookingConfirmation.confirmation_type == "flight",
+                        BookingConfirmation.confirmation_status != "voided",
+                    )
+                )
+            ).scalars().first()
+            if existing is not None:
+                return {
+                    "recorded": True,
+                    "confirmation_id": existing.id,
+                    "status": existing.confirmation_status,
+                    "relinked": True,
+                }
             detail = await create_confirmation(
                 db,
                 trip_id=trip_id,
@@ -513,6 +619,242 @@ async def try_record_fulfillment_confirmation(
         return {"recorded": False, "reason": f"{type(exc).__name__}: {exc}"}
 
 
+# ---------------------------------------------------------------------------
+# F-31 / FND-0118: canonical insurance evidence attachment
+# ---------------------------------------------------------------------------
+
+INSURANCE_ATTACH_ACTION = "insurance_policy_attach"
+
+
+def _insurance_attach_idempotency_payload(
+    *,
+    agency_id: str,
+    insurance_provider: str,
+    policy_number: str,
+    selected_plan_id: str,
+    premium_paid_usd: float,
+) -> dict:
+    """Canonical attach payload: agency is part of the key so identical trip
+    ids from different tenants can never collide on one replay receipt."""
+    return {
+        "agency_id": agency_id,
+        "insurance_provider": insurance_provider,
+        "policy_number": policy_number,
+        "selected_plan_id": selected_plan_id,
+        "premium_paid_usd": premium_paid_usd,
+    }
+
+
+async def _find_active_insurance_confirmation(db: AsyncSession, agency_id: str, trip_id: str):
+    result = await db.execute(
+        select(BookingConfirmation).where(
+            BookingConfirmation.agency_id == agency_id,
+            BookingConfirmation.trip_id == trip_id,
+            BookingConfirmation.confirmation_type == "insurance",
+            BookingConfirmation.confirmation_status != "voided",
+        )
+    )
+    return result.scalars().first()
+
+
+async def attach_insurance_confirmation(
+    *,
+    agency_id: str,
+    trip_id: str,
+    actor_id: str,
+    insurance_provider: str,
+    policy_number: str,
+    selected_plan_id: str,
+    premium_paid_usd: float,
+    provider_source: str = "agent_recorded",
+    reality_tier: str = "deterministic_preview",
+) -> Dict[str, Any]:
+    """Durably record operator-asserted insurance evidence as the canonical
+    ``insurance`` ``BookingConfirmation`` row (F-31 design,
+    ``Docs/research/INSURANCE_TIMING_AND_ELIGIBILITY_CONTRACT_2026-09-05.md``).
+
+    Contract implemented here:
+
+    - **Canonical record, not a second policy store.** The insurer, policy
+      number, plan reference and provenance markers are encrypted private
+      fields on the existing row type; adapters may keep a legacy trip-blob
+      projection but this row is the authority.
+    - **Atomic save.** The evidence row and its required creation/recording
+      execution events commit in ONE caller-owned transaction via
+      :func:`create_confirmation_in_transaction` /
+      :func:`record_confirmation_in_transaction`. Any failure rolls back to no
+      partial state.
+    - **Replay idempotency.** A deterministic key (agency + trip + payload)
+      through the canonical :class:`IdempotencyRegistry` returns the recorded
+      outcome without a second attach. The durable backstop is the
+      ``uq_bc_trip_type_active`` immutable-create contract: while an active
+      insurance confirmation exists, a different payload raises
+      :class:`ConfirmationAttachConflict` (carrying the existing confirmation
+      id) instead of double-attaching, and replaying a voided/replaced record
+      never resurrects it.
+    - **Actor semantics.** ``actor_id`` MUST be the authenticated principal;
+      the agency stays a separate tenant dimension (row column + key payload),
+      never the audit actor.
+    - **Money is evidence only.** ``premium_paid_usd`` is recorded as
+      operator-asserted evidence; no charge is initiated and no payment
+      authorization is evaluated here — that remains the payment-mandate
+      seam's responsibility (compose, do not bypass).
+
+    Returns a JSON-serializable outcome dict with ``replayed`` marking whether
+    an existing recorded outcome was returned instead of a new attach.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    from src.agents.idempotency import IdempotencyRegistry, IdempotencyStatus
+
+    payload = _insurance_attach_idempotency_payload(
+        agency_id=agency_id,
+        insurance_provider=insurance_provider,
+        policy_number=policy_number,
+        selected_plan_id=selected_plan_id,
+        premium_paid_usd=premium_paid_usd,
+    )
+    key = IdempotencyRegistry.generate_key(trip_id, INSURANCE_ATTACH_ACTION, payload)
+    registry = IdempotencyRegistry.get_instance()
+    acquired, record = registry.try_acquire(key, trip_id, INSURANCE_ATTACH_ACTION, payload)
+    if not acquired:
+        if (
+            record is not None
+            and record.status is IdempotencyStatus.COMPLETED
+            and record.response_payload
+        ):
+            # Same confirmation key → same outcome, no double-attach.
+            return {**record.response_payload, "replayed": True}
+        # PENDING = a concurrent attach is in flight; UNKNOWN = the previous
+        # outcome is unresolved and must be verified, never silently retried
+        # (TS-08 semantics). Neither may be re-executed here.
+        raise ConfirmationAttachConflict(
+            "Insurance attach for this confirmation key is "
+            f"{record.status.value if record else 'UNKNOWN'}; resolve or retry after it settles"
+        )
+    fencing_token = record.fencing_token if record is not None else None
+
+    try:
+        from spine_api.core.rls import rls_session
+
+        async with rls_session(agency_id) as db:
+            existing = await _find_active_insurance_confirmation(db, agency_id, trip_id)
+            if existing is not None:
+                raise ConfirmationAttachConflict(
+                    "An active insurance confirmation already exists for this trip",
+                    existing_confirmation_id=existing.id,
+                )
+
+            # Encrypted private evidence; provenance markers travel in the
+            # encrypted notes so no general log can reconstruct them.
+            notes = (
+                f"provider_source={provider_source}; premium_paid_usd={premium_paid_usd}; "
+                f"reality_tier={reality_tier}; carrier_confirmed=false; "
+                f"plan={selected_plan_id}; recorded via insurance attach-policy "
+                "evidence migration (F-31/FND-0118)"
+            )
+            c = await create_confirmation_in_transaction(
+                db,
+                trip_id=trip_id,
+                agency_id=agency_id,
+                created_by=actor_id,
+                data={
+                    "confirmation_type": "insurance",
+                    "supplier_name": insurance_provider,
+                    "confirmation_number": policy_number,
+                    "external_ref": selected_plan_id,
+                    "notes": notes,
+                },
+            )
+            await record_confirmation_in_transaction(db, c, recorded_by=actor_id)
+            await db.commit()
+            await db.refresh(c)
+    except ConfirmationAttachConflict:
+        registry.mark_failed(
+            key,
+            "active insurance confirmation exists or attach in flight",
+            fencing_token=fencing_token,
+        )
+        raise
+    except IntegrityError as exc:
+        # Concurrent attach raced past the precheck: the durable partial
+        # unique index uq_bc_trip_type_active decided the winner. Surface the
+        # winning confirmation id instead of double-attaching.
+        registry.mark_failed(
+            key, f"{type(exc).__name__}: {exc}", fencing_token=fencing_token
+        )
+        existing_id = None
+        try:
+            from spine_api.core.rls import rls_session as _rls_session
+
+            async with _rls_session(agency_id) as db:
+                winner = await _find_active_insurance_confirmation(db, agency_id, trip_id)
+                existing_id = winner.id if winner is not None else None
+        except Exception:  # pragma: no cover - diagnostic only
+            pass
+        raise ConfirmationAttachConflict(
+            "Concurrent insurance attach detected; one active confirmation exists",
+            existing_confirmation_id=existing_id,
+        ) from exc
+    except Exception as exc:
+        registry.mark_failed(key, f"{type(exc).__name__}: {exc}", fencing_token=fencing_token)
+        raise ConfirmationAttachUnavailable(
+            f"Insurance evidence could not be durably recorded: {type(exc).__name__}: {exc}"
+        ) from exc
+
+    outcome = {
+        "replayed": False,
+        "confirmation_id": c.id,
+        "confirmation_status": c.confirmation_status,
+        "recorded_at": c.recorded_at.isoformat() if c.recorded_at else None,
+    }
+    # Best-effort fence: losing the race here does not change the durable
+    # outcome; a reclaiming caller would only re-run the (idempotent) precheck.
+    registry.mark_completed(key, outcome, fencing_token=fencing_token)
+    return outcome
+
+
+async def verify_confirmation_in_transaction(
+    db: AsyncSession,
+    confirmation: BookingConfirmation,
+    *,
+    verified_by: str,
+) -> BookingConfirmation:
+    """Transactional internal: recorded → verified without committing.
+
+    State-machine validation and the required event happen inside the
+    caller-owned transaction (F-31 / FND-0118 migration parity): the row and
+    its required execution event commit atomically — a failure anywhere
+    leaves no durable status without its event, and no event without its
+    status.
+    """
+    old_status = confirmation.confirmation_status
+    allowed = CONFIRMATION_VALID_TRANSITIONS.get(old_status, set())
+    if "verified" not in allowed:
+        raise ValueError(f"Cannot verify from {old_status}")
+
+    confirmation.confirmation_status = "verified"
+    confirmation.verified_by = verified_by
+    confirmation.verified_at = datetime.now(timezone.utc)
+
+    await execution_event_service.emit_event(
+        db,
+        agency_id=confirmation.agency_id,
+        trip_id=confirmation.trip_id,
+        subject_type="booking_confirmation",
+        subject_id=confirmation.id,
+        event_type="confirmation_verified",
+        event_category="confirmation",
+        status_from=old_status,
+        status_to="verified",
+        actor_type="agent",
+        actor_id=verified_by,
+        source="agent_action",
+        event_metadata={"confirmation_type": confirmation.confirmation_type},
+    )
+    return confirmation
+
+
 async def verify_confirmation(
     db: AsyncSession,
     *,
@@ -531,35 +873,49 @@ async def verify_confirmation(
     if not c:
         raise ValueError("Confirmation not found")
 
-    old_status = c.confirmation_status
-    allowed = CONFIRMATION_VALID_TRANSITIONS.get(old_status, set())
-    if "verified" not in allowed:
-        raise ValueError(f"Cannot verify from {old_status}")
-
-    c.confirmation_status = "verified"
-    c.verified_by = verified_by
-    c.verified_at = datetime.now(timezone.utc)
+    await verify_confirmation_in_transaction(db, c, verified_by=verified_by)
     await db.commit()
     await db.refresh(c)
 
+    return _to_summary(c)
+
+
+async def void_confirmation_in_transaction(
+    db: AsyncSession,
+    confirmation: BookingConfirmation,
+    *,
+    voided_by: str,
+) -> BookingConfirmation:
+    """Transactional internal: any non-voided → voided without committing.
+
+    State-machine validation and the required event happen inside the
+    caller-owned transaction (F-31 / FND-0118 migration parity).
+    """
+    old_status = confirmation.confirmation_status
+    allowed = CONFIRMATION_VALID_TRANSITIONS.get(old_status, set())
+    if "voided" not in allowed:
+        raise ValueError(f"Cannot void from {old_status}")
+
+    confirmation.confirmation_status = "voided"
+    confirmation.voided_by = voided_by
+    confirmation.voided_at = datetime.now(timezone.utc)
+
     await execution_event_service.emit_event(
         db,
-        agency_id=agency_id,
-        trip_id=c.trip_id,
+        agency_id=confirmation.agency_id,
+        trip_id=confirmation.trip_id,
         subject_type="booking_confirmation",
-        subject_id=c.id,
-        event_type="confirmation_verified",
+        subject_id=confirmation.id,
+        event_type="confirmation_voided",
         event_category="confirmation",
         status_from=old_status,
-        status_to="verified",
+        status_to="voided",
         actor_type="agent",
-        actor_id=verified_by,
+        actor_id=voided_by,
         source="agent_action",
-        event_metadata={"confirmation_type": c.confirmation_type},
+        event_metadata={"confirmation_type": confirmation.confirmation_type},
     )
-    await db.commit()
-
-    return _to_summary(c)
+    return confirmation
 
 
 async def void_confirmation(
@@ -580,32 +936,8 @@ async def void_confirmation(
     if not c:
         raise ValueError("Confirmation not found")
 
-    old_status = c.confirmation_status
-    allowed = CONFIRMATION_VALID_TRANSITIONS.get(old_status, set())
-    if "voided" not in allowed:
-        raise ValueError(f"Cannot void from {old_status}")
-
-    c.confirmation_status = "voided"
-    c.voided_by = voided_by
-    c.voided_at = datetime.now(timezone.utc)
+    await void_confirmation_in_transaction(db, c, voided_by=voided_by)
     await db.commit()
     await db.refresh(c)
-
-    await execution_event_service.emit_event(
-        db,
-        agency_id=agency_id,
-        trip_id=c.trip_id,
-        subject_type="booking_confirmation",
-        subject_id=c.id,
-        event_type="confirmation_voided",
-        event_category="confirmation",
-        status_from=old_status,
-        status_to="voided",
-        actor_type="agent",
-        actor_id=voided_by,
-        source="agent_action",
-        event_metadata={"confirmation_type": c.confirmation_type},
-    )
-    await db.commit()
 
     return _to_summary(c)
