@@ -13,12 +13,16 @@ Implements enterprise REST endpoints for PER-0717 Agent Memory Architect:
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from spine_api.core.auth import get_current_agency_id
+from spine_api.core.rls import rls_session
+from spine_api.models.tenant import CustomerMemoryProfile
 from spine_api.persistence import AuditStore, TripStore
 from src.memory.feedback_bridge import traveler_entity_for
 from src.memory.models import (
@@ -36,14 +40,60 @@ router = APIRouter(prefix="/api/v1/customers", tags=["Customer Relationship Memo
 # requirement (whole-file rewrite from cache; separate instances lose writes).
 _MEMORY_STORE = get_memory_store()
 
-# Legacy in-memory dictionary maintained for backwards compatibility.
-# S-08 (RT-07): tenant-partitioned — every entry is keyed by the composite
-# (agency_id, customer_id), so one agency can never read, overwrite, or delete
-# another agency's customer profiles. All access MUST go through
-# _find_customer_profile / the (agency_id, ...) key; a bare customer_id is not
-# a valid key. Process-local only (never persisted), so no data migration was
-# needed; the durable MemoryStore below was already agency-keyed.
-CUSTOMER_MEMORY_STORE: Dict[Tuple[str, str], Dict[str, Any]] = {}
+# FND-0060 residual closed: the legacy process-local CUSTOMER_MEMORY_STORE dict
+# is superseded by the durable, agency-scoped SQL table
+# ``customer_memory_profiles`` (RLS-isolated; survives restarts; safe under
+# multiple workers). S-08 tenant partitioning is now enforced by the database
+# (agency_id FK + row-level security) instead of dict-key discipline. Passport
+# fields remain deliberately non-durable (30-day PASSPORT_MRZ retention SLA).
+# Supersession analysis: Docs/exploration/
+# CUSTOMER_MEMORY_DURABLE_STORE_EXPLORATION_2026-09-15.md.
+
+
+async def _find_customer_profile_db(
+    db,
+    agency_id: str,
+    email: Optional[str] = None,
+    phone: Optional[str] = None,
+    name: Optional[str] = None,
+) -> Optional[CustomerMemoryProfile]:
+    """Find a customer profile scoped to ``agency_id`` (S-08 tenant partition).
+
+    ``agency_id`` is intentionally a required positional argument so no caller
+    can accidentally scan cross-tenant rows without an agency context. Match
+    priority mirrors the original dict scan: normalized email, then phone,
+    then lowercased name. RLS additionally confines every query to the
+    caller's agency.
+    """
+    norm_e = _normalize_email(email)
+    norm_p = _normalize_phone(phone)
+    norm_n = name.strip().lower() if name and name.strip() else None
+
+    base = select(CustomerMemoryProfile).where(
+        CustomerMemoryProfile.agency_id == agency_id
+    )
+    if norm_e:
+        row = (
+            await db.scalars(
+                base.where(CustomerMemoryProfile.normalized_email == norm_e)
+            )
+        ).first()
+        if row:
+            return row
+    if norm_p:
+        row = (
+            await db.scalars(
+                base.where(CustomerMemoryProfile.normalized_phone == norm_p)
+            )
+        ).first()
+        if row:
+            return row
+    if norm_n:
+        rows = (await db.scalars(base)).all()
+        for row in rows:
+            if (row.name or "").strip().lower() == norm_n:
+                return row
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -148,37 +198,36 @@ def _normalize_phone(phone: Optional[str]) -> Optional[str]:
     return digits if digits else None
 
 
-def _find_customer_profile(
-    agency_id: str,
-    email: Optional[str] = None,
-    phone: Optional[str] = None,
-    name: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
-    """Find a customer profile scoped to ``agency_id`` (S-08 tenant partition).
-
-    ``agency_id`` is intentionally a required positional argument so no caller
-    can accidentally scan the cross-tenant store without an agency context.
-    """
-    norm_e = _normalize_email(email)
-    norm_p = _normalize_phone(phone)
-    norm_n = name.strip().lower() if name and name.strip() else None
-
-    for (profile_agency, _customer_id), profile in CUSTOMER_MEMORY_STORE.items():
-        if profile_agency != agency_id:
-            continue
-        if norm_e and profile.get("normalized_email") == norm_e:
-            return profile
-        if norm_p and profile.get("normalized_phone") == norm_p:
-            return profile
-        if norm_n and profile.get("name", "").strip().lower() == norm_n:
-            return profile
-
-    return None
-
-
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+_PROFILES_TABLE_READY = False
+
+
+async def _ensure_profiles_table() -> None:
+    """Additive-only safety net for environments that have not run the
+    alembic migration yet (mirrors proposal_token_store/SqlIdempotencyBackend);
+    the alembic migration (add_customer_memory_profiles) remains the canonical
+    schema path and is what adds the RLS policies. checkfirst keeps this
+    idempotent — never drops or rewrites existing data."""
+    global _PROFILES_TABLE_READY
+    if _PROFILES_TABLE_READY:
+        return
+    from spine_api.core.database import Base, async_session_maker
+
+    async with async_session_maker() as session:
+        conn = await session.connection()
+        await conn.run_sync(
+            lambda sync_conn: Base.metadata.create_all(
+                sync_conn, tables=[CustomerMemoryProfile.__table__], checkfirst=True
+            )
+        )
+        # Postgres DDL is transactional: without an explicit commit the
+        # CREATE TABLE above is rolled back when the session closes.
+        await session.commit()
+    _PROFILES_TABLE_READY = True
+
 
 @router.get("/memory", response_model=Optional[CustomerPreferenceProfile])
 async def get_customer_memory(
@@ -191,22 +240,30 @@ async def get_customer_memory(
     if not any([email, phone, name]):
         raise HTTPException(status_code=400, detail="Must provide email, phone, or name for memory lookup")
 
-    profile = _find_customer_profile(agency_id, email=email, phone=phone, name=name)
-    if not profile:
+    await _ensure_profiles_table()
+    async with rls_session(agency_id) as db:
+        profile_row = await _find_customer_profile_db(
+            db, agency_id, email=email, phone=phone, name=name
+        )
+    if not profile_row:
         return None
 
     return CustomerPreferenceProfile(
-        customer_id=profile["customer_id"],
-        name=profile["name"],
-        email=profile.get("email"),
-        phone=profile.get("phone"),
-        dietary_requirements=profile.get("dietary_requirements"),
-        room_preference=profile.get("room_preference"),
-        seating_preference=profile.get("seating_preference"),
-        passport_country=profile.get("passport_country"),
-        passport_expiry=profile.get("passport_expiry"),
-        source_trip_ids=profile.get("source_trip_ids", []),
-        last_confirmed_at=profile.get("last_confirmed_at", datetime.now(timezone.utc).isoformat()),
+        customer_id=profile_row.customer_id,
+        name=profile_row.name,
+        email=profile_row.email,
+        phone=profile_row.phone,
+        dietary_requirements=profile_row.dietary_requirements,
+        room_preference=profile_row.room_preference,
+        seating_preference=profile_row.seating_preference,
+        # passport_country / passport_expiry are intentionally absent from
+        # the durable row (30-day PASSPORT_MRZ retention SLA).
+        source_trip_ids=profile_row.source_trip_ids or [],
+        last_confirmed_at=(
+            profile_row.last_confirmed_at.isoformat()
+            if profile_row.last_confirmed_at
+            else datetime.now(timezone.utc).isoformat()
+        ),
     )
 
 
@@ -222,41 +279,53 @@ async def remember_customer_preference(
     if not norm_e and not norm_p and not req.name:
         raise HTTPException(status_code=400, detail="Must provide email, phone, or name to index customer memory")
 
-    profile = _find_customer_profile(agency_id, email=req.email, phone=req.phone, name=req.name)
-    now_iso = datetime.now(timezone.utc).isoformat()
+    await _ensure_profiles_table()
+    async with rls_session(agency_id) as db:
+        profile_row = await _find_customer_profile_db(
+            db, agency_id, email=req.email, phone=req.phone, name=req.name
+        )
+        now = datetime.now(timezone.utc)
 
-    if profile:
-        cust_id = profile["customer_id"]
-    else:
-        cust_id = f"cust_{norm_e or norm_p or req.name.lower().replace(' ', '_')}"
-        profile = {
-            "customer_id": cust_id,
-            "name": req.name,
-            "source_trip_ids": [],
-        }
+        if profile_row:
+            cust_id = profile_row.customer_id
+        else:
+            cust_id = f"cust_{norm_e or norm_p or req.name.lower().replace(' ', '_')}"
+            profile_row = CustomerMemoryProfile(
+                id=str(uuid.uuid4()),
+                agency_id=agency_id,
+                customer_id=cust_id,
+                name=req.name,
+            )
 
-    # Update profile fields
-    if req.email:
-        profile["email"] = req.email
-        profile["normalized_email"] = norm_e
-    if req.phone:
-        profile["phone"] = req.phone
-        profile["normalized_phone"] = norm_p
-    if req.dietary_requirements:
-        profile["dietary_requirements"] = req.dietary_requirements
-    if req.room_preference:
-        profile["room_preference"] = req.room_preference
-    if req.seating_preference:
-        profile["seating_preference"] = req.seating_preference
-    if req.passport_country:
-        profile["passport_country"] = req.passport_country
-    if req.passport_expiry:
-        profile["passport_expiry"] = req.passport_expiry
-    if req.source_trip_id and req.source_trip_id not in profile["source_trip_ids"]:
-        profile["source_trip_ids"].append(req.source_trip_id)
+        # Update profile fields. Passport fields are deliberately NOT
+        # persisted (30-day PASSPORT_MRZ retention SLA) — they are echoed on
+        # this response only, request-scoped.
+        if req.email:
+            profile_row.email = req.email
+            profile_row.normalized_email = norm_e
+        if req.phone:
+            profile_row.phone = req.phone
+            profile_row.normalized_phone = norm_p
+        if req.dietary_requirements:
+            profile_row.dietary_requirements = req.dietary_requirements
+        if req.room_preference:
+            profile_row.room_preference = req.room_preference
+        if req.seating_preference:
+            profile_row.seating_preference = req.seating_preference
+        # Passport fields: echoed on this response only, never persisted
+        # (30-day PASSPORT_MRZ retention SLA).
+        passport_echo_country = req.passport_country
+        passport_echo_expiry = req.passport_expiry
+        if req.source_trip_id:
+            trips = profile_row.source_trip_ids or []
+            if req.source_trip_id not in trips:
+                trips.append(req.source_trip_id)
+                profile_row.source_trip_ids = trips
 
-    profile["last_confirmed_at"] = now_iso
-    CUSTOMER_MEMORY_STORE[(agency_id, cust_id)] = profile
+        profile_row.last_confirmed_at = now
+        db.add(profile_row)
+        await db.commit()
+        await db.refresh(profile_row)
 
     # Also ingest structured facts into the 5-tier durable MemoryStore
     if req.dietary_requirements:
@@ -308,17 +377,17 @@ async def remember_customer_preference(
     )
 
     return CustomerPreferenceProfile(
-        customer_id=profile["customer_id"],
-        name=profile["name"],
-        email=profile.get("email"),
-        phone=profile.get("phone"),
-        dietary_requirements=profile.get("dietary_requirements"),
-        room_preference=profile.get("room_preference"),
-        seating_preference=profile.get("seating_preference"),
-        passport_country=profile.get("passport_country"),
-        passport_expiry=profile.get("passport_expiry"),
-        source_trip_ids=profile.get("source_trip_ids", []),
-        last_confirmed_at=profile["last_confirmed_at"],
+        customer_id=profile_row.customer_id,
+        name=profile_row.name,
+        email=profile_row.email,
+        phone=profile_row.phone,
+        dietary_requirements=profile_row.dietary_requirements,
+        room_preference=profile_row.room_preference,
+        seating_preference=profile_row.seating_preference,
+        passport_country=passport_echo_country,
+        passport_expiry=passport_echo_expiry,
+        source_trip_ids=profile_row.source_trip_ids or [],
+        last_confirmed_at=profile_row.last_confirmed_at.isoformat(),
     )
 
 
@@ -376,10 +445,28 @@ async def hydrate_trip_with_customer_memory(
     if trip_contact and not trip_phone and "@" not in trip_contact:
         trip_phone = trip_contact
 
-    # _find_customer_profile matches by email, then phone, then normalized name,
+    # _find_customer_profile_db matches by email, then phone, then normalized name,
     # so passing all three makes a body-less hydrate robust to whichever field
     # the trip carries. Scoped to the caller's agency (S-08).
-    profile = _find_customer_profile(agency_id, email=trip_email, phone=trip_phone, name=trip_name)
+    await _ensure_profiles_table()
+    async with rls_session(agency_id) as db:
+        profile_row = await _find_customer_profile_db(
+            db, agency_id, email=trip_email, phone=trip_phone, name=trip_name
+        )
+    profile = None
+    if profile_row is not None:
+        profile = {
+            "customer_id": profile_row.customer_id,
+            "name": profile_row.name,
+            "dietary_requirements": profile_row.dietary_requirements,
+            "seating_preference": profile_row.seating_preference,
+            "room_preference": profile_row.room_preference,
+            "last_confirmed_at": (
+                profile_row.last_confirmed_at.isoformat()
+                if profile_row.last_confirmed_at
+                else ""
+            ),
+        }
 
     # Durable-store read (canonical). Entity id: the registered customer id
     # when a profile exists, else the canonical cust_ convention derived
@@ -563,49 +650,61 @@ async def forget_customer_gdpr(
         entity_id=req.customer_id,
     )
 
-    # Also remove from legacy store — scoped to the caller's agency (S-08), so
-    # agency B cannot erase agency A's profile by guessing the customer id.
+    # Also remove durable profile rows — scoped to the caller's agency (S-08),
+    # so agency B cannot erase agency A's profile by guessing the customer id.
     #
     # X-14 propagation fix (ADR-008 council, Addendum 9): a customer may exist
-    # under MORE than one store key with the same contact identity (profile
-    # re-created under a fresh customer id). Forgetting only the exact key
-    # left duplicates hydratable by email/phone/name — a GDPR leak. Remove
-    # every profile in this agency whose contact identity matches the
-    # forgotten entity's stored contact fields.
-    forgotten_profile = CUSTOMER_MEMORY_STORE.pop((agency_id, req.customer_id), None)
-    match_fields = {
-        forgotten_profile.get(k)
-        for k in ("normalized_email", "normalized_phone")
-        if forgotten_profile and forgotten_profile.get(k)
-    }
-    _forgotten_name = (
-        (forgotten_profile or {}).get("name", "").strip().lower()
-        if forgotten_profile else None
-    )
-    stale_keys = []
-    for (profile_agency, profile_key), profile in CUSTOMER_MEMORY_STORE.items():
-        if profile_agency != agency_id:
-            continue
-        contact_match = (
-            profile.get("normalized_email") in match_fields
-            or profile.get("normalized_phone") in match_fields
+    # under MORE than one customer_id with the same contact identity (profile
+    # re-created under a fresh id). Forgetting only the exact id left
+    # duplicates hydratable by email/phone/name — a GDPR leak. Remove every
+    # profile in this agency whose contact identity matches the forgotten
+    # entity's stored contact fields.
+    propagated_removals: list[list[str]] = []
+    await _ensure_profiles_table()
+    async with rls_session(agency_id) as db:
+        rows = (
+            await db.execute(
+                select(CustomerMemoryProfile).where(
+                    CustomerMemoryProfile.agency_id == agency_id
+                )
+            )
+        ).scalars().all()
+        forgotten = next(
+            (r for r in rows if r.customer_id == req.customer_id), None
         )
-        name_match = (
-            _forgotten_name
-            and profile.get("name", "").strip().lower() == _forgotten_name
+        match_fields = {
+            getattr(forgotten, k)
+            for k in ("normalized_email", "normalized_phone")
+            if forgotten is not None and getattr(forgotten, k)
+        }
+        _forgotten_name = (
+            (forgotten.name or "").strip().lower() if forgotten else None
         )
-        if contact_match or name_match:
-            stale_keys.append((profile_agency, profile_key))
-    for key in stale_keys:
-        CUSTOMER_MEMORY_STORE.pop(key, None)
-    if stale_keys:
+        doomed: list[CustomerMemoryProfile] = []
+        for row in rows:
+            contact_match = (
+                getattr(row, "normalized_email", None) in match_fields
+                or getattr(row, "normalized_phone", None) in match_fields
+            )
+            name_match = (
+                _forgotten_name
+                and (row.name or "").strip().lower() == _forgotten_name
+            )
+            if row.customer_id == req.customer_id or contact_match or name_match:
+                doomed.append(row)
+        for row in doomed:
+            propagated_removals.append([agency_id, row.customer_id])
+            await db.delete(row)
+        if doomed:
+            await db.commit()
+    if propagated_removals:
         AuditStore.log_event(
             event_type="gdpr_memory_erased",
             user_id=agency_id,
             details={
                 "customer_id": req.customer_id,
                 "certificate_id": cert.certificate_id,
-                "propagated_removals": [list(k) for k in stale_keys],
+                "propagated_removals": propagated_removals,
             },
         )
 

@@ -63,6 +63,9 @@ RLS_TENANT_TABLES: tuple[str, ...] = (
     # PER-0700 wave 2 (PA-08/PA-23): tenant-owned approval + payout ledgers
     "authority_approvals",
     "advisor_payouts",
+    # FND-0060 residual: durable customer preference profiles (PII identity
+    # surface; GDPR Art. 17 erasure target — RLS is load-bearing here).
+    "customer_memory_profiles",
 )
 
 RLS_EXCLUDED_AGENCY_TABLES: dict[str, str] = {

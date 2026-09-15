@@ -829,3 +829,59 @@ class AgencyIntegration(Base):
         Index("ix_ai_provider", "provider"),
         Index("ix_ai_agency_provider", "agency_id", "provider"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Customer Memory (FND-0060 residual): durable, agency-scoped customer
+# preference profiles. Replaces the legacy process-local dict — profiles
+# survive restarts and are tenant-isolated by RLS like every other
+# agency-scoped table. Retention note: passport_country / passport_expiry
+# are deliberately NOT columns (30-day post-trip PASSPORT_MRZ retention SLA;
+# durable passport storage would violate it by design).
+# ---------------------------------------------------------------------------
+class CustomerMemoryProfile(Base):
+    """Durable per-(agency, customer) preference profile."""
+
+    __tablename__ = "customer_memory_profiles"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    agency_id: Mapped[str] = mapped_column(
+        ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False
+    )
+    customer_id: Mapped[str] = mapped_column(String(120), nullable=False)
+
+    # Identity (lookup keys stored normalized alongside their raw form).
+    name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
+    normalized_email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    normalized_phone: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+
+    # Structured preferences (the CustomerPreferenceProfile contract).
+    dietary_requirements: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    room_preference: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    seating_preference: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+
+    # Trips this profile was confirmed from.
+    source_trip_ids: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    last_confirmed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        UniqueConstraint("agency_id", "customer_id", name="uq_cmp_agency_customer"),
+        Index("ix_cmp_agency_id", "agency_id"),
+        Index("ix_cmp_agency_email", "agency_id", "normalized_email"),
+        Index("ix_cmp_agency_phone", "agency_id", "normalized_phone"),
+    )

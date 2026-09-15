@@ -127,6 +127,8 @@ re-pull via `ollama pull <id>`.
 
 ## Failure / ops log (all documented, nothing hidden)
 
+- **2026-09-15 PROTOCOL (owner-directed): free-tier venues excluded; output-price cap ≤ $10/1M; standard variant only.** After the venue-collapse finding and a mass rate-limit failure, grades are only trusted for paid standard-variant venues. `records_or_sota.jsonl` (first SOTA ladder) is **VOID as model evidence**: the key's $9 top-up landed mid-run, and ~60% of cold calls per arm (19/31, uniform across all 9 arms incl. the nano control) hit pre-credit 20-RPM free-tier limits and silently fell back to rules. Preserved as the rate-limit artifact. Rerun under credits with the **call-integrity invariant** now required for any graded arm: cold-pass `llm_calls == 0` rate must be ~0, else the arm is reported `void_rate_limited`/`void_no_credit`, never an F1.
+- **2026-09-15 FULL standard-table sweep (`records_or_std_all.jsonl`)** — owner directive: grade ALL OpenRouter standard-variant text models with output ≤ $10/1M (284 arms, ~20k calls, ~$15 realistic vs $30.69 worst case; cheapest-first so credit exhaustion, if any, hits only the priciest tail — gpt-4o-era arms — which get voided, not mis-graded). Supersedes the earlier hand-picked subsets (`or_newcheap`, `or_frontier`, partial `or_sota2`/`or_frontier2` — killed; cache replays their successful calls free).
 - **2026-09-15 OpenRouter new-cheap ladder (`records_or_newcheap.jsonl`)** —
   owner-directed test of newer/faster/cheaper free-tier venues:
   mistral-small-24b 0.556–0.582 (best of batch), granite-4.0-h-micro 0.528

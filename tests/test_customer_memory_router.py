@@ -15,6 +15,14 @@ def setup_test_env(monkeypatch):
     monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 
+@pytest.fixture(autouse=True)
+def materialize_custmem_tenant(boundary_principal_factory):
+    """FND-0060 residual: profiles are now durable SQL rows whose agency_id
+    is an FK to agencies.id, so the test tenant must exist in SQL before the
+    lifecycle runs. Additive only (ON CONFLICT DO NOTHING)."""
+    boundary_principal_factory("usr_custmem_lifecycle", "agency_custmem_test")
+
+
 def test_customer_memory_lifecycle_end_to_end(session_client):
     """Test indexing customer preferences, searching relationship memory by email/phone, and auto-hydrating a new trip packet."""
 
