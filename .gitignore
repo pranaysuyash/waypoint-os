@@ -183,3 +183,6 @@ data/public_checker/access_tokens.json
 # tracked. Only curated experiment evidence belongs in history.
 data/experiments/**/prompts/
 data/experiments/**/cache_*/
+
+# Generated attestation review artifact (hook regenerates each commit)
+Docs/reviews/motto_review.md
