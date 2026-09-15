@@ -14,11 +14,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from spine_api.core.auth import get_current_agency_id
 from spine_api.persistence import AuditStore, TripStore
 from src.memory.feedback_bridge import bridge_feedback_response_to_memory
-from src.memory.store import MemoryStore
+from src.memory.store import get_memory_store
 
 router = APIRouter(prefix="/api/v1/feedback", tags=["Post-Trip Quality & NPS Feedback"])
 
-_MEMORY_STORE = MemoryStore()
+# Shared process-wide memory store — see get_memory_store() docstring; separate
+# instances would lose each other's writes on the whole-file-rewrite save path.
+_MEMORY_STORE = get_memory_store()
 
 
 class TriggerSurveyRequest(BaseModel):

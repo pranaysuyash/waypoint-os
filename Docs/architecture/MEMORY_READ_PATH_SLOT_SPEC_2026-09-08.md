@@ -1,6 +1,13 @@
 # E-D — Memory Read-Path Slot Spec (2026-09-08)
 
-**Exploration package E-D (PER-0700)** — unblocks PA-18 wiring. Status: **DESIGN, not wired**. Nothing in this spec authorizes memory → inventory influence.
+**Exploration package E-D (PER-0700)** — unblocks PA-18 wiring.
+Status update 2026-09-15: **Slot 1 shadow-landed** (`src/memory/slot_candidates.py`,
+default `MEMORY_SLOT_READ_MODE=shadow`, promotion-only, audited via
+`memory_slot_promotion`; active flip is a deliberate operator act) and
+**Slot 2 display-only landed** (`POST /api/v1/customers/hydrate-trip/{trip_id}`
+returns `source: memory` + `observed_at` facts; never writes the packet).
+The invariant below is unchanged and enforced by import-containment tests:
+**nothing in this spec authorizes memory → inventory influence.**
 
 ## 1. Problem
 

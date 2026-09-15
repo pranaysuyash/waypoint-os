@@ -7,7 +7,7 @@ Implements enterprise REST endpoints for PER-0717 Agent Memory Architect:
 - Cryptographic Provenance Lineage Tracking
 - Temporal Half-Life Decay and Activation Scoring
 - GDPR Article 17 Right-to-Erasure with Cryptographic Certificates
-- Trip Auto-Hydration with Token-Budgeted Retrieval
+- Trip On-File Memory Display (E-D slot 2: display-only, never packet writes)
 """
 
 from __future__ import annotations
@@ -24,14 +24,15 @@ from src.memory.models import (
     MemorySourceType,
     MemoryTier,
 )
-from src.memory.store import MemoryStore
+from src.memory.store import get_memory_store
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/customers", tags=["Customer Relationship Memory"])
 
-# Durable multi-tenant memory store singleton
-_MEMORY_STORE = MemoryStore()
+# Shared process-wide memory store — one instance per process is a data-integrity
+# requirement (whole-file rewrite from cache; separate instances lose writes).
+_MEMORY_STORE = get_memory_store()
 
 # Legacy in-memory dictionary maintained for backwards compatibility.
 # S-08 (RT-07): tenant-partitioned — every entry is keyed by the composite
@@ -86,6 +87,8 @@ class HydrateTripResponse(BaseModel):
     customer_name: Optional[str] = None
     hydrated_fields: List[str] = Field(default_factory=list)
     preferences: Dict[str, Any] = Field(default_factory=dict)
+    # E-D slot 2 (display-only): per-fact provenance chips — never trip data.
+    facts: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class IngestMemoryRequest(BaseModel):
@@ -305,7 +308,15 @@ async def hydrate_trip_with_customer_memory(
     req: HydrateTripRequest | None = None,
     agency_id: str = Depends(get_current_agency_id),
 ):
-    """Auto-hydrate a trip packet with matching customer memory."""
+    """Return the traveler's on-file memory facts for display (E-D slot 2).
+
+    DISPLAY-ONLY by ratified contract (ADR-008 §7 row 4 / E-D §3 slot 2):
+    facts come back labeled ``source: memory`` with ``observed_at`` for
+    "On file from <date>" chips. They are never written into the trip
+    packet, never rendered as confirmed trip data, and never satisfy a
+    gate — the former packet-mutating behavior was the memory→packet
+    influence path E-D forbids.
+    """
     req = req or HydrateTripRequest(trip_id=trip_id)
 
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
@@ -344,38 +355,34 @@ async def hydrate_trip_with_customer_memory(
             preferences={},
         )
 
-    hydrated = []
-    prefs = {}
-
-    extracted = trip.setdefault("extracted", {})
-    # Report hydrated fields using the profile/UI field names so the response
+    # Report on-file fields using the profile/UI field names so the response
     # matches the CustomerPreferenceProfile schema consumers expect.
-    if profile.get("dietary_requirements") and not extracted.get("dietary"):
-        extracted["dietary"] = profile["dietary_requirements"]
-        hydrated.append("dietary_requirements")
-        prefs["dietary_requirements"] = profile["dietary_requirements"]
-
-    if profile.get("seating_preference") and not extracted.get("seating_preference"):
-        extracted["seating_preference"] = profile["seating_preference"]
-        hydrated.append("seating_preference")
-        prefs["seating_preference"] = profile["seating_preference"]
-
-    if profile.get("room_preference") and not extracted.get("room_preference"):
-        extracted["room_preference"] = profile["room_preference"]
-        hydrated.append("room_preference")
-        prefs["room_preference"] = profile["room_preference"]
-
-    trip["customer_memory_applied"] = True
-    trip["customer_memory_id"] = profile["customer_id"]
-    TripStore.save_trip(trip, agency_id=agency_id)
+    on_file_fields = [
+        ("dietary_requirements", profile.get("dietary_requirements")),
+        ("seating_preference", profile.get("seating_preference")),
+        ("room_preference", profile.get("room_preference")),
+    ]
+    hydrated = [name for name, value in on_file_fields if value]
+    prefs = {name: value for name, value in on_file_fields if value}
+    observed_at = profile.get("last_confirmed_at") or ""
+    facts = [
+        {
+            "field_name": name,
+            "value": value,
+            "observed_at": observed_at,
+            "source": "memory",
+        }
+        for name, value in on_file_fields
+        if value
+    ]
 
     AuditStore.log_event(
-        event_type="customer_memory_hydrated",
+        event_type="memory_on_file_displayed",
         user_id=agency_id,
         details={
             "trip_id": trip_id,
             "customer_id": profile["customer_id"],
-            "hydrated_fields": hydrated,
+            "fields": hydrated,
         },
     )
 
@@ -385,6 +392,7 @@ async def hydrate_trip_with_customer_memory(
         customer_name=profile.get("name"),
         hydrated_fields=hydrated,
         preferences=prefs,
+        facts=facts,
     )
 
 

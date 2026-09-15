@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -225,3 +226,33 @@ class MemoryStore:
         self._memory_cache[agency_id] = updated_items
         self._save()
         return cert
+
+
+# ---------------------------------------------------------------------------
+# Process-wide store sharing
+# ---------------------------------------------------------------------------
+# _save() rewrites the whole JSONL file from the instance's in-memory cache,
+# so two MemoryStore instances in one process can silently destroy each
+# other's writes (a stale cache _save() drops records another instance just
+# ingested, and a GDPR forget in one instance never reaches another's cache).
+# Every runtime consumer must share ONE instance via get_memory_store();
+# direct MemoryStore(...) construction is reserved for tests (isolated
+# data_file) and the accessor itself.
+
+_SHARED_STORE: Optional["MemoryStore"] = None
+_SHARED_STORE_LOCK = threading.Lock()
+
+
+def get_memory_store() -> "MemoryStore":
+    """Returns the process-wide shared MemoryStore (lazy, thread-safe init).
+
+    Sharing one instance is a data-integrity requirement, not a caching
+    optimization: the file-backed store's save path is whole-file rewrite
+    from cache, so per-consumer instances lose each other's writes.
+    """
+    global _SHARED_STORE
+    if _SHARED_STORE is None:
+        with _SHARED_STORE_LOCK:
+            if _SHARED_STORE is None:
+                _SHARED_STORE = MemoryStore()
+    return _SHARED_STORE

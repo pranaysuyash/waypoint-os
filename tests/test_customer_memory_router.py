@@ -85,3 +85,38 @@ def test_customer_memory_lifecycle_end_to_end(session_client):
     assert "dietary_requirements" in hydrate_data["hydrated_fields"]
     assert hydrate_data["preferences"]["dietary_requirements"] == "Strict Vegan & Nut-Free"
     assert hydrate_data["preferences"]["room_preference"] == "High-floor quiet corner suite"
+
+    # 5. E-D slot 2 display contract: facts carry provenance chips.
+    assert hydrate_data["facts"], "on-file facts must carry provenance"
+    dietary_fact = next(f for f in hydrate_data["facts"] if f["field_name"] == "dietary_requirements")
+    assert dietary_fact["value"] == "Strict Vegan & Nut-Free"
+    assert dietary_fact["source"] == "memory"
+    assert dietary_fact["observed_at"]
+
+    # 6. Display-only invariant: memory facts never enter the trip packet
+    # (ADR-008 §7 row 4 — the former hydrate packet-write was the
+    # memory→packet influence path E-D forbids).
+    from spine_api.persistence import TripStore
+
+    stored_trip = TripStore.get_trip_for_agency(trip_id, "agency_custmem_test")
+    extracted = (stored_trip or {}).get("extracted") or {}
+    assert not extracted.get("dietary"), "hydrate must not write memory facts into the packet"
+    assert "customer_memory_applied" not in (stored_trip or {})
+
+    # 7. X-14 purge propagation through the HTTP seam: after GDPR forget,
+    # the display surface returns nothing for that traveler.
+    forget_res = session_client.post(
+        "/api/v1/customers/memory/forget",
+        json={"customer_id": remember_data["customer_id"]},
+        headers={"X-Agency-ID": "agency_custmem_test"},
+    )
+    assert forget_res.status_code == 200
+    assert forget_res.json()["ok"] is True
+
+    post_forget = session_client.post(
+        f"/api/v1/customers/hydrate-trip/{trip_id}",
+        headers={"X-Agency-ID": "agency_custmem_test"},
+    )
+    assert post_forget.status_code == 200
+    assert post_forget.json()["memory_found"] is False
+    assert post_forget.json()["facts"] == []

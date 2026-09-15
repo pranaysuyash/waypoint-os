@@ -47,6 +47,8 @@ def test_production_boot_assertions_pass_with_postgres_alias():
         "TRIPSTORE_BACKEND": "postgres",
         "PUBLIC_CHECKER_AGENCY_ID": "agency_prod_01",
         "SPINE_API_IDEMPOTENCY_BACKEND": "sql",
+        # FND-0225: production boots require the pinned locking backend.
+        "SPINE_API_LOCKING_BACKEND": "sql",
         # FND-0262: explicit encryption posture (see test above).
         "DATA_PRIVACY_MODE": "production",
         "ENCRYPTION_KEY": "DoHtVQD_0aw4_pYhZlJTUHZYjHGZCI34Pbr4JFO6zIQ=",

@@ -116,3 +116,60 @@ class TestFrontierHandlerSignatures:
         params = self._get_param_names(report_intelligence)
         # The parameter is named _agency_id to document intentional discard
         assert "_agency_id" in params
+
+
+class TestFrontierRealityTiers:
+    """
+    ADR-008 item 5 (Addendum 9): every frontier surface declares its reality
+    tier in its response — these are labeled dev/demo surfaces, never operator
+    authority. Inspection-level, mirroring this module's no-DB style.
+    """
+
+    _HANDLERS = (
+        "create_ghost_workflow",
+        "get_ghost_workflow",
+        "log_emotional_state",
+        "report_intelligence",
+    )
+
+    def test_every_frontier_handler_declares_reality_tier(self):
+        import inspect
+
+        import spine_api.routers.frontier as frontier_module
+
+        for name in self._HANDLERS:
+            source = inspect.getsource(getattr(frontier_module, name))
+            assert "reality_tier" in source, (
+                f"frontier.{name} response carries no reality_tier — "
+                "ADR-008 item 5 requires tier metadata on every frontier surface."
+            )
+            assert "TierMetadata.for_response" in source, (
+                f"frontier.{name} response carries no TierMetadata — "
+                "computation_method and missing_for_upgrade must be stated."
+            )
+
+    def test_response_tier_vocabulary_is_canonical(self):
+        from spine_api.core.reality_tier import RealityTier
+        from spine_api.routers.frontier import GhostWorkflowResponse
+
+        default_tier = GhostWorkflowResponse.model_fields["reality_tier"].default
+        assert default_tier in {tier.value for tier in RealityTier}, (
+            f"GhostWorkflowResponse default tier '{default_tier}' is outside the "
+            "canonical spine_api/core/reality_tier vocabulary."
+        )
+
+    def test_emotions_and_intelligence_tiers_are_honest(self):
+        import inspect
+
+        from spine_api.routers.frontier import log_emotional_state, report_intelligence
+
+        emotions_src = inspect.getsource(log_emotional_state)
+        assert "DATA_DEPENDENT" in emotions_src, (
+            "emotions/log persists operator-reported sentiment with no mitigation "
+            "consumer — data_dependent, not a stronger tier."
+        )
+        intelligence_src = inspect.getsource(report_intelligence)
+        assert "PLANNED" in intelligence_src, (
+            "intelligence/report has no retrieval consumer — planned tier, the "
+            "pool must not be described in present tense."
+        )

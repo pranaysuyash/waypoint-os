@@ -47,7 +47,8 @@ class GhostWorkflowResponse(BaseModel):
     completed_at: Optional[datetime] = None
     # ADR-008 item 5 (Addendum 9): every frontier surface declares its
     # reality tier — these are simulated/dev surfaces, never operator authority.
-    reality_tier: str = "simulated"
+    # Default uses the canonical spine_api/core/reality_tier vocabulary.
+    reality_tier: str = "planned"
     tier_metadata: Optional[Dict[str, Any]] = None
 
 
@@ -152,7 +153,21 @@ async def log_emotional_state(
     )
     db.add(log)
     await db.commit()
-    return {"ok": True, "log_id": log.id}
+    # ADR-008 item 5 (Addendum 9): the write itself is real, but the
+    # mitigation-action semantics have no downstream consumer — declared
+    # data-dependent so the surface never claims more than storage.
+    return {
+        "ok": True,
+        "log_id": log.id,
+        "reality_tier": RealityTier.DATA_DEPENDENT.value,
+        "tier_metadata": TierMetadata.for_response(
+            RealityTier.DATA_DEPENDENT,
+            feature_name="frontier.emotional_state_log",
+            data_sufficient=True,
+            computation_method="durable storage of operator-reported sentiment; no inference",
+            missing_for_upgrade=["downstream consumer for mitigation actions"],
+        ),
+    }
 
 
 @router.post("/intelligence/report")
@@ -179,4 +194,17 @@ async def report_intelligence(
     )
     db.add(record)
     await db.commit()
-    return {"ok": True, "record_id": record.id}
+    # ADR-008 item 5 (Addendum 9): the pool has no retrieval consumer yet —
+    # architecture built, capability not connected (PLANNED).
+    return {
+        "ok": True,
+        "record_id": record.id,
+        "reality_tier": RealityTier.PLANNED.value,
+        "tier_metadata": TierMetadata.for_response(
+            RealityTier.PLANNED,
+            feature_name="frontier.intelligence_pool",
+            data_sufficient=True,
+            computation_method="durable pool write; no retrieval consumer",
+            missing_for_upgrade=["pool retrieval consumer", "anonymization verification contract"],
+        ),
+    }

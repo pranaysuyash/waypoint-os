@@ -281,6 +281,10 @@ def sort_questions_by_priority(questions: List[dict]) -> List[dict]:
     ordered = sorted(questions, key=sort_key)
 
     # E-D slot 1 — shadow/active memory promotion (never touches facts).
+    # trip_id is "" because CanonicalPacket carries no trip identity; E-D
+    # cross-trip isolation then conservatively excludes ALL trip-scoped
+    # facts (entity-scoped traveler preferences stay eligible, which is
+    # exactly E-D's "global" topical scope).
     try:
         from src.memory.slot_candidates import (
             apply_active,
@@ -296,6 +300,13 @@ def sort_questions_by_priority(questions: List[dict]) -> List[dict]:
                 trip_id="",
                 unknowns=[{"field_name": q.get("field_name", "")} for q in ordered],
             )
+            if result["candidates"]:
+                _audit_slot_promotion(
+                    agency_id=agency_id,
+                    trip_id="",
+                    candidates=result["candidates"],
+                    active=not result["shadow"],
+                )
             if result["shadow"]:
                 apply_shadow(ordered, result["candidates"],
                              agency_id=agency_id, trip_id="")
@@ -314,6 +325,42 @@ def sort_questions_by_priority(questions: List[dict]) -> List[dict]:
     return ordered
 
 
+def _audit_slot_promotion(
+    agency_id: str,
+    trip_id: str,
+    candidates: List[dict],
+    *,
+    active: bool,
+) -> None:
+    """Audit event at the slot seam (ADR-008 §1: every capability gets an
+    audit event at its enforcing seam). Emitted in BOTH modes — shadow
+    records what WOULD have moved (promotion-value metric), active records
+    what DID. Failure-tolerant: audit unavailability must never affect the
+    ask order."""
+    try:
+        from spine_api.persistence import AuditStore
+
+        AuditStore.log_event(
+            event_type="memory_slot_promotion",
+            user_id=agency_id,
+            details={
+                "trip_id": trip_id,
+                "mode": "active" if active else "shadow",
+                "promoted": [
+                    {
+                        "field_name": c.get("field_name"),
+                        "rationale": c.get("rationale"),
+                        "trust_class": c.get("trust_class"),
+                        "score": c.get("score"),
+                    }
+                    for c in candidates[:5]
+                ],
+            },
+        )
+    except Exception:
+        logger.debug("memory slot promotion audit unavailable", exc_info=True)
+
+
 def _current_agency_for_slots() -> Optional[str]:
     """Agency scope for the slot read; None disables the slot read."""
     try:
@@ -325,9 +372,9 @@ def _current_agency_for_slots() -> Optional[str]:
 
 
 def _slot_store():
-    from src.memory.store import MemoryStore
+    from src.memory.store import get_memory_store
 
-    return MemoryStore()
+    return get_memory_store()
 
 
 # =============================================================================

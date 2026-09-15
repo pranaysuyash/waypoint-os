@@ -92,6 +92,10 @@ def test_state_dept_tool_matches_destination_from_feature_attributes(monkeypatch
 
 
 def test_live_tool_builders_use_configured_http_adapters_when_env_is_present(monkeypatch):
+    # Connectivity-tier contract (src/agents/connectivity.py): a URL template
+    # alone is NOT connectivity — the builder only returns HTTP adapters when
+    # the tool's tier is SANDBOX/LIVE. Tests must opt in explicitly.
+    monkeypatch.setenv("CONNECTIVITY_TIER", "sandbox")
     monkeypatch.setenv("TRAVEL_AGENT_FLIGHT_STATUS_URL_TEMPLATE", "https://flight.example/{carrier}")
     monkeypatch.setenv("TRAVEL_AGENT_PRICE_WATCH_URL_TEMPLATE", "https://price.example/{quote_id}")
     monkeypatch.setenv("TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE", "https://safety.example/{destination}")
@@ -113,6 +117,7 @@ def test_live_tool_builders_keep_deterministic_fallbacks_without_provider_env(mo
 
 
 def test_safety_builder_returns_state_dept_when_provider_env_is_set(monkeypatch):
+    monkeypatch.setenv("CONNECTIVITY_TIER", "sandbox")
     monkeypatch.delenv("TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE", raising=False)
     monkeypatch.setenv("TRAVEL_AGENT_SAFETY_PROVIDER", "state_dept")
 
@@ -122,6 +127,7 @@ def test_safety_builder_returns_state_dept_when_provider_env_is_set(monkeypatch)
 
 
 def test_safety_builder_url_template_takes_precedence_over_state_dept(monkeypatch):
+    monkeypatch.setenv("CONNECTIVITY_TIER", "sandbox")
     monkeypatch.setenv("TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE", "https://safety.example/{destination}")
     monkeypatch.setenv("TRAVEL_AGENT_SAFETY_PROVIDER", "state_dept")
 

@@ -146,8 +146,24 @@ def _get_price_lock_expires_at(trip: dict) -> datetime:
 async def list_price_lock_opportunities(
     agency_id: str = Depends(get_current_agency_id),
 ):
-    """Scan active agency trips for price lock countdowns and margin re-shopping opportunities."""
-    trips = TripStore.list_trips(agency_id=agency_id)
+    """Scan active agency trips for price lock countdowns and margin re-shopping opportunities.
+
+    Paginates through ALL agency trips: TripStore.list_trips defaults to a
+    100-row window, which silently dropped opportunities for agencies past
+    that cap (surfaced by the FND-0119 sentinel test once the shared test
+    agency accumulated 100 file-store trips).
+    """
+    trips: list = []
+    offset = 0
+    page_size = 100
+    while True:
+        page = TripStore.list_trips(agency_id=agency_id, offset=offset, limit=page_size)
+        if not page:
+            break
+        trips.extend(page)
+        if len(page) < page_size:
+            break
+        offset += page_size
     now = datetime.now(timezone.utc)
     opportunities: List[PriceLockOpportunity] = []
 

@@ -76,16 +76,16 @@ def test_store_failure_returns_no_candidates():
     assert result["candidates"] == []
 
 
-def test_active_mode_promotes_without_answering():
+def test_active_mode_promotes_without_answering(monkeypatch):
     store = _FakeStore([(_FakeItem("m1", "budget discussions always reference lakhs"), 0.9)])
     unknowns = _unknowns("budget_min", "destination_candidates")
+    monkeypatch.setenv("MEMORY_SLOT_READ_MODE", "active")
     result = memory_slot_candidates(store, "agency-1", "trip-1", unknowns)
-    slots.read_mode_active = True
-    try:
-        applied = slots.apply_active(unknowns, result["candidates"])
-        assert sorted(u["field_name"] for u in applied) == ["budget_min", "destination_candidates"]
-    finally:
-        slots.read_mode_active = False
+    assert result["shadow"] is False
+    applied = slots.apply_active(unknowns, result["candidates"])
+    assert sorted(u["field_name"] for u in applied) == ["budget_min", "destination_candidates"]
+    # Trust-weighted influence actually reorders: the promoted unknown leads.
+    assert applied[0]["field_name"] == "budget_min"
 
 
 def test_import_containment_no_memory_reads_outside_slots():
@@ -357,3 +357,89 @@ def test_shadow_mode_real_store_logs_without_applying(tmp_path, caplog):
     assert any("memory_slot_promotion" in r.message for r in caplog.records)
     # Rationale visibility (E-D §2 corollary 3): the audit carries the trust class.
     assert any("explicit_user" in str(r.args) for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# X-14 purge propagation — GDPR forget must reach the slot read path
+# (ADR-008 §7 row 4 precondition: "Forgetting/GDPR paths gain their
+# enforcement purpose at the same time" as the read path wires).
+# ---------------------------------------------------------------------------
+
+
+def test_x14_gdpr_forget_propagates_to_slot_candidates(tmp_path):
+    """A forgotten entity's facts must never promote an unknown afterward —
+    erasure is load-bearing once the read path influences the ask order."""
+    store = _real_store(tmp_path)
+    store.ingest_memory(
+        agency_id="agency-1",
+        entity_id="cust_purge@x.com",
+        raw_text="customer prefers aisle seats on flights",
+        source_type=MemorySourceType.TRAVELER_DIRECT,
+        category_hint="preference",
+    )
+    unknowns = _unknowns("seat_preference")
+    before = memory_slot_candidates(store, "agency-1", "trip-1", unknowns)
+    assert [c["field_name"] for c in before["candidates"]] == ["seat_preference"]
+
+    store.forget_entity_gdpr("agency-1", "cust_purge@x.com")
+
+    after = memory_slot_candidates(store, "agency-1", "trip-1", unknowns)
+    assert after["candidates"] == [], "forgotten memory still promoting unknowns"
+
+
+# ---------------------------------------------------------------------------
+# Audit at the seam — ADR-008 §1: every capability gets an audit event at
+# its enforcing seam. The strategy hook must emit memory_slot_promotion in
+# shadow mode (what WOULD have moved) with rationale + trust class.
+# ---------------------------------------------------------------------------
+
+
+def test_strategy_hook_emits_audit_event(monkeypatch, tmp_path):
+    from src.intake import strategy as strategy_mod
+    from spine_api.core.auth import _jwt_agency_id
+
+    store = _real_store(tmp_path)
+    store.ingest_memory(
+        agency_id="agency-1",
+        entity_id="cust_audit@x.com",
+        raw_text="customer prefers aisle seats on flights",
+        source_type=MemorySourceType.TRAVELER_DIRECT,
+        category_hint="preference",
+    )
+    monkeypatch.setattr(strategy_mod, "_slot_store", lambda: store)
+    monkeypatch.delenv("MEMORY_SLOT_READ_MODE", raising=False)  # default: shadow
+
+    events: list = []
+
+    class _FakeAuditStore:
+        @staticmethod
+        def log_event(event_type, user_id, details):
+            events.append((event_type, user_id, details))
+
+    import spine_api.persistence as persistence_mod
+
+    monkeypatch.setattr(persistence_mod, "AuditStore", _FakeAuditStore)
+
+    token = _jwt_agency_id.set("agency-1")
+    try:
+        ordered = strategy_mod.sort_questions_by_priority(
+            _unknowns("seat_preference", "budget_min")
+        )
+    finally:
+        _jwt_agency_id.reset(token)
+
+    # Shadow: order untouched (still static constraint-first priority), but
+    # the audit records the would-be promotion.
+    priority = strategy_mod.QUESTION_PRIORITY_ORDER
+    expected = sorted(
+        ["seat_preference", "budget_min"], key=lambda n: priority.get(n, 999)
+    )
+    assert [u["field_name"] for u in ordered] == expected
+    assert len(events) == 1
+    event_type, user_id, details = events[0]
+    assert event_type == "memory_slot_promotion"
+    assert user_id == "agency-1"
+    assert details["mode"] == "shadow"
+    assert details["promoted"][0]["field_name"] == "seat_preference"
+    assert details["promoted"][0]["trust_class"] == "explicit_user"
+    assert details["promoted"][0]["rationale"]

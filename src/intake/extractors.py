@@ -337,6 +337,10 @@ _SWEEP_STOP_WORDS = {
     "bhai", "yaar", "niklenge", "dosta",
     # Travel noise
     "trip", "travel", "vacation", "holiday", "tour", "visit",
+    # Motion verbs that double as gazetteer toponyms ("Going" is a town in
+    # Austria) — in destination position they are verbs, never candidates.
+    "going", "flying", "traveling", "travelling", "heading", "moving",
+    "coming", "driving", "hiking",
     "pax", "ppl", "people", "person", "adults", "adult", "kids",
     "children", "child", "family", "friends", "friend", "couple",
     "couples", "group", "budget", "total", "days", "day", "nights",

@@ -141,6 +141,24 @@ class TestPA03HybridDefault:
         assert "USE_HYBRID_DECISION_ENGINE:-1" not in compose
         assert "USE_HYBRID_DECISION_ENGINE:-0" in compose
 
+    def test_no_dockerfile_bakes_hybrid_on(self):
+        # ADR-008 §7 item 2 (Addendum 9): zero implicit defaults. A Dockerfile
+        # ENV silently overrides the code default for every envelope built from
+        # it (the main image made Fly prod hybrid-ON while fly.toml's comment
+        # claimed deterministic — the exact accident this contract ends).
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for name in ("Dockerfile", "Dockerfile.spine_api"):
+            with open(os.path.join(repo_root, name), encoding="utf-8") as fh:
+                content = fh.read()
+            assert "USE_HYBRID_DECISION_ENGINE=1" not in content, (
+                f"{name} bakes USE_HYBRID_DECISION_ENGINE=1 — prod envelopes "
+                "must declare 0 explicitly (hybrid opt-in is envelope-level, "
+                "never image-level)."
+            )
+            assert "USE_HYBRID_DECISION_ENGINE=0" in content, (
+                f"{name} must declare USE_HYBRID_DECISION_ENGINE explicitly."
+            )
+
 
 # ---------------------------------------------------------------------------
 # PA-07 — failure taxonomy

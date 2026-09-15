@@ -60,6 +60,12 @@ def cross_trip_id():
 def pending_wave_env(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
     monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+    # Auth contract (spine_api/core/auth.py): X-Agency-ID is honored only
+    # when auth bypass is explicitly enabled — the legacy PYTEST_CURRENT_TEST
+    # detection was removed fail-closed. These tests scope trips to their own
+    # test agency via X-Agency-ID, so they must opt in like the other router
+    # suites (insurance, wave F30-F40, extraction).
+    monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
 
 
 # ---------------------------------------------------------------- I-6

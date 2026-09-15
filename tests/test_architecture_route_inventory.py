@@ -19,7 +19,10 @@ def test_route_inventory_tracks_server_py_and_router_module_ownership():
     }
 
     assert owners["server.py"] > 0
-    assert owners["agent_runtime"] == 3
+    # agent_runtime grew from 3 to 7: four platform-admin endpoints
+    # (poisoned-job list/inspect/redact/replay) landed with the
+    # agent-requeue durability stream.
+    assert owners["agent_runtime"] == 7
     assert owners["analytics"] == 14
     assert owners["drafts"] == 10
     assert owners["inbox"] == 4
