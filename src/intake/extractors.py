@@ -3243,6 +3243,33 @@ class ExtractionPipeline:
                     dest_candidates = [
                         c for c in dest_candidates if c != destination_country_scope
                     ]
+                # Agentic second opinion (context resolver, real LLM via
+                # src.llm): on semi_open — the collision/low-confidence class
+                # — read the WHOLE message. The outcome is a labeled
+                # hypothesis (ASSUMED, provider/model provenance in the raw
+                # evidence), never a silent definite; an unavailable or
+                # contract-violating resolver degrades honestly to the
+                # deterministic semi_open result.
+                resolver_outcome = None
+                if dest_status == "semi_open":
+                    from src.intake import context_resolver
+
+                    if context_resolver.resolver_enabled():
+                        resolver_outcome = (
+                            context_resolver.resolve_destination_from_context(
+                                text, dest_candidates, dest_status
+                            )
+                        )
+                        if resolver_outcome.get("available"):
+                            dest_candidates = resolver_outcome["candidates"]
+                            dest_status = resolver_outcome["status"]
+                        else:
+                            logger.info(
+                                "context resolver unavailable for destination "
+                                "(%s); deterministic semi_open result stands",
+                                resolver_outcome.get("reason"),
+                            )
+
                 packet.set_fact("destination_candidates", self._make_slot(
                     dest_candidates if dest_candidates else [],
                     0.7 if dest_status == "semi_open" else 0.5,
@@ -3259,11 +3286,23 @@ class ExtractionPipeline:
                         country_mention.group(0) if country_mention else destination_country_scope,
                         eid,
                     ))
-                packet.set_fact("destination_status", self._make_slot(
-                    dest_status, 0.8, AuthorityLevel.EXPLICIT_USER,
-                    "Derived from destination text", eid,
-                    epistemic_status=EpistemicStatus.INFERRED,
-                ))
+                if resolver_outcome is not None and resolver_outcome.get("available"):
+                    packet.set_fact("destination_status", self._make_slot(
+                        dest_status, 0.75, AuthorityLevel.SOFT_HYPOTHESIS,
+                        (
+                            f"{dest_raw or 'not specified'} · context-resolver "
+                            f"[{resolver_outcome.get('provider')}:{resolver_outcome.get('model')}] "
+                            f"{resolver_outcome.get('reasoning', '')[:200]}"
+                        ),
+                        eid,
+                        epistemic_status=EpistemicStatus.ASSUMED,
+                    ))
+                else:
+                    packet.set_fact("destination_status", self._make_slot(
+                        dest_status, 0.8, AuthorityLevel.EXPLICIT_USER,
+                        "Derived from destination text", eid,
+                        epistemic_status=EpistemicStatus.INFERRED,
+                    ))
             # Check for ambiguities on the ORIGINAL source phrasing, not just extracted values.
             # Using the source span catches natural-language vagueness that
             # normalization can lose (e.g., "maybe somewhere like Andaman?").

@@ -43,6 +43,13 @@ os.environ.setdefault("PROPOSAL_SIGNING_KEY", "test-proposal-signing-key-for-pyt
 # always uses _run_async_blocking, bypassing TRIPSTORE_BACKEND=file).
 os.environ["RUNNING_TESTS"] = "1"
 
+# Deterministic suite contract: the agentic destination context resolver
+# (src/intake/context_resolver.py — REAL LLM calls via src.llm) is disabled
+# suite-wide so golden gates pin the deterministic pass. Its Tier-5
+# live-provider test (tests/test_context_resolver.py) re-enables it
+# explicitly; live evidence is never synthesized from a deterministic run.
+os.environ.setdefault("EXTRACTION_CONTEXT_RESOLVER", "0")
+
 # Ensure startup public-checker agency validation resolves to the canonical
 # seeded test agency used across auth fixtures and JWTs.
 os.environ.setdefault("PUBLIC_CHECKER_AGENCY_ID", "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
