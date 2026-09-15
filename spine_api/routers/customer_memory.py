@@ -20,10 +20,12 @@ from pydantic import BaseModel, Field
 
 from spine_api.core.auth import get_current_agency_id
 from spine_api.persistence import AuditStore, TripStore
+from src.memory.feedback_bridge import traveler_entity_for
 from src.memory.models import (
     MemorySourceType,
     MemoryTier,
 )
+from src.memory.slot_candidates import memory_on_file_facts
 from src.memory.store import get_memory_store
 
 logger = logging.getLogger(__name__)
@@ -85,9 +87,11 @@ class HydrateTripResponse(BaseModel):
     trip_id: str
     memory_found: bool
     customer_name: Optional[str] = None
+    customer_id: Optional[str] = None
     hydrated_fields: List[str] = Field(default_factory=list)
     preferences: Dict[str, Any] = Field(default_factory=dict)
     # E-D slot 2 (display-only): per-fact provenance chips — never trip data.
+    # source: "memory" (durable store) | "memory:profile" (registry fallback).
     facts: List[Dict[str, Any]] = Field(default_factory=list)
 
 
@@ -276,6 +280,22 @@ async def remember_customer_preference(
             source_ref_id=req.source_trip_id,
         )
 
+    if req.room_preference:
+        _MEMORY_STORE.ingest_memory(
+            agency_id=agency_id,
+            entity_id=cust_id,
+            raw_text=f"Room preference: {req.room_preference}",
+            source_type=MemorySourceType.TRAVELER_DIRECT,
+            category_hint="room_preference",
+            source_ref_id=req.source_trip_id,
+        )
+
+    # Deliberately NOT durably ingested: passport_country / passport_expiry.
+    # Passport data carries a 30-day post-trip retention SLA
+    # (RetentionCategory.PASSPORT_MRZ); persisting it into long-half-life
+    # memory would create a retention violation by design. It stays in the
+    # process-local registry view only.
+
     AuditStore.log_event(
         event_type="customer_memory_updated",
         user_id=agency_id,
@@ -311,11 +331,15 @@ async def hydrate_trip_with_customer_memory(
     """Return the traveler's on-file memory facts for display (E-D slot 2).
 
     DISPLAY-ONLY by ratified contract (ADR-008 §7 row 4 / E-D §3 slot 2):
-    facts come back labeled ``source: memory`` with ``observed_at`` for
-    "On file from <date>" chips. They are never written into the trip
-    packet, never rendered as confirmed trip data, and never satisfy a
-    gate — the former packet-mutating behavior was the memory→packet
-    influence path E-D forbids.
+    facts come back labeled with provenance for "On file from <date>" chips.
+    They are never written into the trip packet, never rendered as confirmed
+    trip data, and never satisfy a gate — the former packet-mutating
+    behavior was the memory→packet influence path E-D forbids.
+
+    Durable store is the canonical source (survives restarts; one freshness
+    policy shared with the slot-1 read via ``memory_on_file_facts``); the
+    process-local profile registry is a fallback for entries not yet
+    durably ingested, labeled ``memory:profile``.
     """
     req = req or HydrateTripRequest(trip_id=trip_id)
 
@@ -343,11 +367,56 @@ async def hydrate_trip_with_customer_memory(
     )
     trip_name = packet.get("customer_name") or trip.get("customer_name") or trip.get("client_name")
 
+    # The canonical contact field on an inbound trip is `customer_contact`
+    # (free-form string — email or phone). Probe it after the structured
+    # fields; "@" marks an email, otherwise treat it as a phone reference.
+    trip_contact = str(trip.get("customer_contact") or packet.get("customer_contact") or "").strip()
+    if trip_contact and not trip_email and "@" in trip_contact:
+        trip_email = trip_contact
+    if trip_contact and not trip_phone and "@" not in trip_contact:
+        trip_phone = trip_contact
+
     # _find_customer_profile matches by email, then phone, then normalized name,
     # so passing all three makes a body-less hydrate robust to whichever field
     # the trip carries. Scoped to the caller's agency (S-08).
     profile = _find_customer_profile(agency_id, email=trip_email, phone=trip_phone, name=trip_name)
-    if not profile:
+
+    # Durable-store read (canonical). Entity id: the registered customer id
+    # when a profile exists, else the canonical cust_ convention derived
+    # from the trip's contact identity (same convention as the feedback
+    # bridge, so writes and reads resolve to the same entity).
+    entity_id = (profile or {}).get("customer_id") or traveler_entity_for(
+        trip_email, trip_phone, trip_id
+    )
+    durable_facts = memory_on_file_facts(_MEMORY_STORE, agency_id, entity_id)
+
+    # Registry fallback chips for structured fields not covered durably.
+    # Coverage is by field name OR content (the gate assigns its own
+    # categories, so a durably-ingested room preference may carry a generic
+    # category while its summary still holds the structured fact).
+    durable_fields = {f["field_name"] for f in durable_facts if f["field_name"]}
+    durable_values_lower = [f["value"].lower() for f in durable_facts]
+    observed_at = (profile or {}).get("last_confirmed_at") or ""
+    profile_fields = [
+        ("dietary_requirements", (profile or {}).get("dietary_requirements")),
+        ("seating_preference", (profile or {}).get("seating_preference")),
+        ("room_preference", (profile or {}).get("room_preference")),
+    ]
+    registry_facts = [
+        {
+            "field_name": name,
+            "value": value,
+            "observed_at": observed_at,
+            "source": "memory:profile",
+        }
+        for name, value in profile_fields
+        if value
+        and name not in durable_fields
+        and value.lower() not in " ".join(durable_values_lower)
+    ]
+
+    facts = durable_facts + registry_facts
+    if not facts:
         return HydrateTripResponse(
             trip_id=trip_id,
             memory_found=False,
@@ -355,41 +424,27 @@ async def hydrate_trip_with_customer_memory(
             preferences={},
         )
 
-    # Report on-file fields using the profile/UI field names so the response
-    # matches the CustomerPreferenceProfile schema consumers expect.
-    on_file_fields = [
-        ("dietary_requirements", profile.get("dietary_requirements")),
-        ("seating_preference", profile.get("seating_preference")),
-        ("room_preference", profile.get("room_preference")),
-    ]
-    hydrated = [name for name, value in on_file_fields if value]
-    prefs = {name: value for name, value in on_file_fields if value}
-    observed_at = profile.get("last_confirmed_at") or ""
-    facts = [
-        {
-            "field_name": name,
-            "value": value,
-            "observed_at": observed_at,
-            "source": "memory",
-        }
-        for name, value in on_file_fields
-        if value
-    ]
+    # Structured preferences stay registry-sourced when present (legacy
+    # CustomerPreferenceProfile contract); facts is the ratified payload.
+    prefs = {name: value for name, value in profile_fields if value}
+    hydrated = [f["field_name"] or "preference" for f in facts]
 
     AuditStore.log_event(
         event_type="memory_on_file_displayed",
         user_id=agency_id,
         details={
             "trip_id": trip_id,
-            "customer_id": profile["customer_id"],
-            "fields": hydrated,
+            "customer_id": entity_id,
+            "durable_facts": len(durable_facts),
+            "registry_facts": len(registry_facts),
         },
     )
 
     return HydrateTripResponse(
         trip_id=trip_id,
         memory_found=True,
-        customer_name=profile.get("name"),
+        customer_name=(profile or {}).get("name"),
+        customer_id=entity_id,
         hydrated_fields=hydrated,
         preferences=prefs,
         facts=facts,

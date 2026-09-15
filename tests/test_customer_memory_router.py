@@ -86,12 +86,27 @@ def test_customer_memory_lifecycle_end_to_end(session_client):
     assert hydrate_data["preferences"]["dietary_requirements"] == "Strict Vegan & Nut-Free"
     assert hydrate_data["preferences"]["room_preference"] == "High-floor quiet corner suite"
 
-    # 5. E-D slot 2 display contract: facts carry provenance chips.
+    # 5. E-D slot 2 display contract: durable facts are primary (source
+    # "memory", gate-categorized, freshness-horizoned), registry is fallback.
     assert hydrate_data["facts"], "on-file facts must carry provenance"
-    dietary_fact = next(f for f in hydrate_data["facts"] if f["field_name"] == "dietary_requirements")
-    assert dietary_fact["value"] == "Strict Vegan & Nut-Free"
+    assert hydrate_data["customer_id"] == remember_data["customer_id"]
+    dietary_fact = next(
+        f for f in hydrate_data["facts"] if f["field_name"] == "dietary_requirements"
+    )
+    assert "Vegan" in dietary_fact["value"]
     assert dietary_fact["source"] == "memory"
     assert dietary_fact["observed_at"]
+    seating_fact = next(
+        f for f in hydrate_data["facts"] if f["field_name"] == "seating_preference"
+    )
+    assert seating_fact["source"] == "memory"
+    # Room is durably ingested under a gate-assigned generic category; its
+    # chip must still surface (field-less) and suppress the registry double.
+    assert any("quiet corner suite" in f["value"].lower() for f in hydrate_data["facts"])
+    assert not [
+        f for f in hydrate_data["facts"]
+        if f["source"] == "memory:profile" and f["field_name"] == "room_preference"
+    ]
 
     # 6. Display-only invariant: memory facts never enter the trip packet
     # (ADR-008 §7 row 4 — the former hydrate packet-write was the

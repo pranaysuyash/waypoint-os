@@ -88,7 +88,7 @@ reports, file:line-verified 2026-09-14.
 | 1 | Money tri-state stands. AMENDMENTS: approving principal bound to the JWT user at the fulfillment router (client `holder_id` ignored — the client-asserted denylist passed the fully_human gate by default); payouts read + refuse on the mode; audit event on mode change; mode read-only exposed; settlement/refunds read the mode **when executors exist** (none today — overclaim corrected) | `booking_fulfillment.py` (positive `user:` principal check), `subagent_payouts.py` (mode read), `agency_settings.save` (change audit) | Any money movement without a mode read; any non-fully_human value in the store |
 | 2 | **Declared posture, zero implicit defaults.** Dockerfile no longer bakes `=1` (it silently made Fly prod hybrid-ON while its comment claimed deterministic); fly.toml pins `"0"` explicitly (real traveler data; X-09 PII-egress gate open); compose/render explicit `0`; CI `"1"` deliberately exercises hybrid (eval envelope); **startup rung log landed** in server lifespan | Startup rung log in `server.py` lifespan | PII-egress gate closes → opt-in review with KDD benchmark (champion F1 0.808, ₹0.09–0.28/run); any envelope observed running a mode different from its declaration |
 | 3 | Tier-3 stays **PLANNED, unwired**; gate rewritten: drop 4.3 coupling (E-D forbids memory-feeding-suitability); wire requires (i) suitability-surface corpus ≥50 verdicts graded via the KDD harness at pre-registered thresholds, (ii) E-C decision_id + cost rollups, (iii) shadow run ≥ +0.05 marginal F1 on the trigger band. **PLANNED docstring landed** in `llm_scorer.py` | Zero non-test importers (holds); import test added | Graded suitability corpus + thresholds met → shadow activation; any wiring without them → revert |
-| 4 | **WIRE** (archive branch struck — E-D spec + E-10 governed write path landed; the write-only machine no longer exists). Slot 1: promotion-only question reorder in `strategy.py`, shadow-first (`MEMORY_SLOT_READ_MODE`, default shadow, audit events). Slot 2: E-D display-only FreshnessCard (suitability is a NON-slot). Preconditions: import-containment test (landed: `tests/test_memory_slot_wiring.py`), X-14 purge propagation, close the hydrate-trip GDPR leak | `src/memory/slot_candidates.py` — the sole sanctioned read seam | Any inventory/price/selection influence (E-D invariant) = immediate revoke; trust-weighting regression = unwire |
+| 4 | **WIRE** (archive branch struck — E-D spec + E-10 governed write path landed; the write-only machine no longer exists). Slot 1: promotion-only question reorder in `strategy.py`, shadow-first (`MEMORY_SLOT_READ_MODE`, default shadow, audit events). Slot 2: E-D display-only FreshnessCard (suitability is a NON-slot). Preconditions: import-containment test (landed: `tests/test_memory_slot_wiring.py`), X-14 purge propagation (**landed 2026-09-15**: `test_x14_gdpr_forget_propagates_to_slot_candidates` + HTTP forget-propagation e2e), close the hydrate-trip GDPR leak (**closed 2026-09-15**: hydrate is display-only — durable-store-primary facts labeled `source: memory` + `observed_at`, registry fallback labeled, never writes the packet; supersedes the packet-mutating prototype). Store-sharing hardening the same day: `get_memory_store()` singleton — the whole-file-rewrite save path made per-consumer `MemoryStore()` instances lose each other's writes (silent data loss) and forget never reached other instances' caches. **Slot 2 end-to-end landed 2026-09-15**: `memory_on_file_facts()` (one freshness policy, display dedupe), BFF routes + `OnFileMemoryCard` chips with purge affordance on the decision page, `/remember` room_preference durably ingested (passport fields deliberately excluded — PASSPORT_MRZ 30-day SLA). **Shadow-window review contract landed 2026-09-15**: `src/memory/slot_review.py` (`python -m src.memory.slot_review`) — per-ask audit events carry the asked set (true promotion-rate denominator); pre-registered guardrails G1–G4 with automation-usable exit codes; flip = REVIEW_READY + owner-set `MEMORY_SLOT_READ_MODE=active`. Remaining: run the window, owner flip decision; chips render once trips carry resolvable identity (X-09) | `src/memory/slot_candidates.py` — the sole sanctioned read seam | Any inventory/price/selection influence (E-D invariant) = immediate revoke; trust-weighting regression = unwire |
 | 5 | Ratified as written — badges + honesty CI + tier gate real. Amendment: `frontier.py` responses carry `reality_tier` = PLANNED + TierMetadata (register rule 1) | `SimulatedBadge` + honesty test + backend tier field (landed) | Any frontier surface touching a real provider/credential without tier metadata |
 | 6 | **Implemented: producer wired + rename.** `src/decision/route_health.py` evaluates rolling decision-route metrics (fallback/error rates) after every `telemetry.record_decision`; emits deduped alerts via the existing paging logger. Renamed honestly: event types `decision_route_health_alert`/`_paging_alert`; legacy types readable via alias; `log_decision_route_health_alert` canonical, old name aliased | The telemetry→route_health seam (landed); legacy_ops accepts both types | Alert events without a decision-path source = phantom again; hybrid engine archived → seam void |
 | 7 | SLM **HOLD retained, reason replaced** (cost model + venue data landed, so the old reason is stale): experiment cost ≠ production cost-per-outcome; no routing seam. **Ratified benchmark:** F1 ≥ 0.8, ≤ 3s/call, ≤ ₹0.50/run on the KDD fixture — deployment re-enters as a check when E-C rollups + the item-6 seam exist | Item-6 seam + E-C rollups (both open) | Benchmark met + seams exist → deploy review |
@@ -107,3 +107,60 @@ reports, file:line-verified 2026-09-14.
 - §3 staleness fixes: PA-08 landed (R1 real); PA-26 landed (corporate-policy R1
   real, unconditional dual-control); price-lock is honestly **R0+preview** until
   a real rate source lands (R2 was decoration).
+
+### 7.2 Residual execution receipt (PER-0700 lead re-verification pass, 2026-09-14)
+
+Post-council drift re-verification: every §7 seam was re-derived against the
+live tree this session (file:line-checked), then the residuals this pass found
+were executed. The council's item-1 correction is confirmed in-tree: no real
+settlement/payout executors exist (`financial_settlement` is honest
+DETERMINISTIC_PREVIEW with `operational_write: false`; the iROPS VCC call sits
+in the orphaned `irops_healer` — zero consumers), so the settlement seam stays
+correctly conditional per the §7 table.
+
+**Residuals found and fixed in this pass:**
+
+1. `Dockerfile.spine_api:11` still baked `USE_HYBRID_DECISION_ENGINE=1` — the
+   wave fixed the main Dockerfile but missed the alternate prod image, so any
+   envelope built from it silently ran hybrid-ON (the exact accident §7 item 2
+   ends). Fixed to `=0`. Root cause of the miss: the envelope test covered only
+   fly.toml/compose. New regression seat:
+   `test_no_dockerfile_bakes_hybrid_on` (both Dockerfiles must declare `0`
+   explicitly and never `1`). FND-0294 opened + closed with evidence.
+2. `frontier.py` item-5 amendment was only partially landed: ghost-workflow
+   endpoints carried `reality_tier` + TierMetadata, but `/emotions/log` and
+   `/intelligence/report` returned untiered payloads, and the
+   `GhostWorkflowResponse` default tier `"simulated"` was outside the canonical
+   `spine_api/core/reality_tier` vocabulary. Fixed: emotions → DATA_DEPENDENT
+   (real storage, no mitigation consumer), intelligence pool → PLANNED (no
+   retrieval consumer), default aligned to `"planned"`. Regression seats added
+   in `TestFrontierRealityTiers` (every handler declares tier + TierMetadata;
+   vocabulary canonicity; honest tier choice).
+
+**Seam re-verification (all file:line-checked this pass):**
+
+- Item 1: positive `user:` principal gate `booking_fulfillment.py`; payouts
+  mode read + refusal `subagent_payouts.py`; mode-change audit
+  `agency_settings.py`; read-only exposure `settings.py` GET autonomy.
+- Item 2: all four serving envelopes explicit `0` (now including
+  `Dockerfile.spine_api`); startup rung log live in `server.py` lifespan.
+- Item 3: PLANNED docstring + gate in `llm_scorer.py`; zero non-test importers.
+- Item 4: `src/memory/slot_candidates.py` sole seam; slot 1 shadow hook in
+  `strategy.py`; containment + audit tests in `test_memory_slot_wiring.py`.
+- Item 6: `src/decision/route_health.py` fed from `telemetry.record_decision`;
+  legacy alias handling in `legacy_ops.py`.
+
+**Verification:** `ruff` clean on all touched files;
+`pytest tests/test_frontier_tenant_isolation.py tests/test_pa_agentic_remediations.py`
+= 62 passed; money/memory seam suites (lifecycle, mandate ledger, slot wiring)
+= 55 passed; slot-wiring file x10 green.
+
+**Open from this pass:** FND-0293 (P3, open) — one unexplained flake of
+`test_strategy_hook_emits_audit_event` (`len(events)==1` failed once in a trio
+run; 16 subsequent greens; correlated 72.5s outlier suggests load sensitivity;
+no lock/retry/provider path found; no guess-fix applied). Reopen on recurrence
+with captured output.
+
+**Docs:** the 2026-09-06 map-drift addendum's "hybrid default ON" entry now
+carries a dated correction pointing here (the entry described the envelope
+accident as if it were the posture).

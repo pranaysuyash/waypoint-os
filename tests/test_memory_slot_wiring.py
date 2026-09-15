@@ -443,3 +443,70 @@ def test_strategy_hook_emits_audit_event(monkeypatch, tmp_path):
     assert details["promoted"][0]["field_name"] == "seat_preference"
     assert details["promoted"][0]["trust_class"] == "explicit_user"
     assert details["promoted"][0]["rationale"]
+
+
+# ---------------------------------------------------------------------------
+# E-D slot 2 read — memory_on_file_facts (display-only durable facts).
+# ---------------------------------------------------------------------------
+
+
+def test_on_file_facts_labeled_mapped_and_freshness_dropped(tmp_path):
+    """Slot-2 read: durable facts come back labeled with provenance, mapped
+    to profile field names, and stale facts are dropped (one freshness
+    policy shared with the slot-1 read)."""
+    import datetime as _dt
+
+    store = _real_store(tmp_path)
+    store.ingest_memory(
+        agency_id="agency-1",
+        entity_id="cust_chips@x.com",
+        raw_text="Dietary requirement: Strict Vegan & Nut-Free",
+        source_type=MemorySourceType.TRAVELER_DIRECT,
+        category_hint="dietary",
+    )
+    item, _ = store.ingest_memory(
+        agency_id="agency-1",
+        entity_id="cust_chips@x.com",
+        raw_text="Seating preference: Window seat forward cabin",
+        source_type=MemorySourceType.TRAVELER_DIRECT,
+        category_hint="seating",
+    )
+    assert item is not None
+    stale = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=400)).isoformat()
+    item.created_at = stale
+    store._save()
+
+    facts = slots.memory_on_file_facts(store, "agency-1", "cust_chips@x.com")
+
+    by_field = {f["field_name"]: f for f in facts if f["field_name"]}
+    # Stale seating preference dropped (preference horizon 365d), not down-weighted.
+    assert "seating_preference" not in by_field
+    dietary = by_field["dietary_requirements"]
+    assert "Vegan" in dietary["value"]
+    assert dietary["source"] == "memory"
+    assert dietary["trust_class"] == "explicit_user"
+    assert dietary["observed_at"]
+    assert all(f["source"] == "memory" for f in facts)
+
+
+def test_on_file_facts_empty_entity_returns_nothing(tmp_path):
+    store = _real_store(tmp_path)
+    assert slots.memory_on_file_facts(store, "agency-1", "cust_nobody@x.com") == []
+    assert slots.memory_on_file_facts(store, "agency-1", "") == []
+
+
+def test_on_file_facts_dedupe_identical_reingestions(tmp_path):
+    """Repeated identical ingestion (supersession does not treat identical
+    content as a conflict) must render as ONE chip, keeping the newest."""
+    store = _real_store(tmp_path)
+    for _ in range(2):
+        store.ingest_memory(
+            agency_id="agency-1",
+            entity_id="cust_dupe@x.com",
+            raw_text="Dietary requirement: Strict Vegan & Nut-Free",
+            source_type=MemorySourceType.TRAVELER_DIRECT,
+            category_hint="dietary",
+        )
+    facts = slots.memory_on_file_facts(store, "agency-1", "cust_dupe@x.com")
+    dietary = [f for f in facts if f["field_name"] == "dietary_requirements"]
+    assert len(dietary) == 1, f"duplicate chips rendered: {len(dietary)}"

@@ -4,6 +4,7 @@ import { useTripContext } from '@/contexts/TripContext';
 import { DecisionPanel } from '@/components/workspace/panels/DecisionPanel';
 import { PlanningStageGate } from '@/components/workspace/PlanningStageGate';
 import { FreshnessCard } from '@/components/workspace/FreshnessCard';
+import { OnFileMemoryCard } from '@/components/workspace/OnFileMemoryCard';
 import { getPlanningStageGateReason } from '@/lib/planning-status';
 
 export default function DecisionPage() {
@@ -17,6 +18,7 @@ export default function DecisionPage() {
       ) : (
         <>
           {tripId && <FreshnessCard tripId={tripId} />}
+          {tripId && <OnFileMemoryCard tripId={tripId} />}
           <DecisionPanel tripId={tripId || ''} />
         </>
       )}

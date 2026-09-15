@@ -876,3 +876,34 @@ so the probe stays deterministic and self-contained.
 9/9 checks passed
 ALL GREEN
 ```
+
+---
+
+## Memory Slot Shadow Review: `python -m src.memory.slot_review`
+
+Purpose:
+
+- Turn `memory_slot_promotion` audit events into the E-D slot-1
+  shadow-window verdict (ADR-008 §7 row 4): `INSUFFICIENT_DATA`,
+  `GUARDRAIL_VIOLATION` (reopen signal), or `REVIEW_READY` (owner decides
+  the `MEMORY_SLOT_READ_MODE=active` flip). Pre-registered criteria live in
+  the module docstring and `Docs/architecture/MEMORY_SLOT_WIRING_2026-09-15.md`
+  §"Shadow-window review contract".
+
+**Usage:**
+
+```bash
+.venv/bin/python -m src.memory.slot_review                        # human summary
+.venv/bin/python -m src.memory.slot_review --json                 # machine-readable
+.venv/bin/python -m src.memory.slot_review --agency <id> --since 2026-09-15
+```
+
+**Exit codes:** 0 review-ready/clean, 2 insufficient data (<30 asks),
+3 guardrail violation (G1 invariant, G2 trust floor, G3 single-memory
+degeneracy, G4 noise bound).
+
+**Notes:**
+
+- Canonical home is the package module (`src/memory/slot_review.py`); this
+  README entry is the pointer, not a parallel implementation.
+- Read-only over `data/audit/events.jsonl`; never flips the mode itself.

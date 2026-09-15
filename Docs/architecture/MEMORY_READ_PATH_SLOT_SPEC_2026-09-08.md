@@ -4,10 +4,11 @@
 Status update 2026-09-15: **Slot 1 shadow-landed** (`src/memory/slot_candidates.py`,
 default `MEMORY_SLOT_READ_MODE=shadow`, promotion-only, audited via
 `memory_slot_promotion`; active flip is a deliberate operator act) and
-**Slot 2 display-only landed** (`POST /api/v1/customers/hydrate-trip/{trip_id}`
-returns `source: memory` + `observed_at` facts; never writes the packet).
-The invariant below is unchanged and enforced by import-containment tests:
-**nothing in this spec authorizes memory → inventory influence.**
+**Slot 2 display-only landed end-to-end** — durable-store facts via
+`memory_on_file_facts()` surfaced as "On file from <date>" chips with purge
+affordance (`OnFileMemoryCard` on the trip decision page). The invariant
+below is unchanged and enforced by import-containment tests: **nothing in
+this spec authorizes memory → inventory influence.**
 
 ## 1. Problem
 

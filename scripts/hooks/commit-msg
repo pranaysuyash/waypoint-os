@@ -146,11 +146,12 @@ The attestation expires after 12 hours. Re-run --init in a new session.
 EOF
       exit 1
     fi
-    # On successful verify, render the review doc and stage it.
+    # On successful verify, render the review doc into the working tree.
+    # Do NOT git-add it here: it is a generated artifact whose timestamp
+    # changes on every render, so staging it mid-commit produced perpetual
+    # timestamp churn (and resurrected untrack attempts). Committers who
+    # want the rendered review in a commit stage it deliberately.
     python3 "$_commitgate_script" --repo "$(pwd)" --render >/dev/null 2>&1 || true
-    if [ -f "Docs/reviews/motto_review.md" ]; then
-      git add "Docs/reviews/motto_review.md" >/dev/null 2>&1 || true
-    fi
   fi
   # <<< SECTION-LEVEL ATTESTATION GATE <<<
 fi

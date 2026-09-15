@@ -294,19 +294,23 @@ def sort_questions_by_priority(questions: List[dict]) -> List[dict]:
 
         agency_id = _current_agency_for_slots()
         if agency_id:
+            asked_names = [q.get("field_name", "") for q in ordered if q.get("field_name")]
             result = memory_slot_candidates(
                 store=_slot_store(),
                 agency_id=agency_id,
                 trip_id="",
-                unknowns=[{"field_name": q.get("field_name", "")} for q in ordered],
+                unknowns=[{"field_name": name} for name in asked_names],
             )
-            if result["candidates"]:
-                _audit_slot_promotion(
-                    agency_id=agency_id,
-                    trip_id="",
-                    candidates=result["candidates"],
-                    active=not result["shadow"],
-                )
+            # Audit EVERY agency-scoped ask (promoted possibly empty): the
+            # no-promotion events are the denominator of the shadow-window
+            # promotion-rate metric (tools/memory_slot_review.py).
+            _audit_slot_promotion(
+                agency_id=agency_id,
+                trip_id="",
+                asked=asked_names,
+                candidates=result["candidates"],
+                active=not result["shadow"],
+            )
             if result["shadow"]:
                 apply_shadow(ordered, result["candidates"],
                              agency_id=agency_id, trip_id="")
@@ -328,15 +332,17 @@ def sort_questions_by_priority(questions: List[dict]) -> List[dict]:
 def _audit_slot_promotion(
     agency_id: str,
     trip_id: str,
+    asked: List[str],
     candidates: List[dict],
     *,
     active: bool,
 ) -> None:
     """Audit event at the slot seam (ADR-008 §1: every capability gets an
-    audit event at its enforcing seam). Emitted in BOTH modes — shadow
-    records what WOULD have moved (promotion-value metric), active records
-    what DID. Failure-tolerant: audit unavailability must never affect the
-    ask order."""
+    audit event at its enforcing seam). Emitted for EVERY agency-scoped ask
+    in both modes — `asked` is the full unknown set (the denominator for the
+    shadow-window promotion-rate metric), `promoted` the memory-backed
+    subset (possibly empty). Failure-tolerant: audit unavailability must
+    never affect the ask order."""
     try:
         from spine_api.persistence import AuditStore
 
@@ -346,6 +352,7 @@ def _audit_slot_promotion(
             details={
                 "trip_id": trip_id,
                 "mode": "active" if active else "shadow",
+                "asked": asked,
                 "promoted": [
                     {
                         "field_name": c.get("field_name"),

@@ -78,6 +78,22 @@ _CATEGORY_FACT_TYPE: Dict[str, str] = {
     "trip_event": "fact",
     "agency_policy": "fact",
     "procedural_rule": "fact",
+    # /remember durable-write categories (must share ONE freshness policy
+    # with the slot read — both go through _FRESHNESS_HORIZON_DAYS).
+    "dietary": "constraint",
+    "seating": "preference",
+    "room_preference": "preference",
+}
+
+# Durable category → structured profile/UI field name (E-D slot 2 chips
+# use the CustomerPreferenceProfile field vocabulary; generic preferences
+# have no structured field and render as field-less chips).
+_CATEGORY_DISPLAY_FIELD: Dict[str, str] = {
+    "dietary": "dietary_requirements",
+    "dietary_safety": "dietary_requirements",
+    "seating": "seating_preference",
+    "seating_preference": "seating_preference",
+    "room_preference": "room_preference",
 }
 
 # Trip-scoped fact classes: these describe ONE trip, not the traveler.
@@ -318,3 +334,59 @@ def apply_active(
         ),
     )
     return [u for _, u in ordered]
+
+
+# ---------------------------------------------------------------------------
+# E-D slot 2 read — display-only on-file facts (never decision influence).
+# ---------------------------------------------------------------------------
+
+
+def memory_on_file_facts(
+    store: Any,
+    agency_id: str,
+    entity_id: str,
+    now: Optional[datetime] = None,
+) -> List[Dict[str, Any]]:
+    """Labeled on-file facts for the slot-2 display surface ("On file from
+    <date>: <fact>" chips). Reads the durable store as the canonical source
+    with the SAME freshness horizons as the slot-1 read — one freshness
+    policy for every memory read path. Display-only by contract: the result
+    is a rendering payload and must never enter a packet, gate, or score.
+
+    Rationale tags and trust classes ride along (E-D §2 corollaries 1+3):
+    every chip shows what was observed, when, from which trust class.
+    """
+    if not entity_id:
+        return []
+    now = now or datetime.now(timezone.utc)
+    try:
+        items = store.list_entity_memories(agency_id=agency_id, entity_id=entity_id)
+    except Exception:
+        logger.warning("on-file facts query failed; returning none", exc_info=True)
+        return []
+
+    facts: List[Dict[str, Any]] = []
+    for item in items:
+        if _is_expired(item, now):
+            continue
+        category = str(getattr(item, "category", "") or "").lower()
+        created = getattr(item, "created_at", None)
+        facts.append({
+            "field_name": _CATEGORY_DISPLAY_FIELD.get(category),
+            "value": str(_item_attr(item, "summary", "content", default="")),
+            "observed_at": str(created) if created else "",
+            "source": "memory",
+            "memory_id": _item_attr(item, "memory_id", "id", default=""),
+            "trust_class": _trust_class_label(item),
+        })
+
+    # Display dedupe: repeated identical ingestions (supersession treats
+    # identical content as non-conflicting, so duplicates accumulate in the
+    # store) must render as ONE chip — keep the most recently observed.
+    deduped: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for fact in facts:
+        key = (fact["field_name"] or "", fact["value"])
+        existing = deduped.get(key)
+        if existing is None or fact["observed_at"] > existing["observed_at"]:
+            deduped[key] = fact
+    return list(deduped.values())
