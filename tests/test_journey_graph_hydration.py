@@ -129,10 +129,27 @@ def test_tenant_route_stored_trip_without_graph_404(
     assert resp.json()["detail"] == "no journey graph available for this trip"
 
 
-def test_tenant_route_cross_tenant_404(session_client, stored_trip_factory):
-    """A trip owned by another agency is indistinguishable from missing -> 404."""
+def test_tenant_route_cross_tenant_404(
+    session_client,
+    stored_trip_factory,
+    boundary_principal_factory,
+    boundary_token_factory,
+):
+    """A trip owned by another agency is indistinguishable from missing -> 404.
+
+    FND-0259 hardening: the foreign caller is now a REAL second-tenant JWT
+    (conftest boundary seam) instead of a spoofed ``X-Agency-ID`` header —
+    the 404 must come from JWT-membership scoping, not from the removed
+    PYTEST header escape.
+    """
+    foreign_agency = "agency_jgh_foreign"
+    foreign_user = "usr_jgh_foreign"
+    boundary_principal_factory(foreign_user, foreign_agency)
     trip_id = stored_trip_factory(TEST_AGENCY_ID, {"destination": "Oslo"})
-    resp = _tenant_get(session_client, trip_id, "agency_jgh_other_tenant")
+    resp = session_client.get(
+        f"/api/v1/journey-graph/{trip_id}",
+        headers={"Authorization": f"Bearer {boundary_token_factory(foreign_user, foreign_agency)}"},
+    )
     assert resp.status_code == 404
 
 

@@ -10,6 +10,7 @@ import hashlib
 import uuid
 from typing import List, Optional
 from src.rag.models import RAGChunk, RAGChunkMetadata, DocumentSourceType
+from src.rag.embeddings import EmbeddingProvider, HashEmbeddingProvider
 
 
 STOPWORDS = {
@@ -48,10 +49,12 @@ class DocumentIndexer:
         parent_chunk_size: int = 2000,
         child_chunk_size: int = 500,
         embedding_dim: int = 64,
+        embedding_provider: Optional[EmbeddingProvider] = None,
     ):
         self.parent_chunk_size = parent_chunk_size
         self.child_chunk_size = child_chunk_size
         self.embedding_dim = embedding_dim
+        self.embedding_provider = embedding_provider or HashEmbeddingProvider(dimension=embedding_dim)
 
     def chunk_text(
         self,
@@ -85,7 +88,7 @@ class DocumentIndexer:
                 tags=tags or [],
             )
             
-            p_embedding = generate_local_embedding(p_text, dim=self.embedding_dim)
+            p_embedding = self.embedding_provider.embed_text(p_text)
             parent_chunk = RAGChunk(
                 id=p_id,
                 parent_id=None,
@@ -111,7 +114,7 @@ class DocumentIndexer:
                             file_path=file_path,
                             tags=tags or [],
                         )
-                        c_embedding = generate_local_embedding(c_text, dim=self.embedding_dim)
+                        c_embedding = self.embedding_provider.embed_text(c_text)
                         child_chunk = RAGChunk(
                             id=c_id,
                             parent_id=p_id,

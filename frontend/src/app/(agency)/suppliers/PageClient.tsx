@@ -126,10 +126,12 @@ export default function SuppliersPage() {
       },
       {
         id: 'sup_06',
-        name: 'Allianz Global Assistance Luxury Travel Care',
+        // FND-0182: sample record must not fabricate a real insurer
+        // relationship — internally illustrative, no carrier attribution.
+        name: 'Illustrative Travel Insurance Underwriter (Sample Record)',
         category: 'insurance',
-        destinations: ['Worldwide Comprehensive Cover'],
-        commissionTier: '25% Policy Issuance Commission',
+        destinations: ['Illustrative Worldwide Coverage Options'],
+        commissionTier: 'Sample 25% Policy Issuance Commission (Not Carrier-Sourced)',
         paymentTerms: 'Monthly Commission Remittance',
         slaScore: 98.4,
         softHoldSupported: false,

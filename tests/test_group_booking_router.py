@@ -3,9 +3,13 @@ tests/test_group_booking_router.py — Unit & Integration tests for Group Multi-
 """
 
 import os
+import uuid
+
 import pytest
 
 os.environ["RUNNING_TESTS"] = "1"
+
+from spine_api.persistence import TripStore
 
 
 @pytest.fixture(autouse=True)
@@ -132,3 +136,41 @@ def test_group_booking_lifecycle_end_to_end(session_client):
     )
     assert final_override.status_code == 200
     assert final_override.json()["all_group_shares_satisfied"] is True
+
+
+def test_pay_share_fails_closed_for_legacy_trip_without_agency_id(session_client):
+    """FND-0290: a matched invite whose trip record lacks agency attribution is
+    rejected (409) instead of being silently attributed to the test agency."""
+    token = f"grp_fnd0290_{uuid.uuid4().hex}"
+    legacy_trip = {
+        "id": f"trip_gb_legacy_{uuid.uuid4().hex[:8]}",
+        "destination": "Lisbon",
+        "stage": "discovery",
+        "status": "active",
+        # NOTE: no "agency_id" — legacy record shape the old fallback silently
+        # re-attributed to TEST_AGENCY_ID.
+        "group_booking": {
+            "invites": [
+                {
+                    "passenger_id": "p_1_legacy",
+                    "name": "Legacy Passenger",
+                    "raw_token": token,
+                    "deposit_share_cents": 25000,
+                    "status": "UNPAID",
+                }
+            ]
+        },
+    }
+    TripStore.save_trip(legacy_trip)  # no agency_id → none stamped
+
+    resp = session_client.post(
+        f"/api/v1/group/token/{token}/pay-share",
+        json={"payment_reference": "TXN_LEGACY_001"},
+    )
+    assert resp.status_code == 409, resp.text
+    assert "agency attribution" in resp.text
+
+    # The legacy record is left un-mutated (no status flip, no tenant stamp).
+    stored = TripStore.get_trip(legacy_trip["id"])
+    assert stored["group_booking"]["invites"][0]["status"] == "UNPAID"
+    assert not stored.get("agency_id")

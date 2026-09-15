@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from spine_api.contract import TimelineEvent, TimelineResponse
 from spine_api.core.auth import get_current_agency
+from spine_api.core.sse_registry import SSE_CONNECTION_REGISTRY
 from spine_api.models.tenant import Agency
 
 try:
@@ -161,12 +162,33 @@ async def stream_trip_events(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
+    # FND-0229: per-tenant connection cap with oldest-first eviction. When a
+    # newer sibling connection evicts us, the loop below observes the closed
+    # event and emits a retry hint before exiting; the finally block frees
+    # the slot on every exit path (client disconnect included).
+    connection = SSE_CONNECTION_REGISTRY.register(agency.id)
+
     async def event_generator():
         last_count = 0
         iterations = 0
         max_iterations = 600  # 10 minutes max connection lifetime before auto-reconnect
         try:
             while iterations < max_iterations:
+                if connection.should_close:
+                    yield (
+                        "event: tenant_cap_eviction\n"
+                        "data: "
+                        + json.dumps({
+                            "event": "TENANT_CAP_EVICTION",
+                            "trip_id": trip_id,
+                            "reason": "tenant_connection_cap",
+                            "reconnect": True,
+                            "retry_after_seconds": 1,
+                        })
+                        + "\n\n"
+                    )
+                    return
+
                 audit_events = AuditStore.get_events_for_trip(trip_id)
                 if len(audit_events) > last_count:
                     new_events = audit_events[last_count:]
@@ -182,6 +204,9 @@ async def stream_trip_events(
                 await asyncio.sleep(1.0)
         except asyncio.CancelledError:
             pass
+        finally:
+            # FND-0229: explicit slot eviction on disconnect/exit.
+            connection.unregister()
 
     return StreamingResponse(
         event_generator(),

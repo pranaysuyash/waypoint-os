@@ -70,6 +70,13 @@ RLS_EXCLUDED_AGENCY_TABLES: dict[str, str] = {
     "emotional_state_logs": "frontier/experimental feature; not in Phase 5E scope",
     "ghost_workflows": "frontier/experimental feature; not in Phase 5E scope",
     "legacy_aspirations": "frontier/experimental feature; not in Phase 5E scope",
+    # FND-0219: public proposal capability credentials. The traveler
+    # verification path runs OUTSIDE any authenticated agency session, so
+    # agency-scoped RLS would fail the design closed. Rows are addressed only
+    # by the opaque sha256 token hash; agency_id/trip_id are binding/audit
+    # metadata (same precedent as idempotency_keys, which carries no
+    # agency_id column and is likewise excluded by omission).
+    "proposal_access_tokens": "public capability credentials; lookup is by credential hash only, never by tenant; verification runs unauthenticated by design",
 }
 
 # Tables with ENABLE RLS but intentionally WITHOUT FORCE RLS.

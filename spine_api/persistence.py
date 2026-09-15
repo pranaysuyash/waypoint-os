@@ -3603,6 +3603,7 @@ def save_processed_trip(
         The saved trip ID
     """
     preserve_created_at: Optional[str] = None
+    existing_trip: Optional[dict] = None
     if preserve_trip_id:
         existing_trip = TripStore._get_trip_internal(preserve_trip_id)
         if existing_trip:
@@ -3622,8 +3623,9 @@ def save_processed_trip(
         preserve_trip_id=preserve_trip_id,
         preserve_created_at=preserve_created_at,
     )
+    _carry_forward_acknowledged_assumptions(serializable_trip, existing_trip)
     logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
-    
+
     trip_id = TripStore.save_trip(serializable_trip, agency_id=agency_id)
 
     submission = (spine_output.get("meta", {}) or {}).get("submission")
@@ -3648,6 +3650,51 @@ def save_processed_trip(
     return trip_id
 
 
+def _carry_forward_acknowledged_assumptions(
+    serializable_trip: dict,
+    existing_trip: Optional[dict],
+) -> None:
+    """FND-0291: carry operator-acknowledged assumption entries across reprocess.
+
+    An acknowledgment is an operator attestation ("a human reviewed this
+    default"), not intake data — so a reprocessed packet must not silently
+    resurrect the unacknowledged-critical-assumption escalation. Merge rule:
+    for each acknowledged entry in the old register, if the new register has
+    an entry with the same slot_name that is not yet acknowledged, copy the
+    acknowledgment (and the reviewer's notes). Entries whose slot produced no
+    new assumption (e.g. the operator corrected the value, so extraction now
+    yields FACT) have nothing to carry — the attestation is moot.
+    """
+    if not existing_trip:
+        return
+    old_extracted = existing_trip.get("extracted") or {}
+    old_assumptions = old_extracted.get("assumptions")
+    if not isinstance(old_assumptions, list):
+        return
+    ack_by_slot = {
+        entry.get("slot_name"): entry
+        for entry in old_assumptions
+        if isinstance(entry, dict)
+        and entry.get("acknowledged_by_operator")
+        and entry.get("slot_name")
+    }
+    if not ack_by_slot:
+        return
+    new_extracted = serializable_trip.get("extracted") or {}
+    new_assumptions = new_extracted.get("assumptions")
+    if not isinstance(new_assumptions, list):
+        return
+    for entry in new_assumptions:
+        if not isinstance(entry, dict) or entry.get("acknowledged_by_operator"):
+            continue
+        prev = ack_by_slot.get(entry.get("slot_name"))
+        if prev is not None:
+            entry["acknowledged_by_operator"] = True
+            entry["operator_notes"] = (
+                prev.get("operator_notes") or entry.get("operator_notes")
+            )
+
+
 async def save_processed_trip_async(
     spine_output: dict,
     source: str = "unknown",
@@ -3665,6 +3712,7 @@ async def save_processed_trip_async(
 ) -> str:
     """Async variant for FastAPI/background tasks and SQL-backed persistence."""
     preserve_created_at: Optional[str] = None
+    existing_trip: Optional[dict] = None
     if preserve_trip_id:
         existing_trip = TripStore._get_trip_internal(preserve_trip_id)
         if existing_trip:
@@ -3684,6 +3732,7 @@ async def save_processed_trip_async(
         preserve_trip_id=preserve_trip_id,
         preserve_created_at=preserve_created_at,
     )
+    _carry_forward_acknowledged_assumptions(serializable_trip, existing_trip)
     logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
 
     trip_id = await TripStore.asave_trip(serializable_trip, agency_id=agency_id)

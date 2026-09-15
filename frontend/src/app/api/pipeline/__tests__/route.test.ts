@@ -52,7 +52,7 @@ describe("/api/pipeline GET - Operational Pipeline", () => {
   beforeEach(() => {
     vi.mocked(isWorkspaceTrip).mockImplementation(
       (trip: { status?: string }) =>
-        ["assigned", "in_progress", "ready_to_quote", "ready_to_book", "blocked"].includes(trip.status ?? ""),
+        ["assigned", "in_progress", "ready_to_quote", "ready_to_book", "blocked", "active"].includes(trip.status ?? ""),
     );
   });
 
@@ -76,6 +76,7 @@ describe("/api/pipeline GET - Operational Pipeline", () => {
       { label: "ready_to_quote", count: 0 },
       { label: "ready_to_book", count: 0 },
       { label: "blocked", count: 1 },
+      { label: "active", count: 0 },
     ]);
   });
 
@@ -86,7 +87,7 @@ describe("/api/pipeline GET - Operational Pipeline", () => {
     const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
     const data = (await res.json()) as Array<{ label: string; count: number }>;
 
-    expect(data).toHaveLength(5);
+    expect(data).toHaveLength(6);
     data.forEach((s) => {
       expect(s).toHaveProperty("label");
       expect(s).toHaveProperty("count");
@@ -140,19 +141,22 @@ describe("/api/pipeline GET - Operational Pipeline", () => {
     expect(data).toHaveProperty("error");
   });
 
-  it("returns all five stages in correct order even when empty", async () => {
+  it("returns all six stages in correct order even when empty", async () => {
     vi.mocked(transformSpineTripsResponseToTrips).mockReturnValue([]);
     mockBackend([]);
 
     const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
     const data = (await res.json()) as Array<{ label: string }>;
 
+    // "active" = canonical in_trip alias (FND-0120) — in-flight trips are a
+    // workspace stage, appended last in WORKSPACE_TRIP_STATUS_LIST order.
     expect(data.map((s) => s.label)).toEqual([
       "assigned",
       "in_progress",
       "ready_to_quote",
       "ready_to_book",
       "blocked",
+      "active",
     ]);
   });
 

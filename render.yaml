@@ -30,6 +30,8 @@ services:
         value: sql
       - key: SPINE_API_IDEMPOTENCY_BACKEND
         value: sql
+      - key: SPINE_API_LOCKING_BACKEND
+        value: sql
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET

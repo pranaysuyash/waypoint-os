@@ -2,7 +2,7 @@
 
 **Date**: 2026-09-01\
 **Session Goal**: Persona Council Product Demo Simulations (Sam Rivera, Marcus Chen, Elena Rostova, VIP Traveler, Panic Traveler), Real-Time Computer-Use Verification, Ingestion Pipeline Hardening, and Doctrine-Aligned Documentation\
-**Governing Standard**: `OPERATING_DOCTRINE.md` (v8.0) + `motto_v4.md` (Section 0.3 Documentation Continuity, Section 0.4 Acceptance Contract, Section 0.12 Decision Records, Section 0.15 Third-Layer Decoupling)\
+**Governing Standard**: `OPERATING_DOCTRINE.md` (v8.0) + `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (Section 0.3 Documentation Continuity, Section 0.4 Acceptance Contract, Section 0.12 Decision Records, Section 0.15 Third-Layer Decoupling)\
 **Status**: Completed & Verified\
 
 ---
@@ -89,7 +89,7 @@ During live execution, four operational friction points were identified, fixed, 
   - All claims backed by Tier 3/4 runtime and visual evidence.
   - Zero mock claims; servers actively run and process requests in real-time.
   - No Git mutations or unapproved resets performed.
-- **`motto_v4.md` Compliance**:
+- **`FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` Compliance**:
   - **Section 0.3 (Documentation Continuity)**: All historical and new docs indexed, cross-referenced, and preserved.
   - **Section 0.4 (Acceptance Contract)**: Clear acceptance report stating exact UI state changes, business value, files modified, and test results.
   - **Section 0.15 (Third-Layer Decoupling)**: Ingestion pipeline, rule engine, risk review, and UI presentation layers remain strictly isolated.

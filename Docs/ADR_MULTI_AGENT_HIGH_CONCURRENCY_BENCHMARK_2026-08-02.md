@@ -3,7 +3,7 @@
 **Date**: 2026-08-02  
 **Status**: APPROVED  
 **Deciders**: AI Workforce Team, Infrastructure Engineering  
-**Governing Rule**: `motto_v4.md` (Rule 0.10: Observability & Load Verification)
+**Governing Rule**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (Rule 0.10: Observability & Load Verification)
 
 ---
 

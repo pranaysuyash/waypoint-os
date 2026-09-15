@@ -3,7 +3,7 @@
 **Engagement**: External consultant pre-launch audit of Waypoint OS (travel_agency_agent).
 **Method**: 7 parallel read-only audit tracks (backend pipeline, API/contracts, frontend, deployment/ops, security/data-safety, tests/quality, docs/launch-readiness), each producing file:line-evidenced findings. This document is the synthesis and the index for all follow-up deep-dives.
 **Evidence tier**: Tier 1–2 (static inspection + targeted commands). No runtime verification performed yet. Every finding below needs a verification pass before a fix is claimed done.
-**Governing doctrine**: `motto_v4.md` (canonical), repo `AGENTS.md`.
+**Governing doctrine**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (canonical), repo `AGENTS.md`.
 
 ---
 

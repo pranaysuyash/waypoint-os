@@ -9,9 +9,11 @@ type TripLifecycleStatus = NonNullable<Trip["status"]>;
 
 const STATUS_TO_STATE: Record<string, TripState> = {
   new: "blue",
-  // "active" = intake-complete, pre-routing (F-33): was absent from both
-  // workspace and inbox maps so those trips vanished from operator views.
-  active: "blue",
+  // "active" = canonical in_trip alias (audit-gated; FND-0120): the ratified
+  // 12-state lifecycle (spine_api/core/trip_lifecycle.py) classifies it as an
+  // in-flight trip, so it renders amber (work-in-flight family) — previously
+  // it vanished from both operator queues.
+  active: "amber",
   incomplete: "blue",
   needs_followup: "blue",
   awaiting_customer_details: "blue",
@@ -28,6 +30,11 @@ const STATUS_TO_STATE: Record<string, TripState> = {
   // rendered as intake.
   completed: "green",
   delivered: "green",
+  // "archived" = canonical dormant terminal — the post-trip COMPLETED split
+  // (spine_api/core/trip_lifecycle.py DORMANT_MODEL_STATES); written by the
+  // inbox bulk-archive action (spine_api/routers/inbox.py). Terminal-success
+  // family, never an intake lead (FND-0120).
+  archived: "green",
   cancelled: "red",
 };
 
@@ -38,6 +45,7 @@ const STATUS_TO_INBOX_STAGE: Record<string, string> = {
   in_progress: "details",
   completed: "booking",
   delivered: "booking",
+  archived: "completed",
   cancelled: "completed",
 };
 
@@ -71,6 +79,9 @@ const WORKSPACE_STATUSES = new Set<TripLifecycleStatus>([
   "ready_to_quote",
   "ready_to_book",
   "blocked",
+  // Canonical in_trip alias (audit-gated): an in-flight trip belongs on the
+  // operator work surface, not in the intake lead queue (FND-0120).
+  "active",
 ]);
 
 const INBOX_STATUSES = new Set<TripLifecycleStatus>([
@@ -81,6 +92,16 @@ const INBOX_STATUSES = new Set<TripLifecycleStatus>([
   "snoozed",
 ]);
 
+// Archived/inbox-history partition (FND-0120): canonical dormant terminal —
+// the post-trip COMPLETED split, written by the inbox bulk-archive action
+// (spine_api/routers/inbox.py). Deliberately excluded from BOTH the workspace
+// queue (terminal, no operator work) and the inbox lead queue; this vocabulary
+// is the history-view selector so archived records render as history instead
+// of vanishing or masquerading as intake leads.
+const ARCHIVED_STATUSES = new Set<TripLifecycleStatus>([
+  "archived",
+]);
+
 export function isWorkspaceTrip(trip: Trip): boolean {
   const lifecycleStatus = trip.status;
   return typeof lifecycleStatus === "string" && WORKSPACE_STATUSES.has(lifecycleStatus as TripLifecycleStatus);
@@ -89,6 +110,11 @@ export function isWorkspaceTrip(trip: Trip): boolean {
 export function isInboxTrip(trip: Trip): boolean {
   const lifecycleStatus = trip.status;
   return typeof lifecycleStatus === "string" && INBOX_STATUSES.has(lifecycleStatus as TripLifecycleStatus);
+}
+
+export function isArchivedTrip(trip: Trip): boolean {
+  const lifecycleStatus = trip.status;
+  return typeof lifecycleStatus === "string" && ARCHIVED_STATUSES.has(lifecycleStatus as TripLifecycleStatus);
 }
 
 function isRecord(value: unknown): value is JsonRecord {

@@ -1049,6 +1049,31 @@ class SuitabilityFlagsResponse(BaseModel):
 # =============================================================================
 
 
+class AssumptionAction(BaseModel):
+    """Operator resolution of a single packet assumption (FND-0291).
+
+    Confirm: omit corrected_value — the operator asserts the system default
+    is accurate. Correct: supply corrected_value — written into
+    extracted.facts[slot_name] with explicit_user authority, mirroring the
+    manual-correction idiom in _sync_manual_trip_fields.
+    """
+
+    slot_name: str = Field(
+        min_length=1,
+        max_length=100,
+        validation_alias=AliasChoices("slotName", "slot_name"),
+    )
+    operator_notes: Optional[str] = Field(
+        default=None,
+        max_length=1000,
+        validation_alias=AliasChoices("operatorNotes", "operator_notes"),
+    )
+    corrected_value: Optional[Union[str, int, float, bool]] = Field(
+        default=None,
+        validation_alias=AliasChoices("correctedValue", "corrected_value"),
+    )
+
+
 class TripPatchRequest(BaseModel):
     """Canonical mutable fields accepted by PATCH /trips/{trip_id}."""
 
@@ -1095,6 +1120,10 @@ class TripPatchRequest(BaseModel):
     date_year_confidence: Optional[str] = Field(default=None, max_length=50)
     lead_source: Optional[str] = Field(default=None, max_length=200)
     activity_provenance: Optional[str] = Field(default=None, max_length=500)
+    assumption_actions: Optional[List[AssumptionAction]] = Field(
+        default=None,
+        validation_alias=AliasChoices("assumptionActions", "assumption_actions"),
+    )
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 

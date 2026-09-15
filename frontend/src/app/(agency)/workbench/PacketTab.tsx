@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { useWorkbenchStore } from "@/stores/workbench";
-import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
+import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, PacketAssumption, ValidationReport } from "@/types/spine";
 import { validationLabelFor } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
+import { resolveTripAssumptions, type TripAssumptionAction } from "@/lib/api-client";
 import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
 import { getTravelerPromptForUnknownField } from "@/lib/traveler-prompts";
 import { getTripRepairRoute } from "@/lib/routes";
@@ -32,9 +33,14 @@ function makeCanonicalSlot(value: unknown): SlotValue {
 }
 
 export default function PacketTab({ trip }: PacketTabProps) {
-  const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
+  const { result_packet, result_validation, debug_raw_json, setDebugRawJson, setResultPacket } = useWorkbenchStore();
   const [showRawJson, setShowRawJson] = useState(false);
   const [showValidationDetails, setShowValidationDetails] = useState(false);
+  // FND-0291: operator confirm/correct state for the assumptions register.
+  const [pendingSlot, setPendingSlot] = useState<string | null>(null);
+  const [correctingSlot, setCorrectingSlot] = useState<string | null>(null);
+  const [correctingValue, setCorrectingValue] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const activePacket = result_packet || trip?.packet;
   const activeValidation = result_validation || (trip?.validation as ValidationReport | null);
@@ -62,6 +68,24 @@ export default function PacketTab({ trip }: PacketTabProps) {
 
   const bookingRequest = activePacket as Record<string, unknown>;
   const validation = activeValidation;
+
+  const applyAssumptionActions = async (actions: TripAssumptionAction[]) => {
+    if (!trip?.id) return;
+    setPendingSlot(actions[0]?.slot_name ?? null);
+    setActionError(null);
+    try {
+      const updated = await resolveTripAssumptions(trip.id, actions);
+      // The PATCH response carries the refreshed packet — make it the
+      // canonical display source so the entry flips to reviewed in place.
+      setResultPacket(updated.packet ?? null);
+      setCorrectingSlot(null);
+      setCorrectingValue("");
+    } catch {
+      setActionError("Could not save the assumption resolution. Try again.");
+    } finally {
+      setPendingSlot(null);
+    }
+  };
 
   const canonicalTripFacts: Record<string, SlotValue> = {};
   const canonicalOrigin = normalizeTripDisplayValue(trip?.origin);
@@ -97,6 +121,9 @@ export default function PacketTab({ trip }: PacketTabProps) {
     return true;
   });
   const contradictions = (bookingRequest.contradictions || []) as PacketContradiction[];
+  const assumptions = ((bookingRequest.assumptions || []) as PacketAssumption[]).filter(
+    (assumption): assumption is PacketAssumption => Boolean(assumption && typeof assumption === 'object'),
+  );
 
   const summaryData = {
     Destination: _getFactValue(facts, "destination_candidates") || canonicalDestination || "-",
@@ -350,6 +377,123 @@ export default function PacketTab({ trip }: PacketTabProps) {
                 </span>
               </div>
             )})}
+          </div>
+        </div>
+      )}
+
+      {/* Assumptions (FND-0124): system-defaulted values the traveler never
+          asserted. Operators confirm or correct each entry (FND-0291);
+          resolutions clear the unacknowledged-critical-assumption escalation. */}
+      {assumptions.length > 0 && (
+        <div>
+          <h3 className="text-ui-base font-semibold text-[#d29922] mb-3">Assumptions</h3>
+          <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4">
+            <ul className="space-y-2">
+              {assumptions.map((assumption) => {
+                const isCritical = assumption.criticality === 'critical';
+                const isPending = pendingSlot === assumption.slot_name;
+                const isCorrecting = correctingSlot === assumption.slot_name;
+                const isAcknowledged = assumption.acknowledged_by_operator === true;
+                return (
+                  <li key={`asmp-${assumption.slot_name}`} className="flex items-start gap-2 py-1.5 border-b border-[#30363d] last:border-0">
+                    <span className={`${isCritical ? 'text-[#f85149]' : 'text-[#d29922]'} shrink-0 mt-0.5 text-ui-sm`}>~</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-ui-sm font-medium text-[#e6edf3]">
+                        {labelOrTitle(FIELD_LABELS, assumption.slot_name)}
+                      </span>
+                      <span className="text-ui-sm text-[#e6edf3] ml-1">
+                        = {_formatValue(assumption.assumed_value)}
+                      </span>
+                      {assumption.criticality && (
+                        <span
+                          className={`ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                            isCritical
+                              ? 'bg-[#f85149]/15 text-[#f85149]'
+                              : 'bg-[#d29922]/15 text-[#d29922]'
+                          }`}
+                        >
+                          {assumption.criticality}
+                        </span>
+                      )}
+                      {assumption.rationale && (
+                        <p className="text-ui-xs text-[#8b949e] mt-0.5">{assumption.rationale}</p>
+                      )}
+                      {isAcknowledged && (
+                        <p className="text-ui-xs text-[#7ee787] mt-1">
+                          ✓ {assumption.operator_notes || 'Reviewed by operator'}
+                        </p>
+                      )}
+                      {trip?.id && !isAcknowledged && (
+                        <div className="mt-1.5">
+                          {isCorrecting ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input
+                                type="text"
+                                value={correctingValue}
+                                onChange={(event) => setCorrectingValue(event.target.value)}
+                                placeholder="Corrected value"
+                                className="rounded-lg border border-[#30363d] bg-[#0f1115] px-2 py-1 text-ui-xs text-[#e6edf3] focus:border-[#58a6ff] focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                disabled={correctingValue.trim().length === 0 || isPending}
+                                onClick={() =>
+                                  applyAssumptionActions([{
+                                    slot_name: assumption.slot_name,
+                                    corrected_value: correctingValue.trim(),
+                                  }])
+                                }
+                                className="rounded-lg border border-[#3fb950]/40 bg-[#3fb950]/10 px-2.5 py-1 text-ui-xs font-medium text-[#7ee787] disabled:opacity-50"
+                              >
+                                Save correction
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isPending}
+                                onClick={() => {
+                                  setCorrectingSlot(null);
+                                  setCorrectingValue('');
+                                }}
+                                className="rounded-lg border border-[#30363d] px-2.5 py-1 text-ui-xs text-[#8b949e]"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                disabled={isPending}
+                                onClick={() =>
+                                  applyAssumptionActions([{ slot_name: assumption.slot_name }])
+                                }
+                                className="rounded-lg border border-[#3fb950]/40 bg-[#3fb950]/10 px-2.5 py-1 text-ui-xs font-medium text-[#7ee787] hover:bg-[#3fb950]/20 disabled:opacity-50 transition-colors"
+                              >
+                                {isPending ? 'Saving…' : 'Confirm'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={pendingSlot !== null}
+                                onClick={() => {
+                                  setCorrectingSlot(assumption.slot_name);
+                                  setCorrectingValue('');
+                                }}
+                                className="rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-2.5 py-1 text-ui-xs font-medium text-text-primary hover:bg-[rgba(210,153,34,0.18)] disabled:opacity-50 transition-colors"
+                              >
+                                Correct…
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {actionError && (
+              <p className="text-ui-xs text-[#f85149] mt-2">{actionError}</p>
+            )}
           </div>
         </div>
       )}

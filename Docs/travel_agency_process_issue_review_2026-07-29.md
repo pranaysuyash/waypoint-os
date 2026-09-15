@@ -2,14 +2,14 @@
 
 **Date**: 2026-07-29  
 **Session Goal**: Process Issue Audit, First-Principles Motto_v4 Synchronization, and Documentation Health Enforcement  
-**Governing Standard**: `motto_v4.md` (Section 0.3 Documentation Continuity, Section 0.4 Acceptance Contract, Section 0.12 Decision Records)  
+**Governing Standard**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (Section 0.3 Documentation Continuity, Section 0.4 Acceptance Contract, Section 0.12 Decision Records)  
 **Status**: Completed & Verified  
 
 ---
 
 ## 1. Executive Process Summary & Context
 
-Following the creation of the canonical `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` and the implementation/documentation of Turnaround Priorities #1 through #8, this document records the session audit, motto compliance check, and documentation inventory as required by `motto_v4.md`.
+Following the creation of the canonical `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` and the implementation/documentation of Turnaround Priorities #1 through #8, this document records the session audit, motto compliance check, and documentation inventory as required by `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`.
 
 ---
 
@@ -30,7 +30,7 @@ All 8 Turnaround Priorities derived from the First-Principles analysis of Waypoi
 
 ---
 
-## 3. First-Principles Doctrine Alignment (`motto_v4.md`)
+## 3. First-Principles Doctrine Alignment (`FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`)
 
 The system architecture strictly adheres to the 4 core pillars defined in `Docs/FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`:
 
@@ -47,7 +47,7 @@ The system architecture strictly adheres to the 4 core pillars defined in `Docs/
 
 ---
 
-## 4. `motto_v4.md` Acceptance Report
+## 4. `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` Acceptance Report
 
 - **Exact User-Facing Behavior Changed**: Full documentation and master index integration completed for all 8 turnaround priority modules and the canonical First-Principles Doctrine.
 - **Business & Operational Value Delivered**: Eliminates unlinked documentation debt, enforces complete audit traceability, and ensures incoming agents align on ground truth.
@@ -60,4 +60,4 @@ The system architecture strictly adheres to the 4 core pillars defined in `Docs/
 ## 5. Next Steps
 
 1. Maintain continuous synchronization between `Docs/INDEX.md` and repo implementation state.
-2. Ensure any new feature additions undergo the mandatory `motto_v4.md` acceptance contract audit pass prior to closing tasks.
+2. Ensure any new feature additions undergo the mandatory `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` acceptance contract audit pass prior to closing tasks.

@@ -31,6 +31,7 @@ _MONTH_MAP = {
 
 from .packet_models import (
     Ambiguity,
+    AssumptionRecord,
     AuthorityLevel,
     CanonicalPacket,
     EpistemicStatus,
@@ -3091,7 +3092,62 @@ class ExtractionPipeline:
         # Identify unknowns (MVB fields not present)
         self._identify_unknowns(packet)
 
+        # FND-0124: register defaulted values as explicit assumptions.
+        # Slots labeled EpistemicStatus.ASSUMED by the extraction realignment
+        # are "we are assuming X" records — harvest them into the packet's
+        # AssumptionRegister so they survive to the operator surface.
+        self._register_assumptions(packet)
+
         return packet
+
+    # Criticality per slot for harvested ASSUMED facts. These are the
+    # business-rule defaults applied when the traveler's input omits the
+    # detail (RQ-01 golden conventions). Criticality follows real-world
+    # blast radius: a wrong currency or wrong budget scope directly
+    # mis-prices the trip; unmarked flexibility only softens negotiation.
+    _ASSUMPTION_CRITICALITY: Dict[str, str] = {
+        "budget_currency": "critical",
+        "budget_scope": "critical",
+        "budget_flexibility": "advisory",
+    }
+
+    # Canonical intake field whose defaulted input produced each ASSUMED slot
+    # (FND-0291). Lets a manual correction of that field supersede the
+    # assumption entry — the derivation knowledge lives here, next to the
+    # extraction logic that creates these slots, not in the PATCH handler.
+    _ASSUMPTION_SOURCE_FIELD: Dict[str, str] = {
+        "budget_currency": "budget",
+        "budget_scope": "budget",
+        "budget_flexibility": "budget",
+    }
+
+    def _register_assumptions(self, packet: CanonicalPacket) -> None:
+        """Harvest fact slots labeled ASSUMED into ``packet.assumptions``.
+
+        A slot is ASSUMED when its value was defaulted by a system business
+        rule rather than asserted by the traveler (see
+        ``EpistemicStatus.ASSUMED`` in packet_models.py). Registering them
+        here feeds the unacknowledged-critical-assumption escalation in
+        decision.py and the operator-facing Assumptions section of the
+        packet view. Idempotent per slot_name; advisory by default so any
+        future ASSUMED slot is registered without extra wiring.
+        """
+        for slot_name, slot in packet.facts.items():
+            if getattr(slot, "epistemic_status", None) != EpistemicStatus.ASSUMED:
+                continue
+            if any(a.slot_name == slot_name for a in packet.assumptions):
+                continue
+            packet.assumptions.append(AssumptionRecord(
+                slot_name=slot_name,
+                assumed_value=getattr(slot, "value", None),
+                rationale=(
+                    f"Value defaulted by system business rules — no explicit "
+                    f"traveler input for '{slot_name}'. Epistemic status: ASSUMED. "
+                    f"Operator confirmation recommended."
+                ),
+                criticality=self._ASSUMPTION_CRITICALITY.get(slot_name, "advisory"),
+                source_field=self._ASSUMPTION_SOURCE_FIELD.get(slot_name),
+            ))
 
     @staticmethod
     def _epistemic_for_authority(authority: str) -> str:

@@ -163,9 +163,13 @@ def get_or_create_advisor_ledger(
 ) -> AdvisorPayoutLedger:
     """Retrieve or initialize advisor commission payout ledger."""
     if _sql_ledger_enabled():
-        from spine_api.persistence import TEST_AGENCY_ID
-
-        return _sql_ledger(advisor_id, advisor_name, agency_id or TEST_AGENCY_ID)
+        # FND-0290: durable (money-adjacent) ledger writes must be attributed
+        # to a real tenant — never silently to the legacy test agency.
+        if not agency_id:
+            raise ValueError(
+                "agency_id is required for durable advisor payout ledger writes"
+            )
+        return _sql_ledger(advisor_id, advisor_name, agency_id)
     return _memory_ledger(advisor_id, advisor_name)
 
 
@@ -189,10 +193,16 @@ def process_advisor_payout_authorization(
     authorized an over-cap payout (PA-08).
     """
     if _sql_ledger_enabled():
-        from spine_api.persistence import TEST_AGENCY_ID
+        # FND-0290: durable (money-adjacent) payout movements must be
+        # attributed to a real tenant — never silently to the legacy test
+        # agency.
+        if not agency_id:
+            raise ValueError(
+                "agency_id is required for durable advisor payout ledger writes"
+            )
 
         record = AdvisorPayoutStore.record_payout(
-            agency_id=agency_id or TEST_AGENCY_ID,
+            agency_id=agency_id,
             advisor_id=advisor_id,
             amount_usd=round(amount_cents / 100.0, 2),
             recorded_by=recorded_by or "system",

@@ -26,6 +26,22 @@ STAGE_CONVERSION_PROBABILITIES = {
 # from bottleneck/timing analysis.
 _NON_TERMINAL_STAGES = ("new", "assigned", "in_progress")
 
+# Booked-equivalent statuses for revenue metrics (FND-0122). Anchored on the
+# canonical 12-state machine (spine_api/core/trip_lifecycle.py): revenue counts
+# only states at or after the booking commitment — "booked" (commitment),
+# "change_requested" (booked change loop), "in_trip" (post-commitment travel),
+# "returned" (dormant post-trip COMPLETED split), "completed" (terminal), and
+# "delivered" (review-approval terminal writer, src/analytics/review.py:101).
+# Deliberately excluded: "active" (audit-gated alias of in_trip; semantics
+# pending the persisted-distribution audit — counting it would book revenue on
+# possibly-pre-routing leads) and "archived" (its only current writer archives
+# inbox leads, spine_api/routers/inbox.py — not booked-trip evidence), and
+# "cancelled" (refund path). No writer emits canonical "booked" yet — the
+# booking rail is the remaining producer gap.
+BOOKED_REVENUE_STATUSES = frozenset({
+    "booked", "change_requested", "in_trip", "returned", "completed", "delivered",
+})
+
 
 def _dict_payload(value: Any) -> dict:
     """Return dict-shaped JSON payloads; treat null/malformed payloads as absent evidence."""
@@ -390,7 +406,8 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
     """
     Calculate revenue and forecasting metrics from trip data.
 
-    Booked Revenue = Σ(budget where status == booked)
+    Booked Revenue = Σ(budget where status in BOOKED_REVENUE_STATUSES — the
+    canonical booked-equivalent states, FND-0122)
     Projected Revenue = Σ(budget * stage_probability)
     Total Pipeline Value = Σ(budget for non-booked active trips)
     Near Close Revenue = Σ(budget for output/safety stages)
@@ -443,7 +460,7 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
         status = trip.get("status", "new")
         stage = _dict_payload(trip.get("meta")).get("stage", "discovery")
 
-        if status == "booked":
+        if status in BOOKED_REVENUE_STATUSES:
             booked_revenue += val
             monthly_data[month_key]["revenue"] += val
             monthly_data[month_key]["booked"] += 1

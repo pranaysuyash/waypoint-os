@@ -3,7 +3,7 @@
 scripts/validate_decoupling.py — Rule 0.15 Third-Layer Decoupling Linter.
 
 Verifies that LLM outputs in src/llm/ and src/intake/ are strictly decoupled from
-pipeline decision gate state machines (Rule 0.15 in motto_v4.md).
+pipeline decision gate state machines (Rule 0.15 in FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md).
 
 Rules checked:
 1. LLM prompts & extractors must NOT directly set decision_state ('PROCEED', 'ASK_FOLLOWUP', 'ESCALATE')

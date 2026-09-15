@@ -25,6 +25,9 @@ def test_production_boot_assertions_pass_with_sql_backend():
         # PT-08: cross-process intake idempotency is required in production
         # (mirrors docker-compose/fly/render which pin this).
         "SPINE_API_IDEMPOTENCY_BACKEND": "sql",
+        # FND-0225: production boots require the trip locking backend pinned
+        # to a cross-process implementation (mirrors docker-compose/fly/render).
+        "SPINE_API_LOCKING_BACKEND": "sql",
         # FND-0262: prod-like boots require the explicit encryption posture —
         # production privacy mode plus a real (non-committed) Fernet key.
         "DATA_PRIVACY_MODE": "production",

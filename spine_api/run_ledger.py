@@ -2,10 +2,21 @@
 run_ledger.py — Deterministic step ledger for Waypoint OS spine_api.
 
 Persists per-run metadata and per-stage step outputs so any run can be
-inspected or replayed from disk without re-execution.
+inspected or replayed without re-execution.
 
-File layout
------------
+Durability model (FND-0226)
+---------------------------
+The lifecycle truth lives in the SAME store as the trip state. When
+``TRIPSTORE_BACKEND`` is sql/postgres, every meta transition is STRICTLY
+mirrored into the ``run_checkpoints`` SQL table (see
+``spine_api.run_ledger_sql``); a failed mirror raises so the divergence
+surfaces instead of silently re-creating the disk/SQL split-brain. The
+on-disk ``data/runs/`` tree is a local cache in that mode: step artifacts
+and heartbeats mirror best-effort, and reads fall through to SQL on a
+cache miss (e.g. after a rolling deploy replaced the pod's disk).
+
+File layout (disk cache)
+------------------------
     data/runs/{run_id}/
         meta.json            run-level metadata (state, timing, trip_id)
         steps/
@@ -48,7 +59,9 @@ from spine_api.run_state import RunState, assert_can_transition
 logger = logging.getLogger(__name__)
 
 # Terminal ledger states eligible for garbage collection (PA-12).
-TERMINAL_STATES = {"completed", "failed", "blocked"}
+# ``interrupted`` is the honest FND-0226 terminal state for runs whose
+# worker vanished (deploy/crash) with no live lease/heartbeat.
+TERMINAL_STATES = {"completed", "failed", "blocked", "interrupted"}
 
 # Lazy-GC throttle: prune at most once per hour, keyed on a marker file in
 # RUNS_DIR so multi-worker deployments share the throttle through the volume.
@@ -73,6 +86,58 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 RUNS_DIR = Path(os.environ.get("WAYPOINT_RUNS_DIR", str(DATA_DIR / "runs"))).expanduser()
 
 KNOWN_STEPS = ("packet", "validation", "decision", "strategy", "safety", "output", "blocked_result")
+
+
+def _checkpoint_store():
+    """Return the SQL checkpoint store when the state store is SQL-backed.
+
+    FND-0226: checkpoint durability must live in the same store as the trip
+    state. Deferred import keeps the file-backend path (tests, local dev)
+    free of any SQL dependency, and keeps run_ledger ↔ run_ledger_sql from
+    forming an import cycle (reconciliation calls back into RunLedger).
+
+    ``RUNNING_TESTS=1`` (set by tests/conftest.py) disables the mirror so
+    unrelated unit tests exercising RunLedger can never write synthetic
+    rows into a development database that happens to run with
+    ``TRIPSTORE_BACKEND=sql``. Tests that need the real store monkeypatch
+    ``_checkpoint_store`` directly (see tests/test_run_ledger_durability.py).
+    """
+    if os.getenv("RUNNING_TESTS", "").strip().lower() in ("1", "true", "yes"):
+        return None
+
+    from spine_api.run_ledger_sql import SQLRunCheckpointStore, checkpoint_backend_is_sql
+
+    if checkpoint_backend_is_sql():
+        return SQLRunCheckpointStore
+    return None
+
+
+def _mirror_meta_strict(meta: dict[str, Any]) -> None:
+    """Mirror a lifecycle meta transition into SQL. Raises on mirror failure.
+
+    STRICT on purpose: swallowing a mirror failure would let the SQL store
+    and the disk cache disagree about lifecycle truth — exactly the silent
+    split-brain FND-0226 forbids. Callers (pipeline error handling) already
+    convert raised errors into loud run failures.
+    """
+    store = _checkpoint_store()
+    if store is not None:
+        store.mirror_meta(meta)
+
+
+def _mirror_best_effort(operation, *args) -> None:
+    """Mirror a non-lifecycle artifact (heartbeat / step) without ever raising.
+
+    Heartbeats and step payloads are cache-grade data: losing one mirror
+    write degrades observability or replay, never lifecycle honesty.
+    """
+    store = _checkpoint_store()
+    if store is None:
+        return
+    try:
+        operation(*args)
+    except Exception as exc:  # noqa: BLE001 — cache mirror must never break the run
+        logger.warning("Run-ledger SQL mirror (best-effort) failed: %s", exc)
 
 
 def _run_root(run_id: str) -> Path:
@@ -204,6 +269,9 @@ class RunLedger:
         with _file_lock(path):
             if not path.exists():
                 _atomic_write_json(path, meta)
+                stored = RunLedger.get_meta(run_id)
+                if stored is not None:
+                    _mirror_meta_strict(stored)
 
         # Idempotency policy (explicit, documented):
         # create() is idempotent — calling it again with the same run_id is a no-op.
@@ -241,6 +309,7 @@ class RunLedger:
             if state == RunState.RUNNING and locked_meta.get("started_at") is None:
                 locked_meta["started_at"] = _now_iso()
             _atomic_write_json(path, locked_meta)
+        _mirror_meta_strict(locked_meta)
 
     @staticmethod
     def save_step(
@@ -271,6 +340,13 @@ class RunLedger:
         with _file_lock(step_path):
             _atomic_write_json(step_path, checkpoint)
 
+        def _mirror_step() -> None:
+            from spine_api.run_ledger_sql import SQLRunCheckpointStore
+
+            SQLRunCheckpointStore.mirror_step(run_id, step_name, checkpoint)
+
+        _mirror_best_effort(_mirror_step)
+
     @staticmethod
     def complete(run_id: str, total_ms: float) -> None:
         """Mark run as COMPLETED with timing. Enforces transition guard."""
@@ -291,6 +367,7 @@ class RunLedger:
             locked_meta["completed_at"] = _now_iso()
             locked_meta["total_ms"] = round(total_ms, 2)
             _atomic_write_json(path, locked_meta)
+        _mirror_meta_strict(locked_meta)
 
     @staticmethod
     def complete_after_timeout(
@@ -327,6 +404,7 @@ class RunLedger:
                 locked_meta["total_ms"] = round(total_ms, 2)
             locked_meta["recovered_after_timeout"] = True
             _atomic_write_json(path, locked_meta)
+        _mirror_meta_strict(locked_meta)
 
     @staticmethod
     def touch(run_id: str) -> None:
@@ -347,6 +425,13 @@ class RunLedger:
                 raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
             locked_meta["heartbeat_at"] = _now_iso()
             _atomic_write_json(path, locked_meta)
+
+        def _mirror_heartbeat() -> None:
+            from spine_api.run_ledger_sql import SQLRunCheckpointStore
+
+            SQLRunCheckpointStore.mirror_meta(locked_meta)
+
+        _mirror_best_effort(_mirror_heartbeat)
 
     @staticmethod
     def fail(
@@ -384,6 +469,7 @@ class RunLedger:
             locked_meta["failure_class"] = failure_class
             locked_meta["stage_at_failure"] = stage
             _atomic_write_json(path, locked_meta)
+        _mirror_meta_strict(locked_meta)
 
     @staticmethod
     def block(run_id: str, block_reason: str) -> None:
@@ -405,6 +491,7 @@ class RunLedger:
             locked_meta["completed_at"] = _now_iso()
             locked_meta["block_reason"] = block_reason
             _atomic_write_json(path, locked_meta)
+        _mirror_meta_strict(locked_meta)
 
     @staticmethod
     def update_meta(run_id: str, **kwargs: Any) -> None:
@@ -424,6 +511,52 @@ class RunLedger:
                 raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
             locked_meta.update(kwargs)
             _atomic_write_json(path, locked_meta)
+        _mirror_meta_strict(locked_meta)
+
+    @staticmethod
+    def mark_interrupted(run_id: str, reason: str) -> None:
+        """Mark a queued/running run INTERRUPTED — honest deploy/crash state.
+
+        FND-0226: the startup reconciliation uses this to convert orphaned
+        SQL run records (no live lease, stale heartbeat) from a lying
+        ``running`` into an honest ``interrupted``. The disk cache is
+        updated too when present, and the SQL mirror is strict like every
+        other lifecycle transition.
+
+        Unlike ``complete_after_timeout`` this deliberately bypasses the
+        generic transition guard ONLY for queued/running → interrupted; any
+        other source state raises ValueError so reconciliation can never
+        clobber a terminal record.
+        """
+        meta = RunLedger.get_meta(run_id)
+        if meta is None:
+            raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+
+        current = RunState(meta["state"])
+        if current not in (RunState.QUEUED, RunState.RUNNING):
+            raise ValueError(
+                f"mark_interrupted is only valid from 'queued'/'running', "
+                f"got {current!r} for run {run_id!r}"
+            )
+
+        path = _meta_path(run_id)
+        with _file_lock(path):
+            locked_meta = RunLedger.get_meta(run_id)
+            if locked_meta is None:
+                raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+            locked_current = RunState(locked_meta["state"])
+            if locked_current not in (RunState.QUEUED, RunState.RUNNING):
+                raise ValueError(
+                    f"mark_interrupted is only valid from 'queued'/'running', "
+                    f"got {locked_current!r} for run {run_id!r}"
+                )
+            now = _now_iso()
+            locked_meta["state"] = RunState.INTERRUPTED.value
+            locked_meta["completed_at"] = now
+            locked_meta["reconciled_at"] = now
+            locked_meta["reconciled_reason"] = reason
+            _atomic_write_json(path, locked_meta)
+        _mirror_meta_strict(locked_meta)
 
     # ------------------------------------------------------------------
     # Read operations
@@ -431,34 +564,60 @@ class RunLedger:
 
     @staticmethod
     def get_meta(run_id: str) -> Optional[dict[str, Any]]:
-        """Return run metadata, or None if not found."""
+        """Return run metadata, or None if not found.
+
+        FND-0226: when the SQL checkpoint store is active, a disk miss falls
+        through to the durable store — a pod that lost its local cache in a
+        rolling deploy still reads honest lifecycle state.
+        """
         path = _meta_path(run_id)
-        if not path.exists():
-            return None
-        with path.open(encoding="utf-8") as fh:
-            return json.load(fh)
+        if path.exists():
+            with path.open(encoding="utf-8") as fh:
+                return json.load(fh)
+
+        store = _checkpoint_store()
+        if store is not None:
+            return store.load_meta(run_id)
+        return None
 
     @staticmethod
     def get_step(run_id: str, step_name: str) -> Optional[dict[str, Any]]:
         """Return a checkpointed step output, or None if not yet written."""
         path = _steps_dir(run_id) / f"{step_name}.json"
-        if not path.exists():
-            return None
-        with path.open(encoding="utf-8") as fh:
-            return json.load(fh)
+        if path.exists():
+            with path.open(encoding="utf-8") as fh:
+                return json.load(fh)
+
+        store = _checkpoint_store()
+        if store is not None:
+            return store.load_step(run_id, step_name)
+        return None
 
     @staticmethod
     def get_all_steps(run_id: str) -> dict[str, Any]:
-        """Return all checkpointed steps as {step_name: checkpoint_data}."""
+        """Return all checkpointed steps as {step_name: checkpoint_data}.
+
+        Disk cache wins where present; SQL fills any gaps (post-deploy
+        cache-miss read-through).
+        """
         result: dict[str, Any] = {}
         steps_dir = _steps_dir(run_id)
-        if not steps_dir.exists():
-            return result
-        for step_name in KNOWN_STEPS:
-            path = steps_dir / f"{step_name}.json"
-            if path.exists():
-                with path.open(encoding="utf-8") as fh:
-                    result[step_name] = json.load(fh)
+        if steps_dir.exists():
+            for step_name in KNOWN_STEPS:
+                path = steps_dir / f"{step_name}.json"
+                if path.exists():
+                    with path.open(encoding="utf-8") as fh:
+                        result[step_name] = json.load(fh)
+
+        if len(result) < len(KNOWN_STEPS):
+            store = _checkpoint_store()
+            if store is not None:
+                for step_name in KNOWN_STEPS:
+                    if step_name in result:
+                        continue
+                    mirrored = store.load_step(run_id, step_name)
+                    if mirrored is not None:
+                        result[step_name] = mirrored
         return result
 
     @staticmethod
@@ -470,30 +629,50 @@ class RunLedger:
         """
         List runs in reverse-chronological order (newest first).
         Optionally filter by trip_id and/or state.
+
+        FND-0226: when the SQL checkpoint store is active, SQL records not
+        present in the local disk cache (post-deploy cache loss) are merged
+        in so the run list stays honest; disk entries win on run_id
+        collision because they are the hot cache.
         """
-        if not RUNS_DIR.exists():
-            return []
-
         runs: list[dict[str, Any]] = []
+        seen_run_ids: set[str] = set()
 
-        for meta_path in sorted(RUNS_DIR.glob("*/meta.json"), reverse=True):
-            try:
-                with meta_path.open(encoding="utf-8") as fh:
-                    meta = json.load(fh)
+        if RUNS_DIR.exists():
+            for meta_path in sorted(RUNS_DIR.glob("*/meta.json"), reverse=True):
+                try:
+                    with meta_path.open(encoding="utf-8") as fh:
+                        meta = json.load(fh)
 
-                if trip_id is not None and meta.get("trip_id") != trip_id:
+                    if trip_id is not None and meta.get("trip_id") != trip_id:
+                        continue
+                    if state is not None and meta.get("state") != state:
+                        continue
+
+                    runs.append(meta)
+                    seen_run_ids.add(meta.get("run_id", ""))
+
+                    if len(runs) >= limit:
+                        break
+                except (OSError, ValueError):
                     continue
-                if state is not None and meta.get("state") != state:
-                    continue
 
-                runs.append(meta)
+        if len(runs) < limit:
+            store = _checkpoint_store()
+            if store is not None:
+                try:
+                    for meta in store.list_metas(trip_id=trip_id, state=state, limit=limit * 2):
+                        if meta.get("run_id") in seen_run_ids:
+                            continue
+                        runs.append(meta)
+                        seen_run_ids.add(meta.get("run_id", ""))
+                        if len(runs) >= limit:
+                            break
+                except Exception as exc:  # noqa: BLE001 — read path must not crash listing
+                    logger.warning("Run-ledger SQL read-through listing failed: %s", exc)
 
-                if len(runs) >= limit:
-                    break
-            except (OSError, ValueError):
-                continue
-
-        return runs
+        runs.sort(key=lambda m: m.get("created_at") or "", reverse=True)
+        return runs[:limit]
 
     @staticmethod
     def latest_run_for_trip(trip_id: str) -> Optional[dict[str, Any]]:

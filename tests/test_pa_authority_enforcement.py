@@ -112,9 +112,28 @@ def test_payout_over_cap_yields_403_escalation(session_client):
 
 
 def test_payout_in_cap_passes(session_client):
+    # FND-0221: payouts now require a payout-scope payment mandate; grant one
+    # for the test agency and reference it explicitly.
+    from spine_api.services.payment_mandate_service import PaymentMandateLedger
+
+    mandate = PaymentMandateLedger.register_mandate(
+        agency_id="agency_pa08_test",
+        trip_id=f"trip_pa08_payout_{uuid.uuid4().hex[:8]}",
+        customer_id="adv_pa08_ok",
+        max_authorized_cents=100_000,
+        purpose="",
+        scope="payout",
+        consent_text="Authorize advisor commission payouts for PA-08 cap testing.",
+        consent_artifact_ref="approval_event_pa08_cap_test",
+        payer_ref="user:operator@pa08.test",
+    )
     response = session_client.post(
         "/api/v1/subagent-payouts/adv_pa08_ok/request-payout",
-        json={"amount_cents": 25000, "payout_method": "DIRECT_DEPOSIT"},  # $250 ≤ $2,000 cap
+        json={
+            "amount_cents": 25000,  # $250 ≤ $2,000 cap
+            "payout_method": "DIRECT_DEPOSIT",
+            "mandate_id": mandate.mandate_id,
+        },
         headers={"X-Agency-ID": "agency_pa08_test"},
     )
     assert response.status_code == 200

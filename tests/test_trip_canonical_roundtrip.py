@@ -534,3 +534,189 @@ class TestTripResponseShape:
         result = TripResponse.from_dict(trip)
 
         assert result.safety == trip["safety"]
+
+
+# ---------------------------------------------------------------------------
+# Assumption acknowledgment loop (FND-0291)
+# ---------------------------------------------------------------------------
+
+
+def _pipeline_extracted() -> dict:
+    """Real producer output: budget without a currency marker yields
+    ASSUMED-labeled facts and a populated assumption register."""
+    from src.intake.extractors import ExtractionPipeline
+    from src.intake.packet_models import SourceEnvelope
+
+    packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(
+        "Planning a trip to Bali for 4 people in March 2027. Budget 500000."
+    )])
+    return packet.to_dict()
+
+
+@pytest.fixture
+def assumptions_trip_id():
+    """Trip whose extracted block carries a real assumption register; cleaned up."""
+    unique = uuid4().hex[:12]
+    trip_id = f"tc_assumptions_{unique}"
+    now = datetime.now(timezone.utc).isoformat()
+    extracted = _pipeline_extracted()
+    assert len(extracted["assumptions"]) > 0
+    TripStore.save_trip(
+        {
+            "id": trip_id,
+            "run_id": f"run_{unique}",
+            "source": "pytest-canonical",
+            "status": "assigned",
+            "created_at": now,
+            "updated_at": now,
+            "extracted": extracted,
+            "validation": {"is_valid": True, "errors": [], "warnings": []},
+            "raw_input": {"fixture_id": "canonical-roundtrip-test"},
+        },
+        agency_id=AGENCY_ID,
+    )
+    try:
+        yield trip_id
+    finally:
+        TripStore.delete_trip(trip_id)
+
+
+def _assumptions_of(trip_payload: dict) -> list:
+    extracted = trip_payload.get("extracted") or {}
+    return extracted.get("assumptions") or []
+
+
+class TestAssumptionActions:
+    def test_confirm_marks_entry_acknowledged(self, session_client, assumptions_trip_id):
+        result = _patch_trip(session_client, assumptions_trip_id, {
+            "assumptionActions": [{"slotName": "budget_currency"}],
+        })
+        entry = next(a for a in _assumptions_of(result) if a["slot_name"] == "budget_currency")
+        assert entry["acknowledged_by_operator"] is True
+        assert entry["operator_notes"]
+
+        persisted = _get_trip(session_client, assumptions_trip_id)
+        entry = next(a for a in _assumptions_of(persisted) if a["slot_name"] == "budget_currency")
+        assert entry["acknowledged_by_operator"] is True
+
+    def test_correct_writes_explicit_user_fact_and_supersedes_entry(
+        self, session_client, assumptions_trip_id,
+    ):
+        result = _patch_trip(session_client, assumptions_trip_id, {
+            "assumptionActions": [{
+                "slotName": "budget_currency",
+                "correctedValue": "INR",
+            }],
+        })
+        entry = next(a for a in _assumptions_of(result) if a["slot_name"] == "budget_currency")
+        assert entry["acknowledged_by_operator"] is True
+        assert "INR" in (entry["operator_notes"] or "")
+        fact = (result["extracted"]["facts"] or {}).get("budget_currency")
+        assert fact["value"] == "INR"
+        assert fact["authority_level"] == "explicit_user"
+
+    def test_unknown_slot_name_rejected(self, session_client, assumptions_trip_id):
+        resp = session_client.patch(
+            f"/trips/{assumptions_trip_id}",
+            json={"assumptionActions": [{"slotName": "nonexistent_slot"}]},
+        )
+        assert resp.status_code == 422
+
+    def test_budget_correction_supersedes_budget_assumptions(
+        self, session_client, assumptions_trip_id,
+    ):
+        """The escalation must stop when the operator corrected the data via
+        the existing repair surface — no separate acknowledgment needed."""
+        _patch_trip(session_client, assumptions_trip_id, {"budget": "500000 INR total"})
+        persisted = _get_trip(session_client, assumptions_trip_id)
+        for slot_name in ("budget_currency", "budget_scope", "budget_flexibility"):
+            entry = next(a for a in _assumptions_of(persisted) if a["slot_name"] == slot_name)
+            assert entry["acknowledged_by_operator"] is True, slot_name
+            assert "Superseded" in (entry["operator_notes"] or "")
+
+    def test_acknowledged_register_clears_decision_escalation(
+        self, session_client, assumptions_trip_id,
+    ):
+        """End-to-end loop closure: confirm via PATCH, rebuild the packet from
+        the persisted trip, and the decision engine's
+        unacknowledged_critical_assumption flag must be gone."""
+        from src.intake.decision import generate_risk_flags
+        from src.intake.packet_models import AssumptionRecord, CanonicalPacket
+
+        _patch_trip(session_client, assumptions_trip_id, {
+            "assumptionActions": [
+                {"slotName": "budget_currency"},
+                {"slotName": "budget_scope"},
+            ],
+        })
+        persisted = _get_trip(session_client, assumptions_trip_id)
+
+        packet = CanonicalPacket(packet_id=assumptions_trip_id)
+        packet.assumptions = [
+            AssumptionRecord(**entry) for entry in _assumptions_of(persisted)
+        ]
+        flags = generate_risk_flags(packet, stage="discovery")
+        assert "unacknowledged_critical_assumption" not in [f["flag"] for f in flags]
+
+
+class TestAcknowledgementCarryForward:
+    """FND-0291: operator attestations survive draft reprocess. Pure merge
+    logic — no store involved."""
+
+    @staticmethod
+    def _trip(assumptions: list) -> dict:
+        return {"extracted": {"facts": {}, "assumptions": assumptions}}
+
+    def test_acknowledged_entry_carried_into_new_register(self):
+        from spine_api.persistence import _carry_forward_acknowledged_assumptions
+
+        old = self._trip([{
+            "slot_name": "budget_currency",
+            "assumed_value": "USD",
+            "rationale": "defaulted",
+            "criticality": "critical",
+            "acknowledged_by_operator": True,
+            "operator_notes": "Confirmed by operator — system default is accurate.",
+        }])
+        new = self._trip([{
+            "slot_name": "budget_currency",
+            "assumed_value": "USD",
+            "rationale": "defaulted",
+            "criticality": "critical",
+            "acknowledged_by_operator": False,
+        }])
+
+        _carry_forward_acknowledged_assumptions(new, old)
+
+        entry = new["extracted"]["assumptions"][0]
+        assert entry["acknowledged_by_operator"] is True
+        assert entry["operator_notes"] == "Confirmed by operator — system default is accurate."
+
+    def test_unacknowledged_entries_not_carried(self):
+        from spine_api.persistence import _carry_forward_acknowledged_assumptions
+
+        old = self._trip([{
+            "slot_name": "budget_scope",
+            "acknowledged_by_operator": False,
+        }])
+        new = self._trip([{
+            "slot_name": "budget_scope",
+            "acknowledged_by_operator": False,
+        }])
+
+        _carry_forward_acknowledged_assumptions(new, old)
+
+        assert new["extracted"]["assumptions"][0]["acknowledged_by_operator"] is False
+
+    def test_absent_slot_and_missing_registers_are_safe(self):
+        from spine_api.persistence import _carry_forward_acknowledged_assumptions
+
+        old = self._trip([{"slot_name": "budget_flexibility", "acknowledged_by_operator": True}])
+        corrected = {"extracted": {"facts": {}, "assumptions": []}}
+        _carry_forward_acknowledged_assumptions(corrected, old)
+        assert corrected["extracted"]["assumptions"] == []
+
+        no_register_old = {"extracted": {"facts": {}}}
+        fresh = self._trip([{"slot_name": "budget_currency", "acknowledged_by_operator": False}])
+        _carry_forward_acknowledged_assumptions(fresh, no_register_old)
+        assert fresh["extracted"]["assumptions"][0]["acknowledged_by_operator"] is False

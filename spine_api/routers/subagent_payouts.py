@@ -14,6 +14,13 @@ PA-23: payouts write through the durable payout store (SQL when the SQL
 backend is active — the SQL ledger starts at true zero and is never seeded;
 memory fallback for tests/preview), and settlement reconciliation links
 booking totals to recorded payouts via ``reconcile_trip_commission``.
+FND-0221: every payout is ALSO gated by a payment authorization mandate —
+an active, unexpired, payout-scope mandate for the same agency (+ trip when
+the payout is trip-linked) must cover the amount BEFORE the ledger moves;
+absent/insufficient mandates refuse with the typed
+``payment_mandate_required`` / ``payment_mandate_refused`` errors and an
+audit event records the mandate id + principal at the seam. A payout retry
+with the same request id executes once (mandate movement idempotency).
 """
 
 from typing import Any, Dict, Optional
@@ -29,6 +36,7 @@ from spine_api.services.commission_reconciliation import (
     process_advisor_payout_authorization,
     reconcile_trip_commission,
 )
+from spine_api.services.payment_mandate_service import PaymentMandateLedger
 from src.governance.registry import (
     AuthorityApprovalRequired,
     AuthorityDenied,
@@ -52,6 +60,174 @@ _HOW_TO_RATIFY = (
     "retry this payout with the same request_id."
 )
 
+# FND-0221: how to obtain the payer-authorization artifact this seam requires.
+_HOW_TO_MANDATE = (
+    "Grant a payout-scope payment mandate via POST /api/v1/financial-ops/payment-mandates "
+    "(scope='payout', trip_id=<trip>, evidence_ref=<proposal/approval artifact>, payer_ref=<granting "
+    "principal>), then retry this payout with mandate_id or the same trip_id."
+)
+
+
+def _mandate_refusal(
+    error: str,
+    message: str,
+    *,
+    agency_id: str,
+    advisor_id: str,
+    amount_cents: int,
+    trip_id: Optional[str],
+    mandate_id: Optional[str] = None,
+    reason: Optional[str] = None,
+) -> HTTPException:
+    """Typed FND-0221 refusal (403) — also audited so refusals are provable."""
+    detail: Dict[str, Any] = {
+        "error": error,
+        "escalation_required": True,
+        "mandate_scope": "payout",
+        "advisor_id": advisor_id,
+        "amount_cents": amount_cents,
+        "trip_id": trip_id,
+        "message": message,
+    }
+    if mandate_id:
+        detail["mandate_id"] = mandate_id
+    if reason:
+        detail["reason"] = reason
+    detail["how_to_mandate"] = _HOW_TO_MANDATE
+    AuditStore.log_event(
+        "advisor_payout_mandate_refused",
+        agency_id,
+        {
+            "error": error,
+            "advisor_id": advisor_id,
+            "amount_cents": amount_cents,
+            "trip_id": trip_id,
+            "mandate_id": mandate_id,
+            "refusal_reason": reason or message,
+        },
+    )
+    return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+def _enforce_payout_mandate(
+    *,
+    agency_id: str,
+    advisor_id: str,
+    amount_cents: int,
+    trip_id: Optional[str],
+    mandate_id: Optional[str],
+    movement_idempotency_key: str,
+    money_mode: str,
+) -> Dict[str, Any]:
+    """FND-0221 seam gate: require an active payout mandate BEFORE the ledger moves.
+
+    Composition with ADR-008 (they gate different questions): money_execution_mode
+    gates WHO may trigger the movement; the mandate gates WHETHER this specific
+    movement is authorized by a payer consent artifact. Mirrors the fulfillment
+    seam posture: required under fully_human/hybrid (default), recorded-if-present
+    under fully_autonomous.
+
+    Returns the mandate authorization outcome (``replayed: True`` when the
+    movement idempotency key has already executed — callers must NOT move
+    money again). Raises the typed 403 refusals otherwise.
+    """
+    resolution = "explicit" if mandate_id else ("trip" if trip_id else None)
+
+    if resolution is None:
+        if money_mode == "fully_autonomous":
+            # Agency ratified autonomous movement; no mandate exists to chain.
+            return {"authorized": True, "mandate_id": None, "enforced": False}
+        raise _mandate_refusal(
+            "payment_mandate_required",
+            (
+                f"No payment mandate can be resolved for advisor payout '{advisor_id}' "
+                f"({amount_cents} cents, agency '{agency_id}'): pass mandate_id or trip_id "
+                "so the movement chains to a payer authorization artifact (FND-0221)."
+            ),
+            agency_id=agency_id,
+            advisor_id=advisor_id,
+            amount_cents=amount_cents,
+            trip_id=trip_id,
+        )
+
+    if resolution == "explicit":
+        mandate = PaymentMandateLedger.get_mandate(agency_id=agency_id, mandate_id=mandate_id or "")
+        if mandate is None:
+            # get_mandate is agency-scoped: a foreign-agency id reads as absent.
+            raise _mandate_refusal(
+                "payment_mandate_required",
+                f"Payment mandate '{mandate_id}' was not found for agency '{agency_id}' "
+                "(or belongs to another agency). No mandate, no movement (FND-0221).",
+                agency_id=agency_id,
+                advisor_id=advisor_id,
+                amount_cents=amount_cents,
+                trip_id=trip_id,
+                mandate_id=mandate_id,
+            )
+        # Wrong trip: an explicit mandate must cover THIS payout's trip when linked.
+        if trip_id and mandate.get("trip_id") != trip_id:
+            raise _mandate_refusal(
+                "payment_mandate_required",
+                (
+                    f"Payment mandate '{mandate_id}' covers trip '{mandate.get('trip_id')}', "
+                    f"not trip '{trip_id}'. A mandate must match the movement's agency AND "
+                    "trip (FND-0221)."
+                ),
+                agency_id=agency_id,
+                advisor_id=advisor_id,
+                amount_cents=amount_cents,
+                trip_id=trip_id,
+                mandate_id=mandate_id,
+            )
+    else:
+        mandate_record = PaymentMandateLedger.resolve_for_trip(
+            agency_id=agency_id, trip_id=trip_id or "", allowed_scopes=("payout",)
+        )
+        if mandate_record is None:
+            raise _mandate_refusal(
+                "payment_mandate_required",
+                (
+                    f"No active payout-scope payment mandate exists for trip '{trip_id}' "
+                    f"(agency '{agency_id}'). Advisor payouts move agency money and require "
+                    "a payer authorization artifact (FND-0221)."
+                ),
+                agency_id=agency_id,
+                advisor_id=advisor_id,
+                amount_cents=amount_cents,
+                trip_id=trip_id,
+            )
+        mandate = mandate_record.to_dict()
+        mandate_id = mandate["mandate_id"]
+
+    authz = PaymentMandateLedger.authorize_charge(
+        agency_id=agency_id,
+        mandate_id=mandate_id or "",
+        amount_cents=amount_cents,
+        scope="payout",
+        movement_idempotency_key=movement_idempotency_key,
+    )
+    if not authz.get("authorized"):
+        raise _mandate_refusal(
+            "payment_mandate_refused",
+            (
+                f"Payment mandate '{mandate_id}' does not authorize this payout: "
+                f"{authz.get('reason')} The payer's consent must not be exceeded "
+                "(FND-0221)."
+            ),
+            agency_id=agency_id,
+            advisor_id=advisor_id,
+            amount_cents=amount_cents,
+            trip_id=trip_id,
+            mandate_id=mandate_id,
+            reason=authz.get("reason"),
+        )
+    # FND-0221: the mandate's payer_ref is the authenticated principal whose
+    # consent authorizes this movement — travels to the seam audit event.
+    authz["payer_ref"] = mandate.get("payer_ref") or mandate.get("granted_by") or ""
+    authz["evidence_ref"] = mandate.get("evidence_ref") or mandate.get("consent_artifact_ref") or ""
+    authz["enforced"] = True
+    return authz
+
 
 class RequestPayoutBody(BaseModel):
     amount_cents: int
@@ -63,6 +239,21 @@ class RequestPayoutBody(BaseModel):
         None, description="Stable payout request id — the approval subject_id. Derived when omitted."
     )
     trip_id: Optional[str] = Field(None, description="Optional trip link for settlement reconciliation")
+    # FND-0221: the payout authorization mandate. Either pass an explicit
+    # ``mandate_id`` or a ``trip_id`` so the payout-scope mandate can be
+    # resolved for that trip; one of them is required before money moves
+    # (unless the agency runs fully_autonomous, where a present mandate is
+    # still consumed + audited but not required).
+    mandate_id: Optional[str] = Field(
+        None, description="Explicit payout-scope payment mandate id (FND-0221)."
+    )
+    idempotency_key: Optional[str] = Field(
+        None,
+        description=(
+            "Movement idempotency key (FND-0221). Defaults to 'payout:<request_id>' — "
+            "a retry with the same request id executes once, never a double movement."
+        ),
+    )
 
 
 @router.get("/{advisor_id}/ledger", response_model=AdvisorPayoutLedger)
@@ -190,6 +381,38 @@ def request_advisor_payout(
             },
         ) from exc
 
+    # FND-0221: payer-authorization mandate gate BEFORE any ledger mutation.
+    # The movement idempotency key defaults to the payout request id, so the
+    # documented "retry with the same request_id" path executes exactly once.
+    movement_key = body.idempotency_key or f"payout:{subject_id}"
+    mandate_authz = _enforce_payout_mandate(
+        agency_id=agency_id,
+        advisor_id=advisor_id,
+        amount_cents=body.amount_cents,
+        trip_id=body.trip_id,
+        mandate_id=body.mandate_id,
+        movement_idempotency_key=movement_key,
+        money_mode=payout_mode,
+    )
+    if mandate_authz.get("replayed"):
+        # Same idempotency key → same outcome: the first execution already
+        # moved (or refused) this movement. Never move again.
+        replay_ledger = get_or_create_advisor_ledger(advisor_id, agency_id=agency_id)
+        AuditStore.log_event(
+            "advisor_payout_replayed",
+            agency_id,
+            {
+                "advisor_id": advisor_id,
+                "amount_cents": body.amount_cents,
+                "movement_idempotency_key": movement_key,
+                "mandate_id": mandate_authz.get("mandate_id"),
+                "payer_ref": mandate_authz.get("payer_ref"),
+                "payout_request_subject_id": subject_id,
+                "trip_id": body.trip_id,
+            },
+        )
+        return replay_ledger
+
     updated = process_advisor_payout_authorization(
         advisor_id=advisor_id,
         amount_cents=body.amount_cents,
@@ -214,6 +437,14 @@ def request_advisor_payout(
             "cleared_payout_cents": updated.cleared_payout_cents,
             "authority": authority,
             "ledger_backend": updated.storage_backend,
+            # FND-0221: mandate id + granting principal chained to the movement.
+            "mandate_id": mandate_authz.get("mandate_id"),
+            "mandate_enforced": mandate_authz.get("enforced", False),
+            "mandate_scope": "payout",
+            "mandate_payer_ref": mandate_authz.get("payer_ref"),
+            "mandate_evidence_ref": mandate_authz.get("evidence_ref"),
+            "movement_idempotency_key": movement_key,
+            "money_execution_mode": payout_mode,
         },
     )
 

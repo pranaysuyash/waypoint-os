@@ -1,7 +1,7 @@
 # Architectural Evaluation: 4-Layer Hybrid Extraction, Local PII Models & Progressive Pre-Caching
 
 **Date**: 2026-07-29  
-**Governing Standard**: `motto_v4.md` (Section 0.15 Third-Layer Rule, Section 0.12 Decision Records)  
+**Governing Standard**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (Section 0.15 Third-Layer Rule, Section 0.12 Decision Records)  
 **Status**: Canonical Architectural Strategy  
 
 ---
@@ -71,7 +71,7 @@ Waypoint OS adopts a **4-Layer Cascading Extraction & PII Stack** coupled with *
 
 ---
 
-## 5. Architectural Alignment with `motto_v4.md`
+## 5. Architectural Alignment with `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`
 
 1. **Zero Shadow Pipeline Risk**: Local models act exclusively as **Pre-Scrubbers (Layer 2)** and **Offline Draft Buffers (Layer 3)**. Final constraint verification and state integrity remain strictly governed by the canonical `spine_api` pipeline.
 2. **Zero Key Hazard**: All local models run on-device via WebAssembly/WebGPU with zero cloud API keys exposed.

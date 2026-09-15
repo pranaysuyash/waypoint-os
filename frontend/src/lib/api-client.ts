@@ -499,6 +499,26 @@ export async function updateTrip(id: string, data: Partial<Trip>): Promise<Trip>
   return api.patch<Trip>(`/api/trips/${id}`, data);
 }
 
+/**
+ * Resolve one or more packet assumptions as the operator (FND-0291).
+ * Confirm by omitting correctedValue; correct by supplying it — the backend
+ * writes the value into extracted.facts with explicit_user authority and
+ * acknowledges the entry, clearing the unacknowledged_critical_assumption
+ * escalation. Returns the refreshed Trip (updated packet included).
+ */
+export interface TripAssumptionAction {
+  slot_name: string;
+  operator_notes?: string;
+  corrected_value?: string | number | boolean;
+}
+
+export async function resolveTripAssumptions(
+  id: string,
+  actions: TripAssumptionAction[]
+): Promise<Trip> {
+  return api.patch<Trip>(`/api/trips/${id}`, { assumptionActions: actions });
+}
+
 export async function startPlanningTrip(
   id: string,
   agentId: string,

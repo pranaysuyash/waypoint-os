@@ -2719,3 +2719,17 @@ class TestOriginCityHinglishAndRoutePatterns:
         dest = p.facts.get("destination_candidates")
         assert origin is None or str(origin.value).lower() != "yahan"
         assert dest is not None and "Goa" in dest.value
+
+    def test_demo11_epistemic_honesty_destination_and_currency(self):
+        pipeline = ExtractionPipeline()
+        # Note with pattern-derived destination status and unmarked budget
+        p1 = pipeline.extract([SourceEnvelope.from_freeform("planning a trip with budget around 3500 to japan")])
+        assert p1.facts["destination_status"].epistemic_status == "INFERRED"
+        assert p1.facts["budget_currency"].value == "USD"
+        assert p1.facts["budget_currency"].epistemic_status == "ASSUMED"
+
+        # Note with explicit currency
+        p2 = pipeline.extract([SourceEnvelope.from_freeform("planning a trip with budget $3500 to japan")])
+        assert p2.facts["budget_currency"].value == "USD"
+        assert p2.facts["budget_currency"].epistemic_status == "FACT"
+

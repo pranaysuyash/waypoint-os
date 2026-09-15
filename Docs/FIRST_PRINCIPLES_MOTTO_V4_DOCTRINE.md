@@ -1,7 +1,7 @@
 # First-Principles Doctrine & System Architecture (Waypoint OS)
 
 **Date**: 2026-07-28  
-**Governing Standard**: `motto_v4.md` (Sections 0, 0.15, 1, 6, 7)  
+**Governing Standard**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (Sections 0, 0.15, 1, 6, 7)  
 **Status**: Canonical First-Principles Baseline  
 **Target Repository**: `travel_agency_agent` (Waypoint OS)  
 
@@ -62,7 +62,7 @@ Every travel agency workflow inside Waypoint OS decomposes into 7 irreducible pr
 
 ---
 
-## 5. `motto_v4.md` Architectural Principles
+## 5. `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` Architectural Principles
 
 ### A. The Third-Layer Rule (Section 0.15)
 AI systems inside Waypoint OS are structured across 3 distinct, decoupled layers:
@@ -103,5 +103,5 @@ Based on first-principles value chain analysis, the immediate product priorities
 ## 7. Document Revision & Traceability
 
 - **Created**: 2026-07-28  
-- **Source Documents**: `motto_v4.md`, `Docs/FIRST_PRINCIPLES_FOUNDATION_2026-04-14.md`, `Docs/FIRST_PRINCIPLES_TURNAROUND_PRIORITY_2026-07-28.md`  
+- **Source Documents**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`, `Docs/FIRST_PRINCIPLES_FOUNDATION_2026-04-14.md`, `Docs/FIRST_PRINCIPLES_TURNAROUND_PRIORITY_2026-07-28.md`  
 - **Maintainer**: Antigravity AI Pair Engineer  

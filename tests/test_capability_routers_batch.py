@@ -15,6 +15,14 @@ def setup_test_env(monkeypatch):
     monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
 
 
+@pytest.fixture(autouse=True)
+def materialize_attach_tenant(boundary_principal_factory):
+    """F-31 (FND-0118): the insurance attach path now writes the canonical SQL
+    BookingConfirmation whose agency_id is an FK to agencies.id, so the batch
+    test tenant must exist in SQL. Additive only (ON CONFLICT DO NOTHING)."""
+    boundary_principal_factory("usr_batch_test_attach", "agency_batch_test")
+
+
 def test_capability_routers_batch_end_to_end(session_client):
     """End-to-end integration test covering all 5 new capability routers."""
 
@@ -60,9 +68,28 @@ def test_capability_routers_batch_end_to_end(session_client):
     assert ledger_res.status_code == 200
     assert ledger_res.json()["split_tier_pct"] == 80.0
 
+    # FND-0221: payouts require a payout-scope payment mandate — grant one
+    # for the batch test agency and reference it in the payout call.
+    from spine_api.services.payment_mandate_service import PaymentMandateLedger
+
+    payout_mandate = PaymentMandateLedger.register_mandate(
+        agency_id="agency_batch_test",
+        trip_id=trip_id,
+        customer_id="adv_batch_01",
+        max_authorized_cents=100_000,
+        purpose="",
+        scope="payout",
+        consent_text="Authorize advisor commission payouts for capability batch testing.",
+        consent_artifact_ref="approval_event_batch_test",
+        payer_ref="user:operator@batch.test",
+    )
     payout_res = session_client.post(
         "/api/v1/subagent-payouts/adv_batch_01/request-payout",
-        json={"amount_cents": 25000, "payout_method": "DIRECT_DEPOSIT"},
+        json={
+            "amount_cents": 25000,
+            "payout_method": "DIRECT_DEPOSIT",
+            "mandate_id": payout_mandate.mandate_id,
+        },
         headers={"X-Agency-ID": "agency_batch_test"},
     )
     assert payout_res.status_code == 200

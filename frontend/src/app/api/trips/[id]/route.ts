@@ -96,6 +96,8 @@ const PATCHABLE_FIELDS = new Set([
   "tripPriorities",
   "dateFlexibility",
   "contactName",
+  // FND-0291: operator confirm/correct resolutions for packet assumptions
+  "assumptionActions",
 ]);
 
 export async function PATCH(

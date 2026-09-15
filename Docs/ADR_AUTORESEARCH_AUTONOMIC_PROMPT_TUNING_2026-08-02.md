@@ -3,7 +3,7 @@
 **Date**: 2026-08-02  
 **Status**: APPROVED  
 **Deciders**: AI Research Team, Agentic Engineering Lead  
-**Governing Rule**: `motto_v4.md` (Rule 0.9: Prompt & Model Governance, Rule 0.15: Third-Layer Decoupling)
+**Governing Rule**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (Rule 0.9: Prompt & Model Governance, Rule 0.15: Third-Layer Decoupling)
 
 ---
 

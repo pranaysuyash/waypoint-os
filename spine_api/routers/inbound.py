@@ -32,6 +32,7 @@ from spine_api.contract import (
     SafetyResult,
 )
 from spine_api.core.auth import get_current_agency_id
+from spine_api.core.sse_registry import SSE_CONNECTION_REGISTRY, SSEConnection
 
 try:
     from spine_api import persistence
@@ -613,8 +614,18 @@ async def generate_client_followup_prompt(
     )
 
 
-async def _trip_event_stream(trip_id: str, queue: asyncio.Queue):
-    """SSE generator for trip events (PA-14: bounded lifetime + pruned cleanup)."""
+async def _trip_event_stream(
+    trip_id: str,
+    queue: asyncio.Queue,
+    connection: SSEConnection | None = None,
+):
+    """SSE generator for trip events (PA-14: bounded lifetime + pruned cleanup).
+
+    FND-0229: when a registry ``connection`` is supplied, tenant-cap eviction
+    (its ``closed`` event set by a newer sibling connection) exits the loop
+    with a final ``TENANT_CAP_EVICTION`` retry hint, and the slot is
+    explicitly unregistered on any exit path (client disconnect included).
+    """
     wait_cycles = 0
     try:
         # Initial connection heartbeat
@@ -623,14 +634,45 @@ async def _trip_event_stream(trip_id: str, queue: asyncio.Queue):
 
         while wait_cycles < SSE_MAX_WAIT_CYCLES:
             wait_cycles += 1
-            try:
-                event = await asyncio.wait_for(queue.get(), timeout=SSE_WAIT_TIMEOUT_SECONDS)
-                data_str = json.dumps(event)
-                yield f"data: {data_str}\n\n"
-            except asyncio.TimeoutError:
-                # Periodic SSE heartbeat
+            if connection is not None:
+                get_task = asyncio.ensure_future(queue.get())
+                closed_task = asyncio.ensure_future(connection.closed.wait())
+                done, pending = await asyncio.wait(
+                    {get_task, closed_task},
+                    timeout=SSE_WAIT_TIMEOUT_SECONDS,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for task in pending:
+                    task.cancel()
+                if closed_task in done:
+                    # FND-0229: evicted by a newer tenant peer — emit the
+                    # retry hint so the client reconnects instead of hanging.
+                    eviction_msg = json.dumps({
+                        "event": "TENANT_CAP_EVICTION",
+                        "trip_id": trip_id,
+                        "reason": "tenant_connection_cap",
+                        "reconnect": True,
+                        "retry_after_seconds": 1,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+                    yield f"data: {eviction_msg}\n\n"
+                    return
+                if get_task in done:
+                    data_str = json.dumps(get_task.result())
+                    yield f"data: {data_str}\n\n"
+                    continue
+                # Timed out waiting on both — periodic SSE heartbeat.
                 ping_str = json.dumps({"event": "HEARTBEAT", "timestamp": datetime.now(timezone.utc).isoformat()})
                 yield f"data: {ping_str}\n\n"
+            else:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=SSE_WAIT_TIMEOUT_SECONDS)
+                    data_str = json.dumps(event)
+                    yield f"data: {data_str}\n\n"
+                except asyncio.TimeoutError:
+                    # Periodic SSE heartbeat
+                    ping_str = json.dumps({"event": "HEARTBEAT", "timestamp": datetime.now(timezone.utc).isoformat()})
+                    yield f"data: {ping_str}\n\n"
         # PA-14: lifetime budget exhausted — tell the client to reconnect.
         limit_msg = json.dumps({
             "event": "STREAM_LIMIT_REACHED",
@@ -645,6 +687,10 @@ async def _trip_event_stream(trip_id: str, queue: asyncio.Queue):
         # PA-14: prune the empty listener entry so the dict cannot grow
         # without bound; concurrent listeners for the same trip are kept.
         _prune_trip_listener(trip_id, queue)
+        # FND-0229: explicit slot eviction on every exit path, client
+        # disconnect included (Starlette cancels the generator).
+        if connection is not None:
+            connection.unregister()
 
 
 @router.get("/stream-events/{trip_id}")
@@ -659,6 +705,11 @@ async def stream_trip_events(
     exhaustion a final ``STREAM_LIMIT_REACHED`` event tells the client to
     reconnect. Listener queues are pruned from ``_TRIP_EVENT_LISTENERS`` when
     the last listener for a trip disconnects.
+
+    FND-0229: connections are capped per agency (default 50, config via
+    ``SPINE_API_SSE_MAX_CONNECTIONS_PER_TENANT``); the oldest tenant peer is
+    evicted with a ``TENANT_CAP_EVICTION`` retry hint when the cap is hit,
+    and every exit path unregisters its slot.
     """
     trip = TripStore.get_trip_for_agency(trip_id, agency_id)
     if not trip:
@@ -669,4 +720,9 @@ async def stream_trip_events(
         _TRIP_EVENT_LISTENERS[trip_id] = []
     _TRIP_EVENT_LISTENERS[trip_id].append(queue)
 
-    return StreamingResponse(_trip_event_stream(trip_id, queue), media_type="text/event-stream")
+    connection = SSE_CONNECTION_REGISTRY.register(agency_id)
+
+    return StreamingResponse(
+        _trip_event_stream(trip_id, queue, connection),
+        media_type="text/event-stream",
+    )

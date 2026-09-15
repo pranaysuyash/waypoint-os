@@ -1,8 +1,12 @@
 {
-  "openapi_path_count": 341,
+  "openapi_path_count": 345,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
+    "/agents/runtime/poisoned",
+    "/agents/runtime/poisoned/{job_id}",
+    "/agents/runtime/poisoned/{job_id}/redact",
+    "/agents/runtime/poisoned/{job_id}/replay",
     "/agents/runtime/run-once",
     "/analytics/agent/{agent_id}/drill-down",
     "/analytics/alerts",

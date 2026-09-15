@@ -110,6 +110,7 @@ class AutonomousProposalCompiler:
         peak_season: bool = True,
         allow_share_for_simulated: bool = False,
         agency_id: Optional[str] = None,
+        issued_by: Optional[str] = None,
         vendor_id: Optional[str] = None,
         vendor_class: Optional[str] = None,
         location: Optional[str] = None,
@@ -312,8 +313,21 @@ class AutonomousProposalCompiler:
         if allow_share_for_simulated:
             share_blocked_reason = None
             try:
-                from spine_api.routers.public_proposals import generate_signed_proposal_token
-                share_token = generate_signed_proposal_token(trip_id=trip_id, agency_id="system")
+                # FND-0219: share tokens are durable capability credentials.
+                # Issuance goes through the token store so the consent
+                # artifact (the principal who authorized external sharing of
+                # this trip's proposal) is recorded with the credential row.
+                # agency_scope (not the legacy hardcoded "system") binds the
+                # credential to the issuing agency so the persisted-proposal
+                # projection can resolve it.
+                from spine_api.routers.public_proposals import issue_proposal_capability
+
+                share_token, _credential = issue_proposal_capability(
+                    trip_id=trip_id,
+                    agency_id=agency_scope,
+                    consented_by=issued_by or f"agency:{agency_scope}",
+                    purpose="compiled_proposal_share",
+                )
             except Exception:
                 share_token = proposal_id
             share_url = f"https://proposals.waypointos.com/view/{share_token}"

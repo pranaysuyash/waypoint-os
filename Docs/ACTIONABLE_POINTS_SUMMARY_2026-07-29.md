@@ -1,12 +1,12 @@
 # Actionable Implementation Roadmap (Waypoint OS)
 
 **Date**: 2026-07-29  
-**Governing Standard**: `motto_v4.md` & `Docs/FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`  
+**Governing Standard**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` & `Docs/FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`  
 **Status**: Active Execution Plan  
 
 ---
 
-## 1. Engineering & Architecture Actionables (`motto_v4.md`)
+## 1. Engineering & Architecture Actionables (`FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`)
 
 1. **Enforce Third-Layer Decoupling (Rule 0.15)**
    - **Model Layer (`src/llm/`)**: Restrict LLM usage strictly to nuance extraction, narrative phrasing, and follow-up tone calibration.
@@ -21,7 +21,7 @@
 
 ---
 
-## 1.1 Understanding "Shadow Pipelines" (`motto_v4.md` Section 0 & 0.15)
+## 1.1 Understanding "Shadow Pipelines" (`FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` Section 0 & 0.15)
 
 A **shadow pipeline** is any parallel, ad-hoc, or duplicate code path that bypasses the canonical backend architecture to process data, call models, or mutate state independently.
 

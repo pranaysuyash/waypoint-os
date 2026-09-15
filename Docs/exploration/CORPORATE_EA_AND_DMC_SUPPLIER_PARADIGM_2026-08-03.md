@@ -3,7 +3,7 @@
 **Date**: 2026-08-03  
 **Status**: EXPLORATION & MULTI-ROLE BRAINSTORM (Uncommitted per User Directives)  
 **Authors**: Antigravity & User (Multi-Subagent Brainstorm Pass)  
-**Governing Rule**: `motto_v4.md` (ADR-First, §0.12 Decision Record Requirement, Non-Destructive Documentation Preservation)
+**Governing Rule**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (ADR-First, §0.12 Decision Record Requirement, Non-Destructive Documentation Preservation)
 
 ---
 

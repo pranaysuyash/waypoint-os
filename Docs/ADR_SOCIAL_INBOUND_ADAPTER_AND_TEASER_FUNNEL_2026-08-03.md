@@ -3,7 +3,7 @@
 **Date**: 2026-08-03  
 **Status**: APPROVED / PROPOSED  
 **Deciders**: Engineering & Product Lead, Creator Operations Lead  
-**Governing Motto**: `motto_v4.md` (Rule 0: Zero Shadow Pipelines, Rule 0.15: Third-Layer Decoupling, ADR-First)
+**Governing Motto**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (Rule 0: Zero Shadow Pipelines, Rule 0.15: Third-Layer Decoupling, ADR-First)
 
 ---
 

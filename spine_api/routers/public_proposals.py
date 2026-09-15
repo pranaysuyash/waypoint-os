@@ -6,13 +6,31 @@ Allows travelers to:
 - Select options (room upgrades, excursions, transfer options) with real-time recalculation
 - Accept and e-sign proposals with audit logging
 
-Token revocation durability boundary (PT-05 / N-07): revocations are durable
-on ONE host — a JSON file behind an OS lock, reloaded before every
-verification (see the PT-05 block below). That is restart-safe and
-multi-worker-safe on a single machine. Multi-replica deployments must point
-PROPOSAL_REVOCATIONS_PATH at a shared volume mounted identically in every
-replica, or promote revocations to PostgreSQL (planned follow-up). See
-.env.example for the deployment guidance.
+Capability credential lifecycle (FND-0219): a public proposal token is a
+capability URL — a real credential. Issuance, TTL, and revocation are durable
+in the SQL-backed ``ProposalTokenStore``
+(spine_api/services/proposal_token_store.py, table ``proposal_access_tokens``,
+alembic ``add_proposal_access_tokens``), which stores only SHA-256 token
+hashes plus a short lookup prefix — never raw token material. The in-process
+``_PROPOSAL_VIEW_CACHE`` below is a strictly bounded, expiring projection
+cache only: it NEVER participates in authorization (every request verifies
+the credential first).
+
+Token wire formats:
+- ``propv3_<urlsafe>`` (current): opaque 256-bit material via
+  ``secrets.token_urlsafe(32)``; all binding (agency/trip/proposal/TTL/
+  consent) lives in the durable row.
+- ``prop_{trip}_{agency}_{exp}_{hmac}`` (legacy v2, still verified): signed
+  and TTL'd inline; revocation via the file-backed store below.
+- Pre-hardening 16-hex tokens: fail closed (only the explicit demo
+  allowlist resolves, and only when PUBLIC_PROPOSAL_DEMO_MODE=1). No silent
+  upgrade — honest errors.
+
+Revocation durability boundary (PT-05 / N-07): v2 revocations are durable on
+ONE host — a JSON file behind an OS lock (hash-keyed since FND-0219: the file
+no longer stores raw token material), reloaded before every verification.
+v3 revocations are durable in SQL (multi-replica safe). Multi-replica
+deployments should issue v3 credentials; see .env.example.
 """
 
 from __future__ import annotations
@@ -24,6 +42,7 @@ import logging
 import math
 import os
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -41,6 +60,23 @@ try:
     from spine_api import persistence
 except (ImportError, ValueError):
     import persistence
+
+try:
+    from spine_api.services.proposal_token_store import (
+        V3_TOKEN_PREFIX,
+        ProposalTokenStore,
+        TokenStatus,
+        hash_token,
+        new_token_material,
+    )
+except (ImportError, ValueError):
+    from services.proposal_token_store import (
+        V3_TOKEN_PREFIX,
+        ProposalTokenStore,
+        TokenStatus,
+        hash_token,
+        new_token_material,
+    )
 
 try:
     from spine_api.core.env import load_project_env
@@ -105,11 +141,73 @@ class AcceptProposalRequest(BaseModel):
     e_signature_consent: bool
 
 
-# In-memory proposal token store for fast, stateless client access
-# (maps proposal_token -> PublicProposalView). Durability note: this registry
-# is process-local by design; the durable trust control is the HMAC signature
-# plus the file-backed revocation store below, not this cache.
-_PROPOSAL_REGISTRY: Dict[str, PublicProposalView] = {}
+class _ProposalViewCache:
+    """Bounded, expiring in-process cache of projected ``PublicProposalView``s.
+
+    FND-0219: replaces the former unbounded ``_PROPOSAL_REGISTRY`` dict. Two
+    hard bounds and one scoping rule:
+
+    - Size: at most ``max_entries`` rows (oldest evicted first; default 4096).
+    - Time: every row expires after ``ttl_seconds`` (default 3600) — the view
+      is always re-derivable from the durable trip store / durable token row,
+      so a short TTL only trades a rebuild for staleness.
+    - Scope: this cache is a projection cache ONLY. It is never consulted for
+      authorization — every request verifies the credential (signature /
+      store row TTL / revocation) before a cached view may be returned, and
+      ``revoke_proposal_token`` evicts the entry so a revoked credential's
+      view cannot linger.
+    """
+
+    __slots__ = ("_entries", "_lock", "_max_entries", "_ttl_seconds")
+
+    def __init__(self, max_entries: int = 4096, ttl_seconds: int = 3600) -> None:
+        self._max_entries = max_entries
+        self._ttl_seconds = ttl_seconds
+        self._entries: "Dict[str, tuple[PublicProposalView, float]]" = {}
+        self._lock = threading.Lock()
+
+    def _purge_expired_locked(self, now: float) -> None:
+        expired = [key for key, (_view, expires) in self._entries.items() if expires <= now]
+        for key in expired:
+            del self._entries[key]
+
+    def set(self, token: str, view: PublicProposalView) -> None:
+        now = time.monotonic()
+        with self._lock:
+            self._purge_expired_locked(now)
+            if token not in self._entries and len(self._entries) >= self._max_entries:
+                # FIFO eviction: dict preserves insertion order, so the first
+                # key is the oldest. Recaching a token refreshes its position.
+                oldest = next(iter(self._entries))
+                del self._entries[oldest]
+            self._entries[token] = (view, now + self._ttl_seconds)
+
+    def get(self, token: str) -> Optional[PublicProposalView]:
+        now = time.monotonic()
+        with self._lock:
+            entry = self._entries.get(token)
+            if entry is None:
+                return None
+            view, expires = entry
+            if expires <= now:
+                del self._entries[token]
+                return None
+            return view
+
+    def contains(self, token: str) -> bool:
+        return self.get(token) is not None
+
+    def pop(self, token: str) -> None:
+        with self._lock:
+            self._entries.pop(token, None)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._entries.clear()
+
+
+# Bounded projection cache (FND-0219). Authorization never consults this.
+_PROPOSAL_VIEW_CACHE = _ProposalViewCache()
 
 
 # ---------------------------------------------------------------------------
@@ -192,10 +290,25 @@ _REVOCATIONS_PATH = Path(
         str(Path(__file__).resolve().parents[2] / "data" / "proposals" / "revoked_tokens.json"),
     )
 )
-# token -> ISO-8601 revocation timestamp (dict, not set, so the file is
-# self-describing and audit-friendly).
+# token_hash (SHA-256 hex) -> ISO-8601 revocation timestamp (dict, not set, so
+# the file is self-describing and audit-friendly). FND-0219: keys are HASHES —
+# the file never stores raw capability material. Legacy files that keyed by
+# raw token are normalized on load (re-keyed by hashing) so prior revocations
+# keep working without any silent re-issue.
 _REVOKED_TOKENS: Dict[str, str] = {}
 _revocations_lock = threading.Lock()
+
+
+def _normalize_revocation_key(key: str) -> str:
+    """Return the hash key for a stored revocation entry.
+
+    Entries written since FND-0219 are already 64-hex SHA-256 digests; legacy
+    raw-token keys are hashed on load (one-way — the raw value is dropped,
+    never persisted again).
+    """
+    if len(key) == 64 and all(char in "0123456789abcdef" for char in key):
+        return key
+    return hash_token(key)[0]
 
 
 def _load_revocations() -> bool:
@@ -217,7 +330,9 @@ def _load_revocations() -> bool:
         logger.error("Proposal revocation store %s is not a JSON object", _REVOCATIONS_PATH)
         return False
     with _revocations_lock:
-        _REVOKED_TOKENS.update({str(k): str(v) for k, v in raw.items()})
+        _REVOKED_TOKENS.update(
+            {_normalize_revocation_key(str(k)): str(v) for k, v in raw.items()}
+        )
     return True
 
 
@@ -260,7 +375,12 @@ def _persist_revocations_locked() -> bool:
                 if not isinstance(raw, dict):
                     logger.error("Proposal revocation store %s is not a JSON object", _REVOCATIONS_PATH)
                     return False
-                persisted = {str(k): str(v) for k, v in raw.items()}
+                # Normalize (hash) any legacy raw-token keys during merge so
+                # raw credential material leaves the durable file at the next
+                # write; revocation timestamps are preserved.
+                persisted = {
+                    _normalize_revocation_key(str(k)): str(v) for k, v in raw.items()
+                }
             persisted.update(_REVOKED_TOKENS)
             tmp_path = _REVOCATIONS_PATH.with_name(
                 f"{_REVOCATIONS_PATH.name}.{os.getpid()}.tmp"
@@ -367,9 +487,57 @@ def generate_signed_proposal_token(
     return f"prop_{trip_id}_{agency_field}_{exp_ts}_{signature}"
 
 
+def _store() -> ProposalTokenStore:
+    return ProposalTokenStore.get_instance()
+
+
+def issue_proposal_capability(
+    trip_id: str,
+    agency_id: str,
+    consented_by: str,
+    purpose: str = "proposal_share",
+    proposal_id: Optional[str] = None,
+    ttl_hours: Optional[int] = None,
+) -> tuple[str, "object"]:
+    """Issue a durable v3 capability credential and record its consent artifact.
+
+    FND-0219 issuance path: mints opaque ``secrets.token_urlsafe(32)`` material
+    (256-bit, URL-safe, nothing about the trip leaked in the URL), then records
+    the durable row — sha256 hash + lookup prefix (never raw material),
+    agency/trip/proposal binding, TTL, and the consent artifact naming the
+    authenticated principal who authorized external sharing.
+
+    Must only be called from agency-authenticated contexts. Replay is
+    idempotent per credential: re-registering identical material returns the
+    stored row unchanged (no TTL or consent refresh).
+    """
+    if not trip_id or not isinstance(trip_id, str):
+        raise ValueError("trip_id must be a non-empty string")
+    if not agency_id or not isinstance(agency_id, str):
+        raise ValueError("agency_id must be a non-empty string")
+    if not consented_by or not isinstance(consented_by, str):
+        raise ValueError(
+            "consented_by is required: external sharing must be attributable "
+            "to the authenticated principal who authorized it"
+        )
+    token = new_token_material()
+    _created, record = _store().issue(
+        token=token,
+        format_version="v3",
+        agency_id=agency_id,
+        trip_id=trip_id,
+        proposal_id=proposal_id,
+        ttl_hours=ttl_hours,
+        consented_by=consented_by,
+        purpose=purpose,
+    )
+    return token, record
+
+
 def verify_proposal_token(token: str) -> tuple[bool, str, Optional[str]]:
     """
-    Verify capability token signature, TTL, and revocation status.
+    Verify capability token (v3 store-backed or legacy v2 signed), TTL, and
+    revocation status.
     Returns: (is_valid, reason, trip_id)
     """
     # Revocations may be written by another worker after this process starts.
@@ -377,14 +545,33 @@ def verify_proposal_token(token: str) -> tuple[bool, str, Optional[str]]:
     # a live authorization property, not just a file-on-disk claim.
     if not _load_revocations():
         return False, "Proposal revocation store is unavailable", None
-    if token in _REVOKED_TOKENS:
+
+    # FND-0219: the file store is hash-keyed — compare against the hash of the
+    # presented token, never against the raw value.
+    token_hash, _prefix = hash_token(token)
+    if token_hash in _REVOKED_TOKENS:
         return False, "Token has been revoked by travel advisor", None
 
-    # Registry rows may be marked expired in-process (e.g. revoked via a
-    # different code path); the file-backed store above is the durable control.
-    registry_row = _PROPOSAL_REGISTRY.get(token)
-    if registry_row is not None and registry_row.status == "expired":
-        return False, "Token has been revoked by travel advisor", None
+    # --- v3 opaque credential: the durable store row is authoritative -------
+    if token.startswith(V3_TOKEN_PREFIX):
+        try:
+            credential_status, record = _store().verify(token)
+        except Exception as exc:  # store outage must fail closed, not open
+            logger.error("Proposal token store unavailable during verification: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Proposal verification temporarily unavailable",
+            ) from exc
+        if credential_status == TokenStatus.VALID and record is not None:
+            # Resource binding comes from the durable row — a credential only
+            # ever resolves to the trip it was issued for.
+            return True, "valid", record.trip_id
+        # FND-0219, no-oracle rule: expired, revoked, and unknown credentials
+        # are indistinguishable on the public surface (same reason string, so
+        # the HTTP layer emits the same 410 + detail for every failure).
+        # Operators read the truth from the store row / logs, never from the
+        # traveler response.
+        return False, "Proposal link is no longer available", None
 
     if token in _DEMO_TOKEN_ALLOWLIST:
         return True, "legacy_ok", _DEMO_LEGACY_TRIP_ID
@@ -437,14 +624,25 @@ def verify_proposal_token(token: str) -> tuple[bool, str, Optional[str]]:
 
 
 def revoke_proposal_token(token: str) -> bool:
-    """Explicitly revoke a proposal capability token (durable across restarts)."""
+    """Explicitly revoke a proposal capability token (durable across restarts).
+
+    FND-0219: the durable trust control for v3 credentials is the SQL token
+    store (hash-keyed, multi-replica safe); the file-backed store is retained
+    for legacy v2 credentials (also hash-keyed now). The projection-cache
+    entry is evicted so no stale view can outlive the revocation.
+    """
+    revoked_at = datetime.now(timezone.utc)
+    persisted_file = False
+    try:
+        store_revoked = _store().revoke(token)
+    except Exception as exc:
+        logger.error("Failed to revoke proposal token in durable store: %s", exc)
+        store_revoked = False
     with _revocations_lock:
-        _REVOKED_TOKENS[token] = datetime.now(timezone.utc).isoformat()
-        persisted = _persist_revocations_locked()
-    registry_row = _PROPOSAL_REGISTRY.get(token)
-    if registry_row is not None:
-        registry_row.status = "expired"
-    return persisted
+        _REVOKED_TOKENS[hash_token(token)[0]] = revoked_at.isoformat()
+        persisted_file = _persist_revocations_locked()
+    _PROPOSAL_VIEW_CACHE.pop(token)
+    return persisted_file or store_revoked
 
 
 def generate_proposal_token(trip_id: str, agency_id: str = "system") -> str:
@@ -529,7 +727,7 @@ def _build_demo_proposal(token: str, trip_id: str) -> PublicProposalView:
         available_options=base_options,
         reality_tier="demo",
     )
-    _PROPOSAL_REGISTRY[token] = proposal
+    _PROPOSAL_VIEW_CACHE.set(token, proposal)
     return proposal
 
 
@@ -565,6 +763,25 @@ def _verified_agency_id(token: str) -> Optional[str]:
     if not agency_id or _encode_agency_field(agency_id) != agency_field:
         return None
     return agency_id
+
+
+def _verified_agency_for_token(token: str) -> Optional[str]:
+    """Issuing agency for a VERIFIED token, across wire formats (FND-0219).
+
+    v3 credentials carry no inline agency: the durable row is the binding.
+    Legacy v2 tokens decode their signed agency field. Callers must only use
+    this after ``verify_proposal_token`` accepted the token.
+    """
+    if token.startswith(V3_TOKEN_PREFIX):
+        try:
+            credential_status, record = _store().verify(token)
+        except Exception as exc:
+            logger.error("Proposal token store unavailable during agency lookup: %s", exc)
+            return None
+        if credential_status == TokenStatus.VALID and record is not None:
+            return record.agency_id
+        return None
+    return _verified_agency_id(token)
 
 
 def _as_finite_price(value: object) -> Optional[float]:
@@ -661,18 +878,22 @@ def _get_or_create_proposal(token: str) -> PublicProposalView:
     if token in _DEMO_TOKEN_ALLOWLIST:
         if not _demo_mode_enabled():
             raise HTTPException(status_code=404, detail="Proposal resource not found or link expired")
-        if token in _PROPOSAL_REGISTRY:
-            return _PROPOSAL_REGISTRY[token]
+        cached_demo = _PROPOSAL_VIEW_CACHE.get(token)
+        if cached_demo is not None:
+            return cached_demo
         return _build_demo_proposal(token, trip_id or _DEMO_LEGACY_TRIP_ID)
 
-    if token in _PROPOSAL_REGISTRY:
-        return _PROPOSAL_REGISTRY[token]
+    # Projection cache only — the credential was verified above, so a cached
+    # view may be served; TTL/revocation is re-enforced on every request.
+    cached = _PROPOSAL_VIEW_CACHE.get(token)
+    if cached is not None:
+        return cached
 
-    agency_id = _verified_agency_id(token)
+    agency_id = _verified_agency_for_token(token)
     if not agency_id or not trip_id:
         raise HTTPException(status_code=401, detail="Proposal access denied: malformed proposal token")
     proposal = _build_persisted_proposal(token, trip_id, agency_id)
-    _PROPOSAL_REGISTRY[token] = proposal
+    _PROPOSAL_VIEW_CACHE.set(token, proposal)
     return proposal
 
 
@@ -709,7 +930,7 @@ def calculate_proposal_options(token: str, req: UpdateOptionsRequest) -> PublicP
 
     proposal.available_options = updated_options
     proposal.selected_total_price_usd = round(proposal.base_price_usd + options_total, 2)
-    _PROPOSAL_REGISTRY[token] = proposal
+    _PROPOSAL_VIEW_CACHE.set(token, proposal)
     return proposal
 
 
@@ -747,6 +968,19 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
             "proposal_accepted_by": signer_label,
             "proposal_acceptance_token": token,
             "proposal_esign_consent": True,
+            # FND-0174: explicit honest markers. The acceptance is
+            # consequential state (it authorizes the money path), so it may
+            # never look like a silently blob-only record: the durable
+            # storage authority is the trip record itself (TripStore), the
+            # evidence is a real asserted e-sign consent (not a preview, not
+            # a carrier-verified artifact). Deliberately NOT migrated into
+            # the BookingConfirmation state machine: that table models
+            # supplier commitments (supplier/confirmation-number fields,
+            # shared active-slot uniqueness), while this is client
+            # authorization evidence — a different evidence family with its
+            # own authority, now labeled as such.
+            "proposal_acceptance_reality_tier": "real",
+            "proposal_acceptance_storage": "trip_record_durable",
         }
         persisted_trip = TripStore.update_trip(proposal.trip_id, acceptance_updates)
         if not persisted_trip:
@@ -776,7 +1010,11 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
             "total_price_usd": proposal.selected_total_price_usd,
             "accepted_at": now_iso,
             "persisted_on_trip": token not in _DEMO_TOKEN_ALLOWLIST,
+            # FND-0174: mirror the acceptance markers so the audit trail
+            # carries the same honest provenance the trip record does.
+            "reality_tier": "real",
+            "storage": "trip_record_durable",
         },
     )
-    _PROPOSAL_REGISTRY[token] = proposal
+    _PROPOSAL_VIEW_CACHE.set(token, proposal)
     return proposal

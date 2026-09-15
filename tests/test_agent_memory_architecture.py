@@ -27,6 +27,10 @@ from src.memory.models import (
     PreferenceProfile,
     MemoryProvenance,
     GDPRForgetCertificate,
+    SOURCE_TRUST_CLASS,
+    TRUST_CLASS_WEIGHTS,
+    SourceTrustClass,
+    clamp_confidence,
 )
 from src.memory.eligibility_gate import MemoryEligibilityGate
 from src.memory.provenance import ProvenanceEngine
@@ -344,3 +348,69 @@ def test_safety_critical_provenance_and_quarantine():
     )
     assert len(retrieved) == 1
     assert retrieved[0][0].summary == verified_medical.summary
+
+
+# ---------------------------------------------------------------------------
+# FND-0230: Write-side trust weighting — clamp, never skip; trust class
+# recorded on every eligible write.
+# ---------------------------------------------------------------------------
+
+
+def test_clamp_confidence_absurd_values_never_skip():
+    assert clamp_confidence(2.7, label="t") == 1.0
+    assert clamp_confidence(-3.0, label="t") == 0.0
+    assert clamp_confidence(0.83, label="t") == 0.83
+    assert clamp_confidence(None, label="t") == 0.0
+    assert clamp_confidence("high", label="t") == 0.0
+    assert clamp_confidence(float("nan"), label="t") == 0.0
+
+
+def test_gate_clamps_absurd_explicit_confidence_not_skipped():
+    gate = MemoryEligibilityGate()
+    # explicit 2.7 clamps to 1.0 → blended 0.5*1.0 + 0.5*1.0 = 1.0, write persists
+    res = gate.evaluate(
+        "Traveler always requests window seats", MemorySourceType.TRAVELER_DIRECT,
+        explicit_confidence=2.7,
+    )
+    assert res.is_eligible
+    assert res.confidence_score <= 1.0
+    assert res.confidence_score == 1.0
+    assert res.trust_class == SourceTrustClass.EXPLICIT_USER
+
+    # explicit -5 clamps to 0.0 → blended 0.5 < gate minimum → the gate's
+    # curation rejection (not a silent data path)
+    res_low = gate.evaluate(
+        "Traveler always requests window seats", MemorySourceType.TRAVELER_DIRECT,
+        explicit_confidence=-5.0,
+    )
+    assert not res_low.is_eligible
+    assert res_low.confidence_score == 0.5
+
+
+def test_persisted_provenance_confidence_always_in_range(tmp_path):
+    store = MemoryStore(data_file=tmp_path / "clamp_store.jsonl")
+    item, status = store.ingest_memory(
+        agency_id="agency-1",
+        entity_id="cust_a@x.com",
+        raw_text="Traveler always requests window seats",
+        source_type=MemorySourceType.TRAVELER_DIRECT,
+        category_hint="preference",
+        explicit_confidence=99.0,  # absurd — must be clamped, write persists
+    )
+    assert item is not None, status
+    assert 0.0 <= item.provenance.confidence_score <= 1.0
+    assert item.provenance.confidence_score == 1.0
+
+
+def test_trust_class_mapping_complete_and_ordered():
+    # Every source type maps to exactly one coarse trust class.
+    for st in MemorySourceType:
+        assert st in SOURCE_TRUST_CLASS
+        assert st in {s for s in SOURCE_TRUST_CLASS}
+    assert SOURCE_TRUST_CLASS[MemorySourceType.TRAVELER_DIRECT] == SourceTrustClass.EXPLICIT_USER
+    assert SOURCE_TRUST_CLASS[MemorySourceType.SYSTEM_INFERRED] == SourceTrustClass.DERIVED
+    assert SOURCE_TRUST_CLASS[MemorySourceType.AGENT_MANUAL] == SourceTrustClass.AGENT_INFERRED
+    assert SOURCE_TRUST_CLASS[MemorySourceType.THIRD_PARTY_WEB] == SourceTrustClass.SYSTEM_DEFAULT
+    # Explicit user statements always outrank every other class.
+    assert TRUST_CLASS_WEIGHTS[SourceTrustClass.EXPLICIT_USER] == 1.0
+    assert max(TRUST_CLASS_WEIGHTS.values()) == TRUST_CLASS_WEIGHTS[SourceTrustClass.EXPLICIT_USER]

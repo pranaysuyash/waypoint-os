@@ -1,5 +1,5 @@
 {
-  "route_count": 374,
+  "route_count": 378,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -14,6 +14,38 @@
       "name": "get_agent_runtime_events",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/agents/runtime/poisoned",
+      "name": "list_poisoned_jobs",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/agents/runtime/poisoned/{job_id}",
+      "name": "inspect_poisoned_job",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/agents/runtime/poisoned/{job_id}/redact",
+      "name": "redact_poisoned_job",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/agents/runtime/poisoned/{job_id}/replay",
+      "name": "replay_poisoned_job",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },

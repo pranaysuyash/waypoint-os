@@ -115,9 +115,13 @@ describe("deriveTripLifecycle", () => {
     expect(derived.tone).toBe("success");
   });
 
-  it("maps active (intake-complete) status to intake, not invisible (F-33)", () => {
+  it("maps active status to in_trip per the canonical 12-state machine (FND-0120)", () => {
+    // Ratified lifecycle (spine_api/core/trip_lifecycle.py) classifies
+    // "active" as the in_trip alias (audit-gated) — in-flight work, never
+    // an intake lead.
     const derived = deriveTripLifecycle(makeTrip({ status: "active", stage: "discovery" }));
-    expect(derived.state).toBe("intake");
+    expect(derived.state).toBe("in_trip");
+    expect(derived.tone).toBe("info");
   });
 
   it("surfaces review pending/rejected/revision as blockers", () => {

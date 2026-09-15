@@ -224,4 +224,78 @@ describe("PacketPanel trip details fallback", () => {
       "/trips/trip-repair-fallback/intake",
     );
   });
+
+  it("renders system-default assumptions with criticality when the packet carries them", () => {
+    const trip: Trip = {
+      id: "trip-assumptions-visible",
+      destination: "Bali",
+      type: "Family leisure",
+      state: "green",
+      age: "1h",
+      createdAt: "2026-09-14T00:00:00Z",
+      updatedAt: "2026-09-14T00:00:00Z",
+      party: 4,
+      dateWindow: "Mar 2027",
+      budget: "500000",
+      origin: "Bengaluru",
+      packet: {
+        facts: {},
+        derived_signals: {},
+        unknowns: [],
+        ambiguities: [],
+        contradictions: [],
+        assumptions: [
+          {
+            slot_name: "budget_currency",
+            assumed_value: "USD",
+            rationale: "Value defaulted by system business rules — no explicit traveler input.",
+            criticality: "critical",
+            acknowledged_by_operator: false,
+            operator_notes: null,
+          },
+          {
+            slot_name: "budget_flexibility",
+            assumed_value: "soft",
+            rationale: "Unmarked budget treated as negotiable (golden convention).",
+            criticality: "advisory",
+          },
+        ],
+      } as never,
+    };
+
+    render(<PacketPanel tripId={trip.id} trip={trip} />);
+
+    expect(screen.getByText("Assumptions (System Defaults)")).toBeInTheDocument();
+    expect(screen.getAllByText(/Assumed: USD/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Assumed: soft/).length).toBeGreaterThan(0);
+    expect(screen.getByText("critical")).toBeInTheDocument();
+    expect(screen.getByText("advisory")).toBeInTheDocument();
+  });
+
+  it("renders no assumptions section when the packet omits the field", () => {
+    const trip: Trip = {
+      id: "trip-assumptions-absent",
+      destination: "Goa",
+      type: "Family leisure",
+      state: "green",
+      age: "1h",
+      createdAt: "2026-09-14T00:00:00Z",
+      updatedAt: "2026-09-14T00:00:00Z",
+      party: 2,
+      dateWindow: "Aug 2026",
+      budget: "₹2.5L",
+      origin: "Mumbai",
+      packet: {
+        facts: {},
+        derived_signals: {},
+        unknowns: [],
+        ambiguities: [],
+        contradictions: [],
+      } as never,
+    };
+
+    render(<PacketPanel tripId={trip.id} trip={trip} />);
+
+    expect(screen.queryByText("Assumptions (System Defaults)")).not.toBeInTheDocument();
+  });
 });

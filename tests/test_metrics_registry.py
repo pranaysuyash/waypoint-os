@@ -56,9 +56,23 @@ def test_runtime_gauges_populated_without_crash():
     mr.collect_runtime_gauges()
     text = mr.render()
     assert "spine_requeue_jobs_pending " in text
+    assert "spine_requeue_jobs_poisoned " in text
+    assert "spine_requeue_jobs_poisoned_age_seconds " in text
     assert "spine_work_leases_active " in text
     assert "spine_usage_guard_spend_today_usd " in text
     assert "spine_process_uptime_seconds " in text
+    assert " nan" not in text.lower()
+
+
+def test_poisoned_gauges_rendered_and_finite():
+    # FND-0224: poison visibility is a scrape contract — gauges render with a
+    # finite (0 on DB error) value like every other runtime gauge.
+    mr.collect_runtime_gauges()
+    text = mr.render()
+    assert '# TYPE spine_requeue_jobs_poisoned gauge' in text
+    assert '# TYPE spine_requeue_jobs_poisoned_age_seconds gauge' in text
+    assert "spine_requeue_jobs_poisoned " in text
+    assert "spine_requeue_jobs_poisoned_age_seconds " in text
     assert " nan" not in text.lower()
 
 

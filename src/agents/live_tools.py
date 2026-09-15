@@ -16,6 +16,7 @@ from string import Formatter
 from typing import Any, Protocol
 
 from src.agents.tool_contracts import ToolFreshnessPolicy, ToolResult, validate_tool_output
+from src.agents.connectivity import ConnectivityTier, get_tool_connectivity_tier
 
 
 class WeatherTool(Protocol):
@@ -423,43 +424,50 @@ class StateDeptTravelAdvisoryTool:
 
 
 def build_weather_tool_from_env() -> WeatherTool:
-    if os.getenv("TRAVEL_AGENT_ENABLE_LIVE_TOOLS", "").strip().lower() in {"1", "true", "yes"}:
+    tier = get_tool_connectivity_tier("weather")
+    if tier in {ConnectivityTier.SANDBOX, ConnectivityTier.LIVE}:
         return OpenMeteoWeatherTool()
     return MockWeatherTool()
 
 
 def build_flight_status_tool_from_env() -> FlightStatusTool:
-    url_template = os.getenv("TRAVEL_AGENT_FLIGHT_STATUS_URL_TEMPLATE", "").strip()
-    if url_template:
-        return HTTPFlightStatusTool(
-            url_template=url_template,
-            provider_name=os.getenv("TRAVEL_AGENT_FLIGHT_STATUS_PROVIDER", "configured_http").strip() or "configured_http",
-            headers=_headers_from_env("TRAVEL_AGENT_FLIGHT_STATUS_HEADER_"),
-        )
+    tier = get_tool_connectivity_tier("flight_status")
+    if tier in {ConnectivityTier.SANDBOX, ConnectivityTier.LIVE}:
+        url_template = os.getenv("TRAVEL_AGENT_FLIGHT_STATUS_URL_TEMPLATE", "").strip()
+        if url_template:
+            return HTTPFlightStatusTool(
+                url_template=url_template,
+                provider_name=os.getenv("TRAVEL_AGENT_FLIGHT_STATUS_PROVIDER", "configured_http").strip() or "configured_http",
+                headers=_headers_from_env("TRAVEL_AGENT_FLIGHT_STATUS_HEADER_"),
+            )
     return MockFlightStatusTool()
 
 
 def build_price_watch_tool_from_env() -> PriceWatchTool:
-    url_template = os.getenv("TRAVEL_AGENT_PRICE_WATCH_URL_TEMPLATE", "").strip()
-    if url_template:
-        return HTTPPriceWatchTool(
-            url_template=url_template,
-            provider_name=os.getenv("TRAVEL_AGENT_PRICE_WATCH_PROVIDER", "configured_http").strip() or "configured_http",
-            headers=_headers_from_env("TRAVEL_AGENT_PRICE_WATCH_HEADER_"),
-        )
+    tier = get_tool_connectivity_tier("price_watch")
+    if tier in {ConnectivityTier.SANDBOX, ConnectivityTier.LIVE}:
+        url_template = os.getenv("TRAVEL_AGENT_PRICE_WATCH_URL_TEMPLATE", "").strip()
+        if url_template:
+            return HTTPPriceWatchTool(
+                url_template=url_template,
+                provider_name=os.getenv("TRAVEL_AGENT_PRICE_WATCH_PROVIDER", "configured_http").strip() or "configured_http",
+                headers=_headers_from_env("TRAVEL_AGENT_PRICE_WATCH_HEADER_"),
+            )
     return MockPriceWatchTool()
 
 
 def build_safety_alert_tool_from_env() -> SafetyAlertTool:
-    url_template = os.getenv("TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE", "").strip()
-    if url_template:
-        return HTTPSafetyAlertTool(
-            url_template=url_template,
-            provider_name=os.getenv("TRAVEL_AGENT_SAFETY_ALERT_PROVIDER", "configured_http").strip() or "configured_http",
-            headers=_headers_from_env("TRAVEL_AGENT_SAFETY_ALERT_HEADER_"),
-        )
-    if os.getenv("TRAVEL_AGENT_SAFETY_PROVIDER", "").strip().lower() in {"state_dept", "travel_state_gov"}:
-        return StateDeptTravelAdvisoryTool(endpoint=os.getenv("TRAVEL_AGENT_STATE_DEPT_ADVISORY_ENDPOINT") or None)
+    tier = get_tool_connectivity_tier("safety_alert")
+    if tier in {ConnectivityTier.SANDBOX, ConnectivityTier.LIVE}:
+        url_template = os.getenv("TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE", "").strip()
+        if url_template:
+            return HTTPSafetyAlertTool(
+                url_template=url_template,
+                provider_name=os.getenv("TRAVEL_AGENT_SAFETY_ALERT_PROVIDER", "configured_http").strip() or "configured_http",
+                headers=_headers_from_env("TRAVEL_AGENT_SAFETY_ALERT_HEADER_"),
+            )
+        if os.getenv("TRAVEL_AGENT_SAFETY_PROVIDER", "").strip().lower() in {"state_dept", "travel_state_gov"}:
+            return StateDeptTravelAdvisoryTool(endpoint=os.getenv("TRAVEL_AGENT_STATE_DEPT_ADVISORY_ENDPOINT") or None)
     return MockSafetyAlertTool()
 
 
@@ -636,19 +644,22 @@ class OpenSkyFlightRadarTool:
 
 
 def build_flight_search_tool_from_env() -> FlightSearchTool:
-    client_id = os.getenv("AMADEUS_CLIENT_ID", "").strip()
-    client_secret = os.getenv("AMADEUS_CLIENT_SECRET", "").strip()
-    if client_id and client_secret:
-        return AmadeusFlightSearchTool(
-            client_id=client_id,
-            client_secret=client_secret,
-            is_production=os.getenv("AMADEUS_ENV", "").strip().lower() == "production",
-        )
+    tier = get_tool_connectivity_tier("flight_search")
+    if tier in {ConnectivityTier.SANDBOX, ConnectivityTier.LIVE}:
+        client_id = os.getenv("AMADEUS_CLIENT_ID", "").strip()
+        client_secret = os.getenv("AMADEUS_CLIENT_SECRET", "").strip()
+        if client_id and client_secret:
+            return AmadeusFlightSearchTool(
+                client_id=client_id,
+                client_secret=client_secret,
+                is_production=tier == ConnectivityTier.LIVE or os.getenv("AMADEUS_ENV", "").strip().lower() == "production",
+            )
     return MockFlightSearchTool()
 
 
 def build_flight_radar_tool_from_env() -> FlightRadarTool:
-    if os.getenv("TRAVEL_AGENT_ENABLE_LIVE_TOOLS", "").strip().lower() in {"1", "true", "yes"}:
+    tier = get_tool_connectivity_tier("flight_radar")
+    if tier in {ConnectivityTier.SANDBOX, ConnectivityTier.LIVE}:
         return OpenSkyFlightRadarTool()
     return MockFlightRadarTool()
 
@@ -729,7 +740,8 @@ class OSRMGroundRoutingTool:
 
 
 def build_ground_routing_tool_from_env() -> GroundRoutingTool:
-    if os.getenv("TRAVEL_AGENT_ENABLE_LIVE_TOOLS", "").strip().lower() in {"1", "true", "yes"}:
+    tier = get_tool_connectivity_tier("ground_routing")
+    if tier in {ConnectivityTier.SANDBOX, ConnectivityTier.LIVE}:
         return OSRMGroundRoutingTool()
     return MockGroundRoutingTool()
 

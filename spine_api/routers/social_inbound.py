@@ -27,6 +27,7 @@ from spine_api.core.auth import get_current_agency_id
 from spine_api.core.feature_gates import get_feature_tier
 from spine_api.core.reality_tier import TierMetadata
 from spine_api.persistence import AuditStore, TripStore
+from spine_api.routers.price_lock import get_price_lock_expires_at_raw
 from src.intake.extractors import ExtractionPipeline
 from src.intake.packet_models import SourceEnvelope
 from src.security.privacy_guard import sanitize_input
@@ -134,7 +135,12 @@ async def parse_social_inbound(req: SocialInboundParseRequest, agency_id: str = 
         "deposit_amount": req.deposit_amount,
         "token": token,
         "suitability_score": suitability_score,
-        "price_lock_expires_at": price_lock_expires,
+        # FND-0119 (F-32): the price-lock expiry is persisted at the CANONICAL
+        # location (strategy.price_lock_expires_at) that the price-lock
+        # sentinel reads. The legacy trip top-level key is no longer written;
+        # the sentinel keeps a backward-compatible read fallback for rows
+        # persisted before 2026-09-14.
+        "strategy": {"price_lock_expires_at": price_lock_expires},
         "packet": {
             "destination": destination,
             "budget_max": budget_max,
@@ -210,7 +216,9 @@ async def unmask_teaser_proposal(req: UnmaskTeaserRequest, agency_id: str = Depe
     supplier_details = {
         "hotel_name": recommended.get("name") or trip.get("unmasked_hotel_name") or "Details being finalized by operator",
         "flight_info": recommended.get("flight_info") or trip.get("unmasked_flight_info") or "Flights being confirmed",
-        "price_lock_status": "LOCKED_CONFIRMED" if trip.get("price_lock_expires_at") else "PENDING",
+        # FND-0119: canonical-then-legacy read so both new (strategy) and
+        # pre-existing (top-level) rows report LOCKED_CONFIRMED.
+        "price_lock_status": "LOCKED_CONFIRMED" if get_price_lock_expires_at_raw(trip) else "PENDING",
     }
 
     return UnmaskTeaserResponse(

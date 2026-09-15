@@ -2,7 +2,7 @@
 
 **Date**: 2026-07-28  
 **Author**: Antigravity (AI Pair Engineer)  
-**Governing Principles**: `motto_v4.md` (Section 0 Boldness, Contract-Driven Truth, Real-World Impact)  
+**Governing Principles**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (Section 0 Boldness, Contract-Driven Truth, Real-World Impact)  
 **Canonical File**: `Docs/FIRST_PRINCIPLES_TURNAROUND_PRIORITY_2026-07-28.md`  
 
 ---
@@ -29,7 +29,7 @@ To determine what to build first, we analyze the core value loop of a B2B travel
 
 ## 2. What to Build First: The "Native Ingestion & State Trust Engine"
 
-Based on first principles, `motto_v4.md`, and long-term architectural coherence, the **#1 immediate priority** to build is:
+Based on first principles, `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`, and long-term architectural coherence, the **#1 immediate priority** to build is:
 
 ### 🚀 **Priority #1: Native Ingestion Extension + Optimistic State Sync Engine**
 
@@ -51,7 +51,7 @@ Based on first principles, `motto_v4.md`, and long-term architectural coherence,
 
 ---
 
-## 3. Why This First? (Justification against `motto_v4.md` Standards)
+## 3. Why This First? (Justification against `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` Standards)
 
 1. **Solves the #1 Real-World Retention Blocker Immediately**:
    - Eliminates copy-paste fatigue. Advisors capture inquiries in 2 seconds directly inside WhatsApp Web, fulfilling the core pitch of saving 3–5 hours daily.

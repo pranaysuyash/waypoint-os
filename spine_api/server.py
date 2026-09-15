@@ -1306,6 +1306,31 @@ async def lifespan(app: FastAPI):
 
     _validate_tripstore_backend_configuration()
 
+    # FND-0226: honest startup reconciliation — runs still marked
+    # queued/running in the SQL checkpoint store with no live lease and a
+    # stale heartbeat are marked INTERRUPTED instead of lying about being
+    # RUNNING forever. No-op when the state store is not SQL-backed, and
+    # skipped under test runs (same guard as the runtime bundles below) so
+    # the sync/async bridge is never exercised from a TestClient lifespan.
+    if not os.environ.get("RUNNING_TESTS"):
+        try:
+            from spine_api.run_ledger_sql import (
+                SQLRunCheckpointStore,
+                checkpoint_backend_is_sql,
+            )
+
+            if checkpoint_backend_is_sql():
+                reconciled = SQLRunCheckpointStore.reconcile_interrupted_runs()
+                if reconciled:
+                    logger.warning(
+                        "Run-ledger startup reconciliation marked %d orphaned "
+                        "run(s) interrupted: %s",
+                        len(reconciled),
+                        reconciled,
+                    )
+        except Exception as exc:  # noqa: BLE001 — reconciliation never blocks boot
+            logger.error("Run-ledger startup reconciliation failed: %s", exc)
+
     if _should_run_startup_mutations():
         await _ensure_agencies_schema_compatibility()
         await _ensure_memberships_schema_compatibility()
@@ -1510,7 +1535,11 @@ app.include_router(multimodal_router.router)
 app.include_router(commission_router.router)
 app.include_router(fx_sentinel_router.router)
 app.include_router(disruption_radar_router.router)
-app.include_router(corporate_policy_router.router)
+# FND-0117: include-level auth guard (same pattern as every other protected
+# router mount) so all corporate_policy endpoints, including the currently
+# dependency-free GET /policy-rules, require a JWT even if a future endpoint
+# is added without its own auth dependency.
+app.include_router(corporate_policy_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(concierge_upsell_router.router)
 app.include_router(constraints_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(resilience_router.router, dependencies=[Depends(_auth_or_skip)])
@@ -2674,6 +2703,27 @@ def patch_trip(
                 for warning in warning_list
                 if str((warning or {}).get("field") or "") not in fields_to_clear
             ]
+            # FND-0291: a manual correction supersedes assumption entries derived
+            # from the same canonical field — the operator asserted the true
+            # value, so the unacknowledged-critical-assumption escalation must
+            # stop firing. Derivation comes from the entry's source_field
+            # (stamped by the extractor); entries without one fall back to
+            # exact slot-name matches.
+            assumptions_list = extracted.get("assumptions")
+            if isinstance(assumptions_list, list):
+                for entry in assumptions_list:
+                    if not isinstance(entry, dict) or entry.get("acknowledged_by_operator"):
+                        continue
+                    derived_from_corrected = (
+                        entry.get("source_field") is not None
+                        and entry.get("source_field") in incoming_updates
+                    )
+                    if derived_from_corrected or entry.get("slot_name") in fields_to_clear:
+                        entry["acknowledged_by_operator"] = True
+                        entry["operator_notes"] = (
+                            "Superseded by manual field correction — operator "
+                            "asserted the true value."
+                        )
             synced_updates["extracted"] = extracted
             synced_updates["validation"] = validation
 
@@ -2691,7 +2741,62 @@ def patch_trip(
 
         return synced_updates
 
+    def _apply_assumption_actions(
+        current_trip: Dict[str, Any],
+        actions: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """FND-0291: apply operator confirm/correct resolutions to the packet's
+        assumption register. Confirm marks the entry reviewed; correct also
+        writes the true value into extracted.facts with explicit_user authority,
+        mirroring _sync_manual_trip_fields. slot_name is whitelisted against the
+        existing register — this resolves a known assumption, it is not
+        arbitrary fact injection. ``actions`` are dumped AssumptionAction
+        payloads (model_dump flattens nested models to dicts)."""
+        extracted = _clone_json(current_trip.get("extracted"), {}) or {}
+        assumptions_list = extracted.get("assumptions")
+        if not isinstance(assumptions_list, list) or not assumptions_list:
+            raise HTTPException(
+                status_code=422,
+                detail="No assumption register on this trip — nothing to resolve.",
+            )
+        by_slot: Dict[str, Dict[str, Any]] = {
+            entry.get("slot_name"): entry
+            for entry in assumptions_list
+            if isinstance(entry, dict) and entry.get("slot_name")
+        }
+        facts = extracted.setdefault("facts", {})
+        for action in actions:
+            slot_name = str(action.get("slot_name") or "")
+            entry = by_slot.get(slot_name)
+            if entry is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Unknown assumption slot_name '{slot_name}'.",
+                )
+            entry["acknowledged_by_operator"] = True
+            corrected_value = action.get("corrected_value")
+            if corrected_value is not None:
+                facts[slot_name] = {
+                    "value": corrected_value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                entry["operator_notes"] = action.get("operator_notes") or (
+                    f"Corrected by operator — assumed "
+                    f"{entry.get('assumed_value')!r} replaced with "
+                    f"{corrected_value!r}."
+                )
+            else:
+                entry["operator_notes"] = action.get("operator_notes") or (
+                    "Confirmed by operator — system default is accurate."
+                )
+        return {"extracted": extracted}
+
     updates = _sync_manual_trip_fields(trip, updates_dict)
+
+    assumption_actions = updates_dict.get("assumption_actions") or []
+    if assumption_actions:
+        updates.update(_apply_assumption_actions(trip, assumption_actions))
 
     edited_fields = set(updates.keys())
 

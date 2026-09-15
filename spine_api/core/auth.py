@@ -8,7 +8,6 @@ Provides:
 - get_current_agency_id: Extract primary agency_id from authenticated user
 """
 
-import os
 from contextvars import ContextVar
 from typing import Optional
 
@@ -179,9 +178,16 @@ async def get_current_agency_id(
     Tenant authority is derived only from the authenticated membership (JWT),
     never from a client-supplied header in production. Trusting a client ``X-Agency-ID``
     in production would let a caller read or write another agency's trips.
-    In automated pytest scenarios, explicit X-Agency-ID headers are respected for test isolation.
+
+    Historical note (FND-0259 hardening): this dependency previously also
+    honored the header whenever ``PYTEST_CURRENT_TEST`` was set — i.e. in
+    test runs with REAL auth, spoofing the header still switched tenants and
+    cross-tenant tests passed through the escape rather than through JWT
+    scoping. The gate is now auth-bypass-only (fail-closed at boot in
+    production); tests that need a second tenant under real auth mint a real
+    second principal + JWT (see conftest boundary seam).
     """
-    if request is not None and (os.environ.get("PYTEST_CURRENT_TEST") or auth_bypass_enabled()):
+    if request is not None and auth_bypass_enabled():
         header_agency = request.headers.get("X-Agency-ID")
         if header_agency:
             return header_agency

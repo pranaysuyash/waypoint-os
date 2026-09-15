@@ -10,6 +10,7 @@ from spine_api.models.frontier import GhostWorkflow, EmotionalStateLog, Intellig
 from spine_api.models.trips import Trip
 from spine_api.models.agent_work import AgentWorkLease
 from spine_api.models.idempotency import IdempotencyKey
+from spine_api.models.proposal_tokens import ProposalAccessToken
 from spine_api.models.audit import AuditLog
 from spine_api.models.routing import TripRoutingState
 from spine_api.models.authority_approval import AuthorityApprovalModel
@@ -29,6 +30,7 @@ __all__ = [
     "Trip",
     "AgentWorkLease",
     "IdempotencyKey",
+    "ProposalAccessToken",
     "AuditLog",
     "TripRoutingState",
     "AuthorityApprovalModel",

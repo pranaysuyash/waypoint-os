@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException
 
 from spine_api.core.auth import get_current_agency_id
-from spine_api.persistence import TEST_AGENCY_ID, AuditStore, TripStore
+from spine_api.persistence import AuditStore, TripStore
 
 router = APIRouter(prefix="/api/v1/group", tags=["Group Booking"])
 
@@ -229,7 +229,15 @@ def notify_passenger_pay_share(token: str, body: PassengerPayRequest):
     if not matched_invite:
         raise HTTPException(status_code=404, detail="Invalid or expired group invite link")
 
-    agency_id = matched_trip.get("agency_id", TEST_AGENCY_ID)
+    # FND-0290: fail closed instead of silently attributing the redemption to
+    # the legacy test agency. A matched invite whose trip record lacks tenant
+    # attribution is a data-integrity fault, not a payable redemption.
+    agency_id = matched_trip.get("agency_id")
+    if not agency_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Group invite record lacks agency attribution; redemption blocked. Contact support.",
+        )
 
     matched_invite["status"] = "NOTIFIED_PAID"
     matched_invite["payment_reference"] = body.payment_reference

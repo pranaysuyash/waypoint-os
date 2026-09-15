@@ -373,6 +373,11 @@ async def accept_proposal_by_token(token: str):
     target_trip["proposal_accepted_by_traveler"] = True
     target_trip["proposal_accepted_at"] = now_iso
     target_trip["proposal_acceptance_intent"] = "PROPOSAL_ACCEPTED_INTENT"
+    # FND-0174: same explicit honest markers as the e-sign acceptance path —
+    # the durable authority is the trip record, and this is a real asserted
+    # traveler action, never a silent blob-only write.
+    target_trip["proposal_acceptance_reality_tier"] = "real"
+    target_trip["proposal_acceptance_storage"] = "trip_record_durable"
     TripStore.save_trip(target_trip, agency_id=target_trip.get("agency_id"))
 
     AuditStore.log_event(

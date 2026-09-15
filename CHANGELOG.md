@@ -1,10 +1,26 @@
 # Changelog
 
-All notable changes to the Waypoint OS frontend are documented in this file.
+All notable changes to Waypoint OS are documented in this file.
 
 ## [Unreleased]
 
-### Design System Completness (2026-04-29)
+### Platform Hardening & Findings Remediation (2026-09-14)
+- **RAG Semantic Provider Abstraction**: Added `EmbeddingProvider` protocol, `HashEmbeddingProvider` (deterministic local), and `SemanticEmbeddingProvider` (OpenAI adapter) in `src/rag/embeddings.py` (FND-0018).
+- **Motto Doctrine Re-homing**: Consolidated legacy `motto_v4.md` references into canonical `Docs/FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` with zero dangling references verified via `scripts/check_dangling_docs.py` (FND-0024 / FND-0208).
+- **Frontend API Client & Bare Fetch Banning**: Configured ESLint rule `no-restricted-globals` in `frontend/eslint.config.mjs` banning raw `fetch()` calls in components and establishing `frontend/src/lib/api-client.ts` as canonical data layer (FND-0021 / FND-0202).
+- **Documentation Tree Authority**: Formally reconciled `frontend/docs/` as legacy spec tree under `Docs/` canonical authority per R-09 / A-07 (FND-0009 / FND-0023 / FND-0204).
+- **Corporate Policy Authentication**: Enforced JWT-based auth dependencies (`get_current_agency_id`, `get_current_membership`, `get_current_user`) on corporate policy routes with multi-tenant isolation (FND-0117).
+- **Colloquial Intake & Hinglish Routing**: Upgraded party size and origin extraction in `src/intake/extractors.py` handling partner phrasing, Hindi numerals, and origin-destination disambiguation (FND-0287 / FND-0288).
+- **Perishable Sentinel**: Centralized tracking and financial exposure auditing for visas, ticketing limits, CFAR 14d, supplier deposits, and hotel cutoffs in `src/monitoring/perishable_sentinel.py` (FND-0051 / FND-0231).
+- **Poisoned Requeue Queue Inspection**: Added secret redaction, DLQ mirroring, and replay management to `agent_requeue_jobs.py` and `DLQInspector` (FND-0044 / FND-0224).
+
+### System & Security Hardening (2026-09-04)
+- **Optimistic Concurrency & Replay Protection**: Added versioned optimistic locking (`expected_version`) and idempotency cache to `price_lock.py` (FND-0038 / FND-0218).
+- **Public Proposals Security**: Replaced unbounded in-memory tokens with HMAC v2 capability tokens, cryptographic TTL expiration, and file-locked revocation store in `public_proposals.py` (FND-0039 / FND-0219).
+- **Audit & Identity Consolidation**: Consolidated audit bridge into SQL `AuditStore`, unified team membership under `membership_service`, and bound `VisionClient` protocol (FND-0020 / FND-0201).
+- **Edge Proxy Standardization**: Restored canonical Next.js middleware proxy in `frontend/src/middleware.ts` (FND-0028 / FND-0207).
+
+### Design System Completeness (2026-04-29)
 
 #### P0 - Critical Fixes
 - **Added `--font-size-base: var(--text-base)`** (globals.css:87) — fixes undefined variable reference

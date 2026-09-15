@@ -39,6 +39,7 @@ services:
       # PT-08: SQL-backed idempotency is required for multi-worker or
       # multi-replica deployment, even though this default topology is one worker.
       - SPINE_API_IDEMPOTENCY_BACKEND=sql
+      - SPINE_API_LOCKING_BACKEND=sql
     depends_on:
       redis:
         condition: service_healthy

@@ -344,3 +344,29 @@ class TestRunEvents:
     def test_unknown_run_id_returns_empty(self):
         from run_events import get_run_events
         assert get_run_events("nonexistent-xyz-000") == []
+
+
+# ---------------------------------------------------------------------------
+# FND-0226: interrupted is a first-class terminal state (worker vanished —
+# deploy/crash) reachable from queued/running only.
+# ---------------------------------------------------------------------------
+
+class TestInterruptedState:
+    def test_interrupted_is_terminal(self):
+        from run_state import RunState
+        assert RunState.INTERRUPTED.is_terminal()
+
+    def test_transitions_into_interrupted(self):
+        from run_state import RunState, can_transition
+        assert can_transition(RunState.QUEUED, RunState.INTERRUPTED)
+        assert can_transition(RunState.RUNNING, RunState.INTERRUPTED)
+
+    def test_no_transitions_out_of_interrupted(self):
+        from run_state import RunState, can_transition
+        for target in RunState:
+            assert not can_transition(RunState.INTERRUPTED, target)
+
+    def test_terminal_states_cannot_be_interrupted(self):
+        from run_state import RunState, can_transition
+        for terminal in (RunState.COMPLETED, RunState.FAILED, RunState.BLOCKED):
+            assert not can_transition(terminal, RunState.INTERRUPTED)

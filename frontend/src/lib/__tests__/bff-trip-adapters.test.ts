@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isArchivedTrip,
   isInboxTrip,
   isWorkspaceTrip,
   transformSpineTripToInboxTrip,
@@ -142,6 +143,41 @@ describe("BFF trip adapters", () => {
 
     expect(isWorkspaceTrip(completedTrip)).toBe(false);
     expect(isWorkspaceTrip(cancelledTrip)).toBe(false);
+  });
+
+  it("renders active trips in the workspace queue, not the inbox lead queue (FND-0120)", () => {
+    // Canonical in_trip alias (audit-gated; spine_api/core/trip_lifecycle.py):
+    // an in-flight trip belongs on the operator work surface.
+    const activeTrip = transformSpineTripToTrip(
+      { ...spineTrip, status: "active" },
+      now
+    );
+
+    expect(activeTrip.state).toBe("amber");
+    expect(isWorkspaceTrip(activeTrip)).toBe(true);
+    expect(isInboxTrip(activeTrip)).toBe(false);
+  });
+
+  it("renders archived trips as terminal history, never as intake leads (FND-0120)", () => {
+    // Canonical dormant terminal — post-trip COMPLETED split, written by the
+    // inbox bulk-archive action; previously absent from every vocabulary so
+    // archived records fell back to the blue (intake) state and vanished from
+    // the partitions.
+    const archivedTrip = transformSpineTripToTrip(
+      { ...spineTrip, status: "archived" },
+      now
+    );
+
+    expect(archivedTrip.state).toBe("green");
+    expect(isArchivedTrip(archivedTrip)).toBe(true);
+    expect(isWorkspaceTrip(archivedTrip)).toBe(false);
+    expect(isInboxTrip(archivedTrip)).toBe(false);
+
+    const archivedInboxProjection = transformSpineTripToInboxTrip(
+      { ...spineTrip, status: "archived" },
+      now
+    );
+    expect(archivedInboxProjection.stage).toBe("completed");
   });
 
   it("keeps only lead lifecycle records in the inbox queue", () => {

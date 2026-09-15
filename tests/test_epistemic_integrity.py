@@ -14,8 +14,10 @@ from src.intake.packet_models import (
     EpistemicStatus,
     AssumptionRecord,
     AuthorityLevel,
+    SourceEnvelope,
 )
 from src.intake.decision import generate_risk_flags
+from src.intake.extractors import ExtractionPipeline
 
 
 def test_epistemic_status_enum():
@@ -98,3 +100,52 @@ def test_acknowledged_critical_assumption_clears_risk_flag():
     flags = generate_risk_flags(packet, stage="discovery")
     assumption_flags = [f for f in flags if f.get("flag") == "unacknowledged_critical_assumption"]
     assert len(assumption_flags) == 0
+
+
+# --- FND-0124: production assumption producer (extraction -> register) ---
+
+def test_pipeline_registers_defaulted_budget_slots_as_assumptions():
+    """An intake with a defaulted field must carry a provenance-labeled
+    assumption entry in the packet's AssumptionRegister (FND-0124)."""
+    packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(
+        "Planning a trip to Bali for 4 people in March 2027. Budget 500000."
+    )])
+    by_slot = {a.slot_name: a for a in packet.assumptions}
+    # budget without a currency marker -> system default currency is ASSUMED
+    assert "budget_currency" in by_slot
+    bc = by_slot["budget_currency"]
+    assert bc.criticality == "critical"
+    assert bc.acknowledged_by_operator is False
+    assert bc.rationale  # provenance: explain the default
+    assert bc.assumed_value == packet.facts["budget_currency"].value
+    # budget without a flexibility marker -> golden convention "soft"
+    assert "budget_flexibility" in by_slot
+    assert by_slot["budget_flexibility"].criticality == "advisory"
+    # the underlying facts are epistemically labeled ASSUMED, not FACT
+    assert packet.facts["budget_currency"].epistemic_status == EpistemicStatus.ASSUMED
+
+
+def test_pipeline_does_not_assume_explicit_values():
+    """Explicit traveler input must not be registered as an assumption."""
+    packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(
+        "Trip to Bali for 4 in March 2027, budget USD 5000 for the whole group."
+    )])
+    assert packet.facts["budget_currency"].epistemic_status == EpistemicStatus.FACT
+    assert packet.facts["budget_scope"].epistemic_status == EpistemicStatus.FACT
+    assert "budget_currency" not in [a.slot_name for a in packet.assumptions]
+    assert "budget_scope" not in [a.slot_name for a in packet.assumptions]
+
+
+def test_assumptions_survive_packet_serialization():
+    """Contract test: CanonicalPacket.to_dict preserves the assumption
+    register end-to-end (F-37 slice fixed the drop; this locks it in)."""
+    packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(
+        "Planning a trip to Bali for 4 people in March 2027. Budget 500000."
+    )])
+    assert len(packet.assumptions) > 0
+    d = packet.to_dict()
+    assert len(d["assumptions"]) == len(packet.assumptions)
+    entry = d["assumptions"][0]
+    assert entry["slot_name"] == packet.assumptions[0].slot_name
+    assert entry["criticality"] == packet.assumptions[0].criticality
+    assert entry["assumed_value"] == packet.assumptions[0].assumed_value

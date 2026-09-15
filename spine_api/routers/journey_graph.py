@@ -317,7 +317,7 @@ def get_public_journey_graph(trip_id: str, token: str = "") -> Dict[str, Any]:
     """
     from spine_api.routers.public_proposals import (
         verify_proposal_token,
-        _decode_agency_field,
+        _verified_agency_for_token,
     )
 
     is_valid, _reason, token_trip_id = verify_proposal_token(token)
@@ -326,20 +326,17 @@ def get_public_journey_graph(trip_id: str, token: str = "") -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="Not Found")
 
     # The trip read must be agency-scoped (RLS-safe even outside an
-    # authenticated request). The token format v2 embeds the issuing agency;
-    # the canonical verifier above already validated the signature, TTL,
-    # revocation, and the canonical encoding of that agency field, so decoding
-    # it here reuses the verified value instead of forking the verifier.
+    # authenticated request). The canonical verifier above already validated
+    # the credential (signature / durable row TTL / revocation), so resolving
+    # the issuing agency here reuses the verified value instead of forking the
+    # verifier: legacy v2 tokens decode their signed agency field; v3 opaque
+    # credentials (FND-0219) carry the binding in their durable token row.
     #
-    # Legacy demo allowlist tokens (no agency field) decode to a value that
-    # matches no agency, so the scoped lookup fails closed to 404 — demo
-    # fixtures are not journey-graph capabilities.
-    try:
-        _body = token[len("prop_") :]
-        _head = _body.rsplit("_", 2)[0]  # strip exp_ts and signature fields
-        _, _, agency_field = _head.rpartition("_")
-        token_agency_id = _decode_agency_field(agency_field)
-    except (ValueError, UnicodeDecodeError):
+    # Legacy demo allowlist tokens resolve to no usable agency, so the scoped
+    # lookup fails closed to 404 — demo fixtures are not journey-graph
+    # capabilities.
+    token_agency_id = _verified_agency_for_token(token)
+    if not token_agency_id:
         raise HTTPException(status_code=404, detail="Not Found")
 
     try:

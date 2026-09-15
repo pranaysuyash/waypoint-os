@@ -3,7 +3,7 @@
 **Date**: 2026-08-03  
 **Status**: COMPREHENSIVE DOCUMENTATION / DOCUMENTED (Uncommitted per User Directives)  
 **Authors**: Antigravity & User  
-**Governing Rule**: `motto_v4.md` (ADR-First, §0.12 Decision Record Requirement, Non-Destructive Documentation Preservation)
+**Governing Rule**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (ADR-First, §0.12 Decision Record Requirement, Non-Destructive Documentation Preservation)
 
 ---
 

@@ -3,7 +3,7 @@
 **Date**: 2026-08-02  
 **Status**: APPROVED  
 **Deciders**: Lead Architect, AI Systems Team  
-**Governing Rule**: `motto_v4.md` (Rule 0.15: Third-Layer Decoupling & Local Fallback Mandate)
+**Governing Rule**: `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` (Rule 0.15: Third-Layer Decoupling & Local Fallback Mandate)
 
 ---
 

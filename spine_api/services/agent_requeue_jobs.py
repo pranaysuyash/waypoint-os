@@ -28,6 +28,19 @@ JOB_STATUS_COMPLETED = "completed"
 JOB_STATUS_FAILED = "failed"
 JOB_STATUS_POISONED = "poisoned"
 
+# Durable marker written by redact_poisoned().  Replay refuses jobs whose
+# payload carries this key: the operator explicitly stripped the contents, so
+# the original work context is gone and re-execution would act on nothing.
+REDACTED_PAYLOAD_FLAG = "__redacted__"
+
+
+class PoisonedJobRedactedError(ValueError):
+    """Raised when replay is attempted on a job whose payload was redacted.
+
+    Redaction is a deliberate operator destruction of the payload; replaying
+    such a job is a contract violation, not a transient condition.
+    """
+
 
 @dataclass
 class RequeueJob:
@@ -280,9 +293,14 @@ class RequeueJobStore:
 
     def fail(self, job_id: str, error: str, poison: bool = False) -> None:
         status = JOB_STATUS_POISONED if poison else JOB_STATUS_FAILED
-        _run_async_blocking(self._terminal(job_id, status, error))
+        info = _run_async_blocking(self._terminal(job_id, status, error))
+        if status == JOB_STATUS_POISONED and info is not None:
+            _emit_poisoned_side_effects(job_id=job_id, error=error, info=info)
 
-    async def _terminal(self, job_id: str, status: str, error: str) -> None:
+    async def _terminal(self, job_id: str, status: str, error: str) -> Optional[dict[str, Any]]:
+        """Write the terminal state.  Returns row info for post-commit side
+        effects; poison alerting/audit/mirroring run in the sync caller so the
+        audit bridge is never nested inside the SQL bridge loop."""
         now = datetime.now(timezone.utc)
         # Retryable failed jobs get a backoff window equal to lease_seconds so they
         # are not immediately re-leased by the same worker pass.  Terminal states
@@ -300,7 +318,7 @@ class RequeueJobStore:
                 )
                 row = result.mappings().first()
                 if row is None:
-                    return
+                    return None
                 attempts = int(row["attempts"]) + 1
                 await session.execute(
                     text(
@@ -321,22 +339,11 @@ class RequeueJobStore:
                         "now": now,
                     },
                 )
-        if status == JOB_STATUS_POISONED and row is not None:
-            try:
-                from src.agents.dlq_inspector import DLQInspector
-                payload_dict = _safe_json_loads(str(row.get("payload") or "{}"))
-                trip_id = str(row.get("trip_id") or "")
-                DLQInspector.record_poisoned_job(
-                    job_id=job_id,
-                    agent_name="agent_requeue_jobs",
-                    trip_id=trip_id,
-                    error_message=error,
-                    stack_trace="",
-                    failed_payload=payload_dict,
-                    retry_count=attempts,
-                )
-            except Exception:
-                logger.exception("Failed to mirror poisoned job to DLQInspector: %s", job_id)
+        return {
+            "trip_id": str(row["trip_id"] or ""),
+            "attempts": attempts,
+            "payload": str(row.get("payload") or "{}"),
+        }
 
     # ── Snapshot ──────────────────────────────────────────────────────────
 
@@ -354,13 +361,42 @@ class RequeueJobStore:
                     """
                 )
             )).mappings().all()
+            poison_row = (await session.execute(
+                text(
+                    """
+                    SELECT COUNT(*) AS cnt, MIN(updated_at) AS oldest
+                    FROM agent_requeue_jobs
+                    WHERE status = :poisoned
+                    """
+                ),
+                {"poisoned": JOB_STATUS_POISONED},
+            )).mappings().first()
         counts: dict[str, int] = {}
         for row in rows:
             counts[row["status"]] = row["cnt"]
+        poisoned_count = int(poison_row["cnt"]) if poison_row else 0
+        oldest = poison_row["oldest"] if poison_row else None
+        if oldest is not None:
+            if isinstance(oldest, str):
+                try:
+                    oldest = datetime.fromisoformat(oldest)
+                except ValueError:
+                    oldest = None
+            if oldest is not None and oldest.tzinfo is None:
+                oldest = oldest.replace(tzinfo=timezone.utc)
+        oldest_age_seconds = (
+            max(0.0, (datetime.now(timezone.utc) - oldest).total_seconds())
+            if oldest is not None
+            else 0.0
+        )
         return {
             "backend": "sql",
             "total": sum(counts.values()),
             "counts": counts,
+            # FND-0224: poison must be visible in every operational snapshot,
+            # not only after an operator thinks to ask for the DLQ list.
+            "poisoned_count": poisoned_count,
+            "oldest_poisoned_age_seconds": round(oldest_age_seconds, 1),
         }
 
     def trip_stats(self, trip_id: str) -> dict[str, Any]:
@@ -490,37 +526,54 @@ class RequeueJobStore:
     def replay_poisoned(
         self, job_id: str, patched_payload: Optional[dict[str, Any]] = None
     ) -> bool:
-        """Unpoison and re-queue a job as pending, optionally updating its payload."""
-        return _run_async_blocking(self._replay_poisoned(job_id, patched_payload))
+        """Unpoison and re-queue a job as a fresh pending attempt.
 
+        The attempt counter is incremented (not reset) so poison history stays
+        observable downstream.  Raises PoisonedJobRedactedError when the job's
+        payload was redacted by an operator: the work context is gone and
+        replay would silently execute an empty job.
+        """
+        info = _run_async_blocking(self._replay_poisoned(job_id, patched_payload))
+        if info is None:
+            return False
+        # Audit + DLQ projection run in the sync caller so the audit bridge is
+        # never nested inside the SQL bridge loop.
+        _emit_replayed_side_effects(job_id, info)
+        return True
     async def _replay_poisoned(
         self, job_id: str, patched_payload: Optional[dict[str, Any]]
-    ) -> bool:
-        from src.agents.dlq_inspector import DLQInspector
-
+    ) -> Optional[dict[str, Any]]:
         now = datetime.now(timezone.utc)
         async with tripstore_session_maker() as session:
             async with session.begin():
                 result = await session.execute(
-                    text("SELECT id, status, payload FROM agent_requeue_jobs WHERE id = :id FOR UPDATE"),
+                    text("SELECT id, status, attempts, trip_id, payload FROM agent_requeue_jobs WHERE id = :id FOR UPDATE"),
                     {"id": job_id},
                 )
                 row = result.mappings().first()
                 if not row or row["status"] != JOB_STATUS_POISONED:
-                    return False
+                    return None
+
+                raw_payload = str(row.get("payload") or "{}")
+                existing_payload = _safe_json_loads(raw_payload)
+                if isinstance(existing_payload, dict) and existing_payload.get(REDACTED_PAYLOAD_FLAG):
+                    raise PoisonedJobRedactedError(
+                        f"Job {job_id} was redacted; its payload is gone and cannot be replayed"
+                    )
 
                 new_payload = (
                     json.dumps(patched_payload)
                     if patched_payload is not None
-                    else str(row.get("payload") or "{}")
+                    else raw_payload
                 )
+                attempts = int(row.get("attempts") or 0) + 1
 
                 await session.execute(
                     text(
                         """
                         UPDATE agent_requeue_jobs
                         SET status = :status,
-                            attempts = 0,
+                            attempts = :attempts,
                             last_error = '',
                             locked_by = '',
                             leased_until = NULL,
@@ -532,14 +585,236 @@ class RequeueJobStore:
                     {
                         "id": job_id,
                         "status": JOB_STATUS_PENDING,
+                        "attempts": attempts,
                         "payload": new_payload,
                         "now": now,
                     },
                 )
-                # Synchronize with in-memory DLQ store if tracked
-                if DLQInspector.get_job(job_id) is not None:
-                    DLQInspector.replay_job(job_id, patched_payload=patched_payload)
-                return True
+        return {
+            "trip_id": str(row["trip_id"] or ""),
+            "attempts": attempts,
+            "payload_patched": patched_payload is not None,
+        }
+
+    def redact_poisoned(self, job_id: str) -> bool:
+        """Strip a poisoned job's payload contents, preserving the row.
+
+        The durable row (id, trip_id, reason, error, counters, timestamps)
+        survives so the operator audit trail stays intact; only the payload —
+        which may carry traveler PII or credentials — is replaced with a
+        durable redaction marker that replay refuses.
+        """
+        info = _run_async_blocking(self._redact_poisoned(job_id))
+        if info is None:
+            return False
+        # Audit + DLQ projection run in the sync caller (bridge nesting).
+        _emit_redacted_side_effects(job_id, info)
+        return True
+
+    async def _redact_poisoned(self, job_id: str) -> Optional[dict[str, Any]]:
+        now = datetime.now(timezone.utc)
+        async with tripstore_session_maker() as session:
+            async with session.begin():
+                result = await session.execute(
+                    text("SELECT id, status, trip_id FROM agent_requeue_jobs WHERE id = :id FOR UPDATE"),
+                    {"id": job_id},
+                )
+                row = result.mappings().first()
+                if not row or row["status"] != JOB_STATUS_POISONED:
+                    return None
+                await session.execute(
+                    text(
+                        """
+                        UPDATE agent_requeue_jobs
+                        SET payload = :payload, updated_at = :now
+                        WHERE id = :id
+                        """
+                    ),
+                    {
+                        "id": job_id,
+                        "payload": json.dumps(
+                            {REDACTED_PAYLOAD_FLAG: True, "redacted_at": now.isoformat()}
+                        ),
+                        "now": now,
+                    },
+                )
+        return {"trip_id": str(row["trip_id"] or "")}
+
+    def reclaim_stale_running(self, *, grace_seconds: int = 0) -> int:
+        """Requeue RUNNING jobs whose lease expired (dead worker / lost lease).
+
+        A RUNNING row with an expired lease is an orphan: no worker owns it and
+        nothing will ever complete or fail it.  Returning it to pending reuses
+        the store's existing automatic re-lease path (the same one already
+        applied to retryable failed jobs); poison is never auto-replayed here.
+        Returns the number of reclaimed rows.
+        """
+        return _run_async_blocking(self._reclaim_stale_running(grace_seconds))
+
+    async def _reclaim_stale_running(self, grace_seconds: int) -> int:
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(seconds=max(0, grace_seconds))
+        async with tripstore_session_maker() as session:
+            async with session.begin():
+                result = await session.execute(
+                    text(
+                        """
+                        UPDATE agent_requeue_jobs
+                        SET status = :pending, locked_by = '', leased_until = NULL,
+                            updated_at = :now
+                        WHERE status = :running AND leased_until IS NOT NULL
+                          AND leased_until <= :cutoff
+                        """
+                    ),
+                    {
+                        "pending": JOB_STATUS_PENDING,
+                        "running": JOB_STATUS_RUNNING,
+                        "cutoff": cutoff,
+                        "now": now,
+                    },
+                )
+                reclaimed = int(result.rowcount or 0)
+        if reclaimed:
+            logger.warning(
+                "requeue_stale_leases_reclaimed count=%d — orphaned RUNNING jobs returned to pending",
+                reclaimed,
+            )
+        return reclaimed
+
+    def dead_trips(self, *, limit: int = 100) -> list[dict[str, Any]]:
+        """Return trips whose durable work is dead (poisoned), bounded page.
+
+        Poison means the pipeline already exhausted its retry ladder for these
+        jobs; recovery never fires for them because the requeue worker never
+        leases terminal states.  This surface lets the recovery loop log+count
+        dead trips each pass and operators replay them deliberately.
+        """
+        if not 1 <= limit <= 500:
+            raise ValueError("limit must be between 1 and 500")
+        return _run_async_blocking(self._dead_trips(limit))
+
+    async def _dead_trips(self, limit: int) -> list[dict[str, Any]]:
+        async with tripstore_session_maker() as session:
+            rows = (await session.execute(
+                text(
+                    """
+                    SELECT trip_id, COUNT(*) AS poisoned_jobs,
+                           MAX(attempts) AS max_attempts_seen
+                    FROM agent_requeue_jobs
+                    WHERE status = :poisoned
+                    GROUP BY trip_id
+                    ORDER BY MAX(updated_at) DESC
+                    LIMIT :limit
+                    """
+                ),
+                {"poisoned": JOB_STATUS_POISONED, "limit": limit},
+            )).mappings().all()
+        return [
+            {
+                "trip_id": str(row["trip_id"]),
+                "poisoned_jobs": int(row["poisoned_jobs"]),
+                "max_attempts": int(row["max_attempts_seen"] or 0),
+            }
+            for row in rows
+        ]
+
+
+# ── Post-commit side effects (FND-0224) ─────────────────────────────────
+#
+# These run in the sync caller of fail()/replay_poisoned()/redact_poisoned()
+# — never on the SQL bridge loop — so AuditStore's canonical bridge write
+# path stays usable.  Every effect is defensive: an alerting, audit, or DLQ
+# mirror failure must never fail the data operation it observes.
+
+
+def _emit_poisoned_side_effects(*, job_id: str, error: str, info: dict[str, Any]) -> None:
+    """A transition INTO poisoned must be observable (FND-0224)."""
+    trip_id = str(info.get("trip_id") or "")
+    attempts = int(info.get("attempts") or 0)
+    # Paging-style structured log event, same shape as ADR-008's route_health
+    # alert emission: stable dedup signature + bounded context.
+    logger.warning(
+        "requeue_job_poisoned job_id=%s trip_id=%s attempts=%d signature=%s error=%.512s",
+        job_id,
+        trip_id,
+        attempts,
+        f"requeue_poison:{job_id}",
+        error,
+    )
+    _audit_event(
+        event_type="requeue_job_poisoned",
+        trip_id=trip_id,
+        details={
+            "job_id": job_id,
+            "trip_id": trip_id,
+            "attempts": attempts,
+            "alert_signature": f"requeue_poison:{job_id}",
+            "error": error[:2048],
+        },
+    )
+    try:
+        from src.agents.dlq_inspector import DLQInspector
+        payload_dict = _safe_json_loads(str(info.get("payload") or "{}"))
+        DLQInspector.record_poisoned_job(
+            job_id=job_id,
+            agent_name="agent_requeue_jobs",
+            trip_id=trip_id,
+            error_message=error,
+            stack_trace="",
+            failed_payload=payload_dict,
+            retry_count=attempts,
+        )
+    except Exception:
+        logger.exception("Failed to mirror poisoned job to DLQInspector: %s", job_id)
+
+
+def _emit_replayed_side_effects(job_id: str, info: dict[str, Any]) -> None:
+    from src.agents.dlq_inspector import DLQInspector
+
+    trip_id = str(info.get("trip_id") or "")
+    attempts = int(info.get("attempts") or 0)
+    _audit_event(
+        event_type="requeue_job_replayed",
+        trip_id=trip_id,
+        details={
+            "job_id": job_id,
+            "trip_id": trip_id,
+            "replay_attempt": attempts,
+            "payload_patched": bool(info.get("payload_patched")),
+        },
+    )
+    logger.info(
+        "requeue_job_replayed job_id=%s trip_id=%s replay_attempt=%d", job_id, trip_id, attempts
+    )
+    # Synchronize with in-memory DLQ projection if tracked (defensive).
+    try:
+        if DLQInspector.get_job(job_id) is not None:
+            DLQInspector.replay_job(job_id)
+    except Exception:
+        logger.exception("Failed to mirror replay to DLQInspector: %s", job_id)
+
+
+def _emit_redacted_side_effects(job_id: str, info: dict[str, Any]) -> None:
+    from src.agents.dlq_inspector import DLQInspector
+
+    trip_id = str(info.get("trip_id") or "")
+    # Mirror the resolution into the in-memory DLQ projection (defensive:
+    # the durable redaction above is the source of truth).
+    try:
+        if DLQInspector.get_job(job_id) is not None:
+            DLQInspector.redact_job(job_id, reason="payload stripped by operator")
+    except Exception:
+        logger.exception("Failed to mirror redaction to DLQInspector: %s", job_id)
+    _audit_event(
+        event_type="requeue_job_redacted",
+        trip_id=trip_id,
+        details={
+            "job_id": job_id,
+            "trip_id": trip_id,
+            "note": "payload contents stripped; row and reason preserved",
+        },
+    )
+    logger.info("requeue_job_redacted job_id=%s trip_id=%s", job_id, trip_id)
 
 
 # ── Worker ──────────────────────────────────────────────────────────────
@@ -621,6 +896,8 @@ class RequeueWorkerService:
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._last_results: list[dict[str, Any]] = []
+        self._last_dead_trips: list[dict[str, Any]] = []
+        self._last_reclaimed: int = 0
 
     @property
     def is_running(self) -> bool:
@@ -646,7 +923,36 @@ class RequeueWorkerService:
                 self._last_results = self._worker.run_once(max_jobs=self._max_jobs_per_pass)
             except Exception:
                 logger.exception("RequeueWorkerService: unhandled worker pass failure")
+            try:
+                self._maintenance_pass()
+            except Exception:
+                logger.exception("RequeueWorkerService: unhandled maintenance pass failure")
             self._stop_event.wait(timeout=self._interval_seconds)
+
+    def _maintenance_pass(self) -> None:
+        """FND-0224 dead-trip recovery pass (log + count only).
+
+        Two cheap, bounded operations per cycle:
+        1. Reclaim RUNNING rows with expired leases (worker crash orphans) —
+           reuses the existing automatic re-lease path for unexecuted work.
+        2. Detect trips whose durable work is dead (poisoned) and surface them
+           via log + count.  Poison is deliberately NOT auto-replayed: the
+           repo's recovery precedent escalates poisoned trips for operator
+           review (deterministic failures would loop on auto-replay), and the
+           admin replay endpoint on the agent-runtime router is the
+           operator-triggered path.
+        """
+        job_store = self._worker._job_store
+        self._last_reclaimed = job_store.reclaim_stale_running()
+        self._last_dead_trips = job_store.dead_trips(limit=100)
+        if self._last_dead_trips:
+            trip_ids = ", ".join(entry["trip_id"] for entry in self._last_dead_trips[:10])
+            logger.warning(
+                "requeue_dead_trips_detected count=%d sample=[%s] — operator replay required "
+                "(poison is not auto-replayed)",
+                len(self._last_dead_trips),
+                trip_ids,
+            )
 
     def health(self) -> dict[str, Any]:
         return {
@@ -654,6 +960,11 @@ class RequeueWorkerService:
             "interval_seconds": self._interval_seconds,
             "max_jobs_per_pass": self._max_jobs_per_pass,
             "last_results_count": len(self._last_results),
+            "dead_trips": {
+                "count": len(self._last_dead_trips),
+                "sample": self._last_dead_trips[:10],
+            },
+            "stale_leases_reclaimed_last_pass": self._last_reclaimed,
         }
 
 
@@ -679,3 +990,19 @@ def _safe_json_loads(value: str) -> dict[str, Any]:
         return json.loads(value) if value else {}
     except (json.JSONDecodeError, TypeError):
         return {}
+
+
+def _audit_event(event_type: str, trip_id: str, details: dict[str, Any]) -> None:
+    """Persist a canonical audit event via AuditStore.log_event.
+
+    Mirrors the recovery-agent adapter contract (event_type/trip_id/details).
+    Degrades silently to a log line: poison handling must never fail because
+    the audit sink is unavailable (AuditStore itself already falls back to its
+    legacy file chain when SQL is unreachable).
+    """
+    try:
+        from spine_api.persistence import AuditStore
+
+        AuditStore.log_event(event_type=event_type, user_id="agent_requeue_jobs", details={"trip_id": trip_id, **details})
+    except Exception:
+        logger.exception("Failed to persist %s audit event for job %s", event_type, details.get("job_id"))

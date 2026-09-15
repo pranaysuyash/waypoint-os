@@ -18,13 +18,25 @@ from src.rag.store import SQLiteRAGStore
 from src.rag.indexer import DocumentIndexer
 from src.rag.retriever import HybridGraphVectorRetriever
 from src.rag.grounding import GroundednessEvaluator
+from src.rag.embeddings import EmbeddingProvider, get_default_embedding_provider
 
 
 class RAGService:
-    def __init__(self, db_path: str = "data/rag_store.db"):
+    def __init__(
+        self,
+        db_path: str = "data/rag_store.db",
+        embedding_provider: Optional[EmbeddingProvider] = None,
+    ):
         self.store = SQLiteRAGStore(db_path=db_path)
-        self.indexer = DocumentIndexer()
-        self.retriever = HybridGraphVectorRetriever(self.store)
+        self.embedding_provider = embedding_provider or get_default_embedding_provider()
+        self.indexer = DocumentIndexer(
+            embedding_dim=self.embedding_provider.dimension,
+            embedding_provider=self.embedding_provider,
+        )
+        self.retriever = HybridGraphVectorRetriever(
+            self.store,
+            embedding_provider=self.embedding_provider,
+        )
         self.evaluator = GroundednessEvaluator()
 
     def index_document(

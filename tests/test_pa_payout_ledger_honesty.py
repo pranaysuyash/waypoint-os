@@ -41,9 +41,17 @@ def test_seed_balances_present_outside_production(monkeypatch):
 
 @pytest.mark.parametrize("production_env", ["production", "prod"])
 def test_production_starts_at_zero_no_fabricated_seed(monkeypatch, production_env):
-    """PA-23: production must never present the fake-seeded money."""
+    """PA-23: production must never present the fake-seeded money.
+
+    FND-0290: production-mode durable ledger access is agency-attributed —
+    the call now passes an explicit agency_id instead of relying on the
+    removed TEST_AGENCY_ID fallback. _sql_ledger is read-only, so a fresh
+    advisor id yields true zero balances with no fabricated seed.
+    """
     monkeypatch.setenv("ENVIRONMENT", production_env)
-    ledger = cr.get_or_create_advisor_ledger(f"adv_seed_{production_env}")
+    ledger = cr.get_or_create_advisor_ledger(
+        f"adv_seed_{production_env}", agency_id="agency_ledger_honesty"
+    )
     assert ledger.gross_sales_cents == 0
     assert ledger.total_commission_earned_cents == 0
     assert ledger.pending_payout_cents == 0

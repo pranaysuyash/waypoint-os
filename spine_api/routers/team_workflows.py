@@ -23,6 +23,7 @@ from spine_api.contract import (
     TeamAssignmentResponse,
 )
 from spine_api.core.auth import get_current_agency_id, get_current_user
+from spine_api.core.startup_assertions import auth_bypass_enabled
 from spine_api.models.tenant import User
 from spine_api.persistence import AuditStore, TripStore
 
@@ -35,9 +36,14 @@ router = APIRouter(prefix="/api/v1/team", tags=["team_workflows"])
 async def assign_trip_to_team_member(
     body: TeamAssignmentRequest,
     agency_id: str = Depends(get_current_agency_id),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Assign a trip packet to an agency team member or specialized sub-agent role.
+
+    FND-0220: the audit actor is the authenticated principal (JWT user), the
+    tenant scope is the authenticated membership, and the save is agency-bound
+    so cross-agency overwrite protection stays active.
     """
     trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
     if not trip:
@@ -48,7 +54,7 @@ async def assign_trip_to_team_member(
     trip["assigned_role"] = body.assignee_role
     trip["updated_at"] = now_str
 
-    TripStore.save_trip(trip)
+    TripStore.save_trip(trip, agency_id=agency_id)
 
     AuditStore.log_event(
         event_type="trip_team_assigned",
@@ -58,6 +64,10 @@ async def assign_trip_to_team_member(
             "assigned_to": body.assignee_id,
             "role": body.assignee_role,
             "notes": body.notes,
+            # Authenticated principal + agency (FND-0220): who authorized the
+            # assignment is derived from the JWT, never from the request body.
+            "actor_id": current_user.id,
+            "agency_id": agency_id,
         },
     )
 
@@ -82,17 +92,30 @@ async def submit_review_signoff(
     F-03 (FND-0040): Reviewer identity is derived from the authenticated JWT principal
     (current_user.id or current_user.email), preventing self-asserted signoffs.
     Client-supplied body.reviewer_id is ignored unless running in explicit auth-bypass test mode.
+
+    FND-0220: the bypass fallback is now gated on ``auth_bypass_enabled()`` (fail-closed
+    in production) instead of a magic ``"test_user"`` id, and the audit event records
+    both the authenticated principal and the agency.
     """
     trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    # Authoritative reviewer identity from authenticated session
-    reviewer_identity = (
-        current_user.id
-        if current_user and current_user.id and current_user.id != "test_user"
-        else (body.reviewer_id or getattr(current_user, "id", None) or "verified_reviewer")
+    principal_id = current_user.id if current_user else None
+    synthetic_principal = auth_bypass_enabled() and (
+        not principal_id or principal_id == "test_user"
     )
+
+    if principal_id and not synthetic_principal:
+        # Authoritative reviewer identity: the authenticated JWT principal.
+        reviewer_identity = principal_id
+    elif auth_bypass_enabled() and body.reviewer_id:
+        # Dev/test auth-bypass only: no resolvable principal exists, so the
+        # client-declared reviewer is tolerated as a display identity. This
+        # branch is unreachable in production (bypass fails closed at boot).
+        reviewer_identity = body.reviewer_id
+    else:
+        reviewer_identity = principal_id or "verified_reviewer"
 
     now_str = datetime.now(timezone.utc).isoformat()
     trip["review_decision"] = body.decision
@@ -110,6 +133,10 @@ async def submit_review_signoff(
             "decision": body.decision,
             "notes": body.feedback_notes,
             "auth_verified": True,
+            # Authenticated principal + agency (FND-0220): the audit trail
+            # records who signed off (principal id) and for which tenant.
+            "reviewer_principal_id": principal_id,
+            "agency_id": agency_id,
         },
     )
 

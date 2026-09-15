@@ -17,10 +17,13 @@ from __future__ import annotations
 import enum
 import hashlib
 import json
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryTier(str, enum.Enum):
@@ -48,6 +51,68 @@ SOURCE_CONFIDENCE_WEIGHTS: Dict[MemorySourceType, float] = {
     MemorySourceType.SYSTEM_INFERRED: 0.75,
     MemorySourceType.THIRD_PARTY_WEB: 0.60,
 }
+
+
+class SourceTrustClass(str, enum.Enum):
+    """FND-0230 / E-D: coarse trust classes every memory write records.
+
+    Memory influence must be proportional to trust, so the read seam
+    (slot_candidates) and any audit surface can reason over four
+    canonical classes instead of six fine-grained source types:
+    - explicit_user:   the traveler stated it (or a verified document says so)
+    - derived:         extracted/derived from an authoritative feed or system inference
+    - agent_inferred:  an agent authored it from judgment, not traveler speech
+    - system_default:  low-authority external/default material
+    """
+
+    EXPLICIT_USER = "explicit_user"
+    DERIVED = "derived"
+    AGENT_INFERRED = "agent_inferred"
+    SYSTEM_DEFAULT = "system_default"
+
+
+SOURCE_TRUST_CLASS: Dict[MemorySourceType, SourceTrustClass] = {
+    MemorySourceType.TRAVELER_DIRECT: SourceTrustClass.EXPLICIT_USER,
+    MemorySourceType.VERIFIED_DOCUMENT: SourceTrustClass.EXPLICIT_USER,
+    MemorySourceType.AGENT_MANUAL: SourceTrustClass.AGENT_INFERRED,
+    MemorySourceType.GDS_IMPORT: SourceTrustClass.DERIVED,
+    MemorySourceType.SYSTEM_INFERRED: SourceTrustClass.DERIVED,
+    MemorySourceType.THIRD_PARTY_WEB: SourceTrustClass.SYSTEM_DEFAULT,
+}
+
+# Relative influence weight per trust class (E-D: influence proportional to
+# trust; only explicit_user-class memories carry full authority).
+TRUST_CLASS_WEIGHTS: Dict[SourceTrustClass, float] = {
+    SourceTrustClass.EXPLICIT_USER: 1.0,
+    SourceTrustClass.DERIVED: 0.6,
+    SourceTrustClass.AGENT_INFERRED: 0.4,
+    SourceTrustClass.SYSTEM_DEFAULT: 0.2,
+}
+
+
+def clamp_confidence(value: Any, *, label: str = "confidence") -> float:
+    """Clamp a trust/confidence signal into [0.0, 1.0] — never skip.
+
+    Data-loss-prevention pattern (AGENTS.md): an out-of-range trust signal is
+    clamped and logged, never silently dropped or passed through distorted
+    (an unclamped 2.7 previously blended into a persisted confidence > 1.0).
+    """
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        logger.warning(
+            "memory trust signal %s=%r not numeric; clamping to 0.0", label, value
+        )
+        return 0.0
+    if num != num:  # NaN
+        logger.warning("memory trust signal %s=NaN; clamping to 0.0", label)
+        return 0.0
+    clamped = max(0.0, min(1.0, num))
+    if clamped != num:
+        logger.warning(
+            "memory trust signal %s=%r out of range; clamped to %.2f", label, value, clamped
+        )
+    return round(clamped, 4)
 
 
 @dataclass(slots=True)

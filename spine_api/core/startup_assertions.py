@@ -170,6 +170,48 @@ def _check_idempotency_backend() -> Tuple[bool, str]:
     )
 
 
+def _check_locking_backend() -> Tuple[bool, str]:
+    """Trip locking must be pinned to a cross-process backend in production-like envs.
+
+    FND-0225: ``SPINE_API_LOCKING_BACKEND`` selects the mutual-exclusion
+    implementation for trip critical sections (see
+    ``spine_api.core.locking``). An unpinned (auto) or memory backend in a
+    production-like deployment can silently change mutual-exclusion
+    semantics to process-local locks, so this assertion fails the boot
+    before any critical section can be mis-guarded. Unknown values fail
+    closed in every environment (typoed backend names must never select an
+    implementation by accident).
+    """
+    env = os.environ.get("ENVIRONMENT", "development").strip().lower()
+    backend = os.environ.get("SPINE_API_LOCKING_BACKEND", "").strip().lower()
+    if backend in ("sql", "postgres", "postgresql"):
+        return True, f"Locking backend is pinned to '{backend}' (Postgres advisory locks)."
+    if backend == "memory":
+        if env in {"production", "staging"}:
+            return False, (
+                f"SPINE_API_LOCKING_BACKEND='memory' in ENVIRONMENT='{env}'. "
+                "Process-local locks give no cross-worker mutual exclusion — "
+                "pin it to 'sql'/'postgres' in production-like deployments."
+            )
+        return True, "Locking backend pinned to 'memory' (tests/local single-worker only)."
+    if backend in ("", "auto"):
+        if env in {"production", "staging"}:
+            return False, (
+                "SPINE_API_LOCKING_BACKEND is not pinned in ENVIRONMENT='"
+                f"{env}'. Set it to 'sql' or 'postgres' so trip critical "
+                "sections can never be mis-guarded by an auto-resolved "
+                "process-local lock."
+            )
+        return True, (
+            "Locking backend unset (auto) in a non-production environment — "
+            "derived from the live session dialect."
+        )
+    return False, (
+        f"SPINE_API_LOCKING_BACKEND='{backend}' is not recognized. "
+        "Valid values: sql, postgres, postgresql, memory, auto (unset)."
+    )
+
+
 def _check_public_checker_agency() -> Tuple[bool, str]:
     """PUBLIC_CHECKER_AGENCY_ID should be set if public checker is used."""
     agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", "")
@@ -302,6 +344,7 @@ _ASSERTIONS = [
     ("PUBLIC_PROPOSAL_DEMO_MODE", _check_public_proposal_demo_mode),
     ("AUTH_SAFETY", _check_auth_not_disabled_in_production),
     ("TRIPSTORE_BACKEND", _check_tripstore_backend),
+    ("LOCKING_BACKEND", _check_locking_backend),
     ("IDEMPOTENCY_BACKEND", _check_idempotency_backend),
     ("REDIS_URL", _check_redis_url),
     ("PUBLIC_CHECKER_AGENCY", _check_public_checker_agency),

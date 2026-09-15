@@ -181,9 +181,8 @@ export function getAllowedActions(trip: Trip): {
 
 /**
  * Derive the operator-facing lifecycle state. Precedence: escalated >
- * completed > needs_information > awaiting_customer_approval > booked_side >
- * planning > feasibility > intake. `in_trip` is declared but has no input
- * signal yet (no disruption/crisis field feeds it today) — documented dormant.
+ * completed > in_trip (canonical "active" alias) > needs_information >
+ * awaiting_customer_approval > booked_side > planning > feasibility > intake.
  */
 export function deriveTripLifecycle(trip: Trip): TripLifecycleDerived {
   const status = (trip.status ?? "").toLowerCase();
@@ -214,6 +213,13 @@ export function deriveTripLifecycle(trip: Trip): TripLifecycleDerived {
     decisionState === "STOP_REVIEW"
   ) {
     state = "feasibility";
+  } else if (status === "active") {
+    // Canonical in_trip alias, audit-gated in the ratified 12-state machine
+    // (spine_api/core/trip_lifecycle.py): an active trip is in-flight work,
+    // not an intake lead (FND-0120). Lowest-precedence positive state — the
+    // richer signals above (needs_information, decision states, stages)
+    // always outrank the raw alias.
+    state = "in_trip";
   } else {
     state = "intake";
   }

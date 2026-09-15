@@ -6,6 +6,8 @@ All tests require a running PostgreSQL instance (@pytest.mark.require_postgres).
 from __future__ import annotations
 
 
+import json
+
 import pytest
 from sqlalchemy import text
 
@@ -567,11 +569,12 @@ class TestPoisonedJobInspectRedactReplay:
         ok = store.replay_poisoned(job_id, patched_payload={"hotel_id": "ht_100", "provider": "NDC"})
         assert ok is True
 
-        # Job is now back to pending
+        # Job is now back to pending with an incremented (not reset) attempt counter:
+        # poison landed at attempts=1, replay adds one more.
         row = _fetch(job_id)
         assert row is not None
         assert row["status"] == "pending"
-        assert row["attempts"] == 0
+        assert row["attempts"] == 2
         assert row["last_error"] == ""
         assert "ht_100" in row["payload"]
 
@@ -579,3 +582,139 @@ class TestPoisonedJobInspectRedactReplay:
         assert store.inspect_poisoned(job_id) is None
         # Replay non-poisoned job returns False
         assert store.replay_poisoned(job_id) is False
+
+    def test_redact_poisoned_job_strips_payload_and_refuses_replay(self):
+        from spine_api.services.agent_requeue_jobs import (
+            PoisonedJobRedactedError,
+            RequeueJobStore,
+        )
+        from src.agents.dlq_inspector import DLQInspector, PoisonResolutionStatus
+
+        store = RequeueJobStore()
+        _, job_id = store.enqueue(
+            trip_id="t_poison_redact",
+            idempotency_key="poison:redact:1",
+            reason="Unrecoverable GDS failure",
+            payload={"passport_number": "X1234567", "note": "window seat"},
+        )
+        store.fail(job_id, "Fatal supplier timeout", poison=True)
+
+        assert store.redact_poisoned(job_id) is True
+
+        row = _fetch(job_id)
+        # Row, reason, and terminal error preserved; payload contents stripped.
+        assert row is not None
+        assert row["status"] == "poisoned"
+        assert row["reason"] == "Unrecoverable GDS failure"
+        assert row["last_error"] == "Fatal supplier timeout"
+        assert row["payload"].startswith("{")
+        assert "__redacted__" in row["payload"]
+        assert "X1234567" not in row["payload"]
+        assert "window seat" not in row["payload"]
+
+        # DLQ projection mirrored: record preserved, no longer actionable.
+        dlq_record = DLQInspector.get_job(job_id)
+        assert dlq_record is None or dlq_record.status == PoisonResolutionStatus.REDACTED
+
+        # Redacted jobs can no longer be inspected as actionable poison...
+        detail = store.inspect_poisoned(job_id)
+        assert detail is None or "passport_number" not in json.dumps(detail.get("redacted_payload", {}))
+
+        # ...and replay refuses them with an explicit error.
+        with pytest.raises(PoisonedJobRedactedError):
+            store.replay_poisoned(job_id)
+
+    def test_replay_poisoned_writes_audit_event(self):
+        from spine_api.persistence import AuditStore
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        store = RequeueJobStore()
+        _, job_id = store.enqueue("t_poison_audit", "poison:audit:1", "stuck")
+        store.fail(job_id, "fatal", poison=True)
+        store.replay_poisoned(job_id)
+
+        events = AuditStore.get_events(limit=50)
+        replay_events = [e for e in events if e.get("event_type") == "requeue_job_replayed"]
+        assert any(e.get("details", {}).get("job_id") == job_id for e in replay_events)
+
+    def test_redact_poisoned_writes_audit_event(self):
+        from spine_api.persistence import AuditStore
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        store = RequeueJobStore()
+        _, job_id = store.enqueue("t_poison_audit2", "poison:audit:2", "stuck")
+        store.fail(job_id, "fatal", poison=True)
+        store.redact_poisoned(job_id)
+
+        events = AuditStore.get_events(limit=50)
+        redact_events = [e for e in events if e.get("event_type") == "requeue_job_redacted"]
+        assert any(e.get("details", {}).get("job_id") == job_id for e in redact_events)
+
+    def test_poison_transition_visible_in_snapshot_and_listing(self):
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        store = RequeueJobStore()
+        before = store.snapshot()
+        _, job_id = store.enqueue("t_poison_stats", "poison:stats:1", "stuck", max_attempts=1)
+        store.fail(job_id, "fatal", poison=True)
+
+        snap = store.snapshot()
+        # Poison transition is visible in the operational snapshot...
+        assert snap["counts"].get("poisoned", 0) == before["counts"].get("poisoned", 0) + 1
+        assert snap["poisoned_count"] == before["poisoned_count"] + 1
+        assert snap["oldest_poisoned_age_seconds"] >= 0.0
+        # ...and in the bounded redacted listing.
+        listed = [s.job_id for s in store.list_poisoned(trip_id="t_poison_stats")]
+        assert job_id in listed
+
+    def test_dead_trips_detection_identifies_poisoned_trip(self):
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        store = RequeueJobStore()
+        _, job_id = store.enqueue("t_dead_trip", "poison:dead:1", "stuck", max_attempts=1)
+        store.fail(job_id, "fatal", poison=True)
+
+        dead = {entry["trip_id"]: entry for entry in store.dead_trips()}
+        assert "t_dead_trip" in dead
+        assert dead["t_dead_trip"]["poisoned_jobs"] >= 1
+        assert dead["t_dead_trip"]["max_attempts"] >= 1
+
+        # Live/pending trips are not dead.
+        store.enqueue("t_alive", "poison:alive:1", "stuck")
+        alive_ids = {entry["trip_id"] for entry in store.dead_trips()}
+        assert "t_alive" not in alive_ids
+
+    def test_reclaim_stale_running_returns_expired_lease_to_pending(self):
+        from datetime import datetime, timedelta, timezone
+
+        from sqlalchemy import text as _text
+        from spine_api.persistence import _run_async_blocking, tripstore_session_maker
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        store = RequeueJobStore()
+        _, job_id = store.enqueue("t_stale", "poison:stale:1", "stuck")
+        leased = store.lease_by_id(job_id)
+        assert leased is not None and leased.status == "running"
+
+        # Simulate a dead worker: push the lease into the past.
+        async def _expire():
+            async with tripstore_session_maker() as s:
+                async with s.begin():
+                    await s.execute(
+                        _text(
+                            "UPDATE agent_requeue_jobs SET leased_until = :past WHERE id = :id"
+                        ),
+                        {
+                            "past": datetime.now(timezone.utc) - timedelta(seconds=120),
+                            "id": job_id,
+                        },
+                    )
+
+        _run_async_blocking(_expire())
+
+        reclaimed = store.reclaim_stale_running()
+        assert reclaimed >= 1
+        row = _fetch(job_id)
+        assert row["status"] == "pending"
+        # A healthy lease is never reclaimed.
+        assert store.reclaim_stale_running() == 0

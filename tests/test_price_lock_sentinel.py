@@ -114,3 +114,64 @@ def test_price_lock_sentinel_lifecycle_end_to_end(session_client):
 
     trip_after = TripStore.get_trip_for_agency(trip_id, "agency_pricelock_test")
     assert trip_after == trip_before  # simulated rate never mutates real state
+
+
+def test_fnd_0119_social_write_canonical_visible_to_sentinel(session_client):
+    """FND-0119 (legacy F-32) regression: a social-channel write must land in
+    the CANONICAL strategy location and be visible to the price-lock sentinel
+    (previously the writer used the trip top-level key while the sentinel read
+    strategy, and the 72h recompute fallback masked the divergence)."""
+    from datetime import datetime
+
+    from spine_api.persistence import TEST_AGENCY_ID, TripStore
+    from spine_api.routers.price_lock import (
+        _get_price_lock_expires_at,
+        get_price_lock_expires_at_raw,
+    )
+
+    parse_res = session_client.post(
+        "/api/v1/inbox/parse_social",
+        json={
+            "raw_text": "Santorini honeymoon for 2 in June, budget $9,000, boutique cave suite with caldera view.",
+            "source": "instagram_dm",
+            "creator_id": "creator_fnd_0119",
+            "client_name": "Regression Probe",
+        },
+    )
+    assert parse_res.status_code == 200, parse_res.text
+    trip_id = parse_res.json()["trip_id"]
+
+    try:
+        trip = TripStore.get_trip_for_agency(trip_id, TEST_AGENCY_ID)
+        assert trip is not None
+
+        # 1. Writer persisted the CANONICAL location; the legacy top-level
+        #    key must NOT be written for new rows (prevents split-brain).
+        written = (trip.get("strategy") or {}).get("price_lock_expires_at")
+        assert written, "social inbound must write strategy.price_lock_expires_at (canonical)"
+        assert not trip.get("price_lock_expires_at"), "legacy top-level location must not be used for new rows"
+
+        # 2. The shared canonical-then-legacy reader returns the persisted value.
+        assert get_price_lock_expires_at_raw(trip) == written
+
+        # 3. Sentinel sees the WRITTEN expiry exactly — the 72h-from-created_at
+        #    fallback would recompute a different (later) timestamp and mask
+        #    the divergence.
+        assert _get_price_lock_expires_at(trip) == datetime.fromisoformat(written)
+
+        # 4. The sentinel's public surface reports the persisted expiry too.
+        opps_res = session_client.get("/api/v1/price-lock/opportunities")
+        assert opps_res.status_code == 200
+        matched = next((o for o in opps_res.json() if o["trip_id"] == trip_id), None)
+        assert matched is not None
+        assert datetime.fromisoformat(matched["price_lock_expires_at"]) == datetime.fromisoformat(written)
+
+        # 5. Legacy rows (top-level only) remain visible via the read fallback.
+        legacy_trip = {"id": "trip_legacy", "price_lock_expires_at": written}
+        assert get_price_lock_expires_at_raw(legacy_trip) == written
+        assert _get_price_lock_expires_at(legacy_trip) == datetime.fromisoformat(written)
+    finally:
+        try:
+            TripStore.delete_trip_for_agency(trip_id, TEST_AGENCY_ID)
+        except Exception:
+            pass

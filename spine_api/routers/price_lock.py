@@ -85,20 +85,45 @@ class ReLockResponse(BaseModel):
     not_persisted_reason: str = "simulated_rate_source"
 
 
+# FND-0119 (legacy F-32): single source of truth for WHERE the persisted
+# price-lock expiry lives on a trip record. Writers MUST store the value under
+# ``strategy[PRICE_LOCK_EXPIRES_AT_KEY]`` (canonical). The trip top-level key
+# is a LEGACY write location (written by social_inbound.py before 2026-09-14)
+# and is kept ONLY as a backward-compatible read fallback for existing rows.
+PRICE_LOCK_EXPIRES_AT_KEY = "price_lock_expires_at"
+
+
+def get_price_lock_expires_at_raw(trip: dict) -> Optional[str]:
+    """Read the persisted price-lock expiry: canonical strategy location first,
+    legacy trip top-level second (FND-0119 canonical-then-legacy contract).
+
+    Returns the raw stored string, or ``None`` when neither location holds a
+    value. Callers that need a ``datetime`` with the 72-hour recompute fallback
+    should use :func:`_get_price_lock_expires_at`.
+    """
+    strategy = trip.get("strategy") or {}
+    canonical = strategy.get(PRICE_LOCK_EXPIRES_AT_KEY)
+    if canonical:
+        return str(canonical)
+    legacy = trip.get(PRICE_LOCK_EXPIRES_AT_KEY)
+    return str(legacy) if legacy else None
+
+
 def _get_price_lock_expires_at(trip: dict) -> datetime:
     """Calculate price lock expiration timestamp (default 72 hours from saved_at or created_at).
 
-    Reads BOTH write locations (F-32 split-brain): `strategy.price_lock_expires_at`
-    and the trip top-level key written by the social-inbound path
-    (`social_inbound.py` writes `trip["price_lock_expires_at"]`). Either source
-    wins over the recomputed fallback so the sentinel sees what was written.
+    Reads BOTH locations (FND-0119 / F-32): the canonical
+    ``strategy.price_lock_expires_at`` (where all writers persist since
+    2026-09-14) and the legacy trip top-level key for rows persisted before
+    the canonical write convention. Either source wins over the recomputed
+    fallback so the sentinel sees what was written.
     """
     raw_candidates = []
     strategy = trip.get("strategy", {}) or {}
-    if strategy.get("price_lock_expires_at"):
-        raw_candidates.append(strategy["price_lock_expires_at"])
-    if trip.get("price_lock_expires_at"):
-        raw_candidates.append(trip["price_lock_expires_at"])
+    if strategy.get(PRICE_LOCK_EXPIRES_AT_KEY):
+        raw_candidates.append(strategy[PRICE_LOCK_EXPIRES_AT_KEY])
+    if trip.get(PRICE_LOCK_EXPIRES_AT_KEY):
+        raw_candidates.append(trip[PRICE_LOCK_EXPIRES_AT_KEY])
 
     for raw_exp in raw_candidates:
         try:

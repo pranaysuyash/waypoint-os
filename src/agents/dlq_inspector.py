@@ -20,6 +20,7 @@ class PoisonResolutionStatus(str, Enum):
     QUEUED_IN_DLQ = "QUEUED_IN_DLQ"
     REPLAYED_SUCCESSFULLY = "REPLAYED_SUCCESSFULLY"
     PURGED = "PURGED"
+    REDACTED = "REDACTED"
 
 
 @dataclass(slots=True)
@@ -107,6 +108,22 @@ class DLQInspector:
             return False
         job.status = PoisonResolutionStatus.PURGED
         job.resolution_note = f"Purged by operator: {reason}"
+        return True
+
+    @classmethod
+    def redact_job(cls, job_id: str, reason: str) -> bool:
+        """Mark a poisoned job REDACTED: payload stripped, row/record preserved.
+
+        Mirrors the durable redaction performed by RequeueJobStore.redact_poisoned.
+        Unlike purge, the record stays queryable for the operator audit trail —
+        it just no longer appears in the actionable DLQ list.
+        """
+        job = cls._POISON_STORE.get(job_id)
+        if not job:
+            return False
+        job.status = PoisonResolutionStatus.REDACTED
+        job.failed_payload = {}
+        job.resolution_note = f"Redacted by operator: {reason}"
         return True
 
     @staticmethod

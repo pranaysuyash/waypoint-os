@@ -283,3 +283,284 @@ def test_router_register_rejects_missing_consent_artifact():
     # either 401/403 (auth) or 422 (consent artifact) proves no silent creation.
     resp = client.post("/api/v1/financial-ops/payment-mandates", json=body)
     assert resp.status_code in (401, 403, 422)
+
+
+# ---------------------------------------------------------------------------
+# FND-0221: payer-authorization lifecycle + subagent payout seam
+# ---------------------------------------------------------------------------
+
+from fastapi import HTTPException  # noqa: E402
+
+from spine_api.routers import subagent_payouts as payout_router_module  # noqa: E402
+from spine_api.routers.subagent_payouts import (  # noqa: E402
+    RequestPayoutBody,
+    request_advisor_payout,
+)
+from spine_api.services.payment_mandate_service import resolved_scope  # noqa: E402
+
+
+def _grant_payout_mandate(**overrides):
+    """Grant a payout-scope mandate (scope-driven, purpose-free)."""
+    kwargs = {
+        "agency_id": "agency_fnd0221",
+        "trip_id": f"trip_fnd0221_{uuid.uuid4().hex[:8]}",
+        "customer_id": "advisor_payee",
+        "max_authorized_cents": 500_000,
+        "purpose": "",
+        "scope": "payout",
+        "consent_text": "I authorize the agency to disburse my commission payout.",
+        "consent_artifact_ref": "approval_event_fnd0221",
+        "payer_ref": "user:operator@agency.test",
+    }
+    kwargs.update(overrides)
+    return PaymentMandateLedger.register_mandate(**kwargs)
+
+
+def _payout(advisor_id: str, agency_id: str, **body_overrides):
+    return request_advisor_payout(
+        advisor_id=advisor_id,
+        body=RequestPayoutBody(amount_cents=25_000, **body_overrides),
+        agency_id=agency_id,
+    )
+
+
+def _record_audit_events(monkeypatch) -> list:
+    """Capture seam audit events without touching the real audit store."""
+    events: list = []
+
+    def _recorder(event_type, user_id, details):
+        events.append({"event_type": event_type, "user_id": user_id, "details": details})
+        return {"ok": True}
+
+    monkeypatch.setattr(payout_router_module.AuditStore, "log_event", _recorder)
+    return events
+
+
+def _refusal_detail(excinfo, expected_error: str) -> dict:
+    assert isinstance(excinfo.value, HTTPException)
+    assert excinfo.value.status_code == 403
+    detail = excinfo.value.detail
+    assert detail["error"] == expected_error
+    assert detail["escalation_required"] is True
+    assert detail["mandate_scope"] == "payout"
+    return detail
+
+
+def test_payout_without_mandate_refused_typed():
+    advisor = f"adv_fnd0221_none_{uuid.uuid4().hex[:6]}"
+    with pytest.raises(HTTPException) as excinfo:
+        _payout(advisor, "agency_fnd0221")
+    detail = _refusal_detail(excinfo, "payment_mandate_required")
+    # No trip and no mandate id → the movement cannot chain to any artifact.
+    assert "mandate_id" not in detail or detail.get("mandate_id") is None
+    assert "how_to_mandate" in detail
+
+
+def test_payout_with_valid_mandate_succeeds_and_audits(monkeypatch):
+    from spine_api.services.commission_reconciliation import get_or_create_advisor_ledger
+
+    advisor = f"adv_fnd0221_ok_{uuid.uuid4().hex[:6]}"
+    events = _record_audit_events(monkeypatch)
+    baseline = get_or_create_advisor_ledger(advisor, agency_id="agency_fnd0221")
+    mandate = _grant_payout_mandate(max_authorized_cents=100_000)
+
+    ledger = _payout(advisor, "agency_fnd0221", mandate_id=mandate.mandate_id)
+
+    assert ledger.cleared_payout_cents == baseline.cleared_payout_cents + 25_000
+    consumed = PaymentMandateLedger.get_mandate(
+        agency_id="agency_fnd0221", mandate_id=mandate.mandate_id
+    )
+    assert consumed["consumed_amount_cents"] == 25_000
+    payout_events = [e for e in events if e["event_type"] == "advisor_payout_requested"]
+    assert payout_events, "execution must be audited at the seam"
+    d = payout_events[-1]["details"]
+    assert d["mandate_id"] == mandate.mandate_id
+    assert d["mandate_enforced"] is True
+    assert d["mandate_scope"] == "payout"
+    # The audit chains the movement to the granting principal.
+    assert d["mandate_payer_ref"] == "user:operator@agency.test"
+
+
+def test_payout_revoked_mandate_refused():
+    advisor = f"adv_fnd0221_rev_{uuid.uuid4().hex[:6]}"
+    mandate = _grant_payout_mandate()
+    assert (
+        PaymentMandateLedger.revoke_mandate(
+            agency_id="agency_fnd0221",
+            mandate_id=mandate.mandate_id,
+            reason="payer withdrew",
+            revoked_by="user:operator@agency.test",
+        )
+        is True
+    )
+    with pytest.raises(HTTPException) as excinfo:
+        _payout(advisor, "agency_fnd0221", mandate_id=mandate.mandate_id)
+    detail = _refusal_detail(excinfo, "payment_mandate_refused")
+    assert "REVOKED" in (detail.get("reason") or "")
+
+
+def test_payout_expired_mandate_refused(monkeypatch):
+    advisor = f"adv_fnd0221_exp_{uuid.uuid4().hex[:6]}"
+    mandate = _grant_payout_mandate(validity_days=1)
+    future = datetime.now(timezone.utc) + timedelta(days=5)
+    monkeypatch.setattr(pms, "_now", lambda: future)
+    with pytest.raises(HTTPException) as excinfo:
+        _payout(advisor, "agency_fnd0221", mandate_id=mandate.mandate_id)
+    detail = _refusal_detail(excinfo, "payment_mandate_refused")
+    assert "expired" in (detail.get("reason") or "").lower()
+
+
+def test_payout_above_cap_refused_without_consumption():
+    advisor = f"adv_fnd0221_cap_{uuid.uuid4().hex[:6]}"
+    mandate = _grant_payout_mandate(max_authorized_cents=10_000)
+    with pytest.raises(HTTPException) as excinfo:
+        _payout(advisor, "agency_fnd0221", mandate_id=mandate.mandate_id)
+    _refusal_detail(excinfo, "payment_mandate_refused")
+    after = PaymentMandateLedger.get_mandate(
+        agency_id="agency_fnd0221", mandate_id=mandate.mandate_id
+    )
+    assert after["consumed_amount_cents"] == 0, "refusal must not consume headroom"
+
+
+def test_payout_replay_same_request_id_executes_once():
+    from spine_api.services.commission_reconciliation import get_or_create_advisor_ledger
+
+    advisor = f"adv_fnd0221_replay_{uuid.uuid4().hex[:6]}"
+    baseline = get_or_create_advisor_ledger(advisor, agency_id="agency_fnd0221")
+    mandate = _grant_payout_mandate(max_authorized_cents=100_000)
+    body = {"mandate_id": mandate.mandate_id, "request_id": "req_replay_once"}
+
+    first = _payout(advisor, "agency_fnd0221", **body)
+    second = _payout(advisor, "agency_fnd0221", **body)
+
+    # Same key → same outcome: the ledger moved exactly once.
+    assert first.cleared_payout_cents == baseline.cleared_payout_cents + 25_000
+    assert second.cleared_payout_cents == first.cleared_payout_cents
+    consumed = PaymentMandateLedger.get_mandate(
+        agency_id="agency_fnd0221", mandate_id=mandate.mandate_id
+    )
+    assert consumed["consumed_amount_cents"] == 25_000, "replay must not double-consume"
+
+
+def test_payout_wrong_trip_mandate_refused():
+    advisor = f"adv_fnd0221_trip_{uuid.uuid4().hex[:6]}"
+    mandate = _grant_payout_mandate()  # bound to its own trip_id
+    other_trip = f"trip_other_{uuid.uuid4().hex[:6]}"
+    with pytest.raises(HTTPException) as excinfo:
+        _payout(
+            advisor,
+            "agency_fnd0221",
+            mandate_id=mandate.mandate_id,
+            trip_id=other_trip,
+        )
+    detail = _refusal_detail(excinfo, "payment_mandate_required")
+    assert "does not cover" in detail["message"] or "trip" in detail["message"].lower()
+
+
+def test_payout_wrong_agency_mandate_refused():
+    advisor = f"adv_fnd0221_agency_{uuid.uuid4().hex[:6]}"
+    mandate = _grant_payout_mandate(agency_id="agency_A")
+    with pytest.raises(HTTPException) as excinfo:
+        _payout(advisor, "agency_B", mandate_id=mandate.mandate_id)
+    _refusal_detail(excinfo, "payment_mandate_required")
+
+
+def test_deposit_scope_mandate_cannot_authorize_payout_movement():
+    advisor = f"adv_fnd0221_scope_{uuid.uuid4().hex[:6]}"
+    # Traveler balance mandate (legacy purpose-only, resolves to scope=balance).
+    deposit_mandate = _grant_payout_mandate(
+        purpose="FINAL_BALANCE",
+        scope="",
+    )
+    with pytest.raises(HTTPException) as excinfo:
+        _payout(advisor, "agency_fnd0221", mandate_id=deposit_mandate.mandate_id)
+    detail = _refusal_detail(excinfo, "payment_mandate_refused")
+    assert "scope" in (detail.get("reason") or "").lower()
+    # And symmetrically: a payout mandate never satisfies a deposit-class seam.
+    payout_mandate = _grant_payout_mandate()
+    assert (
+        PaymentMandateLedger.resolve_for_trip(
+            agency_id="agency_fnd0221",
+            trip_id=payout_mandate.trip_id,
+            allowed_scopes=("deposit", "balance", "fee"),
+        )
+        is None
+    )
+    refused = PaymentMandateLedger.authorize_charge(
+        agency_id="agency_fnd0221",
+        mandate_id=payout_mandate.mandate_id,
+        amount_cents=1_000,
+        scope="deposit",
+    )
+    assert refused["authorized"] is False
+    assert "scope" in refused["reason"].lower()
+
+
+def test_grant_idempotency_same_key_returns_same_mandate():
+    key = f"idem_{uuid.uuid4().hex[:10]}"
+    first = _grant_payout_mandate(idempotency_key=key)
+    second = _grant_payout_mandate(idempotency_key=key)
+    assert first.mandate_id == second.mandate_id
+
+
+def test_payer_ref_granted_and_revocation_lifecycle_recorded():
+    record = _grant_payout_mandate()
+    d = record.to_dict()
+    assert d["payer_ref"] == "user:operator@agency.test"
+    assert d["granted_by"] == "user:operator@agency.test"
+    assert d["granted_at"] == d["signed_at"]
+    assert d["evidence_ref"] == "approval_event_fnd0221"
+    assert d["mandate_state"] == "granted"
+    assert d["scope"] == "payout"
+
+    assert (
+        PaymentMandateLedger.revoke_mandate(
+            agency_id="agency_fnd0221",
+            mandate_id=record.mandate_id,
+            reason="done",
+            revoked_by="user:auditor@agency.test",
+        )
+        is True
+    )
+    after = PaymentMandateLedger.get_mandate(
+        agency_id="agency_fnd0221", mandate_id=record.mandate_id
+    )
+    assert after["mandate_state"] == "revoked"
+    assert after["revoked_at"] is not None
+    assert after["revoked_by"] == "user:auditor@agency.test"
+
+
+def test_registration_rejects_unknown_scope_but_allows_payout_purpose_free():
+    with pytest.raises(ValueError, match="scope"):
+        _grant_payout_mandate(scope="whim")
+    # scope-driven mandate without a customer-payment purpose registers cleanly.
+    record = _grant_payout_mandate()
+    assert record.purpose == ""
+    assert resolved_scope(record) == "payout"
+
+
+def test_movement_replay_fence_is_service_level():
+    """Same movement key on authorize_charge → stored outcome, no double consume."""
+    mandate = _grant_payout_mandate(max_authorized_cents=50_000)
+    key = f"mv_{uuid.uuid4().hex[:8]}"
+    first = PaymentMandateLedger.authorize_charge(
+        agency_id="agency_fnd0221",
+        mandate_id=mandate.mandate_id,
+        amount_cents=10_000,
+        scope="payout",
+        movement_idempotency_key=key,
+    )
+    second = PaymentMandateLedger.authorize_charge(
+        agency_id="agency_fnd0221",
+        mandate_id=mandate.mandate_id,
+        amount_cents=10_000,
+        scope="payout",
+        movement_idempotency_key=key,
+    )
+    assert first["authorized"] is True
+    assert second["authorized"] is True and second.get("replayed") is True
+    assert second["remaining_authorized_cents"] == first["remaining_authorized_cents"]
+    after = PaymentMandateLedger.get_mandate(
+        agency_id="agency_fnd0221", mandate_id=mandate.mandate_id
+    )
+    assert after["consumed_amount_cents"] == 10_000

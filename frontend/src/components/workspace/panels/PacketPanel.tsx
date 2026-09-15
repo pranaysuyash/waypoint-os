@@ -6,7 +6,7 @@ import { useState } from "react";
 import { AlertTriangle, CheckCircle2, CloudSun, DollarSign, FileText, Plane, ShieldCheck } from "lucide-react";
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { AgentOperationsMetadata, Trip } from "@/lib/api-client";
-import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
+import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, PacketAssumption, ValidationReport } from "@/types/spine";
 import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
 import { getTravelerPromptForUnknownField } from "@/lib/traveler-prompts";
 import { getTripRepairRoute } from "@/lib/routes";
@@ -125,6 +125,11 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
     return true;
   });
   const contradictions = (bookingRequest.contradictions || []) as PacketContradiction[];
+  // FND-0124: system-defaulted values ("we are assuming X") from the packet's
+  // assumption register. Guarded: older packets serialize without the field.
+  const assumptions = (
+    Array.isArray(bookingRequest.assumptions) ? bookingRequest.assumptions : []
+  ) as PacketAssumption[];
 
   const summaryData = {
     Destination: _getFactValue(facts, "destination_candidates") || canonicalDestination || "-",
@@ -210,6 +215,50 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
                 </div>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {assumptions.length > 0 && (
+        <section>
+	          <h3 className="text-[var(--ui-text-xs)] font-semibold uppercase tracking-widest text-text-placeholder mb-3">Assumptions (System Defaults)</h3>
+          <div className="bg-[#0a0d11] rounded-lg border border-highlight p-4">
+            <ul className="space-y-2">
+              {assumptions.map((assumption) => {
+                const isCritical = assumption?.criticality === "critical";
+                return (
+                  <li
+                    key={`${assumption.slot_name}-${assumption.created_at ?? ""}`}
+                    className="rounded-lg border px-3 py-2 text-ui-sm text-text-rationale"
+                    style={
+                      isCritical
+                        ? { borderColor: "rgba(248,81,73,0.3)", background: "rgba(248,81,73,0.08)" }
+                        : { borderColor: "rgba(210,153,34,0.3)", background: "rgba(210,153,34,0.08)" }
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium text-text-primary">{labelOrTitle(FIELD_LABELS, assumption.slot_name)}</div>
+                      <span
+                        className="shrink-0 rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                        style={
+                          isCritical
+                            ? { borderColor: "rgba(248,81,73,0.3)", color: "#f85149", background: "rgba(248,81,73,0.08)" }
+                            : { borderColor: "rgba(210,153,34,0.3)", color: "#d29922", background: "rgba(210,153,34,0.08)" }
+                        }
+                      >
+                        {assumption.criticality ?? "advisory"}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-ui-xs text-text-muted">
+                      Assumed: {_formatValue(assumption.assumed_value)}
+                    </div>
+                    {assumption.rationale && (
+                      <div className="mt-1 text-ui-xs text-text-placeholder">{assumption.rationale}</div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </section>
       )}

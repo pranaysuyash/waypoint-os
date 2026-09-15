@@ -18,6 +18,18 @@ from src.memory.models import (
     PreferenceProfile,
     MemoryProvenance,
     GDPRForgetCertificate,
+    SourceTrustClass,
+    SOURCE_TRUST_CLASS,
+    TRUST_CLASS_WEIGHTS,
+    clamp_confidence,
+)
+from src.memory.relationship_stages import (
+    RelationshipStage,
+    RelationshipRecord,
+    validate_relationship_record,
+    apply_trip_event,
+    apply_decay,
+    derived_signal,
 )
 
 __all__ = [
@@ -31,4 +43,14 @@ __all__ = [
     "PreferenceProfile",
     "MemoryProvenance",
     "GDPRForgetCertificate",
+    "SourceTrustClass",
+    "SOURCE_TRUST_CLASS",
+    "TRUST_CLASS_WEIGHTS",
+    "clamp_confidence",
+    "RelationshipStage",
+    "RelationshipRecord",
+    "validate_relationship_record",
+    "apply_trip_event",
+    "apply_decay",
+    "derived_signal",
 ]

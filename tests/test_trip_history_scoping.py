@@ -25,8 +25,6 @@ import pytest
 from spine_api.persistence import TEST_AGENCY_ID, TripStore
 from src.state.mutation_history_stack import TripMutationHistoryStack
 
-_OTHER_AGENCY = "agency_hist_other"
-
 
 @pytest.fixture(autouse=True)
 def _clear_history_stack():
@@ -67,9 +65,26 @@ def _post(client, trip_id, agency_id, path, body):
     )
 
 
-def test_history_requires_trip_in_agency(session_client, scoped_trip_id):
-    """Foreign/missing trips are indistinguishable: 404, not the history."""
-    resp_foreign = _get(session_client, scoped_trip_id, _OTHER_AGENCY)
+def test_history_requires_trip_in_agency(
+    session_client,
+    scoped_trip_id,
+    boundary_principal_factory,
+    boundary_token_factory,
+):
+    """Foreign/missing trips are indistinguishable: 404, not the history.
+
+    FND-0259 hardening: the foreign caller is a REAL second-tenant JWT
+    (conftest boundary seam) — the 404 comes from JWT-membership scoping, not
+    from the removed PYTEST X-Agency-ID escape.
+    """
+    boundary_principal_factory("usr_hist_foreign", "agency_hist_foreign")
+    resp_foreign = session_client.get(
+        f"/api/v1/trips/{scoped_trip_id}/history",
+        headers={
+            "Authorization": "Bearer "
+            + boundary_token_factory("usr_hist_foreign", "agency_hist_foreign")
+        },
+    )
     assert resp_foreign.status_code == 404
 
     resp_missing = _get(
@@ -78,7 +93,12 @@ def test_history_requires_trip_in_agency(session_client, scoped_trip_id):
     assert resp_missing.status_code == 404
 
 
-def test_history_scoped_per_agency(session_client, scoped_trip_id):
+def test_history_scoped_per_agency(
+    session_client,
+    scoped_trip_id,
+    boundary_principal_factory,
+    boundary_token_factory,
+):
     """Agency B cannot read checkpoints pushed by agency A for the same trip."""
     push = _post(
         session_client,
@@ -93,7 +113,14 @@ def test_history_scoped_per_agency(session_client, scoped_trip_id):
     assert mine.status_code == 200
     assert mine.json()["timeline"]["undo_count"] == 1
 
-    theirs = _get(session_client, scoped_trip_id, _OTHER_AGENCY)
+    boundary_principal_factory("usr_hist_foreign", "agency_hist_foreign")
+    theirs = session_client.get(
+        f"/api/v1/trips/{scoped_trip_id}/history",
+        headers={
+            "Authorization": "Bearer "
+            + boundary_token_factory("usr_hist_foreign", "agency_hist_foreign")
+        },
+    )
     # Ownership check fires first: agency B gets 404, never agency A's history.
     assert theirs.status_code == 404
 

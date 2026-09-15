@@ -328,6 +328,20 @@ export interface PacketContradiction {
   sources: string[];
 }
 
+/**
+ * A system-defaulted value the operator should confirm (FND-0124).
+ * Mirrors AssumptionRecord.to_dict() from src/intake/packet_models.py.
+ */
+export interface PacketAssumption {
+  slot_name: string;
+  assumed_value: unknown;
+  rationale: string;
+  criticality?: "critical" | "preference" | "advisory";
+  created_at?: string;
+  acknowledged_by_operator?: boolean;
+  operator_notes?: string | null;
+}
+
 export interface ValidationReport {
   is_valid?: boolean;
   status?: string;

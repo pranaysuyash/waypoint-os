@@ -98,7 +98,13 @@ class EpistemicStatus(StrEnum):
 
 @dataclass(slots=True)
 class AssumptionRecord:
-    """Explicit assumption entry tracked in the AssumptionRegister."""
+    """Explicit assumption entry tracked in the AssumptionRegister.
+
+    ``source_field`` names the canonical intake field whose defaulted input
+    produced this assumption (e.g. "budget" for budget_currency). It lets a
+    manual correction of that field supersede the entry without the PATCH
+    handler duplicating the extractor's derivation knowledge (FND-0291).
+    """
     slot_name: str
     assumed_value: Any
     rationale: str
@@ -106,6 +112,7 @@ class AssumptionRecord:
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     acknowledged_by_operator: bool = False
     operator_notes: Optional[str] = None
+    source_field: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -116,6 +123,7 @@ class AssumptionRecord:
             "created_at": self.created_at,
             "acknowledged_by_operator": self.acknowledged_by_operator,
             "operator_notes": self.operator_notes,
+            "source_field": self.source_field,
         }
 
 

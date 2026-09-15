@@ -255,3 +255,29 @@ def test_reconciliation_no_booking_and_tenancy():
     )
     result = cr.reconcile_trip_commission(trip_id=foreign_trip, agency_id="agency_not_owner")
     assert result["status"] == "no_booking"
+
+
+# ---------------------------------------------------------------------------
+# FND-0290: durable ledger writes fail closed on missing agency attribution
+# ---------------------------------------------------------------------------
+
+
+def test_sql_ledger_requires_agency_for_get_or_create(monkeypatch):
+    """get_or_create_advisor_ledger refuses the SQL path without agency_id."""
+    monkeypatch.setattr(cr, "_sql_ledger_enabled", lambda: True)
+    with pytest.raises(ValueError, match="agency_id is required"):
+        cr.get_or_create_advisor_ledger("adv_fnd0290_a")
+
+
+def test_sql_ledger_requires_agency_for_process_authorization(monkeypatch):
+    """process_advisor_payout_authorization refuses the SQL path without agency_id."""
+    monkeypatch.setattr(cr, "_sql_ledger_enabled", lambda: True)
+    with pytest.raises(ValueError, match="agency_id is required"):
+        cr.process_advisor_payout_authorization("adv_fnd0290_b", 1000)
+
+
+def test_memory_ledger_path_unchanged_without_agency(monkeypatch):
+    """The dev-only memory path keeps working without agency_id (no durable write)."""
+    monkeypatch.setattr(cr, "_sql_ledger_enabled", lambda: False)
+    ledger = cr.get_or_create_advisor_ledger("adv_fnd0290_mem")
+    assert ledger.advisor_id == "adv_fnd0290_mem"

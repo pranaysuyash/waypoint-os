@@ -117,6 +117,26 @@ def _requeue_jobs_pending() -> float:
         return 0.0
 
 
+def _requeue_jobs_poisoned() -> float:
+    """FND-0224: poison must be visible on the canonical scrape surface."""
+    try:
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        return float(RequeueJobStore().snapshot().get("poisoned_count", 0))
+    except Exception:
+        return 0.0
+
+
+def _requeue_jobs_poisoned_age_seconds() -> float:
+    """FND-0224: age of the oldest poisoned job (0 when none poisoned)."""
+    try:
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        return float(RequeueJobStore().snapshot().get("oldest_poisoned_age_seconds", 0.0))
+    except Exception:
+        return 0.0
+
+
 def _work_leases_active() -> float:
     try:
         from spine_api.services.agent_work_coordinator import SQLWorkCoordinator
@@ -189,6 +209,8 @@ def _decision_cost_per_decision_inr() -> float:
 def collect_runtime_gauges() -> None:
     """Refresh the scrape-time gauges. Call immediately before render()."""
     set_gauge("spine_requeue_jobs_pending", _requeue_jobs_pending())
+    set_gauge("spine_requeue_jobs_poisoned", _requeue_jobs_poisoned())
+    set_gauge("spine_requeue_jobs_poisoned_age_seconds", _requeue_jobs_poisoned_age_seconds())
     set_gauge("spine_work_leases_active", _work_leases_active())
     set_gauge("spine_usage_guard_spend_today_usd", _usage_guard_spend_today_usd())
     set_gauge("spine_decision_cost_per_decision_inr", _decision_cost_per_decision_inr())
@@ -281,6 +303,16 @@ def _seed() -> None:
 
     _declare(
         "spine_requeue_jobs_pending", "Requeue jobs in pending state.", "gauge"
+    )
+    _declare(
+        "spine_requeue_jobs_poisoned",
+        "Requeue jobs in terminal poisoned state (FND-0224).",
+        "gauge",
+    )
+    _declare(
+        "spine_requeue_jobs_poisoned_age_seconds",
+        "Age in seconds of the oldest poisoned requeue job; 0 when none (FND-0224).",
+        "gauge",
     )
     _declare(
         "spine_work_leases_active",

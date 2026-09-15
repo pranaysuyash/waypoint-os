@@ -8,10 +8,18 @@ States
     completed  → all pipeline stages finished, ok=True
     failed     → unexpected error (exception, infra failure, non-leakage)
     blocked    → strict leakage violation detected; requires operator review
+    interrupted→ run was observed RUNNING/QUEUED but its worker vanished
+                 (deploy/crash) with no live lease or heartbeat (FND-0226)
 
 'blocked' is a first-class terminal state distinct from 'failed':
     - failed  : system error (crash, timeout, bad input)
     - blocked : pipeline worked correctly, but output violated leakage policy
+
+'interrupted' (FND-0226) is a first-class terminal state for honest
+deploy/crash recovery: when the SQL checkpoint store boots and finds runs
+still marked queued/running whose heartbeat is stale AND whose agent lease
+(if any) is not live, those runs are marked interrupted instead of lying
+about being RUNNING forever.
 
 Transition guards
 -----------------
@@ -24,6 +32,8 @@ Allowed transitions:
     running → failed
     running → blocked
     queued  → failed   (before run even starts, e.g. validation error)
+    queued  → interrupted (worker died before the run started)
+    running → interrupted (worker died mid-run: deploy, crash, lost lease)
 """
 
 from __future__ import annotations
@@ -40,6 +50,7 @@ class RunState(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     BLOCKED = "blocked"  # strict leakage — first-class terminal
+    INTERRUPTED = "interrupted"  # worker vanished mid-run — honest deploy/crash state (FND-0226)
 
     def is_terminal(self) -> bool:
         """Return True if no further transitions are allowed."""
@@ -54,15 +65,17 @@ _TERMINAL_STATES: Set[RunState] = {
     RunState.COMPLETED,
     RunState.FAILED,
     RunState.BLOCKED,
+    RunState.INTERRUPTED,
 }
 
 # Explicit allowed transitions. Only these are valid.
 _ALLOWED_TRANSITIONS: dict[RunState, Set[RunState]] = {
-    RunState.QUEUED:   {RunState.RUNNING, RunState.FAILED},
-    RunState.RUNNING:  {RunState.COMPLETED, RunState.FAILED, RunState.BLOCKED},
+    RunState.QUEUED:   {RunState.RUNNING, RunState.FAILED, RunState.INTERRUPTED},
+    RunState.RUNNING:  {RunState.COMPLETED, RunState.FAILED, RunState.BLOCKED, RunState.INTERRUPTED},
     RunState.COMPLETED: set(),
-    RunState.FAILED:   set(),
-    RunState.BLOCKED:  set(),
+    RunState.FAILED: set(),
+    RunState.BLOCKED: set(),
+    RunState.INTERRUPTED: set(),
 }
 
 

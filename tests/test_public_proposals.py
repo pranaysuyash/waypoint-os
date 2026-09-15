@@ -28,7 +28,16 @@ def _isolated_revocation_store(tmp_path, monkeypatch):
     # The rich allowlisted fixtures are intentionally test-only. Production
     # callers must opt in explicitly via PUBLIC_PROPOSAL_DEMO_MODE=1.
     monkeypatch.setenv("PUBLIC_PROPOSAL_DEMO_MODE", "1")
-    public_proposals._PROPOSAL_REGISTRY.clear()
+    public_proposals._PROPOSAL_VIEW_CACHE.clear()
+    # FND-0219: credential lifecycle tests must run against the in-memory
+    # backend regardless of any ambient backend/DATABASE_URL configuration.
+    from spine_api.services.proposal_token_store import MemoryProposalTokenBackend
+
+    monkeypatch.setattr(
+        public_proposals.ProposalTokenStore,
+        "_instance",
+        public_proposals.ProposalTokenStore(backend=MemoryProposalTokenBackend()),
+    )
 
 
 def test_generate_proposal_token_deterministic():
@@ -300,18 +309,27 @@ def test_revoked_token_rejected_and_persisted():
 
 
 def test_revocation_write_merges_another_workers_update():
-    """A concurrent worker's revocation must not be lost by read/replace."""
+    """A concurrent worker's revocation must not be lost by read/replace.
+
+    FND-0219: the store is hash-keyed — raw token material is never
+    persisted. Legacy raw keys written by another worker are normalized
+    (re-keyed by hashing) on load/merge.
+    """
     first = generate_signed_proposal_token("trip_revoked_merge_1", agency_id="system", ttl_hours=24)
     second = generate_signed_proposal_token("trip_revoked_merge_2", agency_id="system", ttl_hours=24)
     public_proposals._REVOCATIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    public_proposals._REVOCATIONS_PATH.write_text(json.dumps({first: "other-worker"}), encoding="utf-8")
-    public_proposals._REVOKED_TOKENS[second] = "this-worker"
+    public_proposals._REVOCATIONS_PATH.write_text(
+        json.dumps({public_proposals.hash_token(first)[0]: "other-worker"}), encoding="utf-8"
+    )
+    public_proposals._REVOKED_TOKENS[public_proposals.hash_token(second)[0]] = "this-worker"
 
     with public_proposals._revocations_lock:
         assert public_proposals._persist_revocations_locked() is True
 
     persisted = json.loads(public_proposals._REVOCATIONS_PATH.read_text(encoding="utf-8"))
-    assert set(persisted) == {first, second}
+    assert set(persisted) == {public_proposals.hash_token(first)[0], public_proposals.hash_token(second)[0]}
+    # Raw credential material must never appear in the durable file.
+    assert first not in persisted and second not in persisted
 
 
 def test_verification_observes_revocation_written_after_import():

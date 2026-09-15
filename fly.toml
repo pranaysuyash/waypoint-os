@@ -35,6 +35,7 @@ image = "ghcr.io/your-org/spine-api:latest"
   USE_HYBRID_DECISION_ENGINE = "0"
   TRIPSTORE_BACKEND = "sql"
   SPINE_API_IDEMPOTENCY_BACKEND = "sql"
+  SPINE_API_LOCKING_BACKEND = "sql"
   # FND-0262: pin the encryption posture explicitly. Without production mode
   # the encryption layer falls back to a committed dev key. ENCRYPTION_KEY
   # itself is a secret — provide it via `fly secrets set ENCRYPTION_KEY=...`.

@@ -892,7 +892,7 @@ export interface ReviewActionRequest {
 }
 export interface ReviewSignoffRequest {
   trip_id: string;
-  reviewer_id: string;
+  reviewer_id?: string | null;
   decision?: string;
   feedback_notes?: string | null;
 }

@@ -1,31 +1,37 @@
-"""Hybrid local-vector + lexical + entity-boost retriever for Waypoint OS.
+"""Hybrid local-vector + lexical + graph-traversal retriever for Waypoint OS.
 
-Uses Reciprocal Rank Fusion (RRF) to merge deterministic hash-bucket vector
-similarity and substring lexical matching, with an optional node-label boost
-under strict tenant isolation.  This module does not yet perform semantic
-embedding retrieval or multi-hop graph traversal.
+Uses Reciprocal Rank Fusion (RRF) to merge vector similarity (provider-backed
+or deterministic hash fallback) and substring lexical matching, with
+entity-matching and 1-hop knowledge graph edge traversal under strict tenant
+isolation.
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
 from src.rag.models import (
     RAGChunk,
     RAGSearchResult,
     HybridSearchQuery,
 )
 from src.rag.store import SQLiteRAGStore
-from src.rag.indexer import generate_local_embedding
+from src.rag.embeddings import EmbeddingProvider, HashEmbeddingProvider
 
 
 class HybridGraphVectorRetriever:
-    def __init__(self, store: SQLiteRAGStore, rrf_k: float = 60.0):
+    def __init__(
+        self,
+        store: SQLiteRAGStore,
+        rrf_k: float = 60.0,
+        embedding_provider: Optional[EmbeddingProvider] = None,
+    ):
         self.store = store
         self.rrf_k = rrf_k
+        self.embedding_provider = embedding_provider or HashEmbeddingProvider()
 
     def retrieve(self, search_query: HybridSearchQuery) -> List[RAGSearchResult]:
         """Perform local-vector/lexical retrieval fused via RRF.
 
-        ``include_graph`` currently enables a node-label/entity-reference
-        boost; edges are persisted by the store but are not traversed here.
+        ``include_graph`` enables entity-reference matching and 1-hop edge
+        traversal across knowledge nodes and edges stored for the agency.
         """
         agency_id = search_query.agency_id
         query_text = search_query.query
@@ -37,8 +43,8 @@ class HybridGraphVectorRetriever:
             else None
         )
 
-        # 1. Local hash-vector similarity search (not semantic embeddings).
-        query_vector = generate_local_embedding(query_text)
+        # 1. Vector similarity search (provider-backed or deterministic hash fallback).
+        query_vector = self.embedding_provider.embed_text(query_text)
         dense_results = self.store.search_dense(
             query_vector=query_vector,
             agency_id=agency_id,
@@ -82,17 +88,27 @@ class HybridGraphVectorRetriever:
                 score += (1.0 - search_query.alpha) * (1.0 / (self.rrf_k + sparse_ranks[chunk_id]))
             rrf_scores[chunk_id] = score
 
-        # 4. Optional node-label/entity-reference boost (no edge traversal).
+        # 4. Optional graph traversal: direct matching nodes (1.5x) + 1-hop connected nodes (1.25x).
         if search_query.include_graph:
             graph_nodes = self.store.get_nodes(agency_id)
             query_lower = query_text.lower()
-            matching_node_ids = [n.id for n in graph_nodes if n.label.lower() in query_lower]
+            matching_node_ids = {n.id for n in graph_nodes if n.label.lower() in query_lower}
 
-            if matching_node_ids:
+            one_hop_node_ids: set[str] = set()
+            for nid in matching_node_ids:
+                edges = self.store.get_edges_for_node(nid, agency_id)
+                for edge in edges:
+                    connected_id = edge.target_node_id if edge.source_node_id == nid else edge.source_node_id
+                    if connected_id not in matching_node_ids:
+                        one_hop_node_ids.add(connected_id)
+
+            if matching_node_ids or one_hop_node_ids:
                 for chunk_id, chunk in chunk_map.items():
                     for ref in chunk.metadata.entity_references:
                         if ref in matching_node_ids:
                             rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) * 1.5
+                        elif ref in one_hop_node_ids:
+                            rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) * 1.25
 
         # Format final search results
         sorted_ids = sorted(all_chunk_ids, key=lambda cid: rrf_scores[cid], reverse=True)[:top_k]

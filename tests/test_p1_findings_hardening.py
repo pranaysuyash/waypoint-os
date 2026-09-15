@@ -212,7 +212,7 @@ def test_perishable_sentinel_urgency_classification():
             trip_id="trip_2",
             traveler_name="Maria Silva",
             category=PerishableCategory.INSURANCE_CFAR_WAIVER_14D,
-            title="Allianz CFAR 14-Day Waiver Window",
+            title="Insurer CFAR 14-Day Waiver Window",
             deadline_iso=(now + timedelta(hours=36)).isoformat(),
             financial_exposure_usd=500.0,
         ),

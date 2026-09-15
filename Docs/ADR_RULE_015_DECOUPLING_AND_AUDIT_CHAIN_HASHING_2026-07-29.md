@@ -8,7 +8,7 @@
 
 ## Context
 
-Allowing LLM prompt outputs to directly mutate decision state gates creates shadow pipeline hazards and bypasses deterministic safety controls (Rule 0.15 in `motto_v4.md`). Furthermore, standard JSON audit logs risk modification if historical event lines are tampered with.
+Allowing LLM prompt outputs to directly mutate decision state gates creates shadow pipeline hazards and bypasses deterministic safety controls (Rule 0.15 in `FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md`). Furthermore, standard JSON audit logs risk modification if historical event lines are tampered with.
 
 ---
 
