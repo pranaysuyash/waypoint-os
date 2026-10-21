@@ -505,6 +505,17 @@ def _safe_percentile(values: list[int], q: float) -> int | None:
     return int(round(ordered[lower] * (1.0 - weight) + ordered[upper] * weight))
 
 
+def _nonnegative_measurement(value: Any) -> float | None:
+    """Keep measured zero, reject unknown, non-finite and invalid telemetry."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        number = float(value)
+    except OverflowError:
+        return None
+    return number if math.isfinite(number) and number >= 0 else None
+
+
 def build_routing_metrics(
     events: list[ExecutionEvent],
     *,
@@ -550,15 +561,13 @@ def build_routing_metrics(
         if isinstance(escalation_outcome, str):
             escalation_outcomes[escalation_outcome] = escalation_outcomes.get(escalation_outcome, 0) + 1
 
-        latency_ms = metadata.get("latency_ms")
-        if isinstance(latency_ms, int):
-            latency_ms_values.append(latency_ms)
-        elif isinstance(latency_ms, float):
+        latency_ms = _nonnegative_measurement(metadata.get("latency_ms"))
+        if latency_ms is not None:
             latency_ms_values.append(int(latency_ms))
 
-        cost = metadata.get("cost_estimate_usd")
-        if isinstance(cost, (int, float)):
-            cost_values.append(float(cost))
+        cost = _nonnegative_measurement(metadata.get("cost_estimate_usd"))
+        if cost is not None:
+            cost_values.append(cost)
 
     review_applied_count = review_outcomes.get("applied", 0) + review_outcomes.get("manual_apply", 0)
     review_rejected_count = review_outcomes.get("rejected", 0) + review_outcomes.get("manual_reject", 0)
@@ -596,9 +605,14 @@ def build_routing_metrics(
             "total": round(total_cost, 4),
             "avg_per_eval_event": round(total_cost / total_candidates, 4) if total_candidates else None,
             "event_count_with_cost": len(cost_values),
+            "event_count_without_cost": total_candidates - len(cost_values),
+            "coverage_rate": _safe_divide(len(cost_values), total_candidates) if total_candidates else None,
+            "avg_per_observed_event": round(total_cost / len(cost_values), 4) if cost_values else None,
         },
         "notes": [
-            "false_escalation and missed_escalation are populated when review events log escalation_outcome."
+            "false_escalation and missed_escalation are populated when review events log escalation_outcome.",
+            "Cost total is the observed subtotal; avg_per_eval_event divides it by all candidates. "
+            "Use coverage_rate and avg_per_observed_event to distinguish missing cost from measured zero.",
         ],
     }
 

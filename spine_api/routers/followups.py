@@ -10,7 +10,9 @@ Scope: move only
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
@@ -297,5 +299,105 @@ def generate_followup_prompt(
         "tone": tone,
         "generated_copy": copy,
         "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+class SendAskRequest(BaseModel):
+    """Operator action: send the trip's open follow-up questions to the traveler."""
+    recipient: str  # phone (E.164) for whatsapp, email address for email
+    channel: str = "whatsapp"  # whatsapp | email
+    ttl_hours: int = 168
+
+
+def _compose_questions_message(trip: dict, ask_path: str) -> tuple[str, list]:
+    """Build the traveler-facing message from the trip's open questions."""
+    decision = trip.get("decision") or {}
+    questions = [
+        q for q in (decision.get("follow_up_questions") or [])
+        if isinstance(q, dict) and (q.get("question") or q.get("text"))
+    ]
+    destination = trip.get("destination") or (trip.get("packet") or {}).get("destination") or "your trip"
+    lines = [f"A few quick questions about {destination} so we can finish your plan:"]
+    for idx, q in enumerate(questions, start=1):
+        lines.append(f"{idx}. {q.get('question') or q.get('text')}")
+    lines.append(f"Answer here: {ask_path}")
+    return "\n".join(lines), questions
+
+
+@router.post("/followups/{trip_id}/send")
+def send_followup_questions(
+    trip_id: str,
+    body: SendAskRequest,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Send the trip's open follow-up questions to the traveler (FND-0301).
+
+    Composes the questions message, dispatches through the canonical
+    messaging provider adapter, and records the ask on the trip. The response
+    is honest about dispatch: NOT_CONFIGURED means the ask + link were
+    recorded but no provider send occurred (the operator can share the link
+    manually).
+    """
+    from spine_api.routers.public_proposals import generate_signed_proposal_token
+    from spine_api.services.message_dispatch import dispatch_outbound_message
+
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    token = generate_signed_proposal_token(trip_id, agency_id=agency.id, ttl_hours=body.ttl_hours, purpose="ask")
+    base = os.getenv("TRAVELER_LINK_BASE_URL", "").strip().rstrip("/")
+    ask_path = f"{base}/a/{token}" if base else f"/a/{token}"
+    content, questions = _compose_questions_message(trip, ask_path)
+
+    if not questions:
+        raise HTTPException(status_code=409, detail="Trip has no open follow-up questions to send")
+
+    result = dispatch_outbound_message(
+        recipient=body.recipient,
+        channel=body.channel,
+        content=content,
+    )
+
+    asks = trip.get("traveler_asks") or []
+    ask_record = {
+        "asked_at": datetime.now(timezone.utc).isoformat(),
+        "channel": body.channel,
+        "recipient": body.recipient,
+        "token": token,
+        "question_count": len(questions),
+        "fields": [q.get("field_name") for q in questions],
+        "dispatch_status": result["dispatch_status"],
+    }
+    asks.append(ask_record)
+    updated = TripStore.update_trip_for_agency(trip_id, agency.id, {"traveler_asks": asks})
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    AuditStore.log_event(
+        event_type="traveler_ask_sent",
+        user_id=agency.id,
+        details={
+            "trip_id": trip_id,
+            "channel": body.channel,
+            "recipient_hash": (
+                hashlib.sha256((body.recipient or "").strip().encode("utf-8")).hexdigest()[:16]
+                if body.recipient
+                else ""
+            ),
+            "dispatch_status": result["dispatch_status"],
+            "question_count": len(questions),
+        },
+    )
+
+    return {
+        "ok": True,
+        "trip_id": trip_id,
+        "token": token,
+        "ask_path": ask_path,
+        "dispatch_status": result["dispatch_status"],
+        "dispatch_detail": result["detail"],
+        "question_count": len(questions),
+        "asked_count": len(asks),
     }
 

@@ -281,6 +281,13 @@ class TestHeuristicDetails:
 class TestGuardOnTripStore:
     """Integration tests: guard actually blocks TripStore.save_trip."""
 
+    @pytest.fixture(autouse=True)
+    def _use_file_backend(self, monkeypatch, tmp_path):
+        import spine_api.persistence as persistence
+
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+        monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path)
+
     def test_fixture_save_succeeds(self):
         from spine_api.persistence import TripStore
 
@@ -330,6 +337,7 @@ class TestGuardOnTripStore:
 
     def test_mode_production_allows(self, monkeypatch):
         monkeypatch.setenv("DATA_PRIVACY_MODE", "production")
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
         from src.security.privacy_guard import check_trip_data
 
         trip = {"raw_note": "Real user data"}

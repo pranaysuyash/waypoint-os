@@ -181,10 +181,25 @@ class Normalizer:
             }
             return currency_map.get(normalized, "INR")
 
-        def _parse_amount(token: str, unit_str: str = "") -> int:
-            value = float(token)
-            multiplier = cls.BUDGET_UNITS.get(unit_str.lower(), 1)
-            return int(value * multiplier)
+        # Far above any human-stated travel budget in any supported currency;
+        # values beyond this are paste artifacts / garbage, not amounts.
+        max_sane_amount = 10 ** 15
+
+        def _parse_amount(token: str, unit_str: str = "") -> Optional[int]:
+            """Parse a numeric amount; None for non-finite or absurd values.
+
+            A 300+-digit run (e.g. an Excel/WhatsApp paste artifact) makes
+            float() return inf, and int(inf) used to raise a raw
+            OverflowError. Such input now degrades to unparseable, consistent
+            with the function's graceful-garbage contract.
+            """
+            try:
+                value = float(token) * cls.BUDGET_UNITS.get(unit_str.lower(), 1)
+            except (OverflowError, ValueError):
+                return None
+            if not (-max_sane_amount <= value <= max_sane_amount):
+                return None
+            return int(value)
 
         # Try range: "4-5L", "4 to 5L", "400K-500K", "4–5L"
         range_match = re.search(
@@ -199,10 +214,15 @@ class Normalizer:
             low = range_match.group(2)
             high = range_match.group(3)
             unit_str = (range_match.group(4) or "").lower()
-            result["min"] = _parse_amount(low, unit_str)
-            result["max"] = _parse_amount(high, unit_str)
-            result["currency"] = _currency_code(currency_token)
-            return result
+            low_amount = _parse_amount(low, unit_str)
+            high_amount = _parse_amount(high, unit_str)
+            if low_amount is None or high_amount is None:
+                pass  # absurd magnitude — fall through to the next matcher
+            else:
+                result["min"] = low_amount
+                result["max"] = high_amount
+                result["currency"] = _currency_code(currency_token)
+                return result
 
         # Try single value: "2L", "400000", "4L"
         single_match = re.search(
@@ -216,10 +236,11 @@ class Normalizer:
             val = single_match.group(2)
             unit_str = single_match.group(3).lower()
             amount = _parse_amount(val, unit_str)
-            result["min"] = amount
-            result["max"] = amount
-            result["currency"] = _currency_code(currency_token)
-            return result
+            if amount is not None:
+                result["min"] = amount
+                result["max"] = amount
+                result["currency"] = _currency_code(currency_token)
+                return result
 
         # Numeric amount with an explicit currency and no suffix, such as
         # "NGN 2500000" or "ZAR 3000000".
@@ -230,19 +251,21 @@ class Normalizer:
             re.IGNORECASE,
         )
         if plain_currency_match:
-            val = int(float(plain_currency_match.group(2)))
-            result["min"] = val
-            result["max"] = val
-            result["currency"] = _currency_code(plain_currency_match.group(1))
-            return result
+            parsed = _parse_amount(plain_currency_match.group(2))
+            if parsed is not None:
+                result["min"] = parsed
+                result["max"] = parsed
+                result["currency"] = _currency_code(plain_currency_match.group(1))
+                return result
 
         # Plain number (no unit) — assume INR if >= 1000
         plain_match = re.search(r"(\d{4,}(?:\.\d+)?)", raw)
         if plain_match:
-            val = int(float(plain_match.group(1)))
-            result["min"] = val
-            result["max"] = val
-            return result
+            parsed = _parse_amount(plain_match.group(1))
+            if parsed is not None:
+                result["min"] = parsed
+                result["max"] = parsed
+                return result
 
         return result
 

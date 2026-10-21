@@ -147,6 +147,57 @@ def question_priority_order(field_names: List[str]) -> List[str]:
     )
 
 
+# --- FND-0313 / FND-0316 (2026-10-05): canonical blocking-unknown detector ---
+#
+# ``_identify_unknowns`` (extractors) annotates unknowns with the TS-07 class
+# marker (``required_for: planning, fare_quote, booking [BLOCKING_FOR_<op>]``).
+# Both the decision ask-floor (FND-0313) and the JEV coherence guard
+# (FND-0316) must detect blocking unknowns the same way, so the detection
+# lives here next to the vocabulary that defines it — one detector, two
+# consumers, no parallel implementations.
+
+_HIGH_PRIORITY_OPS = frozenset({"booking", "fare_quote"})
+
+
+def blocking_unknowns(packet: CanonicalPacket) -> List[Dict[str, Any]]:
+    """Return packet unknowns that block at least one operation.
+
+    An UnknownField is blocking when:
+      * its notes carry the ``BLOCKING_FOR`` class marker emitted by
+        ``classify_missing_fields`` (the T-O2 MVB discovery sweep), or
+      * its field is in the ``FIELD_REQUIRED_FOR`` vocabulary (the
+        decision-required set), covering unknowns recorded without the
+        note annotation.
+
+    Returns one ``{"field_name": str, "ops": [ops], "priority": str}`` entry
+    per blocking unknown, in ``packet.unknowns`` order. ``priority`` follows
+    the ask-loop convention: booking/fare_quote blocking → ``"high"``,
+    otherwise (e.g. planning-only) → ``"medium"``.
+    """
+    out: List[Dict[str, Any]] = []
+    for unknown in packet.unknowns:
+        notes = unknown.notes or ""
+        ops: set = set()
+        if "BLOCKING_FOR" in notes:
+            marker = notes.split("BLOCKING_FOR", 1)[1].lstrip("_")
+            first_op = marker.split("]", 1)[0].split()
+            if first_op and first_op[0] in OPERATIONS:
+                ops.add(first_op[0])
+            if notes.startswith("required_for:"):
+                listed = notes.split(":", 1)[1].split("[", 1)[0]
+                ops |= {tok.strip() for tok in listed.split(",") if tok.strip() in OPERATIONS}
+        if not ops and unknown.field_name in FIELD_REQUIRED_FOR:
+            ops = set(FIELD_REQUIRED_FOR[unknown.field_name])
+        if not ops:
+            continue
+        out.append({
+            "field_name": unknown.field_name,
+            "ops": sorted(ops),
+            "priority": "high" if ops & _HIGH_PRIORITY_OPS else "medium",
+        })
+    return out
+
+
 @dataclass(slots=True)
 class ValidationIssue:
     """A single validation finding with severity."""

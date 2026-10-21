@@ -14,12 +14,14 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useId } from 'react';
-import type { Trip } from '@/lib/api-client';
+import { useId, useState, useEffect } from 'react';
+import type { Trip, LiveMessageTriageResponse } from '@/lib/api-client';
+import { triageMessage } from '@/lib/api-client';
 import { useWorkbenchStore } from '@/stores/workbench';
 import type { SpineStage, OperatingMode } from '@/types/spine';
 import { getTravelerPromptForUnknownField } from '@/lib/traveler-prompts';
 import { RepeatTravelerRecallCard } from './RepeatTravelerRecallCard';
+import { Zap, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 const stages: { value: SpineStage; label: string }[] = [
   { value: 'discovery', label: 'Discovery' },
@@ -55,6 +57,31 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
   const id2 = useId();
   const id3 = useId();
   const id4 = useId();
+
+  const [triageResult, setTriageResult] = useState<LiveMessageTriageResponse | null>(null);
+  const [isTriaging, setIsTriaging] = useState<boolean>(false);
+
+  useEffect(() => {
+    const text = (input_raw_note || '').trim();
+    if (text.length < 5) {
+      setTriageResult(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsTriaging(true);
+        const res = await triageMessage(text);
+        setTriageResult(res);
+      } catch (err) {
+        // Non-blocking background signal
+      } finally {
+        setIsTriaging(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [input_raw_note]);
 
   const stage = (getSearchParam('stage') as SpineStage) || 'discovery';
   const operatingMode = (getSearchParam('mode') as OperatingMode) || 'normal_intake';
@@ -186,6 +213,64 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
             rows={6}
             className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] resize-none font-mono'
           />
+
+          {/* Live Semantic Triage Telemetry (TypeSafe Jev) */}
+          {(isTriaging || triageResult) && (
+            <div className='mt-3 p-2.5 rounded-lg border border-[#30363d] bg-[#0d1117] text-ui-xs flex flex-col gap-1.5 transition-all'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-1.5 font-medium text-[#c9d1d9]'>
+                  <Zap className='size-3 text-[#58a6ff]' />
+                  <span>Real-Time Triage</span>
+                  {isTriaging && <span className='text-[#8b949e] animate-pulse'>(evaluating...)</span>}
+                </div>
+                {triageResult && (
+                  <span className='text-[10px] text-[#8b949e] font-mono'>
+                    {triageResult.source} • {triageResult.latency_ms}ms
+                  </span>
+                )}
+              </div>
+
+              {triageResult && (
+                <div className='flex flex-wrap items-center gap-2 pt-1'>
+                  <span className='px-2 py-0.5 rounded bg-[#21262d] text-[#58a6ff] font-semibold uppercase tracking-wider text-[10px]'>
+                    Intent: {triageResult.intent}
+                  </span>
+
+                  {triageResult.is_urgent && (
+                    <span className='px-2 py-0.5 rounded bg-[#f85149]/20 text-[#f85149] font-medium flex items-center gap-1 text-[10px]'>
+                      <AlertTriangle className='size-2.5' /> URGENT
+                    </span>
+                  )}
+
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                    triageResult.sentiment === 'FRUSTRATED' 
+                      ? 'bg-[#f85149]/20 text-[#f85149]' 
+                      : triageResult.sentiment === 'CONCERNED'
+                      ? 'bg-[#d29922]/20 text-[#d29922]'
+                      : 'bg-[#238636]/20 text-[#3fb950]'
+                  }`}>
+                    Tone: {triageResult.sentiment}
+                  </span>
+
+                  {triageResult.has_policy_risk && (
+                    <span className='px-2 py-0.5 rounded bg-[#da3633]/20 text-[#f85149] font-medium flex items-center gap-1 text-[10px]'>
+                      <ShieldAlert className='size-2.5' /> POLICY/LEGAL RISK
+                    </span>
+                  )}
+
+                  <span className='px-2 py-0.5 rounded bg-[#1f242c] text-[#8b949e] text-[10px]'>
+                    Route: {triageResult.routing_recommendation}
+                  </span>
+                </div>
+              )}
+
+              {triageResult?.advisory && (
+                <p className='text-[11px] text-[#8b949e] italic mt-0.5'>
+                  Advisory: {triageResult.advisory}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>

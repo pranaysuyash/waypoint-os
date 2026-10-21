@@ -181,6 +181,7 @@ class RunStatusResponse(BaseModel):
     follow_up_questions: List[Dict[str, Any]] = Field(default_factory=list)
     hard_blockers: List[str] = Field(default_factory=list)
     soft_blockers: List[str] = Field(default_factory=list)
+    branch_options: List[Dict[str, Any]] = Field(default_factory=list)
     report_fingerprint: Optional[str] = None
     access_token: Optional[str] = None
     retention_days: Optional[int] = None
@@ -1088,8 +1089,10 @@ class TripPatchRequest(BaseModel):
     trip_priorities: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("tripPriorities", "trip_priorities"),
-        max_length=1000,
     )
+    # T11b (2026-09-30): operator-reported flight status facts — the honest
+    # telemetry source for the ghost-concierge disruption monitor.
+    flight_status_updates: Optional[List[Dict[str, Any]]] = Field(default=None)
     date_flexibility: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("dateFlexibility", "date_flexibility"),
@@ -1171,6 +1174,28 @@ class TripResponse(BaseModel):
     activity_interests: Optional[str] = None
     trip_priorities: Optional[str] = None
     date_flexibility: Optional[str] = None
+    # T10 (FND-0233): passenger-rights claim + disposition ledger, returned
+    # verbatim so operators can track airline→traveler claim outcomes. This
+    # system never initiates, holds, or receives money (owner invariant).
+    passenger_claim: Optional[Dict[str, Any]] = None
+    # T11b (2026-09-30): ghost-concierge disruption monitor output — real
+    # evaluations with operator-gated drafted interventions.
+    ghost_concierge: Optional[Dict[str, Any]] = None
+    # T11b/FND-0307 (2026-10-03): append-only traveler answers from the
+    # token-gated ask loop. Stored via analytics._extra folding on backends
+    # without a dedicated column; surfaced here so recorded answers actually
+    # reach the operator (4th silent-strip instance fixed).
+    traveler_answers: Optional[List[Dict[str, Any]]] = None
+    # AUD-14: Contract parity fields previously stripped by TripResponse
+    reassess: Optional[Dict[str, Any]] = None
+    decision: Optional[Dict[str, Any]] = None
+    updated_at: Optional[str] = None
+    flight_status_updates: Optional[List[Dict[str, Any]]] = None
+    traveler_asks: Optional[List[Dict[str, Any]]] = None
+    booking_data: Optional[Dict[str, Any]] = None
+    pending_booking_data: Optional[Dict[str, Any]] = None
+    analytics: Optional[Dict[str, Any]] = None
+    fees: Optional[Dict[str, Any]] = None
 
     @classmethod
     def from_dict(cls, trip: Dict[str, Any]) -> "TripResponse":
@@ -1246,6 +1271,15 @@ class TripResponse(BaseModel):
             strategy=trip.get("strategy") or None,
             frontier_result=trip.get("frontier_result") or None,
             safety=trip.get("safety") or None,
+            passenger_claim=trip.get("passenger_claim") or None,
+            ghost_concierge=trip.get("ghost_concierge") or None,
+            # FND-0307: answers live at top level on column-backed stores and
+            # inside analytics._extra on fold-backed stores — surface either.
+            traveler_answers=(
+                trip.get("traveler_answers")
+                or (trip.get("analytics") or {}).get("_extra", {}).get("traveler_answers")
+                or None
+            ),
             # Phase 2 structured fields — read directly from storage dict, with
             # extracted.facts fallback for pipeline-sourced values.
             party_composition=_clean_text_value(
@@ -1280,6 +1314,19 @@ class TripResponse(BaseModel):
                 trip.get("date_flexibility")
                 or _get_nested(trip, "extracted.facts.date_flexibility.value", None)
             ),
+            reassess=trip.get("reassess") or None,
+            decision=trip.get("decision") or None,
+            updated_at=trip.get("updated_at") or None,
+            flight_status_updates=trip.get("flight_status_updates") or None,
+            traveler_asks=(
+                trip.get("traveler_asks")
+                or (trip.get("analytics") or {}).get("_extra", {}).get("traveler_asks")
+                or None
+            ),
+            booking_data=trip.get("booking_data") or None,
+            pending_booking_data=trip.get("pending_booking_data") or None,
+            analytics=trip.get("analytics") or None,
+            fees=trip.get("fees") or None,
         )
 
 
@@ -1562,7 +1609,66 @@ class OutboundMessageResponse(BaseModel):
     status: str = "QUEUED"
     provider: str = "mock_provider"
     dispatched_at: str
-    dispatch_status: str = "QUEUED"  # QUEUED | SENT | FAILED — what actually happened to the provider
+    dispatch_status: str = "QUEUED"  # QUEUED | SENT | FAILED | NOT_CONFIGURED | UNSUPPORTED — what actually happened to the provider
+
+
+class TravelerAskPublicView(BaseModel):
+    """Traveler-facing open questions for a token-verified trip (FND-0301).
+
+    Traveler-safe: carries the questions and trip context only — no customer
+    PII beyond the destination label.
+    """
+    token: str
+    trip_id: str
+    destination: Optional[str] = None
+    status: str = "open"  # open | answered | expired
+    questions: List[Dict[str, Any]] = Field(default_factory=list)
+    asked_count: int = 0
+
+
+class TravelerAnswerSubmission(BaseModel):
+    """Answers submitted by the traveler through the token-gated ask page."""
+    answers: List[Dict[str, str]] = Field(..., min_length=1, description="Each entry: field_name + answer (+ optional question echo)")
+    respondent_name: Optional[str] = None
+
+
+class TripQuoteBranch(BaseModel):
+    """An unpriced branch prompt from the decision engine — never a priced tier."""
+    label: str
+    description: Optional[str] = None
+    priced: bool = False
+
+
+class TripQuoteView(BaseModel):
+    """One real quote derived from persisted spine data (T4). Every monetary
+    field carries an honesty ``basis`` label; nothing here is invented."""
+    trip_id: str
+    title: str
+    currency: str = "USD"
+    net_cost: float
+    net_cost_basis: str = "persisted_modeled_cost"  # persisted_modeled_cost | live_wholesale_cost (future B6/B7)
+    margin_percent: float
+    margin_basis: str = "policy_preview"  # policy_preview | live_wholesale_margin (future)
+    margin_provenance: Dict[str, Any] = Field(default_factory=dict)
+    tax_percent: Optional[float] = None  # None = no persisted tax producer; never a default
+    rack_price: float
+    rack_price_basis: str = "computed_preview"
+    status: str = "draft"  # draft | under_review | approved | rejected | revision_needed | sent
+    created_at: str = ""
+    updated_at: Optional[str] = None
+    highlights: List[str] = Field(default_factory=list)
+    summary: Optional[str] = None
+
+
+class TripQuotesResponse(BaseModel):
+    """Trip-scoped quotes read model: real quote(s) or an explicit
+    not-ready contract with the missing persisted inputs listed."""
+    trip_id: str
+    quote_ready: bool
+    quotes: List[TripQuoteView] = Field(default_factory=list)
+    branches: List[TripQuoteBranch] = Field(default_factory=list)
+    budget_breakdown: Optional[Dict[str, Any]] = None
+    missing: List[str] = Field(default_factory=list)
 
 
 class ProposalLinkRequest(BaseModel):

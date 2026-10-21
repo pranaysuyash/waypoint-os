@@ -101,3 +101,79 @@ def test_concurrent_acquisition_has_one_winner_and_one_fence_generation():
     assert len(winners) == 1
     assert winners[0].fencing_token == 1
     assert DurableAgentLeaseManager.verify_fencing_token("TRIP-007", 1) is True
+
+
+# ---------------------------------------------------------------------------
+# FND-0227: pipeline-version fencing
+# ---------------------------------------------------------------------------
+
+
+def test_acquire_stamps_pipeline_version_and_renew_succeeds_when_current(monkeypatch):
+    monkeypatch.setenv("SPINE_API_PIPELINE_VERSION", "v7")
+    lease = DurableAgentLeaseManager.acquire_lease("TRIP-PV-1", "agent_a", ttl_seconds=30)
+    assert lease.metadata["pipeline_version"] == "v7"
+
+    renewed = DurableAgentLeaseManager.renew_lease("TRIP-PV-1", lease.lease_token, ttl_seconds=30)
+    assert renewed.metadata["pipeline_version"] == "v7"
+
+
+def test_renew_refuses_lease_from_older_pipeline_version(monkeypatch):
+    from src.orchestration.agent_lease import PipelineVersionMismatchError
+
+    monkeypatch.setenv("SPINE_API_PIPELINE_VERSION", "v1")
+    lease = DurableAgentLeaseManager.acquire_lease("TRIP-PV-2", "agent_a", ttl_seconds=300)
+
+    monkeypatch.setenv("SPINE_API_PIPELINE_VERSION", "v2")
+    with pytest.raises(PipelineVersionMismatchError, match="v1.*v2"):
+        DurableAgentLeaseManager.renew_lease("TRIP-PV-2", lease.lease_token, ttl_seconds=30)
+
+
+def test_renew_without_version_stamp_stays_backward_compatible(monkeypatch):
+    monkeypatch.setenv("SPINE_API_PIPELINE_VERSION", "v9")
+    lease = DurableAgentLeaseManager.acquire_lease("TRIP-PV-3", "agent_a", ttl_seconds=300)
+    # Pre-stamp leases (deployed before FND-0227) carry no version — must not break.
+    lease.metadata.pop("pipeline_version")
+
+    renewed = DurableAgentLeaseManager.renew_lease("TRIP-PV-3", lease.lease_token, ttl_seconds=30)
+    assert renewed.metadata.get("pipeline_version") is None
+
+
+def test_explicit_caller_pipeline_version_is_preserved(monkeypatch):
+    monkeypatch.setenv("SPINE_API_PIPELINE_VERSION", "v3")
+    lease = DurableAgentLeaseManager.acquire_lease(
+        "TRIP-PV-4", "agent_a", ttl_seconds=300, metadata={"pipeline_version": "legacy"}
+    )
+    assert lease.metadata["pipeline_version"] == "legacy"
+
+
+# ---------------------------------------------------------------------------
+# FND-0160: terminal lease retention
+# ---------------------------------------------------------------------------
+
+
+def test_prune_removes_only_old_terminal_leases():
+    from src.orchestration.agent_lease import MemoryAgentLeaseBackend
+
+    backend = MemoryAgentLeaseBackend()
+    old = backend.acquire_lease("TRIP-PRUNE-OLD", "agent_a", ttl_seconds=10)
+    fresh = backend.acquire_lease("TRIP-PRUNE-FRESH", "agent_b", ttl_seconds=10)
+    backend.acquire_lease("TRIP-PRUNE-ACTIVE", "agent_c", ttl_seconds=3000)
+
+    backend.release_lease("TRIP-PRUNE-OLD", old.lease_token)
+    backend.release_lease("TRIP-PRUNE-FRESH", fresh.lease_token)
+    # Artificially age the OLD terminal lease past any retention window.
+    old.expires_at = datetime.now(timezone.utc) - timedelta(days=365)
+
+    pruned = backend.prune_terminal_leases(older_than_days=30)
+    assert pruned == 1
+    assert backend.get_lease("TRIP-PRUNE-OLD") is None
+    assert backend.get_lease("TRIP-PRUNE-FRESH") is not None
+    assert backend.get_lease("TRIP-PRUNE-ACTIVE").is_active is True
+
+
+def test_prune_rejects_invalid_retention_config(monkeypatch):
+    from src.orchestration.agent_lease import MemoryAgentLeaseBackend
+
+    monkeypatch.setenv("SPINE_API_LEASE_TERMINAL_RETENTION_DAYS", "banana")
+    with pytest.raises(ValueError, match="non-negative integer"):
+        MemoryAgentLeaseBackend().prune_terminal_leases()

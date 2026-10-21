@@ -5,6 +5,8 @@ import { DecisionPanel } from '@/components/workspace/panels/DecisionPanel';
 import { PlanningStageGate } from '@/components/workspace/PlanningStageGate';
 import { FreshnessCard } from '@/components/workspace/FreshnessCard';
 import { OnFileMemoryCard } from '@/components/workspace/OnFileMemoryCard';
+import { ClaimDispositionCard } from '@/components/workspace/ClaimDispositionCard';
+import { GhostConciergeCard } from '@/components/workspace/GhostConciergeCard';
 import { getPlanningStageGateReason } from '@/lib/planning-status';
 
 export default function DecisionPage() {
@@ -19,6 +21,8 @@ export default function DecisionPage() {
         <>
           {tripId && <FreshnessCard tripId={tripId} />}
           {tripId && <OnFileMemoryCard tripId={tripId} />}
+          <ClaimDispositionCard trip={trip} />
+          <GhostConciergeCard trip={trip} />
           <DecisionPanel tripId={tripId || ''} />
         </>
       )}

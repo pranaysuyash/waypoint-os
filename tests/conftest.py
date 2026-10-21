@@ -169,9 +169,6 @@ async def _ensure_test_principal() -> None:
             )
     finally:
         await engine.dispose()
-
-
-# ---------------------------------------------------------------------------
 # Shared session-scoped TestClient (prevents asyncpg loop mismatches)
 # ---------------------------------------------------------------------------
 

@@ -40,7 +40,7 @@ const STEPS: OnboardingStep[] = [
     icon: Send,
     label: 'Add your first inquiry',
     description: "Paste a customer note and Waypoint organizes the details and flags what's missing.",
-    href: '/workbench?draft=new&tab=intake',
+    href: '/inquiries/new?draft=new&tab=intake',
   },
   {
     key: 'review_inbox',

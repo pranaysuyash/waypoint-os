@@ -24,6 +24,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from spine_api.core.rls import refresh_or_reselect
 from spine_api.core.security import hash_password
 from spine_api.models.tenant import User, Membership, PasswordResetToken
 
@@ -115,7 +116,7 @@ async def invite_member(
     )
     db.add(member)
     await db.commit()
-    await db.refresh(member)
+    await refresh_or_reselect(db, member)
 
     logger.info("Member invited: user=%s agency=%s role=%s", user.id, agency_id, role)
 

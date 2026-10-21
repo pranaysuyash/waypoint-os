@@ -32,6 +32,7 @@ from spine_api.contract import (
     SafetyResult,
 )
 from spine_api.core.auth import get_current_agency_id
+from src.security.privacy_guard import PrivacyGuardError
 from spine_api.core.sse_registry import SSE_CONNECTION_REGISTRY, SSEConnection
 
 try:
@@ -333,6 +334,13 @@ def parse_inbound_inquiry(
         return response
     except Exception as e:
         _IDEMPOTENCY.mark_failed(idem_key, str(e), fencing_token=fencing_token)
+        if isinstance(e, PrivacyGuardError):
+            # Fail-closed privacy rejections are client errors, not server
+            # faults: keep the idempotency bookkeeping, then propagate to the
+            # canonical app-level handler (spine_api/server.py) which maps
+            # them to 422 with reason + remediation (FND-0320). Re-wrapping
+            # them here produced a naked 500 that hid the guard's reason.
+            raise
         logger.exception(f"Error during inbound parsing for agency {agency_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Inbound inquiry parsing failed: {str(e)}")
 

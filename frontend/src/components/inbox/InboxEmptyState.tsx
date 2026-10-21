@@ -54,7 +54,7 @@ export const InboxEmptyState = memo(function InboxEmptyState({
       className={className}
       action={
         isTrulyEmpty
-          ? { label: 'New Inquiry', href: '/workbench' }
+          ? { label: 'New Inquiry', href: '/inquiries/new' }
           : hasSearch && onClearSearch
           ? { label: 'Clear search', onClick: onClearSearch }
           : undefined

@@ -275,15 +275,33 @@ async def verify_execution_chain(db: AsyncSession, *, agency_id: str) -> Dict[st
     events = list(result.scalars().all())
 
     anchored = [e for e in events if e.event_hash is not None]
-    legacy_unanchored = len(events) - len(anchored)
+    legacy_unanchored = 0
 
     seen_prev: Dict[str, str] = {}
     forks: List[str] = []
     first_break: Optional[Dict[str, Any]] = None
     prev_anchored: Optional[ExecutionEvent] = None
 
-    for event in anchored:
-        if event.prev_hash is not None and event.prev_hash in seen_prev:
+    for event in events:
+        if event.event_hash is None:
+            if event.prev_hash is not None:
+                if first_break is None:
+                    first_break = {
+                        "event_id": event.id,
+                        "reason": "missing event_hash on a row with a predecessor",
+                    }
+            elif prev_anchored is not None:
+                if first_break is None:
+                    first_break = {
+                        "event_id": event.id,
+                        "reason": "unhashed row after chain start is not a legacy prefix",
+                    }
+            else:
+                legacy_unanchored += 1
+            continue
+
+        predecessor = event.prev_hash or ""
+        if predecessor in seen_prev:
             forks.append(event.id)
             if first_break is None:
                 first_break = {
@@ -297,13 +315,19 @@ async def verify_execution_chain(db: AsyncSession, *, agency_id: str) -> Dict[st
                     "event_id": event.id,
                     "reason": "event_hash does not match recompute (payload mutated after append)",
                 }
-        if prev_anchored is not None and event.prev_hash != prev_anchored.event_hash:
+        if prev_anchored is None and event.prev_hash is not None:
+            if first_break is None:
+                first_break = {
+                    "event_id": event.id,
+                    "reason": "missing predecessor before first anchored event (trimmed prefix)",
+                }
+        elif prev_anchored is not None and event.prev_hash != prev_anchored.event_hash:
             if first_break is None:
                 first_break = {
                     "event_id": event.id,
                     "reason": "continuity break — prev_hash does not match prior anchored event_hash",
                 }
-        seen_prev[event.prev_hash or ""] = event.id
+        seen_prev[predecessor] = event.id
         prev_anchored = event
 
     verdict = "pass" if first_break is None and not forks else "fail"

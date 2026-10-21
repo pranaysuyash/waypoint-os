@@ -286,3 +286,25 @@ FND-0277); transient toast timers → `hooks/useTransientTimers` (FND-0282).
 PageClient remains the composition root (1,463 → ~915 lines). Behavior
 contracts pinned by `workbench/__tests__/page-characterization.test.tsx`.
 Evidence: `Docs/architecture/WORKBENCH_MODULARIZATION_COUNCIL_DECISION_2026-09-12.md`.
+
+## 11. Addendum 2026-10-20 — Waypoint OS Council Audit Implementation Wave (AUD-01 to AUD-20)
+
+Implemented the 20 Council Audit Tasks from first principles across security, persistence, agentic autonomy, statutory compliance, and operator UX:
+
+1. **Security & Privacy Guard (`AUD-01`, `FND-0315`)**: Scoped synthetic fixture bypass in `privacy_guard.py` strictly to registered fixtures, preventing test bypasses on `RunMeta(fixture_id=None)`; scoped medical keywords to exclude system bundle boilerplate.
+2. **State Substrate & Persistence (`AUD-02`, `AUD-09`)**: Preserved auxiliary keys (`traveler_answers`, `traveler_asks`, `passenger_claim`, `ghost_concierge`, `flight_status_updates`, `booking_data`) across reprocess writes in both `FileTripStore` and `SQLTripStore`; encrypted `analytics._extra` at rest.
+3. **GDPR Deep Erasure & Statutory Audit (`AUD-03`, `AUD-16`)**: Implemented recursive PII scrubbing across sub-dictionaries, memory engines, and draft stores in `trip_dsr.py`; ensured GDPR signing key fails closed in production/staging; hashed personal names/emails in audit logs.
+4. **Deploy Gate Honesty (`AUD-04`)**: Enforced `Docs/LAUNCH_STATUS.md` GO verdict verification in `.github/workflows/deploy.yml` before Fly.io release deploys.
+5. **TypeSafe / Jev LLM Boundary (`AUD-05`, `AUD-18`)**: Stripped PII egress, added nonce-delimited prompts, and pinned versioned models; added post-decision coherence guard downgrading `PROCEED` to `PROCEED_WITH_ASKS` when blocking unknowns exist.
+6. **Ask-Traveler E2E Wiring (`AUD-06`)**: Mapped `/api/followups/{id}/send` in frontend route-map; ingested submitted traveler answers directly into trip slots and `extracted.facts`; automatically queued background pipeline reassessments.
+7. **Live Message Triage Contract Alignment (`AUD-07`)**: Mapped `/triage/message` in route map and aligned `MessageTriageResponse` schema (`ok`, `latency_ms`, `sentiment`, `routing_recommendation`, `advisory`) with frontend workbench panels.
+8. **AsyncEngine Event Loop Isolation (`AUD-08`, `FND-0321`)**: Replaced shared async engines with loop-keyed `tripstore_session_maker` across `rls.py`, `agent_lease.py`, `idempotency.py`, `proposal_token_store.py`, and `run_ledger_sql.py`.
+9. **Structured Extraction Status & Lifecycle Precedence (`AUD-10`)**: Recomputed `destination_status` on structured destination ingestion; enabled operators to explicitly clear fields via `None` / empty strings in `trip_lifecycle_service.py`.
+10. **Public Proposal Token Scope & Tenancy (`AUD-11`)**: Bound signed capability tokens with explicit `purpose` ("proposal" vs "ask"); verified agency isolation on public retrieval and proposal acceptance.
+11. **Disruption Stage Gate Unlocking (`AUD-12`, `FND-0317`)**: Unlocked Decision tab in `PlanningStageGate` on disruption trips with `passenger_claim` or `ghost_concierge`, enabling timely operator claim disposition.
+12. **Statutory Claim Framework Alignment (`AUD-13`)**: Verified canonical EC 261 / UK261 / US DOT / Montreal Convention Art. 19 jurisdiction resolver in `claim_framework.py`.
+13. **Contract Parity (`AUD-14`)**: Unified `TripResponse.from_dict()` with backend database fields (`reassess`, `decision`, `updated_at`, `flight_status_updates`, `traveler_asks`, `booking_data`, `analytics`, `fees`).
+14. **Operator Decision Cache Key (`AUD-15`, `TRV-N03`)**: Replaced hardcoded cache key with dynamic SHA-256 decision cache key generation for trip overrides in `legacy_ops.py`.
+15. **Agentic Financial Autonomy Guard (`AUD-17`)**: Gated IROPS lodging VCC issuance under ADR-008 Rung 3 (`DRAFT_AWAITING_OPERATOR_APPROVAL` unless explicitly approved by operator).
+16. **Statutory Indian Tax & Accounting Bridge (`AUD-19`)**: Enforced strict Indian PAN card regex format `^[A-Z]{5}[0-9]{4}[A-Z]$` in `tax_compliance.py`; applied XML escaping to voucher numbers and dates in `export_bridge.py`.
+17. **Findings Store & Map Governance (`AUD-20`)**: Synchronized resolution records in `Docs/review/FINDINGS_STORE.jsonl` and architectural documentation.

@@ -26,8 +26,9 @@ export function safeParseJson(raw: string): Record<string, unknown> | null {
 export const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
   { id: 'packet', label: 'Trip Details' },
+  { id: 'decision', label: 'Decision' },
   { id: 'safety', label: 'Risk Review' },
-  { id: 'council', label: 'Persona Council' },
+  { id: 'council', label: 'Sim Console' },
   { id: 'frontier', label: 'Frontier OS' },
 ] as const;
 
@@ -110,7 +111,9 @@ export function extractCompletedTripIdFromDraft(draft: Record<string, unknown> |
  */
 export function getPipelineStageForWorkbench(
   trip: Trip | null | undefined,
-  store: WorkbenchStore,
+  // FND-0283: narrowed to the four result slices the stage derivation reads,
+  // so callers can pass per-field zustand selectors instead of the whole store.
+  store: Pick<WorkbenchStore, 'result_safety' | 'result_strategy' | 'result_decision' | 'result_packet'>,
 ): PipelineStageId {
   if (store.result_safety || trip?.safety) return 'safety';
   if (store.result_strategy || trip?.strategy) return 'strategy';

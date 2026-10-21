@@ -56,7 +56,7 @@ describe('WelcomeModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /process your first inquiry/i }));
 
-    expect(mockPush).toHaveBeenCalledWith('/workbench?draft=new&tab=intake');
+    expect(mockPush).toHaveBeenCalledWith('/inquiries/new?draft=new&tab=intake');
     expect(localStorage.getItem('waypoint:welcome-seen:v1')).toBe('1');
   });
 

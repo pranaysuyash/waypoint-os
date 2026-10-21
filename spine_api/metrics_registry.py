@@ -41,6 +41,15 @@ _PROCESS_START = time.time()
 # Canonical run-outcome labels (matches RunLedger terminal vocabulary).
 _RUN_OUTCOMES = ("completed", "failed", "blocked")
 
+# Canonical decision-state vocabulary (matches src/intake/constants.py).
+_DECISION_STATES = (
+    "ASK_FOLLOWUP",
+    "PROCEED_INTERNAL_DRAFT",
+    "PROCEED_TRAVELER_SAFE",
+    "BRANCH_OPTIONS",
+    "STOP_NEEDS_REVIEW",
+)
+
 
 def _label_key(labels: Dict[str, str] | None) -> Tuple[Tuple[str, str], ...]:
     if not labels:
@@ -100,6 +109,28 @@ def inc_run_failure(failure_class: str = "unclassified") -> None:
     names.
     """
     inc_counter("spine_runs_failed_by_class", {"failure_class": failure_class})
+
+
+def inc_decision_outcome(decision_state: str) -> None:
+    """Increment spine_decisions_total{decision_state=...}.
+
+    Closes the gap assessment's P2-2 residual: aggregated frequency of the
+    five decision states (ASK_FOLLOWUP etc.), not just hybrid-engine decision
+    types. Wired from the decision-step checkpoint in
+    spine_api/services/pipeline_execution_service.py.
+    """
+    inc_counter("spine_decisions_total", {"decision_state": decision_state})
+
+
+def inc_follow_up_questions(count: int) -> None:
+    """Increment spine_follow_up_questions_total by count.
+
+    Follow-up friction proxy: total questions emitted per decision. Pair with
+    spine_decisions_total{decision_state="ASK_FOLLOWUP"} to derive
+    questions-per-ask ratio.
+    """
+    if count > 0:
+        inc_counter("spine_follow_up_questions_total", value=float(count))
 
 
 # ---------------------------------------------------------------------------
@@ -300,6 +331,24 @@ def _seed() -> None:
         "counter",
     )
     ensure_counter("spine_runs_failed_by_class", {"failure_class": "unclassified"})
+
+    _declare(
+        "spine_decisions_total",
+        "Spine decisions by decision_state (gap-assessment P2-2: aggregated "
+        "state frequencies, wired from the decision-step checkpoint).",
+        "counter",
+    )
+    for _state in _DECISION_STATES:
+        ensure_counter("spine_decisions_total", {"decision_state": _state})
+
+    _declare(
+        "spine_follow_up_questions_total",
+        "Total follow-up questions emitted by decisions (ask-friction proxy; "
+        "divide by spine_decisions_total{decision_state=\"ASK_FOLLOWUP\"} for "
+        "questions per ask).",
+        "counter",
+    )
+    ensure_counter("spine_follow_up_questions_total")
 
     _declare(
         "spine_requeue_jobs_pending", "Requeue jobs in pending state.", "gauge"

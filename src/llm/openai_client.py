@@ -111,6 +111,55 @@ def _recover_json_object(text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+# Statuses worth retrying: transient throttling/availability, not auth or
+# malformed-request failures. 429 is the common case under account-level
+# RPM limits (observed 2026-09-16: sustained 429s silently degraded whole
+# KDD arms to rules-fallback because RateLimitError escaped this client's
+# except-tuple into the engine's blanket handler).
+_RETRYABLE_STATUS_CODES = frozenset({408, 409, 429, 500, 502, 503, 504})
+_TRANSIENT_MAX_ATTEMPTS = 6
+_TRANSIENT_MAX_WAIT_SECONDS = 60.0
+
+
+def _create_with_transient_retry(client, params: Dict[str, Any]):
+    """Call chat.completions.create with bounded retry on transient errors.
+
+    Honors the server's Retry-After hint when present; otherwise backs off
+    exponentially (1s, 2s, 4s, 8s, 16s, capped). Auth/validation failures
+    (4xx outside the retryable set) raise immediately — retrying those can
+    never succeed and would silently mask real misconfiguration.
+    """
+    import time
+
+    delay = 1.0
+    last_exc: Optional[BaseException] = None
+    for attempt in range(1, _TRANSIENT_MAX_ATTEMPTS + 1):
+        try:
+            return client.chat.completions.create(**params)
+        except Exception as exc:  # noqa: BLE001 — status inspected below
+            status = getattr(exc, "status_code", None)
+            if status not in _RETRYABLE_STATUS_CODES:
+                raise
+            last_exc = exc
+            if attempt == _TRANSIENT_MAX_ATTEMPTS:
+                break
+            retry_after = getattr(exc, "retry_after", None)
+            try:
+                wait = float(retry_after) if retry_after else delay
+            except (TypeError, ValueError):
+                wait = delay
+            wait = min(wait, _TRANSIENT_MAX_WAIT_SECONDS)
+            logger.warning(
+                "Transient LLM API error (status=%s), retry %d/%d in %.1fs: %s",
+                status, attempt, _TRANSIENT_MAX_ATTEMPTS, wait, exc,
+            )
+            time.sleep(wait)
+            delay = min(delay * 2, _TRANSIENT_MAX_WAIT_SECONDS)
+    raise LLMUnavailableError(
+        f"LLM API still transient-failing after {_TRANSIENT_MAX_ATTEMPTS} attempts: {last_exc}"
+    )
+
+
 class OpenAIClient(BaseLLMClient):
     """
     OpenAI API client implementation.
@@ -252,7 +301,7 @@ class OpenAIClient(BaseLLMClient):
                 params["max_tokens"] = self.max_tokens
                 if _supports_json_mode(self.model):
                     params["response_format"] = {"type": "json_object"}
-            response = self._client.chat.completions.create(**params)
+            response = _create_with_transient_retry(self._client, params)
 
             # Parse response
             response_text = response.choices[0].message.content

@@ -447,3 +447,53 @@ class TestOverridePersistenceIntegrity:
         assert "override_id" in retrieved
         assert "trip_id" in retrieved
         assert "created_at" in retrieved
+
+    def test_add_trip_override_computes_and_passes_cache_key(self, monkeypatch):
+        """AUD-15 (TRV-N03): add_trip_override computes live cache key and passes to learning."""
+        from spine_api.routers.legacy_ops import create_override, OverrideRequest
+        from spine_api.models.tenant import Agency
+        from spine_api.persistence import TripStore
+
+        trip_id = f"trip_{uuid4().hex[:12]}"
+        trip_data = {
+            "id": trip_id,
+            "agency_id": "test_agency",
+            "extracted": {
+                "facts": {
+                    "destination_candidates": ["Rome"],
+                    "party_composition": {"elderly": 1},
+                }
+            },
+            "decision": {
+                "suitability_flags": [
+                    {"flag": "elderly_mobility_risk", "severity": "high"}
+                ]
+            }
+        }
+        monkeypatch.setattr(TripStore, "get_trip", lambda tid: trip_data if tid == trip_id else None)
+        monkeypatch.setattr(TripStore, "get_trip_for_agency", lambda tid, aid: trip_data if tid == trip_id else None)
+
+        captured = {}
+        def mock_learn(trip_id, override_data, learn_from_overrides_enabled):
+            captured["override_data"] = override_data
+            return {"mutations_applied": ["cache_invalidated"], "rollout_mode": "cache_invalidated"}
+
+        monkeypatch.setattr("src.decision.override_learning.learn_from_operator_override", mock_learn)
+
+        req = OverrideRequest(
+            flag="elderly_mobility_risk",
+            decision_type="elderly_mobility_risk",
+            action="downgrade",
+            new_severity="medium",
+            original_severity="high",
+            overridden_by="agent_test",
+            reason="Confirmed with traveler",
+            scope="this_trip",
+        )
+        agency = Agency(id="test_agency", name="Test Agency", slug="test-agency")
+        res = create_override(trip_id=trip_id, request=req, agency=agency)
+        assert res.ok is True
+        assert captured.get("override_data") is not None
+        assert captured["override_data"].get("cache_key") is not None
+        assert len(captured["override_data"]["cache_key"]) == 32
+

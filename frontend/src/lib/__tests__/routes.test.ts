@@ -9,13 +9,13 @@ import {
 } from '../routes';
 
 describe('getWorkbenchTripHref', () => {
-  it('builds workbench trip query path with canonical trip param', () => {
-    expect(getWorkbenchTripHref('trip_123')).toBe('/workbench?trip=trip_123');
+  it('builds canonical intake trip query path', () => {
+    expect(getWorkbenchTripHref('trip_123')).toBe('/inquiries/new?trip=trip_123');
   });
 
-  it('falls back to /workbench when tripId is missing', () => {
-    expect(getWorkbenchTripHref(null)).toBe('/workbench');
-    expect(getWorkbenchTripHref(undefined)).toBe('/workbench');
+  it('falls back to the canonical intake route when tripId is missing', () => {
+    expect(getWorkbenchTripHref(null)).toBe('/inquiries/new');
+    expect(getWorkbenchTripHref(undefined)).toBe('/inquiries/new');
   });
 });
 

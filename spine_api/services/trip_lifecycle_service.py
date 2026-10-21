@@ -53,10 +53,12 @@ def build_reassessment_request_from_trip(
 
     def _set_overlay(field_name: str, trip_value: Any) -> None:
         if trip_value is None:
+            structured_overlay[field_name] = None
             return
         if isinstance(trip_value, str):
             normalized = trip_value.strip()
             if not normalized:
+                structured_overlay[field_name] = None
                 return
             structured_overlay[field_name] = normalized
             return
@@ -96,11 +98,19 @@ def build_reassessment_request_from_trip(
     existing_structured_json = request_dict.get("structured_json")
     if isinstance(existing_structured_json, dict):
         merged_structured_json = dict(existing_structured_json)
-        merged_structured_json.update(structured_overlay)
+        for k, v in structured_overlay.items():
+            if v is None:
+                merged_structured_json.pop(k, None)
+            else:
+                merged_structured_json[k] = v
         if merged_structured_json:
             request_dict["structured_json"] = merged_structured_json
+        else:
+            request_dict["structured_json"] = None
     elif structured_overlay:
-        request_dict["structured_json"] = structured_overlay
+        cleaned_overlay = {k: v for k, v in structured_overlay.items() if v is not None}
+        if cleaned_overlay:
+            request_dict["structured_json"] = cleaned_overlay
 
     if not any(request_dict.get(k) for k in ("raw_note", "owner_note", "structured_json", "itinerary_text")):
         request_dict["structured_json"] = {"extracted_snapshot": extracted}

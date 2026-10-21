@@ -663,9 +663,29 @@ def create_override(
         try:
             from src.decision.override_learning import learn_from_operator_override
             override_data_full = dict(override_data)
-            override_data_full["override_id"] = override_id
-            # TODO(P1): pass live cache key from decision context for cache invalidation
-            override_data_full["cache_key"] = None
+            # AUD-15 (TRV-N03): compute live cache key from decision context for cache invalidation
+            cache_key = None
+            try:
+                dec_type = request.decision_type or request.flag
+                packet_data = trip.get("extracted") or trip.get("packet") or {}
+                if dec_type and packet_data:
+                    from src.decision.cache_key import generate_cache_key
+                    from src.intake.packet_models import CanonicalPacket
+                    if isinstance(packet_data, CanonicalPacket):
+                        pkt = packet_data
+                    elif isinstance(packet_data, dict):
+                        facts_dict = packet_data.get("facts") if isinstance(packet_data.get("facts"), dict) else packet_data
+                        derived_dict = packet_data.get("derived_signals") if isinstance(packet_data.get("derived_signals"), dict) else {}
+                        pkt = CanonicalPacket(packet_id=trip_id, facts=facts_dict, derived_signals=derived_dict)
+                    else:
+                        pkt = None
+                    if pkt is not None:
+                        cache_key = generate_cache_key(dec_type, pkt)
+            except Exception as _ck_err:
+                import logging
+                logging.getLogger(__name__).debug("Could not compute cache key for override invalidation: %s", _ck_err)
+
+            override_data_full["cache_key"] = cache_key
             rollout_metadata = learn_from_operator_override(
                 trip_id=trip_id,
                 override_data=override_data_full,

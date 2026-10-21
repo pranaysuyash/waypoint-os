@@ -74,6 +74,20 @@ def test_tcs_non_pan_penalty():
     assert tcs.effective_tcs_rate_pct == 20.0
 
 
+def test_tcs_malformed_pan_penalty():
+    """Verify 20% flat withholding when PAN format is structurally invalid."""
+    for bad_pan in ["ABCDEFGHIJ", "1234567890", "ABCDE12345", "ABC1234D", "ABCD12345E"]:
+        tcs = TaxComplianceEngine.calculate_tcs(
+            current_amount_inr=100000.0,
+            is_overseas_trip=True,
+            pan_number=bad_pan,
+        )
+        assert tcs.is_applicable is True
+        assert tcs.pan_provided is False
+        assert tcs.total_tcs_amount_inr == 20000.0
+        assert tcs.effective_tcs_rate_pct == 20.0
+
+
 def test_gst_tour_package_intra_state():
     """Verify 5% GST split into CGST (2.5%) + SGST (2.5%) for intra-state package."""
     gst = TaxComplianceEngine.calculate_gst(

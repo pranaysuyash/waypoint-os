@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useHotkey } from '@/hooks/useHotkey';
 import { useTrip } from '@/hooks/useTrips';
 import { useRuntimeVersion } from '@/hooks/useRuntimeVersion';
 import {
+  Home,
   Inbox,
   LayoutDashboard,
   BarChart2,
@@ -26,6 +27,7 @@ import {
   BookOpen,
   Send,
   CalendarDays,
+  MoreHorizontal,
   type LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -83,16 +85,20 @@ const SIDEBAR_CONTEXT_TONE: Record<Trip['state'] | 'neutral', { color: string; b
   },
 };
 
-export function SidebarTripContext({ trip }: { trip: Trip | null }) {
+export function SidebarTripContext({ trip, variant = 'sidebar' }: { trip: Trip | null; variant?: 'sidebar' | 'mobile' }) {
+  const pathname = usePathname() ?? '';
   const summary = useMemo(() => (trip ? getPlanningListSummary(trip) : null), [trip]);
 
+  // A7: suppress on the active trip's own routes — the page header already
+  // shows title/status there, and the card was clipping nav items.
   if (!trip || !summary) return null;
+  if (pathname.startsWith(`/trips/${trip.id}`)) return null;
 
   const tone = SIDEBAR_CONTEXT_TONE[summary.statusTone] ?? SIDEBAR_CONTEXT_TONE.neutral;
 
   return (
     <section
-      className='hidden md:block mx-4 mb-3 rounded-lg border p-3'
+      className={variant === 'mobile' ? 'md:hidden mx-3 mb-3 rounded-lg border p-3' : 'hidden md:block mx-4 mb-3 rounded-lg border p-3'}
       style={{
         background: tone.bg,
         borderColor: tone.border,
@@ -138,10 +144,74 @@ function parseTripIdFromPathname(pathname: string): string | null {
   return match?.[1] ?? null;
 }
 
-function getPageLabel(pathname: string, isLeadReviewRoute: boolean): string {
-  // Prevent breadcrumb from exposing internal route names
-  if (pathname === '/workbench') return 'New Inquiry';
-  if (isLeadReviewRoute) return 'Lead Inbox';
+
+// A9: mobile bottom bar — Overview (the product home) is present, and the
+// long-tail modules live in a "More" sheet instead of being dropped.
+const MOBILE_MORE_ITEMS = [
+  { href: '/quotes', label: 'Quotes', icon: FileText },
+  { href: '/reviews', label: 'Quote Review', icon: ClipboardCheck },
+  { href: '/insights', label: 'Insights', icon: Activity },
+  { href: '/documents', label: 'Docs', icon: FileText },
+  { href: '/knowledge', label: 'Knowledge', icon: BookOpen },
+  { href: '/settings', label: 'Settings', icon: Settings },
+];
+
+function MobileMoreSheet({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const anyActive = MOBILE_MORE_ITEMS.some(
+    (item) => pathname === item.href || pathname.startsWith(item.href + '/'),
+  );
+  return (
+    <div className='relative flex flex-col items-center justify-center min-w-[56px] py-1'>
+      <button
+        type='button'
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label='More modules'
+        className={cn(
+          'flex flex-col items-center justify-center text-[11px] font-medium transition-colors',
+          anyActive ? 'text-[var(--accent-blue)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+        )}
+      >
+        <MoreHorizontal className='size-5 mb-0.5' aria-hidden='true' />
+        <span>More</span>
+      </button>
+      {open && (
+        <div
+          className='absolute bottom-14 right-0 z-50 w-48 rounded-xl border p-1.5 shadow-2xl'
+          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
+          role='menu'
+          aria-label='More modules'
+        >
+          {MOBILE_MORE_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                role='menuitem'
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors',
+                  isActive ? 'text-[var(--accent-blue)] bg-[rgba(88,166,255,0.08)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.03)]'
+                )}
+              >
+                <Icon className='size-4' aria-hidden='true' />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getPageLabel(pathname: string): string {
+  // A1: the breadcrumb tells the truth — the section the path is actually in.
+  // (The former "Lead Inbox" remap for incomplete trips fought the page's own
+  // trail; origin context lives in the sidebar trip-context card.)
   for (const section of NAV_SECTIONS) {
     for (const item of section.items) {
       if (pathname === item.href || pathname.startsWith(item.href + '/')) {
@@ -170,11 +240,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const brandDescriptor = [agencySettings?.profile?.sub_brand, agencySettings?.profile?.plan_label]
     .filter((v): v is string => Boolean(v && v.trim()))
     .join(' · ');
-  const isTripIntakeRoute = /^\/trips\/[^/]+\/intake$/.test(pathname);
-  const isLeadReviewRoute =
-    (pathname.startsWith('/trips/') &&
-      (shellTrip?.status === 'new' || shellTrip?.status === 'incomplete')) ||
-    (isTripIntakeRoute && isShellTripLoading);
 
   return (
     <div className='flex min-h-dvh flex-col overflow-x-clip md:h-dvh md:flex-row md:overflow-hidden' style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)' }}>
@@ -255,11 +320,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   // Active check: ignore query params for href matching
                   const hrefPath = item.href.split('?')[0];
                   const defaultIsActive = pathname === hrefPath || pathname.startsWith(hrefPath + '/');
-                  const isActive = item.enabled && (
-                    isLeadReviewRoute
-                      ? hrefPath === '/inbox'
-                      : defaultIsActive
-                  );
+                  const isActive = item.enabled && defaultIsActive;
                   if (!item.enabled) {
                     return (
                       <li key={item.href}>
@@ -377,7 +438,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <>
                 <span style={{ color: 'var(--border-default)' }} aria-hidden='true'>/</span>
                 <span className='capitalize font-medium' style={{ color: 'var(--text-primary)' }} aria-current='page'>
-                  {getPageLabel(pathname, isLeadReviewRoute)}
+                  {getPageLabel(pathname)}
                 </span>
               </>
             )}
@@ -392,6 +453,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
+        <div className='md:hidden pt-2 px-2'>
+          <SidebarTripContext trip={shellTrip} variant='mobile' />
+        </div>
         <main id='main-content' className='flex-1 overflow-visible pb-16 md:pb-0 md:overflow-y-auto' tabIndex={-1}>
           {children}
         </main>
@@ -406,11 +470,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           aria-label='Mobile bottom navigation'
         >
           {[
+            { href: '/overview', label: 'Home', icon: Home },
             { href: '/inbox', label: 'Inbox', icon: Inbox },
             { href: '/trips', label: 'Trips', icon: Layers },
             { href: '/inquiries/new?draft=new&tab=intake', label: 'New', icon: Send },
-            { href: '/documents', label: 'Docs', icon: FileText },
-            { href: '/settings', label: 'Settings', icon: Settings },
           ].map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/inquiries/new' && pathname.startsWith(item.href));
@@ -429,6 +492,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          <MobileMoreSheet pathname={pathname} />
         </nav>
       </div>
     </div>

@@ -94,16 +94,6 @@ describe('simulated panel honesty labels', () => {
     expect(screen.getByText(/No invoice, payment schedule, authorization, or charge is created/i)).toBeInTheDocument();
   });
 
-  it('MemoryArchitectPanel uses the Sample Traveler default and sample badge', async () => {
-    const { MemoryArchitectPanel } = await import('../MemoryArchitectPanel');
-
-    render(<MemoryArchitectPanel />);
-
-    expect(screen.getByTestId('simulated-badge')).toHaveTextContent('Sample data');
-    expect(screen.getAllByDisplayValue(/Sample Traveler \(cust_sample_demo\)/).length).toBeGreaterThan(0);
-    expect(screen.queryByDisplayValue(/Alex Morgan/)).not.toBeInTheDocument();
-  });
-
   it('MemorySettingsTab uses the Sample Traveler default and does not claim backend persistence', async () => {
     const { MemorySettingsTab } = await import('@/app/(agency)/settings/components/MemorySettingsTab');
 

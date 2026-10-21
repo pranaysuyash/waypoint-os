@@ -26,11 +26,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if curl -s -o /dev/null --max-time 2 http://127.0.0.1:8000/health; then
-    echo "WARNING: dev server detected on :8000 — integration tests will run" >&2
-    echo "against it and results are likely polluted (see header). Stop it for" >&2
-    echo "a citable baseline." >&2
-fi
+python3 scripts/test_preflight.py || true
+
 
 export DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os}"
 export TRIPSTORE_BACKEND="${TRIPSTORE_BACKEND:-sql}"

@@ -129,12 +129,12 @@ describe('Insights PageClient', () => {
     mockUseUnifiedState.mockClear();
   });
 
-  it('uses canonical workbench trip query for alert recovery action', () => {
+  it('uses canonical intake trip query for alert recovery action', () => {
     render(<InsightsPageClient />);
 
     const recoverLink = screen.getByRole('link', { name: /recover now/i });
-    expect(recoverLink).toHaveAttribute('href', '/workbench?trip=trip_123');
-    expect(recoverLink).not.toHaveAttribute('href', '/workbench?tripId=trip_123');
+    expect(recoverLink).toHaveAttribute('href', '/inquiries/new?trip=trip_123');
+    expect(recoverLink).not.toHaveAttribute('href', '/inquiries/new?tripId=trip_123');
   });
 
   it('renders safely when list-shaped governance payloads are initially undefined', () => {
@@ -152,6 +152,6 @@ describe('Insights PageClient', () => {
     render(<InsightsPageClient />);
 
     expect(screen.getByRole('heading', { name: /Insights & Analytics/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /recover now/i })).toHaveAttribute('href', '/workbench?trip=trip_123');
+    expect(screen.getByRole('link', { name: /recover now/i })).toHaveAttribute('href', '/inquiries/new?trip=trip_123');
   });
 });

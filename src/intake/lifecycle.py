@@ -13,7 +13,21 @@ from enum import Enum
 from typing import List
 
 
+class RelationshipStage(str, Enum):
+    """Canonical relationship lifecycle axis per council Addendum 8."""
+    PROSPECT = "prospect"
+    BOOKED_ACTIVE = "booked_active"
+    POST_TRIP = "post_trip"
+    REPEAT_CLIENT = "repeat_client"
+    DORMANT = "dormant"
+    LOST_CHURNED = "lost_churned"
+
+
 class LeadStage(str, Enum):
+    """DEPRECATED (FND-0289): superseded into RelationshipStage per council Addendum 8.
+    
+    Retained as compatibility alias for legacy retention scoring callers.
+    """
     NEW_INQUIRY = "new_inquiry"
     QUALIFIED_LEAD = "qualified_lead"
     PROPOSAL_SENT = "proposal_sent"

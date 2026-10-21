@@ -22,7 +22,7 @@ import {
   Info,
 } from 'lucide-react';
 import type { Trip } from '@/lib/api-client';
-import { updateTrip, ApiException } from '@/lib/api-client';
+import { updateTrip, ApiException, sendFollowupQuestions } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/auth';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
@@ -444,6 +444,10 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     flexibility: '',
   });
 
+  const [isSendingAsk, setIsSendingAsk] = useState(false);
+  const [sendAskStatus, setSendAskStatus] = useState<string | null>(null);
+  const [askRecipient, setAskRecipient] = useState('');
+
   // Refs to the underlying textarea elements so typing remains stable (uncontrolled DOM)
   const planningEditorRefs = useRef<Record<PlanningDetailId, HTMLTextAreaElement | null>>({
     budget: null,
@@ -787,6 +791,32 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
       followUpTextareaRef.current?.focus();
     });
   }, [followUpDraft, input_raw_note, setInputRawNote, setNotesExpanded, setOperatingMode]);
+
+  const handleSendAskLink = useCallback(async () => {
+    if (!trip?.id) return;
+    const recipient = (askRecipient || trip.contactName || '').trim();
+    if (!recipient) {
+      setSendAskStatus('Please enter a recipient phone or email.');
+      return;
+    }
+    try {
+      setIsSendingAsk(true);
+      setSendAskStatus(null);
+      const res = await sendFollowupQuestions(trip.id, {
+        recipient,
+        channel: recipient.includes('@') ? 'email' : 'whatsapp',
+      });
+      setSendAskStatus(`Ask link dispatched (${res.dispatch_status}): ${res.ask_path}`);
+      if (typeof window !== 'undefined') {
+        void safeWriteClipboardText(window.location.origin + res.ask_path);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send questions to traveler';
+      setSendAskStatus(msg);
+    } finally {
+      setIsSendingAsk(false);
+    }
+  }, [trip?.id, trip?.contactName, askRecipient]);
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;
@@ -1487,18 +1517,29 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                   This draft only asks for the fields still unresolved.
                 </p>
               </div>
-              <Button
-                type='button'
-                onClick={() => {
-                  setInputRawNote(followUpDraft);
-                  setOperatingMode('follow_up');
-                  void safeWriteClipboardText(followUpDraft);
-                }}
-                variant='secondary'
-                size='sm'
-              >
-                Copy message
-              </Button>
+              <div className='flex items-center gap-2'>
+                <Button
+                  type='button'
+                  onClick={() => {
+                    setInputRawNote(followUpDraft);
+                    setOperatingMode('follow_up');
+                    void safeWriteClipboardText(followUpDraft);
+                  }}
+                  variant='secondary'
+                  size='sm'
+                >
+                  Copy message
+                </Button>
+                <Button
+                  type='button'
+                  onClick={() => void handleSendAskLink()}
+                  disabled={isSendingAsk}
+                  variant='default'
+                  size='sm'
+                >
+                  {isSendingAsk ? 'Sending…' : 'Send Ask Link'}
+                </Button>
+              </div>
             </div>
             <textarea
               ref={followUpTextareaRef}
@@ -1507,9 +1548,75 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
               rows={5}
               className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
             />
+            <div className='mt-2 flex items-center justify-between gap-3 text-ui-xs text-[var(--text-secondary)]'>
+              <div className='flex items-center gap-2'>
+                <span>Recipient:</span>
+                <input
+                  type='text'
+                  value={askRecipient}
+                  onChange={(e) => setAskRecipient(e.target.value)}
+                  placeholder={trip?.contactName || 'Phone or email'}
+                  className='px-2 py-0.5 rounded bg-[var(--bg-surface)] border border-[var(--border-default)] text-ui-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
+                />
+              </div>
+              {sendAskStatus && (
+                <span className='text-[var(--accent-blue)] font-medium'>{sendAskStatus}</span>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      {trip?.traveler_answers && trip.traveler_answers.length > 0 && (
+        <div className='bg-[var(--bg-elevated)] border border-[#238636]/40 rounded-xl p-4' data-testid='traveler-answers-card'>
+          <div className='flex items-center justify-between mb-3'>
+            <div className='flex items-center gap-2'>
+              <CheckCircle className='size-4 text-[#3fb950]' />
+              <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>
+                Verified Traveler Responses ({trip.traveler_answers.length})
+              </h3>
+            </div>
+            <span className='px-2 py-0.5 rounded text-[11px] font-medium bg-[#238636]/20 text-[#3fb950] border border-[#238636]/30'>
+              Authority: Explicit Traveler
+            </span>
+          </div>
+          <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5'>
+            {trip.traveler_answers.map((ans, idx) => (
+              <div key={idx} className='bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg p-2.5 text-[var(--ui-text-xs)]'>
+                <div className='flex items-center justify-between text-[var(--text-secondary)] mb-1 font-mono text-[11px]'>
+                  <span className='font-semibold text-[var(--text-primary)] capitalize'>{ans.field_name.replace(/_/g, ' ')}</span>
+                  <span>{ans.answered_at ? new Date(ans.answered_at).toLocaleDateString() : ''}</span>
+                </div>
+                <p className='text-[var(--text-primary)] font-medium'>{ans.answer}</p>
+                {ans.respondent_name && (
+                  <p className='text-[10px] text-[var(--text-muted)] mt-1'>By {ans.respondent_name}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {trip?.traveler_asks && trip.traveler_asks.length > 0 && (
+        <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-3' data-testid='traveler-asks-history'>
+          <div className='flex items-center gap-2 mb-2'>
+            <Info className='size-3.5 text-[var(--accent-blue)]' />
+            <span className='text-[var(--ui-text-xs)] font-medium text-[var(--text-secondary)]'>
+              Follow-up Inquiries Dispatched ({trip.traveler_asks.length})
+            </span>
+          </div>
+          <div className='flex flex-wrap gap-2'>
+            {trip.traveler_asks.map((ask, idx) => (
+              <span key={idx} className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--bg-surface)] border border-[var(--border-default)] text-[11px] text-[var(--text-secondary)]'>
+                <span className='capitalize font-medium text-[var(--text-primary)]'>{ask.channel}</span>
+                <span>to {ask.recipient}</span>
+                <span className='text-[var(--accent-blue)]'>({ask.dispatch_status})</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
         <div className='flex items-center gap-2 mb-4'>
           <Plane className='size-4 text-[var(--accent-blue)]' />

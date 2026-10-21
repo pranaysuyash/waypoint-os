@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useCallback, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, RefreshCw } from 'lucide-react';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { InlineError } from '@/components/error-boundary';
 import { usePaymentsQueue } from '@/hooks/usePayments';
 import type {
@@ -182,7 +181,6 @@ function PaymentsPageWithSearchParams() {
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
-      <BackToOverviewLink />
 
       <header className='flex items-center justify-between gap-3 flex-wrap pt-1'>
         <div>

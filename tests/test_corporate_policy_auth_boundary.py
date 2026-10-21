@@ -222,3 +222,54 @@ def test_corporate_policy_override_ignores_spoofed_approver_and_records_principa
     assert event["user_id"] == CANONICAL_AGENCY_ID
     assert event["details"]["first_approver_id"] == CANONICAL_USER_ID
     assert event["details"]["first_approver"] != "Ghost Approver"
+
+
+def test_corporate_policy_epistemic_audit_provenance_and_dates(
+    session_client,
+    auth_enforced,
+    file_tripstore,
+    boundary_trip_factory,
+):
+    """EV-08: audit discloses factual provenance, calculates real nights/costs,
+    and returns explicit warnings when dates/costs are absent instead of silent fabrication.
+    """
+    from spine_api.persistence import TripStore
+
+    # Case 1: Trip with explicit dates and budget
+    trip_id_explicit = f"trip_cp_exp_{uuid.uuid4().hex[:8]}"
+    boundary_trip_factory(trip_id_explicit, CANONICAL_AGENCY_ID)
+    trip = TripStore.get_trip_for_agency(trip_id_explicit, CANONICAL_AGENCY_ID)
+    trip["date_start"] = "2026-10-01"
+    trip["date_end"] = "2026-10-08"  # 7 nights
+    trip["budget"] = {"amount": 2100.0, "currency": "USD"}  # 2100 / 7 = 300/night (within 350 cap)
+    trip["destination"] = "Tokyo"
+    TripStore.save_trip(trip)
+
+    resp1 = session_client.post(f"/api/v1/corporate/audit-policy/{trip_id_explicit}", json={})
+    assert resp1.status_code == 200, resp1.text
+    data1 = resp1.json()
+    assert data1["nights_evaluated"] == 7
+    assert data1["nights_source"] == "itinerary_dates"
+    assert data1["cost_evaluated"] == 2100.0
+    assert data1["cost_source"] == "trip_budget"
+    assert data1["duty_of_care_risk_level"] == "LOW"
+    assert data1["is_compliant"] is True
+
+    # Case 2: Trip with missing dates and missing cost
+    trip_id_absent = f"trip_cp_abs_{uuid.uuid4().hex[:8]}"
+    boundary_trip_factory(trip_id_absent, CANONICAL_AGENCY_ID)
+    trip2 = TripStore.get_trip_for_agency(trip_id_absent, CANONICAL_AGENCY_ID)
+    trip2.pop("strategy", None)
+    trip2.pop("budget", None)
+    trip2.pop("destination", None)
+    TripStore.save_trip(trip2)
+
+    resp2 = session_client.post(f"/api/v1/corporate/audit-policy/{trip_id_absent}", json={})
+    assert resp2.status_code == 200, resp2.text
+    data2 = resp2.json()
+    assert data2["cost_source"] == "estimated_default"
+    assert data2["nights_source"] == "estimated_default"
+    assert data2["duty_of_care_risk_level"] == "UNKNOWN"
+    assert any("estimated baseline of $3,000" in w for w in data2["warnings"])
+    assert any("estimated duration of 5 nights" in w for w in data2["warnings"])
+

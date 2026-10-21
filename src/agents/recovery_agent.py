@@ -58,6 +58,17 @@ def _get_failure_taxonomy():
         return None
 
 
+def _get_failure_triage_engine():
+    """Lazy import of FailureTriageEngine for second-opinion failure adjudication."""
+    try:
+        from src.decision.failure_triage import FailureTriageEngine
+
+        return FailureTriageEngine()
+    except Exception:
+        return None
+
+
+
 def _get_latest_run_meta(trip_id: str):
     """Lazy run-ledger lookup for a trip's most recent run (PA-07)."""
     try:
@@ -295,6 +306,25 @@ class RecoveryAgent:
                     f"escalated without retry. {result.reason}"
                 )
                 return result
+            # If unclassified or generic, seek second opinion from FailureTriageEngine if available
+            if failure_class in {"unclassified", "unknown"}:
+                triage_engine = _get_failure_triage_engine()
+                if triage_engine is not None:
+                    meta = _get_latest_run_meta(trip.trip_id) or {}
+                    err_msg = str(meta.get("error_message") or meta.get("error") or "")
+                    tb_text = str(meta.get("traceback") or "")
+                    opinion = triage_engine.evaluate_failure(
+                        error_message=err_msg,
+                        traceback_text=tb_text,
+                        stage=trip.stage,
+                    )
+                    if opinion.requires_human_escalation:
+                        result = self._action_escalate(trip)
+                        result.reason = (
+                            f"triage_advisory={opinion.recommended_class.value} (conf={opinion.confidence:.2f}): "
+                            f"escalated without retry. {result.reason}"
+                        )
+                        return result
             # branch == "requeue" or "default": existing ladder below.
 
         if trip.requeue_attempts < _get_max_requeue_attempts() and self._requeue_enabled:

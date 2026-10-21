@@ -52,11 +52,13 @@ export function getTripRoute(
 }
 
 export function getWorkbenchTripHref(tripId: string | undefined | null): string {
+  // A2 unification: /inquiries/new is the canonical intake URL (T2 redirect
+  // keeps legacy /workbench deep links working).
   if (!tripId) {
-    return '/workbench';
+    return '/inquiries/new';
   }
   const params = new URLSearchParams({ trip: tripId });
-  return `/workbench?${params.toString()}`;
+  return `/inquiries/new?${params.toString()}`;
 }
 
 /**

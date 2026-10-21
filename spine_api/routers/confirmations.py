@@ -162,7 +162,33 @@ async def get_confirmation(
         detail = await confirmation_service.get_confirmation(db, confirmation_id, agency_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return {"ok": True, "confirmation": _detail_to_dict(detail)}
+    response = {"ok": True, "confirmation": _detail_to_dict(detail)}
+
+    # T9 (FND-0232): deterministic content grading against the trip's persisted
+    # data — missing segments/guests grade incomplete; name mismatches grade
+    # defective. Advisory at read time; never blocks storage.
+    try:
+        from spine_api.persistence import TripStore
+        from spine_api.services.confirmation_grader import grade_confirmation_content
+
+        trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+        if trip:
+            grade = grade_confirmation_content(
+                confirmation_type=detail.confirmation_type,
+                content={
+                    "supplier_name": detail.supplier_name,
+                    "confirmation_number": detail.confirmation_number,
+                    "segments": getattr(detail, "segments", None),
+                    "passengers": getattr(detail, "passengers", None),
+                    "guests": getattr(detail, "guests", None),
+                },
+                trip=trip,
+            )
+            response["confirmation"]["content_grading"] = grade.to_dict()
+    except Exception as exc:
+        logger.warning("content grading skipped: %s", exc)
+
+    return response
 
 
 @router.post("/{trip_id}/confirmations", status_code=201)

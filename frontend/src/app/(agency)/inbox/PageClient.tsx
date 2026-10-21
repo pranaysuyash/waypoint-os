@@ -22,10 +22,10 @@ import {
 import { useInboxTrips } from '@/hooks/useGovernance';
 import { InlineError } from '@/components/error-boundary';
 import { TripCard } from '@/components/inbox/TripCard';
+import ChannelMessagesPanel from '@/components/inbox/ChannelMessagesPanel';
 import { ComposableFilterBar } from '@/components/inbox/ComposableFilterBar';
 import { ViewProfileToggle } from '@/components/inbox/ViewProfileToggle';
 import { InboxEmptyState } from '@/components/inbox/InboxEmptyState';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { deserializeFilters, serializeFilters, getSavedViewProfile, roleToViewProfile, viewProfileToRole } from '@/lib/inbox-helpers';
 import type { ViewProfile } from '@/lib/inbox-helpers';
 import type { InboxTrip, InboxFilters } from '@/types/governance';
@@ -299,7 +299,6 @@ function InboxPageWithSearchParams() {
   if (error) {
     return (
       <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
-        <BackToOverviewLink />
         <div className='flex items-center justify-between pt-1'>
           <div>
             <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Lead Inbox</h1>
@@ -322,7 +321,6 @@ function InboxPageWithSearchParams() {
 
   return (
     <div className='p-5 pb-4 max-w-[1400px] mx-auto space-y-5'>
-      <BackToOverviewLink />
       {/* Header */}
       <header className='flex items-center justify-between pt-1'>
         <div>
@@ -465,6 +463,9 @@ function InboxPageWithSearchParams() {
           </button>
         </div>
       )}
+
+      {/* T6 (FND-0305): real inbound channel messages — what the webhook stored */}
+      <ChannelMessagesPanel />
 
       {/* Trip Grid */}
       {isLoading && inboxTrips.length === 0 ? (

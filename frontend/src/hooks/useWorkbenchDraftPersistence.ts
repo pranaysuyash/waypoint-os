@@ -38,7 +38,11 @@ import { safeParseJson } from '@/app/(agency)/workbench/workbench-state';
 import { useTransientTimers } from '@/hooks/useTransientTimers';
 
 function buildDraftPayload(
-  store: WorkbenchStore,
+  // FND-0283: narrowed to the five slices the payload builds from.
+  store: Pick<
+    WorkbenchStore,
+    'input_raw_note' | 'input_owner_note' | 'input_structured_json' | 'input_itinerary_text' | 'strict_leakage'
+  >,
   spineStage: SpineStage,
   currentMode: OperatingMode,
   currentScenario: string,
@@ -72,7 +76,24 @@ export function useWorkbenchDraftPersistence({
   setSaveSuccess,
   setSaveError,
 }: {
-  store: WorkbenchStore;
+  // FND-0283: narrowed to the members this hook reads, so the caller can pass
+  // a memoized per-field selector view instead of the whole zustand store.
+  store: Pick<
+    WorkbenchStore,
+    | 'draft_id'
+    | 'draft_name'
+    | 'draft_status'
+    | 'draft_version'
+    | 'input_itinerary_text'
+    | 'input_owner_note'
+    | 'input_raw_note'
+    | 'input_structured_json'
+    | 'save_state'
+    | 'scenario_id'
+    | 'setDraftMeta'
+    | 'setSaveState'
+    | 'strict_leakage'
+  >;
   searchParams: ReadonlyURLSearchParams;
   replace: (href: string, options?: { scroll: boolean }) => void;
   isSpineRunning: boolean;

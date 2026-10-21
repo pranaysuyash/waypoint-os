@@ -44,10 +44,12 @@ describe('OwnerReviewsPage', () => {
     };
   });
 
-  it('renders a page-level return link back to overview', () => {
+  it('owns overview navigation via the persistent global devices (A8: per-page back device removed)', () => {
     render(<OwnerReviewsPage />);
 
-    expect(screen.getByRole('link', { name: /back to overview/i })).toHaveAttribute('href', '/overview');
+    // The sidebar marks this section and the command-bar product link routes
+    // to /overview; the page carries no duplicate back link.
+    expect(screen.queryByText(/back to overview/i)).not.toBeInTheDocument();
   });
 
   it('does not surface unknown destination wording in a review card', () => {

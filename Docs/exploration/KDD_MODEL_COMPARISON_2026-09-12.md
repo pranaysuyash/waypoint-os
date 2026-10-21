@@ -127,6 +127,60 @@ re-pull via `ollama pull <id>`.
 
 ## Failure / ops log (all documented, nothing hidden)
 
+- **2026-09-16 OWNER RATIFICATION — decision-lane model policy.** Owner ratified the post-experiment policy: **gpt-4.1-nano direct primary** (F1 0.909, sev 0.92, $0.09/1M); **gpt-5.4-nano ratified equal** ($0.28/1M, drop-in on deprecation); **fallback ladder** HF Llama-3.1-8B:fastest → OpenRouter nano/llama-3.2-1b → local llama3.2:3b; **flagship-class blacklisted** for this lane. Recorded as ADR-008 §8 (scope: model policy only — prod posture stays envelope-explicit `"0"` until the X-09 PII-egress gate closes; this policy is the benchmark input for that opt-in review). Wiring task unlocked: serving config for the LLM rung per ADR-008 §4.1.
+- **2026-09-16 (evening) FINAL RESULTS — clean-rerun ladder COMPLETE.** `records_or_std_all2.jsonl` finished at **17,608 rows = 284 models × cold+warm × 31 graded records** (5 of 36 corpus records skipped by extraction as designed), completed under budget with $6.98 credits unused — no `no_credit` voids. Graded per the call-integrity invariant via the new `tools/grade_kdd_flags.py --integrity` mode (cold arms only, `llm_calls>0` rows only; warm arms are cache-replay passes): **3,622 clean cold rows, every arm has 11–17 clean rows (median 12), zero arms voided**. Artifact: `data/experiments/hybrid_kdd_v1/grades_std_all2_integrity.txt`.
+
+  **Final top tier (F1, severity agreement tie-break):**
+
+  | Arm (OpenRouter standard venue, cold) | P | R | F1 | sev✓ | tp/fp/fn |
+  |---|---|---|---|---|---|
+  | meta-llama/llama-3.2-1b-instruct | 0.600 | 1.000 | **0.750** | 0.92 | 12/8/0 |
+  | openai/gpt-4.1-nano | 0.600 | 1.000 | **0.750** | 0.92 | 12/8/0 |
+  | openai/gpt-5.4-nano | 0.600 | 1.000 | **0.750** | 0.58 | 12/8/0 |
+  | rekaai/reka-edge | 0.600 | 1.000 | **0.750** | 0.33 | 12/8/0 |
+  | tencent/hy-mt2-1.8b | 0.579 | 0.917 | 0.710 | 1.00 | 11/8/1 |
+  | mistralai/ministral-3b-2512 | 0.579 | 0.917 | 0.710 | 0.64 | 11/8/1 |
+  | amazon/nova-pro-v1 | 0.579 | 0.917 | 0.710 | 0.55 | 11/8/1 |
+  | nvidia/nemotron-3-nano-30b-a3b | 0.579 | 0.917 | 0.710 | 0.55 | 11/8/1 |
+  | bytedance/ui-tars-1.5-7b | 0.579 | 0.917 | 0.710 | 0.46 | 11/8/1 |
+  | qwen/qwen-2.5-7b-instruct | 0.579 | 0.917 | 0.710 | 0.00 | 11/8/1 |
+
+  Full-scale tier distribution (284 arms): 4 arms ≥ 0.75 · 6 at 0.71 · 10 at 0.60–0.66 · 37 at 0.40–0.59 · **227 below 0.40**.
+
+  **Confirmed at full scale (no longer provisional):**
+  1. **Champion tier is a size class, not a vendor**: every F1 ≥ 0.71 arm is ≤ 8B-class (1b, nano, 1.8b, 3b, 7b) — and **llama-3.2-1b tops the OpenRouter venue at 0.750/0.92 sev**, matching the local-ladder champion family. gpt-4.1-nano holds 0.750 with sev 0.92 — venue-robust (0.75 here vs 0.80–0.909 direct-API: mild venue discount, NOT collapse).
+  2. **Flagship classes stay near-zero on this corpus's risk-flag vocabulary in every venue tested** — DeepSeek / GLM / Kimi / Grok / Gemini / Mistral-large / Qwen-max tiers all grade < 0.40; 80% of the entire ladder is below 0.40.
+  3. **Severity agreement is the real differentiator inside the top tier**: at identical F1, llama-3.2-1b and gpt-4.1-nano (0.92) separate cleanly from reka-edge (0.33) and qwen-2.5-7b (0.00).
+  4. Cost tail never mattered: the run completed cheapest-first with $6.98 unused, so the gpt-4o-era priciest arms are **graded, not voided**.
+
+  The interim pass-1 entry below is **superseded by this entry** (kept for the mid-run record; its provisional ordering holds — llama-3.2-1b is the one addition the larger sample surfaced). Canonical comparison-sheet regeneration across all runs remains a follow-up: `tools/build_model_comparison.py`'s curated manifest predates the 284-model ladder and needs per-model metadata entries before it can emit the full sheet. **Tracked: FND-0295 (P3, deferred 2026-09-16 by owner — none-blocking; reopen when the sheet is next needed for a decision or external share).** Also parked with the owner: flagging to the ZCode app vendor that app updates SIGKILL session child processes (killed this ladder at 11:31; detached launchers are the local mitigation).
+- **2026-09-16 11:31 CLEAN RERUN KILLED BY APP UPDATE — root-caused, resumed same day.** The `records_or_std_all2.jsonl` rerun (launched 10:11 from the PER-0700 seat after the retry fix) was killed at 11:30:58 when the ZCode app restarted for an update (the run was a child process of the app; its stdout log is 0 bytes = SIGKILL, no harness error). Durable state at kill: 1,420/22,720 rows — records 1–2 complete across all 568 arms (284 models × cold+warm), record 3 partial; 516 live-LLM rows, 904 cache/rules rows; OpenRouter spend $7.44 of the $10 top-up. OpenRouter showing "no activity" after 11:31 is the dead process, not a key or credit fault. Harness gap found and fixed: `scripts/run_hybrid_kdd_experiment.py` had no resume semantics (opened the output `"w"` and wiped per-model cache dirs on every start — a naive relaunch would have destroyed the 1,420 collected rows and re-spent on them). Added `--resume` (append mode; skips `(record_id, arm)` pairs already present; preserves cache dirs; tolerates a torn final line from a killed writer) — validated by invoking twice on a smoke tag: second invocation appended exactly 0 rows. Relaunch (this run): `--resume --skip-baseline --tag _or_std_all2`, arm list = the same 284 standard-variant models re-sorted cheapest-output-price-first from the live catalog (≤ $10/1M cap holds, 0 over; list persisted at `data/experiments/hybrid_kdd_v1/or_std_all2_models.txt`), detached via nohup+disown (macOS has no setsid) so a terminal or app restart can no longer kill it; log at `data/experiments/hybrid_kdd_v1/run_std_all2_resume.log`. Full-ladder target is 20,448 rows (36 corpus records × 568 arms); ~19k rows remain ≈ 20–26h at the observed ~12 rows/min sequential pace. Credits at relaunch: $2.56 — per protocol the run processes cheapest-first and voids `no_credit` at exhaustion rather than mis-grading; after a top-up, relaunching with `--resume` completes the remainder. Canonical sheet still regenerates only at completion.
+- **2026-09-16 INTERIM RESULTS — pass-1 provisional (void-filtered), documented mid-run.**
+  `records_or_std_all.jsonl` pass-1 was stopped at 56% with a rising 429-void rate
+  (20%→58%); the retry fix in `src/llm/openai_client.py` (transient-status retry
+  honoring Retry-After — the root cause was RateLimitError escaping the client's
+  except-tuple into the engine's blanket fallback) landed before the clean rerun
+  (`records_or_std_all2.jsonl`, in flight). Grading pass-1's clean rows only
+  (integrity filter: cold rows with `llm_calls>0`; every arm had ~12/35 clean
+  records — **provisional, 12-record samples, not final grades**):
+
+  | Arm (OpenRouter standard venue) | F1 (prov.) | Note |
+  |---|---|---|
+  | tencent/hy-mt2-1.8b | 0.750 | surprise — a 1.8B translation model |
+  | rekaai/reka-edge | 0.750 | surprise |
+  | openai/gpt-5.4-nano | 0.750 | champion family holding |
+  | openai/gpt-4.1-nano | 0.750 | **champion venue-robustness: 0.75 here vs 0.80–0.909 direct-API — mild venue discount, NOT collapse** |
+  | nvidia/nemotron-3-nano-30b-a3b | 0.710 | |
+  | amazon/nova-pro-v1 | 0.710 | |
+  | ibm-granite/granite-4.0-h-micro | 0.667 | consistent with free-tier run (0.528) |
+
+  Early family signals, consistent across every sample so far (provisional):
+  the DeepSeek / GLM / Kimi / Grok / Llama-4 / Minimax / Gemini flagship
+  families grade **near-zero on this corpus's risk-flag vocabulary** in every
+  venue tested; the nano class remains the value frontier. Killed-partial files
+  (`records_or_sota2.jsonl`, `records_or_frontier2.jsonl`: 2–4 records/arm) are
+  insufficient and superseded by the in-flight clean rerun. Canonical sheet
+  regenerates only after `records_or_std_all2.jsonl` completes.
 - **2026-09-15 PROTOCOL (owner-directed): free-tier venues excluded; output-price cap ≤ $10/1M; standard variant only.** After the venue-collapse finding and a mass rate-limit failure, grades are only trusted for paid standard-variant venues. `records_or_sota.jsonl` (first SOTA ladder) is **VOID as model evidence**: the key's $9 top-up landed mid-run, and ~60% of cold calls per arm (19/31, uniform across all 9 arms incl. the nano control) hit pre-credit 20-RPM free-tier limits and silently fell back to rules. Preserved as the rate-limit artifact. Rerun under credits with the **call-integrity invariant** now required for any graded arm: cold-pass `llm_calls == 0` rate must be ~0, else the arm is reported `void_rate_limited`/`void_no_credit`, never an F1.
 - **2026-09-15 FULL standard-table sweep (`records_or_std_all.jsonl`)** — owner directive: grade ALL OpenRouter standard-variant text models with output ≤ $10/1M (284 arms, ~20k calls, ~$15 realistic vs $30.69 worst case; cheapest-first so credit exhaustion, if any, hits only the priciest tail — gpt-4o-era arms — which get voided, not mis-graded). Supersedes the earlier hand-picked subsets (`or_newcheap`, `or_frontier`, partial `or_sota2`/`or_frontier2` — killed; cache replays their successful calls free).
 - **2026-09-15 OpenRouter new-cheap ladder (`records_or_newcheap.jsonl`)** —

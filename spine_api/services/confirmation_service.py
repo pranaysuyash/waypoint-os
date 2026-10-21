@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from spine_api.core.rls import refresh_or_reselect
 from spine_api.models.tenant import (
     BookingConfirmation,
     BookingTask,
@@ -360,7 +361,7 @@ async def create_confirmation(
         data=data,
     )
     await db.commit()
-    await db.refresh(c)
+    await refresh_or_reselect(db, c)
     return _to_detail(c)
 
 
@@ -435,7 +436,7 @@ async def update_confirmation(
         c.confirmation_type = c_type
 
     await db.commit()
-    await db.refresh(c)
+    await refresh_or_reselect(db, c)
 
     # Emit update event if recorded (draft edits are silent)
     if old_status == "recorded":
@@ -521,7 +522,7 @@ async def record_confirmation(
 
     await record_confirmation_in_transaction(db, c, recorded_by=recorded_by)
     await db.commit()
-    await db.refresh(c)
+    await refresh_or_reselect(db, c)
 
     return _to_summary(c)
 
@@ -768,7 +769,7 @@ async def attach_insurance_confirmation(
             )
             await record_confirmation_in_transaction(db, c, recorded_by=actor_id)
             await db.commit()
-            await db.refresh(c)
+            await refresh_or_reselect(db, c)
     except ConfirmationAttachConflict:
         registry.mark_failed(
             key,
@@ -875,7 +876,7 @@ async def verify_confirmation(
 
     await verify_confirmation_in_transaction(db, c, verified_by=verified_by)
     await db.commit()
-    await db.refresh(c)
+    await refresh_or_reselect(db, c)
 
     return _to_summary(c)
 
@@ -938,6 +939,6 @@ async def void_confirmation(
 
     await void_confirmation_in_transaction(db, c, voided_by=voided_by)
     await db.commit()
-    await db.refresh(c)
+    await refresh_or_reselect(db, c)
 
     return _to_summary(c)

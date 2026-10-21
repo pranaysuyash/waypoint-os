@@ -33,11 +33,11 @@ if [ "${PWD#"/Users/pranay/Projects/"}" != "${PWD}" ]; then
     # shellcheck disable=SC1090
     . "$_attestation_file"
   fi
-  if printf '%s' "$_msg" | grep -qiE '^co-authored-by:[[:space:]]*(claude|anthropic|chatgpt|openai|codex|copilot|qwen|gemini|amp)'; then
+  if printf '%s' "$_msg" | grep -iE '^co-authored-by:[[:space:]]*(claude|anthropic|chatgpt|openai|codex|copilot|qwen|gemini|amp)' >/dev/null; then
     echo "commit-msg: AI co-author trailers are forbidden by motto §20. Remove the trailer before committing." >&2
     exit 1
   fi
-  if ! printf '%s' "$_msg" | grep -qiE '^motto-reviewed:[[:space:]]*full'; then
+  if ! printf '%s' "$_msg" | grep -iE '^motto-reviewed:[[:space:]]*full' >/dev/null; then
     cat >&2 <<'EOF'
 commit-msg: motto attestation required (motto §0.4.2 + §0.5).
 Add trailers to the commit message, e.g.:
@@ -52,16 +52,16 @@ data-mutation) must state Risk-Class: high and Evidence-Tier: 3 or higher.
 EOF
     exit 1
   fi
-  if [ -n "$_current_sha" ] && ! printf '%s' "$_msg" | grep -qiE "^motto-sha256:[[:space:]]*${_current_sha}$"; then
+  if [ -n "$_current_sha" ] && ! printf '%s' "$_msg" | grep -iE "^motto-sha256:[[:space:]]*${_current_sha}$"; then
     echo "commit-msg: commit must include 'Motto-SHA256: $_current_sha' for the current full OPERATING_DOCTRINE.md." >&2
     exit 1
   fi
   # High-risk path detection from staged files + stricter trailer requirement.
   _staged_any="$(git diff --cached --name-only 2>/dev/null || true)"
-  if printf '%s\n' "$_staged_any" | grep -qiE '(payment|settlement|activation|auth|webhook|worker|trigger)s?/|payout|refund|migrations?/|db/|routes?/|middleware/|security|pii|privacy|retention|billing|invoice|reconciliation'; then
+  if printf '%s\n' "$_staged_any" | grep -iE '(payment|settlement|activation|auth|webhook|worker|trigger)s?/|payout|refund|migrations?/|db/|routes?/|middleware/|security|pii|privacy|retention|billing|invoice|reconciliation'; then
     _ok=1
-    printf '%s' "$_msg" | grep -qiE '^risk-class:[[:space:]]*high' || _ok=0
-    printf '%s' "$_msg" | grep -qiE '^evidence-tier:[[:space:]]*([3-9]|10)' || _ok=0
+    printf '%s' "$_msg" | grep -iE '^risk-class:[[:space:]]*high' || _ok=0
+    printf '%s' "$_msg" | grep -iE '^evidence-tier:[[:space:]]*([3-9]|10)' || _ok=0
     if [ "$_ok" != "1" ]; then
       echo "commit-msg: high-risk path detected; commit must include 'Risk-Class: high' and 'Evidence-Tier: 3' (or higher)." >&2
       exit 1
@@ -74,7 +74,7 @@ EOF
     _verify_flags="--verify"
     _high_risk_paths='(payment|settlement|activation|auth|webhook|worker|trigger)s?/|payout|refund|migrations?/|db/|routes?/|middleware/|security|pii|privacy|retention|billing|invoice|reconciliation'
     if printf '%s
-' "$_staged_any" | grep -qiE "$_high_risk_paths"; then
+' "$_staged_any" | grep -iE "$_high_risk_paths"; then
       _verify_flags="--verify --high-risk"
     fi
     if ! python3 "$_commitgate_script" --repo "$(pwd)" $_verify_flags; then

@@ -12,6 +12,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from spine_api.core.rls import refresh_or_reselect
 from spine_api.models.tenant import Agency, WorkspaceCode
 
 logger = logging.getLogger("spine_api.workspace_service")
@@ -64,7 +65,7 @@ async def update_workspace(
 
     if changed:
         await db.commit()
-        await db.refresh(agency)
+        await refresh_or_reselect(db, agency)
         logger.info("Workspace updated: agency=%s fields=%s", agency_id, changed)
 
     return await get_workspace(db, agency_id)
@@ -94,7 +95,7 @@ async def generate_workspace_code(
     )
     db.add(code)
     await db.commit()
-    await db.refresh(code)
+    await refresh_or_reselect(db, code)
 
     logger.info("Workspace code generated: agency=%s code=%s", agency_id, code.code)
     return code.code

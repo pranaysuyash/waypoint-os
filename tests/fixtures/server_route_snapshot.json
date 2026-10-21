@@ -1,5 +1,5 @@
 {
-  "route_count": 378,
+  "route_count": 388,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -602,6 +602,22 @@
       "operation_id": null
     },
     {
+      "path": "/api/public/asks/{token}",
+      "name": "get_traveler_ask",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public/asks/{token}/answers",
+      "name": "submit_traveler_answers",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/public/booking-collection/{agency_id}/{token}",
       "name": "get_public_collection_form",
       "methods": [
@@ -966,6 +982,14 @@
       "name": "get_workload_distribution",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/triage/message",
+      "name": "triage_inbound_message",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },
@@ -1954,6 +1978,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/messages",
+      "name": "list_agency_messages",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/messaging/send",
       "name": "send_outbound_message",
       "methods": [
@@ -2070,6 +2102,22 @@
       "name": "evaluate_passenger_rights_claim",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/passenger-rights/{trip_id}/claims/{claim_id}/disposition",
+      "name": "get_claim_disposition",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/passenger-rights/{trip_id}/claims/{claim_id}/disposition",
+      "name": "update_claim_disposition",
+      "methods": [
+        "PATCH"
       ],
       "operation_id": null
     },
@@ -2314,6 +2362,30 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/trips/{trip_id}/accounting-export",
+      "name": "export_trip_accounting",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/data-export",
+      "name": "get_trip_data_export",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/erasure",
+      "name": "post_trip_erasure",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/trips/{trip_id}/export/html",
       "name": "export_trip_itinerary_html",
       "methods": [
@@ -2354,6 +2426,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/trips/{trip_id}/messages",
+      "name": "list_trip_messages",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/trips/{trip_id}/pre-departure-bundle",
       "name": "get_pre_departure_bundle_json",
       "methods": [
@@ -2364,6 +2444,14 @@
     {
       "path": "/api/v1/trips/{trip_id}/pre-departure-bundle.pdf",
       "name": "get_pre_departure_bundle_pdf",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/quotes",
+      "name": "get_trip_quotes",
       "methods": [
         "GET"
       ],
@@ -2530,6 +2618,14 @@
       "operation_id": null
     },
     {
+      "path": "/followups/{trip_id}/send",
+      "name": "send_followup_questions",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/followups/{trip_id}/snooze",
       "name": "snooze_followup",
       "methods": [
@@ -2542,22 +2638,6 @@
       "name": "log_emotional_state",
       "methods": [
         "POST"
-      ],
-      "operation_id": null
-    },
-    {
-      "path": "/frontier/ghost/workflows",
-      "name": "create_ghost_workflow",
-      "methods": [
-        "POST"
-      ],
-      "operation_id": null
-    },
-    {
-      "path": "/frontier/ghost/workflows/{workflow_id}",
-      "name": "get_ghost_workflow",
-      "methods": [
-        "GET"
       ],
       "operation_id": null
     },

@@ -633,6 +633,32 @@ class TestBudgetHinglish:
 
 
 # ---------------------------------------------------------------------------
+# parse_budget overflow hardening (2026-09-18, found by property-fuzz probe)
+# ---------------------------------------------------------------------------
+
+
+class TestParseBudgetOverflowHardening:
+    """A 300+-digit digit-run makes float() return inf; int(inf) raised a raw
+    OverflowError. Absurd magnitudes must degrade to unparseable."""
+
+    @pytest.mark.parametrize("garbage", ["9" * 400, "1" * 310 + ".5", "999999999999999999999999999999999999999999999"])
+    def test_absurd_digit_runs_do_not_crash(self, garbage):
+        result = Normalizer.parse_budget(garbage)
+        assert result["min"] is None
+        assert result["max"] is None
+
+    def test_range_with_absurd_high_degrades(self):
+        result = Normalizer.parse_budget("4-" + "9" * 400 + "L")
+        assert result["min"] is None
+        assert result["max"] is None
+
+    @pytest.mark.parametrize("legit", ["1.5L", "4-5L", "50000", "NGN 2500000", "ZAR 3m"])
+    def test_legitimate_budgets_unchanged(self, legit):
+        result = Normalizer.parse_budget(legit)
+        assert result["min"] is not None
+
+
+# ---------------------------------------------------------------------------
 # Origin: Hinglish/Odia postpositions (se, ru, side)
 # ---------------------------------------------------------------------------
 

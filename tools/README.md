@@ -879,6 +879,35 @@ ALL GREEN
 
 ---
 
+## sim3_runner.py + sim3_sims.py
+
+**Purpose:** Sim #3 "Four Doors" live runner — drives the real product
+(backend `:8000`, frontend `:3005`, `TRIPSTORE_BACKEND=sql`) through four
+persona scenarios across four product doors the Sim #2 delegation never
+opened: Hinglish origin semantics (A), durable customer memory + leakage
+control (B), disruption/claims/disposition/ghost-concierge (C), and
+accessibility constraints + ask-traveler loop + confirmations (D).
+
+**Usage:**
+```bash
+# API phase (all four sims), evidence JSON per sim
+.venv/bin/python tools/sim3_runner.py --sim all --skip-ui
+# UI screenshots only (reads trip ids from the evidence files)
+.venv/bin/python tools/sim3_runner.py --shots
+```
+
+**Output:** `Docs/sims/assets/sim3/evidence/sim3_{A,B,C,D}_evidence.json`
+(every request/response step) and `Docs/sims/assets/sim3/*.png` (Playwright
+screenshots; logs in via the real `/api/auth/login`). All writes are
+additive — new drafts/trips/profiles only.
+
+**Source of truth:** `Docs/sims/SIM3_DESIGN_2026-10-05.md` (repo-fact
+predictions P1–P17), `Docs/sims/personas/SIM3_PERSONAS_2026-10-05.md`
+(verbatim scripts), `Docs/sims/SIM3_RESULTS_2026-10-05.md` (verdicts +
+findings FND-0308..0319).
+
+---
+
 ## Memory Slot Shadow Review: `python -m src.memory.slot_review`
 
 Purpose:

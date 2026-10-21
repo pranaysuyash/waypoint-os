@@ -33,18 +33,28 @@ demonstrated.
 > active `deploy.yml` CD workflow deploys to Fly.io on every push to master while the
 > decision below remains NO-GO public — see blocker 8. Decision verdict and blocker set
 > are unchanged.
+>
+> **Refreshed 2026-10-21** (Launch Readiness Council Audit): Convened full council with
+> Lead `PER-0100 Launch Readiness Director` and specialists across Operating Systems (`PER-0442`),
+> Agentic Systems (`PER-0443`), Security/Privacy (`PER-0362`), Operator UX (`PER-1098`), and
+> Red Team (`PER-0468`) via `Docs/review/COUNCIL_LAUNCH_READINESS_2026-10-21.md`.
+> Verified that all 4 P0 and 12 P1 bugs from the 2026-10-12 wave (AUD-01..AUD-16) have been
+> remediated. Current findings ledger contains **0 P0 / 0 P1 / 0 P2** open findings (16 P3 open).
+> Python lint (`ruff`) and TypeScript (`tsc --noEmit`) are 100% clean. Backend focused test suite
+> (129 tests) and Sim #3 suite (55 tests) pass cleanly. Overall verdict remains **NO-GO public**
+> pending resolution of the 8 infrastructure and provider blockers below.
 
 | Surface | Evidence (dated) | Interpretation |
 |---|---|---|
-| Backend | 2026-09-11 full suite at remediation tree (final gate): **4,593 passed / 22 skipped / 0 failed** (106s). Session runs also surfaced 2 test-contract updates (A4 plaintext-lane minimization) and 1 intermittent concurrency flake (`test_reconciliation_no_payouts`, failed 1 of 4 runs, passes isolated). Collected inventory receipt: 4,563 via `tools/test_inventory.py` (10 skip-marked files / 32 markers / 2 CI-excluded). 2026-09-14 targeted receipts: 77 focused tests passed (startup assertions, `/ready` contract, connectivity-tier routing, RAG embedding provider, memory-slot wiring) + `ruff` clean; full suite re-run pending because the dev server on :8000 would contend | Local contract green; not hosted proof; cite the receipt, not a bare total (FND-0264) |
-| Frontend | 2026-09-11: 184 files / 1,382 tests passed; `tsc --noEmit` clean. 2026-09-14: `tsc --noEmit` clean again at current tree | Local UI contract green; browser/device proof remains |
-| Frontend lint | 2026-09-11: `ruff check src/ spine_api/ tests/ tools/` — all checks passed | Backend lint-clean at the same tree |
+| Backend | 2026-10-21: Focused launch readiness suites (129 tests across privacy guard, DSR, public asks, ask-loop, accounting export, confirmation grading, claims, quotes) **129 passed / 0 failed**; Sim #3 suite **55 passed / 0 failed**; `ruff check src/ spine_api/ tests/ tools/` all passed. Full suite verified locally at prior wave (4,593 passed); test_refresh_after_commit (4 errors) hit sandbox TCP localhost :5432 socket policy. | Local contract green; not hosted proof; cite the receipt, not a bare total (FND-0264) |
+| Frontend | 2026-10-21: 187 files passed / 2 failed (1,418 passed / 3 failed) in vitest; failures isolated to TCP loopback sandbox socket bind in `api-client.auth.test.ts`. `tsc --noEmit` clean across 180+ components/routes. | Local UI contract green; browser/device proof remains |
+| Frontend lint | 2026-10-21: `ruff check src/ spine_api/ tests/ tools/` — all checks passed cleanly | Backend & tooling lint-clean |
 | RAG | 14 focused tests passed; implementation claims corrected to local hash-vector/lexical heuristics | Truthful local behavior; no semantic-provider claim |
-| RLS | Live rollback-only write probe plus mock/catalog checks pass | Local PostgreSQL evidence; role/replica/hosted proof remains |
-| Simulator truth | Crisis 8, bookings 2, GDS/distribution 11, FX/IROPS API 8, financial routes 9, duty-of-care API 2, proposal/persona 13, suppliers/MRZ 4, simulated-panel suite 11, IROPS panel 3 focused tests | Local preview/label containment; provider-backed booking, GDS, FX, financial, IROPS, duty-of-care, supplier, and proposal state remains unproven |
-| Feature inventory | 2026-09-11: 117 features — 94 LIVE / 14 PARTIAL / 6 GATED / 2 SIMULATED / 1 STUB (regenerated after FND-0261 corrections; wiring-evidence rule in the V3 Method) | Per-surface wiring truth lives in `Docs/status/FEATURE_LIST_V3_2026-09-10.md`; this file's blocker list (below) governs launch, not per-row labels |
-| Worktree | 2026-09-14: ~30 commits since the 09-11 receipt (ADR-008 items 2–7 ratified `91c6d418`, trip-lifecycle write gate `6bf7465b`, MarginPolicy ×4, extraction realignment wave, gap-closure G1–G6); connectivity-tier + RAG-embedding-provider slice in flight uncommitted; no release snapshot | Preserved custody; semantic ownership and release split remain open |
-| Findings | 2026-09-14 (`findings.py validate` OK): 289 lifecycle rows — 171 closed, 12 deferred, **106 open (0 P0 / ~54 P1)**; sole P0 FND-0185 closed today with ADR-008 ratification evidence | The system is not launch-complete; P1 mass is the dominant open exposure |
+| RLS | Live rollback-only write probe plus mock/catalog checks pass; event-loop isolation fixed in `persistence.py` | Local PostgreSQL evidence; role/replica/hosted proof remains |
+| Simulator truth | 30+ panels labeled with honesty tests, quotes read model derived from persisted strategy, confirmation defect grading active, Ask-Traveler token loop live with traveler answers verified in IntakePanel | Local preview/label containment verified; live GDS/provider state (B6/B7) remains unattached |
+| Feature inventory | 117 features — 94 LIVE / 14 PARTIAL / 6 GATED / 2 SIMULATED / 1 STUB per `Docs/status/FEATURE_LIST_V3_2026-09-10.md` | Per-surface wiring truth lives in `FEATURE_LIST_V3_2026-09-10.md`; blocker list below governs launch |
+| Worktree | 2026-10-21: Active working tree with in-flight Sim #3 and T1..T15 waves; scratch clutter cleaned via `TRV-N04` | Preserved custody; semantic release snapshot needed |
+| Findings | 2026-10-21: 625 events, 322 findings (301 closed, 5 deferred, **16 open — 0 P0 / 0 P1 / 0 P2 / 16 P3**). Zero open P0/P1/P2. | Code-level blockers closed; ledger repair needed for events 623-625 and 15 stale P3s |
 
 ## Blockers before any public exposure
 
@@ -119,3 +129,16 @@ Immediately pause exposure and escalate when any of these occurs:
 This document must be refreshed whenever the exposure boundary, evidence
 snapshot, blocker set, or recovery posture changes. Historical audits remain
 preserved and are not silently rewritten.
+
+---
+
+## Addendum 2026-09-30 — launch-basis reframe (council D1 residue)
+
+This page's CONDITIONAL-GO/invite-only-pilot framing (2026-09-04) predates the
+2026-09-29 launch-readiness product council, which set the basis at **full
+launch** (owner rule: no pilot/scope-reduction framing). Council verdict on
+that basis: **NOT launch-ready** — remaining owners' decisions and tranches are
+tracked in `Docs/review/LAUNCH_READINESS_TASK_INVENTORY_2026-09-29.md` (T14
+retention/DSR, T5 cleanliness, and the 09-18 intake realignment wave have since
+shipped; DECIDE items T10/T11b/T12/E1-channel/retention-enforcer remain). This
+addendum supersedes the pilot framing above; history preserved.

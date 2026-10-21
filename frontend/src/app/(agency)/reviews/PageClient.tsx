@@ -12,12 +12,10 @@ import {
   DollarSign,
   MapPin,
   ChevronRight,
-  Filter,
   MoreHorizontal,
 } from 'lucide-react';
 import { useReviews } from '@/hooks/useGovernance';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { getTripRoute } from '@/lib/routes';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { formatLeadTitle } from '@/lib/lead-display';
@@ -85,11 +83,12 @@ const ReviewCard = memo(function ReviewCard({
 }: {
   review: TripReview;
   referenceNow: number;
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
-  onRequestChanges: (id: string) => void;
+  onApprove: (id: string, notes?: string) => void;
+  onReject: (id: string, notes?: string) => void;
+  onRequestChanges: (id: string, notes?: string) => void;
 }) {
   const [showActions, setShowActions] = useState(false);
+  const [reason, setReason] = useState('');
   const daysWaiting = getDaysWaiting(review.submittedAt, referenceNow);
   
   const isUrgent = daysWaiting > 2 || review.riskFlags.includes('high_value');
@@ -175,10 +174,22 @@ const ReviewCard = memo(function ReviewCard({
             </button>
           ) : (
             <div className='flex flex-col gap-2'>
+              {/* FND-0302: the reason is the artifact — reject/request-changes
+                  without one leaves downstream revision intent unrecorded. */}
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder='Reason (required for reject / request changes)'
+                rows={2}
+                data-testid='review-reason-input'
+                className='w-full px-2 py-1.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-xs text-[#e6edf3] placeholder:text-[#484f58] focus:outline-none focus:border-[#58a6ff]'
+              />
+              
               <button
                 onClick={() => {
-                  onApprove(review.id);
+                  onApprove(review.id, reason.trim() || undefined);
                   setShowActions(false);
+                  setReason('');
                 }}
                 className='flex items-center gap-1 px-3 py-1.5 bg-[#3fb950] text-white rounded-lg text-ui-sm font-medium hover:bg-[#4bc95b] transition-colors'
               >
@@ -186,21 +197,25 @@ const ReviewCard = memo(function ReviewCard({
               </button>
               
               <button
+                disabled={!reason.trim()}
                 onClick={() => {
-                  onRequestChanges(review.id);
+                  onRequestChanges(review.id, reason.trim());
                   setShowActions(false);
+                  setReason('');
                 }}
-                className='flex items-center gap-1 px-3 py-1.5 bg-[#d29922] text-white rounded-lg text-ui-sm font-medium hover:bg-[#e3a532] transition-colors'
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-ui-sm font-medium transition-colors ${reason.trim() ? 'bg-[#d29922] text-white hover:bg-[#e3a532]' : 'bg-[#d29922]/40 text-white/60 cursor-not-allowed'}`}
               >
                 <RefreshCw className='size-3.5' /> Request Changes
               </button>
               
               <button
+                disabled={!reason.trim()}
                 onClick={() => {
-                  onReject(review.id);
+                  onReject(review.id, reason.trim());
                   setShowActions(false);
+                  setReason('');
                 }}
-                className='flex items-center gap-1 px-3 py-1.5 bg-[#f85149] text-white rounded-lg text-ui-sm font-medium hover:bg-[#ff6b6b] transition-colors'
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-ui-sm font-medium transition-colors ${reason.trim() ? 'bg-[#f85149] text-white hover:bg-[#ff6b6b]' : 'bg-[#f85149]/40 text-white/60 cursor-not-allowed'}`}
               >
                 <XCircle className='size-3.5' /> Reject
               </button>
@@ -253,27 +268,33 @@ export default function OwnerReviewsPage() {
     return b.value - a.value;
   });
 
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const handleAction = useCallback(async (id: string, action: 'approve' | 'reject' | 'request_changes', notes: string = '') => {
     setIsProcessing(true);
+    setActionError(null);
     try {
       const internalAction = action === 'approve' ? 'approve' : action === 'reject' ? 'reject' : 'request_changes';
+      // FND-0302: only approvals may fall back to a default note; rejections
+      // and revision requests carry an operator-written reason (backend 400s
+      // otherwise, so the FE never silently fabricates one).
       await submitAction({
         reviewId: id,
         action: internalAction as any,
-        notes: notes || `Owner ${action} action submitted via dashboard.`
+        notes: notes || (action === 'approve' ? 'Owner approved via dashboard.' : '')
       });
       await refetch();
     } catch (err) {
       console.error(`Failed to ${action} review:`, err);
-      alert(`Error: Failed to process ${action}. Please try again.`);
+      setActionError(`Failed to ${action.replace('_', ' ')} review${err instanceof Error ? `: ${err.message}` : ''}.`);
     } finally {
       setIsProcessing(false);
     }
   }, [submitAction, refetch]);
 
-  const handleApprove = (id: string) => handleAction(id, 'approve');
-  const handleReject = (id: string) => handleAction(id, 'reject');
-  const handleRequestChanges = (id: string) => handleAction(id, 'request_changes');
+  const handleApprove = (id: string, notes?: string) => handleAction(id, 'approve', notes ?? '');
+  const handleReject = (id: string, notes?: string) => handleAction(id, 'reject', notes ?? '');
+  const handleRequestChanges = (id: string, notes?: string) => handleAction(id, 'request_changes', notes ?? '');
 
   if (error) {
     return (
@@ -304,7 +325,6 @@ export default function OwnerReviewsPage() {
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
-      <BackToOverviewLink />
       {/* Header */}
       <header className='flex flex-wrap items-center justify-between gap-3 pt-1'>
         <div>
@@ -322,11 +342,16 @@ export default function OwnerReviewsPage() {
             <RefreshCw className={`size-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
           </button>
           
-          <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-ui-sm hover:text-[#e6edf3] transition-colors'>
-            <Filter className='size-4' /> Filters
-          </button>
         </div>
       </header>
+
+      {actionError && (
+        <div className='mb-4 flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20' data-testid='review-action-error' role='alert'>
+          <AlertTriangle className='size-4' />
+          <span className='text-ui-sm'>{actionError}</span>
+          <button onClick={() => setActionError(null)} className='ml-auto text-ui-xs text-[#8b949e] hover:text-[#e6edf3]'>Dismiss</button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>

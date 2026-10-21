@@ -153,7 +153,7 @@ Counts (authoritative, generated): 117 features — 94 LIVE, 14 PARTIAL, 6 GATED
 | H03 | Repeat-traveler relationship graph | LIVE | P1 | Cross-trip companion/family entities with recall card UI | `src/memory/` semantic tier, `frontend/src/app/(agency)/workbench/RepeatTravelerRecallCard.tsx` |
 | H04 | GDPR Article 17 erasure | LIVE | P1 | Cascading erasure with signed forget certificates | `src/memory/gdpr_engine.py` |
 | H05 | PII guard + retention enforcer + jurisdiction policy | LIVE | P1 | Regex+SpaCy PII detection, retention SLAs, GDPR/DPDP/US rules | `src/security/privacy_guard.py`, `src/security/retention_enforcer.py` |
-| H06 | Memory architect panel | LIVE | P2 | Operator view of memory graph state | `frontend/src/app/(agency)/workbench/MemoryArchitectPanel.tsx` |
+| H06 | Memory architect panel | STUB | P2 | REMOVED 2026-09-30: never-rendered simulated demo surface (zero imports), superseded by the durable SQL customer-memory backend (FND-0060); file + D-08/honesty test blocks deleted — FND-0281 | _(file deleted)_ |
 
 ## I) Agent Runtime & Ops Reliability
 

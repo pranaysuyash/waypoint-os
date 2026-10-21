@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { acknowledgeSuitabilityFlags, transitionTripStage } from "@/lib/api-client";
+import { useCallback, useState, useEffect } from "react";
+import { acknowledgeSuitabilityFlags, transitionTripStage, triageMessage, type LiveMessageTriageResponse } from "@/lib/api-client";
 import { useWorkbenchStore } from "@/stores/workbench";
 import { useTripContext } from "@/contexts/TripContext";
-import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, SuitabilityFlagData, SuitabilityProfile } from "@/types/spine";
+import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, FollowUpQuestion, SuitabilityFlagData, SuitabilityProfile } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import { SuitabilitySignal } from "./SuitabilitySignal";
 import { SuitabilityCard } from "./SuitabilityCard";
@@ -12,6 +12,9 @@ import { StageAdvanceButton } from "./StageAdvanceButton";
 import { STATE_COLORS } from "@/lib/tokens";
 import Link from "next/link";
 import { isDebugJsonAllowed } from "@/lib/privacy-controls";
+import { titleCase } from "@/lib/label-maps";
+import { getTripRepairRoute } from "@/lib/routes";
+import { Zap, AlertTriangle, ShieldAlert } from "lucide-react";
 
 interface DecisionPanelProps {
   trip?: Trip | null;
@@ -44,10 +47,29 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   const trip = propTrip || context?.trip || null;
   const tripId = propTripId || trip?.id || context?.tripId || "";
 
-  const { result_decision, result_validation, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag } = useWorkbenchStore();
+  const { result_decision, result_validation, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag, input_raw_note } = useWorkbenchStore();
   const debugJsonAllowed = isDebugJsonAllowed();
   const decision: DecisionOutput | null = result_decision || trip?.decision || null;
   const validation = result_validation || trip?.validation || null;
+
+  const [triageResult, setTriageResult] = useState<LiveMessageTriageResponse | null>(null);
+
+  useEffect(() => {
+    const rawNote = input_raw_note?.trim() || (trip?.customerMessage as string | undefined)?.trim();
+    if (!rawNote || rawNote.length < 5) {
+      setTriageResult(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await triageMessage(rawNote);
+        if (res.ok) setTriageResult(res);
+      } catch {
+        // Non-blocking background advisory
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [input_raw_note, trip?.customerMessage]);
 
   const handleSuitabilityDrill = useCallback((_flagType: string) => {
     document.querySelector('[data-testid="timeline-panel"]')?.scrollIntoView({ behavior: "smooth" });
@@ -59,6 +81,8 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
       try { await acknowledgeSuitabilityFlags(tripId, [flagType]); } catch {}
     }
   }, [tripId, acknowledgeFlag]);
+
+  const tripRepairHref = tripId ? getTripRepairRoute(tripId) : null;
 
   if (!decision) {
     return (
@@ -72,6 +96,14 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
           >
             Go to Options
           </Link>
+          {tripRepairHref && (
+            <Link
+              href={tripRepairHref}
+              className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+            >
+              Open Trip Details to repair
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -81,6 +113,9 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   const hardBlockers = decision.hard_blockers || [];
   const softBlockers = decision.soft_blockers || [];
   const contradictions = decision.contradictions || [];
+  const riskFlags: string[] = decision.risk_flags || [];
+  const followupQuestions: FollowUpQuestion[] = decision.follow_up_questions || [];
+  const budgetBreakdown: BudgetBreakdownResult | null = decision.budget_breakdown || null;
   const suitabilityFlags: SuitabilityFlagData[] = decision.suitability_flags || [];
 
   // Shadow-field pattern: prefer structured suitability_profile when available,
@@ -107,6 +142,39 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
   return (
     <div className="space-y-5">
+
+      {/* Live Jev Triage Advisory Banner (Expedition Lane A4) */}
+      {triageResult && (
+        <div className="rounded-xl p-3 border border-indigo-500/20 bg-indigo-500/5 text-ui-xs">
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+            <div className="flex items-center gap-1.5 font-semibold text-indigo-400">
+              <Zap className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
+              <span>Jev Live Advisory</span>
+              <span className="text-[10px] text-text-placeholder px-1.5 py-0.5 rounded bg-surface border border-indigo-500/20">
+                {triageResult.source} • {Math.round(triageResult.latency_ms)}ms
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 font-medium">
+                {triageResult.intent}
+              </span>
+              {triageResult.is_urgent && (
+                <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 font-semibold flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> Urgent
+                </span>
+              )}
+              {triageResult.has_policy_risk && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-semibold flex items-center gap-1">
+                  <ShieldAlert className="h-3 w-3" /> Policy Risk
+                </span>
+              )}
+            </div>
+          </div>
+          <p className="text-text-muted leading-relaxed">
+            <strong className="text-text-primary">Suggested Route:</strong> {triageResult.routing_recommendation} — {triageResult.advisory}
+          </p>
+        </div>
+      )}
 
       {/* Decision state card */}
       <div
@@ -220,6 +288,40 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
         </div>
       )}
 
+      {/* Contradictions (ported from workbench DecisionTab — Supersession T2) */}
+      {contradictions.length > 0 && (
+        <div className="rounded-xl p-4 border border-[rgba(var(--accent-red-rgb)/0.25)] bg-[rgba(var(--accent-red-rgb)/0.04)]">
+          <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-accent-red mb-2">
+            Contradictions
+          </div>
+          <ul className="space-y-1.5">
+            {contradictions.map((item) => (
+              <li key={`contra-${String(item).slice(0, 30)}`} className="flex items-start gap-2 text-ui-sm text-accent-red">
+                <span className="mt-0.5 shrink-0">✕</span>
+                <span>{titleCase(String(item))}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Risk flags (ported from workbench DecisionTab — Supersession T2) */}
+      {riskFlags.length > 0 && (
+        <div className="rounded-xl p-4 border border-[rgba(var(--accent-amber-rgb)/0.2)] bg-[rgba(var(--accent-amber-rgb)/0.04)]">
+          <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-accent-amber mb-2">
+            Risk Flags
+          </div>
+          <ul className="space-y-1.5">
+            {riskFlags.map((item) => (
+              <li key={`risk-${String(item).slice(0, 30)}`} className="flex items-start gap-2 text-ui-sm text-accent-amber">
+                <span className="mt-0.5 shrink-0">!</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Rationale */}
       {rationale.feasibility && (
         <section className="space-y-2">
@@ -229,6 +331,44 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
           </div>
         </section>
       )}
+
+      {/* Branch options — scored alternatives produced by the decision pipeline
+          (budget-tier entries and route-structure candidates with scores). */}
+      {(() => {
+        const options = decision.branch_options ?? [];
+        if (options.length === 0) return null;
+        return (
+          <section className="space-y-2" data-testid="branch-options">
+            <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder">Branch Options</div>
+            <div className="space-y-2">
+              {options.map((option, index) => {
+                const entry = typeof option === "string"
+                  ? { label: option, description: undefined as string | undefined, route_structure: undefined }
+                  : option;
+                const score = entry.route_structure?.score;
+                return (
+                  <div
+                    key={`branch-option-${index}-${entry.label.slice(0, 24)}`}
+                    className="rounded-xl p-3 border border-[rgba(var(--accent-blue-rgb)/0.25)] bg-[rgba(var(--accent-blue-rgb)/0.04)]"
+                  >
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-ui-sm font-semibold text-text-primary">{entry.label}</span>
+                      {typeof score === "number" && (
+                        <span className="text-[var(--ui-text-xs)] font-semibold text-accent-blue">
+                          route score {score}
+                        </span>
+                      )}
+                    </div>
+                    {entry.description && (
+                      <p className="text-ui-sm text-text-muted mt-1 leading-relaxed">{entry.description}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Suitability */}
       {suitabilityProfile ? (
@@ -245,6 +385,71 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
           acknowledgedFlags={acknowledged_suitability_flags}
         />
       ) : null}
+
+      {/* Follow-up questions (ported from workbench DecisionTab — Supersession T2).
+          These are the same questions the traveler ask loop delivers (FND-0301). */}
+      {followupQuestions.length > 0 && (
+        <section className="space-y-2" data-testid="decision-followups">
+          <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder">Follow-up Questions</div>
+          <ul className="space-y-2">
+            {followupQuestions.map((q) => (
+              <li key={`followup-${q.field_name}`} className="rounded-xl p-3 border border-[rgba(var(--accent-purple-rgb)/0.25)] bg-[rgba(var(--accent-purple-rgb)/0.04)]">
+                <span className="text-ui-sm font-semibold text-text-primary">
+                  [{q.priority ? q.priority.charAt(0).toUpperCase() + q.priority.slice(1) : "Medium"}] {titleCase(q.field_name)}
+                </span>
+                <p className="text-ui-sm text-text-muted mt-1 leading-relaxed">{q.question}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Budget breakdown (ported from workbench DecisionTab — Supersession T2) */}
+      {budgetBreakdown && budgetBreakdown.buckets.length > 0 && (
+        <section className="space-y-2" data-testid="decision-budget-breakdown">
+          <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder">Budget Breakdown</div>
+          <div className="rounded-xl p-4 border border-[var(--border-default)] bg-surface">
+            <div className="flex items-center gap-3 flex-wrap mb-3">
+              <span className="text-ui-sm font-semibold text-text-primary capitalize">{budgetBreakdown.verdict}</span>
+              {budgetBreakdown.budget_stated != null && (
+                <span className="text-ui-xs text-text-muted">
+                  Budget: {budgetBreakdown.budget_stated.toLocaleString()} · Est. range:{" "}
+                  {(budgetBreakdown.total_estimated_low ?? 0).toLocaleString()} – {(budgetBreakdown.total_estimated_high ?? 0).toLocaleString()}
+                </span>
+              )}
+            </div>
+            <table className="w-full text-left text-ui-sm">
+              <thead>
+                <tr className="border-b border-[var(--border-default)] text-[var(--ui-text-xs)] font-semibold text-text-placeholder uppercase tracking-wider">
+                  <th className="py-2 pr-3">Bucket</th>
+                  <th className="py-2 pr-3">Low</th>
+                  <th className="py-2 pr-3">High</th>
+                  <th className="py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-default)]">
+                {budgetBreakdown.buckets.map((b: CostBucketEstimate) => (
+                  <tr key={b.bucket}>
+                    <td className="py-2 pr-3">{BUCKET_DISPLAY[b.bucket] || titleCase(b.bucket)}</td>
+                    <td className="py-2 pr-3">{(b.low ?? 0).toLocaleString()}</td>
+                    <td className="py-2 pr-3">{(b.high ?? 0).toLocaleString()}</td>
+                    <td className="py-2">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[var(--ui-text-xs)] font-semibold ${b.covered ? "bg-accent-green/10 text-accent-green" : "bg-accent-red/10 text-accent-red"}`}>
+                        {b.covered ? "Covered" : "Gap"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(budgetBreakdown.missing_buckets?.length ?? 0) > 0 && (
+              <p className="text-ui-xs text-accent-amber mt-3">
+                Missing buckets: {budgetBreakdown.missing_buckets.map((m: string) => BUCKET_DISPLAY[m] || m).join(", ")}
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       {!debugJsonAllowed && (
         <div className="rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">

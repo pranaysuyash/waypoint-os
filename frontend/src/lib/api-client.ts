@@ -349,6 +349,37 @@ export interface Trip {
   safety?: unknown;
   fees?: FeeCalculationResult;
   frontier_result?: FrontierOrchestrationResult | null;
+  // T10 claim disposition ledger (FND-0233) — records airline→traveler claim
+  // outcomes. The system never initiates, holds, or receives money.
+  passenger_claim?: {
+    claim_id: string;
+    booking_reference?: string;
+    passenger_names?: string[];
+    status?: string;
+    generated_at?: string;
+    disposition?: {
+      state: string;
+      history?: Array<{ state: string; at: string; by?: string; note?: string }>;
+      outcome?: { amount_eur?: number; channel?: string; date?: string } | null;
+      overdue?: boolean;
+      claim_id?: string;
+    };
+  };
+  // T11b ghost-concierge disruption monitor (2026-09-30) — real evaluations
+  // with operator-gated drafted interventions. Proposes; never sends.
+  ghost_concierge?: {
+    overall_health?: string;
+    evaluated_at?: string;
+    drafted_interventions?: Array<{
+      action_type: string;
+      severity: string;
+      summary: string;
+      recommended_action?: string;
+      status?: string;
+    }>;
+    healer_note?: string;
+    reality_note?: string;
+  };
   agentOperations?: AgentOperationsMetadata;
   rawInput?: unknown;
   // Input fields (returned by the backend API)
@@ -404,6 +435,25 @@ export interface Trip {
     acknowledged_flags?: string[];
     suitability_acknowledged_at?: string;
   };
+  traveler_asks?: Array<{
+    asked_at: string;
+    channel: string;
+    recipient: string;
+    token: string;
+    question_count: number;
+    fields?: string[];
+    dispatch_status: string;
+  }>;
+  traveler_answers?: Array<{
+    field_name: string;
+    answer: string;
+    question?: string;
+    authority?: string;
+    channel?: string;
+    token?: string;
+    answered_at: string;
+    respondent_name?: string | null;
+  }>;
 }
 
 export interface AgentOperationsMetadata {
@@ -938,7 +988,7 @@ export async function submitTripReviewAction(
   errorCategory?: string,
   escalationOutcome?: "false_escalation" | "missed_escalation" | "correct_escalation" | "not_applicable",
   reviewWorkflowUnitId?: string,
-): Promise<{ success: boolean; review: any }> {
+): Promise<{ success: boolean; review: Record<string, unknown> }> {
   const payload: Record<string, unknown> = {
     action,
     notes,
@@ -987,7 +1037,9 @@ export async function submitOverride(
   return api.post<OverrideResponse>(`/api/trips/${tripId}/override`, request);
 }
 
-export async function getOverrides(tripId: string): Promise<{ ok: boolean; trip_id: string; overrides: any[]; total: number }> {
+export async function getOverrides(
+  tripId: string
+): Promise<{ ok: boolean; trip_id: string; overrides: OverrideResponse[]; total: number }> {
   return api.get(`/api/trips/${tripId}/overrides`);
 }
 
@@ -1041,7 +1093,9 @@ export async function reassessTrip(
   return api.post<ExplicitReassessResponse>(`/api/trips/${tripId}/reassess`, request);
 }
 
-export async function getOverride(overrideId: string): Promise<{ ok: boolean; override: any }> {
+export async function getOverride(
+  overrideId: string
+): Promise<{ ok: boolean; override: OverrideResponse }> {
   return api.get(`/api/overrides/${overrideId}`);
 }
 
@@ -1993,4 +2047,45 @@ export async function getExecutionTimeline(
   const qs = sp.toString();
   const params = qs ? `?${qs}` : "";
   return api.get(`/api/trips/${tripId}/execution-timeline${params}`);
+}
+
+export interface LiveMessageTriageResponse {
+  ok: boolean;
+  intent: string;
+  is_urgent: boolean;
+  sentiment: string;
+  has_policy_risk: boolean;
+  confidence: number | null;
+  routing_recommendation: string;
+  advisory: string;
+  source: string;
+  latency_ms: number;
+}
+
+export async function triageMessage(text: string): Promise<LiveMessageTriageResponse> {
+  return api.post("/api/triage/message", { text });
+}
+
+export interface SendFollowupQuestionsRequest {
+  recipient: string;
+  channel?: "whatsapp" | "email";
+  ttl_hours?: number;
+}
+
+export interface SendFollowupQuestionsResponse {
+  ok: boolean;
+  trip_id: string;
+  token: string;
+  ask_path: string;
+  dispatch_status: string;
+  dispatch_detail?: string;
+  question_count: number;
+  asked_count: number;
+}
+
+export async function sendFollowupQuestions(
+  tripId: string,
+  req: SendFollowupQuestionsRequest
+): Promise<SendFollowupQuestionsResponse> {
+  return api.post(`/api/followups/${tripId}/send`, req);
 }

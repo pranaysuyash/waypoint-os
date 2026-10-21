@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
@@ -19,8 +20,14 @@ from uuid import uuid4
 from sqlalchemy import text
 
 from spine_api.persistence import _run_async_blocking, tripstore_session_maker
+from src.orchestration.agent_lease import DurableAgentLeaseManager
 
 logger = logging.getLogger("agent_requeue_jobs")
+
+# FND-0160: terminal lease retention runs at most once per hour inside the
+# worker's maintenance pass (cheap bounded delete of inactive rows only).
+_LEASE_PRUNE_INTERVAL_SECONDS = 3600.0
+_last_lease_prune_at = -_LEASE_PRUNE_INTERVAL_SECONDS
 
 JOB_STATUS_PENDING = "pending"
 JOB_STATUS_RUNNING = "running"
@@ -932,7 +939,7 @@ class RequeueWorkerService:
     def _maintenance_pass(self) -> None:
         """FND-0224 dead-trip recovery pass (log + count only).
 
-        Two cheap, bounded operations per cycle:
+        Three cheap, bounded operations per cycle:
         1. Reclaim RUNNING rows with expired leases (worker crash orphans) —
            reuses the existing automatic re-lease path for unexecuted work.
         2. Detect trips whose durable work is dead (poisoned) and surface them
@@ -941,6 +948,9 @@ class RequeueWorkerService:
            review (deterministic failures would loop on auto-replay), and the
            admin replay endpoint on the agent-runtime router is the
            operator-triggered path.
+        3. Hourly-gated retention prune of terminal lease rows (FND-0160) —
+           inactive leases past the retention window are deleted; active and
+           recently-terminal rows are never touched.
         """
         job_store = self._worker._job_store
         self._last_reclaimed = job_store.reclaim_stale_running()
@@ -953,6 +963,21 @@ class RequeueWorkerService:
                 len(self._last_dead_trips),
                 trip_ids,
             )
+        self._prune_terminal_leases_if_due()
+
+    def _prune_terminal_leases_if_due(self) -> None:
+        """FND-0160: hourly-gated retention prune of terminal agent leases."""
+        global _last_lease_prune_at
+        now = time.monotonic()
+        if now - _last_lease_prune_at < _LEASE_PRUNE_INTERVAL_SECONDS:
+            return
+        _last_lease_prune_at = now
+        try:
+            pruned = DurableAgentLeaseManager.prune_terminal_leases()
+            if pruned:
+                logger.info("lease_terminal_prune pruned=%d", pruned)
+        except Exception:
+            logger.exception("lease_terminal_prune failed (retention deferred to next window)")
 
     def health(self) -> dict[str, Any]:
         return {

@@ -496,7 +496,7 @@ const TRAVEL_TAGS = [
 // ── Header ────────────────────────────────────────────────────────────────────
 function WedgeHeader() {
   return (
-    <header style={S.header}>
+    <header style={S.header} className="px-4 py-3 sm:px-8">
       <Link href='/' style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none' }}>
         <div style={S.logoMark}>
           <MapPin size={14} />
@@ -507,7 +507,7 @@ function WedgeHeader() {
         </div>
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <span style={{ fontSize: 12, color: T.t3, fontFamily: T.fBody }}>Free · No account required · 60 seconds</span>
+        <span className="hidden md:inline" style={{ fontSize: 12, color: T.t3, fontFamily: T.fBody }}>Free · No account required · 60 seconds</span>
         <Link href='/signup' style={S.agencyPillLink}>
           For agencies →
         </Link>
@@ -788,14 +788,18 @@ function UploadCard({
         </div>
       ) : (
         <>
-        <button
-          type='button'
+        <div
+          role='region'
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          onClick={() => fileRef.current?.click()}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('button') || target.closest('input')) return;
+            fileRef.current?.click();
+          }}
           aria-label={activeTab === 'screenshot' ? 'Upload itinerary screenshot' : 'Upload itinerary document'}
-          style={uploadDropZoneStyle(dragging)}
+          style={{ ...uploadDropZoneStyle(dragging), cursor: 'pointer' }}
         >
           <div style={S.uploadIconFrame}>
             <Upload size={22} strokeWidth={1.5} />
@@ -815,14 +819,15 @@ function UploadCard({
             onChange={(next) => dispatch({ type: 'setRetentionConsent', retentionConsent: next })}
           />
           <div style={{ position: 'relative', display: 'inline-flex' }}>
-            <span
+            <button
+              type='button'
+              onClick={() => fileRef.current?.click()}
               style={primaryButtonStyle(!(isBusy || isProcessingFile), 42, '0 20px')}
-              aria-hidden='true'
             >
               {isProcessingFile ? 'Reading file…' : 'Choose file to score'}
-            </span>
+            </button>
           </div>
-        </button>
+        </div>
         <input
           ref={fileRef}
           type='file'

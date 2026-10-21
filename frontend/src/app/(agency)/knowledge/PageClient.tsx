@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import {
   BookOpen,
   Search,
@@ -132,7 +131,6 @@ export default function KnowledgePage() {
 
   return (
     <div className='p-6 space-y-6'>
-      <BackToOverviewLink />
 
       {/* Header */}
       <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
@@ -162,7 +160,7 @@ export default function KnowledgePage() {
           <Search className='absolute left-3.5 top-3 size-4 text-[#58a6ff]' />
           <input
             type='text'
-            placeholder='Ask Agency Brain (e.g. "Schengen passport rules", "South Africa safari with kids", "Kyoto ryokan booking timeline")…'
+            placeholder='Search agency knowledge (e.g. "Schengen passport rules", "South Africa safari with kids", "Kyoto ryokan booking timeline")…'
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className='w-full pl-10 pr-4 py-2.5 bg-[#161b22] border border-[#30363d] rounded-md text-sm text-[#e6edf3] placeholder-[#8b949e] focus:border-[#58a6ff] outline-none shadow-inner'

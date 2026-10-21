@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from spine_api.core.auth import get_current_agency_id
-from spine_api.core.rls import rls_session
+from spine_api.core.rls import refresh_or_reselect, rls_session
 from spine_api.models.tenant import CustomerMemoryProfile
 from spine_api.persistence import AuditStore, TripStore
 from src.memory.feedback_bridge import traveler_entity_for
@@ -325,7 +325,7 @@ async def remember_customer_preference(
         profile_row.last_confirmed_at = now
         db.add(profile_row)
         await db.commit()
-        await db.refresh(profile_row)
+        await refresh_or_reselect(db, profile_row)
 
     # Also ingest structured facts into the 5-tier durable MemoryStore
     if req.dietary_requirements:
@@ -370,7 +370,7 @@ async def remember_customer_preference(
         user_id=agency_id,
         details={
             "customer_id": cust_id,
-            "name": req.name,
+            "name_updated": bool(req.name),
             "updated_fields": [k for k in ["dietary_requirements", "room_preference", "seating_preference"] if getattr(req, k, None)],
             "source_trip_id": req.source_trip_id,
         },

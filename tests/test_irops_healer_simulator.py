@@ -85,4 +85,15 @@ def test_irops_auto_healing_execution_uses_stored_graph():
     assert "BA178" not in plan.waiver_dispute_letter
     assert "Stored flight AA100" in plan.waiver_dispute_letter
     assert plan.emergency_lodging_vcc is not None
+    assert plan.emergency_lodging_vcc.status == "DRAFT_AWAITING_OPERATOR_APPROVAL"
     assert "Request for Full Penalty Waiver" in plan.waiver_dispute_letter
+
+    # ADR-008 Rung 3: Operator approval activates financial commitment
+    approved_plan = IROPSAutoHealerEngine.execute_healing_protocol(
+        trip_id=trip_id,
+        delayed_node_id=node_id,
+        delay_minutes=180,
+        operator_approved=True,
+    )
+    assert approved_plan.emergency_lodging_vcc is not None
+    assert approved_plan.emergency_lodging_vcc.status == "ACTIVE"

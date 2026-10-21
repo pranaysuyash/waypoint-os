@@ -28,7 +28,9 @@ class AccountingExportBridge:
         invoice_date_yyyymmdd: Optional[str] = "20260901",
     ) -> str:
         inv_no = invoice_number or f"INV-{invoice.trip_id[:8].upper()}"
+        safe_inv_no = escape(inv_no)
         safe_customer = escape(customer_name)
+        safe_date = escape(str(invoice_date_yyyymmdd or ""))
 
         ledger_entries_xml: List[str] = []
 
@@ -80,9 +82,9 @@ class AccountingExportBridge:
             <REQUESTDATA>
                 <TALLYMESSAGE xmlns:UDF="TallyUDF">
                     <VOUCHER VCHTYPE="Sales" ACTION="Create">
-                        <DATE>{invoice_date_yyyymmdd}</DATE>
+                        <DATE>{safe_date}</DATE>
                         <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
-                        <VOUCHERNUMBER>{inv_no}</VOUCHERNUMBER>
+                        <VOUCHERNUMBER>{safe_inv_no}</VOUCHERNUMBER>
                         <PARTYLEDGERNAME>{safe_customer}</PARTYLEDGERNAME>
                         <PERSISTEDVIEW>Invoice View</PERSISTEDVIEW>
 {all_ledgers}

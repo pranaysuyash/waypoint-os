@@ -120,6 +120,12 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   // ── Dynamic patterns (last segment is an ID) ─────────────────
   ["trips/{id}/stage", { backendPath: "api/v1/trips/{id}/stage" }],
   ["v1/trips/{id}/stage", { backendPath: "api/v1/trips/{id}/stage" }],
+  ["trips/{id}/quotes", { backendPath: "api/v1/trips/{id}/quotes" }],
+  ["v1/trips/{id}/quotes", { backendPath: "api/v1/trips/{id}/quotes" }],
+  ["trips/{id}/messages", { backendPath: "api/v1/trips/{id}/messages" }],
+  ["v1/trips/{id}/messages", { backendPath: "api/v1/trips/{id}/messages" }],
+  ["messages", { backendPath: "api/v1/messages" }],
+  ["v1/messages", { backendPath: "api/v1/messages" }],
   ["trips/{id}/timeline", { backendPath: "api/trips/{id}/timeline" }],
   ["trips/{id}/agent-events", { backendPath: "trips/{id}/agent-events" }],
   ["trips/{id}/assign", { backendPath: "trips/{id}/assign" }],
@@ -193,6 +199,18 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
 
   ["analytics/agent/{id}/drill-down", { backendPath: "analytics/agent/{id}/drill-down" }],
 
+  // ── Message triage (workbench live intake) ─────────────────────────
+  ["triage/message", { backendPath: "api/triage/message" }],
+  ["api/triage/message", { backendPath: "api/triage/message" }],
+
+  // ── Followups (T1 ask-traveler & reminder dashboard) ───────────────
+  ["followups/dashboard", { backendPath: "followups/dashboard" }],
+  ["followups/{id}/send", { backendPath: "followups/{id}/send" }],
+  ["trips/{id}/followups/send", { backendPath: "followups/{id}/send" }],
+  ["followups/{id}/mark-complete", { backendPath: "followups/{id}/mark-complete" }],
+  ["followups/{id}/snooze", { backendPath: "followups/{id}/snooze" }],
+  ["followups/{id}/reschedule", { backendPath: "followups/{id}/reschedule" }],
+
   // ── Workbench capability panels (v1 sandbox/simulator routers) ──────────
   // Explicitly mapped so client panels can call the canonical BFF-relative
   // /api/v1/... pattern instead of hardcoding the backend origin. Each entry
@@ -225,6 +243,8 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["public/proposals/{token}", { backendPath: "api/public/proposals/{token}" }],
   ["public/proposals/{token}/calculate", { backendPath: "api/public/proposals/{token}/calculate" }],
   ["public/proposals/{token}/accept", { backendPath: "api/public/proposals/{token}/accept" }],
+  ["public/asks/{token}", { backendPath: "api/public/asks/{token}" }],
+  ["public/asks/{token}/answers", { backendPath: "api/public/asks/{token}/answers" }],
   ["v1/charter-aviation/quotes/calculate", { backendPath: "api/v1/charter-aviation/quotes/calculate" }],
   ["v1/documents/mrz/parse-td3", { backendPath: "api/v1/documents/mrz/parse-td3" }],
   ["v1/logistics/connection-risk", { backendPath: "api/v1/logistics/connection-risk" }],

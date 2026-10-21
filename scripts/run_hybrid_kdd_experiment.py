@@ -114,6 +114,14 @@ def _as_list(data: Any) -> List[Dict[str, Any]]:
 def _input_text(fx: Dict[str, Any]) -> str:
     for key in ("raw_input", "input", "raw_note", "note", "text"):
         val = fx.get(key)
+        # Adversarial corpus envelopes: {"content_type": "freeform_text",
+        # "text": "..."} — the text lives one level down (found 2026-09-19:
+        # all 21 adversarial records silently skipped by the KDD loader).
+        if isinstance(val, dict):
+            nested = val.get("text") or val.get("body") or val.get("content")
+            if isinstance(nested, str) and nested.strip():
+                return nested
+            continue
         if isinstance(val, str) and val.strip():
             return val
     return ""
@@ -285,9 +293,11 @@ def _build_client(provider: str, model: str) -> Any:
     """Build an LLM client for an arm spec.
 
     Supported providers: standard src.llm providers (openai/gemini/local),
-    local-ollama (OpenAI-compatible local server), and hf-router (Hugging
+    local-ollama (OpenAI-compatible local server), hf-router (Hugging
     Face Inference Providers — OpenAI-compatible endpoint with
-    :fastest/:cheapest/:preferred routing policies; needs HF_TOKEN env).
+    :fastest/:cheapest/:preferred routing policies; needs HF_TOKEN env),
+    and typesafe (System One Jev — calibrated decision primitives, not a
+    generative LLM; needs TYPESAFE_API_KEY env; KDD expedition G1 lane).
     """
     from src.llm import create_llm_client
 
@@ -328,6 +338,13 @@ def _build_client(provider: str, model: str) -> Any:
                 "HF_ROUTER_BASE_URL", "https://router.huggingface.co/v1"
             ),
         )
+    if provider == "typesafe":
+        from src.llm.typesafe_client import TypesafeJevClient
+
+        token = os.environ.get("TYPESAFE_API_KEY")
+        if not token:
+            raise RuntimeError("TYPESAFE_API_KEY not set (repo .env or shell)")
+        return TypesafeJevClient(model=model)
     return create_llm_client(provider=provider, model=model)
 
 
@@ -489,6 +506,15 @@ def main() -> int:
         "keeps the plain arm name, runs 1+ get -rN suffixes with their own "
         "cache dirs.",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume a killed run: append to the existing records file and "
+        "skip (record_id, arm) pairs already present, and keep existing "
+        "per-model cache dirs so completed cold calls are not re-spent. "
+        "Without this flag the output file is truncated and caches wiped "
+        "(fresh-run semantics).",
+    )
     args = parser.parse_args()
 
     model_specs = [tuple(m.split("/", 1)) for m in args.models.split(",") if "/" in m]
@@ -523,10 +549,12 @@ def main() -> int:
     for spec in model_specs:
         # Per-model run-scoped cache: wiped before the cold pass, reused for
         # the warm pass so warm measures THIS cold pass's cache entries only.
+        # --resume keeps the dir instead: a killed run's cold entries are the
+        # paid-for state, and the warm arm measures the same run lineage.
         for run_i in range(max(1, args.runs)):
             suffix = "" if run_i == 0 else f"-r{run_i}"
             model_cache_dir = OUT_DIR / f"cache_{_safe_name(spec[1])}{suffix}"
-            if model_cache_dir.exists():
+            if model_cache_dir.exists() and not args.resume:
                 shutil.rmtree(model_cache_dir)
             arm_defs.append((f"B-{spec[1]}{suffix}", True, spec, model_cache_dir, "single"))
             if run_i == 0:
@@ -536,15 +564,35 @@ def main() -> int:
             continue
         for spec in pattern_specs:
             pat_cache_dir = OUT_DIR / f"cache_{_safe_name(spec[1])}_{pattern}"
-            if pat_cache_dir.exists():
+            if pat_cache_dir.exists() and not args.resume:
                 shutil.rmtree(pat_cache_dir)
             arm_defs.append((f"P-{pattern}-{spec[1]}", True, spec, pat_cache_dir, pattern))
 
-    with records_path.open("w", encoding="utf-8") as out:
+    done: set = set()
+    mode = "a" if args.resume else "w"
+    if args.resume and records_path.exists():
+        with records_path.open("r", encoding="utf-8") as existing:
+            for line in existing:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                    done.add((row.get("record_id"), row.get("arm")))
+                except json.JSONDecodeError:
+                    continue  # tolerate a torn tail from a killed writer
+        skipped_arms = len(done)
+        print(f"[kdd] resume: {skipped_arms} (record, arm) pairs already present; appending")
+    with records_path.open(mode, encoding="utf-8") as out:
+        ran = 0
+        skipped = 0
         for rec, packet in packets:
             if packet is None:
                 continue
             for arm_name, hybrid_on, spec, cache_dir, pattern in arm_defs:
+                if args.resume and (rec["record_id"], arm_name) in done:
+                    skipped += 1
+                    continue
                 call_log: List[Dict[str, Any]] = []
                 model_used = "deterministic"
                 res = run_record(rec, packet, arm_name, hybrid_on, spec, call_log, cache_dir, pattern)
@@ -563,9 +611,10 @@ def main() -> int:
                     "decide_log": res.get("decide_log", []) if hybrid_on else [],
                 }
                 out.write(json.dumps(row, default=str) + "\n")
+                ran += 1
                 print(f"  {rec['record_id']:<28} arm={arm_name:<12} risks={res['risk_count']} wall={res['wall_ms']}ms")
 
-    print(f"[kdd] wrote {records_path}")
+    print(f"[kdd] wrote {records_path} | new rows: {ran} | resumed-skipped: {skipped}")
     return 0
 
 

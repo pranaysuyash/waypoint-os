@@ -370,6 +370,33 @@ _SWEEP_STOP_WORDS = {
     # Animal/common-noun colliders ("the dog has fleas" — Dog is a real
     # GeoNames record; no traveler means it).
     "dog", "cat", "cow",
+    # FND-0308 (Sim #3) verified colliders — same class as the "Time"
+    # village above, from real Hinglish/English customer notes. Every
+    # entry here swept up a bogus destination_candidates entry in a live
+    # extraction before this block existed:
+    #   Hinglish discourse/temporal words — "4 din" (Din, Iran), "aur haan"
+    #   (Aur, CO / Haan, DE), "aas paas" (Aas, NO), "chhath ke baad"
+    #   (Baad, IR), "ho gaya" (Gaya, BR — a real Indian city too, but bare
+    #   sweep membership is not destination evidence);
+    #   everyday English verbs/nouns — "varanasi add karna" (Add, ET),
+    #   "uses a wheelchair" (Uses, PT), "plan" (Plan, ES), "pure veg"
+    #   (Pure, IN), "manage"/"pace" (Manage, PH / Pace, FL).
+    "din", "dinon", "aur", "haan", "nahi", "hoon", "hain",
+    "tha", "thi", "kar", "karna", "karne", "chahta", "chahte", "saath",
+    "aas", "paas", "baad", "pehle", "liye", "ghar", "arre", "wala",
+    # "ho gaya" past-tense motion — Gaya is a real Indian city (Bodh Gaya),
+    # so bare sweep membership looks plausible; real "gaya jana hai" intent
+    # still arrives through the Hinglish verb pattern, which does not apply
+    # this stoplist.
+    "gaya", "gaye", "gayi",
+    "add", "uses", "plan", "pure", "manage", "pace",
+    # Person-name colliders: common Indian surnames/given names that are
+    # also GeoNames records ("col. arvind sen, 72" swept up Sen; email
+    # "ananya.rao" swept up Rao/Sim). Real destination intent for these
+    # areas arrives as the compound the gazetteer knows ("Kamala Beach"
+    # via Phuket), never as a bare prose mention inside a sentence about
+    # people.
+    "sen", "rao", "sim", "kamala", "sharma", "verma",
 }
 # Common-English-word toponyms: real GeoNames places whose names are
 # ordinary words. Unlike _SWEEP_STOP_WORDS (never a candidate), a single
@@ -445,7 +472,20 @@ _SEASON_RE = re.compile(
     re.IGNORECASE,
 )
 _FLEXIBLE_BUDGET_RE = re.compile(r"\bflexible\s+budget\b|\bbudget\s+is\s+flexible\b", re.IGNORECASE)
-_TOTAL_GROUP_RE = re.compile(r"\b(?:total|for\s+(?:the\s+)?(?:whole\s+)?(?:trip|family|group))\b", re.IGNORECASE)
+# Trip-total markers. 2026-09-19 extension (KDD substrate-FP fix): "to spend
+# on a trip", "€2500 for a trip", "$4,500 for two people", "for a family of 4"
+# all read as trip-total to an advisor but none matched the original
+# alternatives — those budgets were defaulted to ASSUMED scope and escalated
+# as unacknowledged-critical assumptions. Per-unit cues (per person / a day /
+# a night) are still evaluated FIRST in scope_of, so this stays a fallback.
+_TOTAL_GROUP_RE = re.compile(
+    r"\b(?:total"
+    r"|to\s+(?:spend|work\s+with)"
+    r"|for\s+(?:a|the|our|this|that|your)?\s*(?:whole\s+)?(?:trip|family|group)"
+    r"|for\s+(?:\d+|two|three|four|five|six|seven|eight|nine|ten)\s+(?:people|persons|adults|travelers|travellers|guests|of\s+us)"
+    r")\b",
+    re.IGNORECASE,
+)
 
 # Month abbreviations for day range patterns
 _MONTH_ABBR = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*"
@@ -512,7 +552,10 @@ _NUMBER_WORDS = {
     "nau": 9,
     "das": 10,
 }
-_COUNT_TOKEN_RE = r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|ek|do|teen|cha{1,2}r|pa{1,2}nch|chhe|saat|aath|nau|das)"
+# FND-0314: the digit branch rejects ordinal suffixes ("45th", "21st") so an
+# anniversary/ordinal can never leak into a party, guest, or duration count.
+# Date regexes keep their own \d+ patterns — ordinals there are legitimate.
+_COUNT_TOKEN_RE = r"(?:\d+(?!(?:st|nd|rd|th)\b)|one|two|three|four|five|six|seven|eight|nine|ten|ek|do|teen|cha{1,2}r|pa{1,2}nch|chhe|saat|aath|nau|das)"
 
 # People count patterns
 _ADULTS_RE = re.compile(rf"({_COUNT_TOKEN_RE})\s+adults?", re.IGNORECASE)
@@ -526,7 +569,7 @@ _PEOPLE_RE = re.compile(
     # "guests?" is a party count ("25 guests from Delhi"), but "guest
     # list/house/room/book/bedroom/bathroom" prose is not — the lookahead
     # keeps those clean. _GUEST_PROSE_SUFFIXES below is the shared source.
-    r"(?:people|persons?|pax|travelers?|travellers?|ppl|log|loga|jan|bande|bando"
+    r"(?:people|persons?|pax|passengers?|travelers?|travellers?|ppl|log|loga|jan|bande|bando"
     r"|guests?(?!\s*(?:lists?|houses?|rooms?|books?|bed(?:room)?s?|bath(?:room)?s?)\b))",
     re.IGNORECASE,
 )
@@ -1501,6 +1544,11 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
             if (
                 is_known_destination(title)
                 and _is_valid_destination_candidate(title, destination_text)
+                # Weak-evidence gate: a bare trip-shaped tail must also pass
+                # the sweep stoplist, or prose like "chhath ke baad karte
+                # hain trip" promotes "Baad" (GeoNames village) to a
+                # definite destination (FND-0308, Sim #3).
+                and not any(w.lower() in _SWEEP_STOP_WORDS for w in words[:end])
                 and not _is_likely_origin(destination_text, candidate)
                 and not _is_past_trip_mention(destination_text, candidate)
             ):
@@ -1572,7 +1620,14 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
         for match in re.finditer(r"[a-zA-Z][a-zA-Z'-]{1,30}", destination_text):
             start = match.start()
             word_clean = match.group(0).strip("'-").lower()
-            if len(word_clean) < 3 or word_clean in _SWEEP_STOP_WORDS or word_clean in _SEASON_NAMES:
+            if (
+                len(word_clean) < 3
+                or word_clean in _SWEEP_STOP_WORDS
+                or word_clean in _SEASON_NAMES
+                # Month abbreviations are date evidence, never destinations
+                # ("around nov last week" must not sweep up Nov — FND-0308).
+                or word_clean in _MONTH_NAMES
+            ):
                 continue
             if word_clean in seen_sweep:
                 continue
@@ -2081,6 +2136,39 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
                 ),
             }
 
+    # FND-0318 (Sim #3): a currency symbol pins a budget without the word
+    # "budget" — "around $2400 excluding international flights". Mirrors the
+    # ₹ path (symbol + amount + optional unit) so USD/EUR/GBP parse wherever
+    # the rupee symbol already did. The ≥100 floor is the same rule the
+    # keyword-free anchor path applies: incidental small amounts are not
+    # trip budgets.
+    symbol_budget_match = re.search(
+        r"(?P<currency>[₹$€£₦])\s*(?P<amount>\d[\d,]*(?:\.\d+)?)\s*"
+        r"(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b",
+        text_lower,
+    )
+    if symbol_budget_match:
+        raw_amount = symbol_budget_match.group("amount").replace(",", "").strip()
+        unit = (symbol_budget_match.group("unit") or "").strip().lower()
+        if not _looks_like_date_token(raw_amount) and float(raw_amount) >= 100:
+            parsed_value = float(raw_amount)
+            if unit in ("l", "lac", "lakh", "lakhs"):
+                parsed_value *= 100000
+            elif unit in ("k", "thousand"):
+                parsed_value *= 1000
+            elif unit in ("m", "mn", "million", "millions"):
+                parsed_value *= 1000000
+            elif unit in ("cr", "crore", "crores"):
+                parsed_value *= 10000000
+            elif unit in ("b", "bn", "billion", "billions"):
+                parsed_value *= 1000000000
+            return {
+                "raw_text": symbol_budget_match.group(0).strip(),
+                "min": int(parsed_value),
+                "max": int(parsed_value),
+                "currency": _currency_code(symbol_budget_match.group("currency")),
+            }
+
     # Look for budget-like patterns
     patterns = [
         # Explicit budget with numeric range and optional unit suffix.
@@ -2192,8 +2280,16 @@ def _extract_budget_flexibility(text: str) -> str:
         "if it's good", "can go higher", "flexible on budget",
     ]):
         return "stretch"
-    # S5 (RQ-01): firm-budget markers (golden convention).
-    if re.search(r"\b(?:max(?:imum)?|only|no\s+more\s+than|exactly|at\s+most)\b", text.lower()):
+    text_lower = text.lower()
+    # S5 (RQ-01) + FND-0318 (Sim #3): firm-budget markers (golden convention).
+    # English caps: "up to", "at most", "not more than", "hard cap". Hinglish
+    # cap: "se zyada nahi" ("not more than X"). Plain "se zyada" ("more than
+    # X") is the opposite — a stretch cue — and is deliberately NOT here.
+    if re.search(
+        r"\b(?:max(?:imum)?|only|no\s+more\s+than|exactly|at\s+most|up\s+to|hard\s+cap)\b"
+        r"|\bse\s+zyada\s+nahi\b",
+        text_lower,
+    ):
         return "firm"
     return "unknown"
 
@@ -2377,22 +2473,79 @@ def _extract_party(text: str) -> Dict[str, Any]:
     for signal_match in _PARTY_GROUP_SIGNAL_RE.finditer(text_lower):
         group_signals.append(signal_match.group(0))
 
-    # Family composition from natural language
-    _FAMILY_PATTERNS = [
-        (r"\b(?:me|myself|i)\b", "adults", 1),
-        (r"\b(?:my\s+)?(?:wife|husband|spouse|gf|girlfriend|bf|boyfriend|partner|fianc[eé]e?)\b", "adults", 1),
-        (r"\bmy\s+(?:parents|mom\s+and\s+dad|mum\s+and\s+dad)\b", "adults", 2),
-        (r"\bmy\s+(?:mother|father|mom|mum|dad)\b", "adults", 1),
-        (r"\bmy\s+(?:grandparents?)\b", "elderly", 1),
-    ]
-    has_partner = bool(re.search(r"\b(?:my\s+)?(?:wife|husband|spouse|gf|girlfriend|bf|boyfriend|partner|fianc[eé]e?)\b", text_lower))
-    for pattern, group, count in _FAMILY_PATTERNS:
-        if re.search(pattern, text_lower):
-            composition[group] = composition.get(group, 0) + count
+    # FND-0314: named persons carrying a standalone two-digit age ("col.
+    # arvind sen, 72, uses a wheelchair. kamala sen, 68.") are each one
+    # senior traveler — the only party evidence such a note carries. The
+    # age must be a bare 2-digit 60-99 number NOT followed by a unit word,
+    # so "72 km", "18 nights" and "45,000" can never count as people, and
+    # the ordinal guard in _COUNT_TOKEN_RE already keeps "45th" out of
+    # every count path.
+    _NAMED_AGE_PERSON_RE = re.compile(
+        r"\b[A-Za-z]+(?:\s+[A-Za-z]+)*,\s*(\d{2})(?!\d)\b"
+        r"(?!\s*(?:km|kms?|miles?|m\b|kg|nights?|days?|years?|yrs?|rooms?|%))",
+    )
+    named_senior_hits = 0
+    for age_person_match in _NAMED_AGE_PERSON_RE.finditer(text):
+        try:
+            person_age = int(age_person_match.group(1))
+        except ValueError:
+            continue
+        if 60 <= person_age <= 99:
+            named_senior_hits += 1
+    if named_senior_hits:
+        composition["elderly"] = max(composition.get("elderly", 0), named_senior_hits)
 
-    # Travel with partner/spouse implies speaker + partner (at least 2 adults)
-    if has_partner and composition.get("adults", 0) < 2:
-        composition["adults"] = 2
+    # FND-0314 residual (Sim #3 live pass): relation words ("my parents",
+    # "my mother"), named persons with ages, and the speaker are OVERLAPPING
+    # views of the same travelers, not additive categories — "col. arvind
+    # sen, 72 … my mother kamala sen, 68 … booking for my parents" describes
+    # two people three ways, never six. When named individuals are counted,
+    # they ARE the party; the relation/speaker views co-refer and are
+    # skipped. Without named hits the relation/speaker paths run as before.
+    if not named_senior_hits:
+        # Family composition from natural language. The bare first-person subject
+        # ("i want a beach vacation") is NOT counted here — it states intent, not
+        # headcount (FND-0314). The speaker is re-added after all other party
+        # evidence is evaluated, only when that evidence exists.
+        _FAMILY_PATTERNS = [
+            (r"\b(?:my\s+)?(?:wife|husband|spouse|gf|girlfriend|bf|boyfriend|partner|fianc[eé]e?)\b", "adults", 1),
+            (r"\b(?:my\s+)?(?:me|myself)\b", "adults", 1),
+            (r"\bmy\s+(?:parents|mom\s+and\s+dad|mum\s+and\s+dad)\b", "adults", 2),
+            (r"\bmy\s+(?:mother|father|mom|mum|dad)\b", "adults", 1),
+            (r"\bmy\s+(?:grandparents?)\b", "elderly", 1),
+        ]
+        has_partner = bool(re.search(r"\b(?:my\s+)?(?:wife|husband|spouse|gf|girlfriend|bf|boyfriend|partner|fianc[eé]e?)\b", text_lower))
+        for pattern, group, count in _FAMILY_PATTERNS:
+            if re.search(pattern, text_lower):
+                composition[group] = composition.get(group, 0) + count
+
+        # Travel with partner/spouse implies speaker + partner (at least 2 adults)
+        if has_partner and composition.get("adults", 0) < 2:
+            composition["adults"] = 2
+
+    # FND-0314: Hinglish/English accompaniment phrasing — "mummy-papa ke
+    # saath" / "with my parents" — places the speaker WITH both parents.
+    # Best-effort relation inference: speaker + 2, and only when no explicit
+    # headcount ("2 people", "party of 4") already states the total.
+    _PARENTS_SAATH_RE = re.compile(
+        r"\b(?:mummy[\s-]*papa|papa[\s-]*mummy|maa[\s-]*(?:papa|baba)"
+        r"|with\s+(?:my\s+)?(?:parents|mom\s+and\s+dad))\s+ke\s+saath\b"
+        r"|\b(?:mummy[\s-]*papa|papa[\s-]*mummy|parents)\s+ke\s+saath\b"
+        r"|\bwith\s+(?:my\s+)?parents\b",
+        re.IGNORECASE,
+    )
+    explicit_total_stated = bool(
+        re.search(
+            rf"(?:{_COUNT_TOKEN_RE})\s*(?:[-–—]\s*)?(?:people|persons?|pax|passengers?|travelers?|travellers?|ppl|guests?\b)",
+            text_lower,
+        )
+        or re.search(rf"\b(?:family|group|party)\s+(?:of\s+)?{_COUNT_TOKEN_RE}", text_lower)
+        or re.search(rf"\b(?:the\s+)?(?:{_COUNT_TOKEN_RE})\s+of\s+us\b", text_lower)
+    )
+    if not named_senior_hits and _PARENTS_SAATH_RE.search(text_lower) and not explicit_total_stated:
+        # Speaker + both parents. A pure "my parents" mention without
+        # accompaniment stays at +2 (the speaker may be arranging, not going).
+        composition["adults"] = max(composition.get("adults", 0), 3)
 
     # "me and 3 friends" → self + N companions. The bare-friends variant only
     # runs when the self-joined phrasing is absent, so the same companions are
@@ -2493,6 +2646,22 @@ def _extract_party(text: str) -> Dict[str, Any]:
     elif _ELDERLY_RE.search(text_lower):
         composition.setdefault("elderly", 1)
 
+    # (Named-age detection moved above the family-composition patterns —
+    # FND-0314 residual: named individuals take precedence over the
+    # overlapping relation/speaker views. See the block near the top of
+    # this function.)
+
+    # FND-0314: the bare first-person subject ("i want a beach vacation in
+    # goa") states intent, not headcount. Re-add the speaker only when some
+    # other party evidence exists AND no named individuals were counted
+    # (a narrator listing named travelers — "col. arvind sen, 72 … my
+    # mother kamala sen, 68 … i manage everything" — is the booking agent,
+    # not a traveler). A note with no party signal at all leaves party_size
+    # absent (the unknowns list carries it) instead of a fabricated 1.
+    if not named_senior_hits and re.search(r"\b(?:i|i'm|im|i am)\b", text_lower):
+        if composition or family_group_size or group_signals:
+            composition["adults"] = composition.get("adults", 0) + 1
+
     # Total party size
     party_size = sum(composition.values())
 
@@ -2506,10 +2675,10 @@ def _extract_party(text: str) -> Dict[str, Any]:
     if explicit_party_size and explicit_party_size > 0:
         party_size = explicit_party_size
 
-    # Fallback: "N people" / "N guests"
+    # Fallback: "N people" / "N guests" / "N passengers"
     if party_size == 0:
         pax_match = re.search(
-            rf"(?P<count>{_COUNT_TOKEN_RE})\s*(?:[-–—]?\s*)?(?:people|persons?|pax|travelers?|travellers?"
+            rf"(?P<count>{_COUNT_TOKEN_RE})\s*(?:[-–—]?\s*)?(?:people|persons?|pax|passengers?|travelers?|travellers?"
             r"|guests?(?!\s*(?:lists?|houses?|rooms?|books?|bed(?:room)?s?|bath(?:room)?s?)\b))",
             text_lower,
         )
@@ -3243,6 +3412,16 @@ class ExtractionPipeline:
                     dest_candidates = [
                         c for c in dest_candidates if c != destination_country_scope
                     ]
+                # FND-0308 invariant (owner-ratified, extends commit eeb2edbc):
+                # 'definite' requires at least one gazetteer-confirmed
+                # candidate. A definite on a list no geography helper
+                # recognizes is sweep noise — the honest state is a semi_open
+                # hypothesis the operator confirms, never a silent assertion.
+                if dest_status == "definite" and dest_candidates and not any(
+                    is_known_city(c) or is_known_destination(c)
+                    for c in dest_candidates
+                ):
+                    dest_status = "semi_open"
                 # Agentic second opinion (context resolver, real LLM via
                 # src.llm): on semi_open — the collision/low-confidence class
                 # — read the WHOLE message. The outcome is a labeled
@@ -3270,8 +3449,30 @@ class ExtractionPipeline:
                                 resolver_outcome.get("reason"),
                             )
 
+                # FND-0309: merge-with-provenance for the destination list on
+                # a reprocess/second pass. set_fact unions lists, but the
+                # merge is made explicit here so (a) gazetteer-confirmed
+                # values from an earlier envelope are never evicted by a
+                # narrower later pass, and (b) the slot records which values
+                # were carried forward and why.
+                final_candidates = list(dest_candidates)
+                final_raw = dest_raw or "not specified"
+                if existing_candidates:
+                    confirmed_existing = [
+                        c for c in existing_candidates
+                        if is_known_city(c) or is_known_destination(c)
+                    ]
+                    carried = [c for c in confirmed_existing if c not in final_candidates]
+                    if carried:
+                        final_candidates = final_candidates + carried
+                        final_raw = (
+                            f"{final_raw} · reprocess merge: carried forward "
+                            f"gazetteer-confirmed candidates {carried} from "
+                            f"earlier evidence [{', '.join(existing_candidates)}]"
+                        )
+
                 packet.set_fact("destination_candidates", self._make_slot(
-                    dest_candidates if dest_candidates else [],
+                    final_candidates if final_candidates else [],
                     0.7 if dest_status == "semi_open" else 0.5,
                     AuthorityLevel.EXPLICIT_USER,
                     dest_raw or "not specified",
@@ -3287,7 +3488,13 @@ class ExtractionPipeline:
                         eid,
                     ))
                 if resolver_outcome is not None and resolver_outcome.get("available"):
-                    packet.set_fact("destination_status", self._make_slot(
+                    # Resolver output is a labeled hypothesis (ASSUMED, model
+                    # provenance in the evidence) — it lives in
+                    # packet.hypotheses via set_hypothesis, never in facts:
+                    # set_fact rejects soft_hypothesis authority by design
+                    # (crashed every resolver-tripped extraction, KDD Jev
+                    # run 2026-09-19).
+                    packet.set_hypothesis("destination_status", self._make_slot(
                         dest_status, 0.75, AuthorityLevel.SOFT_HYPOTHESIS,
                         (
                             f"{dest_raw or 'not specified'} · context-resolver "
@@ -3420,9 +3627,24 @@ class ExtractionPipeline:
                     budget_result.get("raw_text", ""), eid,
                 ))
             raw_budget = budget_result.get("raw_text", "")
+            # Currency-evidence check: the amount span alone often excludes the
+            # currency word ("budget is 5000" + " USD" after it, "have about
+            # 7500 dollars"), which defaulted the slot to ASSUMED and fed the
+            # unacknowledged-critical-assumption escalation for notes that
+            # DO state their currency (KDD Jev run, 2026-09-19). Search a
+            # tight window around the budget span so post-amount currency
+            # words count as explicit evidence without reaching unrelated
+            # currency mentions elsewhere in the note.
+            _span_idx = text_lower.find(raw_budget.lower()) if raw_budget else -1
+            if _span_idx >= 0:
+                _window = text_lower[
+                    max(0, _span_idx - 40): _span_idx + len(raw_budget) + 40
+                ]
+            else:
+                _window = raw_budget
             has_explicit_currency = bool(re.search(
                 r"(?:\b(?:usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|dollars?|bucks?|euros?|rupees?)\b|[₹\$€£₦])",
-                raw_budget,
+                _window,
                 re.IGNORECASE,
             ))
             packet.set_fact("budget_currency", self._make_slot(
@@ -4019,6 +4241,19 @@ class ExtractionPipeline:
                         continue
                     value = values
                     mode = ExtractionMode.NORMALIZED
+                    packet.set_fact(canonical_field, self._make_slot(
+                        value, 1.0, AuthorityLevel.IMPORTED_STRUCTURED,
+                        str(value), eid, extraction_mode=mode,
+                    ))
+                    # Recompute and set destination_status so structured overrides
+                    # never leave destination_status stale, empty, or inconsistent.
+                    derived_dest_status = "definite" if len(values) == 1 else "semi_open" if len(values) > 1 else "open"
+                    packet.set_fact("destination_status", self._make_slot(
+                        derived_dest_status, 1.0, AuthorityLevel.IMPORTED_STRUCTURED,
+                        "Derived from structured destination", eid,
+                        epistemic_status=EpistemicStatus.VERIFIED,
+                    ))
+                    continue
                 elif canonical_field == "origin_city":
                     origin = _structured_origin_value(value)
                     if origin is None:

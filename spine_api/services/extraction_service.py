@@ -11,6 +11,7 @@ from src.extraction.exceptions import ExtractionValidationError
 import asyncio
 
 from src.extraction.model_chain import ModelChain, RETRIABLE_ERRORS, MAX_PROVIDER_RETRIES, retry_backoff_delay
+from spine_api.core.rls import refresh_or_reselect
 from spine_api.models.tenant import DocumentExtraction
 from spine_api.services import execution_event_service
 from spine_api.services.private_fields import encrypt_blob, decrypt_blob
@@ -301,7 +302,7 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
         )
         db.add(extraction)
         await db.commit()
-        await db.refresh(extraction)
+        await refresh_or_reselect(db, extraction)
 
     run_number = extraction.run_count
     attempt_base = extraction.attempt_count
@@ -354,7 +355,7 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
                 )
                 db.add(attempt)
                 await db.commit()
-                await db.refresh(attempt)
+                await refresh_or_reselect(db, attempt)
 
                 # Capture immutable version snapshot for this attempt
                 from src.intake.version_snapshot import capture_version_snapshot
@@ -546,7 +547,7 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
             extraction.error_summary = ERROR_CODES.get(last_error.error_code, "Unknown error")
 
     await db.commit()
-    await db.refresh(extraction)
+    await refresh_or_reselect(db, extraction)
 
     if success_attempt:
         fallback_result = "no_fallback" if success_attempt.fallback_rank == 0 else "succeeded_after_fallback"
@@ -731,7 +732,7 @@ async def apply_extraction(db, document, extraction, fields_to_apply: list[str],
     from datetime import datetime, timezone
     extraction.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
-    await db.refresh(extraction)
+    await refresh_or_reselect(db, extraction)
 
     await execution_event_service.emit_event_best_effort(
         db, agency_id=extraction.agency_id, trip_id=extraction.trip_id,
@@ -762,7 +763,7 @@ async def reject_extraction(db, extraction, reviewed_by: str) -> "DocumentExtrac
     from datetime import datetime, timezone
     extraction.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
-    await db.refresh(extraction)
+    await refresh_or_reselect(db, extraction)
 
     await execution_event_service.emit_event_best_effort(
         db, agency_id=extraction.agency_id, trip_id=extraction.trip_id,

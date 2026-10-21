@@ -13,7 +13,7 @@ This file exists to prevent spec/code split-brain after parallel-agent updates.
 | Source envelope runtime model | `/Users/pranay/Projects/travel_agency_agent/src/intake/packet_models.py` | runtime contract | `SourceEnvelope` has no runtime `schema_version`; schema mirrors the dataclass fields. |
 | Source envelope JSON schema | `/Users/pranay/Projects/travel_agency_agent/specs/source_envelope.schema.json` | runtime contract | Supersedes older v0.1 envelope shape. |
 | Decision states | `/Users/pranay/Projects/travel_agency_agent/src/intake/constants.py` | frozen enum set | `ASK_FOLLOWUP`, `PROCEED_INTERNAL_DRAFT`, `PROCEED_TRAVELER_SAFE`, `BRANCH_OPTIONS`, `STOP_NEEDS_REVIEW`. |
-| Decision policy | `/Users/pranay/Projects/travel_agency_agent/specs/decision_policy.md` | v0.2 runtime policy | Still valid for NB02 behavior; policy version is separate from packet schema version. |
+| Decision policy | `/Users/pranay/Projects/travel_agency_agent/specs/decision_policy.md` | v0.3 runtime policy (2026-09-18) | Realigned to `run_gap_and_decision` v0.3 behavior: no confidence fallback (removed N01 2026-09-02), stage-gated budget feasibility, high-priority escalations, STOP-over-ASK, season-tier feasibility input. Conformance: `tests/test_decision_policy_conformance.py`. |
 | NB01 notebook | `/Users/pranay/Projects/travel_agency_agent/notebooks/01_intake_and_normalization.ipynb` | v0.2 notebook label | Demo wrapper around runtime `src/intake` code. Runtime packet output is v0.3. |
 | NB02 notebook | `/Users/pranay/Projects/travel_agency_agent/notebooks/02_gap_and_decision.ipynb` | v0.2 notebook label | Demo wrapper around runtime `src/intake/decision.py`. |
 

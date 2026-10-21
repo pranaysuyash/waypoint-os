@@ -1,0 +1,4545 @@
+[
+  {
+    "step": "login",
+    "request": {
+      "url": "/api/auth/login"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "user": {
+        "id": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+        "email": "newuser@test.com",
+        "name": "New User",
+        "platform_role": "none"
+      },
+      "agency": {
+        "id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "name": "Test",
+        "slug": "test",
+        "logo_url": null
+      },
+      "membership": {
+        "role": "owner",
+        "is_primary": true
+      }
+    },
+    "at": "2026-10-05T18:28:55.559240+00:00"
+  },
+  {
+    "step": "D1-run-draft",
+    "request": {
+      "method": "POST",
+      "path": "/api/drafts",
+      "json": {
+        "name": "hello, i'm booking for my parents — they don't use apps much",
+        "customer_message": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair."
+      }
+    },
+    "status": 200,
+    "response": {
+      "draft_id": "draft_f0e24b7f0f4d",
+      "name": "hello, i'm booking for my parents — they don't use apps much",
+      "status": "open",
+      "created_at": "2026-10-05T18:28:55.569843+00:00"
+    },
+    "at": "2026-10-05T18:28:55.608643+00:00"
+  },
+  {
+    "step": "D1-run-run",
+    "request": {
+      "method": "POST",
+      "path": "/run",
+      "json": {
+        "raw_note": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair.",
+        "draft_id": "draft_f0e24b7f0f4d"
+      }
+    },
+    "status": 200,
+    "response": {
+      "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+      "state": "queued",
+      "idempotent_replay": false
+    },
+    "at": "2026-10-05T18:28:55.649213+00:00"
+  },
+  {
+    "step": "D1-run",
+    "request": {
+      "method": "GET",
+      "path": "/runs/34ef0577-9da0-4a42-9041-c19b43fe6d95"
+    },
+    "status": 200,
+    "response": {
+      "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+      "state": "running",
+      "trip_id": null,
+      "stage": "discovery",
+      "operating_mode": "normal_intake",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "created_at": "2026-10-05T18:28:55.618863+00:00",
+      "started_at": "2026-10-05T18:28:55.664548+00:00",
+      "completed_at": null,
+      "total_ms": null,
+      "steps_completed": [
+        "packet",
+        "validation"
+      ],
+      "events": [
+        {
+          "event_id": "evt_f7f40552",
+          "event_type": "run_started",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:55.759664+00:00",
+          "stage": "discovery",
+          "operating_mode": "normal_intake"
+        },
+        {
+          "event_id": "evt_b3ebb549",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:55.784934+00:00",
+          "stage_name": "packet"
+        },
+        {
+          "event_id": "evt_d3d587b2",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:56.443195+00:00",
+          "stage_name": "packet",
+          "execution_ms": 658.25
+        },
+        {
+          "event_id": "evt_e96d80b4",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:56.450361+00:00",
+          "stage_name": "validation"
+        },
+        {
+          "event_id": "evt_8888cd3f",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:56.466075+00:00",
+          "stage_name": "validation",
+          "execution_ms": 15.7
+        }
+      ],
+      "error_type": null,
+      "error_message": null,
+      "stage_at_failure": null,
+      "block_reason": null,
+      "validation": {
+        "status": "ESCALATED",
+        "stage": "intake_extraction",
+        "gate": "intake_completion",
+        "legacy_gate": "NB01",
+        "reasons": [
+          "Structural validation failed (1 error)"
+        ]
+      },
+      "packet": {
+        "packet_id": "pkt_e0b5b4d5",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Varanasi"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "Varanasi",
+                "ref_id": "ref_7d6e75",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793163",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_319ac1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793212",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 3,
+              "max": 3
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "3 nights",
+                "ref_id": "ref_fe0b8a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793841",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_raw_text": {
+            "value": "budget around ₹90,000",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_84050c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794089",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_min": {
+            "value": 90000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_682965",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794105",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_max": {
+            "value": 90000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_382881",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794117",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_currency": {
+            "value": "INR",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_6e818e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794154",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_flexibility": {
+            "value": "firm",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "firm",
+                "ref_id": "ref_7b179b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794227",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.95,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "total",
+                "ref_id": "ref_ef8f63",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794376",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "party_size": {
+            "value": 2,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "2",
+                "ref_id": "ref_805957",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798353",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "party_composition": {
+            "value": {
+              "elderly": 2
+            },
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "{'elderly': 2}",
+                "ref_id": "ref_4af698",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798400",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "mobility_constraints": {
+            "value": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+                "ref_id": "ref_a797e4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798604",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "occasion": {
+            "value": {
+              "type": "anniversary",
+              "date": "november 18th"
+            },
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": {
+                  "type": "anniversary",
+                  "date": "november 18th"
+                },
+                "ref_id": "ref_35fa18",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799924",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "soft_preferences": {
+            "value": [
+              "varanasi for their 45th anniversary on november 18th"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "['varanasi for their 45th anniversary on november 18th']",
+                "ref_id": "ref_90b06a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799956",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_priorities": {
+            "value": [
+              "vegetarian food",
+              "relaxed pace"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "['vegetarian food', 'relaxed pace']",
+                "ref_id": "ref_aaad05",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799969",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_563dea",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800147",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_115ff2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800238",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": {}
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_8ab203",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800282",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "feedback": null,
+        "raw_note": null,
+        "suitability_flags": [],
+        "ambiguities": [
+          {
+            "field_name": "budget_flexibility",
+            "ambiguity_type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair.",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          }
+        ],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_418f8149"
+        ],
+        "revision_count": 0,
+        "event_cursor": 22,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793191",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Varanasi"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793217",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793860",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 3,
+                "max": 3
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794096",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget around ₹90,000"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794109",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794121",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794158",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794231",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "firm"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794380",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-05T23:58:55.795431",
+            "details": {
+              "field_name": "budget_flexibility",
+              "ambiguity_type": "date_window_only"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798376",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798406",
+            "details": {
+              "field_name": "party_composition",
+              "old_value": null,
+              "new_value": {
+                "elderly": 2
+              }
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798609",
+            "details": {
+              "field_name": "mobility_constraints",
+              "old_value": null,
+              "new_value": "wheelchair and needs step-free access everywhere; my mother kamala sen"
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799938",
+            "details": {
+              "field_name": "occasion",
+              "old_value": null,
+              "new_value": {
+                "type": "anniversary",
+                "date": "november 18th"
+              }
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799959",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "varanasi for their 45th anniversary on november 18th"
+              ]
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799972",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food",
+                "relaxed pace"
+              ]
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.800152",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:58:55.800243",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:58:55.800286",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 20,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800313",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 21,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800317",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 22,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800320",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "assumptions": [],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.93,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.96); dates_clarity=True (noul=0.55); party_clarity=True (noul=0.87); budget_clarity=True (noul=0.79); intake_action=PROCEED (p=0.95, conf=0.93); coherence_override=blocking_unknowns:[origin_city,date_window,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "decision_state": null,
+      "follow_up_questions": [],
+      "hard_blockers": [],
+      "soft_blockers": [],
+      "branch_options": [],
+      "report_fingerprint": null,
+      "access_token": null,
+      "retention_days": null,
+      "frontier_result": null
+    },
+    "at": "2026-10-05T18:28:58.115639+00:00"
+  },
+  {
+    "step": "D1-run",
+    "request": {
+      "method": "GET",
+      "path": "/runs/34ef0577-9da0-4a42-9041-c19b43fe6d95"
+    },
+    "status": 200,
+    "response": {
+      "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+      "state": "blocked",
+      "trip_id": "trip_73afce412731",
+      "stage": "discovery",
+      "operating_mode": "normal_intake",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "created_at": "2026-10-05T18:28:55.618863+00:00",
+      "started_at": "2026-10-05T18:28:55.664548+00:00",
+      "completed_at": "2026-10-05T18:28:58.707179+00:00",
+      "total_ms": null,
+      "steps_completed": [
+        "packet",
+        "validation",
+        "decision",
+        "strategy",
+        "blocked_result"
+      ],
+      "events": [
+        {
+          "event_id": "evt_f7f40552",
+          "event_type": "run_started",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:55.759664+00:00",
+          "stage": "discovery",
+          "operating_mode": "normal_intake"
+        },
+        {
+          "event_id": "evt_b3ebb549",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:55.784934+00:00",
+          "stage_name": "packet"
+        },
+        {
+          "event_id": "evt_d3d587b2",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:56.443195+00:00",
+          "stage_name": "packet",
+          "execution_ms": 658.25
+        },
+        {
+          "event_id": "evt_e96d80b4",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:56.450361+00:00",
+          "stage_name": "validation"
+        },
+        {
+          "event_id": "evt_8888cd3f",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:28:56.466075+00:00",
+          "stage_name": "validation",
+          "execution_ms": 15.7
+        },
+        {
+          "event_id": "evt_cd375dd7",
+          "event_type": "run_blocked",
+          "run_id": "34ef0577-9da0-4a42-9041-c19b43fe6d95",
+          "trip_id": "trip_73afce412731",
+          "timestamp": "2026-10-05T18:28:58.723454+00:00",
+          "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
+          "stage_at_block": "validation"
+        }
+      ],
+      "error_type": null,
+      "error_message": null,
+      "stage_at_failure": null,
+      "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
+      "validation": {
+        "status": "ESCALATED",
+        "stage": "intake_extraction",
+        "gate": "intake_completion",
+        "legacy_gate": "NB01",
+        "reasons": [
+          "Structural validation failed (1 error)"
+        ]
+      },
+      "packet": {
+        "packet_id": "pkt_e0b5b4d5",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Varanasi"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "Varanasi",
+                "ref_id": "ref_7d6e75",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793163",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_319ac1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793212",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 3,
+              "max": 3
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "3 nights",
+                "ref_id": "ref_fe0b8a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793841",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_raw_text": {
+            "value": "budget around ₹90,000",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_84050c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794089",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_min": {
+            "value": 90000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_682965",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794105",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_max": {
+            "value": 90000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_382881",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794117",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_currency": {
+            "value": "INR",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_6e818e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794154",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_flexibility": {
+            "value": "firm",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "firm",
+                "ref_id": "ref_7b179b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794227",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.95,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "total",
+                "ref_id": "ref_ef8f63",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794376",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "party_size": {
+            "value": 2,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "2",
+                "ref_id": "ref_805957",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798353",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "party_composition": {
+            "value": {
+              "elderly": 2
+            },
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "{'elderly': 2}",
+                "ref_id": "ref_4af698",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798400",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "mobility_constraints": {
+            "value": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+                "ref_id": "ref_a797e4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798604",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "occasion": {
+            "value": {
+              "type": "anniversary",
+              "date": "november 18th"
+            },
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": {
+                  "type": "anniversary",
+                  "date": "november 18th"
+                },
+                "ref_id": "ref_35fa18",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799924",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "soft_preferences": {
+            "value": [
+              "varanasi for their 45th anniversary on november 18th"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "['varanasi for their 45th anniversary on november 18th']",
+                "ref_id": "ref_90b06a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799956",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_priorities": {
+            "value": [
+              "vegetarian food",
+              "relaxed pace"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "['vegetarian food', 'relaxed pace']",
+                "ref_id": "ref_aaad05",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799969",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_563dea",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800147",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_115ff2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800238",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": {}
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_8ab203",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800282",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "feedback": null,
+        "raw_note": null,
+        "suitability_flags": [],
+        "ambiguities": [
+          {
+            "field_name": "budget_flexibility",
+            "ambiguity_type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair.",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          }
+        ],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_418f8149"
+        ],
+        "revision_count": 0,
+        "event_cursor": 22,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793191",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Varanasi"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793217",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793860",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 3,
+                "max": 3
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794096",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget around ₹90,000"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794109",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794121",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794158",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794231",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "firm"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794380",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-05T23:58:55.795431",
+            "details": {
+              "field_name": "budget_flexibility",
+              "ambiguity_type": "date_window_only"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798376",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798406",
+            "details": {
+              "field_name": "party_composition",
+              "old_value": null,
+              "new_value": {
+                "elderly": 2
+              }
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798609",
+            "details": {
+              "field_name": "mobility_constraints",
+              "old_value": null,
+              "new_value": "wheelchair and needs step-free access everywhere; my mother kamala sen"
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799938",
+            "details": {
+              "field_name": "occasion",
+              "old_value": null,
+              "new_value": {
+                "type": "anniversary",
+                "date": "november 18th"
+              }
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799959",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "varanasi for their 45th anniversary on november 18th"
+              ]
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799972",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food",
+                "relaxed pace"
+              ]
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.800152",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:58:55.800243",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:58:55.800286",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 20,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800313",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 21,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800317",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 22,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800320",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "assumptions": [],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.93,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.96); dates_clarity=True (noul=0.55); party_clarity=True (noul=0.87); budget_clarity=True (noul=0.79); intake_action=PROCEED (p=0.95, conf=0.93); coherence_override=blocking_unknowns:[origin_city,date_window,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "decision_state": "STOP_NEEDS_REVIEW",
+      "follow_up_questions": [
+        {
+          "field_name": "origin_city",
+          "priority": "high",
+          "question": "Please provide origin city to continue planning."
+        },
+        {
+          "field_name": "date_window",
+          "priority": "high",
+          "question": "Please provide date window to continue planning."
+        },
+        {
+          "field_name": "trip_purpose",
+          "priority": "high",
+          "question": "Please provide trip purpose to continue planning."
+        }
+      ],
+      "hard_blockers": [
+        "extraction_quality"
+      ],
+      "soft_blockers": [],
+      "branch_options": [],
+      "report_fingerprint": null,
+      "access_token": null,
+      "retention_days": null,
+      "frontier_result": null
+    },
+    "at": "2026-10-05T18:29:01.197660+00:00"
+  },
+  {
+    "step": "D1-trip",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_73afce412731"
+    },
+    "status": 200,
+    "response": {
+      "id": "trip_73afce412731",
+      "status": "incomplete",
+      "stage": "discovery",
+      "dateWindow": null,
+      "destination": "Varanasi",
+      "origin": null,
+      "budget": "budget around ₹90,000",
+      "party": 2,
+      "tripType": "leisure",
+      "tripPurpose": "leisure",
+      "customerName": "Client 412731",
+      "customerMessage": null,
+      "agentNotes": null,
+      "follow_up_due_date": null,
+      "extracted": {
+        "packet_id": "pkt_e0b5b4d5",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Varanasi"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "Varanasi",
+                "ref_id": "ref_7d6e75",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793163",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_319ac1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793212",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 3,
+              "max": 3
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "3 nights",
+                "ref_id": "ref_fe0b8a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793841",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_raw_text": {
+            "value": "budget around ₹90,000",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_84050c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794089",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_min": {
+            "value": 90000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_682965",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794105",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_max": {
+            "value": 90000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_382881",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794117",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_currency": {
+            "value": "INR",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_6e818e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794154",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_flexibility": {
+            "value": "firm",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "firm",
+                "ref_id": "ref_7b179b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794227",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.95,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "total",
+                "ref_id": "ref_ef8f63",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794376",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "party_size": {
+            "value": 2,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "2",
+                "ref_id": "ref_805957",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798353",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "party_composition": {
+            "value": {
+              "elderly": 2
+            },
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "{'elderly': 2}",
+                "ref_id": "ref_4af698",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798400",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "mobility_constraints": {
+            "value": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+                "ref_id": "ref_a797e4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798604",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "occasion": {
+            "value": {
+              "type": "anniversary",
+              "date": "november 18th"
+            },
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": {
+                  "type": "anniversary",
+                  "date": "november 18th"
+                },
+                "ref_id": "ref_35fa18",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799924",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "soft_preferences": {
+            "value": [
+              "varanasi for their 45th anniversary on november 18th"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "['varanasi for their 45th anniversary on november 18th']",
+                "ref_id": "ref_90b06a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799956",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "trip_priorities": {
+            "value": [
+              "vegetarian food",
+              "relaxed pace"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "['vegetarian food', 'relaxed pace']",
+                "ref_id": "ref_aaad05",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799969",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_563dea",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800147",
+            "notes": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_115ff2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800238",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": {}
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_8ab203",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800282",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "ambiguities": [
+          {
+            "field_name": "budget_flexibility",
+            "ambiguity_type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair.",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          }
+        ],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "assumptions": [],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_418f8149"
+        ],
+        "revision_count": 0,
+        "event_cursor": 22,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793191",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Varanasi"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793217",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793860",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 3,
+                "max": 3
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794096",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget around ₹90,000"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794109",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794121",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794158",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794231",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "firm"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794380",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-05T23:58:55.795431",
+            "details": {
+              "field_name": "budget_flexibility",
+              "ambiguity_type": "date_window_only"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798376",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798406",
+            "details": {
+              "field_name": "party_composition",
+              "old_value": null,
+              "new_value": {
+                "elderly": 2
+              }
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798609",
+            "details": {
+              "field_name": "mobility_constraints",
+              "old_value": null,
+              "new_value": "wheelchair and needs step-free access everywhere; my mother kamala sen"
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799938",
+            "details": {
+              "field_name": "occasion",
+              "old_value": null,
+              "new_value": {
+                "type": "anniversary",
+                "date": "november 18th"
+              }
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799959",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "varanasi for their 45th anniversary on november 18th"
+              ]
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799972",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food",
+                "relaxed pace"
+              ]
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.800152",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:58:55.800243",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:58:55.800286",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 20,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800313",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 21,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800317",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 22,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800320",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.93,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.96); dates_clarity=True (noul=0.55); party_clarity=True (noul=0.87); budget_clarity=True (noul=0.79); intake_action=PROCEED (p=0.95, conf=0.93); coherence_override=blocking_unknowns:[origin_city,date_window,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        },
+        "public_checker_live_checks": {
+          "destination": "Varanasi",
+          "country_code": "IN",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Varanasi",
+            "current": {
+              "temperature_c": 26.3,
+              "apparent_temperature_c": 31.4,
+              "precipitation_mm": 0.0,
+              "relative_humidity_pct": 86.0,
+              "wind_kmh": 6.4,
+              "weather_code": 0
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Varanasi is currently very humid (86% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ]
+          }
+        },
+        "score": 39
+      },
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "budget_flexibility",
+            "type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair."
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "mobility_constraints": 1,
+          "occasion": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {},
+        "overall_score": 39,
+        "public_checker_live_checks": {
+          "destination": "Varanasi",
+          "country_code": "IN",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Varanasi",
+            "current": {
+              "temperature_c": 26.3,
+              "apparent_temperature_c": 31.4,
+              "precipitation_mm": 0.0,
+              "relative_humidity_pct": 86.0,
+              "wind_kmh": 6.4,
+              "weather_code": 0
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Varanasi is currently very humid (86% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ]
+          }
+        }
+      },
+      "strategy": {
+        "session_goal": "Gate failure — early exit.",
+        "priority_sequence": [],
+        "tonal_guardrails": [],
+        "risk_flags": [],
+        "suggested_opening": "",
+        "exit_criteria": [],
+        "next_action": "STOP_NEEDS_REVIEW",
+        "assumptions": [],
+        "suggested_tone": "professional"
+      },
+      "frontier_result": null,
+      "safety": null,
+      "party_composition": null,
+      "pace_preference": null,
+      "date_year_confidence": null,
+      "lead_source": null,
+      "activity_provenance": null,
+      "activity_interests": null,
+      "trip_priorities": "vegetarian food, relaxed pace",
+      "date_flexibility": null,
+      "passenger_claim": null,
+      "ghost_concierge": null,
+      "traveler_answers": null
+    },
+    "at": "2026-10-05T18:29:01.298855+00:00"
+  },
+  {
+    "step": "D1-packet",
+    "packet_summary": {
+      "trip_id": "trip_73afce412731",
+      "status": "incomplete",
+      "decision_state": null,
+      "packet_facts": {
+        "destination_candidates": {
+          "value": [
+            "Varanasi"
+          ],
+          "confidence": 0.5,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "Varanasi",
+              "ref_id": "ref_7d6e75",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.793163",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "budget_min": {
+          "value": 90000,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "budget around ₹90,000",
+              "ref_id": "ref_682965",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.794105",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "budget_max": {
+          "value": 90000,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "budget around ₹90,000",
+              "ref_id": "ref_382881",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.794117",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "budget_flexibility": {
+          "value": "firm",
+          "confidence": 0.85,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "firm",
+              "ref_id": "ref_7b179b",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.794227",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "budget_scope": {
+          "value": "total",
+          "confidence": 0.95,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "total",
+              "ref_id": "ref_ef8f63",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.794376",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "party_size": {
+          "value": 2,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "2",
+              "ref_id": "ref_805957",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.798353",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "party_composition": {
+          "value": {
+            "elderly": 2
+          },
+          "confidence": 0.85,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "{'elderly': 2}",
+              "ref_id": "ref_4af698",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.798400",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "mobility_constraints": {
+          "value": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+              "ref_id": "ref_a797e4",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.798604",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "occasion": {
+          "value": {
+            "type": "anniversary",
+            "date": "november 18th"
+          },
+          "confidence": 0.8,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": {
+                "type": "anniversary",
+                "date": "november 18th"
+              },
+              "ref_id": "ref_35fa18",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.799924",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "soft_preferences": {
+          "value": [
+            "varanasi for their 45th anniversary on november 18th"
+          ],
+          "confidence": 0.8,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "['varanasi for their 45th anniversary on november 18th']",
+              "ref_id": "ref_90b06a",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.799956",
+          "notes": null,
+          "epistemic_status": {}
+        }
+      },
+      "packet_fields": {},
+      "open_questions": null,
+      "ambiguities": [
+        {
+          "field_name": "budget_flexibility",
+          "ambiguity_type": "date_window_only",
+          "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair.",
+          "normalized_value": null,
+          "confidence": 0.8,
+          "evidence_refs": [],
+          "notes": null
+        }
+      ],
+      "follow_ups": null,
+      "traveler_asks": null,
+      "ghost_concierge": null,
+      "passenger_claim": null,
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "budget_flexibility",
+            "type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair."
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "mobility_constraints": 1,
+          "occasion": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {},
+        "overall_score": 39,
+        "public_checker_live_checks": {
+          "destination": "Varanasi",
+          "country_code": "IN",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Varanasi",
+            "current": {
+              "temperature_c": 26.3,
+              "apparent_temperature_c": 31.4,
+              "precipitation_mm": 0.0,
+              "relative_humidity_pct": 86.0,
+              "wind_kmh": 6.4,
+              "weather_code": 0
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Varanasi is currently very humid (86% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ]
+          }
+        }
+      },
+      "history": null
+    }
+  },
+  {
+    "step": "D-send-ask",
+    "request": {
+      "method": "POST",
+      "path": "/followups/trip_73afce412731/send",
+      "json": {
+        "recipient": "priyanka.sen.sim3@waypointtest.dev",
+        "channel": "email",
+        "ttl_hours": 168
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_73afce412731",
+      "token": "prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc",
+      "ask_path": "/a/prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc",
+      "dispatch_status": "NOT_CONFIGURED",
+      "dispatch_detail": "SENDGRID_API_KEY not set",
+      "question_count": 3,
+      "asked_count": 1
+    },
+    "at": "2026-10-05T18:29:01.361997+00:00"
+  },
+  {
+    "step": "D-ask-minted",
+    "token": "prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc",
+    "ask_path": "/a/prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc"
+  },
+  {
+    "step": "D-public-view",
+    "request": {
+      "method": "GET",
+      "path": "http://localhost:8000/api/public/asks/prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc"
+    },
+    "status": 200,
+    "response": {
+      "token": "prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc",
+      "trip_id": "trip_73afce412731",
+      "destination": null,
+      "status": "open",
+      "questions": [
+        {
+          "field_name": "origin_city",
+          "question": "Please provide origin city to continue planning.",
+          "priority": "high"
+        },
+        {
+          "field_name": "date_window",
+          "question": "Please provide date window to continue planning.",
+          "priority": "high"
+        },
+        {
+          "field_name": "trip_purpose",
+          "question": "Please provide trip purpose to continue planning.",
+          "priority": "high"
+        }
+      ],
+      "asked_count": 1
+    },
+    "at": "2026-10-05T18:29:01.374893+00:00"
+  },
+  {
+    "step": "D-public-answer",
+    "request": {
+      "method": "POST",
+      "path": "http://localhost:8000/api/public/asks/prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc/answers",
+      "json": {
+        "answers": [
+          {
+            "field_name": "origin_city",
+            "answer": "bangalore"
+          },
+          {
+            "field_name": "date_window",
+            "answer": "nov 16 evening - nov 19 morning"
+          },
+          {
+            "field_name": "trip_purpose",
+            "answer": "anniversary pilgrimage with my parents"
+          }
+        ],
+        "respondent_name": "Priyanka Sen"
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "recorded": 3,
+      "answered_at": "2026-10-05T18:29:01.384621+00:00"
+    },
+    "at": "2026-10-05T18:29:01.453248+00:00"
+  },
+  {
+    "step": "D-public-result",
+    "view_status": 200,
+    "answer_status": 200
+  },
+  {
+    "step": "D-trip-after-answers",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_73afce412731"
+    },
+    "status": 200,
+    "response": {
+      "id": "trip_73afce412731",
+      "status": "incomplete",
+      "stage": "discovery",
+      "dateWindow": null,
+      "destination": "Varanasi",
+      "origin": null,
+      "budget": "budget around ₹90,000",
+      "party": 2,
+      "tripType": "leisure",
+      "tripPurpose": "leisure",
+      "customerName": "Client 412731",
+      "customerMessage": null,
+      "agentNotes": null,
+      "follow_up_due_date": null,
+      "extracted": {
+        "packet_id": "pkt_e0b5b4d5",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Varanasi"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "Varanasi",
+                "ref_id": "ref_7d6e75",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793163",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_319ac1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793212",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 3,
+              "max": 3
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "3 nights",
+                "ref_id": "ref_fe0b8a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.793841",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_raw_text": {
+            "value": "budget around ₹90,000",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_84050c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794089",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_min": {
+            "value": 90000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_682965",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794105",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_max": {
+            "value": 90000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_382881",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794117",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_currency": {
+            "value": "INR",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "budget around ₹90,000",
+                "ref_id": "ref_6e818e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794154",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_flexibility": {
+            "value": "firm",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "firm",
+                "ref_id": "ref_7b179b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794227",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.95,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "total",
+                "ref_id": "ref_ef8f63",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.794376",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "party_size": {
+            "value": 2,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "2",
+                "ref_id": "ref_805957",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798353",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "party_composition": {
+            "value": {
+              "elderly": 2
+            },
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "{'elderly': 2}",
+                "ref_id": "ref_4af698",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798400",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "mobility_constraints": {
+            "value": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+                "ref_id": "ref_a797e4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.798604",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "occasion": {
+            "value": {
+              "type": "anniversary",
+              "date": "november 18th"
+            },
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": {
+                  "type": "anniversary",
+                  "date": "november 18th"
+                },
+                "ref_id": "ref_35fa18",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799924",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "soft_preferences": {
+            "value": [
+              "varanasi for their 45th anniversary on november 18th"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "['varanasi for their 45th anniversary on november 18th']",
+                "ref_id": "ref_90b06a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799956",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "trip_priorities": {
+            "value": [
+              "vegetarian food",
+              "relaxed pace"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "['vegetarian food', 'relaxed pace']",
+                "ref_id": "ref_aaad05",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.799969",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_418f8149",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_563dea",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800147",
+            "notes": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_115ff2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800238",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": {}
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_8ab203",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:58:55.800282",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "ambiguities": [
+          {
+            "field_name": "budget_flexibility",
+            "ambiguity_type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair.",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          }
+        ],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "assumptions": [],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_418f8149"
+        ],
+        "revision_count": 0,
+        "event_cursor": 22,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793191",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Varanasi"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793217",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.793860",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 3,
+                "max": 3
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794096",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget around ₹90,000"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794109",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794121",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794158",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794231",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "firm"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.794380",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-05T23:58:55.795431",
+            "details": {
+              "field_name": "budget_flexibility",
+              "ambiguity_type": "date_window_only"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798376",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798406",
+            "details": {
+              "field_name": "party_composition",
+              "old_value": null,
+              "new_value": {
+                "elderly": 2
+              }
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.798609",
+            "details": {
+              "field_name": "mobility_constraints",
+              "old_value": null,
+              "new_value": "wheelchair and needs step-free access everywhere; my mother kamala sen"
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799938",
+            "details": {
+              "field_name": "occasion",
+              "old_value": null,
+              "new_value": {
+                "type": "anniversary",
+                "date": "november 18th"
+              }
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799959",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "varanasi for their 45th anniversary on november 18th"
+              ]
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.799972",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food",
+                "relaxed pace"
+              ]
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:58:55.800152",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:58:55.800243",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:58:55.800286",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 20,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800313",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 21,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800317",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 22,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:58:55.800320",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.93,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.96); dates_clarity=True (noul=0.55); party_clarity=True (noul=0.87); budget_clarity=True (noul=0.79); intake_action=PROCEED (p=0.95, conf=0.93); coherence_override=blocking_unknowns:[origin_city,date_window,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        },
+        "public_checker_live_checks": {
+          "destination": "Varanasi",
+          "country_code": "IN",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Varanasi",
+            "current": {
+              "temperature_c": 26.3,
+              "apparent_temperature_c": 31.4,
+              "precipitation_mm": 0.0,
+              "relative_humidity_pct": 86.0,
+              "wind_kmh": 6.4,
+              "weather_code": 0
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Varanasi is currently very humid (86% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ]
+          }
+        },
+        "score": 39
+      },
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "budget_flexibility",
+            "type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair."
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "mobility_constraints": 1,
+          "occasion": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {},
+        "overall_score": 39,
+        "public_checker_live_checks": {
+          "destination": "Varanasi",
+          "country_code": "IN",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Varanasi",
+            "current": {
+              "temperature_c": 26.3,
+              "apparent_temperature_c": 31.4,
+              "precipitation_mm": 0.0,
+              "relative_humidity_pct": 86.0,
+              "wind_kmh": 6.4,
+              "weather_code": 0
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Varanasi is currently very humid (86% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ]
+          }
+        }
+      },
+      "strategy": {
+        "session_goal": "Gate failure — early exit.",
+        "priority_sequence": [],
+        "tonal_guardrails": [],
+        "risk_flags": [],
+        "suggested_opening": "",
+        "exit_criteria": [],
+        "next_action": "STOP_NEEDS_REVIEW",
+        "assumptions": [],
+        "suggested_tone": "professional"
+      },
+      "frontier_result": null,
+      "safety": null,
+      "party_composition": null,
+      "pace_preference": null,
+      "date_year_confidence": null,
+      "lead_source": null,
+      "activity_provenance": null,
+      "activity_interests": null,
+      "trip_priorities": "vegetarian food, relaxed pace",
+      "date_flexibility": null,
+      "passenger_claim": null,
+      "ghost_concierge": null,
+      "traveler_answers": [
+        {
+          "field_name": "origin_city",
+          "answer": "bangalore",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc",
+          "answered_at": "2026-10-05T18:29:01.384621+00:00"
+        },
+        {
+          "field_name": "date_window",
+          "answer": "nov 16 evening - nov 19 morning",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc",
+          "answered_at": "2026-10-05T18:29:01.384621+00:00"
+        },
+        {
+          "field_name": "trip_purpose",
+          "answer": "anniversary pilgrimage with my parents",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_73afce412731_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1791829741_0e8d89d01509ecb2283edbaad0f5fd27a93257ca38ed44275f8bc01d9b6f4ffc",
+          "answered_at": "2026-10-05T18:29:01.384621+00:00"
+        }
+      ]
+    },
+    "at": "2026-10-05T18:29:06.791592+00:00"
+  },
+  {
+    "step": "D1-packet-after-answers",
+    "packet_summary": {
+      "trip_id": "trip_73afce412731",
+      "status": "incomplete",
+      "decision_state": null,
+      "packet_facts": {
+        "destination_candidates": {
+          "value": [
+            "Varanasi"
+          ],
+          "confidence": 0.5,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "Varanasi",
+              "ref_id": "ref_7d6e75",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.793163",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "budget_min": {
+          "value": 90000,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "budget around ₹90,000",
+              "ref_id": "ref_682965",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.794105",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "budget_max": {
+          "value": 90000,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "budget around ₹90,000",
+              "ref_id": "ref_382881",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.794117",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "budget_flexibility": {
+          "value": "firm",
+          "confidence": 0.85,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "firm",
+              "ref_id": "ref_7b179b",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.794227",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "budget_scope": {
+          "value": "total",
+          "confidence": 0.95,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "total",
+              "ref_id": "ref_ef8f63",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.794376",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "party_size": {
+          "value": 2,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "2",
+              "ref_id": "ref_805957",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.798353",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "party_composition": {
+          "value": {
+            "elderly": 2
+          },
+          "confidence": 0.85,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "{'elderly': 2}",
+              "ref_id": "ref_4af698",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.798400",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "mobility_constraints": {
+          "value": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "wheelchair and needs step-free access everywhere; my mother kamala sen",
+              "ref_id": "ref_a797e4",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.798604",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "occasion": {
+          "value": {
+            "type": "anniversary",
+            "date": "november 18th"
+          },
+          "confidence": 0.8,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": {
+                "type": "anniversary",
+                "date": "november 18th"
+              },
+              "ref_id": "ref_35fa18",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.799924",
+          "notes": null,
+          "epistemic_status": {}
+        },
+        "soft_preferences": {
+          "value": [
+            "varanasi for their 45th anniversary on november 18th"
+          ],
+          "confidence": 0.8,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_418f8149",
+              "evidence_type": "text_span",
+              "excerpt": "['varanasi for their 45th anniversary on november 18th']",
+              "ref_id": "ref_90b06a",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:58:55.799956",
+          "notes": null,
+          "epistemic_status": {}
+        }
+      },
+      "packet_fields": {},
+      "open_questions": null,
+      "ambiguities": [
+        {
+          "field_name": "budget_flexibility",
+          "ambiguity_type": "date_window_only",
+          "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair.",
+          "normalized_value": null,
+          "confidence": 0.8,
+          "evidence_refs": [],
+          "notes": null
+        }
+      ],
+      "follow_ups": null,
+      "traveler_asks": null,
+      "ghost_concierge": null,
+      "passenger_claim": null,
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "budget_flexibility",
+            "type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair."
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "mobility_constraints": 1,
+          "occasion": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {},
+        "overall_score": 39,
+        "public_checker_live_checks": {
+          "destination": "Varanasi",
+          "country_code": "IN",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Varanasi",
+            "current": {
+              "temperature_c": 26.3,
+              "apparent_temperature_c": 31.4,
+              "precipitation_mm": 0.0,
+              "relative_humidity_pct": 86.0,
+              "wind_kmh": 6.4,
+              "weather_code": 0
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Varanasi is currently very humid (86% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Varanasi is currently very humid (86% relative humidity)."
+            ]
+          }
+        }
+      },
+      "history": null
+    }
+  },
+  {
+    "step": "D-confirm-extract",
+    "request": {
+      "method": "POST",
+      "path": "/api/trips/trip_73afce412731/confirmations/extract",
+      "json": {
+        "raw_text": "Booking confirmed — Ganga View Heritage, Varanasi. Accessible Deluxe Room, ground floor, 2 guests. Check-in 16 Nov 2026, check-out 19 Nov 2026. Confirmation #GV-88231. Total INR 38,400. Step-free entrance via river-side gate.",
+        "document_name": "ganga_view_voucher.txt",
+        "auto_record": true
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_73afce412731",
+      "extracted": {
+        "confirmation_type": "hotel",
+        "confirmation_number": "GV-88231",
+        "supplier_name": "Direct Supplier",
+        "dates": "16 Nov 2026 - 19 Nov 2026",
+        "amount": 38400.0,
+        "currency": "INR",
+        "confidence_score": 0.85,
+        "notes": "Auto-extracted from ganga_view_voucher.txt"
+      },
+      "persistence": "sql_confirmation_recorded",
+      "recorded_confirmation": {
+        "id": "08793e6b-b4a8-4558-bdaa-018ed21c6242",
+        "trip_id": "trip_73afce412731",
+        "task_id": null,
+        "confirmation_type": "hotel",
+        "confirmation_status": "recorded",
+        "has_supplier": true,
+        "has_confirmation_number": true,
+        "external_ref_present": false,
+        "notes_present": true,
+        "evidence_ref_count": 0,
+        "recorded_at": "2026-10-05T18:29:06.853216+00:00",
+        "verified_at": null,
+        "voided_at": null,
+        "created_by": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+        "created_at": "2026-10-05T18:29:06.804627+00:00"
+      }
+    },
+    "at": "2026-10-05T18:29:06.882468+00:00"
+  },
+  {
+    "step": "D-confirmations-list",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/trips/trip_73afce412731/confirmations"
+    },
+    "status": 404,
+    "response": {
+      "detail": "Not Found"
+    },
+    "at": "2026-10-05T18:29:06.910370+00:00"
+  }
+]

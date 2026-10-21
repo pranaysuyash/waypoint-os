@@ -20,7 +20,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import WorkbenchPage from '../page';
+// T2 route unification: ../page is now a query-preserving redirect to
+// /inquiries/new; this suite characterizes PageClient behavior, so it mounts
+// PageClient directly.
+import WorkbenchPage from '../PageClient';
 
 const mockReplace = vi.fn();
 const mockPatchDraft = vi.hoisted(() => vi.fn());
@@ -112,7 +115,10 @@ vi.mock('@/hooks/useSpineRun', () => ({
 }));
 
 vi.mock('@/stores/workbench', () => ({
-  useWorkbenchStore: () => mockWorkbenchStore,
+  // FND-0283: PageClient now subscribes via per-field selectors — the mock
+  // must apply the selector to the mock state.
+  useWorkbenchStore: (sel?: (s: typeof mockWorkbenchStore) => unknown) =>
+    (sel ? sel(mockWorkbenchStore) : mockWorkbenchStore),
 }));
 
 vi.mock('@/stores/auth', () => ({

@@ -5,7 +5,13 @@ expected outcomes, using the existing LLM client infrastructure.
 """
 
 from .rubrics import AgentRubric, RubricDimension, build_default_rubrics
-from .scorer import DimensionScore, JudgeScore, judge_agent_output, build_judge_report
+from .scorer import (
+    DimensionScore,
+    JudgeScore,
+    judge_agent_output,
+    build_judge_report,
+    compute_judge_shadow_agreement,
+)
 
 __all__ = [
     "AgentRubric",
@@ -15,4 +21,5 @@ __all__ = [
     "JudgeScore",
     "judge_agent_output",
     "build_judge_report",
+    "compute_judge_shadow_agreement",
 ]

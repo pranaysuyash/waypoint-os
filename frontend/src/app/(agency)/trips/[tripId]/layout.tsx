@@ -6,7 +6,6 @@ import { useParams, usePathname } from "next/navigation";
 import { AlertTriangle, ChevronLeft, Lock, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
-import { toast } from "@/lib/toast-store";
 import { ClientDateTime } from "@/hooks/useClientDate";
 import { ApiException, api, type Trip } from "@/lib/api-client";
 import {
@@ -26,7 +25,6 @@ import {
   getPlanningStatusTone,
   getPlanningUnlockHint,
 } from "@/lib/planning-status";
-import { getPlanningStageProgressItems } from "@/lib/planning-list-display";
 import { getTripRoute, type WorkspaceStage } from "@/lib/routes";
 import { TripContextProvider } from "@/contexts/TripContext";
 import { TimelineSummary } from "@/components/workspace/panels/TimelineSummary";
@@ -128,7 +126,6 @@ function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
     if (tab.id === 'ops') return canAccessOpsWorkspace(trip);
     return true;
   });
-  const stageProgressItems = useMemo(() => getPlanningStageProgressItems(trip), [trip]);
   const timelineEvents = timelineState.timeline?.events ?? [];
   const timelineLoading = timelineState.status === "loading";
   const timelineError = timelineState.error;
@@ -341,7 +338,9 @@ function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
                 </div>
               </div>
 
-              {/* Stage tabs - underline style */}
+              {/* Stage tabs - underline style. A6: the unlock hint lives in
+                  this single conditional line and the tab locks; the parallel
+                  STAGE progress row is gone (the active tab IS the stage). */}
               {planningUnlockHint && (
                 <div className="mb-2 flex items-center gap-2 rounded-lg border border-[rgba(210,153,34,0.22)] bg-[rgba(210,153,34,0.06)] px-3 py-2">
                   <Lock className="size-3.5 shrink-0 text-[var(--accent-amber)]" aria-hidden="true" />
@@ -350,21 +349,6 @@ function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
                   </span>
                 </div>
               )}
-              <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 px-1">
-                <span className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-                  Stage
-                </span>
-                {stageProgressItems.map((item, index) => (
-                  <span key={item.label} className="flex items-center">
-                    <span className="text-[12px] font-medium" style={{ color: item.color }}>
-                      {item.label}
-                    </span>
-                    {index < stageProgressItems.length - 1 && (
-                      <span className="mx-1 text-[12px] text-[var(--text-muted)]">→</span>
-                    )}
-                  </span>
-                ))}
-              </div>
               <nav
                 className="flex overflow-x-auto gap-0 -mb-px"
                 aria-label="Workspace stage tabs"
@@ -373,35 +357,28 @@ function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
                   const isActive = tab.id === activeStage;
                   const isAccessible = canAccessPlanningStage(trip, tab.id);
                   const gateReason = getPlanningStageGateReason(trip, tab.id);
-                  const lockedLabel = getPlanningLockedTabHint(trip, tab.id);
 
                   if (!isAccessible) {
                     return (
                       <button
                         key={tab.id}
                         type="button"
-                        onClick={() => toast(gateReason ?? `Complete the current stage first to unlock ${tab.label}.`, 'info')}
                         aria-current={isActive ? "page" : undefined}
                         aria-disabled="true"
-                        title={gateReason ?? undefined}
-                        className="px-4 py-2.5 whitespace-nowrap border-b-2 cursor-pointer hover:opacity-80 transition-opacity text-left"
+                        title={gateReason ?? planningUnlockHint ?? undefined}
+                        className="px-4 py-2.5 whitespace-nowrap border-b-2 cursor-not-allowed text-left"
                         style={{
-                          color: "var(--text-secondary)",
-                          borderColor: isActive ? accent.color : `${accent.color}55`,
+                          color: "var(--text-tertiary)",
+                          borderColor: isActive ? accent.color : 'transparent',
                         }}
                       >
                         <div
                           className="flex items-center gap-1.5 text-[13px]"
-                          style={{ fontWeight: isActive ? 600 : 500 }}
+                          style={{ fontWeight: isActive ? 600 : 400 }}
                         >
                           <Lock className="size-3.5 shrink-0 text-[var(--accent-amber)]" aria-hidden="true" />
                           <span>{tab.label}</span>
                         </div>
-                        {lockedLabel && (
-                          <div className="mt-0.5 text-[12px] leading-tight text-[var(--text-secondary)]">
-                            {lockedLabel}
-                          </div>
-                        )}
                       </button>
                     );
                   }

@@ -717,9 +717,9 @@ Context:
 {context}
 
 Assess the visa timeline risk.
-- "low" risk: Plenty of time for visa processing
-- "medium" risk: Tight timeline but possible
-- "high" risk: Insufficient time, recommend alternative""",
+- "low" risk: No visa concern — domestic destination, or visas and bookings already arranged
+- "medium" risk: The trip is international (a destination in another country) and nothing is booked yet — flag for an early visa-timeline check, even when no travel dates are stated and even if the destination is usually visa-easy for most travelers
+- "high" risk: Tight window — the stated dates leave insufficient visa processing time; recommend expedited handling""",
             "composition_risk": f"""You are a travel advisor assessing composition-related risks.
 
 Context:
@@ -840,6 +840,7 @@ def create_hybrid_engine(
     enable_cache: bool = True,
     enable_rules: bool = True,
     enable_llm: bool = True,
+    llm_client: Optional[BaseLLMClient] = None,
 ) -> HybridDecisionEngine:
     """
     Factory function to create a hybrid decision engine.
@@ -849,13 +850,19 @@ def create_hybrid_engine(
     Environment variables:
         USE_HYBRID_DECISION_ENGINE: 0 or 1 (default: 0 — PA-03 serving
             determinism is architectural; opt in explicitly)
-        LLM_PROVIDER: gemini, openai, local (default: gemini)
+        LLM_PROVIDER: gemini, openai, local (default: gemini) — only consulted
+            when llm_client is None; the serving path passes the ADR-008 §8
+            policy-resolved client instead
         DECISION_CACHE_TTL_DAYS: Cache TTL in days (default: 30)
 
     Args:
         enable_cache: Whether to use cache
         enable_rules: Whether to use rules
         enable_llm: Whether to use LLM
+        llm_client: Pre-built client (ADR-008 §8 policy-resolved decision-lane
+            model). None defers to the engine's create_llm_client() default,
+            which is lane-agnostic ambient env — serving callers should pass
+            the policy-resolved client.
 
     Returns:
         Configured HybridDecisionEngine instance
@@ -874,6 +881,7 @@ def create_hybrid_engine(
         )
 
     return HybridDecisionEngine(
+        llm_client=llm_client,
         enable_cache=enable_cache,
         enable_rules=enable_rules,
         enable_llm=enable_llm,

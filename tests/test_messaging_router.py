@@ -48,7 +48,11 @@ def test_send_outbound_message(session_client):
     assert data["ok"] is True
     assert data["trip_id"] == trip_id
     assert data["channel"] == "whatsapp"
-    assert data["status"] == "QUEUED"
+    # FND-0301 contract evolution: without provider credentials the dispatch
+    # is honestly NOT_CONFIGURED (was the fake-progress "QUEUED"). SENT only
+    # ever appears after a real provider acceptance.
+    assert data["status"] in ("NOT_CONFIGURED", "SENT")
+    assert data["dispatch_status"] == data["status"]
     assert data["provider"] == "whatsapp_cloud_api"
     assert data["message_id"].startswith("msg_")
 

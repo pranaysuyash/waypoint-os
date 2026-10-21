@@ -1,0 +1,563 @@
+{
+ "success": true,
+ "count": 158,
+ "trip_type": "one_way",
+ "provider_statuses": [
+  {
+   "id": "google_flights",
+   "name": "Google Flights",
+   "status": "ok",
+   "results": 131
+  },
+  {
+   "id": "kiwi",
+   "name": "Kiwi",
+   "status": "ok",
+   "results": 15
+  },
+  {
+   "id": "skiplagged",
+   "name": "Skiplagged",
+   "status": "ok",
+   "results": 12
+  },
+  {
+   "id": "ryanair",
+   "name": "Ryanair",
+   "status": "checked_no_hit"
+  },
+  {
+   "id": "wizzair",
+   "name": "Wizz Air",
+   "status": "failed",
+   "error": "wizzair: status 400, validationCodes [InvalidMarket]: wizzair declined the request (validationCodes)",
+   "fix_hint": "Wizz Air declined the request (validationCodes, e.g. InvalidMarket): the route is not a market Wizz serves. Verify origin/destination are Wizz-served IATA codes.",
+   "fix_hint_code": "WIZZ_MARKET_REJECTED",
+   "reason": "other"
+  },
+  {
+   "id": "transavia",
+   "name": "Transavia",
+   "status": "skipped",
+   "error": "Transavia is opt-in and requires a free developer API key",
+   "fix_hint": "set TRANSAVIA_API_KEY (free key from developer.transavia.com)",
+   "reason": "other"
+  },
+  {
+   "id": "easyjet",
+   "name": "easyJet",
+   "status": "skipped",
+   "error": "easyJet's public availability API is Akamai bot-defended (HTTP 403); it is opt-in and requires a reachable endpoint",
+   "fix_hint": "set EASYJET_API_BASE to an authorised partner endpoint or a self-hosted proxy that returns the JSON availability API",
+   "fix_hint_code": "AKAMAI_BLOCK",
+   "reason": "blocked"
+  },
+  {
+   "id": "vueling",
+   "name": "Vueling",
+   "status": "skipped",
+   "error": "Vueling's public booking/availability engine is Akamai Bot Manager-defended; it is opt-in and requires a reachable endpoint",
+   "fix_hint": "set VUELING_API_BASE to an authorised partner endpoint or a self-hosted proxy that returns the JSON availability API",
+   "fix_hint_code": "AKAMAI_BLOCK",
+   "reason": "blocked"
+  },
+  {
+   "id": "norwegian",
+   "name": "Norwegian",
+   "status": "skipped",
+   "error": "Norwegian's public site/booking funnel is Cloudflare Bot Management-defended (HTTP 403 cf-mitigated:challenge); it is opt-in and requires a reachable endpoint",
+   "fix_hint": "set NORWEGIAN_API_BASE to an authorised partner endpoint or a self-hosted proxy that returns the JSON availability API",
+   "fix_hint_code": "CLOUDFLARE_BLOCK",
+   "reason": "blocked"
+  }
+ ],
+ "completeness": {
+  "state": "partial",
+  "queried": 5,
+  "succeeded": 4,
+  "missing": [
+   "wizzair"
+  ]
+ },
+ "destination": {
+  "location": "مطار دبي الدولي, 14b شارع, الطوار 5, القصيص, دبي, الإمارات العربية المتحدة",
+  "country": {
+   "name": "",
+   "code": "",
+   "capital": "",
+   "languages": null,
+   "currencies": null,
+   "region": ""
+  },
+  "weather": {
+   "current": {
+    "date": "2026-10-20",
+    "temp_high_c": 38.5,
+    "temp_low_c": 26.6,
+    "precipitation_mm": 0,
+    "description": "Clear sky"
+   },
+   "forecast": [
+    {
+     "date": "2026-10-20",
+     "temp_high_c": 38.5,
+     "temp_low_c": 26.6,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-21",
+     "temp_high_c": 37.5,
+     "temp_low_c": 25.6,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-22",
+     "temp_high_c": 39,
+     "temp_low_c": 24.6,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-23",
+     "temp_high_c": 37.1,
+     "temp_low_c": 24.7,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-24",
+     "temp_high_c": 34.9,
+     "temp_low_c": 25.8,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-25",
+     "temp_high_c": 34.5,
+     "temp_low_c": 27.9,
+     "precipitation_mm": 0,
+     "description": "Mainly clear"
+    },
+    {
+     "date": "2026-10-26",
+     "temp_high_c": 33.6,
+     "temp_low_c": 26.4,
+     "precipitation_mm": 0,
+     "description": "Partly cloudy"
+    }
+   ]
+  },
+  "safety": {
+   "level": 0,
+   "advisory": "",
+   "source": "",
+   "last_updated": ""
+  },
+  "currency": {
+   "local_currency": "",
+   "exchange_rate": 0,
+   "base_currency": ""
+  },
+  "timezone": "Asia/Dubai"
+ },
+ "price_position": {
+  "band": "unknown",
+  "verdict": "unknown",
+  "current": 13781.473214285712,
+  "low": 13781.473214285712,
+  "high": 13781.473214285712,
+  "median": 13781.473214285712,
+  "observations": 1,
+  "confident": false
+ },
+ "flights": [
+  {
+   "price": 13781.473214285712,
+   "currency": "INR",
+   "duration": 435,
+   "stops": 1,
+   "provider": "skiplagged",
+   "warnings": [
+    "standard",
+    "one-stop"
+   ],
+   "legs": [
+    {
+     "departure_airport": {
+      "code": "BOM",
+      "name": ""
+     },
+     "arrival_airport": {
+      "code": "DXB",
+      "name": ""
+     },
+     "departure_time": "2027-02-10T06:20:00+05:30",
+     "arrival_time": "2027-02-10T12:05:00+04:00",
+     "duration": 0,
+     "airline": "Gulf Air",
+     "airline_code": "",
+     "flight_number": ""
+    }
+   ],
+   "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF57-GF504",
+   "sources": [
+    {
+     "provider": "skiplagged",
+     "price": 13781.473214285712,
+     "currency": "INR",
+     "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF57-GF504",
+     "retrieved_at": "2026-10-20T23:37:41.777661+05:30",
+     "freshness": "live"
+    }
+   ],
+   "cheapest_source": "skiplagged",
+   "confidence": {
+    "rated": true,
+    "score": 0.8705882352941176,
+    "label": "high",
+    "freshness": "live",
+    "basis": "87% likely bookable — live price, structured API source, 1-source corroboration",
+    "signals": [
+     "freshness:live",
+     "provider:api",
+     "sources:1"
+    ]
+   }
+  },
+  {
+   "price": 13781.473214285712,
+   "currency": "INR",
+   "duration": 460,
+   "stops": 1,
+   "provider": "skiplagged",
+   "warnings": [
+    "standard",
+    "one-stop"
+   ],
+   "legs": [
+    {
+     "departure_airport": {
+      "code": "BOM",
+      "name": ""
+     },
+     "arrival_airport": {
+      "code": "DXB",
+      "name": ""
+     },
+     "departure_time": "2027-02-10T21:25:00+05:30",
+     "arrival_time": "2027-02-11T03:35:00+04:00",
+     "duration": 0,
+     "airline": "Gulf Air",
+     "airline_code": "",
+     "flight_number": ""
+    }
+   ],
+   "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF65-GF500",
+   "sources": [
+    {
+     "provider": "skiplagged",
+     "price": 13781.473214285712,
+     "currency": "INR",
+     "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF65-GF500",
+     "retrieved_at": "2026-10-20T23:37:41.777662+05:30",
+     "freshness": "live"
+    }
+   ],
+   "cheapest_source": "skiplagged",
+   "confidence": {
+    "rated": true,
+    "score": 0.8705882352941176,
+    "label": "high",
+    "freshness": "live",
+    "basis": "87% likely bookable — live price, structured API source, 1-source corroboration",
+    "signals": [
+     "freshness:live",
+     "provider:api",
+     "sources:1"
+    ]
+   }
+  },
+  {
+   "price": 13781.473214285712,
+   "currency": "INR",
+   "duration": 945,
+   "stops": 1,
+   "provider": "skiplagged",
+   "warnings": [
+    "standard",
+    "one-stop"
+   ],
+   "legs": [
+    {
+     "departure_airport": {
+      "code": "BOM",
+      "name": ""
+     },
+     "arrival_airport": {
+      "code": "DXB",
+      "name": ""
+     },
+     "departure_time": "2027-02-10T06:20:00+05:30",
+     "arrival_time": "2027-02-10T20:35:00+04:00",
+     "duration": 0,
+     "airline": "Gulf Air",
+     "airline_code": "",
+     "flight_number": ""
+    }
+   ],
+   "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF57-GF510",
+   "sources": [
+    {
+     "provider": "skiplagged",
+     "price": 13781.473214285712,
+     "currency": "INR",
+     "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF57-GF510",
+     "retrieved_at": "2026-10-20T23:37:41.777664+05:30",
+     "freshness": "live"
+    }
+   ],
+   "cheapest_source": "skiplagged",
+   "confidence": {
+    "rated": true,
+    "score": 0.8705882352941176,
+    "label": "high",
+    "freshness": "live",
+    "basis": "87% likely bookable — live price, structured API source, 1-source corroboration",
+    "signals": [
+     "freshness:live",
+     "provider:api",
+     "sources:1"
+    ]
+   }
+  },
+  {
+   "price": 13781.473214285712,
+   "currency": "INR",
+   "duration": 1075,
+   "stops": 1,
+   "provider": "skiplagged",
+   "warnings": [
+    "standard",
+    "one-stop"
+   ],
+   "legs": [
+    {
+     "departure_airport": {
+      "code": "BOM",
+      "name": ""
+     },
+     "arrival_airport": {
+      "code": "DXB",
+      "name": ""
+     },
+     "departure_time": "2027-02-10T06:20:00+05:30",
+     "arrival_time": "2027-02-10T22:45:00+04:00",
+     "duration": 0,
+     "airline": "Gulf Air",
+     "airline_code": "",
+     "flight_number": ""
+    }
+   ],
+   "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF57-GF512",
+   "sources": [
+    {
+     "provider": "skiplagged",
+     "price": 13781.473214285712,
+     "currency": "INR",
+     "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF57-GF512",
+     "retrieved_at": "2026-10-20T23:37:41.777665+05:30",
+     "freshness": "live"
+    }
+   ],
+   "cheapest_source": "skiplagged",
+   "confidence": {
+    "rated": true,
+    "score": 0.8705882352941176,
+    "label": "high",
+    "freshness": "live",
+    "basis": "87% likely bookable — live price, structured API source, 1-source corroboration",
+    "signals": [
+     "freshness:live",
+     "provider:api",
+     "sources:1"
+    ]
+   }
+  },
+  {
+   "price": 13781.473214285712,
+   "currency": "INR",
+   "duration": 1365,
+   "stops": 1,
+   "provider": "skiplagged",
+   "warnings": [
+    "standard",
+    "one-stop"
+   ],
+   "legs": [
+    {
+     "departure_airport": {
+      "code": "BOM",
+      "name": ""
+     },
+     "arrival_airport": {
+      "code": "DXB",
+      "name": ""
+     },
+     "departure_time": "2027-02-10T06:20:00+05:30",
+     "arrival_time": "2027-02-11T03:35:00+04:00",
+     "duration": 0,
+     "airline": "Gulf Air",
+     "airline_code": "",
+     "flight_number": ""
+    }
+   ],
+   "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF57-GF500",
+   "sources": [
+    {
+     "provider": "skiplagged",
+     "price": 13781.473214285712,
+     "currency": "INR",
+     "booking_url": "https://skiplagged.com/flights/BOM/DXB/2027-02-10?utm_source=mcp&utm_medium=ai&utm_campaign=skiplagged_mcp#trip=GF57-GF500",
+     "retrieved_at": "2026-10-20T23:37:41.777667+05:30",
+     "freshness": "live"
+    }
+   ],
+   "cheapest_source": "skiplagged",
+   "confidence": {
+    "rated": true,
+    "score": 0.8705882352941176,
+    "label": "high",
+    "freshness": "live",
+    "basis": "87% likely bookable — live price, structured API source, 1-source corroboration",
+    "signals": [
+     "freshness:live",
+     "provider:api",
+     "sources:1"
+    ]
+   }
+  },
+  {
+   "price": 0,
+   "currency": "",
+   "duration": 505,
+   "stops": 1,
+   "provider": "google_flights",
+   "legs": [
+    {
+     "departure_airport": {
+      "code": "BOM",
+      "name": "Chhatrapati Shivaji Maharaj International Airport Mumbai"
+     },
+     "arrival_airport": {
+      "code": "HYD",
+      "name": "Rajiv Gandhi International Airport"
+     },
+     "departure_time": "2027-02-10T15:05",
+     "arrival_time": "2027-02-10T16:40",
+     "duration": 95,
+     "airline": "Air India",
+     "airline_code": "AI",
+     "flight_number": "AI 2531",
+     "aircraft": "Airbus A320neo"
+    },
+    {
+     "departure_airport": {
+      "code": "HYD",
+      "name": "Rajiv Gandhi International Airport"
+     },
+     "arrival_airport": {
+      "code": "DXB",
+      "name": "Dubai International Airport"
+     },
+     "departure_time": "2027-02-10T19:25",
+     "arrival_time": "2027-02-10T22:00",
+     "duration": 245,
+     "airline": "Air India Express",
+     "airline_code": "IX",
+     "flight_number": "IX 969",
+     "aircraft": "Boeing 737",
+     "layover_minutes": 165
+    }
+   ],
+   "booking_url": "https://www.google.com/travel/flights?q=Flights+to+Dubai+from+BOM+on+2027-02-10",
+   "sources": [
+    {
+     "provider": "google_flights",
+     "price": 0,
+     "currency": "",
+     "booking_url": "https://www.google.com/travel/flights?q=Flights+to+Dubai+from+BOM+on+2027-02-10",
+     "retrieved_at": "2026-10-20T23:37:41.777563+05:30",
+     "freshness": "live"
+    }
+   ],
+   "confidence": {
+    "rated": false,
+    "label": "unrated",
+    "basis": "no price to assess"
+   }
+  },
+  {
+   "price": 0,
+   "currency": "",
+   "duration": 520,
+   "stops": 1,
+   "provider": "google_flights",
+   "legs": [
+    {
+     "departure_airport": {
+      "code": "BOM",
+      "name": "Chhatrapati Shivaji Maharaj International Airport Mumbai"
+     },
+     "arrival_airport": {
+      "code": "BLR",
+      "name": "Kempegowda International Airport Bengaluru"
+     },
+     "departure_time": "2027-02-10T15:35",
+     "arrival_time": "2027-02-10T17:25",
+     "duration": 110,
+     "airline": "Air India",
+     "airline_code": "AI",
+     "flight_number": "AI 2853",
+     "aircraft": "Airbus A320neo"
+    },
+    {
+     "departure_airport": {
+      "code": "BLR",
+      "name": "Kempegowda International Airport Bengaluru"
+     },
+     "arrival_airport": {
+      "code": "DXB",
+      "name": "Dubai International Airport"
+     },
+     "departure_time": "2027-02-10T19:55",
+     "arrival_time": "2027-02-10T22:45",
+     "duration": 260,
+     "airline": "Air India Express",
+     "airline_code": "IX",
+     "flight_number": "IX 925",
+     "aircraft": "Boeing 737",
+     "layover_minutes": 150
+    }
+   ],
+   "booking_url": "https://www.google.com/travel/flights?q=Flights+to+Dubai+from+BOM+on+2027-02-10",
+   "sources": [
+    {
+     "provider": "google_flights",
+     "price": 0,
+     "currency": "",
+     "booking_url": "https://www.google.com/travel/flights?q=Flights+to+Dubai+from+BOM+on+2027-02-10",
+     "retrieved_at": "2026-10-20T23:37:41.777568+05:30",
+     "freshness": "live"
+    }
+   ],
+   "confidence": {
+    "rated": false,
+    "label": "unrated",
+    "basis": "no price to assess"
+   }
+  }
+ ],
+ "_sample_note": "5 priced + up to 2 unpriced of 158 total; full payload not stored"
+}

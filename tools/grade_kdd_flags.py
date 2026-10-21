@@ -91,9 +91,16 @@ def grade_arm(
 
 def main() -> int:
     args = sys.argv[1:]
+    # --integrity: owner-ratified call-integrity protocol (KDD_MODEL_COMPARISON
+    # ops log, 2026-09-15/16). Grades COLD arms only, on rows where the LLM
+    # actually participated (llm_calls > 0); warm arms are cache-replay passes,
+    # and cold rows without live calls are rules-only fallbacks that must not
+    # be counted as LLM evidence. Arms with < 10 clean rows are flagged
+    # low_sample instead of silently graded.
+    integrity = "--integrity" in args
     files = (
-        [RUNS_DIR / a for a in args]
-        if args
+        [RUNS_DIR / a for a in args if not a.startswith("--")]
+        if [a for a in args if not a.startswith("--")]
         else sorted(RUNS_DIR.glob("records*.jsonl"))
     )
     labels, excluded = load_labels()
@@ -108,10 +115,28 @@ def main() -> int:
             for line in path.read_text().splitlines()
             if line.strip()
         ]
+        if integrity:
+            total_before = len(rows)
+            rows = [
+                r for r in rows
+                if not r["arm"].endswith("-warm") and r.get("llm_calls", 0) > 0
+            ]
+            print(
+                f"[integrity] {path.name}: {total_before} rows -> "
+                f"{len(rows)} clean cold rows (warm/cache-replay and "
+                f"rules-only rows excluded)",
+                file=sys.stderr,
+            )
         arms = sorted(set(r["arm"] for r in rows))
         for arm in arms:
-            g = grade_arm([r for r in rows if r["arm"] == arm], labels)
+            # excluded must reach grade_arm — the ratified pipeline-integrity
+            # exclusion (traveler_safe_leakage_risk, labels _meta 2026-09-12)
+            # was implemented in grade_arm but never passed at this call site,
+            # so every receipt silently carried those FPs (found 2026-09-19).
+            g = grade_arm([r for r in rows if r["arm"] == arm], labels, excluded)
             if g:
+                if integrity and g["graded_records"] < 10:
+                    g["low_sample"] = True
                 results.append((f"{path.name}::{arm}", g))
 
     print(f"{'run::arm':<62} {'P':>6} {'R':>6} {'F1':>6} {'sev✓':>6} {'tp/fp/fn':>10}")

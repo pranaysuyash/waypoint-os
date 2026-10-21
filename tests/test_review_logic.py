@@ -122,3 +122,32 @@ def test_trip_to_review_falls_back_to_generic_id_field():
     assert review["id"] == "trip-abc123"
     assert review["tripId"] == "trip-abc123"
     assert review["tripReference"] == "TRIP-ABC123"
+
+
+def test_reject_without_reason_rejected_fnd0302(tmp_path, monkeypatch):
+    """FND-0302: rejection/revision without a written reason must raise, not
+    fall back to an auto-generated note."""
+    import pytest
+
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+    monkeypatch.setattr(persistence, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips")
+    (tmp_path / "trips").mkdir()
+
+    trip_id = "test-trip-fnd0302"
+    (tmp_path / "trips" / f"{trip_id}.json").write_text(json.dumps({
+        "trip_id": trip_id,
+        "assigned_to": "agent-1",
+        "analytics": {"requires_review": True, "review_status": "pending"}
+    }))
+
+    for action in ("reject", "request_changes"):
+        with pytest.raises(ValueError, match="written reason is required"):
+            process_review_action(trip_id, action, "", "owner")
+        with pytest.raises(ValueError, match="written reason is required"):
+            process_review_action(trip_id, action, "   ", "owner")
+
+    # Approvals keep the auto-note fallback
+    process_review_action(trip_id, "approve", "", "owner")
+    updated = TripStore.get_trip(trip_id)
+    assert updated["analytics"]["review_status"] == "approved"

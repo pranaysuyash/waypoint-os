@@ -542,13 +542,16 @@ class TestTripResponseShape:
 
 
 def _pipeline_extracted() -> dict:
-    """Real producer output: budget without a currency marker yields
-    ASSUMED-labeled facts and a populated assumption register."""
+    """Real producer output: budget without a currency or scope marker yields
+    ASSUMED-labeled facts and a populated assumption register. (2026-09-19:
+    the note must not carry total cues like "for 4 people" — extraction now
+    recognizes those as explicit trip-total scope, which is correct advisor
+    behavior and would shrink the register this fixture exists to test.)"""
     from src.intake.extractors import ExtractionPipeline
     from src.intake.packet_models import SourceEnvelope
 
     packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(
-        "Planning a trip to Bali for 4 people in March 2027. Budget 500000."
+        "Planning a trip to Bali in March 2027. Budget 500000."
     )])
     return packet.to_dict()
 

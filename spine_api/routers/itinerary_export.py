@@ -50,6 +50,11 @@ def export_trip_itinerary_html(trip_id: str, payload: CompileItineraryRequest) -
     The sample-payload disclosure travels in a response header rather than
     the HTML body so printed output stays clean.
     """
+    sample_fields = {
+        "client_name", "destination_title", "travel_dates", "total_cost_usd",
+        "allergies", "emergency_contact",
+    }
+    uses_sample_defaults = not sample_fields.issubset(payload.model_fields_set)
     day_items = [
         ItineraryDayItem(
             day_number=d.day_number,
@@ -83,9 +88,9 @@ def export_trip_itinerary_html(trip_id: str, payload: CompileItineraryRequest) -
         headers={
             "X-Itinerary-Data-Source": (
                 "sample-payload"
-                if not payload.days
+                if uses_sample_defaults
                 else "caller-provided"
             ),
-            "X-Reality-Tier": "real",  # deterministic render over the stored trip
+            "X-Reality-Tier": "deterministic_preview" if uses_sample_defaults else "real",
         },
     )

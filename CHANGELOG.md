@@ -6,7 +6,7 @@ All notable changes to Waypoint OS are documented in this file.
 
 ### Platform Hardening & Findings Remediation (2026-09-14)
 - **RAG Semantic Provider Abstraction**: Added `EmbeddingProvider` protocol, `HashEmbeddingProvider` (deterministic local), and `SemanticEmbeddingProvider` (OpenAI adapter) in `src/rag/embeddings.py` (FND-0018).
-- **Motto Doctrine Re-homing**: Consolidated legacy `motto_v4.md` references into canonical `Docs/FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` with zero dangling references verified via `scripts/check_dangling_docs.py` (FND-0024 / FND-0208).
+- **Motto Doctrine Re-homing**: Consolidated legacy motto-v4 filename references into canonical `Docs/FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` with zero dangling references verified via `scripts/check_dangling_docs.py` (FND-0024 / FND-0208).
 - **Frontend API Client & Bare Fetch Banning**: Configured ESLint rule `no-restricted-globals` in `frontend/eslint.config.mjs` banning raw `fetch()` calls in components and establishing `frontend/src/lib/api-client.ts` as canonical data layer (FND-0021 / FND-0202).
 - **Documentation Tree Authority**: Formally reconciled `frontend/docs/` as legacy spec tree under `Docs/` canonical authority per R-09 / A-07 (FND-0009 / FND-0023 / FND-0204).
 - **Corporate Policy Authentication**: Enforced JWT-based auth dependencies (`get_current_agency_id`, `get_current_membership`, `get_current_user`) on corporate policy routes with multi-tenant isolation (FND-0117).

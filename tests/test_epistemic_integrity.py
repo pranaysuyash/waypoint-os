@@ -55,6 +55,12 @@ def test_assumption_record_to_dict():
 
 
 def test_unacknowledged_critical_assumption_generates_risk_flag():
+    """Stage contract (2026-09-19): the risk-flag escalation fires where
+    defaults feed money (shortlist+), NOT at discovery — a fresh run always
+    has acknowledged_by_operator=False, so a discovery-stage flag fired on
+    100% of notes with a routine convention default (unmarked currency/scope)
+    and drowned the risk channel in noise (KDD substrate-FP fix). Discovery
+    surfaces defaults via the Assumptions panel and ambiguity asks instead."""
     packet = CanonicalPacket(packet_id="pkt_test_1")
     packet.stage = "discovery"
     packet.set_fact("destination_candidates", Slot(
@@ -62,7 +68,7 @@ def test_unacknowledged_critical_assumption_generates_risk_flag():
         confidence=1.0,
         authority_level=AuthorityLevel.EXPLICIT_USER,
     ))
-    
+
     # Add an unacknowledged critical assumption
     packet.assumptions.append(AssumptionRecord(
         slot_name="departure_airport",
@@ -72,7 +78,12 @@ def test_unacknowledged_critical_assumption_generates_risk_flag():
         acknowledged_by_operator=False,
     ))
 
-    flags = generate_risk_flags(packet, stage="discovery")
+    discovery_flags = generate_risk_flags(packet, stage="discovery")
+    assert "unacknowledged_critical_assumption" not in [
+        f["flag"] for f in discovery_flags
+    ]
+
+    flags = generate_risk_flags(packet, stage="shortlist")
     assumption_flags = [f for f in flags if f.get("flag") == "unacknowledged_critical_assumption"]
     assert len(assumption_flags) == 1
     assert "departure_airport" in assumption_flags[0]["message"]
@@ -81,13 +92,13 @@ def test_unacknowledged_critical_assumption_generates_risk_flag():
 
 def test_acknowledged_critical_assumption_clears_risk_flag():
     packet = CanonicalPacket(packet_id="pkt_test_2")
-    packet.stage = "discovery"
+    packet.stage = "shortlist"
     packet.set_fact("destination_candidates", Slot(
         value=["Bali"],
         confidence=1.0,
         authority_level=AuthorityLevel.EXPLICIT_USER,
     ))
-    
+
     # Add an acknowledged critical assumption
     packet.assumptions.append(AssumptionRecord(
         slot_name="departure_airport",
@@ -97,7 +108,7 @@ def test_acknowledged_critical_assumption_clears_risk_flag():
         acknowledged_by_operator=True,
     ))
 
-    flags = generate_risk_flags(packet, stage="discovery")
+    flags = generate_risk_flags(packet, stage="shortlist")
     assumption_flags = [f for f in flags if f.get("flag") == "unacknowledged_critical_assumption"]
     assert len(assumption_flags) == 0
 

@@ -11,7 +11,7 @@ if [ -x /Users/pranay/Projects/agent-start/bin/agent-start ] && [ "${PWD#"/Users
     exit 1
   fi
   echo "pre-commit: refreshing project context and running objective checks against the staged blast radius." >&2
-  _cmd_timeout="${PROJECTS_AGENT_PRECOMMIT_TIMEOUT_SECS:-60}"
+  _cmd_timeout="${PROJECTS_AGENT_PRECOMMIT_TIMEOUT_SECS:-240}"
   _run_agent_start() {
     if command -v timeout >/dev/null 2>&1; then
       timeout "$_cmd_timeout" /Users/pranay/Projects/agent-start/bin/agent-start --skip-index --quiet >/dev/null 2>&1
@@ -41,7 +41,20 @@ if [ -x /Users/pranay/Projects/agent-start/bin/agent-start ] && [ "${PWD#"/Users
   _refresh_secs="${PROJECTS_AGENT_PRECOMMIT_REFRESH_SECS:-21600}"
   _need_refresh="1"
   if [ -f "$_ctx" ]; then
-    _mtime="$(stat -f %m "$_ctx" 2>/dev/null || stat -c %Y "$_ctx" 2>/dev/null || echo 0)"
+    # stat(1) flag syntax differs between BSD/macOS (-f %m) and GNU (-c %Y).
+    # Homebrew coreutils gnubin stat shadows BSD stat when on PATH, and GNU
+    # stat accepts -f as --file-system (exit 0, non-numeric output), so the
+    # result of every probe must be validated as an integer before use.
+    _mtime=""
+    for _stat_fmt in "-f %m" "-c %Y"; do
+      _candidate="$(stat $_stat_fmt "$_ctx" 2>/dev/null || true)"
+      case "$_candidate" in ''|*[!0-9]*) continue ;; esac
+      _mtime="$_candidate"
+      break
+    done
+    if [ -z "$_mtime" ]; then
+      _mtime="$(python3 -c 'import os,sys; sys.stdout.write(str(int(os.path.getmtime(sys.argv[1]))))' "$_ctx" 2>/dev/null || echo 0)"
+    fi
     case "$_mtime" in ''|*[!0-9]*) _mtime=0 ;; esac
     _now="$(date +%s)"
     _age="$((_now - _mtime))"
@@ -72,7 +85,7 @@ fi
   _diff_name_status="$(git diff --cached --name-status 2>/dev/null || true)"
 
   _high_risk="0"
-  if printf '%s\n' "$_staged_all" | grep -qiE '(payment|settlement|activation|auth|webhook|worker|trigger)s?/|payout|refund|migrations?/|db/|routes?/|middleware/|security|pii|privacy|retention|billing|invoice|reconciliation'; then
+  if printf '%s\n' "$_staged_all" | grep -iE '(payment|settlement|activation|auth|webhook|worker|trigger)s?/|payout|refund|migrations?/|db/|routes?/|middleware/|security|pii|privacy|retention|billing|invoice|reconciliation'; then
     _high_risk="1"
   fi
 
@@ -100,7 +113,7 @@ fi
   #    durable artifact check, not a self-attestation. It catches "code changed
   #    auth/payments/webhooks but no docs/worklog changed" before commit.
   if [ "$_high_risk" = "1" ]; then
-    if ! printf '%s\n' "$_staged_all" | grep -qiE '^(Docs|docs|README|CHANGELOG|.*WORKLOG|.*tracking|.*decisions|.*exploration)/|^(Docs|docs)/|CLAUDE\.md|AGENTS\.md|OPERATING_DOCTRINE\.md'; then
+    if ! printf '%s\n' "$_staged_all" | grep -iE '^(Docs|docs|README|CHANGELOG|.*WORKLOG|.*tracking|.*decisions|.*exploration)/|^(Docs|docs)/|CLAUDE\.md|AGENTS\.md|OPERATING_DOCTRINE\.md'; then
       cat >&2 <<'EOF'
 pre-commit: high-risk staged changes detected, but no durable docs/tracking artifact is staged.
 For auth/payments/webhooks/background jobs/db/data/privacy/billing changes, update a repo-local
@@ -178,7 +191,7 @@ EOF
   # 5) Basic dangerous diff check: do not allow route duplication patterns in
   #    staged added files. Repo-specific architecture still owns deeper review,
   #    but this catches the most common global anti-pattern early.
-  if printf '%s\n' "$_diff_name_status" | grep -qiE '^A[[:space:]].*(route-v[0-9]|routes?.*[-_]v[0-9]|v2.*route)'; then
+  if printf '%s\n' "$_diff_name_status" | grep -iE '^A[[:space:]].*(route-v[0-9]|routes?.*[-_]v[0-9]|v2.*route)'; then
     echo "pre-commit: possible duplicate/versioned route file added. Extend the canonical route instead." >&2
     exit 1
   fi

@@ -1,8 +1,9 @@
-# Operating Doctrine 8.0
+# Operating Doctrine 8.2
 
 **Status:** canonical, editable source
 **Canonical path:** `/Users/pranay/Projects/agent-start/doctrines/OPERATING_DOCTRINE.md`
-**Internal version:** 8.0
+**Internal version:** 8.2
+**Change record:** 8.1 → 8.2, 2026-09-25 — global question-to-work triage added in §9 without expanding authorization; 8.0 → 8.1, 2026-09-18 — §6.1 dormant-artifact supersession disposition check added (operator-directed; §16.9)
 **Generated copies:** `/Users/pranay/Projects/OPERATING_DOCTRINE.md` and project-local `OPERATING_DOCTRINE.md` files
 **Propagation:** `/Users/pranay/Projects/agent-start`
 
@@ -88,6 +89,13 @@ failure cost increases.
 - Tier 3: integration or end-to-end flow.
 - Tier 4: live runtime, browser, device, or operator observation.
 - Tier 5: production-like, external-service, real-data, or deployed verification.
+
+Visual-evidence sharpening (operator, 2026-09-22): any change that alters what
+a user sees — including a brand-new surface — records a BEFORE and AFTER
+rendered capture pair of the same screen region (the before of a new surface
+is trivially the region without the change). A claimed "no visible change" is
+itself a claim and must be proven with a pair, never asserted from code
+reasoning.
 
 For tests, state sensitivity:
 
@@ -245,6 +253,39 @@ Semantic salvage is retained-value preservation. It is not permission to merge
 conflicting behavior, overwrite dirty work, or keep two editable sources of
 truth.
 
+### 6.1 Dormant artifacts — the supersession disposition check
+
+Unreferenced is not a disposition. Before classifying any dead, dormant, or
+orphan candidate (module, capability, subsystem), run the supersession check:
+
+1. **Abandonment test:** establish whether the artifact was left mid-build by
+   an ended session — git archaeology (birth commit, session/checkpoint
+   pattern, symbol history), the artifact's own design docs and unbuilt
+   roadmap, and every standing hold or decision that governs it (a prior
+   "do not wire" ruling is listed evidence to cite and supersede explicitly,
+   never invisible authority).
+2. **Would-completing-help test:** re-derive the completion prerequisite from
+   first principles against the system's actual content and current
+   contracts — not against the artifact's own framing. A prerequisite that
+   dissolves under reframing is not a prerequisite.
+3. **Verdict ladder:**
+   - Last-mile missing → finish the capability.
+   - Abandoned mid-build with buildable layers → complete them; a dormant
+     verdict that ends at "registered-dormant with named prerequisites" is a
+     dodge when the missing layers are buildable.
+   - Complete code whose product contract moved past it → park, with the
+     park marker, revive triggers, and the disposition recorded in the
+     decision surface.
+   - Genuinely superseded → delete only with explicit owner approval, after
+     §1–5 salvage above.
+4. Parks and deletions are owner decisions: surface them as numbered items
+   with a recommendation and a falsifier. Completions are default execution
+   when the would-completing-help test passes and no owner gate applies.
+
+Applying this check is mandatory for any verdict that would leave a
+capability dormant or remove code; presence greps and import graphs are
+necessary evidence, never sufficient.
+
 ## 7. Capability routing
 
 Route by reasoning pattern and current evidence, not by model folklore or a
@@ -282,6 +323,8 @@ real recurring need.
 
 ## 9. Exploration and durable knowledge
 
+- Treat every user question, request for explanation, concern, observation, hypothesis, correction, or suggestion as a candidate for scoped follow-through, not automatically as a chat-only exchange. Answer what can be answered, then assess implications across current source and runtime, existing docs and comments, prior decisions, and external facts when those may be stale or uncertain. Identify whether the candidate warrants verification or research, broader exploration or consultation, a test, a canonical doc/map/worklog update, reversible implementation, or an owner decision. Carry safe, authorized, evidence-supported branches to a useful stopping point; record consequential findings and dispositions with provenance and uncertainty; keep failed or pending work and its next action visible. If no follow-on work is warranted, say why. Do not silently close a material candidate with an explanation alone.
+- Candidate status is not blanket authorization. Honor explicit advice-only scope and all existing ownership, privacy, security, production/customer, external communication, destructive, financial/legal, and Git gates. Keep work proportional; do not turn curiosity into an unrelated product change. When an owner decision blocks one branch, prepare its evidence and alternatives and continue independent safe work.
 - Explore the relevant implementation, adjacent patterns, alternatives, failure modes, negative space, cross-domain transfers, and current external facts before choosing a load-bearing path.
 - Treat supplied domains, files, features, and vocabulary as entry points rather than automatic exploration boundaries. Strip domain nouns to underlying primitives before declaring something irrelevant or no-go.
 - Separate exploration candidates, hypotheses, research questions, implementation tasks, and rejected directions. Discovery does not imply implementation.

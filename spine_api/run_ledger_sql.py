@@ -211,12 +211,12 @@ class SQLRunCheckpointStore:
 
         from sqlalchemy import select
 
-        from spine_api.core.database import async_session_maker
+        from spine_api.persistence import tripstore_session_maker
         from spine_api.models.run_checkpoint import RunCheckpointModel
 
         async def _load() -> Optional[dict[str, Any]]:
 
-            async with async_session_maker() as session:
+            async with tripstore_session_maker() as session:
                 row = (
                     await session.execute(
                         select(RunCheckpointModel).where(RunCheckpointModel.run_id == run_id)
@@ -245,11 +245,11 @@ class SQLRunCheckpointStore:
 
         from sqlalchemy import select
 
-        from spine_api.core.database import async_session_maker
+        from spine_api.persistence import tripstore_session_maker
         from spine_api.models.run_checkpoint import RunCheckpointStepModel
 
         async def _load() -> Optional[dict[str, Any]]:
-            async with async_session_maker() as session:
+            async with tripstore_session_maker() as session:
                 row = (
                     await session.execute(
                         select(RunCheckpointStepModel).where(
@@ -284,11 +284,11 @@ class SQLRunCheckpointStore:
 
         from sqlalchemy import select
 
-        from spine_api.core.database import async_session_maker
+        from spine_api.persistence import tripstore_session_maker
         from spine_api.models.run_checkpoint import RunCheckpointModel
 
         async def _list() -> list[dict[str, Any]]:
-            async with async_session_maker() as session:
+            async with tripstore_session_maker() as session:
                 query = select(RunCheckpointModel).order_by(
                     RunCheckpointModel.created_at.desc().nullslast(),
                     RunCheckpointModel.run_id.desc(),
@@ -297,7 +297,7 @@ class SQLRunCheckpointStore:
                     query = query.where(RunCheckpointModel.trip_id == trip_id)
                 if state is not None:
                     query = query.where(RunCheckpointModel.state == state)
-                rows = session.scalars(query.limit(limit)).all()
+                rows = (await session.scalars(query.limit(limit))).all()
                 metas: list[dict[str, Any]] = []
                 for row in rows:
                     meta: dict[str, Any] = {}
@@ -328,11 +328,11 @@ class SQLRunCheckpointStore:
 
         from sqlalchemy import select
 
-        from spine_api.core.database import async_session_maker
         from spine_api.models.run_checkpoint import RunCheckpointModel
+        from spine_api.persistence import tripstore_session_maker
 
         async def _candidates() -> list[Any]:
-            async with async_session_maker() as session:
+            async with tripstore_session_maker() as session:
                 rows = (
                     await session.execute(
                         select(RunCheckpointModel).where(

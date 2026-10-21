@@ -10,13 +10,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from spine_api.core.auth import get_current_agency_id, require_permission
 from spine_api.core.rls import get_rls_db
-from spine_api.models.frontier import GhostWorkflow, EmotionalStateLog, IntelligencePoolRecord
+from spine_api.models.frontier import EmotionalStateLog, IntelligencePoolRecord
 from spine_api.core.reality_tier import RealityTier, TierMetadata
 from pydantic import BaseModel, Field
 
@@ -28,13 +27,6 @@ router = APIRouter(prefix="/frontier", tags=["Frontier"])
 # It is injected via the get_current_agency_id dependency so that callers
 # cannot target another tenant's data.
 # =============================================================================
-
-class GhostWorkflowCreate(BaseModel):
-    trip_id: str
-    task_type: str
-    action_payload: Optional[Dict[str, Any]] = None
-    autonomic_level: int = 0
-
 
 class GhostWorkflowResponse(BaseModel):
     id: str
@@ -72,66 +64,6 @@ class IntelligencePoolRequest(BaseModel):
 # =============================================================================
 # Routes
 # =============================================================================
-
-@router.post("/ghost/workflows", response_model=GhostWorkflowResponse)
-async def create_ghost_workflow(
-    request: GhostWorkflowCreate,
-    agency_id: str = Depends(get_current_agency_id),
-    membership=require_permission("ai_workforce:manage"),
-    db: AsyncSession = Depends(get_rls_db),
-):
-    """Start a new autonomic Ghost Concierge workflow scoped to the caller's agency."""
-    workflow = GhostWorkflow(
-        id=str(uuid.uuid4()),
-        agency_id=agency_id,
-        trip_id=request.trip_id,
-        task_type=request.task_type,
-        action_payload=request.action_payload,
-        autonomic_level=request.autonomic_level,
-        status="pending",
-        started_at=datetime.now(timezone.utc),
-    )
-    db.add(workflow)
-    await db.commit()
-    await db.refresh(workflow)
-    workflow.reality_tier = RealityTier.PLANNED.value
-    workflow.tier_metadata = TierMetadata.for_response(
-        RealityTier.PLANNED,
-        feature_name="frontier.ghost_workflow",
-        data_sufficient=True,
-        computation_method="simulated autonomic workflow (no provider execution)",
-        missing_for_upgrade=["real provider execution", "money_execution_mode seam"],
-    )
-    return workflow
-
-
-@router.get("/ghost/workflows/{workflow_id}", response_model=GhostWorkflowResponse)
-async def get_ghost_workflow(
-    workflow_id: str,
-    agency_id: str = Depends(get_current_agency_id),
-    membership=require_permission("trips:read"),
-    db: AsyncSession = Depends(get_rls_db),
-):
-    """Retrieve a Ghost workflow — returns 404 if not found or not owned by caller's agency."""
-    result = await db.execute(
-        select(GhostWorkflow).where(GhostWorkflow.id == workflow_id)
-    )
-    workflow = result.scalar_one_or_none()
-
-    # 404 (not 403) to avoid confirming whether the workflow exists for another tenant.
-    if not workflow or workflow.agency_id != agency_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
-
-    workflow.reality_tier = RealityTier.PLANNED.value
-    workflow.tier_metadata = TierMetadata.for_response(
-        RealityTier.PLANNED,
-        feature_name="frontier.ghost_workflow",
-        data_sufficient=True,
-        computation_method="simulated autonomic workflow (no provider execution)",
-        missing_for_upgrade=["real provider execution", "money_execution_mode seam"],
-    )
-    return workflow
-
 
 @router.post("/emotions/log")
 async def log_emotional_state(

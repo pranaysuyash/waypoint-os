@@ -64,6 +64,7 @@ class IROPSAutoHealerEngine:
         delayed_node_id: str,
         delay_minutes: int = 180,
         stored_graph: "JourneyDependencyGraph | None" = None,
+        operator_approved: bool = False,
     ) -> IROPSHealingPlan:
         # AT-06: operate on the traveler's stored journey, never a sample BA178 DAG.
         if stored_graph is not None and stored_graph.nodes:
@@ -140,6 +141,8 @@ class IROPSAutoHealerEngine:
         ]
 
         # 5. Preview lodging VCC object (router strips before API; not a live instrument).
+        # ADR-008 Rung 3 compliance: Automated processes propose cards in
+        # DRAFT_AWAITING_OPERATOR_APPROVAL status; live ACTIVE activation requires operator approval.
         vcc = FinancialSettlementEngine.issue_supplier_vcc(
             trip_id=trip_id,
             supplier_name="Preview lodging (not issued)",
@@ -147,6 +150,8 @@ class IROPSAutoHealerEngine:
             currency="USD",
             validity_days=2,
         )
+        if not operator_approved:
+            vcc.status = "DRAFT_AWAITING_OPERATOR_APPROVAL"
 
         # 6. Draft waiver against the delayed stored node, never a sample BA178.
         waiver_resp = FeeWaiverBot.generate_waiver_request(

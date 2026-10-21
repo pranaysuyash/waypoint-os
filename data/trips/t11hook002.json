@@ -1,0 +1,42 @@
+{
+  "id": "t11hook002",
+  "agency_id": "t11-hook-agency",
+  "status": "active",
+  "saved_at": "2026-09-30T19:33:59.907490+00:00",
+  "flight_status_updates": [
+    {
+      "flight_number": "ZZ1",
+      "origin_iata": "BLR",
+      "destination_iata": "DXB",
+      "status": "cancelled",
+      "delay_minutes": 0
+    }
+  ],
+  "updated_at": "2026-09-30T19:33:59.902044+00:00",
+  "ghost_concierge": {
+    "origin": "ghost_concierge_monitor",
+    "trip_id": "t11hook002",
+    "agency_id": "t11-hook-agency",
+    "overall_health": "DISRUPTED",
+    "evaluated_at": "2026-09-30T19:33:59.907242+00:00",
+    "connection_risks": [],
+    "drafted_interventions": [
+      {
+        "action_type": "SEARCH_FALLBACK_FLIGHTS",
+        "severity": "CRITICAL",
+        "summary": "Flight ZZ1 (BLR->DXB) has been CANCELLED.",
+        "recommended_action": "Hold alternative seats immediately on next available codeshare departure.",
+        "status": "DRAFT_AWAITING_OPERATOR"
+      },
+      {
+        "action_type": "DRAFT_EU261_CLAIM",
+        "severity": "INFO",
+        "summary": "Cancellation of ZZ1 may qualify for statutory regulatory compensation.",
+        "recommended_action": "Trigger automated passenger rights claim filing.",
+        "status": "DRAFT_AWAITING_OPERATOR"
+      }
+    ],
+    "reality_note": "evaluated from operator/traveler-reported flight facts; live provider feed pending B6/B7 gate (2026-10-06)",
+    "healer_note": "healer not chained: trip has no stored journey graph"
+  }
+}

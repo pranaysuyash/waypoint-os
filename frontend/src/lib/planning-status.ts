@@ -147,6 +147,11 @@ export function canAccessPlanningStage(
   stage: string,
 ): boolean {
   if (!trip) return true;
+  // Disruption claims and ghost-concierge interventions must remain reviewable
+  // in the Decision tab even when initial discovery fields are incomplete (FND-0317).
+  if (stage === "decision" && (trip.passenger_claim || trip.ghost_concierge)) {
+    return true;
+  }
   if (getPlanningBriefStatus(trip) !== "missing_required_details") return true;
   return BLOCKED_PLANNING_ALLOWED_STAGES.has(stage);
 }

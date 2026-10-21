@@ -57,10 +57,12 @@ describe('InboxPage', () => {
     snoozeTrip: vi.fn(),
   });
 
-  it('renders a page-level return link back to overview', () => {
+  it('owns overview navigation via the persistent global devices (A8: per-page back device removed)', () => {
     render(<InboxPage />);
 
-    expect(screen.getByRole('link', { name: /back to overview/i })).toHaveAttribute('href', '/overview');
+    // The sidebar marks this section and the command-bar product link routes
+    // to /overview; the page carries no duplicate back link.
+    expect(screen.queryByText(/back to overview/i)).not.toBeInTheDocument();
   });
 
   it('uses lead language and exposes an explicit view action', () => {

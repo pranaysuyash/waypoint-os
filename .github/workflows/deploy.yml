@@ -1,10 +1,25 @@
 name: CD
 
+# TRV-N05 / FND-AUD-11: Automatic deployment on master pushes is disabled
+# while Docs/LAUNCH_STATUS.md remains NO-GO. Deployments must be explicitly
+# triggered via workflow_dispatch with release confirmation.
 on:
-  push:
-    branches:
-      - master
-      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+      force_deploy:
+        description: "Override LAUNCH_STATUS.md NO-GO gate for manual dispatch"
+        required: false
+        default: false
+        type: boolean
+
 
 concurrency:
   group: cd-${{ github.ref }}
@@ -13,9 +28,23 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    environment: ${{ inputs.environment || 'production' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Check Launch Readiness Gate (TRV-N05 / AUD-04)
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force_deploy }}" = "true" ]; then
+            echo "Manual workflow_dispatch with force_deploy=true — proceeding past LAUNCH_STATUS.md gate."
+            exit 0
+          fi
+          if ! grep -Eq '^\*\*Overall Verdict\*\*:\s*`?GO`?\b' Docs/LAUNCH_STATUS.md; then
+            echo "::error file=Docs/LAUNCH_STATUS.md::Deployment blocked: Docs/LAUNCH_STATUS.md is not GO. Refusing automatic production deploy."
+            exit 1
+          fi
+          echo "Launch status verified as GO."
 
       - name: Set up Flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master

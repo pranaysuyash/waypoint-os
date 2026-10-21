@@ -85,7 +85,10 @@ vi.mock('@/hooks/useSpineRun', () => ({
 }));
 
 vi.mock('@/stores/workbench', () => ({
-  useWorkbenchStore: () => ({
+  // FND-0283: PageClient now subscribes via per-field selectors — the mock
+  // must apply the selector to the mock state object.
+  useWorkbenchStore: (sel?: (s: Record<string, unknown>) => unknown) => {
+    const state = {
     result_safety: null,
     result_strategy: null,
     result_decision: null,
@@ -122,7 +125,9 @@ vi.mock('@/stores/workbench', () => ({
     setInputRawNote: vi.fn(),
     setInputOwnerNote: vi.fn(),
     resetAll: vi.fn(),
-  }),
+  };
+    return sel ? sel(state) : state;
+  },
 }));
 
 vi.mock('@/lib/api-client', () => ({
@@ -135,7 +140,9 @@ vi.mock('@/lib/api-client', () => ({
 }));
 
 import { useSearchParams } from 'next/navigation';
-import WorkbenchPage from '../page';
+// T2 route unification: ../page redirects to /inquiries/new; these tests
+// characterize PageClient behavior and mount it directly.
+import WorkbenchPage from '../PageClient';
 
 describe('Workbench ops tab visibility', () => {
   beforeEach(() => {

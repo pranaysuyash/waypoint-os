@@ -181,3 +181,59 @@ async def test_fork_duplicate_prev_hash_is_detected(db):
     verdict = await verify_execution_chain(db, agency_id=AGENCY)
     assert verdict["verdict"] == "fail"
     assert len(verdict["forks"]) == 1
+
+
+async def test_missing_chain_prefix_is_detected(db):
+    """A valid surviving hash cannot prove a chain whose parent is missing."""
+    parent = await _emit(db, "confirmation_created", subject_id="bc_trim_parent")
+    await _emit(db, "confirmation_recorded", subject_id="bc_trim_child")
+    await db.delete(parent)
+    await db.commit()
+
+    verdict = await verify_execution_chain(db, agency_id=AGENCY)
+    assert verdict["verdict"] == "fail"
+    assert "missing predecessor" in verdict["first_break"]["reason"]
+
+
+async def test_removed_hash_is_not_classified_as_legacy(db):
+    event = await _emit(db, "confirmation_created", subject_id="bc_hash_parent")
+    child = await _emit(db, "confirmation_recorded", subject_id="bc_hash_child")
+    assert child.prev_hash == event.event_hash
+    child.event_hash = None
+    await db.commit()
+
+    verdict = await verify_execution_chain(db, agency_id=AGENCY)
+    assert verdict["verdict"] == "fail"
+    assert verdict["legacy_unanchored"] == 0
+    assert "missing event_hash" in verdict["first_break"]["reason"]
+
+
+async def test_unhashed_row_after_chain_start_is_detected(db):
+    await _emit(db, "confirmation_created", subject_id="bc_chain_start")
+    db.add(ExecutionEvent(
+        agency_id=AGENCY, trip_id="trip_chain_1",
+        subject_type="booking_confirmation", subject_id="bc_unhashed_tail",
+        event_type="legacy_event", event_category="confirmation",
+        status_to="legacy", actor_type="system", source="agent_action",
+        prev_hash=None, event_hash=None,
+    ))
+    await db.commit()
+
+    verdict = await verify_execution_chain(db, agency_id=AGENCY)
+    assert verdict["verdict"] == "fail"
+    assert verdict["legacy_unanchored"] == 0
+    assert "unhashed row after chain start" in verdict["first_break"]["reason"]
+
+
+async def test_second_genesis_is_detected_as_fork(db):
+    await _emit(db, "confirmation_created", subject_id="bc_genesis_one")
+    second = await _emit(db, "confirmation_recorded", subject_id="bc_genesis_two")
+    from spine_api.services.execution_event_service import _event_chain_payload
+
+    second.prev_hash = None
+    second.event_hash = compute_event_hash(None, _event_chain_payload(second))
+    await db.commit()
+
+    verdict = await verify_execution_chain(db, agency_id=AGENCY)
+    assert verdict["verdict"] == "fail"
+    assert verdict["forks"] == [second.id]

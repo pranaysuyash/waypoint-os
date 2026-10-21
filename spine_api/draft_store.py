@@ -327,6 +327,33 @@ class FileDraftStore:
         return Draft.model_validate(data)
 
     @staticmethod
+    def delete(draft_id: str) -> bool:
+        """Permanently delete a draft file and remove from all index mappings."""
+        path = _draft_path(draft_id)
+        with FileDraftStore._lock:
+            index = FileDraftStore._load_index()
+            by_status = index.get("by_status", {})
+            for s, ids in by_status.items():
+                if draft_id in ids:
+                    ids.remove(draft_id)
+            by_agency = index.get("by_agency", {})
+            for a, ids in by_agency.items():
+                if draft_id in ids:
+                    ids.remove(draft_id)
+            by_user = index.get("by_user", {})
+            for u, ids in by_user.items():
+                if draft_id in ids:
+                    ids.remove(draft_id)
+            FileDraftStore._save_index(index)
+            if path.exists():
+                try:
+                    path.unlink()
+                    return True
+                except OSError:
+                    pass
+        return False
+
+    @staticmethod
     def discard(draft_id: str, discarded_by: str) -> Optional[Draft]:
         """Soft delete: set status to discarded."""
         return FileDraftStore.patch(
@@ -495,6 +522,10 @@ class DraftStore:
     @staticmethod
     def discard(draft_id: str, discarded_by: str) -> Optional[Draft]:
         return DraftStore._backend.discard(draft_id, discarded_by)
+
+    @staticmethod
+    def delete(draft_id: str) -> bool:
+        return DraftStore._backend.delete(draft_id)
 
     @staticmethod
     def restore(draft_id: str) -> Optional[Draft]:

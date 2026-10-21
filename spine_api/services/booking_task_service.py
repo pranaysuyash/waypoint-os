@@ -9,6 +9,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from spine_api.core.rls import refresh_or_reselect
 from spine_api.models.tenant import (
     BookingTask,
     TASK_STATUSES,
@@ -146,7 +147,7 @@ async def create_task(
     )
     db.add(task)
     await db.commit()
-    await db.refresh(task)
+    await refresh_or_reselect(db, task)
 
     await execution_event_service.emit_event(
         db,
@@ -231,7 +232,7 @@ async def update_task(
         task.title = data["title"]
 
     await db.commit()
-    await db.refresh(task)
+    await refresh_or_reselect(db, task)
     return task
 
 
@@ -259,7 +260,7 @@ async def complete_task(
     task.completed_by = completed_by
     task.completed_at = datetime.now(timezone.utc)
     await db.commit()
-    await db.refresh(task)
+    await refresh_or_reselect(db, task)
 
     await execution_event_service.emit_event(
         db,
@@ -300,7 +301,7 @@ async def cancel_task(
     task.status = "cancelled"
     task.cancelled_at = datetime.now(timezone.utc)
     await db.commit()
-    await db.refresh(task)
+    await refresh_or_reselect(db, task)
 
     await execution_event_service.emit_event(
         db,
@@ -581,7 +582,7 @@ async def _create_missing_tasks(
     if created:
         await db.commit()
         for t in created:
-            await db.refresh(t)
+            await refresh_or_reselect(db, t)
 
         # Emit creation events for system-generated tasks
         for t in created:

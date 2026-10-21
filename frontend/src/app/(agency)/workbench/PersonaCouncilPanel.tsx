@@ -224,7 +224,7 @@ export default function PersonaCouncilPanel({ tripId }: PersonaCouncilPanelProps
           <div>
             <div className="flex items-center gap-2 text-indigo-400 font-mono text-sm tracking-wider uppercase">
               <Sparkles className="w-4 h-4" />
-              Persona Council Demo Command Center
+              Simulation Console — Demo Command Center
             </div>
             <h1 className="text-2xl font-bold text-slate-100 mt-1">
               Capability Sandbox & Regulatory Calculation Demos

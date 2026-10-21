@@ -38,9 +38,14 @@ class PolicyAuditResponse(BaseModel):
     is_compliant: bool
     violations: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
-    duty_of_care_risk_level: str  # LOW, MODERATE, HIGH
+    duty_of_care_risk_level: str  # LOW, MODERATE, HIGH, UNKNOWN
     pre_approval_required: bool
     override_approved: bool = False
+    cost_evaluated: float = 0.0
+    cost_source: str = "recommended_option"
+    nights_evaluated: int = 5
+    nights_source: str = "itinerary_dates"
+    authority: str = "corporate_policy_v1"
 
 
 class OverrideRequest(BaseModel):
@@ -87,22 +92,83 @@ def audit_trip_corporate_policy(
     warnings: List[str] = []
 
     rec_option = trip.get("strategy", {}).get("recommended_option", {}) or {}
-    cost = rec_option.get("cost") or 3000.0
+    cost_source = "recommended_option"
+    cost = rec_option.get("cost")
+    if cost is None:
+        budget = trip.get("budget")
+        if isinstance(budget, dict) and budget.get("amount"):
+            try:
+                cost = float(budget["amount"])
+                cost_source = "trip_budget"
+            except (ValueError, TypeError):
+                cost = None
+        elif isinstance(budget, (int, float)):
+            cost = float(budget)
+            cost_source = "trip_budget"
+        elif trip.get("total_price"):
+            try:
+                cost = float(trip["total_price"])
+                cost_source = "total_price"
+            except (ValueError, TypeError):
+                cost = None
 
-    # Calculate nightly rate (assuming 5 nights)
-    nightly_rate = cost / 5.0
+    if cost is None:
+        cost = 3000.0
+        cost_source = "estimated_default"
+        warnings.append("Explicit trip cost absent; estimated baseline of $3,000 used for audit evaluation.")
+
+    # Calculate actual itinerary nights when available; fall back with honest warning
+    nights_source = "itinerary_dates"
+    nights = None
+    if trip.get("nights"):
+        try:
+            nights = int(trip["nights"])
+            nights_source = "trip_nights"
+        except (ValueError, TypeError):
+            nights = None
+    elif trip.get("duration_days"):
+        try:
+            nights = max(1, int(trip["duration_days"]) - 1)
+            nights_source = "duration_days"
+        except (ValueError, TypeError):
+            nights = None
+    else:
+        date_start = trip.get("date_start") or trip.get("dates", {}).get("start")
+        date_end = trip.get("date_end") or trip.get("dates", {}).get("end")
+        if date_start and date_end:
+            try:
+                d1 = datetime.fromisoformat(str(date_start)[:10])
+                d2 = datetime.fromisoformat(str(date_end)[:10])
+                diff = (d2 - d1).days
+                if diff > 0:
+                    nights = diff
+                    nights_source = "itinerary_dates"
+            except Exception:
+                nights = None
+
+    if nights is None or nights <= 0:
+        nights = 5
+        nights_source = "estimated_default"
+        warnings.append("Itinerary dates absent; estimated duration of 5 nights used for nightly rate cap evaluation.")
+
+    nightly_rate = cost / float(nights)
     if nightly_rate > policy.max_nightly_hotel_usd:
         violations.append(f"Nightly hotel rate (${nightly_rate:.2f}) exceeds corporate cap (${policy.max_nightly_hotel_usd:.2f})")
 
-    dest = (trip.get("destination") or "").lower()
-    high_risk_destinations = ["kabul", "baghdad", "somalia", "syria", "yemen"]
-    if any(h in dest for h in high_risk_destinations):
-        doc_risk = "HIGH"
-        violations.append(f"Destination '{trip.get('destination')}' is listed under High Risk Duty-of-Care Advisory")
-    elif "tokyo" in dest or "london" in dest or "paris" in dest or "maui" in dest or "singapore" in dest:
-        doc_risk = "LOW"
+    dest = (trip.get("destination") or "").strip()
+    dest_lower = dest.lower()
+    if not dest:
+        doc_risk = "UNKNOWN"
+        warnings.append("Destination is unspecified on trip; duty-of-care advisory risk could not be verified.")
     else:
-        doc_risk = "MODERATE"
+        high_risk_destinations = ["kabul", "baghdad", "somalia", "syria", "yemen"]
+        if any(h in dest_lower for h in high_risk_destinations):
+            doc_risk = "HIGH"
+            violations.append(f"Destination '{dest}' is listed under High Risk Duty-of-Care Advisory")
+        elif any(c in dest_lower for c in ("tokyo", "london", "paris", "maui", "singapore", "new york", "zurich")):
+            doc_risk = "LOW"
+        else:
+            doc_risk = "MODERATE"
 
     if cost > 5000.0:
         warnings.append("Total trip cost exceeds $5,000 baseline threshold — secondary VP signoff recommended")
@@ -119,6 +185,11 @@ def audit_trip_corporate_policy(
         duty_of_care_risk_level=doc_risk,
         pre_approval_required=policy.require_pre_approval,
         override_approved=override_approved,
+        cost_evaluated=round(cost, 2),
+        cost_source=cost_source,
+        nights_evaluated=nights,
+        nights_source=nights_source,
+        authority="corporate_policy_v1",
     )
 
 

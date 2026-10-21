@@ -94,11 +94,18 @@ def test_corporate_policy_high_value_finance_escalation():
 
 def test_visa_workflow_initialization_and_milestones():
     """Verify initialization builds document checklist and milestone dates."""
+    # Departure anchored relative to today (was a fixed 2026-10-15 date that
+    # rotted into the HIGH-risk window as the calendar advanced — the engine
+    # correctly flags <processing_days+7 timelines; this test's intent is the
+    # comfortable-timeline path).
+    from datetime import date, timedelta
+
+    departure = (date.today() + timedelta(days=120)).isoformat()
     state = VisaWorkflowEngine.initialize_application(
         trip_id="visa_trip_1",
         traveler_name="Alexander Wright",
         destination_country="SCHENGEN",
-        departure_date_str="2026-10-15",
+        departure_date_str=departure,
         passport_expiry_str="2027-08-20",
     )
     assert state.current_stage == VisaStage.CHECKLIST_PENDING
@@ -110,12 +117,15 @@ def test_visa_workflow_initialization_and_milestones():
 
 def test_visa_workflow_passport_expiry_critical_risk():
     """Verify critical risk when passport expires in <6 months from departure."""
+    from datetime import date, timedelta
+
+    departure = (date.today() + timedelta(days=120)).isoformat()
     state = VisaWorkflowEngine.initialize_application(
         trip_id="visa_trip_2",
         traveler_name="Elena Rostova",
         destination_country="UK",
-        departure_date_str="2026-10-15",
-        passport_expiry_str="2026-12-01",  # Only 1.5 months validity
+        departure_date_str=departure,
+        passport_expiry_str=(date.today() + timedelta(days=125)).isoformat(),  # <6 months validity at departure
     )
     assert state.delay_risk_level == "CRITICAL"
     assert "rejection guaranteed" in state.delay_risk_rationale.lower()

@@ -92,6 +92,24 @@ def process_inbound_traveler_message(
         phone_clean = msg.from_phone.replace("whatsapp:", "").strip()
         trip_id = (active_trip_lookup or {}).get(phone_clean, "trip_demo_general")
 
+        # T11b telemetry hook (2026-09-30): an inbound traveler message is
+        # first-party disruption telemetry. Best-effort: the monitor reads the
+        # trip's flight facts + message store and only acts on real data
+        # (returns None on unmonitored trips); drafts are operator-gated.
+        try:
+            from spine_api.persistence import TripStore
+            from spine_api.services.ghost_concierge_monitor import (
+                run_ghost_concierge_for_trip,
+            )
+
+            trip_record = TripStore.get_trip(trip_id)
+            if trip_record:
+                run_ghost_concierge_for_trip(
+                    trip_record, str(trip_record.get("agency_id") or "system")
+                )
+        except Exception:
+            pass  # monitoring must never break message processing
+
         body_lower = msg.body.lower().strip()
 
         # Honesty rule (I-6, register F-36 family): the concierge previously

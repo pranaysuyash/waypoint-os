@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Check, Sparkles, ShieldCheck, ShieldAlert, MapPin, Calendar, ArrowRight, UserCheck } from 'lucide-react';
+import { Check, CheckCircle, Sparkles, ShieldCheck, ShieldAlert, MapPin, Calendar, ArrowRight, UserCheck } from 'lucide-react';
 
 interface ProposalOption {
   id: string;
@@ -37,6 +37,7 @@ interface ProposalData {
   days: ProposalDay[];
   available_options: ProposalOption[];
   reality_tier?: string;
+  stated_requirements?: string[];
 }
 
 // Part-H P1 (2026-09-07): a 200 response is not automatically a proposal.
@@ -261,6 +262,26 @@ export default function PublicProposalPage({ params }: { params: { token: string
             </span>
           </div>
         </section>
+
+        {/* Stated requirements (T8 trust render): what the plan accounts for,
+            de-attributed — the backend never sends traveler names here. */}
+        {(proposal.stated_requirements?.length ?? 0) > 0 && (
+          <section data-testid="proposal-stated-requirements" className="rounded-xl border border-[#30363d] bg-[#161b22] p-6">
+            <h3 className="text-lg font-bold text-white tracking-tight mb-2 flex items-center gap-2">
+              <ShieldCheck className="size-5 text-[#3fb950]" /> Planning Around Your Requirements
+            </h3>
+            <ul className="space-y-1.5">
+              {proposal.stated_requirements!.map((req) => (
+                <li key={req} className="text-sm text-[#8b949e] flex items-start gap-2">
+                  <CheckCircle className="size-4 text-[#3fb950] shrink-0 mt-0.5" /> {req}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-[#484f58] mt-3">
+              Held on file for this trip. Your travel advisor confirms each one is covered before any booking is made.
+            </p>
+          </section>
+        )}
 
         {/* Day by Day Itinerary */}
         <section className="space-y-6">

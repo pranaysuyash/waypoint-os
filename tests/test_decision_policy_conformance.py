@@ -182,3 +182,76 @@ def test_stop_action_wins_over_ask_action_for_mixed_conflicts():
     result = run_gap_and_decision(pkt)
 
     assert result.decision_state == "STOP_NEEDS_REVIEW"
+
+
+def test_low_confidence_fully_populated_packet_is_traveler_safe():
+    """Decision policy v0.3: no confidence fallback exists.
+
+    specs/decision_policy.md v0.2 documented a `overall_confidence < 0.6 →
+    PROCEED_INTERNAL_DRAFT` fallback that the runtime deliberately removed
+    (N01 triage, 2026-09-02 §2.2). This test pins the removal: a fully
+    populated packet with low slot confidence must stay traveler-safe.
+    Re-introducing the fallback makes this test fail.
+    """
+    pkt = _base_packet(stage="discovery")
+    for field_name, value in (
+        ("destination_candidates", ["Singapore"]),
+        ("origin_city", "Bangalore"),
+        ("date_window", "2026-06-10 to 2026-06-15"),
+        ("party_size", 2),
+        ("budget_min", 200000),
+        ("trip_purpose", "leisure"),
+        ("soft_preferences", "none"),
+    ):
+        pkt.facts[field_name] = _slot(value, confidence=0.2)
+
+    result = run_gap_and_decision(pkt)
+
+    assert not result.hard_blockers
+    assert not result.soft_blockers
+    assert result.decision_state == "PROCEED_TRAVELER_SAFE"
+
+
+def test_budget_infeasibility_is_stage_gated():
+    """Decision policy v0.3: budget_feasibility is a hard blocker only in
+    proposal/booking; discovery/shortlist carries it as a soft blocker."""
+    def _infeasible(stage: str) -> CanonicalPacket:
+        pkt = _fill_discovery_hard_blockers(_base_packet(stage=stage))
+        pkt.facts["budget_min"] = _slot(1)  # absurdly low vs any destination minimum
+        pkt.facts["trip_purpose"] = _slot("leisure")
+        pkt.facts["soft_preferences"] = _slot("none")
+        return pkt
+
+    discovery = run_gap_and_decision(_infeasible("discovery"))
+    assert "budget_feasibility" in discovery.soft_blockers
+    assert "budget_feasibility" not in discovery.hard_blockers
+
+    proposal = run_gap_and_decision(_infeasible("proposal"))
+    assert "budget_feasibility" in proposal.hard_blockers
+
+
+def test_general_conflict_emits_followup_question():
+    """Decision policy v0.3: the contradiction→question mapping is one-to-one.
+
+    general_conflict declares ASK_FOLLOWUP in CONTRADICTION_ACTIONS but was
+    never actionable (medium priority excluded from every escalation set), so
+    a detected conflict on an unmapped field was silently dropped — no
+    question, no state effect. The declared action must be honored: the
+    conflict produces a user-facing question and ASK_FOLLOWUP (when nothing
+    stronger applies).
+    """
+    pkt = _fill_discovery_hard_blockers(_base_packet(stage="discovery"))
+    pkt.facts["trip_purpose"] = _slot("leisure")
+    pkt.facts["soft_preferences"] = _slot("none")
+    pkt.contradictions.append({
+        "field_name": "seat_preference",
+        "values": ["window", "aisle"],
+        "sources": ["call", "whatsapp"],
+    })
+
+    result = run_gap_and_decision(pkt)
+
+    assert result.decision_state == "ASK_FOLLOWUP"
+    assert any(
+        q["field_name"] == "seat_preference" for q in result.follow_up_questions
+    )

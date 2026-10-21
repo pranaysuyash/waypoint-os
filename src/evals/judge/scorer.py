@@ -1,9 +1,16 @@
 """Scorer for LLM-as-judge agent output evaluation.
 
 Evaluates agent execution results against rubric dimensions using
-structured scoring.  Supports both deterministic heuristic scoring
+structured scoring. Supports both deterministic heuristic scoring
 and LLM-assisted scoring via the existing BaseLLMClient interface.
+
+GOVERNANCE NOTICE (PA-22 / FND-0159):
+Default heuristic scoring evaluates structural output shape (field presence,
+types, length bounds) and is uncalibrated against human ground truth. It is
+designated as a developmental benchmark utility only and MUST NOT be used as
+an automated production gating authority without human-calibrated test lanes.
 """
+
 
 from __future__ import annotations
 
@@ -11,11 +18,14 @@ import json as _json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.llm.base import BaseLLMClient, LLMError
 
 from .rubrics import AgentRubric, RubricDimension, build_default_rubrics
+
+if TYPE_CHECKING:
+    from src.llm.typesafe_client import TypesafeJevClient
 
 logger = logging.getLogger("evals.judge")
 
@@ -55,10 +65,15 @@ class JudgeScore:
     pass_threshold: float = 7.0
     scored_at: str = ""
     verdict: str = ""  # "pass" | "fail" | "needs_review"
-    scoring_method: str = "heuristic"  # "llm" | "heuristic" | "mixed"
+    scoring_method: str = "heuristic"  # "llm" | "heuristic" | "mixed" | "jev_shadow"
+    calibration_status: str = "uncalibrated_structural_heuristic"
+    shadow_score: JudgeScore | None = None
+    shadow_disagreement: float | None = None
+    shadow_metrics: dict[str, Any] | None = None
+    discrepancy_alert: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "agent_name": self.agent_name,
             "trip_id": self.trip_id,
             "overall_score": round(self.overall_score, 2),
@@ -66,9 +81,18 @@ class JudgeScore:
             "pass_threshold": self.pass_threshold,
             "verdict": self.verdict,
             "scoring_method": self.scoring_method,
+            "calibration_status": self.calibration_status,
             "scored_at": self.scored_at,
             "dimension_scores": [d.to_dict() for d in self.dimension_scores],
         }
+        if self.shadow_score is not None:
+            data["shadow_score"] = self.shadow_score.to_dict()
+        if self.shadow_disagreement is not None:
+            data["shadow_disagreement"] = round(self.shadow_disagreement, 2)
+            data["discrepancy_alert"] = self.discrepancy_alert
+        if self.shadow_metrics is not None:
+            data["shadow_metrics"] = self.shadow_metrics
+        return data
 
 
 def _heuristic_score(
@@ -186,6 +210,11 @@ def _heuristic_score(
 
     # --- reason quality ---
     if name == "reason_quality":
+        reasons = agent_output.get("reasons") or agent_output.get("escalation_reasons")
+        if isinstance(reasons, list) and reasons:
+            joined = " ".join(str(r) for r in reasons)
+            if len(joined) > 15:
+                return 8.0, f"Escalation has {len(reasons)} substantive reasons"
         reason = agent_output.get("escalation_reason") or agent_output.get("reason")
         if isinstance(reason, str) and len(reason) > 10:
             return 7.0, "Reason is substantive"
@@ -216,7 +245,17 @@ def _heuristic_score(
     if name == "destination_accuracy":
         dests = agent_output.get("destinations")
         if isinstance(dests, list) and dests:
-            return 7.0, f"Destination data present ({len(dests)} entries)"
+            # Check if destinations contain real intelligence or are empty unverified stubs
+            has_details = any(
+                isinstance(d, dict) and any(
+                    k in d for k in ("seasonality", "notes", "status", "weather", "risk_level")
+                    if d.get(k) and d.get(k) not in ("unverified", "unknown")
+                )
+                for d in dests
+            )
+            if has_details:
+                return 7.5, f"Destination data present with intelligence ({len(dests)} entries)"
+            return 4.0, "Destination entries present but unverified or lacking intelligence"
         return 3.0, "No destination data"
 
     # --- must_confirm_coverage ---
@@ -337,6 +376,118 @@ def _llm_score_dimension(
     return clamped, reasoning
 
 
+def _score_with_jev(
+    agent_name: str,
+    trip_id: str,
+    rubric: AgentRubric,
+    agent_output: dict[str, Any],
+    expected: dict[str, Any] | None,
+    shadow_client: TypesafeJevClient,
+) -> JudgeScore | None:
+    """Score all rubric dimensions in parallel using TypeSafe/Jev Score primitive.
+
+    Jev's Score question evaluates a text state against an ordered list of criteria
+    levels (0 to N-1) and outputs a continuous calibrated position and confidence.
+    """
+    try:
+        if not shadow_client.is_available():
+            return None
+
+        # Build prompt state representing output and context
+        state_lines = [
+            f"Agent Name: {agent_name}",
+            f"Trip ID: {trip_id}",
+            f"Agent Role/Description: {rubric.description}",
+            f"Agent Execution Output:\n{_json.dumps(agent_output, indent=2, default=str)}",
+        ]
+        if expected:
+            state_lines.append(f"Expected Output:\n{_json.dumps(expected, indent=2, default=str)}")
+        state_text = "\n\n".join(state_lines)
+
+        # Standard 4-tier rubric criteria levels (0 to 3)
+        rubric_criteria = [
+            "Level 0 (Fail / 0-2): Missing key components, severe hallucination, invalid schema, or unacceptable execution.",
+            "Level 1 (Needs Review / 3-5): Partially addressed requirements, but notable omissions, inaccuracies, or weak quality.",
+            "Level 2 (Pass / 6-8): Meets core requirements and expectations with minor defects or acceptable compromises.",
+            "Level 3 (Exemplary / 9-10): Flawless, thorough, strictly adhering to constraints and high domain quality standards.",
+        ]
+
+        questions: dict[str, dict[str, Any]] = {}
+        dim_map: dict[str, RubricDimension] = {}
+
+        for idx, dim in enumerate(rubric.dimensions):
+            qkey = f"q_dim_{idx}_{dim.name}"
+            dim_map[qkey] = dim
+            instructions = (
+                f"Evaluate the agent's performance on dimension '{dim.name}' "
+                f"({dim.description}). Guidance: {dim.scoring_guidance or 'Standard evaluation'}."
+            )
+            questions[qkey] = {
+                "type": "score",
+                "instructions": instructions,
+                "criteria": rubric_criteria,
+            }
+
+        response = shadow_client.raw_query(state=state_text, questions=questions)
+        answers = response.get("answers", {})
+
+        dimension_scores: list[DimensionScore] = []
+        total_weighted = 0.0
+        total_weight = 0.0
+
+        for qkey, dim in dim_map.items():
+            ans = answers.get(qkey, {})
+            raw_score = ans.get("score")
+            conf = ans.get("confidence")
+            if isinstance(raw_score, (int, float)):
+                # Normalize raw 0-3 index scale onto standard 0-10 scale
+                norm_score = max(0.0, min(10.0, (float(raw_score) / 3.0) * 10.0))
+                reasoning = (
+                    f"[jev-score] raw={round(float(raw_score), 2)}/3.0, conf={round(float(conf or 0.0), 2)}"
+                )
+            else:
+                # Fallback to heuristic if dimension answer missing
+                h_score, h_reason = _heuristic_score(dim, agent_output, expected)
+                norm_score = h_score
+                reasoning = f"[jev-fallback-heuristic] {h_reason}"
+
+            ds = DimensionScore(
+                dimension=dim.name,
+                score=norm_score,
+                weight=dim.weight,
+                reasoning=reasoning,
+            )
+            dimension_scores.append(ds)
+            total_weighted += ds.weighted_score
+            total_weight += ds.weight
+
+        overall = total_weighted / total_weight if total_weight > 0 else 0.0
+        passed = overall >= rubric.pass_threshold
+
+        if overall >= rubric.pass_threshold:
+            verdict = "pass"
+        elif overall >= rubric.pass_threshold - 2.0:
+            verdict = "needs_review"
+        else:
+            verdict = "fail"
+
+        return JudgeScore(
+            agent_name=agent_name,
+            trip_id=trip_id,
+            dimension_scores=dimension_scores,
+            overall_score=overall,
+            passed=passed,
+            pass_threshold=rubric.pass_threshold,
+            scored_at=datetime.now(timezone.utc).isoformat(),
+            verdict=verdict,
+            scoring_method="jev_shadow",
+            calibration_status="jev_calibrated_score_shadow",
+        )
+    except Exception as exc:
+        logger.warning("Jev shadow scoring failed for %s/%s: %s", agent_name, trip_id, exc)
+        return None
+
+
 def judge_agent_output(
     agent_name: str,
     trip_id: str,
@@ -344,12 +495,17 @@ def judge_agent_output(
     expected: dict[str, Any] | None = None,
     rubrics: dict[str, AgentRubric] | None = None,
     llm_client: BaseLLMClient | None = None,
+    shadow_judge_client: TypesafeJevClient | None = None,
 ) -> JudgeScore:
     """Score an agent execution result against its rubric.
 
     When ``llm_client`` is provided and available, uses LLM-assisted
     scoring for each dimension.  Falls back to deterministic heuristic
-    scoring when the LLM is unavailable, unavailable, or fails.
+    scoring when the LLM is unavailable or fails.
+
+    When ``shadow_judge_client`` is provided, evaluates the result in parallel
+    using TypeSafe/Jev's Score primitive and attaches the shadow score and
+    disagreement delta to the returned JudgeScore.
 
     Parameters
     ----------
@@ -366,6 +522,8 @@ def judge_agent_output(
     llm_client
         Optional LLM client for assisted scoring.  When ``None`` or
         unavailable, heuristic scoring is used.
+    shadow_judge_client
+        Optional TypeSafe/Jev client for fast calibrated shadow scoring.
     """
     if rubrics is None:
         rubrics = build_default_rubrics()
@@ -442,7 +600,7 @@ def judge_agent_output(
     else:
         verdict = "fail"
 
-    return JudgeScore(
+    primary_score = JudgeScore(
         agent_name=agent_name,
         trip_id=trip_id,
         dimension_scores=dimension_scores,
@@ -453,6 +611,33 @@ def judge_agent_output(
         verdict=verdict,
         scoring_method=scoring_method,
     )
+
+    # If shadow judge client is provided, evaluate via Jev shadow lane
+    if shadow_judge_client is not None:
+        shadow_score = _score_with_jev(
+            agent_name=agent_name,
+            trip_id=trip_id,
+            rubric=rubric,
+            agent_output=agent_output,
+            expected=expected,
+            shadow_client=shadow_judge_client,
+        )
+        if shadow_score is not None:
+            primary_score.shadow_score = shadow_score
+            disagreement = abs(primary_score.overall_score - shadow_score.overall_score)
+            primary_score.shadow_disagreement = disagreement
+            primary_score.discrepancy_alert = disagreement >= 2.0
+            primary_score.shadow_metrics = {
+                "score_delta": round(disagreement, 2),
+                "verdict_agreement": primary_score.verdict == shadow_score.verdict,
+                "primary_verdict": primary_score.verdict,
+                "shadow_verdict": shadow_score.verdict,
+                "primary_method": primary_score.scoring_method,
+                "shadow_method": shadow_score.scoring_method,
+                "discrepancy_alert": primary_score.discrepancy_alert,
+            }
+
+    return primary_score
 
 
 def build_judge_report(
@@ -469,6 +654,7 @@ def build_judge_report(
             "pass_rate": 0.0,
             "average_score": 0.0,
             "agents": {},
+            "discrepant_evals": [],
         }
 
     by_agent: dict[str, list[JudgeScore]] = {}
@@ -493,6 +679,20 @@ def build_judge_report(
             },
         }
 
+    discrepant_evals = [
+        {
+            "agent_name": s.agent_name,
+            "trip_id": s.trip_id,
+            "primary_score": round(s.overall_score, 2),
+            "primary_verdict": s.verdict,
+            "shadow_score": round(s.shadow_score.overall_score, 2) if s.shadow_score else None,
+            "shadow_verdict": s.shadow_score.verdict if s.shadow_score else None,
+            "score_delta": round(s.shadow_disagreement, 2) if s.shadow_disagreement is not None else None,
+        }
+        for s in scores
+        if s.discrepancy_alert
+    ]
+
     total_passed = sum(1 for s in scores if s.passed)
     return {
         "total_scored": len(scores),
@@ -500,4 +700,91 @@ def build_judge_report(
         "pass_rate": round(total_passed / len(scores), 4),
         "average_score": round(sum(s.overall_score for s in scores) / len(scores), 2),
         "agents": agent_summaries,
+        "discrepant_evals": discrepant_evals,
+    }
+
+
+def compute_judge_shadow_agreement(
+    primary_scores: list[JudgeScore],
+    shadow_scores: list[JudgeScore] | None = None,
+) -> dict[str, Any]:
+    """Compute agreement metrics (including Cohen's kappa) between primary and shadow scores.
+
+    If shadow_scores is None, extracts shadow scores from primary_scores.shadow_score.
+    Calculates:
+    - Observed accuracy / agreement rate: proportion of identical categorical verdicts
+    - Expected agreement by chance: sum(p_primary(c) * p_shadow(c))
+    - Cohen's kappa: (P_o - P_e) / (1 - P_e)
+    - Mean absolute score delta across samples
+    """
+    paired: list[tuple[JudgeScore, JudgeScore]] = []
+
+    if shadow_scores is not None:
+        for p, s in zip(primary_scores, shadow_scores):
+            paired.append((p, s))
+    else:
+        for p in primary_scores:
+            if p.shadow_score is not None:
+                paired.append((p, p.shadow_score))
+
+    n = len(paired)
+    if n == 0:
+        return {
+            "total_pairs": 0,
+            "raw_agreement": 0.0,
+            "cohens_kappa": 0.0,
+            "mean_score_delta": 0.0,
+            "interpretation": "no_data",
+        }
+
+    categories = ["pass", "needs_review", "fail"]
+    primary_counts = {c: 0 for c in categories}
+    shadow_counts = {c: 0 for c in categories}
+    matrix = {c1: {c2: 0 for c2 in categories} for c1 in categories}
+
+    score_deltas: list[float] = []
+
+    for p, s in paired:
+        pv = p.verdict if p.verdict in categories else "needs_review"
+        sv = s.verdict if s.verdict in categories else "needs_review"
+        primary_counts[pv] += 1
+        shadow_counts[sv] += 1
+        matrix[pv][sv] += 1
+        score_deltas.append(abs(p.overall_score - s.overall_score))
+
+    # Observed agreement P_o
+    agreed_count = sum(matrix[c][c] for c in categories)
+    p_o = agreed_count / n
+
+    # Expected agreement by chance P_e
+    p_e = sum((primary_counts[c] / n) * (shadow_counts[c] / n) for c in categories)
+
+    # Cohen's kappa
+    if abs(1.0 - p_e) < 1e-9:
+        kappa = 1.0 if abs(1.0 - p_o) < 1e-9 else 0.0
+    else:
+        kappa = (p_o - p_e) / (1.0 - p_e)
+
+    # Standard Landis & Koch (1977) interpretation
+    if kappa < 0:
+        interpretation = "poor"
+    elif kappa <= 0.20:
+        interpretation = "slight"
+    elif kappa <= 0.40:
+        interpretation = "fair"
+    elif kappa <= 0.60:
+        interpretation = "moderate"
+    elif kappa <= 0.80:
+        interpretation = "substantial"
+    else:
+        interpretation = "almost_perfect"
+
+    return {
+        "total_pairs": n,
+        "raw_agreement": round(p_o, 4),
+        "expected_chance_agreement": round(p_e, 4),
+        "cohens_kappa": round(kappa, 4),
+        "mean_score_delta": round(sum(score_deltas) / n, 2),
+        "interpretation": interpretation,
+        "confusion_matrix": matrix,
     }

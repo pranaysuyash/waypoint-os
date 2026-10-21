@@ -8,7 +8,7 @@ const ROUTES = {
   inbox: '/inbox',
   approvals: '/reviews',
   integrity: '/overview?panel=system-check',
-  intake: '/workbench?draft=new&tab=intake',
+  intake: '/inquiries/new?draft=new&tab=intake',
 } as const;
 
 const baseSummary = {

@@ -76,12 +76,14 @@ def get_run_status(
     follow_up_questions: list[dict[str, Any]] = []
     hard_blockers: list[str] = []
     soft_blockers: list[str] = []
+    branch_options: list[dict[str, Any]] = []
     frontier_result: Any = None
     if isinstance(decision_data, dict):
         decision_state = decision_data.get("decision_state")
         follow_up_questions = decision_data.get("follow_up_questions") or []
         hard_blockers = decision_data.get("hard_blockers") or []
         soft_blockers = decision_data.get("soft_blockers") or []
+        branch_options = decision_data.get("branch_options") or []
         frontier_result = decision_data.get("frontier_result") or None
 
     # Extract validation and packet from blocked_result or individual steps
@@ -111,6 +113,7 @@ def get_run_status(
         follow_up_questions=follow_up_questions,
         hard_blockers=hard_blockers,
         soft_blockers=soft_blockers,
+        branch_options=branch_options,
         validation=validation_data,
         packet=packet_data,
         frontier_result=frontier_result,

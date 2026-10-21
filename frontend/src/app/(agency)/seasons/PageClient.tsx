@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Send,
 } from 'lucide-react';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import {
   useSeasonalCampaigns,
   useCreateSeasonalCampaign,
@@ -346,7 +345,6 @@ export default function SeasonsPageClient() {
 
   return (
     <div className="p-5 max-w-[1400px] mx-auto space-y-5">
-      <BackToOverviewLink />
 
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>

@@ -5,6 +5,11 @@ Implements statutory compensation rules for:
 - EU261 / UK261 (€250 / €400 / €600 per passenger depending on distance).
 - DGCA (India CAR Section 3 Series M Part IV).
 - Automated legal claim package generation.
+
+FND-0312 (2026-10-05): framework classification is delegated to the ONE
+canonical resolver ``spine_api.services.claim_framework.resolve_framework``
+so the evaluate endpoint, the generate-claim letter, and the ghost-concierge
+draft can no longer disagree about which statutory regime applies.
 """
 
 from __future__ import annotations
@@ -12,12 +17,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from spine_api.services.claim_framework import (
+    resolve_carrier_country,
+    compensation_band,
+    resolve_framework,
+    statutory_amount,
+)
+
 # Carriers whose disruptions are adjudicated under EU261 regardless of route
 # (airport-based evaluation entry point below).
 EU261_CARRIERS = {"AF", "LH", "KL", "AZ", "IB", "TP", "LX", "OS", "EI", "BA"}
 
 # Flight-hint EU set — the historical router contract, preserved exactly so
 # evaluate_statutory_compensation is a behavior-preserving consolidation.
+# (The carrier-prefix lane now flows through claim_framework's
+# carrier_license_inference branch; this set remains for airport-based
+# callers of evaluate_passenger_compensation_rights.)
 _FLIGHT_HINT_EU_CARRIERS = {"BA", "AF", "LH", "KL", "IB", "EI"}
 
 _EUR_TO_USD = 1.09  # display conversion, matches the historical router contract
@@ -37,48 +52,84 @@ def evaluate_statutory_compensation(
     distance_km: float,
     delay_hours: float,
     passengers_count: int,
+    departure_country: Optional[str] = None,
+    arrival_country: Optional[str] = None,
+    carrier_country: Optional[str] = None,
+    disruption_type: str = "DELAYED",
 ) -> Dict[str, Any]:
     """Flight-hint statutory evaluation (A2 consolidation, 2026-09-11).
 
-    Single canonical compensation calculator for the operator-facing
-    evaluate/generate-claim path. Semantics are exactly the historical router
-    contract (EU261 carrier-prefix set; €250/400/600 tiers at 3h+ delays;
-    US DOT $300 flat at 4h+; EUR→USD display conversion at 1.09) so callers
-    can delegate without a behavior change.
+    FND-0312 (2026-10-05): framework applicability is resolved through the
+    canonical ``claim_framework.resolve_framework`` using, in order of
+    authority: explicit route geography (new optional parameters), then the
+    flight-number carrier-prefix inference (the historical lane), else NONE +
+    Montreal Convention Art. 19. Amounts: EU261 €250/400/600 and UK261
+    £220/350/520 at 3h+ delays (or cancellation); US DOT $300 flat at 4h+
+    (or cancellation); EUR→USD display conversion at 1.09 — all preserved
+    from the historical router contract.
     """
     fl = flight_number.upper().strip()
-    is_eu_or_uk = any(fl.startswith(prefix) for prefix in _FLIGHT_HINT_EU_CARRIERS)
 
-    if is_eu_or_uk:
-        framework = "EU261"
-        comp_eur = _eu261_tier_amount(distance_km) if delay_hours >= 3.0 else 0.0
-    else:
-        framework = "US_DOT"
-        comp_eur = 300.0 if delay_hours >= 4.0 else 0.0
+    # Route inference: explicit carrier country if given, else the flight
+    # number's airline prefix — used for the carrier-license rule only.
+    carrier = resolve_carrier_country(carrier_country, fl)
 
-    is_eligible = comp_eur > 0
-    total_eur = comp_eur * passengers_count
+    resolved = resolve_framework(
+        departure_country=departure_country,
+        arrival_country=arrival_country,
+        carrier_country=carrier,
+        distance_km=distance_km,
+        delay_hours=delay_hours,
+        disruption_type=disruption_type,
+    )
+    framework = resolved["framework"]
+
+    cancelled = str(disruption_type).upper().strip() == "CANCELLED"
+    statutory, _currency = statutory_amount(framework, distance_km)
+
+    if framework == "EU261":
+        comp = statutory if (delay_hours >= 3.0 or cancelled) else 0.0
+        threshold = "3h"
+    elif framework == "UK261":
+        comp = statutory if (delay_hours >= 3.0 or cancelled) else 0.0
+        threshold = "3h"
+    elif framework == "US_DOT":
+        comp = statutory if (delay_hours >= 4.0 or cancelled) else 0.0
+        threshold = "4h"
+    else:  # NONE — no statutory scheme; Montreal Art. 19 / carrier-policy lane
+        comp = 0.0
+        threshold = None
+
+    is_eligible = comp > 0
+    total_eur = comp * passengers_count
     total_usd = round(total_eur * _EUR_TO_USD, 2)
 
     if is_eligible:
         reason = (
-            f"Eligible under {framework} for {delay_hours}h delay on {fl} ({distance_km:.0f} km flight)"
+            f"Eligible under {framework} for {delay_hours}h delay on {fl} "
+            f"({distance_km:.0f} km flight, {compensation_band(distance_km)}). "
+            f"Basis: {resolved['reason']}"
         )
-    else:
-        threshold = "3h" if is_eu_or_uk else "4h"
+    elif threshold is not None:
         reason = (
             f"Ineligible under {framework}: delay duration ({delay_hours}h) below statutory {threshold} threshold"
         )
+    else:
+        reason = resolved["reason"]
 
     return {
         "flight_number": fl,
         "is_eligible": is_eligible,
         "regulatory_framework": framework if is_eligible else "NONE",
-        "compensation_per_passenger_eur": comp_eur,
+        "compensation_per_passenger_eur": comp,
         "total_statutory_compensation_eur": total_eur,
         "total_claim_amount_usd": total_usd,
         "passengers_count": passengers_count,
         "claim_reason": reason,
+        # Additive (FND-0312): applicability basis + Montreal flag for callers
+        # that need the honest basis (e.g. generate-claim letter selection).
+        "framework_basis": resolved["basis"],
+        "montreal_applies": resolved["montreal_applies"],
     }
 
 

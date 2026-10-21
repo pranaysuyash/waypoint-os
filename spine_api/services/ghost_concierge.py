@@ -10,6 +10,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from spine_api.services.claim_framework import (
+    AIRPORT_COUNTRY,
+    MONTREAL_ARTICLE_19,
+    resolve_carrier_country,
+    resolve_framework,
+)
+
 
 @dataclass(slots=True)
 class FlightTelemetry:
@@ -39,7 +46,7 @@ class ConnectionRisk:
 
 @dataclass(slots=True)
 class ConciergeIntervention:
-    action_type: str  # "ALERT_AGENT" | "NOTIFY_HOTEL_LATE_CHECKIN" | "SEARCH_FALLBACK_FLIGHTS" | "DRAFT_EU261_CLAIM"
+    action_type: str  # "ALERT_AGENT" | "NOTIFY_HOTEL_LATE_CHECKIN" | "SEARCH_FALLBACK_FLIGHTS" | "DRAFT_{EU261|UK261|US_DOT}_CLAIM" | "DRAFT_CLAIM" (no statutory regime)
     severity: str  # "INFO" | "WARNING" | "CRITICAL"
     summary: str
     recommended_action: str
@@ -52,6 +59,51 @@ class GhostConciergeReport:
     flight_checks: List[FlightTelemetry]
     connection_risks: List[ConnectionRisk]
     interventions: List[ConciergeIntervention] = field(default_factory=list)
+
+
+def _resolved_claim_framework(f: "FlightTelemetry") -> dict:
+    """Resolve the statutory claim framework for one flight via the ONE
+    canonical resolver (FND-0312) — the draft label can no longer claim
+    EU261 for flights with no EU touchpoint."""
+    carrier = resolve_carrier_country(f.carrier, f.flight_number)
+    return resolve_framework(
+        departure_country=AIRPORT_COUNTRY.get(f.origin_iata.upper()),
+        arrival_country=AIRPORT_COUNTRY.get(f.destination_iata.upper()),
+        carrier_country=carrier,
+        distance_km=0.0,
+        delay_hours=f.delay_minutes / 60.0,
+        disruption_type=f.status.upper(),
+    )
+
+
+def _claim_action_label(f: "FlightTelemetry") -> str:
+    """DRAFT_{framework}_CLAIM, or DRAFT_CLAIM when no statutory regime
+    applies (NONE) — the frontend matches on nothing, it renders labels."""
+    framework = _resolved_claim_framework(f)["framework"]
+    return "DRAFT_CLAIM" if framework == "NONE" else f"DRAFT_{framework}_CLAIM"
+
+
+def _claim_draft_summary(f: "FlightTelemetry") -> str:
+    resolved = _resolved_claim_framework(f)
+    framework = resolved["framework"]
+    if framework == "NONE":
+        return (
+            f"Cancellation of {f.flight_number} is outside the EU261/UK261/US DOT "
+            f"statutory scope — claimable under the {MONTREAL_ARTICLE_19} via the "
+            "carrier's claims process."
+        )
+    return (
+        f"Cancellation of {f.flight_number} may qualify for statutory compensation "
+        f"under {framework}."
+    )
+
+
+def _flight_route_summary(f: "FlightTelemetry") -> str:
+    """FND-0319: 'Flight TG318 (BKK->BOM)' when BOTH endpoints are known, else
+    'Flight TG318' — never a bare or one-sided '(->)' arrow."""
+    if f.origin_iata and f.destination_iata:
+        return f"Flight {f.flight_number} ({f.origin_iata}->{f.destination_iata})"
+    return f"Flight {f.flight_number}"
 
 
 def evaluate_flight_telemetry(
@@ -75,15 +127,17 @@ def evaluate_flight_telemetry(
                 ConciergeIntervention(
                     action_type="SEARCH_FALLBACK_FLIGHTS",
                     severity="CRITICAL",
-                    summary=f"Flight {f.flight_number} ({f.origin_iata}->{f.destination_iata}) has been CANCELLED.",
+                    # FND-0319: render the route only when both endpoints are
+                    # known — never an empty "(->)" arrow.
+                    summary=f"{_flight_route_summary(f)} has been CANCELLED.",
                     recommended_action="Hold alternative seats immediately on next available codeshare departure.",
                 )
             )
             interventions.append(
                 ConciergeIntervention(
-                    action_type="DRAFT_EU261_CLAIM",
+                    action_type=_claim_action_label(f),
                     severity="INFO",
-                    summary=f"Cancellation of {f.flight_number} may qualify for statutory regulatory compensation.",
+                    summary=_claim_draft_summary(f),
                     recommended_action="Trigger automated passenger rights claim filing.",
                 )
             )

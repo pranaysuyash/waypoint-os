@@ -61,7 +61,7 @@ const STATE_META: Record<StateKey, StateMeta> = {
   },
 };
 
-const INTAKE_HREF = '/workbench?draft=new&tab=intake';
+const INTAKE_HREF = '/inquiries/new?draft=new&tab=intake';
 
 function getAssignmentLabel(trip: Trip): string {
   if (trip.status === 'completed') return 'Completed';

@@ -12,7 +12,8 @@ from __future__ import annotations
 import hashlib
 import uuid
 from datetime import datetime, timezone
-from typing import List, Tuple
+import os
+from typing import List, Optional, Tuple
 
 from src.memory.models import BaseMemoryItem, GDPRForgetCertificate
 
@@ -25,12 +26,27 @@ class GDPRMemoryEngine:
         memories: List[BaseMemoryItem],
         agency_id: str,
         entity_id: str,
-        secret_key: str = "waypoint-gdpr-secret-key-2026",
+        secret_key: Optional[str] = None,
     ) -> Tuple[List[BaseMemoryItem], GDPRForgetCertificate]:
         """
         Erases all PII from memories belonging to entity_id within agency_id.
         Tombstones the records and returns a verifiable GDPRForgetCertificate.
         """
+        resolved_key = (
+            secret_key
+            or os.getenv("GDPR_SIGNING_KEY")
+            or os.getenv("ENCRYPTION_KEY")
+            or ""
+        ).strip()
+        if not resolved_key:
+            env = (os.getenv("ENVIRONMENT") or os.getenv("WAYPOINT_ENV") or "").lower()
+            if env in ("production", "staging"):
+                raise RuntimeError(
+                    "GDPR erasure requires GDPR_SIGNING_KEY or ENCRYPTION_KEY in production/staging; "
+                    "refusing to issue unsigned certificates."
+                )
+            resolved_key = "waypoint-gdpr-secret-key-2026"
+
         erased_ids = []
         updated_memories = []
 

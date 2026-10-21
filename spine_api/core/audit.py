@@ -28,8 +28,6 @@ context with agency_id="system" and user_id=None — the route still needs
 to provide action and resource info.
 """
 
-import hashlib
-import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -42,11 +40,12 @@ from spine_api.core.database import get_db
 from spine_api.core.security import decode_token_safe
 from spine_api.models.audit import AuditAction, AuditLog
 from spine_api.models.tenant import Membership, User
+from spine_api.services.audit_chain_hash import (
+    GENESIS_BLOCK_HASH,
+    compute_audit_entry_hash,
+)
 
 logger = logging.getLogger("spine_api.audit")
-
-GENESIS_BLOCK_HASH = "GENESIS_BLOCK_HASH"
-
 
 class AuditContext:
     """Context object injected into route handlers for audit logging."""
@@ -116,12 +115,11 @@ class AuditContext:
             return entry
 
         # Hash payload mirrors the file-based AuditStore chain semantics.
-        hash_payload = (
-            f"{entry.id}:{self._agency_id}:{self._user_id}:{action_str}:"
-            f"{previous_hash}:{created_at.isoformat()}:{json.dumps(changes or {}, sort_keys=True)}"
-        )
         entry.previous_hash = previous_hash
-        entry.current_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+        entry.current_hash = compute_audit_entry_hash(
+            entry.id, self._agency_id, self._user_id, action_str,
+            previous_hash, created_at.isoformat(), changes,
+        )
         try:
             await self._db.flush()
             logger.debug(

@@ -261,8 +261,9 @@ def test_agency_field_codec_round_trip(agency_id):
     assert public_proposals._decode_agency_field(field) == agency_id
 
 
-def test_signed_token_http_requires_persisted_resource_non_default_agency():
+def test_signed_token_http_requires_persisted_resource_non_default_agency(monkeypatch):
     """HTTP verification must not turn a valid claim into fabricated content."""
+    monkeypatch.setattr(public_proposals.TripStore, "get_trip_for_agency", lambda *_args: None)
     token = generate_signed_proposal_token("trip_http_agency_1", agency_id="agency_42", ttl_hours=24)
     resp = client.get(f"/api/public/proposals/{token}")
     assert resp.status_code == 404
@@ -409,3 +410,71 @@ def test_accept_proposal_success_and_validation():
     assert data["status"] == "accepted"
     assert "Priya Sharma" in data["accepted_by"]
     assert data["accepted_at"] is not None
+
+
+# ---------------------------------------------------------------------------
+# T8 trust render: plan-scoped stated requirements, de-attributed
+# ---------------------------------------------------------------------------
+
+def test_public_access_derives_stated_requirements_without_names(monkeypatch, tmp_path):
+    """The safe public projection carries WHAT the plan accounts for (dietary,
+    mobility, occasion), never WHO stated it — traveler names must not leak."""
+    from spine_api.persistence import TripStore
+
+    trip_id = "trip_req_1"
+    internal_trip = {
+        "id": trip_id,
+        "destination": "Japan",
+        "stage": "proposal",
+        "status": "active",
+        "packet": {
+            "destination": "Japan",
+            "start_date": "2026-10-01",
+            "end_date": "2026-10-10",
+            "party_size": 4,
+            "facts": {
+                "travelers": {
+                    "value": [
+                        {
+                            "name": "Meera",
+                            "constraints": ["jain meals (no onion/garlic)", "fear of heights"],
+                            "occasion": {"type": "anniversary", "date": "2026-04-14"},
+                        },
+                        {"name": "Dev", "constraints": []},
+                    ],
+                    "confidence": 0.85,
+                },
+            },
+        },
+        "strategy": {
+            "recommended_option": {"name": "Japan Family Journey", "cost": 9000, "currency": "USD"},
+        },
+    }
+    monkeypatch.setattr(TripStore, "_get_trip_internal", lambda _tid: internal_trip)
+
+    safe = TripStore.get_trip_for_public_access(trip_id)
+    reqs = safe["packet"]["stated_requirements"]
+    assert "jain meals (no onion/garlic)" in reqs
+    assert "fear of heights" in reqs
+    assert "anniversary 2026-04-14" in reqs
+    # De-attribution: no traveler names anywhere in the safe projection.
+    assert "Meera" not in json.dumps(safe)
+    assert "Dev" not in json.dumps(safe)
+
+    # And the API view surfaces the same plan-scoped list.
+    token = generate_signed_proposal_token(trip_id, agency_id="agency_req", ttl_hours=24)
+    monkeypatch.setattr(
+        public_proposals.TripStore,
+        "get_trip_for_agency",
+        lambda requested_trip_id, requested_agency_id: {"id": trip_id, "agency_id": "agency_req"},
+    )
+    monkeypatch.setattr(
+        public_proposals.TripStore,
+        "get_trip_for_public_access",
+        lambda requested_trip_id: safe,
+    )
+    response = client.get(f"/api/public/proposals/{token}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["stated_requirements"] == reqs
+    assert "Meera" not in response.text

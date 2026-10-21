@@ -161,6 +161,9 @@ vi.mock("@/lib/combobox", () => ({
 
 vi.mock("@/lib/routes", () => ({
   getTripRoute: (tripId: string, tab: string) => `/trips/${tripId}/${tab}`,
+  // DecisionPanel's repair empty-state uses this (T2 Supersession merge).
+  getTripRepairRoute: (tripId: string | undefined | null) =>
+    tripId ? `/trips/${tripId}/intake` : "/trips",
 }));
 
 describe("P2 Owner Onboarding Journey: Junior Quote → Coaching Warnings → Owner Decision", () => {

@@ -10,11 +10,14 @@ Contract: Docs/pre_build_corrections_2026-04-15.md (Correction 1)
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, is_dataclass, asdict
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 def _obj_to_dict(obj: Any) -> Any:
@@ -37,7 +40,7 @@ _otel_tracer = trace.get_tracer("orchestration.pipeline")
 
 from .packet_models import SourceEnvelope
 from .extractors import ExtractionPipeline
-from .validation import validate_packet, PacketValidationReport
+from .validation import validate_packet, PacketValidationReport, blocking_unknowns
 from .decision import run_gap_and_decision, DecisionResult
 from .strategy import (
     build_session_strategy,
@@ -167,6 +170,9 @@ class SpineResult:
     # Frontier Autonomic outcomes
     frontier_result: Optional[FrontierOrchestrationResult] = None
 
+    # Semantic Ambiguity & Intake Completeness (TypeSafe Jev)
+    ambiguity_report: Optional[Dict[str, Any]] = None
+
     # Metadata
     run_timestamp: str = ""
     early_exit: bool = False
@@ -267,6 +273,47 @@ def run_spine_once(
     if operating_mode is not None:
         packet.operating_mode = operating_mode
 
+    # Semantic Ambiguity & Intake Completeness (TypeSafe Jev)
+    ambiguity_report_dict: Optional[Dict[str, Any]] = None
+    try:
+        raw_texts = [
+            env.content for env in envelopes
+            if isinstance(env.content, str) and env.content.strip()
+        ]
+        if raw_texts:
+            combined_text = "\n".join(raw_texts)
+            from src.intake.ambiguity_classifier import IntakeAmbiguityClassifier
+            classifier = IntakeAmbiguityClassifier()
+            ambiguity_eval = classifier.evaluate(combined_text)
+            ambiguity_report_dict = ambiguity_eval.to_dict()
+            packet.metadata["semantic_ambiguity"] = ambiguity_report_dict
+
+            # --- FND-0316 (2026-10-05): JEV/validation coherence guard ------
+            # Single seam: this is where the JEV report is finalized onto the
+            # packet. A PROCEED verdict must never coexist with blocking
+            # unknowns — the same packet would then carry two opposite
+            # epistemic verdicts (JEV "all clear" vs NB01 intake_completion
+            # ESCALATED / STOP_NEEDS_REVIEW) on one operator surface.
+            # Downgrade PROCEED to the proceed-with-asks convention and embed
+            # the blocking fields in the reasoning trail. Confidence is never
+            # touched; ASK_FOLLOWUP/ESCALATE are never upgraded.
+            if (
+                isinstance(ambiguity_report_dict, dict)
+                and ambiguity_report_dict.get("action") == "PROCEED"
+            ):
+                blocking_fields = [
+                    entry["field_name"] for entry in blocking_unknowns(packet)
+                ]
+                if blocking_fields:
+                    ambiguity_report_dict["action"] = "PROCEED_WITH_ASKS"
+                    prior_reasoning = str(ambiguity_report_dict.get("reasoning") or "")
+                    ambiguity_report_dict["reasoning"] = (
+                        prior_reasoning
+                        + f"; coherence_override=blocking_unknowns:[{','.join(blocking_fields)}]"
+                    ).lstrip("; ")
+    except Exception as exc:
+        logger.debug("Semantic ambiguity classification skipped: %s", exc)
+
     if stage_callback:
         _emit_stage_event("packet", "completed", _obj_to_dict(packet))
     else:
@@ -297,13 +344,31 @@ def run_spine_once(
     if nb01_result.verdict == GateVerdict.ESCALATE:
         # If extraction is structurally broken, we must stop
         from .decision import DecisionResult
+
+        # FND-0313: blocked leads still owe the operator their open
+        # questions — the T1 ask loop (POST /followups/{trip_id}/send)
+        # reads exactly this list, and an empty one 409s the loop before
+        # it can start. Data-only floor, same shape as the DEGRADE branch
+        # below; capped to keep a messy note from spamming the traveler.
+        escalate_floor = [
+            {
+                "field_name": b["field_name"],
+                "priority": b["priority"],
+                "question": (
+                    f"Please provide {b['field_name'].replace('_', ' ')} "
+                    f"to continue planning."
+                ),
+            }
+            for b in blocking_unknowns(packet)[:6]
+        ]
         decision = DecisionResult(
             packet_id=packet.packet_id,
             current_stage=stage,
             operating_mode=packet.operating_mode,
             decision_state="STOP_NEEDS_REVIEW",
             hard_blockers=["extraction_quality"],
-            rationale={"gate_failure": GateIdentifier.INTAKE_COMPLETION.value, "reasons": nb01_result.reasons}
+            rationale={"gate_failure": GateIdentifier.INTAKE_COMPLETION.value, "reasons": nb01_result.reasons},
+            follow_up_questions=escalate_floor,
         )
         if stage_callback:
             _emit_stage_event("validation", "completed", {
@@ -393,6 +458,21 @@ def run_spine_once(
     # Update packet decision_state from decision result
     _decision_pre_state = _snapshot_packet_state(packet)
     packet.decision_state = decision.decision_state
+
+    # FND-0316 Post-Decision Coherence Guard:
+    # Ensure Jev semantic ambiguity report stays coherent with the final decision state.
+    # If decision state is blocked (STOP_NEEDS_REVIEW or ASK_FOLLOWUP) or hard_blockers exist,
+    # the Jev ambiguity action must never report an unconditioned "PROCEED".
+    sem_amb = packet.metadata.get("semantic_ambiguity")
+    if isinstance(sem_amb, dict) and sem_amb.get("action") == "PROCEED":
+        if decision.decision_state in ("STOP_NEEDS_REVIEW", "ASK_FOLLOWUP") or decision.hard_blockers:
+            sem_amb["action"] = "PROCEED_WITH_ASKS"
+            prior_reasoning = str(sem_amb.get("reasoning") or "")
+            reasons = list(decision.hard_blockers) or [decision.decision_state]
+            sem_amb["reasoning"] = (
+                prior_reasoning
+                + f"; coherence_override=decision_state:{decision.decision_state}:[{','.join(reasons)}]"
+            ).lstrip("; ")
 
     if stage_callback:
         _emit_stage_event("decision", "completed", _obj_to_dict(decision))
@@ -636,6 +716,7 @@ def run_spine_once(
         autonomy_outcome=autonomy_outcome,
         assertion_result=assertion_result,
         frontier_result=frontier_result,
+        ambiguity_report=ambiguity_report_dict,
         run_timestamp=run_timestamp,
     )
 

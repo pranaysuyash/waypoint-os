@@ -2,16 +2,24 @@
 Stress & Load Benchmarking API Router.
 
 Provides endpoints to trigger high-concurrency simulation of multi-agent IROPS healing.
+
+FND-0093 (reverified 2026-09-29): this endpoint runs expensive concurrent
+simulation and previously had neither auth nor a rate limit — an
+unauthenticated compute-burner. It now requires agency auth (with the
+ops/admin permission) and a strict per-minute limit.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict
-from fastapi import APIRouter
+
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
 
 from src.benchmarking.stress_simulator import MultiAgentStressSimulator
+from spine_api.core.auth import get_current_agency_id, require_permission
 from spine_api.core.feature_gates import get_feature_tier
+from spine_api.core.rate_limiter import limiter
 from spine_api.core.reality_tier import TierMetadata
 
 router = APIRouter(prefix="/api/v1/benchmarking", tags=["benchmarking"])
@@ -22,7 +30,14 @@ class StressTestRequest(BaseModel):
 
 
 @router.post("/stress-test")
-async def execute_stress_test(payload: StressTestRequest) -> Dict[str, Any]:
+@limiter.limit("5/minute")
+async def execute_stress_test(
+    request: Request,
+    response: Response,
+    payload: StressTestRequest,
+    agency_id: str = Depends(get_current_agency_id),
+    _perm=require_permission("trips:write"),
+) -> Dict[str, Any]:
     """Runs concurrent IROPS auto-healing passes and returns latency percentiles and throughput."""
     result = await MultiAgentStressSimulator.run_concurrent_irops_benchmark(concurrency=payload.concurrency)
     return {

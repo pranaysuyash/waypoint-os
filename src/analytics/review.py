@@ -64,6 +64,13 @@ def process_review_action(
             f"Invalid action '{action}'. Valid options: {sorted(VALID_ACTIONS)}"
         )
 
+    # FND-0302: a rejection or revision request without a stated reason leaves
+    # downstream revision intent unrecorded — auto-generated notes hide the gap.
+    if normalised in ("rejected", "revision_needed") and not (notes and notes.strip()):
+        raise ValueError(
+            f"A written reason is required to {normalised.replace('_', ' ')} a trip."
+        )
+
     trip = TripStore.get_trip(trip_id)
     if trip is None:
         raise KeyError(f"Trip not found: {trip_id}")

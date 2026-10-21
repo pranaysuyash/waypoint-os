@@ -190,6 +190,13 @@ def _validate_tripstore_backend_configuration() -> None:
             "Invalid TRIPSTORE_BACKEND after normalization. Allowed values are file, json, or sql."
         )
 
+    env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development")).lower().strip()
+    if backend == "file" and env in {"production", "staging"}:
+        raise RuntimeError(
+            f"FileTripStore cannot be used in {env} mode. "
+            "Set TRIPSTORE_BACKEND=sql and configure a valid DATABASE_URL."
+        )
+
     if backend == "sql":
         logger.info("TripStore configured for SQL persistence")
     else:
@@ -376,6 +383,11 @@ try:
     from spine_api.routers import counterfactual as counterfactual_router
     from spine_api.routers import trip_documents as trip_documents_router
     from spine_api.routers import public_proposals as public_proposals_router
+    from spine_api.routers import public_asks as public_asks_router
+    from spine_api.routers import quotes as quotes_router
+    from spine_api.routers import messages as messages_router
+    from spine_api.routers import accounting_export as accounting_export_router
+    from spine_api.routers import dsr as dsr_router
     from spine_api.routers import distribution as distribution_router
     from spine_api.routers import negotiation as negotiation_router
     from spine_api.routers import crisis_ops as crisis_ops_router
@@ -403,6 +415,7 @@ try:
     from spine_api.routers import itinerary_export as itinerary_export_router
     from spine_api.routers import yield_benchmark as yield_benchmark_router
     from spine_api.routers import fulfillment as fulfillment_router
+    from spine_api.routers import message_triage as message_triage_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -763,6 +776,11 @@ except (ImportError, ValueError):
     _fulfill_mod = importlib.util.module_from_spec(_fulfill_spec)
     _fulfill_spec.loader.exec_module(_fulfill_mod)
     fulfillment_router = _fulfill_mod
+
+    _msg_triage_spec = importlib.util.spec_from_file_location("routers.message_triage", _base / "routers" / "message_triage.py")
+    _msg_triage_mod = importlib.util.module_from_spec(_msg_triage_spec)
+    _msg_triage_spec.loader.exec_module(_msg_triage_mod)
+    message_triage_router = _msg_triage_mod
 
 
 def _register_router_module_aliases() -> None:
@@ -1264,15 +1282,45 @@ async def lifespan(app: FastAPI):
     # seam that makes the decision-path mode observable at boot. The image
     # and every envelope declare USE_HYBRID_DECISION_ENGINE explicitly; this
     # line records the EFFECTIVE mode + credential state so envelope drift
-    # is visible immediately.
+    # is visible immediately. ADR-008 §8 (2026-09-16): the line also records
+    # WHICH decision-lane model the ratified policy resolves and the ladder's
+    # per-rung credential state.
     _decision_rung = "hybrid/LLM enrichment ACTIVE — rung R3" if (
         os.environ.get("USE_HYBRID_DECISION_ENGINE", "0") == "1"
     ) else "deterministic core — rung R3 without enrichment (USE_HYBRID_DECISION_ENGINE=0)"
-    logger.warning(
-        "decision path: %s | llm credential present: %s",
-        _decision_rung,
-        bool(os.environ.get("OPENAI_API_KEY")),
-    )
+    try:
+        from src.decision.model_policy import decision_lane_policy_status
+
+        _lane = decision_lane_policy_status()
+        _lane_ladder = " ".join(
+            f"{model_id}:{'cred' if ok else '-'}"
+            for model_id, ok in _lane.get("ladder_credentials", {}).items()
+        )
+        logger.warning(
+            "decision path: %s | llm credential present: %s | decision lane "
+            "model: %s (position %s, %s) | ladder[%s]",
+            _decision_rung,
+            bool(os.environ.get("OPENAI_API_KEY")),
+            _lane.get("resolved") or "unresolved",
+            _lane.get("resolved_position", "-"),
+            _lane.get("resolved_reason", "-"),
+            _lane_ladder,
+        )
+        if _decision_rung.startswith("hybrid") and not _lane.get("resolved"):
+            logger.error(
+                "decision path: hybrid is ON but the ADR-008 §8 policy "
+                "resolved no model — requests will degrade to the "
+                "deterministic core (override via %s)",
+                "DECISION_LANE_MODEL",
+            )
+    except Exception as _lane_exc:  # noqa: BLE001 — rung log must never block boot
+        logger.warning(
+            "decision path: %s | llm credential present: %s | decision lane "
+            "policy status unavailable: %s",
+            _decision_rung,
+            bool(os.environ.get("OPENAI_API_KEY")),
+            _lane_exc,
+        )
 
     env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development")).lower().strip()
     from spine_api.core.startup_assertions import auth_bypass_enabled
@@ -1443,6 +1491,16 @@ app = FastAPI(
     version=APP_VERSION,
     lifespan=lifespan,
 )
+
+
+def create_app() -> FastAPI:
+    """Application factory for Spine API (R-10 / FND-0217).
+    
+    Provides the standard factory entrypoint for ASGI runners and test suites
+    without duplicating router registrations.
+    """
+    return app
+
 app.state.limiter = limiter
 
 app.add_middleware(
@@ -1466,6 +1524,7 @@ app.add_exception_handler(RateLimitExceeded, RateLimitExceededHandler.handler)
 from fastapi import Request as _FastAPIRequest  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from spine_api.core.trip_status import IllegalTripStatusTransition  # noqa: E402
+from src.security.privacy_guard import PrivacyGuardError  # noqa: E402
 
 
 @app.exception_handler(IllegalTripStatusTransition)
@@ -1480,6 +1539,29 @@ async def _illegal_trip_status_transition_handler(
                 "from_status": exc.old_status,
                 "to_status": exc.new_status,
                 "message": str(exc),
+            }
+        },
+    )
+
+
+# Fail-closed privacy-guard rejections are client errors (the request payload
+# carries real-user PII the current persistence mode refuses to store), not
+# server faults: map to 422 with the guard's reason instead of a raw 500
+# (FND-0320). Fail-closed blocking itself is correct; only the error contract
+# was wrong.
+@app.exception_handler(PrivacyGuardError)
+async def _privacy_guard_error_handler(
+    request: _FastAPIRequest, exc: PrivacyGuardError
+):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": {
+                "reason": str(exc),
+                "remediation": (
+                    "Enable encryption/migration (TRIPSTORE_BACKEND=sql|postgres "
+                    "and ENCRYPTION_KEY) or remove real-user PII from the request."
+                ),
             }
         },
     )
@@ -1549,6 +1631,11 @@ app.include_router(financial_ops_router.router, dependencies=[Depends(_auth_or_s
 app.include_router(counterfactual_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(trip_documents_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(public_proposals_router.router)
+app.include_router(public_asks_router.router)
+app.include_router(quotes_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(messages_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(accounting_export_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(dsr_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(journey_graph_router.public_router)
 from spine_api.routers import ivr_gateway as ivr_gateway_router  # noqa: E402
 app.include_router(ivr_gateway_router.public_router)
@@ -1591,6 +1678,7 @@ app.include_router(trip_history_router.router, dependencies=[Depends(_auth_or_sk
 app.include_router(itinerary_export_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(yield_benchmark_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(fulfillment_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(message_triage_router.router, dependencies=[Depends(_auth_or_skip)])
 
 # G-2: Pre-departure briefing bundle (JSON + PDF)
 from spine_api.routers import pre_departure as pre_departure_router  # noqa: E402
@@ -2843,6 +2931,27 @@ def patch_trip(
             "run_id": run_id,
             "trigger": "auto_edit",
         }
+
+    # T11b (2026-09-30): flight-fact changes are disruption telemetry — run the
+    # ghost-concierge monitor (evaluate → persist truth-up → chain irops_healer
+    # when a journey node matches). Drafts only; never sends, never moves money.
+    if "flight_status_updates" in updates_dict:
+        try:
+            from spine_api.services.ghost_concierge_monitor import (
+                run_ghost_concierge_for_trip,
+            )
+
+            # Merged view: some backends don't round-trip non-column keys, so
+            # the monitor receives the reported facts explicitly.
+            monitor_trip = {
+                **updated_trip,
+                "flight_status_updates": updates_dict["flight_status_updates"],
+            }
+            run_ghost_concierge_for_trip(monitor_trip, agency.id)
+            if monitor_trip.get("ghost_concierge"):
+                updated_trip["ghost_concierge"] = monitor_trip["ghost_concierge"]
+        except Exception as exc:  # observability side-effect: never break the PATCH
+            logger.warning("ghost_concierge monitor skipped for %s: %s", trip_id, exc)
 
     return TripResponse.from_dict(updated_trip)
 

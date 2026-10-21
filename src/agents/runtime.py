@@ -50,41 +50,6 @@ class WorkStatus(str, Enum):
 
 
 @dataclass(slots=True)
-class ExecutionLease:
-    """Durable worker execution lease preventing zombie tasks (PER-0700 / PER-0705)."""
-    lease_id: str
-    work_item_id: str
-    owner_worker_id: str
-    acquired_at: datetime
-    lease_expires_at: datetime
-    last_heartbeat_at: datetime
-    ttl_seconds: int = 60
-
-    def is_expired(self, now: Optional[datetime] = None) -> bool:
-        if now is None:
-            now = datetime.now(timezone.utc)
-        return now > self.lease_expires_at
-
-    def heartbeat(self, extend_seconds: Optional[int] = None, now: Optional[datetime] = None) -> None:
-        if now is None:
-            now = datetime.now(timezone.utc)
-        self.last_heartbeat_at = now
-        ttl = extend_seconds or self.ttl_seconds
-        self.lease_expires_at = now + timedelta(seconds=ttl)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "lease_id": self.lease_id,
-            "work_item_id": self.work_item_id,
-            "owner_worker_id": self.owner_worker_id,
-            "acquired_at": self.acquired_at.isoformat(),
-            "lease_expires_at": self.lease_expires_at.isoformat(),
-            "last_heartbeat_at": self.last_heartbeat_at.isoformat(),
-            "ttl_seconds": self.ttl_seconds,
-        }
-
-
-@dataclass(slots=True)
 class ExecutionCheckpoint:
     """Serializable intermediate state checkpoint for deterministic recovery (AGT-04 / AGT-05)."""
     checkpoint_id: str
@@ -127,20 +92,6 @@ class CheckpointStore:
     @classmethod
     def clear(cls, trip_id: str, run_id: str) -> None:
         cls._checkpoints.pop(f"{trip_id}:{run_id}", None)
-
-
-class ZombieLeaseSweeper:
-    """Detects expired worker leases and recovers interrupted tasks (AGT-02)."""
-
-    @staticmethod
-    def sweep(leases: dict[str, ExecutionLease], now: Optional[datetime] = None) -> list[str]:
-        if now is None:
-            now = datetime.now(timezone.utc)
-        reclaimed: list[str] = []
-        for work_id, lease in list(leases.items()):
-            if lease.is_expired(now):
-                reclaimed.append(work_id)
-        return reclaimed
 
 
 class DeadLetterQueue:

@@ -79,3 +79,13 @@ Intake spine pipeline (deterministic rules, no LLM in path) · run lifecycle + f
 - Shared FE tier renderer (small IMPLEMENT)
 - Wire-or-archive DECIDEs per §1.4 (C-01/C-03/PA-35 family — see ADR-008)
 - Spot-check ◯ rows before relying on them
+
+
+## Addendum 2026-09-30 (FND-0281): MemoryArchitectPanel disposition REMOVED
+
+`workbench/MemoryArchitectPanel.tsx` (471-line simulated memory-graph demo) was
+never imported by any serving surface — it rendered nowhere. Supersession audit
+against the durable SQL customer-memory backend (FND-0060) found no unique
+behavior to salvage. Removed together with its D-08 boundary block and
+simulated-panels-honesty block (the other badged panels listed above remain;
+their honesty pins are unchanged). The 23-file badge count above is historical.

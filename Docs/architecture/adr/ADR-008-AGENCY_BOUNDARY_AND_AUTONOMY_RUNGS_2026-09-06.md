@@ -164,3 +164,48 @@ with captured output.
 **Docs:** the 2026-09-06 map-drift addendum's "hybrid default ON" entry now
 carries a dated correction pointing here (the entry described the envelope
 accident as if it were the posture).
+
+## 8. Decision-lane model policy — RATIFIED 2026-09-16 (owner)
+
+The §7 item-2 opt-in review gate required a KDD benchmark; the benchmark is now
+complete and owner-ratified. Evidence: exhaustive clean-rerun ladder
+(`records_or_std_all2.jsonl`, 284 standard-venue models × cold+warm × 31 graded
+records, graded per the call-integrity invariant — see
+`Docs/exploration/KDD_MODEL_COMPARISON_2026-09-12.md` FINAL RESULTS, 2026-09-16).
+
+**Ratified policy (decision lane = hybrid risk-flag LLM rung):**
+
+1. **Primary:** `gpt-4.1-nano`, OpenAI API direct — F1 0.909, severity
+   agreement 0.92, $0.09/1M output.
+2. **Ratified equal:** `gpt-5.4-nano` — F1 0.909 identical at every grade
+   stage; $0.28/1M; drop-in alternate if 4.1-nano deprecates.
+3. **Fallback ladder:** HF router `Llama-3.1-8B:fastest` (F1 0.80 @ 1.2s) →
+   OpenRouter standard venue `gpt-4.1-nano` / `llama-3.2-1b` (F1 0.75 venue
+   ceiling — venue tax ≈ 0.16 F1, venue is contingency only) → local
+   `llama3.2:3b` (0.737).
+4. **Blacklist:** flagship-class models (DeepSeek/GLM/Kimi/Grok/Gemini/
+   Mistral-large/Qwen-max tiers) are barred from this lane — 227/284 arms
+   graded < 0.40; size class ≤ 8B/nano is the champion class in every venue
+   tested.
+
+**Scope:** this ratifies the *model policy* only. The §7 item-2 prod posture
+ stays envelope-explicit `"0"` until the X-09 PII-egress gate closes; the
+ policy feeds that opt-in review (it replaced the provisional
+ "champion F1 0.808" benchmark note with venue-tested final numbers).
+ Wiring task: serving config points the LLM rung at the ratified pair with
+ the fallback ladder; rung log already declares effective model per §4.1.
+
+**Wired (2026-09-16):** `src/decision/model_policy.py` is the canonical
+ resolver — ratified ladder (openai/gpt-4.1-nano → hf-router/llama-3.1-8B:fastest →
+ openrouter/gpt-4.1-nano → openrouter/llama-3.2-1b → local-ollama/llama3.2:3b,
+ first credential present wins), flagship blacklist enforced on the
+ `DECISION_LANE_MODEL` override, `gpt-5.4-nano` selectable as the ratified
+ equal. `src/intake/decision.py::_get_hybrid_engine` injects the
+ policy-resolved client (ambient `LLM_PROVIDER`/`OPENAI_MODEL` no longer pick
+ the decision-lane model); `create_hybrid_engine(llm_client=...)` passes it
+ through; the `server.py` lifespan rung log now records the resolved lane
+ model, ladder position, and per-rung credential state, and errors loudly if
+ hybrid is ON with no servable rung. Posture untouched: envelopes remain
+ explicit `"0"` (`tests/test_x09_hybrid_configuration.py` green). Tests:
+ `tests/test_decision_model_policy.py` (16) + decision-lane regression suites
+ (123 + 70) all green; ruff clean.

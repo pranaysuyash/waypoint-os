@@ -183,9 +183,12 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   scenario_id: "",
   strict_leakage: false,
   debug_raw_json: false,
-  enable_ghost_concierge: true,
-  enable_sentiment_analysis: true,
-  federated_intelligence_opt_in: true,
+  // Parked toggles default OFF (ADR-008 §7 zero-implicit-defaults; honesty
+  // wave): no real data path exists for any of these yet — defaulting them
+  // true advertised capabilities that cannot fire.
+  enable_ghost_concierge: false,
+  enable_sentiment_analysis: false,
+  federated_intelligence_opt_in: false,
   audit_confidence_threshold: 0.9,
   setOperatingMode: (value) => set({ operating_mode: value }),
   setStage: (value) => set({ stage: value }),

@@ -76,6 +76,19 @@ export interface AssignInboxResponse {
   assigned: number;
 }
 /**
+ * Operator resolution of a single packet assumption (FND-0291).
+ *
+ * Confirm: omit corrected_value — the operator asserts the system default
+ * is accurate. Correct: supply corrected_value — written into
+ * extracted.facts[slot_name] with explicit_user authority, mirroring the
+ * manual-correction idiom in _sync_manual_trip_fields.
+ */
+export interface AssumptionAction {
+  slot_name: string;
+  operator_notes?: string | null;
+  corrected_value?: string | number | boolean | null;
+}
+/**
  * Definition of an action authority rule (PER-0927).
  */
 export interface AuthorityMatrixItem {
@@ -1027,6 +1040,9 @@ export interface RunStatusResponse {
   }[];
   hard_blockers?: string[];
   soft_blockers?: string[];
+  branch_options?: {
+    [k: string]: unknown;
+  }[];
   report_fingerprint?: string | null;
   access_token?: string | null;
   retention_days?: number | null;
@@ -1293,6 +1309,41 @@ export interface TimelineResponse {
   trip_id: string;
   events?: TimelineEvent[];
 }
+/**
+ * Answers submitted by the traveler through the token-gated ask page.
+ */
+export interface TravelerAnswerSubmission {
+  /**
+   * Each entry: field_name + answer (+ optional question echo)
+   *
+   * @minItems 1
+   */
+  answers: [
+    {
+      [k: string]: string;
+    },
+    ...{
+      [k: string]: string;
+    }[]
+  ];
+  respondent_name?: string | null;
+}
+/**
+ * Traveler-facing open questions for a token-verified trip (FND-0301).
+ *
+ * Traveler-safe: carries the questions and trip context only — no customer
+ * PII beyond the destination label.
+ */
+export interface TravelerAskPublicView {
+  token: string;
+  trip_id: string;
+  destination?: string | null;
+  status?: string;
+  questions?: {
+    [k: string]: unknown;
+  }[];
+  asked_count?: number;
+}
 export interface TripListResponse {
   items: {
     [k: string]: unknown;
@@ -1321,6 +1372,53 @@ export interface TripPatchRequest {
   customer_message?: string | null;
   agent_notes?: string | null;
   party_composition?: string | null;
+  assumption_actions?: AssumptionAction[] | null;
+}
+/**
+ * An unpriced branch prompt from the decision engine — never a priced tier.
+ */
+export interface TripQuoteBranch {
+  label: string;
+  description?: string | null;
+  priced?: boolean;
+}
+/**
+ * One real quote derived from persisted spine data (T4). Every monetary
+ * field carries an honesty ``basis`` label; nothing here is invented.
+ */
+export interface TripQuoteView {
+  trip_id: string;
+  title: string;
+  currency?: string;
+  net_cost: number;
+  net_cost_basis?: string;
+  margin_percent: number;
+  margin_basis?: string;
+  margin_provenance?: {
+    [k: string]: unknown;
+  };
+  tax_percent?: number | null;
+  rack_price: number;
+  rack_price_basis?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string | null;
+  highlights?: string[];
+  summary?: string | null;
+}
+/**
+ * Trip-scoped quotes read model: real quote(s) or an explicit
+ * not-ready contract with the missing persisted inputs listed.
+ */
+export interface TripQuotesResponse {
+  trip_id: string;
+  quote_ready: boolean;
+  quotes?: TripQuoteView[];
+  branches?: TripQuoteBranch[];
+  budget_breakdown?: {
+    [k: string]: unknown;
+  } | null;
+  missing?: string[];
 }
 /**
  * Canonical response shape for individual trip endpoints.

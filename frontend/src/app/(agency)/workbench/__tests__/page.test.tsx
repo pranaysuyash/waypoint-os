@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import WorkbenchPage from '../page';
+// T2 route unification: ../page redirects to /inquiries/new; these tests
+// characterize PageClient behavior and mount it directly.
+import WorkbenchPage from '../PageClient';
 import { extractCompletedTripIdFromDraft } from '../PageClient';
 import { normalizeSafetyResult } from '@/lib/bff-trip-adapters';
 
@@ -102,7 +104,10 @@ vi.mock('@/hooks/useSpineRun', () => ({
 }));
 
 vi.mock('@/stores/workbench', () => ({
-  useWorkbenchStore: () => mockWorkbenchStore,
+  // FND-0283: PageClient now subscribes via per-field selectors — the mock
+  // must apply the selector to the mock state.
+  useWorkbenchStore: (sel?: (s: typeof mockWorkbenchStore) => unknown) =>
+    (sel ? sel(mockWorkbenchStore) : mockWorkbenchStore),
 }));
 
 vi.mock('@/stores/auth', () => ({

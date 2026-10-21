@@ -44,7 +44,7 @@ import os
 import threading
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable, Optional
 
 from .usage_store import LLMUsageStore, GuardStorageError, InMemoryUsageStore, RedisUsageStore
@@ -92,6 +92,8 @@ class LLMUsageGuard:
         budget_warning_thresholds: Optional[list[float]] = None,
         store: Optional[LLMUsageStore] = None,
         now_func: Optional[Callable[[], datetime]] = None,
+        quiesce_block_threshold: int = 10,
+        quiesce_cooldown_seconds: float = 300.0,
     ):
         """
         Initialize the usage guard.
@@ -106,6 +108,10 @@ class LLMUsageGuard:
             budget_warning_thresholds: [0.5, 0.8, 1.0].
             store: Storage backend (defaults to SQLite).
             now_func: Injectable clock for testing.
+            quiesce_block_threshold: Consecutive guard blocks before auto-quiesce
+                trips (FND-0228). 0 disables quiescing.
+            quiesce_cooldown_seconds: How long auto-quiesce fast-fails calls
+                after tripping.
         """
         self.enabled = enabled
         self.agency_id = agency_id
@@ -117,6 +123,16 @@ class LLMUsageGuard:
         self.store = store or InMemoryUsageStore()
         self._now_func = now_func or (lambda: datetime.now())
         self.alerts: Optional[AlertDeliveryService] = None
+        # FND-0228: auto-quiesce circuit breaker + parent→child spend ledger.
+        self.quiesce_block_threshold = max(0, int(quiesce_block_threshold))
+        self.quiesce_cooldown_seconds = max(0.0, float(quiesce_cooldown_seconds))
+        self._quiesce_lock = threading.Lock()
+        self._block_streak = 0
+        self._quiesced_until: Optional[datetime] = None
+        # Process-local run reservations: consistent with the ratified
+        # single-worker deployment boundary (Dockerfile one-worker default);
+        # cross-worker reservation needs the store schema and is future work.
+        self._run_reservations: dict[str, dict] = {}
 
     # ── factory ──────────────────────────────────────────────────────────────────────
 
@@ -156,6 +172,12 @@ class LLMUsageGuard:
             enabled=enabled,
             max_calls_per_hour=int(max_calls) if max_calls is not None else None,
             max_calls_per_model=max_per_model or None,
+            quiesce_block_threshold=int(
+                os.environ.get("LLM_GUARD_QUIESCE_BLOCK_THRESHOLD", "10")
+            ),
+            quiesce_cooldown_seconds=float(
+                os.environ.get("LLM_GUARD_QUIESCE_COOLDOWN_SECONDS", "300")
+            ),
             daily_budget=float(daily_budget) if daily_budget is not None else None,
             budget_mode=budget_mode,
             budget_warning_thresholds=[float(t.strip()) for t in thresholds_str.split(",") if t.strip()],
@@ -205,15 +227,60 @@ class LLMUsageGuard:
         model: str,
         estimated_cost: float,
         feature: str,
+        parent_request_id: Optional[str] = None,
     ) -> LLMUsageDecision:
         """
         Check whether an LLM call is allowed.
 
         If allowed, a 'reserved' event is atomically persisted.
         Call finalize_reservation after the LLM call.
+
+        FND-0228: when ``parent_request_id`` refers to a run reservation opened
+        via :meth:`open_run_reservation`, the child call's estimated cost draws
+        from the parent's budget; a child that would exceed it is blocked
+        before touching the LLM.
         """
         if not self.enabled:
             return LLMUsageDecision(allowed=True)
+
+        quiesce_decision = self._quiesce_decision()
+        if quiesce_decision is not None:
+            return quiesce_decision
+
+        parent_ledger: Optional[dict] = None
+        if parent_request_id is not None:
+            with self._quiesce_lock:
+                parent_ledger = self._run_reservations.get(parent_request_id)
+            if parent_ledger is None:
+                return LLMUsageDecision(
+                    allowed=False,
+                    reason=(
+                        f"Parent run reservation '{parent_request_id}' not found; "
+                        "open one via open_run_reservation() before child calls."
+                    ),
+                    block_reason="parent_reservation_missing",
+                )
+            with self._quiesce_lock:
+                remaining = parent_ledger["budget"] - parent_ledger["spent"]
+            if estimated_cost > remaining:
+                logger.warning(
+                    "llm_usage_guard.parent_reservation_exhausted",
+                    extra={
+                        "parent_request_id": parent_request_id,
+                        "agency_id": self.agency_id,
+                        "feature": feature,
+                        "estimated_cost": estimated_cost,
+                        "remaining": remaining,
+                    },
+                )
+                return LLMUsageDecision(
+                    allowed=False,
+                    reason=(
+                        f"Parent run reservation exhausted: estimated ₹{estimated_cost:.2f} "
+                        f"> ₹{remaining:.2f} remaining of ₹{parent_ledger['budget']:.2f}."
+                    ),
+                    block_reason="parent_reservation_exhausted",
+                )
 
         request_id = f"req_{uuid.uuid4().hex[:16]}"
         model_limit = self.max_calls_per_model.get(model)
@@ -269,9 +336,20 @@ class LLMUsageGuard:
             )
             if self.alerts:
                 self._emit_block_alert(model, feature, decision)
+            self._register_block()
             return decision
 
         warnings = reservation.get("warnings", [])
+        with self._quiesce_lock:
+            self._block_streak = 0
+        if parent_ledger is not None:
+            with self._quiesce_lock:
+                parent_ledger["spent"] += float(estimated_cost or 0.0)
+                parent_ledger.setdefault("children", {})[request_id] = {
+                    "estimated": float(estimated_cost or 0.0),
+                    "feature": feature,
+                }
+            reservation = {**reservation, "parent_request_id": parent_request_id}
         for w in warnings:
             logger.warning(
                 "llm_usage_guard.threshold_warning",
@@ -334,6 +412,120 @@ class LLMUsageGuard:
                 "llm_usage_guard.finalize_failed",
                 extra={"request_id": decision.request_id, "error": str(exc)},
             )
+        parent_id = (decision.reservation or {}).get("parent_request_id")
+        if parent_id:
+            estimated = (decision.reservation or {}).get("estimated_cost")
+            delta = float(actual_cost or 0.0)
+            if estimated is not None:
+                delta -= float(estimated)
+            with self._quiesce_lock:
+                ledger = self._run_reservations.get(parent_id)
+                child = ledger.get("children", {}).get(decision.request_id) if ledger else None
+                if ledger is not None:
+                    ledger["spent"] += delta
+                    if child is not None:
+                        child["actual"] = float(actual_cost or 0.0)
+
+    # ── FND-0228: auto-quiesce + parent→child run reservations ──────────────────────
+
+    def open_run_reservation(self, budget: float) -> str:
+        """Open a parent run reservation; child calls draw from ``budget``.
+
+        The returned id is passed as ``parent_request_id`` to
+        :meth:`check_before_call`. Close with :meth:`close_run_reservation`.
+        Process-local by design (single-worker deployment boundary).
+        """
+        if budget < 0:
+            raise ValueError("budget must be non-negative")
+        run_id = f"run_{uuid.uuid4().hex[:16]}"
+        with self._quiesce_lock:
+            self._run_reservations[run_id] = {
+                "budget": float(budget),
+                "spent": 0.0,
+                "children": {},
+                "opened_at": self._now_func().isoformat(),
+            }
+        # Cap the ledger: evict oldest if it grows unboundedly.
+        with self._quiesce_lock:
+            while len(self._run_reservations) > 1000:
+                oldest = next(iter(self._run_reservations))
+                del self._run_reservations[oldest]
+        return run_id
+
+    def close_run_reservation(self, run_request_id: str) -> Optional[dict]:
+        """Close a run reservation, returning its final spend summary."""
+        with self._quiesce_lock:
+            ledger = self._run_reservations.pop(run_request_id, None)
+        return ledger
+
+    def _quiesce_decision(self) -> Optional[LLMUsageDecision]:
+        """Fast-fail decision while auto-quiesce is active (None = not quiesced)."""
+        if self.quiesce_block_threshold <= 0:
+            return None
+        with self._quiesce_lock:
+            if self._quiesced_until is None:
+                return None
+            now = self._now_func()
+            if now >= self._quiesced_until:
+                self._quiesced_until = None
+                self._block_streak = 0
+                logger.info(
+                    "llm_usage_guard.quiesce_lifted",
+                    extra={"agency_id": self.agency_id},
+                )
+                return None
+            remaining_seconds = (self._quiesced_until - now).total_seconds()
+        return LLMUsageDecision(
+            allowed=False,
+            reason=(
+                f"Agency auto-quiesced after repeated limit violations; "
+                f"retry in ~{max(0.0, remaining_seconds):.0f}s."
+            ),
+            block_reason="quiesced",
+        )
+
+    def _register_block(self) -> None:
+        """Count a limit-driven block; trip auto-quiesce at the threshold.
+
+        Storage-failure blocks are infrastructure, not tenant behavior, and
+        are excluded by the caller.
+        """
+        if self.quiesce_block_threshold <= 0:
+            return
+        with self._quiesce_lock:
+            if self._quiesced_until is not None:
+                return
+            self._block_streak += 1
+            if self._block_streak < self.quiesce_block_threshold:
+                return
+            self._quiesced_until = self._now_func() + timedelta(
+                seconds=self.quiesce_cooldown_seconds
+            )
+            streak = self._block_streak
+            self._block_streak = 0
+        logger.warning(
+            "llm_usage_guard.quiesced",
+            extra={
+                "agency_id": self.agency_id,
+                "block_streak": streak,
+                "cooldown_seconds": self.quiesce_cooldown_seconds,
+            },
+        )
+        if self.alerts:
+            try:
+                self.alerts.send_rate_limit_blocked(
+                    agency_id=self.agency_id,
+                    model="*",
+                    feature="*",
+                    reason=(
+                        f"Auto-quiesced after {streak} consecutive limit blocks "
+                        f"(cooldown {self.quiesce_cooldown_seconds:.0f}s)"
+                    ),
+                    current_calls=streak,
+                    limit=self.quiesce_block_threshold,
+                )
+            except Exception:
+                logger.exception("llm_usage_guard.quiesce_alert_failed")
 
     # ── helpers ──────────────────────────────────────────────────────────────────────
 
@@ -396,6 +588,11 @@ class LLMUsageGuard:
             "budget_mode": self.budget_mode,
             "current_hourly_calls": summary["hourly_calls"],
             "current_daily_cost": summary["daily_cost"],
+            # FND-0228 observability
+            "quiesced": self._quiesced_until is not None,
+            "quiesced_until": self._quiesced_until.isoformat() if self._quiesced_until else None,
+            "block_streak": self._block_streak,
+            "open_run_reservations": len(self._run_reservations),
         }
 
     def set_alert_service(self, alerts: Optional[AlertDeliveryService]) -> None:
@@ -405,6 +602,10 @@ class LLMUsageGuard:
     def reset_state(self) -> None:
         """Reset store (useful for tests)."""
         self.store.reset()
+        with self._quiesce_lock:
+            self._block_streak = 0
+            self._quiesced_until = None
+            self._run_reservations.clear()
 
 
 # ── Per-Agency Guard Registry ──────────────────────────────────────────────────────

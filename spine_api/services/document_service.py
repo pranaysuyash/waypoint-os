@@ -191,16 +191,8 @@ async def upload_document(
     )
 
     db.add(doc)
-    # Refresh before commit — see collection_service.generate_token for the
-    # connection-release rationale (FORCE RLS + fresh re-checkout).
     await db.flush()
     await db.refresh(doc)
-    await db.commit()
-
-    logger.info(
-        "Document uploaded: id=%s trip=%s type=%s uploaded_by=%s scan=%s",
-        doc.id, trip_id, document_type, uploaded_by_type, scan_result.status,
-    )
 
     actor_type = "agent" if uploaded_by_type == "agent" else "system"
     actor_id = uploaded_by_id if uploaded_by_type == "agent" else None
@@ -220,6 +212,12 @@ async def upload_document(
         },
     )
 
+    await db.commit()
+
+    logger.info(
+        "Document uploaded: id=%s trip=%s type=%s uploaded_by=%s scan=%s",
+        doc.id, trip_id, document_type, uploaded_by_type, scan_result.status,
+    )
     return doc
 
 
@@ -272,13 +270,8 @@ async def accept_document(
     doc.reviewed_by = reviewed_by
     doc.reviewed_at = datetime.now(timezone.utc)
     doc.review_notes_present = notes_present
-    # Refresh before commit — see collection_service.generate_token for the
-    # connection-release rationale (FORCE RLS + fresh re-checkout).
     await db.flush()
     await db.refresh(doc)
-    await db.commit()
-
-    logger.info("Document accepted: id=%s reviewed_by=%s", document_id, reviewed_by)
 
     await execution_event_service.emit_event_best_effort(
         db, agency_id=doc.agency_id, trip_id=doc.trip_id,
@@ -292,6 +285,9 @@ async def accept_document(
         },
     )
 
+    await db.commit()
+
+    logger.info("Document accepted: id=%s reviewed_by=%s", document_id, reviewed_by)
     return doc
 
 
@@ -313,13 +309,8 @@ async def reject_document(
     doc.reviewed_by = reviewed_by
     doc.reviewed_at = datetime.now(timezone.utc)
     doc.review_notes_present = notes_present
-    # Refresh before commit — see collection_service.generate_token for the
-    # connection-release rationale (FORCE RLS + fresh re-checkout).
     await db.flush()
     await db.refresh(doc)
-    await db.commit()
-
-    logger.info("Document rejected: id=%s reviewed_by=%s", document_id, reviewed_by)
 
     await execution_event_service.emit_event_best_effort(
         db, agency_id=doc.agency_id, trip_id=doc.trip_id,
@@ -333,6 +324,9 @@ async def reject_document(
         },
     )
 
+    await db.commit()
+
+    logger.info("Document rejected: id=%s reviewed_by=%s", document_id, reviewed_by)
     return doc
 
 
@@ -358,12 +352,8 @@ async def soft_delete_document(
     doc.deleted_by = deleted_by
     doc.storage_delete_status = "retained"
     # Refresh before commit — see collection_service.generate_token for the
-    # connection-release rationale (FORCE RLS + fresh re-checkout).
     await db.flush()
     await db.refresh(doc)
-    await db.commit()
-
-    logger.info("Document soft-deleted: id=%s deleted_by=%s", document_id, deleted_by)
 
     await execution_event_service.emit_event_best_effort(
         db, agency_id=doc.agency_id, trip_id=doc.trip_id,
@@ -377,4 +367,7 @@ async def soft_delete_document(
         },
     )
 
+    await db.commit()
+
+    logger.info("Document soft-deleted: id=%s deleted_by=%s", document_id, deleted_by)
     return doc

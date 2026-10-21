@@ -29,10 +29,12 @@ describe('WorkspacesPage', () => {
     } as never);
   });
 
-  it('renders a page-level return link back to overview', () => {
+  it('owns overview navigation via the persistent global devices (A8: per-page back device removed)', () => {
     render(<WorkspacesPage />);
 
-    expect(screen.getByRole('link', { name: /back to overview/i })).toHaveAttribute('href', '/overview');
+    // The sidebar marks the Trips section and the command-bar product link
+    // routes to /overview, so the page itself carries no duplicate back link.
+    expect(screen.queryByText(/back to overview/i)).not.toBeInTheDocument();
   });
 
   it('renders trips in planning with the same planning language as overview and intake', () => {

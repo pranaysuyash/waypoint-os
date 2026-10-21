@@ -22,7 +22,6 @@ import {
   Table2,
 } from 'lucide-react';
 import { useTrips } from '@/hooks/useTrips';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { InlineError } from '@/components/error-boundary';
 import type { Trip } from '@/lib/api-client';
 import { PlanningTripCard } from '@/components/workspace/PlanningTripCard';
@@ -205,7 +204,7 @@ function EmptyWorkspace() {
           <ChevronRight className='size-4' aria-hidden='true' />
         </Link>
         <Link
-          href='/workbench'
+          href='/inquiries/new'
           className='inline-flex items-center gap-2 px-5 py-2.5 border border-[var(--border-default)] text-[#e6edf3] rounded-lg text-ui-sm font-medium hover:bg-[#161b22] transition-colors'
         >
           New Inquiry
@@ -346,7 +345,6 @@ function WorkspacesPageWithSearchParams() {
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
-      <BackToOverviewLink />
       {/* Header */}
       <header className='flex items-center justify-between pt-1 flex-wrap gap-3'>
         <div>

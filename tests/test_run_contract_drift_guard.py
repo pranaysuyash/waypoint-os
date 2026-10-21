@@ -55,6 +55,10 @@ def test_run_status_response_includes_polling_fields() -> None:
     assert "state" in fields
     assert "steps_completed" in fields
     assert "events" in fields
+    # Branch-options serving fix (2026-09-18): the pipeline produces and
+    # persists branch_options, so the polling contract must carry them
+    # instead of silently stripping them before the UI.
+    assert "branch_options" in fields
 
 
 def test_legacy_spine_run_response_is_not_used_by_post_run() -> None:

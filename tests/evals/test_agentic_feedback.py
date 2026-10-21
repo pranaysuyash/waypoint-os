@@ -447,6 +447,36 @@ def test_build_routing_metrics_calculates_fallback_and_review_health():
     assert metrics["cost_usd"]["avg_per_eval_event"] == 0.075
 
 
+def test_routing_cost_distinguishes_missing_observations_from_measured_zero():
+    metrics = build_routing_metrics([
+        _event(id="cost_known", event_metadata={"failure_signature": "known", "cost_estimate_usd": 0.3}),
+        _event(id="cost_zero", event_metadata={"failure_signature": "zero", "cost_estimate_usd": 0.0}),
+        _event(id="cost_unknown", event_metadata={"failure_signature": "unknown"}),
+    ])
+    assert metrics["cost_usd"]["avg_per_observed_event"] == 0.15
+    assert metrics["cost_usd"]["event_count_without_cost"] == 1
+    assert metrics["cost_usd"]["coverage_rate"] == 0.667
+
+
+def test_routing_measurements_reject_invalid_numeric_values():
+    events = [
+        _event(id=f"invalid_{i}", event_metadata={
+            "failure_signature": "invalid", "cost_estimate_usd": value, "latency_ms": value,
+        })
+        for i, value in enumerate([True, -1, float("nan"), float("inf")])
+    ]
+    metrics = build_routing_metrics(events)
+    assert metrics["cost_usd"]["event_count_with_cost"] == 0
+    assert metrics["cost_usd"]["avg_per_observed_event"] is None
+    assert metrics["latency_by_candidates"]["count"] == 0
+
+
+def test_routing_empty_measurements_have_unknown_average():
+    metrics = build_routing_metrics([])
+    assert metrics["cost_usd"]["avg_per_observed_event"] is None
+    assert metrics["cost_usd"]["coverage_rate"] is None
+
+
 def test_build_routing_metrics_includes_explicit_escalation_outcomes_from_review_events():
     events = [
         _event(

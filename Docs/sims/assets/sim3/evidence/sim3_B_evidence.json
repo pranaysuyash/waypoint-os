@@ -1,0 +1,2387 @@
+[
+  {
+    "step": "login",
+    "request": {
+      "url": "/api/auth/login"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "user": {
+        "id": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+        "email": "newuser@test.com",
+        "name": "New User",
+        "platform_role": "none"
+      },
+      "agency": {
+        "id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "name": "Test",
+        "slug": "test",
+        "logo_url": null
+      },
+      "membership": {
+        "role": "owner",
+        "is_primary": true
+      }
+    },
+    "at": "2026-10-05T18:10:07.819842+00:00"
+  },
+  {
+    "step": "B-seed",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/customers/remember",
+      "json": {
+        "name": "Ananya Rao",
+        "email": "ananya.rao.sim3@waypointtest.dev",
+        "dietary_requirements": "strict vegetarian",
+        "room_preference": "traditional heritage stays (ryokan-equivalent), quiet",
+        "seating_preference": "window",
+        "source_trip_id": "sim3_seed_japan_2026"
+      }
+    },
+    "status": 200,
+    "response": {
+      "customer_id": "cust_ananya.rao.sim3@waypointtest.dev",
+      "name": "Ananya Rao",
+      "email": "ananya.rao.sim3@waypointtest.dev",
+      "phone": null,
+      "dietary_requirements": "strict vegetarian",
+      "room_preference": "traditional heritage stays (ryokan-equivalent), quiet",
+      "seating_preference": "window",
+      "passport_country": null,
+      "passport_expiry": null,
+      "source_trip_ids": [
+        "sim3_seed_japan_2026"
+      ],
+      "last_confirmed_at": "2026-10-05T18:10:07.858144+00:00"
+    },
+    "at": "2026-10-05T18:10:08.376427+00:00"
+  },
+  {
+    "step": "B-seed-result",
+    "status": 200,
+    "response": {
+      "customer_id": "cust_ananya.rao.sim3@waypointtest.dev",
+      "name": "Ananya Rao",
+      "email": "ananya.rao.sim3@waypointtest.dev",
+      "phone": null,
+      "dietary_requirements": "strict vegetarian",
+      "room_preference": "traditional heritage stays (ryokan-equivalent), quiet",
+      "seating_preference": "window",
+      "passport_country": null,
+      "passport_expiry": null,
+      "source_trip_ids": [
+        "sim3_seed_japan_2026"
+      ],
+      "last_confirmed_at": "2026-10-05T18:10:07.858144+00:00"
+    }
+  },
+  {
+    "step": "B-lookup-pos",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/customers/memory?email=ananya.rao.sim3@waypointtest.dev"
+    },
+    "status": 200,
+    "response": {
+      "customer_id": "cust_ananya.rao.sim3@waypointtest.dev",
+      "name": "Ananya Rao",
+      "email": "ananya.rao.sim3@waypointtest.dev",
+      "phone": null,
+      "dietary_requirements": "strict vegetarian",
+      "room_preference": "traditional heritage stays (ryokan-equivalent), quiet",
+      "seating_preference": "window",
+      "passport_country": null,
+      "passport_expiry": null,
+      "source_trip_ids": [
+        "sim3_seed_japan_2026"
+      ],
+      "last_confirmed_at": "2026-10-05T18:10:07.858144+00:00"
+    },
+    "at": "2026-10-05T18:10:08.508427+00:00"
+  },
+  {
+    "step": "B-lookup-neg",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/customers/memory?email=wrong.customer@waypointtest.dev"
+    },
+    "status": 200,
+    "response": null,
+    "at": "2026-10-05T18:10:08.584472+00:00"
+  },
+  {
+    "step": "B1-run-draft",
+    "request": {
+      "method": "POST",
+      "path": "/api/drafts",
+      "json": {
+        "name": "hi — ananya here (ananya.rao.sim3@waypointtest.dev). you pla",
+        "customer_message": "hi — ananya here (ananya.rao.sim3@waypointtest.dev). you planned japan for me last year and it was genuinely perfect. i want something with the same feeling but vietnam this time — 10 days in march, 2 people, around $2400 excluding international flights. same kind of quiet heritage stays please."
+      }
+    },
+    "status": 200,
+    "response": {
+      "draft_id": "draft_45078333b79c",
+      "name": "hi — ananya here (ananya.rao.sim3@waypointtest.dev). you pla",
+      "status": "open",
+      "created_at": "2026-10-05T18:10:08.703957+00:00"
+    },
+    "at": "2026-10-05T18:10:08.920464+00:00"
+  },
+  {
+    "step": "B1-run-run",
+    "request": {
+      "method": "POST",
+      "path": "/run",
+      "json": {
+        "raw_note": "hi — ananya here (ananya.rao.sim3@waypointtest.dev). you planned japan for me last year and it was genuinely perfect. i want something with the same feeling but vietnam this time — 10 days in march, 2 people, around $2400 excluding international flights. same kind of quiet heritage stays please.",
+        "draft_id": "draft_45078333b79c"
+      }
+    },
+    "status": 200,
+    "response": {
+      "run_id": "29a3a566-6b13-4eb0-a1b2-d4b6d36acfaf",
+      "state": "queued",
+      "idempotent_replay": false
+    },
+    "at": "2026-10-05T18:10:09.154058+00:00"
+  },
+  {
+    "step": "B1-run",
+    "request": {
+      "method": "GET",
+      "path": "/runs/29a3a566-6b13-4eb0-a1b2-d4b6d36acfaf"
+    },
+    "status": 200,
+    "response": {
+      "run_id": "29a3a566-6b13-4eb0-a1b2-d4b6d36acfaf",
+      "state": "completed",
+      "trip_id": "trip_002936fdc5cc",
+      "stage": "discovery",
+      "operating_mode": "normal_intake",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "created_at": "2026-10-05T18:10:08.992054+00:00",
+      "started_at": "2026-10-05T18:10:09.186892+00:00",
+      "completed_at": "2026-10-05T18:10:15.298060+00:00",
+      "total_ms": 5445.1,
+      "steps_completed": [
+        "packet",
+        "validation",
+        "decision",
+        "strategy"
+      ],
+      "events": [
+        {
+          "event_id": "evt_94542fca",
+          "event_type": "run_started",
+          "run_id": "29a3a566-6b13-4eb0-a1b2-d4b6d36acfaf",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:09.402501+00:00",
+          "stage": "discovery",
+          "operating_mode": "normal_intake"
+        },
+        {
+          "event_id": "evt_4db7c474",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "29a3a566-6b13-4eb0-a1b2-d4b6d36acfaf",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:09.468404+00:00",
+          "stage_name": "packet"
+        },
+        {
+          "event_id": "evt_80d9c564",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "29a3a566-6b13-4eb0-a1b2-d4b6d36acfaf",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:12.396461+00:00",
+          "stage_name": "packet",
+          "execution_ms": 2928.23
+        },
+        {
+          "event_id": "evt_8d04eb98",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "29a3a566-6b13-4eb0-a1b2-d4b6d36acfaf",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:12.432901+00:00",
+          "stage_name": "validation"
+        },
+        {
+          "event_id": "evt_d6a2f9fa",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "29a3a566-6b13-4eb0-a1b2-d4b6d36acfaf",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:12.627423+00:00",
+          "stage_name": "validation",
+          "execution_ms": 194.5
+        },
+        {
+          "event_id": "evt_a949179d",
+          "event_type": "run_completed",
+          "run_id": "29a3a566-6b13-4eb0-a1b2-d4b6d36acfaf",
+          "trip_id": "trip_002936fdc5cc",
+          "timestamp": "2026-10-05T18:10:15.401531+00:00",
+          "total_ms": 5445.1
+        }
+      ],
+      "error_type": null,
+      "error_message": null,
+      "stage_at_failure": null,
+      "block_reason": null,
+      "validation": {
+        "status": "DEGRADED",
+        "stage": "intake_extraction",
+        "gate": "intake_completion",
+        "legacy_gate": "NB01",
+        "reasons": [
+          "Intake minimum met — trip can be saved for later enrichment",
+          "Quote-ready fields are incomplete — quote generation blocked"
+        ]
+      },
+      "packet": {
+        "packet_id": "pkt_7408d1e4",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Japan",
+              "Vietnam"
+            ],
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "Japan | Vietnam",
+                "ref_id": "ref_a84d29",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780576",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "semi_open",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_618b34",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780613",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "date_window": {
+            "value": "in march",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "in march",
+                "ref_id": "ref_1efe51",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780844",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "date_confidence": {
+            "value": "flexible",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from date parsing",
+                "ref_id": "ref_6a2ff6",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780858",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 10,
+              "max": 10
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "10 days",
+                "ref_id": "ref_1ac079",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780951",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_raw_text": {
+            "value": "$2400",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "$2400",
+                "ref_id": "ref_64686d",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782188",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_min": {
+            "value": 2400,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "$2400",
+                "ref_id": "ref_8f2ff5",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782218",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_max": {
+            "value": 2400,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "$2400",
+                "ref_id": "ref_8d4a91",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782317",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_currency": {
+            "value": "USD",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "$2400",
+                "ref_id": "ref_63725c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782484",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_flexibility": {
+            "value": "soft",
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "soft",
+                "ref_id": "ref_bbf3d1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782615",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from budget context",
+                "ref_id": "ref_34f24c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782810",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "party_size": {
+            "value": 2,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "2",
+                "ref_id": "ref_408f28",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.784436",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "party_composition": {
+            "value": {
+              "adults": 2
+            },
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "{'adults': 2}",
+                "ref_id": "ref_803c49",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.784459",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_purpose": {
+            "value": "cultural",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "cultural",
+                "ref_id": "ref_5c441c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785700",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_style": {
+            "value": "cultural",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "cultural",
+                "ref_id": "ref_0cf781",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785723",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "speakers": {
+            "value": [
+              "Ananya"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "['Ananya']",
+                "ref_id": "ref_f4ea2e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785742",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "soft_preferences": {
+            "value": [
+              "something with the same feeling but vietnam this time — 10 days in march"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "['something with the same feeling but vietnam this time — 10 days in march']",
+                "ref_id": "ref_939812",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785758",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_priorities": {
+            "value": [
+              "cultural experience"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "['cultural experience']",
+                "ref_id": "ref_5d3a62",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785773",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_a26a78",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785929",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_e5abc9",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.786108",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": {}
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_418b85",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.786147",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "feedback": null,
+        "raw_note": null,
+        "suitability_flags": [],
+        "ambiguities": [
+          {
+            "field_name": "destination_candidates",
+            "ambiguity_type": "unresolved_alternatives",
+            "raw_value": "derived from extracted candidates: Japan | Vietnam",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          },
+          {
+            "field_name": "budget_raw_text",
+            "ambiguity_type": "flights_inclusiveness_unknown",
+            "raw_value": "am this time — 10 days in march, 2 people, around $2400 excluding international flights",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          }
+        ],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_17f19599"
+        ],
+        "revision_count": 0,
+        "event_cursor": 24,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780598",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Japan",
+                "Vietnam"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780617",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "semi_open"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-05T23:40:11.780687",
+            "details": {
+              "field_name": "destination_candidates",
+              "ambiguity_type": "unresolved_alternatives"
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780849",
+            "details": {
+              "field_name": "date_window",
+              "old_value": null,
+              "new_value": "in march"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780862",
+            "details": {
+              "field_name": "date_confidence",
+              "old_value": null,
+              "new_value": "flexible"
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780955",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 10,
+                "max": 10
+              }
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782206",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "$2400"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782232",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 2400
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782340",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 2400
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782509",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "USD"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782623",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "soft"
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782817",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-05T23:40:11.783223",
+            "details": {
+              "field_name": "budget_raw_text",
+              "ambiguity_type": "flights_inclusiveness_unknown"
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.784443",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.784464",
+            "details": {
+              "field_name": "party_composition",
+              "old_value": null,
+              "new_value": {
+                "adults": 2
+              }
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785708",
+            "details": {
+              "field_name": "trip_purpose",
+              "old_value": null,
+              "new_value": "cultural"
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785728",
+            "details": {
+              "field_name": "trip_style",
+              "old_value": null,
+              "new_value": "cultural"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785746",
+            "details": {
+              "field_name": "speakers",
+              "old_value": null,
+              "new_value": [
+                "Ananya"
+              ]
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785762",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "something with the same feeling but vietnam this time — 10 days in march"
+              ]
+            }
+          },
+          {
+            "event_id": 20,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785777",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "cultural experience"
+              ]
+            }
+          },
+          {
+            "event_id": 21,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785934",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 22,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:40:11.786114",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 23,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:40:11.786151",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 24,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:11.786245",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "assumptions": [
+          {
+            "slot_name": "budget_flexibility",
+            "assumed_value": "soft",
+            "rationale": "Value defaulted by system business rules — no explicit traveler input for 'budget_flexibility'. Epistemic status: ASSUMED. Operator confirmation recommended.",
+            "criticality": "advisory",
+            "created_at": "2026-10-05T23:40:11.786289",
+            "acknowledged_by_operator": false,
+            "operator_notes": null,
+            "source_field": "budget"
+          },
+          {
+            "slot_name": "budget_scope",
+            "assumed_value": "total",
+            "rationale": "Value defaulted by system business rules — no explicit traveler input for 'budget_scope'. Epistemic status: ASSUMED. Operator confirmation recommended.",
+            "criticality": "critical",
+            "created_at": "2026-10-05T23:40:11.786303",
+            "acknowledged_by_operator": false,
+            "operator_notes": null,
+            "source_field": "budget"
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 1.0,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.98); dates_clarity=True (noul=0.83); party_clarity=True (noul=0.95); budget_clarity=True (noul=0.87); intake_action=PROCEED (p=1.0, conf=1.0); coherence_override=blocking_unknowns:[origin_city]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "decision_state": "ASK_FOLLOWUP",
+      "follow_up_questions": [
+        {
+          "field_name": "origin_city",
+          "priority": "medium",
+          "question": "Please provide origin city to generate a quote."
+        }
+      ],
+      "hard_blockers": [],
+      "soft_blockers": [
+        "incomplete_intake"
+      ],
+      "branch_options": [],
+      "report_fingerprint": null,
+      "access_token": null,
+      "retention_days": null,
+      "frontier_result": null
+    },
+    "at": "2026-10-05T18:10:16.493124+00:00"
+  },
+  {
+    "step": "B1-trip",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_002936fdc5cc"
+    },
+    "status": 200,
+    "response": {
+      "id": "trip_002936fdc5cc",
+      "status": "incomplete",
+      "stage": "discovery",
+      "dateWindow": "in march",
+      "destination": "Japan",
+      "origin": null,
+      "budget": "$2400",
+      "party": 2,
+      "tripType": "cultural",
+      "tripPurpose": "cultural",
+      "customerName": "Client FDC5CC",
+      "customerMessage": null,
+      "agentNotes": null,
+      "follow_up_due_date": null,
+      "extracted": {
+        "packet_id": "pkt_7408d1e4",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Japan",
+              "Vietnam"
+            ],
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "Japan | Vietnam",
+                "ref_id": "ref_a84d29",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780576",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "destination_status": {
+            "value": "semi_open",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_618b34",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780613",
+            "notes": null,
+            "epistemic_status": "INFERRED"
+          },
+          "date_window": {
+            "value": "in march",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "in march",
+                "ref_id": "ref_1efe51",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780844",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "date_confidence": {
+            "value": "flexible",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from date parsing",
+                "ref_id": "ref_6a2ff6",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780858",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 10,
+              "max": 10
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "10 days",
+                "ref_id": "ref_1ac079",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.780951",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_raw_text": {
+            "value": "$2400",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "$2400",
+                "ref_id": "ref_64686d",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782188",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_min": {
+            "value": 2400,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "$2400",
+                "ref_id": "ref_8f2ff5",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782218",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_max": {
+            "value": 2400,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "$2400",
+                "ref_id": "ref_8d4a91",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782317",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_currency": {
+            "value": "USD",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "$2400",
+                "ref_id": "ref_63725c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782484",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_flexibility": {
+            "value": "soft",
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "soft",
+                "ref_id": "ref_bbf3d1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782615",
+            "notes": null,
+            "epistemic_status": "ASSUMED"
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from budget context",
+                "ref_id": "ref_34f24c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.782810",
+            "notes": null,
+            "epistemic_status": "ASSUMED"
+          },
+          "party_size": {
+            "value": 2,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "2",
+                "ref_id": "ref_408f28",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.784436",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "party_composition": {
+            "value": {
+              "adults": 2
+            },
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "{'adults': 2}",
+                "ref_id": "ref_803c49",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.784459",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "trip_purpose": {
+            "value": "cultural",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "cultural",
+                "ref_id": "ref_5c441c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785700",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "trip_style": {
+            "value": "cultural",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "cultural",
+                "ref_id": "ref_0cf781",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785723",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "speakers": {
+            "value": [
+              "Ananya"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "['Ananya']",
+                "ref_id": "ref_f4ea2e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785742",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "soft_preferences": {
+            "value": [
+              "something with the same feeling but vietnam this time — 10 days in march"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "['something with the same feeling but vietnam this time — 10 days in march']",
+                "ref_id": "ref_939812",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785758",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "trip_priorities": {
+            "value": [
+              "cultural experience"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "['cultural experience']",
+                "ref_id": "ref_5d3a62",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785773",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_17f19599",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_a26a78",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.785929",
+            "notes": null,
+            "epistemic_status": "FACT"
+          }
+        },
+        "derived_signals": {
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_e5abc9",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.786108",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": "INFERRED"
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_418b85",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:11.786147",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": "INFERRED"
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "ambiguities": [
+          {
+            "field_name": "destination_candidates",
+            "ambiguity_type": "unresolved_alternatives",
+            "raw_value": "derived from extracted candidates: Japan | Vietnam",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          },
+          {
+            "field_name": "budget_raw_text",
+            "ambiguity_type": "flights_inclusiveness_unknown",
+            "raw_value": "am this time — 10 days in march, 2 people, around $2400 excluding international flights",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          }
+        ],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "assumptions": [
+          {
+            "slot_name": "budget_flexibility",
+            "assumed_value": "soft",
+            "rationale": "Value defaulted by system business rules — no explicit traveler input for 'budget_flexibility'. Epistemic status: ASSUMED. Operator confirmation recommended.",
+            "criticality": "advisory",
+            "created_at": "2026-10-05T23:40:11.786289",
+            "acknowledged_by_operator": false,
+            "operator_notes": null,
+            "source_field": "budget"
+          },
+          {
+            "slot_name": "budget_scope",
+            "assumed_value": "total",
+            "rationale": "Value defaulted by system business rules — no explicit traveler input for 'budget_scope'. Epistemic status: ASSUMED. Operator confirmation recommended.",
+            "criticality": "critical",
+            "created_at": "2026-10-05T23:40:11.786303",
+            "acknowledged_by_operator": false,
+            "operator_notes": null,
+            "source_field": "budget"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_17f19599"
+        ],
+        "revision_count": 0,
+        "event_cursor": 24,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780598",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Japan",
+                "Vietnam"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780617",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "semi_open"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-05T23:40:11.780687",
+            "details": {
+              "field_name": "destination_candidates",
+              "ambiguity_type": "unresolved_alternatives"
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780849",
+            "details": {
+              "field_name": "date_window",
+              "old_value": null,
+              "new_value": "in march"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780862",
+            "details": {
+              "field_name": "date_confidence",
+              "old_value": null,
+              "new_value": "flexible"
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.780955",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 10,
+                "max": 10
+              }
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782206",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "$2400"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782232",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 2400
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782340",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 2400
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782509",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "USD"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782623",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "soft"
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.782817",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-05T23:40:11.783223",
+            "details": {
+              "field_name": "budget_raw_text",
+              "ambiguity_type": "flights_inclusiveness_unknown"
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.784443",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.784464",
+            "details": {
+              "field_name": "party_composition",
+              "old_value": null,
+              "new_value": {
+                "adults": 2
+              }
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785708",
+            "details": {
+              "field_name": "trip_purpose",
+              "old_value": null,
+              "new_value": "cultural"
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785728",
+            "details": {
+              "field_name": "trip_style",
+              "old_value": null,
+              "new_value": "cultural"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785746",
+            "details": {
+              "field_name": "speakers",
+              "old_value": null,
+              "new_value": [
+                "Ananya"
+              ]
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785762",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "something with the same feeling but vietnam this time — 10 days in march"
+              ]
+            }
+          },
+          {
+            "event_id": 20,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785777",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "cultural experience"
+              ]
+            }
+          },
+          {
+            "event_id": 21,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:11.785934",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 22,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:40:11.786114",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 23,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:40:11.786151",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 24,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:11.786245",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 1.0,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.98); dates_clarity=True (noul=0.83); party_clarity=True (noul=0.95); budget_clarity=True (noul=0.87); intake_action=PROCEED (p=1.0, conf=1.0); coherence_override=blocking_unknowns:[origin_city]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "validation": {
+        "is_valid": true,
+        "errors": [],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "destination_candidates",
+            "type": "unresolved_alternatives",
+            "raw_value": "derived from extracted candidates: Japan | Vietnam"
+          },
+          {
+            "field": "budget_raw_text",
+            "type": "flights_inclusiveness_unknown",
+            "raw_value": "am this time — 10 days in march, 2 people, around $2400 excluding international flights"
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "date_window": 1,
+          "date_confidence": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "trip_purpose": 1,
+          "trip_style": 1,
+          "speakers": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "strategy": {
+        "session_goal": "Partial intake — awaiting enrichment.",
+        "priority_sequence": [],
+        "tonal_guardrails": [],
+        "risk_flags": [],
+        "suggested_opening": "",
+        "exit_criteria": [],
+        "next_action": "ASK_FOLLOWUP",
+        "assumptions": [],
+        "suggested_tone": "professional"
+      },
+      "frontier_result": null,
+      "safety": null,
+      "party_composition": null,
+      "pace_preference": null,
+      "date_year_confidence": null,
+      "lead_source": null,
+      "activity_provenance": null,
+      "activity_interests": null,
+      "trip_priorities": "cultural experience",
+      "date_flexibility": null,
+      "passenger_claim": null,
+      "ghost_concierge": null,
+      "traveler_answers": null
+    },
+    "at": "2026-10-05T18:10:16.555127+00:00"
+  },
+  {
+    "step": "B1-packet",
+    "packet_summary": {
+      "trip_id": "trip_002936fdc5cc",
+      "status": "incomplete",
+      "decision_state": null,
+      "packet_facts": {
+        "destination_candidates": {
+          "value": [
+            "Japan",
+            "Vietnam"
+          ],
+          "confidence": 0.7,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_17f19599",
+              "evidence_type": "text_span",
+              "excerpt": "Japan | Vietnam",
+              "ref_id": "ref_a84d29",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:40:11.780576",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "budget_min": {
+          "value": 2400,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_17f19599",
+              "evidence_type": "text_span",
+              "excerpt": "$2400",
+              "ref_id": "ref_8f2ff5",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:40:11.782218",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "budget_max": {
+          "value": 2400,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_17f19599",
+              "evidence_type": "text_span",
+              "excerpt": "$2400",
+              "ref_id": "ref_8d4a91",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:40:11.782317",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "budget_flexibility": {
+          "value": "soft",
+          "confidence": 0.7,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_17f19599",
+              "evidence_type": "text_span",
+              "excerpt": "soft",
+              "ref_id": "ref_bbf3d1",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:40:11.782615",
+          "notes": null,
+          "epistemic_status": "ASSUMED"
+        },
+        "budget_scope": {
+          "value": "total",
+          "confidence": 0.7,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_17f19599",
+              "evidence_type": "text_span",
+              "excerpt": "Derived from budget context",
+              "ref_id": "ref_34f24c",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:40:11.782810",
+          "notes": null,
+          "epistemic_status": "ASSUMED"
+        },
+        "party_size": {
+          "value": 2,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_17f19599",
+              "evidence_type": "text_span",
+              "excerpt": "2",
+              "ref_id": "ref_408f28",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:40:11.784436",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "party_composition": {
+          "value": {
+            "adults": 2
+          },
+          "confidence": 0.85,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_17f19599",
+              "evidence_type": "text_span",
+              "excerpt": "{'adults': 2}",
+              "ref_id": "ref_803c49",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:40:11.784459",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "soft_preferences": {
+          "value": [
+            "something with the same feeling but vietnam this time — 10 days in march"
+          ],
+          "confidence": 0.8,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_17f19599",
+              "evidence_type": "text_span",
+              "excerpt": "['something with the same feeling but vietnam this time — 10 days in march']",
+              "ref_id": "ref_939812",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-05T23:40:11.785758",
+          "notes": null,
+          "epistemic_status": "FACT"
+        }
+      },
+      "packet_fields": {},
+      "open_questions": null,
+      "ambiguities": [
+        {
+          "field_name": "destination_candidates",
+          "ambiguity_type": "unresolved_alternatives",
+          "raw_value": "derived from extracted candidates: Japan | Vietnam",
+          "normalized_value": null,
+          "confidence": 0.8,
+          "evidence_refs": [],
+          "notes": null
+        },
+        {
+          "field_name": "budget_raw_text",
+          "ambiguity_type": "flights_inclusiveness_unknown",
+          "raw_value": "am this time — 10 days in march, 2 people, around $2400 excluding international flights",
+          "normalized_value": null,
+          "confidence": 0.8,
+          "evidence_refs": [],
+          "notes": null
+        }
+      ],
+      "follow_ups": null,
+      "traveler_asks": null,
+      "ghost_concierge": null,
+      "passenger_claim": null,
+      "validation": {
+        "is_valid": true,
+        "errors": [],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "destination_candidates",
+            "type": "unresolved_alternatives",
+            "raw_value": "derived from extracted candidates: Japan | Vietnam"
+          },
+          {
+            "field": "budget_raw_text",
+            "type": "flights_inclusiveness_unknown",
+            "raw_value": "am this time — 10 days in march, 2 people, around $2400 excluding international flights"
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "date_window": 1,
+          "date_confidence": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "trip_purpose": 1,
+          "trip_style": 1,
+          "speakers": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "history": null
+    }
+  },
+  {
+    "step": "B1-hydrate",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/customers/hydrate-trip/trip_002936fdc5cc",
+      "json": {
+        "trip_id": "trip_002936fdc5cc",
+        "email": "ananya.rao.sim3@waypointtest.dev"
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_002936fdc5cc",
+      "memory_found": true,
+      "customer_name": "Ananya Rao",
+      "customer_id": "cust_ananya.rao.sim3@waypointtest.dev",
+      "hydrated_fields": [
+        "dietary_requirements",
+        "seating_preference",
+        "room_preference"
+      ],
+      "preferences": {
+        "dietary_requirements": "strict vegetarian",
+        "seating_preference": "window",
+        "room_preference": "traditional heritage stays (ryokan-equivalent), quiet"
+      },
+      "facts": [
+        {
+          "field_name": "dietary_requirements",
+          "value": "Dietary requirement: strict vegetarian",
+          "observed_at": "2026-10-05T18:10:07.918973+00:00",
+          "source": "memory",
+          "memory_id": "mem_db475d8d2b50",
+          "trust_class": "explicit_user"
+        },
+        {
+          "field_name": "seating_preference",
+          "value": "Seating preference: window",
+          "observed_at": "2026-10-05T18:10:07.964189+00:00",
+          "source": "memory",
+          "memory_id": "mem_e65ea33822dd",
+          "trust_class": "explicit_user"
+        },
+        {
+          "field_name": "room_preference",
+          "value": "Room preference: traditional heritage stays (ryokan-equivalent), quiet",
+          "observed_at": "2026-10-05T18:10:08.041197+00:00",
+          "source": "memory",
+          "memory_id": "mem_58528696ba80",
+          "trust_class": "explicit_user"
+        }
+      ]
+    },
+    "at": "2026-10-05T18:10:16.704627+00:00"
+  },
+  {
+    "step": "B1-lookup-after",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/customers/memory?email=ananya.rao.sim3@waypointtest.dev"
+    },
+    "status": 200,
+    "response": {
+      "customer_id": "cust_ananya.rao.sim3@waypointtest.dev",
+      "name": "Ananya Rao",
+      "email": "ananya.rao.sim3@waypointtest.dev",
+      "phone": null,
+      "dietary_requirements": "strict vegetarian",
+      "room_preference": "traditional heritage stays (ryokan-equivalent), quiet",
+      "seating_preference": "window",
+      "passport_country": null,
+      "passport_expiry": null,
+      "source_trip_ids": [
+        "sim3_seed_japan_2026"
+      ],
+      "last_confirmed_at": "2026-10-05T18:10:07.858144+00:00"
+    },
+    "at": "2026-10-05T18:10:16.773230+00:00"
+  }
+]

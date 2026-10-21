@@ -75,6 +75,9 @@ export function useWorkbenchRunSync({
             };
           })
         : [];
+      const normalizedBranchOptions = Array.isArray(spineRunState.branch_options)
+        ? (spineRunState.branch_options as DecisionOutput['branch_options'])
+        : [];
       setResultDecision({
         decision_state: spineRunState.decision_state ?? 'ASK_FOLLOWUP',
         hard_blockers: spineRunState.hard_blockers ?? [],
@@ -96,7 +99,7 @@ export function useWorkbenchRunSync({
           judgment_confidence: NaN,
           commercial_confidence: NaN,
         },
-        branch_options: [],
+        branch_options: normalizedBranchOptions,
         commercial_decision: 'NONE',
         budget_breakdown: null,
       });

@@ -9,10 +9,10 @@
   "counts": {
     "total_features": 117,
     "GATED": 6,
-    "LIVE": 94,
+    "LIVE": 93,
     "PARTIAL": 14,
     "SIMULATED": 2,
-    "STUB": 1
+    "STUB": 2
   },
   "records": [
     {
@@ -1056,11 +1056,11 @@
       "id": "H06",
       "domain": "H) Memory & CRM",
       "feature": "Memory architect panel",
-      "status": "LIVE",
+      "status": "STUB",
       "priority": "P2",
-      "what_it_does": "Operator view of memory graph state",
+      "what_it_does": "REMOVED 2026-09-30: never-rendered simulated demo surface (zero imports), superseded by the durable SQL customer-memory backend (FND-0060); file + D-08/honesty test blocks deleted — FND-0281",
       "evidence": [
-        "`frontend/src/app/(agency)/workbench/MemoryArchitectPanel.tsx`"
+        "_(file deleted)_"
       ]
     },
     {

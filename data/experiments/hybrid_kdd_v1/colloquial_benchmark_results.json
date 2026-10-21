@@ -1,0 +1,199 @@
+{
+  "timestamp": "2026-09-20T16:20:13Z",
+  "model": "jev-1.13.0",
+  "total_fixtures": 16,
+  "avg_latency_ms": 881.4124739374165,
+  "results": [
+    {
+      "fixture_id": "colloq_dest_verb_object_001",
+      "raw_input": "want to do japan",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "dates",
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 901.3
+    },
+    {
+      "fixture_id": "colloq_dest_hitting_001",
+      "raw_input": "hitting bali next month",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "dates",
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 851.0
+    },
+    {
+      "fixture_id": "colloq_dest_covering_001",
+      "raw_input": "covering tokyo and kyoto",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "dates",
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 960.0
+    },
+    {
+      "fixture_id": "colloq_dest_city_set_001",
+      "raw_input": "thinking tokyo + kyoto + osaka, 10-12 days",
+      "action": "PROCEED",
+      "source": "jev",
+      "missing": [
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 854.7
+    },
+    {
+      "fixture_id": "colloq_party_friends_001",
+      "raw_input": "me and 3 friends want a beach trip",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "destination",
+        "dates",
+        "budget"
+      ],
+      "elapsed_ms": 984.6
+    },
+    {
+      "fixture_id": "colloq_party_of_us_001",
+      "raw_input": "4 of us want a beach trip",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "destination",
+        "dates",
+        "budget"
+      ],
+      "elapsed_ms": 892.5
+    },
+    {
+      "fixture_id": "colloq_party_the_four_001",
+      "raw_input": "the four of us are going somewhere",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "destination",
+        "dates",
+        "budget"
+      ],
+      "elapsed_ms": 862.0
+    },
+    {
+      "fixture_id": "colloq_party_of_n_001",
+      "raw_input": "party of 4 to japan",
+      "action": "PROCEED",
+      "source": "jev",
+      "missing": [
+        "dates",
+        "budget"
+      ],
+      "elapsed_ms": 862.6
+    },
+    {
+      "fixture_id": "colloq_party_mixed_001",
+      "raw_input": "me and my wife and 2 friends want to do japan",
+      "action": "PROCEED",
+      "source": "jev",
+      "missing": [
+        "dates",
+        "budget"
+      ],
+      "elapsed_ms": 800.9
+    },
+    {
+      "fixture_id": "colloq_party_member_ref_001",
+      "raw_input": "one of us is terrified of heights",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "destination",
+        "dates",
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 901.6
+    },
+    {
+      "fixture_id": "colloq_dates_season_001",
+      "raw_input": "want to do japan next spring, maybe late march for the cherry blossoms",
+      "action": "PROCEED",
+      "source": "jev",
+      "missing": [
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 911.0
+    },
+    {
+      "fixture_id": "colloq_dates_late_month_001",
+      "raw_input": "maybe late march",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "destination",
+        "dates",
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 849.7
+    },
+    {
+      "fixture_id": "colloq_dates_flex_001",
+      "raw_input": "dates flexible plus or minus a week",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "destination",
+        "dates",
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 847.3
+    },
+    {
+      "fixture_id": "colloq_budget_each_001",
+      "raw_input": "budget around 3.5k USD each, not sure if that includes flights",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "destination",
+        "dates",
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 879.6
+    },
+    {
+      "fixture_id": "colloq_full_note_001",
+      "raw_input": "hey! me and 3 friends want to do japan next spring, maybe late march for the cherry blossoms. flying from SF. we are all pretty active, one friend is vegetarian. budget around 3.5k USD each, not sure if that includes flights. thinking tokyo + kyoto + osaka, 10-12 days. one of us is terrified of heights so no cable cars please. we saw this amazing ryokan on tiktok, no idea of the name. dates flexible plus or minus a week. we also wanna do a cooking class somewhere. thx!!",
+      "action": "PROCEED",
+      "source": "jev",
+      "missing": [
+        "budget"
+      ],
+      "elapsed_ms": 814.6
+    },
+    {
+      "fixture_id": "colloq_reading_collision_001",
+      "raw_input": "we are reading up on our options for the trip",
+      "action": "ASK_FOLLOWUP",
+      "source": "jev",
+      "missing": [
+        "destination",
+        "dates",
+        "party",
+        "budget"
+      ],
+      "elapsed_ms": 929.2
+    }
+  ]
+}

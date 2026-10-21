@@ -90,6 +90,19 @@ describe("planning-status", () => {
     expect(getPlanningStageGateReason(trip, "strategy")).toBe("Confirm budget range and origin city first.");
   });
 
+  it("allows access to decision stage when trip has passenger_claim or ghost_concierge even if planning details are missing (FND-0317)", () => {
+    const tripWithClaim = makeTrip({
+      passenger_claim: { claim_id: "CLM-123", status: "PENDING" } as any,
+    });
+    expect(canAccessPlanningStage(tripWithClaim, "decision")).toBe(true);
+    expect(canAccessPlanningStage(tripWithClaim, "strategy")).toBe(false);
+
+    const tripWithGhost = makeTrip({
+      ghost_concierge: { overall_health: "DEGRADED" } as any,
+    });
+    expect(canAccessPlanningStage(tripWithGhost, "decision")).toBe(true);
+  });
+
   it("keeps draft follow-up as the primary action while required fields are missing", () => {
     expect(getPlanningPrimaryActionLabel(makeTrip())).toBe("Draft follow-up");
   });

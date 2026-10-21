@@ -32,10 +32,12 @@ Migration:
 from contextvars import ContextVar
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import AsyncGenerator, Optional, Sequence
+from typing import Any, AsyncGenerator, Optional, Sequence
 
 from fastapi import Depends
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text
+from sqlalchemy.exc import InvalidRequestError, NoInspectionAvailable
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from spine_api.core.database import get_db
@@ -273,9 +275,9 @@ async def rls_session(agency_id: str):
     RLS context survives commits/rollbacks within the same session. Resets the
     value to empty on exit to prevent cross-request bleeding through the pool.
     """
-    from spine_api.core.database import async_session_maker
+    from spine_api.persistence import tripstore_session_maker
 
-    async with async_session_maker() as session:
+    async with tripstore_session_maker() as session:
         # Session-level so it survives commits within this session
         await session.execute(
             text("SELECT set_config('app.current_agency_id', :agency_id, false)"),
@@ -288,3 +290,70 @@ async def rls_session(agency_id: str):
             await session.execute(
                 text("SELECT set_config('app.current_agency_id', '', false)"),
             )
+
+
+async def refresh_or_reselect(db: AsyncSession, instance: Any) -> None:
+    """Refresh a session-managed instance after a commit, tolerating RLS GUC
+    loss on connection re-checkout. (FND-0310 / FND-0311)
+
+    Why this exists: ``Session.commit()`` ends the transaction and RELEASES the
+    pooled connection back to the pool. ``rls_session``'s tenant GUC is a
+    SESSION-level ``set_config`` bound to that one connection, so a post-commit
+    ``db.refresh()`` — whose autobegin may check out a different pooled
+    connection that never received the GUC — runs its identity re-select under
+    FORCE RLS with an empty tenant context, matches zero rows, and raises
+    ``InvalidRequestError: Could not refresh instance ...`` even though the row
+    was committed. (``expire_on_commit=False`` rules out post-commit expiry.)
+
+    Recovery path:
+      1. Try the plain ``db.refresh(instance)`` (fast path; no-op cost).
+      2. On ``InvalidRequestError``, re-apply the session-level tenant GUC on
+         the current connection — restoring ``rls_session``'s documented
+         invariant that the context survives commits within the request —
+         then force an explicit re-select by primary key via
+         ``db.get(..., populate_existing=True)``, which refreshes the existing
+         identity-map instance in place.
+      3. If the re-select still finds nothing, re-raise the original refresh
+         error (the row genuinely is not visible to this tenant — surface the
+         real database failure, never swallow it).
+
+    Use this for every post-commit refresh of a session-managed ORM row.
+    Refreshes inside read paths (no preceding commit) can keep ``db.refresh``.
+    """
+    # The tenant GUC must be read BEFORE refreshing: a failed refresh() leaves
+    # the instance's state expired, and touching expired mapped attributes
+    # afterwards would attempt synchronous IO (MissingGreenlet) under
+    # AsyncSession. This one loaded-attribute read is the only happy-path cost.
+    agency_id = getattr(instance, "agency_id", None)
+
+    # Fast path: a bare refresh, exactly like the call sites this helper
+    # replaces. All recovery machinery only runs after a failure.
+    try:
+        await db.refresh(instance)
+        return
+    except InvalidRequestError as exc:
+        # Plain local (an ``as``-bound name is cleared at block exit) — kept
+        # for re-raise if the fallback re-select also cannot see the row.
+        refresh_error: InvalidRequestError = exc
+
+    # IO-free PK read: ``state.identity`` returns the PK values cached in the
+    # instance key at flush/load time — expired attributes do not clear it.
+    try:
+        pk_values: Any = sa_inspect(instance).identity
+    except NoInspectionAvailable:
+        # Non-mapped instance (e.g. a test double): the plain refresh is its
+        # only contract; there is nothing to re-select.
+        raise refresh_error from None
+
+    if pk_values is None:
+        raise refresh_error from None
+
+    if agency_id:
+        await db.execute(
+            text("SELECT set_config('app.current_agency_id', :agency_id, false)"),
+            {"agency_id": agency_id},
+        )
+
+    fresh = await db.get(type(instance), pk_values, populate_existing=True)
+    if fresh is None:
+        raise refresh_error from None

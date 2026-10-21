@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Suspense, useState, useCallback, useEffect, useRef, useReducer } from 'react';
+import { Suspense, useState, useCallback, useEffect, useRef, useReducer, useMemo } from 'react';
 import { ClientDateTime, ClientTime } from '@/hooks/useClientDate';
 import { Tabs } from '@/components/ui/tabs';
 import { PipelineFlow, type PipelineStageId } from './PipelineFlow';
@@ -67,6 +67,11 @@ const IntakeTab = dynamic(() => import('./IntakeTab'));
 const PacketTab = dynamic(() => import('./PacketTab'));
 const SafetyTab = dynamic(() => import('./SafetyTab'));
 const PersonaCouncilPanel = dynamic(() => import('./PersonaCouncilPanel'));
+const DecisionPanel = dynamic(() =>
+  import('@/components/workspace/panels/DecisionPanel').then((mod) => ({
+    default: mod.DecisionPanel,
+  })),
+);
 const FrontierDashboard = dynamic(() =>
   import('@/components/workspace/FrontierDashboard').then((mod) => ({
     default: mod.FrontierDashboard,
@@ -86,11 +91,46 @@ function WorkbenchContent() {
   const stageParam = getSearchParam('stage');
   const scenarioParam = getSearchParam('scenario');
   const [completedTripId, setCompletedTripId] = useState<string | null>(null);
+  // FND-0283: per-field zustand selectors instead of one whole-store
+  // subscription — a 900+-line re-render on every unrelated store write was
+  // the single largest render cost in the workbench. Each slice re-renders
+  // this component only when that slice itself changes.
+  const draft_status = useWorkbenchStore((s) => s.draft_status);
+  const save_state = useWorkbenchStore((s) => s.save_state);
+  const result_validation = useWorkbenchStore((s) => s.result_validation);
+  const input_raw_note = useWorkbenchStore((s) => s.input_raw_note);
+  const input_owner_note = useWorkbenchStore((s) => s.input_owner_note);
+  const draft_id = useWorkbenchStore((s) => s.draft_id);
+  const result_packet = useWorkbenchStore((s) => s.result_packet);
+  const draft_last_saved_at = useWorkbenchStore((s) => s.draft_last_saved_at);
+  const strict_leakage = useWorkbenchStore((s) => s.strict_leakage);
+  const stage = useWorkbenchStore((s) => s.stage);
+  const setDraftStatus = useWorkbenchStore((s) => s.setDraftStatus);
+  const scenario_id = useWorkbenchStore((s) => s.scenario_id);
+  const result_frontier = useWorkbenchStore((s) => s.result_frontier);
+  const resetAll = useWorkbenchStore((s) => s.resetAll);
+  const operating_mode = useWorkbenchStore((s) => s.operating_mode);
+  const input_structured_json = useWorkbenchStore((s) => s.input_structured_json);
+  const input_itinerary_text = useWorkbenchStore((s) => s.input_itinerary_text);
+  const draft_name = useWorkbenchStore((s) => s.draft_name);
+  const draft_version = useWorkbenchStore((s) => s.draft_version);
+  const result_safety = useWorkbenchStore((s) => s.result_safety);
+  const result_strategy = useWorkbenchStore((s) => s.result_strategy);
+  const result_decision = useWorkbenchStore((s) => s.result_decision);
+  const clearDraft = useWorkbenchStore((s) => s.clearDraft);
+  const hydrateFromDraft = useWorkbenchStore((s) => s.hydrateFromDraft);
+  const clearTransientRunResults = useWorkbenchStore((s) => s.clearTransientRunResults);
+  const setResultValidation = useWorkbenchStore((s) => s.setResultValidation);
+  const setResultPacket = useWorkbenchStore((s) => s.setResultPacket);
+  const setResultDecision = useWorkbenchStore((s) => s.setResultDecision);
+  const setResultFrontier = useWorkbenchStore((s) => s.setResultFrontier);
+  const setSaveState = useWorkbenchStore((s) => s.setSaveState);
+  const setDraftMeta = useWorkbenchStore((s) => s.setDraftMeta);
 
-  // The ?stage= URL param drives Spine execution (not the pipeline UI)
-  const spineStage = toSpineStage(stageParam) ?? 'discovery';
-  const currentMode = toOperatingMode(getSearchParam('mode')) ?? 'normal_intake';
-  const currentScenario = scenarioParam || '';
+  // The ?stage= URL param drives Spine execution; falls back to hydrated draft store config (FND-0278)
+  const spineStage = toSpineStage(stageParam) ?? stage ?? 'discovery';
+  const currentMode = toOperatingMode(getSearchParam('mode')) ?? operating_mode ?? 'normal_intake';
+  const currentScenario = scenarioParam || scenario_id || '';
 
   const resolvedTripId = tripId ?? completedTripId;
   const {
@@ -99,16 +139,15 @@ function WorkbenchContent() {
     error: tripError,
   } = useTrip(resolvedTripId);
   useHydrateStoreFromTrip(trip);
-  const store = useWorkbenchStore();
 
   const activeTab = toWorkspaceTabId(getSearchParam('tab')) ?? 'intake';
 
   const showPacket =
     Boolean(trip) ||
-    Boolean(store.result_packet) ||
-    Boolean(store.result_validation) ||
-    store.draft_status === 'blocked' ||
-    store.draft_status === 'failed';
+    Boolean(result_packet) ||
+    Boolean(result_validation) ||
+    draft_status === 'blocked' ||
+    draft_status === 'failed';
   const {
     execute: executeSpineRun,
     isLoading: isSpineRunning,
@@ -141,8 +180,8 @@ function WorkbenchContent() {
 
 
   const runFrontier = spineRunState?.frontier_result;
-  const showFrontier = Boolean(trip?.frontier_result) || Boolean(store.result_frontier) || Boolean(runFrontier);
-  const blockCopy = getWorkbenchBlockCopy({ validation: store.result_validation, packet: store.result_packet ?? trip?.packet ?? null });
+  const showFrontier = Boolean(trip?.frontier_result) || Boolean(result_frontier) || Boolean(runFrontier);
+  const blockCopy = getWorkbenchBlockCopy({ validation: result_validation, packet: result_packet ?? trip?.packet ?? null });
   const missingFieldsLabel = formatWorkbenchMissingFields(blockCopy.missingFields);
   // D-09: deep-link the first repairable missing field straight into its
   // intake editor (?repair=<field>), falling back to the plain intake route.
@@ -153,6 +192,8 @@ function WorkbenchContent() {
 
   const visibleTabs = workspaceTabs.filter((tab) => {
     if (tab.id === 'packet') return showPacket;
+    // Decision provenance needs trip/decision data, same gate as Trip Details.
+    if (tab.id === 'decision') return showPacket;
     if (tab.id === 'frontier') return showFrontier;
     return true;
   });
@@ -175,7 +216,7 @@ function WorkbenchContent() {
       params.set('tab', 'intake');
       replace(`${pathname}?${params.toString()}`);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate once-on-mount URL adoption: reads initial bookmark/SOP params only, must not re-run on param churn
   }, []); // run once on mount — handles stale bookmarks / SOP links
 
   // Fast-capture entry stays on Workbench until a real trip exists.
@@ -192,24 +233,33 @@ function WorkbenchContent() {
     if (nextUrl !== currentUrl) {
       replace(nextUrl);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate once-on-mount fast-capture adoption: normalizes entry/draft params a single time to avoid redirect loops
   }, []);
 
   // Draft hydration - load draft from backend and populate store
   const prevDraftRef = useRef<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
-  const {
-    clearDraft,
-    hydrateFromDraft,
-    setDraftStatus,
-    clearTransientRunResults,
-    setResultValidation,
-    setResultPacket,
-    setResultDecision,
-    setResultFrontier,
-    setSaveState,
-    setDraftMeta,
-  } = store;
+  // Store-shaped view for useWorkbenchDraftPersistence — the hook reads exactly
+  // these members; memoized so the hook's callbacks keep stable identities
+  // (zustand action references are stable; value fields change only on write).
+  const draftStore = useMemo(
+    () => ({
+      draft_id,
+      draft_name,
+      draft_status,
+      draft_version,
+      input_itinerary_text,
+      input_owner_note,
+      input_raw_note,
+      input_structured_json,
+      save_state,
+      scenario_id,
+      setDraftMeta,
+      setSaveState,
+      strict_leakage,
+    }),
+    [draft_id, draft_name, draft_status, draft_version, input_itinerary_text, input_owner_note, input_raw_note, input_structured_json, save_state, scenario_id, setDraftMeta, setSaveState, strict_leakage],
+  );
   useEffect(() => {
     if (!draftParam) return;
     if (draftParam === 'new') {
@@ -322,7 +372,7 @@ function WorkbenchContent() {
   // useWorkbenchDraftPersistence; called at the position the callbacks
   // previously occupied so effect ordering is unchanged.
   const { ensureDraftSaved, handleSaveDraft } = useWorkbenchDraftPersistence({
-    store,
+    store: draftStore,
     searchParams,
     replace,
     isSpineRunning,
@@ -334,7 +384,7 @@ function WorkbenchContent() {
   });
 
   const handleProcessTrip = useCallback(async () => {
-    if (!store.input_raw_note && !store.input_owner_note) return;
+    if (!input_raw_note && !input_owner_note) return;
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     setIsRunning(true);
@@ -344,16 +394,16 @@ function WorkbenchContent() {
     try {
       // Ensure draft exists before running
       const resolvedDraftId = await ensureDraftSaved();
-      const structured_json = safeParseJson(store.input_structured_json);
+      const structured_json = safeParseJson(input_structured_json);
 
       const request: SpineRunRequest = {
-        raw_note: store.input_raw_note || null,
-        owner_note: store.input_owner_note || null,
+        raw_note: input_raw_note || null,
+        owner_note: input_owner_note || null,
         structured_json,
-        itinerary_text: store.input_itinerary_text || null,
+        itinerary_text: input_itinerary_text || null,
         stage: spineStage,
         operating_mode: currentMode,
-        strict_leakage: store.strict_leakage,
+        strict_leakage: strict_leakage,
         scenario_id: currentScenario || null,
         draft_id: resolvedDraftId || undefined,
         // Preserves raw input for agency audit trail. Agency consent to us
@@ -383,14 +433,14 @@ function WorkbenchContent() {
       inFlightRef.current = false;
       setIsRunning(false);
     }
-  }, [store, executeSpineRun, spineStage, currentMode, currentScenario, ensureDraftSaved, setIsRunning, setRunError, setRunSuccess, setCompletedTripId, later]);
+  }, [draftStore, executeSpineRun, spineStage, currentMode, currentScenario, ensureDraftSaved, setIsRunning, setRunError, setRunSuccess, setCompletedTripId, later]);
 
   const handleSave = useCallback(async () => {
     if (!resolvedTripId) return;
     setSaveError(null);
     const result = await saveTrip(resolvedTripId, {
-      customerMessage: store.input_raw_note,
-      agentNotes: store.input_owner_note,
+      customerMessage: input_raw_note,
+      agentNotes: input_owner_note,
     });
     if (result) {
       setSaveSuccess(true);
@@ -399,13 +449,13 @@ function WorkbenchContent() {
       setSaveError('Failed to save. Check connection and try again.');
       later(() => setSaveError(null), 8000);
     }
-  }, [resolvedTripId, saveTrip, store.input_raw_note, store.input_owner_note, later]);
+  }, [resolvedTripId, saveTrip, input_raw_note, input_owner_note, later]);
 
   const handleReset = useCallback(() => {
-    store.resetAll();
+    resetAll();
     resetSpine();
     setCompletedTripId(null);
-  }, [store, resetSpine, setCompletedTripId]);
+  }, [resetAll, resetSpine, setCompletedTripId]);
 
   const handleResolve = useCallback(async () => {
     if (!tripId) return;
@@ -426,7 +476,12 @@ function WorkbenchContent() {
     trip?.analytics?.feedback_reopen === true ||
     trip?.analytics?.recovery_status === 'IN_RECOVERY';
 
-  const pipelineStage = getPipelineStageForWorkbench(trip, store);
+  const pipelineStage = getPipelineStageForWorkbench(trip, {
+    result_safety,
+    result_strategy,
+    result_decision,
+    result_packet,
+  });
 
   return (
     <div className='bg-[#080a0c]'>
@@ -455,10 +510,10 @@ function WorkbenchContent() {
       </div>
 
       {/* Persistent blocked-state banner */}
-      {store.result_validation && (
-        store.result_validation.is_valid === false ||
-        store.result_validation.status === "ESCALATED" ||
-        store.result_validation.status === "BLOCKED"
+      {result_validation && (
+        result_validation.is_valid === false ||
+        result_validation.status === "ESCALATED" ||
+        result_validation.status === "BLOCKED"
       ) && !spineRunId && (
         <div className="mx-6 mt-4 rounded-xl border border-[#f85149]/40 bg-[#2b1011] px-5 py-3">
           <div className="flex items-start gap-3">
@@ -536,51 +591,51 @@ function WorkbenchContent() {
         <header className='mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between'>
           <div className='min-w-0 flex-1'>
             <h1 className='text-ui-2xl font-semibold text-[#e6edf3] mb-1'>
-              {trip ? trip.destination : (store.draft_name || 'New Inquiry')}
+              {trip ? trip.destination : (draft_name || 'New Inquiry')}
             </h1>
             <p className='flex flex-wrap items-center gap-x-3 gap-y-1 text-ui-base text-[#a8b3c1]'>
               {trip
                 ? `${trip.id} · ${trip.type} · ${trip.age}`
                 : 'Capture a customer request and send it into the workflow.'}
-              {store.draft_id && !trip && (
+              {draft_id && !trip && (
                 <>
                   <span className='text-[#30363d]'>·</span>
-                  <span className='font-mono text-ui-xs text-[#8b949e]'>{store.draft_id}</span>
+                  <span className='font-mono text-ui-xs text-[#8b949e]'>{draft_id}</span>
                 </>
               )}
             </p>
             <div className='mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1'>
-              {store.draft_id && (
+              {draft_id && (
                 <span
                   className='inline-flex items-center px-2 py-0.5 rounded text-ui-xs font-medium'
                   style={{
-                    background: store.draft_status === 'processing' ? 'var(--accent-amber)' : 'var(--bg-elevated)',
-                    color: store.draft_status === 'processing' ? '#000' : 'var(--text-muted)',
+                    background: draft_status === 'processing' ? 'var(--accent-amber)' : 'var(--bg-elevated)',
+                    color: draft_status === 'processing' ? '#000' : 'var(--text-muted)',
                     border: '1px solid var(--border-default)',
                   }}
                 >
-                  {store.draft_status === 'processing' ? 'Processing' :
-                   store.draft_status === 'blocked' ? 'Blocked' :
-                   store.draft_status === 'failed' ? 'Failed' :
-                   store.draft_status === 'promoted' ? 'Promoted' :
+                  {draft_status === 'processing' ? 'Processing' :
+                   draft_status === 'blocked' ? 'Blocked' :
+                   draft_status === 'failed' ? 'Failed' :
+                   draft_status === 'promoted' ? 'Promoted' :
                    'Draft'}
                 </span>
               )}
-              {store.save_state === 'dirty' && (
+              {save_state === 'dirty' && (
                 <span className='text-ui-xs text-[#d29922] font-medium'>Unsaved changes</span>
               )}
-              {store.save_state === 'saving' && (
+              {save_state === 'saving' && (
                 <span className='text-ui-xs text-[#8b949e]'>Saving…</span>
               )}
-              {store.save_state === 'saved' && store.draft_last_saved_at && (
+              {save_state === 'saved' && draft_last_saved_at && (
                 <span className='text-ui-xs text-[#3fb950]'>
-                  Saved at <ClientTime value={store.draft_last_saved_at} options={{ hour: '2-digit', minute: '2-digit' }} />
+                  Saved at <ClientTime value={draft_last_saved_at} options={{ hour: '2-digit', minute: '2-digit' }} />
                 </span>
               )}
-              {store.save_state === 'conflict' && (
+              {save_state === 'conflict' && (
                 <span className='text-ui-xs text-[#f85149] font-medium'>Save conflict - refresh to reload</span>
               )}
-              {store.save_state === 'error' && (
+              {save_state === 'error' && (
                 <span className='text-ui-xs text-[#f85149] font-medium'>Save failed</span>
               )}
             </div>
@@ -661,7 +716,7 @@ function WorkbenchContent() {
               disabled={
                 isRunning ||
                 isSpineRunning ||
-                (!store.input_raw_note && !store.input_owner_note)
+                (!input_raw_note && !input_owner_note)
               }
               className='flex w-full items-center justify-center gap-2 rounded-lg bg-[#58a6ff] px-4 py-2 font-medium text-[#0d1117] transition-colors hover:bg-[#6eb5ff] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
               aria-label={isRunning ? 'Processing inquiry' : 'Process inquiry'}
@@ -683,13 +738,13 @@ function WorkbenchContent() {
             </button>
             {completedTripId && (
               <>
-                {store.draft_id && (
+                {draft_id && (
                   <button
                     type='button'
                     onClick={async () => {
                       try {
-                        await promoteDraft(store.draft_id!, completedTripId);
-                        store.setDraftStatus('promoted');
+                        await promoteDraft(draft_id!, completedTripId);
+                        setDraftStatus('promoted');
                       } catch (err) {
                         setRunError(
                           err instanceof Error ? err.message : 'Promotion failed'
@@ -736,11 +791,11 @@ function WorkbenchContent() {
             <button
               type='button'
               onClick={handleSaveDraft}
-              disabled={store.save_state === 'saving' || store.draft_status === 'promoted'}
+              disabled={save_state === 'saving' || draft_status === 'promoted'}
               className='flex w-full items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
               aria-label='Save draft'
             >
-              {store.save_state === 'saving' ? (
+              {save_state === 'saving' ? (
                 <>
                   <div
                     className='size-4 border-2 border-[#8b949e]/30 border-t-[#8b949e] rounded-full animate-spin'
@@ -844,6 +899,8 @@ function WorkbenchContent() {
                 <FrontierDashboard />
               ) : effectiveTab === 'packet' ? (
                 <PacketTab trip={trip} />
+              ) : effectiveTab === 'decision' ? (
+                <DecisionPanel trip={trip} tripId={resolvedTripId ?? undefined} />
               ) : (
                 <IntakeTab trip={trip} />
               )}

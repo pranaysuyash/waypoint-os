@@ -33,8 +33,20 @@ export function WelcomeCard({ isAuthenticated }: WelcomeModalProps) {
     }
   });
   const [isCompactViewport, setIsCompactViewport] = useState(false);
+  // A5: the card is transient — it orients on arrival and yields as soon as
+  // the operator navigates anywhere (fixed overlays must own a region or be
+  // transient; occluding form fields and table columns failed that rule).
+  const [arrivalPathname, setArrivalPathname] = useState<string | null>(null);
   const { push } = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    if (arrivalPathname === null) {
+      setArrivalPathname(pathname);
+    } else if (pathname !== arrivalPathname) {
+      setHasSeenWelcome(true);
+    }
+  }, [pathname, arrivalPathname]);
 
   useEffect(() => {
     const updateViewport = () => setIsCompactViewport(window.innerWidth < 640);
@@ -58,7 +70,7 @@ export function WelcomeCard({ isAuthenticated }: WelcomeModalProps) {
   }, [dismiss, push]);
 
   // Don't render anything if not authenticated or already seen
-  if (!isAuthenticated || hasSeenWelcome || pathname.startsWith('/workbench')) return null;
+  if (!isAuthenticated || hasSeenWelcome || pathname.startsWith('/workbench') || pathname.startsWith('/inquiries/new') || pathname.startsWith('/trips/')) return null;
 
   const preferCompactCard = isCompactViewport;
 
@@ -99,7 +111,7 @@ export function WelcomeCard({ isAuthenticated }: WelcomeModalProps) {
       <div className="flex items-center gap-2 p-3">
         <button
           type="button"
-          onClick={() => handleNavigate('/workbench?draft=new&tab=intake')}
+          onClick={() => handleNavigate('/inquiries/new?draft=new&tab=intake')}
           className="flex-1 rounded-lg border px-3 py-2 text-left text-[12px] transition-colors"
           style={{
             background: 'var(--bg-surface)',
@@ -159,7 +171,7 @@ export function WelcomeCard({ isAuthenticated }: WelcomeModalProps) {
         <div className="p-4 space-y-2">
           <button
             type="button"
-            onClick={() => handleNavigate('/workbench?draft=new&tab=intake')}
+            onClick={() => handleNavigate('/inquiries/new?draft=new&tab=intake')}
             className="w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left"
             style={{
               background: 'var(--bg-surface)',

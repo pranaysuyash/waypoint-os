@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { useTrip, useTrips } from '@/hooks/useTrips';
 import { formatTripPickerLabel } from '@/lib/trip-picker-label';
 import {
@@ -172,7 +171,6 @@ export default function SuppliersPage() {
 
   return (
     <div className='p-6 space-y-6'>
-      <BackToOverviewLink />
 
       {/* Header */}
       <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>

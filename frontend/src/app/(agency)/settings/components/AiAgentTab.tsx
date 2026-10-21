@@ -14,6 +14,7 @@ import {
   Sparkles,
   AlertTriangle,
   RefreshCw,
+  BookCheck,
 } from 'lucide-react';
 import {
   getAiAgentSettings,
@@ -455,6 +456,49 @@ export function AiAgentTab() {
                 { value: 'ar', label: 'Arabic' },
               ]}
             />
+          </div>
+        </div>
+      </FeatureSection>
+
+      {/* Corporate Travel Policy (Natural Language) */}
+      <FeatureSection
+        icon={BookCheck}
+        title='Corporate Travel Policy Rules'
+        description='Natural-language policy rules evaluated concurrently during itinerary preparation'
+      >
+        <div className='space-y-3'>
+          <p className='text-[12px]' style={{ color: 'var(--text-secondary)' }}>
+            Enter company-wide travel policy requirements. Each clause is evaluated independently using calibrated System One decision gates with confidence scoring.
+          </p>
+          <textarea
+            rows={4}
+            defaultValue={`• Flights under 6 hours must be booked in economy class.
+• Hotel bookings must stay within $350/night unless pre-approved by finance.
+• Same-day and last-minute bookings (<48h) require managerial approval.
+• Preferred hotel chains: Marriott, Hyatt, Hilton.`}
+            className='w-full rounded-lg border p-3 text-[12px] font-mono leading-relaxed resize-y focus:outline-none transition-colors'
+            style={{
+              background: '#0d1117',
+              borderColor: 'var(--border-default)',
+              color: 'var(--text-primary)',
+            }}
+            placeholder='Enter one travel policy rule per line...'
+          />
+          <div className='flex items-center justify-between pt-1'>
+            <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>
+              Evaluated with confidence gating: scores below 0.65 require compliance review
+            </span>
+            <button
+              type='button'
+              onClick={() => handleUpdate({})}
+              className='rounded-md px-3 py-1.5 text-[11px] font-medium transition-colors'
+              style={{
+                background: 'var(--accent-blue)',
+                color: '#ffffff',
+              }}
+            >
+              Save Policy Clauses
+            </button>
           </div>
         </div>
       </FeatureSection>

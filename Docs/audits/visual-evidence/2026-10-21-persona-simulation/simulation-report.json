@@ -1,0 +1,3436 @@
+{
+  "app": "Waypoint OS (Travel Agency Agent)",
+  "baseUrl": "http://localhost:3005",
+  "date": "2026-10-21T06:17:16.250Z",
+  "outputDir": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation",
+  "personas": [
+    {
+      "id": "P3-JUNIOR-01",
+      "name": "Marcus Chen",
+      "title": "Junior Travel Associate & New Hire"
+    },
+    {
+      "id": "P2-OWNER-01",
+      "name": "Elena Rostova",
+      "title": "Luxury Agency Owner & Managing Director"
+    },
+    {
+      "id": "P4-CORP-01",
+      "name": "Rachel Vance",
+      "title": "Corporate Travel Coordinator & Policy Gatekeeper"
+    },
+    {
+      "id": "P12-SECURITY-01",
+      "name": "Major Devlin Vance",
+      "title": "VP Global Security & Tactical Duty-of-Care Operations"
+    },
+    {
+      "id": "P13-LEGAL-01",
+      "name": "Clara Sterling",
+      "title": "Chief Legal, Regulatory Compliance & A11y Officer"
+    }
+  ],
+  "surfaces": [
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "landing",
+      "path": "/",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--landing--desktop.png",
+      "screenshotRel": "p3-junior-01--landing--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Quote-Ready Travel Requests",
+        "url": "http://localhost:3005/",
+        "buttonCount": 0,
+        "linkCount": 16,
+        "inputCount": 0,
+        "headingTexts": [
+          "Turn raw trip notes into quote-ready briefs.",
+          "Not a prettier CRM. A faster intake and quoting surface.",
+          "Ask the right questions before quote build.",
+          "Less copy-paste. More quoting.",
+          "It helps teams answer faster, quote cleaner, and keep owners",
+          "Cleaner briefs in. Better proposals out."
+        ],
+        "scrollHeight": 3893,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 21,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:17:38.705Z"
+    },
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "landing",
+      "path": "/",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--landing--mobile.png",
+      "screenshotRel": "p3-junior-01--landing--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Quote-Ready Travel Requests",
+        "url": "http://localhost:3005/",
+        "buttonCount": 0,
+        "linkCount": 16,
+        "inputCount": 0,
+        "headingTexts": [
+          "Turn raw trip notes into quote-ready briefs.",
+          "Not a prettier CRM. A faster intake and quoting surface.",
+          "Ask the right questions before quote build.",
+          "Less copy-paste. More quoting.",
+          "It helps teams answer faster, quote cleaner, and keep owners",
+          "Cleaner briefs in. Better proposals out."
+        ],
+        "scrollHeight": 4816,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 18,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:17:51.047Z"
+    },
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "login",
+      "path": "/login",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--login--desktop.png",
+      "screenshotRel": "p3-junior-01--login--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS - Access",
+        "url": "http://localhost:3005/login",
+        "buttonCount": 2,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Sign in"
+        ],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 20,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:17:59.766Z"
+    },
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "login",
+      "path": "/login",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--login--mobile.png",
+      "screenshotRel": "p3-junior-01--login--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS - Access",
+        "url": "http://localhost:3005/login",
+        "buttonCount": 2,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Sign in"
+        ],
+        "scrollHeight": 844,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 24,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:18:05.418Z"
+    },
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--workbench--desktop.png",
+      "screenshotRel": "p3-junior-01--workbench--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Agency Workspace",
+        "url": "http://localhost:3005/workbench",
+        "buttonCount": 2,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".truncate.font-mono.text-xs"
+              ],
+              "html": "<div class=\"text-xs font-mono truncate\" style=\"color: var(--text-muted);\">Agency Workspace</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.uppercase.tracking-wider"
+              ],
+              "html": "<div class=\"hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider\" style=\"color: var(--text-muted);\">COMMAND</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+              ],
+              "html": "<span class=\"hidden md:inline\">Overview</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        },
+        {
+          "id": "meta-refresh",
+          "impact": "critical",
+          "description": "Ensure <meta http-equiv=\"refresh\"> is not used for delayed refresh",
+          "help": "Delayed refresh under 20 hours must not be used",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/meta-refresh?application=axeAPI",
+          "tags": [
+            "cat.time-and-media",
+            "wcag2a",
+            "wcag221",
+            "TTv5",
+            "TT8.a",
+            "EN-301-549",
+            "EN-9.2.2.1",
+            "RGAAv4",
+            "RGAA-13.1.2"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "#__next-page-redirect"
+              ],
+              "html": "<meta id=\"__next-page-redirect\" http-equiv=\"refresh\" content=\"1;url=/inquiries/new\">",
+              "failureSummary": "Fix any of the following:\n  <meta> tag forces timed refresh of page (less than 20 hours)"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 22,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:18:22.482Z"
+    },
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--workbench--mobile.png",
+      "screenshotRel": "p3-junior-01--workbench--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Agency Workspace",
+        "url": "http://localhost:3005/workbench",
+        "buttonCount": 0,
+        "linkCount": 0,
+        "inputCount": 0,
+        "headingTexts": [],
+        "scrollHeight": 844,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "meta-refresh",
+          "impact": "critical",
+          "description": "Ensure <meta http-equiv=\"refresh\"> is not used for delayed refresh",
+          "help": "Delayed refresh under 20 hours must not be used",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/meta-refresh?application=axeAPI",
+          "tags": [
+            "cat.time-and-media",
+            "wcag2a",
+            "wcag221",
+            "TTv5",
+            "TT8.a",
+            "EN-301-549",
+            "EN-9.2.2.1",
+            "RGAAv4",
+            "RGAA-13.1.2"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "#__next-page-redirect"
+              ],
+              "html": "<meta id=\"__next-page-redirect\" http-equiv=\"refresh\" content=\"1;url=/inquiries/new\">",
+              "failureSummary": "Fix any of the following:\n  <meta> tag forces timed refresh of page (less than 20 hours)"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 14,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:18:27.288Z"
+    },
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "inbox",
+      "path": "/inbox",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--inbox--desktop.png",
+      "screenshotRel": "p3-junior-01--inbox--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Lead Inbox",
+        "url": "http://localhost:3005/inbox",
+        "buttonCount": 20,
+        "linkCount": 21,
+        "inputCount": 2,
+        "headingTexts": [
+          "Lead Inbox",
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".truncate.font-mono.text-xs"
+              ],
+              "html": "<div class=\"text-xs font-mono truncate\" style=\"color:var(--text-muted)\">Agency Workspace</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.uppercase.tracking-wider"
+              ],
+              "html": "<div class=\"hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider\" style=\"color:var(--text-muted)\">COMMAND</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+              ],
+              "html": "<span class=\"hidden md:inline\">Overview</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 26,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:18:33.895Z"
+    },
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "inbox",
+      "path": "/inbox",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--inbox--mobile.png",
+      "screenshotRel": "p3-junior-01--inbox--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Lead Inbox",
+        "url": "http://localhost:3005/inbox",
+        "buttonCount": 18,
+        "linkCount": 21,
+        "inputCount": 2,
+        "headingTexts": [
+          "Lead Inbox",
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 1375,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+              ],
+              "html": "<a class=\"transition-colors\" style=\"color:var(--text-placeholder)\" href=\"/overview\">Waypoint OS</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                "div[role=\"status\"] > span"
+              ],
+              "html": "<span>System ready</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Home\"] > span"
+              ],
+              "html": "<span>Home</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 8.3pt (11px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 27,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:18:38.007Z"
+    },
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "itinerary-checker",
+      "path": "/itinerary-checker",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--itinerary-checker--desktop.png",
+      "screenshotRel": "p3-junior-01--itinerary-checker--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Itinerary Checker",
+        "url": "http://localhost:3005/itinerary-checker",
+        "buttonCount": 10,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Turn your itinerary or travel plan into a clearer trip map.",
+          "Family trip to Singapore",
+          "What this checker catches",
+          "Specific signals, not vague travel advice",
+          "A scored trip snapshot you can review or share",
+          "Ready to make the trip feel clear?"
+        ],
+        "scrollHeight": 4103,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                [
+                  "nextjs-portal",
+                  "span"
+                ]
+              ],
+              "html": "<span>3 errors</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #ffffff, background color: #ff5555, font size: 12.0pt (16px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                "div:nth-child(5) > div:nth-child(2) > div:nth-child(2)"
+              ],
+              "html": "<div style=\"font-size: 12px; color: rgb(110, 118, 129); margin-top: 4px; line-height: 1.45;\">works from messy inputs</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #6e7681, background color: #0e1012, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "div:nth-child(1) > span:nth-child(3)"
+              ],
+              "html": "<span style=\"font-size: 12px; color: rgb(110, 118, 129);\">Where the trip feels brittle</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.34 (foreground color: #6e7681, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label",
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=axeAPI",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "input[type=\"checkbox\"]"
+              ],
+              "html": "<input type=\"checkbox\" style=\"margin-top: 3px; accent-color: rgb(57, 208, 216);\">",
+              "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+            }
+          ]
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+          "help": "Interactive controls must not be nested",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=axeAPI",
+          "tags": [
+            "cat.keyboard",
+            "wcag2a",
+            "wcag412",
+            "TTv5",
+            "TT6.a",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "button[aria-label=\"Upload itinerary document\"]"
+              ],
+              "html": "<button type=\"button\" aria-label=\"Upload itinerary document\" style=\"border-radius: 14px; border: 2px dashed rgb(48, 54, 61); background: rgb(13, 17, 2",
+              "failureSummary": "Fix any of the following:\n  Element has focusable descendants"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 2,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 21,
+      "consoleErrors": [
+        "Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n    at button\n    at div\n    at PlanSourcePicker (webpack-internal:///(app-pages-browser)/./src/app/(traveler)/itinerary-checker/PageClient.tsx:3501:11)\n    at button\n    at div\n    at UploadCa",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+      ],
+      "timestamp": "2026-10-21T06:18:48.672Z"
+    },
+    {
+      "personaId": "P3-JUNIOR-01",
+      "personaName": "Marcus Chen",
+      "route": "itinerary-checker",
+      "path": "/itinerary-checker",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p3-junior-01--itinerary-checker--mobile.png",
+      "screenshotRel": "p3-junior-01--itinerary-checker--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Itinerary Checker",
+        "url": "http://localhost:3005/itinerary-checker",
+        "buttonCount": 10,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Turn your itinerary or travel plan into a clearer trip map.",
+          "Family trip to Singapore",
+          "What this checker catches",
+          "Specific signals, not vague travel advice",
+          "A scored trip snapshot you can review or share",
+          "Ready to make the trip feel clear?"
+        ],
+        "scrollHeight": 7044,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".itinerary-stagger > div:nth-child(1) > div:nth-child(2)"
+              ],
+              "html": "<div style=\"font-size: 14px; font-weight: 700; color: rgb(230, 237, 243); margin-bottom: 8px;\">Timing &amp; Connections</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.38 (foreground color: #62666b, background color: #090c10, font size: 10.5pt (14px), font weight: bold). Expected contrast ratio"
+            },
+            {
+              "target": [
+                ".itinerary-stagger > div:nth-child(1) > div:nth-child(3)"
+              ],
+              "html": "<div style=\"font-size: 12.5px; color: rgb(139, 148, 158); line-height: 1.65;\">Layover durations, minimum connection times, and airport transit require",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.95 (foreground color: #3d4349, background color: #090c10, font size: 9.4pt (12.5px), font weight: normal). Expected contrast ra"
+            },
+            {
+              "target": [
+                "div:nth-child(1) > span:nth-child(3)"
+              ],
+              "html": "<span style=\"font-size: 12px; color: rgb(110, 118, 129);\">Where the trip feels brittle</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.34 (foreground color: #6e7681, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label",
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=axeAPI",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "input[type=\"checkbox\"]"
+              ],
+              "html": "<input type=\"checkbox\" style=\"margin-top: 3px; accent-color: rgb(57, 208, 216);\">",
+              "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+            }
+          ]
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+          "help": "Interactive controls must not be nested",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=axeAPI",
+          "tags": [
+            "cat.keyboard",
+            "wcag2a",
+            "wcag412",
+            "TTv5",
+            "TT6.a",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "button[aria-label=\"Upload itinerary document\"]"
+              ],
+              "html": "<button type=\"button\" aria-label=\"Upload itinerary document\" style=\"border-radius: 14px; border: 2px dashed rgb(48, 54, 61); background: rgb(13, 17, 2",
+              "failureSummary": "Fix any of the following:\n  Element has focusable descendants"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 2,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 21,
+      "consoleErrors": [
+        "Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n    at button\n    at div\n    at PlanSourcePicker (webpack-internal:///(app-pages-browser)/./src/app/(traveler)/itinerary-checker/PageClient.tsx:3501:11)\n    at button\n    at div\n    at UploadCa",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+      ],
+      "timestamp": "2026-10-21T06:18:52.140Z"
+    },
+    {
+      "personaId": "P2-OWNER-01",
+      "personaName": "Elena Rostova",
+      "route": "landing",
+      "path": "/",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p2-owner-01--landing--desktop.png",
+      "screenshotRel": "p2-owner-01--landing--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Quote-Ready Travel Requests",
+        "url": "http://localhost:3005/",
+        "buttonCount": 0,
+        "linkCount": 16,
+        "inputCount": 0,
+        "headingTexts": [
+          "Turn raw trip notes into quote-ready briefs.",
+          "Not a prettier CRM. A faster intake and quoting surface.",
+          "Ask the right questions before quote build.",
+          "Less copy-paste. More quoting.",
+          "It helps teams answer faster, quote cleaner, and keep owners",
+          "Cleaner briefs in. Better proposals out."
+        ],
+        "scrollHeight": 3893,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 21,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:18:57.025Z"
+    },
+    {
+      "personaId": "P2-OWNER-01",
+      "personaName": "Elena Rostova",
+      "route": "landing",
+      "path": "/",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p2-owner-01--landing--mobile.png",
+      "screenshotRel": "p2-owner-01--landing--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Quote-Ready Travel Requests",
+        "url": "http://localhost:3005/",
+        "buttonCount": 0,
+        "linkCount": 16,
+        "inputCount": 0,
+        "headingTexts": [
+          "Turn raw trip notes into quote-ready briefs.",
+          "Not a prettier CRM. A faster intake and quoting surface.",
+          "Ask the right questions before quote build.",
+          "Less copy-paste. More quoting.",
+          "It helps teams answer faster, quote cleaner, and keep owners",
+          "Cleaner briefs in. Better proposals out."
+        ],
+        "scrollHeight": 4816,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 18,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:19:02.080Z"
+    },
+    {
+      "personaId": "P2-OWNER-01",
+      "personaName": "Elena Rostova",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p2-owner-01--workbench--desktop.png",
+      "screenshotRel": "p2-owner-01--workbench--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Agency Workspace",
+        "url": "http://localhost:3005/workbench",
+        "buttonCount": 0,
+        "linkCount": 0,
+        "inputCount": 0,
+        "headingTexts": [],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "meta-refresh",
+          "impact": "critical",
+          "description": "Ensure <meta http-equiv=\"refresh\"> is not used for delayed refresh",
+          "help": "Delayed refresh under 20 hours must not be used",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/meta-refresh?application=axeAPI",
+          "tags": [
+            "cat.time-and-media",
+            "wcag2a",
+            "wcag221",
+            "TTv5",
+            "TT8.a",
+            "EN-301-549",
+            "EN-9.2.2.1",
+            "RGAAv4",
+            "RGAA-13.1.2"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "#__next-page-redirect"
+              ],
+              "html": "<meta id=\"__next-page-redirect\" http-equiv=\"refresh\" content=\"1;url=/inquiries/new\">",
+              "failureSummary": "Fix any of the following:\n  <meta> tag forces timed refresh of page (less than 20 hours)"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 14,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:19:06.852Z"
+    },
+    {
+      "personaId": "P2-OWNER-01",
+      "personaName": "Elena Rostova",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p2-owner-01--workbench--mobile.png",
+      "screenshotRel": "p2-owner-01--workbench--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — New Inquiry",
+        "url": "http://localhost:3005/inquiries/new",
+        "buttonCount": 7,
+        "linkCount": 24,
+        "inputCount": 4,
+        "headingTexts": [
+          "New Inquiry",
+          "Captured Details"
+        ],
+        "scrollHeight": 2273,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "description": "Ensure elements with an ARIA role that require child roles contain them",
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-required-children?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag131",
+            "EN-301-549",
+            "EN-9.1.3.1",
+            "RGAAv4",
+            "RGAA-9.3.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "div[role=\"tablist\"]"
+              ],
+              "html": "<div role=\"tablist\" style=\"border-bottom:1px solid var(--border-default)\" aria-label=\"Trip workspace sections\">",
+              "failureSummary": "Fix any of the following:\n  Element has children which are not allowed: [role=status]"
+            }
+          ]
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "impact": "critical",
+          "description": "Ensure all ARIA attributes have valid values",
+          "help": "ARIA attributes must conform to valid values",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-valid-attr-value?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag412",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "#wt-tab-intake"
+              ],
+              "html": "<a role=\"tab\" aria-selected=\"true\" aria-controls=\"wt-panel-intake\" tabindex=\"0\" id=\"wt-tab-intake\" class=\"relative px-4 py-2.5 text-sm font-medium tra",
+              "failureSummary": "Fix all of the following:\n  Invalid ARIA attribute value: aria-controls=\"wt-panel-intake\""
+            }
+          ]
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+              ],
+              "html": "<a class=\"transition-colors\" style=\"color:var(--text-placeholder)\" href=\"/overview\">Waypoint OS</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                ".gap-1\\.5[role=\"status\"][aria-live=\"polite\"] > span"
+              ],
+              "html": "<span>System ready</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".leading-relaxed"
+              ],
+              "html": "<p class=\"text-[12px] text-[var(--text-muted)] leading-relaxed\">After processing: incomplete leads appear in Lead Inbox · planning continues in Trips ",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.31 (foreground color: #6e7681, background color: #080a0c, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 2,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 28,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:11.779Z"
+    },
+    {
+      "personaId": "P2-OWNER-01",
+      "personaName": "Elena Rostova",
+      "route": "trips",
+      "path": "/trips",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p2-owner-01--trips--desktop.png",
+      "screenshotRel": "p2-owner-01--trips--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Trips in Planning",
+        "url": "http://localhost:3005/trips",
+        "buttonCount": 9,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [
+          "Trips in Planning",
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".truncate.font-mono.text-xs"
+              ],
+              "html": "<div class=\"text-xs font-mono truncate\" style=\"color:var(--text-muted)\">Agency Workspace</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.uppercase.tracking-wider"
+              ],
+              "html": "<div class=\"hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider\" style=\"color:var(--text-muted)\">COMMAND</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+              ],
+              "html": "<span class=\"hidden md:inline\">Overview</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 23,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:19:16.070Z"
+    },
+    {
+      "personaId": "P2-OWNER-01",
+      "personaName": "Elena Rostova",
+      "route": "trips",
+      "path": "/trips",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p2-owner-01--trips--mobile.png",
+      "screenshotRel": "p2-owner-01--trips--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Trips in Planning",
+        "url": "http://localhost:3005/trips",
+        "buttonCount": 7,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [
+          "Trips in Planning",
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 844,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+              ],
+              "html": "<a class=\"transition-colors\" style=\"color:var(--text-placeholder)\" href=\"/overview\">Waypoint OS</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                "div[role=\"status\"] > span"
+              ],
+              "html": "<span>System ready</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "div:nth-child(1) > p"
+              ],
+              "html": "<p class=\"text-ui-sm text-[var(--text-muted)] mt-0.5\">Trips your team is actively working on</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 24,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:19.843Z"
+    },
+    {
+      "personaId": "P2-OWNER-01",
+      "personaName": "Elena Rostova",
+      "route": "settings",
+      "path": "/settings",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p2-owner-01--settings--desktop.png",
+      "screenshotRel": "p2-owner-01--settings--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Agency Workspace",
+        "url": "http://localhost:3005/settings",
+        "buttonCount": 7,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".truncate.font-mono.text-xs"
+              ],
+              "html": "<div class=\"text-xs font-mono truncate\" style=\"color:var(--text-muted)\">Agency Workspace</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.uppercase.tracking-wider"
+              ],
+              "html": "<div class=\"hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider\" style=\"color:var(--text-muted)\">COMMAND</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+              ],
+              "html": "<span class=\"hidden md:inline\">Overview</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 23,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:25.199Z"
+    },
+    {
+      "personaId": "P2-OWNER-01",
+      "personaName": "Elena Rostova",
+      "route": "settings",
+      "path": "/settings",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p2-owner-01--settings--mobile.png",
+      "screenshotRel": "p2-owner-01--settings--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Agency Workspace",
+        "url": "http://localhost:3005/settings",
+        "buttonCount": 5,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 844,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+              ],
+              "html": "<a class=\"transition-colors\" style=\"color:var(--text-placeholder)\" href=\"/overview\">Waypoint OS</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                "div[role=\"status\"] > span"
+              ],
+              "html": "<span>System ready</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Home\"] > span"
+              ],
+              "html": "<span>Home</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 8.3pt (11px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 24,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:27.665Z"
+    },
+    {
+      "personaId": "P4-CORP-01",
+      "personaName": "Rachel Vance",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p4-corp-01--workbench--desktop.png",
+      "screenshotRel": "p4-corp-01--workbench--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — New Inquiry",
+        "url": "http://localhost:3005/inquiries/new",
+        "buttonCount": 7,
+        "linkCount": 24,
+        "inputCount": 4,
+        "headingTexts": [
+          "New Inquiry",
+          "Captured Details"
+        ],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "description": "Ensure elements with an ARIA role that require child roles contain them",
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-required-children?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag131",
+            "EN-301-549",
+            "EN-9.1.3.1",
+            "RGAAv4",
+            "RGAA-9.3.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "div[role=\"tablist\"]"
+              ],
+              "html": "<div role=\"tablist\" style=\"border-bottom:1px solid var(--border-default)\" aria-label=\"Trip workspace sections\">",
+              "failureSummary": "Fix any of the following:\n  Element has children which are not allowed: [role=status]"
+            }
+          ]
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "impact": "critical",
+          "description": "Ensure all ARIA attributes have valid values",
+          "help": "ARIA attributes must conform to valid values",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-valid-attr-value?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag412",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "#wt-tab-intake"
+              ],
+              "html": "<a role=\"tab\" aria-selected=\"true\" aria-controls=\"wt-panel-intake\" tabindex=\"0\" id=\"wt-tab-intake\" class=\"relative px-4 py-2.5 text-sm font-medium tra",
+              "failureSummary": "Fix all of the following:\n  Invalid ARIA attribute value: aria-controls=\"wt-panel-intake\""
+            }
+          ]
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".truncate.font-mono.text-xs"
+              ],
+              "html": "<div class=\"text-xs font-mono truncate\" style=\"color:var(--text-muted)\">Agency Workspace</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.tracking-wider.uppercase"
+              ],
+              "html": "<div class=\"hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider\" style=\"color:var(--text-muted)\">COMMAND</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+              ],
+              "html": "<span class=\"hidden md:inline\">Overview</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 2,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 28,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:30.621Z"
+    },
+    {
+      "personaId": "P4-CORP-01",
+      "personaName": "Rachel Vance",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p4-corp-01--workbench--mobile.png",
+      "screenshotRel": "p4-corp-01--workbench--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — New Inquiry",
+        "url": "http://localhost:3005/inquiries/new",
+        "buttonCount": 7,
+        "linkCount": 24,
+        "inputCount": 4,
+        "headingTexts": [
+          "New Inquiry",
+          "Captured Details"
+        ],
+        "scrollHeight": 2273,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "description": "Ensure elements with an ARIA role that require child roles contain them",
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-required-children?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag131",
+            "EN-301-549",
+            "EN-9.1.3.1",
+            "RGAAv4",
+            "RGAA-9.3.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "div[role=\"tablist\"]"
+              ],
+              "html": "<div role=\"tablist\" style=\"border-bottom:1px solid var(--border-default)\" aria-label=\"Trip workspace sections\">",
+              "failureSummary": "Fix any of the following:\n  Element has children which are not allowed: [role=status]"
+            }
+          ]
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "impact": "critical",
+          "description": "Ensure all ARIA attributes have valid values",
+          "help": "ARIA attributes must conform to valid values",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-valid-attr-value?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag412",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "#wt-tab-intake"
+              ],
+              "html": "<a role=\"tab\" aria-selected=\"true\" aria-controls=\"wt-panel-intake\" tabindex=\"0\" id=\"wt-tab-intake\" class=\"relative px-4 py-2.5 text-sm font-medium tra",
+              "failureSummary": "Fix all of the following:\n  Invalid ARIA attribute value: aria-controls=\"wt-panel-intake\""
+            }
+          ]
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+              ],
+              "html": "<a class=\"transition-colors\" style=\"color:var(--text-placeholder)\" href=\"/overview\">Waypoint OS</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                ".gap-1\\.5[role=\"status\"][aria-live=\"polite\"] > span"
+              ],
+              "html": "<span>System ready</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".leading-relaxed"
+              ],
+              "html": "<p class=\"text-[12px] text-[var(--text-muted)] leading-relaxed\">After processing: incomplete leads appear in Lead Inbox · planning continues in Trips ",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.31 (foreground color: #6e7681, background color: #080a0c, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 2,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 28,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:33.652Z"
+    },
+    {
+      "personaId": "P4-CORP-01",
+      "personaName": "Rachel Vance",
+      "route": "trips",
+      "path": "/trips",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p4-corp-01--trips--desktop.png",
+      "screenshotRel": "p4-corp-01--trips--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Trips in Planning",
+        "url": "http://localhost:3005/trips",
+        "buttonCount": 9,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [
+          "Trips in Planning",
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".truncate.font-mono.text-xs"
+              ],
+              "html": "<div class=\"text-xs font-mono truncate\" style=\"color:var(--text-muted)\">Agency Workspace</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.uppercase.tracking-wider"
+              ],
+              "html": "<div class=\"hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider\" style=\"color:var(--text-muted)\">COMMAND</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+              ],
+              "html": "<span class=\"hidden md:inline\">Overview</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 23,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:36.160Z"
+    },
+    {
+      "personaId": "P4-CORP-01",
+      "personaName": "Rachel Vance",
+      "route": "trips",
+      "path": "/trips",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p4-corp-01--trips--mobile.png",
+      "screenshotRel": "p4-corp-01--trips--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Trips in Planning",
+        "url": "http://localhost:3005/trips",
+        "buttonCount": 7,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [
+          "Trips in Planning",
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 844,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+              ],
+              "html": "<a class=\"transition-colors\" style=\"color:var(--text-placeholder)\" href=\"/overview\">Waypoint OS</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                "div[role=\"status\"] > span"
+              ],
+              "html": "<span>System ready</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "div:nth-child(1) > p"
+              ],
+              "html": "<p class=\"text-ui-sm text-[var(--text-muted)] mt-0.5\">Trips your team is actively working on</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 24,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:38.587Z"
+    },
+    {
+      "personaId": "P4-CORP-01",
+      "personaName": "Rachel Vance",
+      "route": "itinerary-checker",
+      "path": "/itinerary-checker",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p4-corp-01--itinerary-checker--desktop.png",
+      "screenshotRel": "p4-corp-01--itinerary-checker--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Itinerary Checker",
+        "url": "http://localhost:3005/itinerary-checker",
+        "buttonCount": 10,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Turn your itinerary or travel plan into a clearer trip map.",
+          "Family trip to Singapore",
+          "What this checker catches",
+          "Specific signals, not vague travel advice",
+          "A scored trip snapshot you can review or share",
+          "Ready to make the trip feel clear?"
+        ],
+        "scrollHeight": 4103,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                [
+                  "nextjs-portal",
+                  "span"
+                ]
+              ],
+              "html": "<span>3 errors</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #ffffff, background color: #ff5555, font size: 12.0pt (16px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                "div:nth-child(5) > div:nth-child(2) > div:nth-child(2)"
+              ],
+              "html": "<div style=\"font-size: 12px; color: rgb(110, 118, 129); margin-top: 4px; line-height: 1.45;\">works from messy inputs</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #6e7681, background color: #0e1012, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".itinerary-stagger > div:nth-child(1) > div:nth-child(2)"
+              ],
+              "html": "<div style=\"font-size: 14px; font-weight: 700; color: rgb(230, 237, 243); margin-bottom: 8px;\">Timing &amp; Connections</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.94 (foreground color: #6c7175, background color: #0a0d10, font size: 10.5pt (14px), font weight: bold). Expected contrast ratio"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label",
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=axeAPI",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "input[type=\"checkbox\"]"
+              ],
+              "html": "<input type=\"checkbox\" style=\"margin-top: 3px; accent-color: rgb(57, 208, 216);\">",
+              "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+            }
+          ]
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+          "help": "Interactive controls must not be nested",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=axeAPI",
+          "tags": [
+            "cat.keyboard",
+            "wcag2a",
+            "wcag412",
+            "TTv5",
+            "TT6.a",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "button[aria-label=\"Upload itinerary document\"]"
+              ],
+              "html": "<button type=\"button\" aria-label=\"Upload itinerary document\" style=\"border-radius: 14px; border: 2px dashed rgb(48, 54, 61); background: rgb(13, 17, 2",
+              "failureSummary": "Fix any of the following:\n  Element has focusable descendants"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 2,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 21,
+      "consoleErrors": [
+        "Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n    at button\n    at div\n    at PlanSourcePicker (webpack-internal:///(app-pages-browser)/./src/app/(traveler)/itinerary-checker/PageClient.tsx:3501:11)\n    at button\n    at div\n    at UploadCa",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+      ],
+      "timestamp": "2026-10-21T06:19:42.076Z"
+    },
+    {
+      "personaId": "P4-CORP-01",
+      "personaName": "Rachel Vance",
+      "route": "itinerary-checker",
+      "path": "/itinerary-checker",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p4-corp-01--itinerary-checker--mobile.png",
+      "screenshotRel": "p4-corp-01--itinerary-checker--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Itinerary Checker",
+        "url": "http://localhost:3005/itinerary-checker",
+        "buttonCount": 10,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Turn your itinerary or travel plan into a clearer trip map.",
+          "Family trip to Singapore",
+          "What this checker catches",
+          "Specific signals, not vague travel advice",
+          "A scored trip snapshot you can review or share",
+          "Ready to make the trip feel clear?"
+        ],
+        "scrollHeight": 7044,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".itinerary-stagger > div:nth-child(1) > div:nth-child(3)"
+              ],
+              "html": "<div style=\"font-size: 12.5px; color: rgb(139, 148, 158); line-height: 1.65;\">Layover durations, minimum connection times, and airport transit require",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.42 (foreground color: #737a84, background color: #0c0f15, font size: 9.4pt (12.5px), font weight: normal). Expected contrast ra"
+            },
+            {
+              "target": [
+                ".itinerary-stagger > div:nth-child(2) > div:nth-child(3)"
+              ],
+              "html": "<div style=\"font-size: 12.5px; color: rgb(139, 148, 158); line-height: 1.65;\">Passport validity, visa eligibility, e-visa availability, and border cro",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.85 (foreground color: #555c63, background color: #0a0e12, font size: 9.4pt (12.5px), font weight: normal). Expected contrast ra"
+            },
+            {
+              "target": [
+                ".itinerary-stagger > div:nth-child(3) > div:nth-child(2)"
+              ],
+              "html": "<div style=\"font-size: 14px; font-weight: 700; color: rgb(230, 237, 243); margin-bottom: 8px;\">Pacing &amp; Fatigue</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.8 (foreground color: #393d41, background color: #080b0e, font size: 10.5pt (14px), font weight: bold). Expected contrast ratio "
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label",
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=axeAPI",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "input[type=\"checkbox\"]"
+              ],
+              "html": "<input type=\"checkbox\" style=\"margin-top: 3px; accent-color: rgb(57, 208, 216);\">",
+              "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+            }
+          ]
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+          "help": "Interactive controls must not be nested",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=axeAPI",
+          "tags": [
+            "cat.keyboard",
+            "wcag2a",
+            "wcag412",
+            "TTv5",
+            "TT6.a",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "button[aria-label=\"Upload itinerary document\"]"
+              ],
+              "html": "<button type=\"button\" aria-label=\"Upload itinerary document\" style=\"border-radius: 14px; border: 2px dashed rgb(48, 54, 61); background: rgb(13, 17, 2",
+              "failureSummary": "Fix any of the following:\n  Element has focusable descendants"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 2,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 21,
+      "consoleErrors": [
+        "Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n    at button\n    at div\n    at PlanSourcePicker (webpack-internal:///(app-pages-browser)/./src/app/(traveler)/itinerary-checker/PageClient.tsx:3501:11)\n    at button\n    at div\n    at UploadCa",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+      ],
+      "timestamp": "2026-10-21T06:19:45.665Z"
+    },
+    {
+      "personaId": "P12-SECURITY-01",
+      "personaName": "Major Devlin Vance",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p12-security-01--workbench--desktop.png",
+      "screenshotRel": "p12-security-01--workbench--desktop.png",
+      "metrics": {
+        "title": "Error",
+        "buttonCount": 0
+      },
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "description": "Ensure elements with an ARIA role that require child roles contain them",
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-required-children?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag131",
+            "EN-301-549",
+            "EN-9.1.3.1",
+            "RGAAv4",
+            "RGAA-9.3.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "div[role=\"tablist\"]"
+              ],
+              "html": "<div role=\"tablist\" style=\"border-bottom:1px solid var(--border-default)\" aria-label=\"Trip workspace sections\">",
+              "failureSummary": "Fix any of the following:\n  Element has children which are not allowed: [role=status]"
+            }
+          ]
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "impact": "critical",
+          "description": "Ensure all ARIA attributes have valid values",
+          "help": "ARIA attributes must conform to valid values",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-valid-attr-value?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag412",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "#wt-tab-intake"
+              ],
+              "html": "<a role=\"tab\" aria-selected=\"true\" aria-controls=\"wt-panel-intake\" tabindex=\"0\" id=\"wt-tab-intake\" class=\"relative px-4 py-2.5 text-sm font-medium tra",
+              "failureSummary": "Fix all of the following:\n  Invalid ARIA attribute value: aria-controls=\"wt-panel-intake\""
+            }
+          ]
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".truncate.font-mono.text-xs"
+              ],
+              "html": "<div class=\"text-xs font-mono truncate\" style=\"color:var(--text-muted)\">Agency Workspace</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.tracking-wider.uppercase"
+              ],
+              "html": "<div class=\"hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider\" style=\"color:var(--text-muted)\">COMMAND</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+              ],
+              "html": "<span class=\"hidden md:inline\">Overview</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 2,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 28,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:50.484Z"
+    },
+    {
+      "personaId": "P12-SECURITY-01",
+      "personaName": "Major Devlin Vance",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p12-security-01--workbench--mobile.png",
+      "screenshotRel": "p12-security-01--workbench--mobile.png",
+      "metrics": {
+        "title": "Error",
+        "buttonCount": 0
+      },
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "description": "Ensure elements with an ARIA role that require child roles contain them",
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-required-children?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag131",
+            "EN-301-549",
+            "EN-9.1.3.1",
+            "RGAAv4",
+            "RGAA-9.3.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "div[role=\"tablist\"]"
+              ],
+              "html": "<div role=\"tablist\" style=\"border-bottom:1px solid var(--border-default)\" aria-label=\"Trip workspace sections\">",
+              "failureSummary": "Fix any of the following:\n  Element has children which are not allowed: [role=status]"
+            }
+          ]
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "impact": "critical",
+          "description": "Ensure all ARIA attributes have valid values",
+          "help": "ARIA attributes must conform to valid values",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-valid-attr-value?application=axeAPI",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag412",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "#wt-tab-intake"
+              ],
+              "html": "<a role=\"tab\" aria-selected=\"true\" aria-controls=\"wt-panel-intake\" tabindex=\"0\" id=\"wt-tab-intake\" class=\"relative px-4 py-2.5 text-sm font-medium tra",
+              "failureSummary": "Fix all of the following:\n  Invalid ARIA attribute value: aria-controls=\"wt-panel-intake\""
+            }
+          ]
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+              ],
+              "html": "<a class=\"transition-colors\" style=\"color:var(--text-placeholder)\" href=\"/overview\">Waypoint OS</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                ".gap-1\\.5[role=\"status\"][aria-live=\"polite\"] > span"
+              ],
+              "html": "<span>System ready</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".leading-relaxed"
+              ],
+              "html": "<p class=\"text-[12px] text-[var(--text-muted)] leading-relaxed\">After processing: incomplete leads appear in Lead Inbox · planning continues in Trips ",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.31 (foreground color: #6e7681, background color: #080a0c, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 2,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 28,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:54.241Z"
+    },
+    {
+      "personaId": "P12-SECURITY-01",
+      "personaName": "Major Devlin Vance",
+      "route": "inbox",
+      "path": "/inbox",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p12-security-01--inbox--desktop.png",
+      "screenshotRel": "p12-security-01--inbox--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Lead Inbox",
+        "url": "http://localhost:3005/inbox",
+        "buttonCount": 20,
+        "linkCount": 21,
+        "inputCount": 2,
+        "headingTexts": [
+          "Lead Inbox",
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".truncate.font-mono.text-xs"
+              ],
+              "html": "<div class=\"text-xs font-mono truncate\" style=\"color:var(--text-muted)\">Agency Workspace</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.uppercase.tracking-wider"
+              ],
+              "html": "<div class=\"hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider\" style=\"color:var(--text-muted)\">COMMAND</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+              ],
+              "html": "<span class=\"hidden md:inline\">Overview</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 26,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:19:58.969Z"
+    },
+    {
+      "personaId": "P12-SECURITY-01",
+      "personaName": "Major Devlin Vance",
+      "route": "inbox",
+      "path": "/inbox",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p12-security-01--inbox--mobile.png",
+      "screenshotRel": "p12-security-01--inbox--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Lead Inbox",
+        "url": "http://localhost:3005/inbox",
+        "buttonCount": 18,
+        "linkCount": 21,
+        "inputCount": 2,
+        "headingTexts": [
+          "Lead Inbox",
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 1383,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+              ],
+              "html": "<a class=\"transition-colors\" style=\"color:var(--text-placeholder)\" href=\"/overview\">Waypoint OS</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                "div[role=\"status\"] > span"
+              ],
+              "html": "<span>System ready</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Home\"] > span"
+              ],
+              "html": "<span>Home</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 8.3pt (11px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 27,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:20:05.016Z"
+    },
+    {
+      "personaId": "P12-SECURITY-01",
+      "personaName": "Major Devlin Vance",
+      "route": "itinerary-checker",
+      "path": "/itinerary-checker",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p12-security-01--itinerary-checker--desktop.png",
+      "screenshotRel": "p12-security-01--itinerary-checker--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Itinerary Checker",
+        "url": "http://localhost:3005/itinerary-checker",
+        "buttonCount": 10,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Turn your itinerary or travel plan into a clearer trip map.",
+          "Family trip to Singapore",
+          "What this checker catches",
+          "Specific signals, not vague travel advice",
+          "A scored trip snapshot you can review or share",
+          "Ready to make the trip feel clear?"
+        ],
+        "scrollHeight": 4103,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "div:nth-child(5) > div:nth-child(2) > div:nth-child(2)"
+              ],
+              "html": "<div style=\"font-size: 12px; color: rgb(110, 118, 129); margin-top: 4px; line-height: 1.45;\">works from messy inputs</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #6e7681, background color: #0e1012, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".itinerary-stagger > div:nth-child(1) > div:nth-child(3)"
+              ],
+              "html": "<div style=\"font-size: 12.5px; color: rgb(139, 148, 158); line-height: 1.65;\">Layover durations, minimum connection times, and airport transit require",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.82 (foreground color: #555b63, background color: #0a0e12, font size: 9.4pt (12.5px), font weight: normal). Expected contrast ra"
+            },
+            {
+              "target": [
+                ".itinerary-stagger > div:nth-child(2) > div:nth-child(2)"
+              ],
+              "html": "<div style=\"font-size: 14px; font-weight: 700; color: rgb(230, 237, 243); margin-bottom: 8px;\">Visa &amp; Entry Requirements</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.77 (foreground color: #383c40, background color: #080b0e, font size: 10.5pt (14px), font weight: bold). Expected contrast ratio"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label",
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=axeAPI",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "input[type=\"checkbox\"]"
+              ],
+              "html": "<input type=\"checkbox\" style=\"margin-top: 3px; accent-color: rgb(57, 208, 216);\">",
+              "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+            }
+          ]
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+          "help": "Interactive controls must not be nested",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=axeAPI",
+          "tags": [
+            "cat.keyboard",
+            "wcag2a",
+            "wcag412",
+            "TTv5",
+            "TT6.a",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "button[aria-label=\"Upload itinerary document\"]"
+              ],
+              "html": "<button type=\"button\" aria-label=\"Upload itinerary document\" style=\"border-radius: 14px; border: 2px dashed rgb(48, 54, 61); background: rgb(13, 17, 2",
+              "failureSummary": "Fix any of the following:\n  Element has focusable descendants"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 2,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 21,
+      "consoleErrors": [
+        "Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n    at button\n    at div\n    at PlanSourcePicker (webpack-internal:///(app-pages-browser)/./src/app/(traveler)/itinerary-checker/PageClient.tsx:3501:11)\n    at button\n    at div\n    at UploadCa",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+      ],
+      "timestamp": "2026-10-21T06:20:10.344Z"
+    },
+    {
+      "personaId": "P12-SECURITY-01",
+      "personaName": "Major Devlin Vance",
+      "route": "itinerary-checker",
+      "path": "/itinerary-checker",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p12-security-01--itinerary-checker--mobile.png",
+      "screenshotRel": "p12-security-01--itinerary-checker--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Itinerary Checker",
+        "url": "http://localhost:3005/itinerary-checker",
+        "buttonCount": 10,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Turn your itinerary or travel plan into a clearer trip map.",
+          "Family trip to Singapore",
+          "What this checker catches",
+          "Specific signals, not vague travel advice",
+          "A scored trip snapshot you can review or share",
+          "Ready to make the trip feel clear?"
+        ],
+        "scrollHeight": 7009,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "div:nth-child(9) > div:nth-child(1) > span"
+              ],
+              "html": "<span style=\"font-size:12px;color:#484f58\">Free to use</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #484f58, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio"
+            },
+            {
+              "target": [
+                "div:nth-child(9) > div:nth-child(2) > span"
+              ],
+              "html": "<span style=\"font-size:12px;color:#484f58\">No sign-up required</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #484f58, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio"
+            },
+            {
+              "target": [
+                "div:nth-child(9) > div:nth-child(3) > span"
+              ],
+              "html": "<span style=\"font-size:12px;color:#484f58\">Consent-based storage</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #484f58, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label",
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=axeAPI",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "input[type=\"checkbox\"]"
+              ],
+              "html": "<input type=\"checkbox\" style=\"margin-top:3px;accent-color:#39d0d8\">",
+              "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 18,
+      "consoleErrors": [
+        "Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n    at button\n    at div\n    at PlanSourcePicker (webpack-internal:///(app-pages-browser)/./src/app/(traveler)/itinerary-checker/PageClient.tsx:3501:11)\n    at button\n    at div\n    at UploadCa",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+      ],
+      "timestamp": "2026-10-21T06:20:16.858Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "landing",
+      "path": "/",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--landing--desktop.png",
+      "screenshotRel": "p13-legal-01--landing--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Quote-Ready Travel Requests",
+        "url": "http://localhost:3005/",
+        "buttonCount": 0,
+        "linkCount": 16,
+        "inputCount": 0,
+        "headingTexts": [
+          "Turn raw trip notes into quote-ready briefs.",
+          "Not a prettier CRM. A faster intake and quoting surface.",
+          "Ask the right questions before quote build.",
+          "Less copy-paste. More quoting.",
+          "It helps teams answer faster, quote cleaner, and keep owners",
+          "Cleaner briefs in. Better proposals out."
+        ],
+        "scrollHeight": 3893,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 18,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:20:27.473Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "landing",
+      "path": "/",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--landing--mobile.png",
+      "screenshotRel": "p13-legal-01--landing--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Quote-Ready Travel Requests",
+        "url": "http://localhost:3005/",
+        "buttonCount": 0,
+        "linkCount": 16,
+        "inputCount": 0,
+        "headingTexts": [
+          "Turn raw trip notes into quote-ready briefs.",
+          "Not a prettier CRM. A faster intake and quoting surface.",
+          "Ask the right questions before quote build.",
+          "Less copy-paste. More quoting.",
+          "It helps teams answer faster, quote cleaner, and keep owners",
+          "Cleaner briefs in. Better proposals out."
+        ],
+        "scrollHeight": 4816,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 18,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:20:43.712Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "login",
+      "path": "/login",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--login--desktop.png",
+      "screenshotRel": "p13-legal-01--login--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS - Access",
+        "url": "http://localhost:3005/login",
+        "buttonCount": 2,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Sign in"
+        ],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 24,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:20:49.452Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "login",
+      "path": "/login",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--login--mobile.png",
+      "screenshotRel": "p13-legal-01--login--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS - Access",
+        "url": "http://localhost:3005/login",
+        "buttonCount": 2,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Sign in"
+        ],
+        "scrollHeight": 844,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 20,
+      "consoleErrors": [],
+      "timestamp": "2026-10-21T06:20:54.483Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--workbench--desktop.png",
+      "screenshotRel": "p13-legal-01--workbench--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Agency Workspace",
+        "url": "http://localhost:3005/workbench",
+        "buttonCount": 2,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:20:59.812Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "workbench",
+      "path": "/workbench",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--workbench--mobile.png",
+      "screenshotRel": "p13-legal-01--workbench--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Agency Workspace",
+        "url": "http://localhost:3005/workbench",
+        "buttonCount": 2,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [],
+        "scrollHeight": 844,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [],
+      "criticalViolations": 0,
+      "seriousViolations": 0,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:21:03.678Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "settings",
+      "path": "/settings",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--settings--desktop.png",
+      "screenshotRel": "p13-legal-01--settings--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Agency Workspace",
+        "url": "http://localhost:3005/settings",
+        "buttonCount": 7,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 900,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".truncate.font-mono.text-xs"
+              ],
+              "html": "<div class=\"text-xs font-mono truncate\" style=\"color:var(--text-muted)\">Agency Workspace</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.uppercase.tracking-wider"
+              ],
+              "html": "<div class=\"hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider\" style=\"color:var(--text-muted)\">COMMAND</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+              ],
+              "html": "<span class=\"hidden md:inline\">Overview</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 23,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:21:08.204Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "settings",
+      "path": "/settings",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--settings--mobile.png",
+      "screenshotRel": "p13-legal-01--settings--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Agency Workspace",
+        "url": "http://localhost:3005/settings",
+        "buttonCount": 5,
+        "linkCount": 21,
+        "inputCount": 0,
+        "headingTexts": [
+          "Welcome to Waypoint"
+        ],
+        "scrollHeight": 844,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+              ],
+              "html": "<a class=\"transition-colors\" style=\"color:var(--text-placeholder)\" href=\"/overview\">Waypoint OS</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast rat"
+            },
+            {
+              "target": [
+                "div[role=\"status\"] > span"
+              ],
+              "html": "<span>System ready</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "a[aria-label=\"Home\"] > span"
+              ],
+              "html": "<span>Home</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 8.3pt (11px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 0,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 24,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "timestamp": "2026-10-21T06:21:11.985Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "itinerary-checker",
+      "path": "/itinerary-checker",
+      "viewport": "desktop",
+      "viewportDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--itinerary-checker--desktop.png",
+      "screenshotRel": "p13-legal-01--itinerary-checker--desktop.png",
+      "metrics": {
+        "title": "Waypoint OS — Itinerary Checker",
+        "url": "http://localhost:3005/itinerary-checker",
+        "buttonCount": 10,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Turn your itinerary or travel plan into a clearer trip map.",
+          "Family trip to Singapore",
+          "What this checker catches",
+          "Specific signals, not vague travel advice",
+          "A scored trip snapshot you can review or share",
+          "Ready to make the trip feel clear?"
+        ],
+        "scrollHeight": 4068,
+        "scrollWidth": 1440,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "div:nth-child(5) > div:nth-child(2) > div:nth-child(2)"
+              ],
+              "html": "<div style=\"font-size: 12px; color: rgb(110, 118, 129); margin-top: 4px; line-height: 1.45;\">works from messy inputs</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #6e7681, background color: #0e1012, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "div:nth-child(1) > span:nth-child(3)"
+              ],
+              "html": "<span style=\"font-size: 12px; color: rgb(110, 118, 129);\">Where the trip feels brittle</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.34 (foreground color: #6e7681, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            },
+            {
+              "target": [
+                "div:nth-child(2) > span:nth-child(3)"
+              ],
+              "html": "<span style=\"font-size: 12px; color: rgb(110, 118, 129);\">Fees and friction worth fixing</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.34 (foreground color: #6e7681, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label",
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=axeAPI",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "input[type=\"checkbox\"]"
+              ],
+              "html": "<input type=\"checkbox\" style=\"margin-top: 3px; accent-color: rgb(57, 208, 216);\">",
+              "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+            }
+          ]
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+          "help": "Interactive controls must not be nested",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=axeAPI",
+          "tags": [
+            "cat.keyboard",
+            "wcag2a",
+            "wcag412",
+            "TTv5",
+            "TT6.a",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "button[aria-label=\"Upload itinerary document\"]"
+              ],
+              "html": "<button type=\"button\" aria-label=\"Upload itinerary document\" style=\"border-radius: 14px; border: 2px dashed rgb(48, 54, 61); background: rgb(13, 17, 2",
+              "failureSummary": "Fix any of the following:\n  Element has focusable descendants"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 2,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 21,
+      "consoleErrors": [
+        "Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n    at button\n    at div\n    at PlanSourcePicker (webpack-internal:///(app-pages-browser)/./src/app/(traveler)/itinerary-checker/PageClient.tsx:3501:11)\n    at button\n    at div\n    at UploadCa",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+      ],
+      "timestamp": "2026-10-21T06:21:17.615Z"
+    },
+    {
+      "personaId": "P13-LEGAL-01",
+      "personaName": "Clara Sterling",
+      "route": "itinerary-checker",
+      "path": "/itinerary-checker",
+      "viewport": "mobile",
+      "viewportDimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "/Users/pranay/Projects/travel_agency_agent/docs/audits/visual-evidence/2026-10-21-persona-simulation/p13-legal-01--itinerary-checker--mobile.png",
+      "screenshotRel": "p13-legal-01--itinerary-checker--mobile.png",
+      "metrics": {
+        "title": "Waypoint OS — Itinerary Checker",
+        "url": "http://localhost:3005/itinerary-checker",
+        "buttonCount": 10,
+        "linkCount": 3,
+        "inputCount": 2,
+        "headingTexts": [
+          "Turn your itinerary or travel plan into a clearer trip map.",
+          "Family trip to Singapore",
+          "What this checker catches",
+          "Specific signals, not vague travel advice",
+          "A scored trip snapshot you can review or share",
+          "Ready to make the trip feel clear?"
+        ],
+        "scrollHeight": 7009,
+        "scrollWidth": 390,
+        "hasHorizontalOverflow": false
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "div:nth-child(9) > div:nth-child(1) > span"
+              ],
+              "html": "<span style=\"font-size:12px;color:#484f58\">Free to use</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #484f58, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio"
+            },
+            {
+              "target": [
+                "div:nth-child(9) > div:nth-child(2) > span"
+              ],
+              "html": "<span style=\"font-size:12px;color:#484f58\">No sign-up required</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #484f58, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio"
+            },
+            {
+              "target": [
+                "div:nth-child(9) > div:nth-child(3) > span"
+              ],
+              "html": "<span style=\"font-size:12px;color:#484f58\">Consent-based storage</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #484f58, background color: #07090b, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label",
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=axeAPI",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                "input[type=\"checkbox\"]"
+              ],
+              "html": "<input type=\"checkbox\" style=\"margin-top:3px;accent-color:#39d0d8\">",
+              "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+            }
+          ]
+        }
+      ],
+      "criticalViolations": 1,
+      "seriousViolations": 1,
+      "moderateViolations": 0,
+      "minorViolations": 0,
+      "axePasses": 18,
+      "consoleErrors": [
+        "Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a hydration error.%s <button> button \n    at button\n    at div\n    at PlanSourcePicker (webpack-internal:///(app-pages-browser)/./src/app/(traveler)/itinerary-checker/PageClient.tsx:3501:11)\n    at button\n    at div\n    at UploadCa",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: Hydration failed because the initial UI does not match what was rendered on the server.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+        "Uncaught: There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+      ],
+      "timestamp": "2026-10-21T06:21:25.905Z"
+    }
+  ],
+  "issueRegistry": [],
+  "scorecard": {}
+}

@@ -24,7 +24,7 @@ export function AnalyticsEmptyState({
         description={body}
         action={
           showCta
-            ? { label: 'Start a new inquiry', href: '/workbench?tab=intake' }
+            ? { label: 'Start a new inquiry', href: '/inquiries/new?tab=intake' }
             : undefined
         }
       />

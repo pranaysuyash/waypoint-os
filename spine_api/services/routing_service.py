@@ -25,6 +25,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from spine_api.core.rls import refresh_or_reselect
 from spine_api.models.routing import TripRoutingState
 
 
@@ -118,7 +119,7 @@ async def assign_trip(
     _append_history(state, "assign", by_user_id=assigned_by, to_user_id=assignee_id)
 
     await db.commit()
-    await db.refresh(state)
+    await refresh_or_reselect(db, state)
     return _to_dict(state)
 
 
@@ -144,7 +145,7 @@ async def claim_trip(
     _append_history(state, "claim", by_user_id=claimer_id, to_user_id=claimer_id)
 
     await db.commit()
-    await db.refresh(state)
+    await refresh_or_reselect(db, state)
     return _to_dict(state)
 
 
@@ -181,7 +182,7 @@ async def escalate_trip(
     )
 
     await db.commit()
-    await db.refresh(state)
+    await refresh_or_reselect(db, state)
     return _to_dict(state)
 
 
@@ -212,7 +213,7 @@ async def system_escalate(
         reason=reason,
     )
     await db.commit()
-    await db.refresh(state)
+    await refresh_or_reselect(db, state)
     return _to_dict(state)
 
 
@@ -253,7 +254,7 @@ async def reassign_trip(
     )
 
     await db.commit()
-    await db.refresh(state)
+    await refresh_or_reselect(db, state)
     return _to_dict(state)
 
 
@@ -289,7 +290,7 @@ async def return_for_changes(
     )
 
     await db.commit()
-    await db.refresh(state)
+    await refresh_or_reselect(db, state)
     return _to_dict(state)
 
 
@@ -320,7 +321,7 @@ async def unassign_trip(
     )
 
     await db.commit()
-    await db.refresh(state)
+    await refresh_or_reselect(db, state)
     return _to_dict(state)
 
 

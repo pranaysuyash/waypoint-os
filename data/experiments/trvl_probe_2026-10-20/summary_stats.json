@@ -1,0 +1,183 @@
+{
+ "flights": {
+  "total": 158,
+  "zero_or_missing_price": 48,
+  "fractional_converted_prices": 27,
+  "confidence_labels": {
+   "high": 23,
+   "medium": 87,
+   "unrated": 48
+  },
+  "completeness": {
+   "state": "partial",
+   "queried": 5,
+   "succeeded": 4,
+   "missing": [
+    "wizzair"
+   ]
+  },
+  "currency_observed": [
+   "",
+   "INR"
+  ],
+  "provider_statuses": [
+   {
+    "id": "google_flights",
+    "status": "ok",
+    "results": 131
+   },
+   {
+    "id": "kiwi",
+    "status": "ok",
+    "results": 15
+   },
+   {
+    "id": "skiplagged",
+    "status": "ok",
+    "results": 12
+   },
+   {
+    "id": "ryanair",
+    "status": "checked_no_hit",
+    "results": null
+   },
+   {
+    "id": "wizzair",
+    "status": "failed",
+    "results": null
+   },
+   {
+    "id": "transavia",
+    "status": "skipped",
+    "results": null
+   },
+   {
+    "id": "easyjet",
+    "status": "skipped",
+    "results": null
+   },
+   {
+    "id": "vueling",
+    "status": "skipped",
+    "results": null
+   },
+   {
+    "id": "norwegian",
+    "status": "skipped",
+    "results": null
+   }
+  ]
+ },
+ "hotels": {
+  "total": 135,
+  "completeness": {
+   "state": "partial",
+   "queried": 13,
+   "succeeded": 7,
+   "missing": [
+    "trivago",
+    "uniplaces",
+    "wunderflats",
+    "landing",
+    "blueground",
+    "booking"
+   ]
+  },
+  "currency_observed": [
+   "",
+   "AED",
+   "EUR",
+   "INR",
+   "USD"
+  ],
+  "provider_statuses": [
+   {
+    "id": "google_hotels",
+    "status": "checked_hit",
+    "results": 249
+   },
+   {
+    "id": "trivago",
+    "status": "rate_limited",
+    "results": null
+   },
+   {
+    "id": "hometogo",
+    "status": "checked_hit",
+    "results": 20
+   },
+   {
+    "id": "anyplace",
+    "status": "checked_no_hit",
+    "results": null
+   },
+   {
+    "id": "uniplaces",
+    "status": "failed",
+    "results": null
+   },
+   {
+    "id": "wunderflats",
+    "status": "failed",
+    "results": null
+   },
+   {
+    "id": "housinganywhere",
+    "status": "checked_hit",
+    "results": 20
+   },
+   {
+    "id": "landing",
+    "status": "rate_limited",
+    "results": null
+   },
+   {
+    "id": "spotahome",
+    "status": "checked_hit",
+    "results": 1
+   },
+   {
+    "id": "flatio",
+    "status": "checked_hit",
+    "results": 8
+   },
+   {
+    "id": "blueground",
+    "status": "failed",
+    "results": null
+   },
+   {
+    "id": "agoda",
+    "status": "checked_hit",
+    "results": 49
+   },
+   {
+    "id": "expedia",
+    "status": "not_configured",
+    "results": null
+   },
+   {
+    "id": "booking",
+    "status": "failed",
+    "results": null
+   }
+  ],
+  "room_rate_provenance_fields": [
+   "cancellation_policy",
+   "currency",
+   "free_cancellation",
+   "match_confidence",
+   "name",
+   "nightly_price",
+   "price",
+   "price_basis",
+   "price_confidence",
+   "provider",
+   "provider_url",
+   "refundable",
+   "taxes_and_fees",
+   "taxes_fees_included",
+   "total_price"
+  ]
+ }
+}

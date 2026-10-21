@@ -1,0 +1,436 @@
+{
+ "success": true,
+ "count": 135,
+ "total_available": 15000,
+ "provider_statuses": [
+  {
+   "id": "google_hotels",
+   "name": "Google Hotels",
+   "status": "checked_hit",
+   "results": 249
+  },
+  {
+   "id": "trivago",
+   "name": "Trivago",
+   "status": "rate_limited",
+   "error": "trivago init: trivago: init HTTP 503",
+   "reason": "unavailable"
+  },
+  {
+   "id": "hometogo",
+   "name": "HomeToGo",
+   "status": "checked_hit",
+   "results": 20
+  },
+  {
+   "id": "anyplace",
+   "name": "Anyplace",
+   "status": "checked_no_hit"
+  },
+  {
+   "id": "uniplaces",
+   "name": "Uniplaces",
+   "status": "failed",
+   "error": "uniplaces resolve: no buildId found on listing page for city \"dubai\"",
+   "reason": "other"
+  },
+  {
+   "id": "wunderflats",
+   "name": "Wunderflats",
+   "status": "failed",
+   "error": "wunderflats fetch: unexpected status 404 for https://wunderflats.com/en/furnished-apartments/dubai?page=0",
+   "reason": "other"
+  },
+  {
+   "id": "housinganywhere",
+   "name": "HousingAnywhere",
+   "status": "checked_hit",
+   "results": 20
+  },
+  {
+   "id": "landing",
+   "name": "Landing",
+   "status": "rate_limited",
+   "error": "landing resolve: unexpected status 403 for https://www.hellolanding.com/s/dubai/apartments/furnished",
+   "reason": "blocked"
+  },
+  {
+   "id": "spotahome",
+   "name": "Spotahome",
+   "status": "checked_hit",
+   "results": 1
+  },
+  {
+   "id": "flatio",
+   "name": "Flatio",
+   "status": "checked_hit",
+   "results": 8
+  },
+  {
+   "id": "blueground",
+   "name": "Blueground",
+   "status": "failed",
+   "error": "blueground fetch: unexpected status 404 for https://www.theblueground.com/furnished-apartments-dubai",
+   "reason": "other"
+  },
+  {
+   "id": "agoda",
+   "name": "Agoda",
+   "status": "checked_hit",
+   "results": 49
+  },
+  {
+   "id": "expedia",
+   "name": "Expedia",
+   "status": "not_configured",
+   "error": "Expedia's public hotel search is Akamai Bot Manager-defended (HTTP 429 + captcha challenge); it is opt-in and requires a reachable endpoint",
+   "fix_hint": "set EXPEDIA_API_BASE to an authorised partner/Rapid API endpoint or a self-hosted proxy that returns the JSON availability API",
+   "fix_hint_code": "AKAMAI_BLOCK",
+   "reason": "rate_limited"
+  },
+  {
+   "id": "booking",
+   "name": "Booking.com",
+   "status": "failed",
+   "error": "fetch booking search page: acquire aws-waf-token: cdp token harvest: tier2 cdp cookie-refresh declined (unset TRVL_NO_TIER2_CDP to enable)",
+   "reason": "other"
+  }
+ ],
+ "completeness": {
+  "state": "partial",
+  "queried": 13,
+  "succeeded": 7,
+  "missing": [
+   "trivago",
+   "uniplaces",
+   "wunderflats",
+   "landing",
+   "blueground",
+   "booking"
+  ]
+ },
+ "destination": {
+  "location": "دبي, الإمارات العربية المتحدة",
+  "country": {
+   "name": "",
+   "code": "",
+   "capital": "",
+   "languages": null,
+   "currencies": null,
+   "region": ""
+  },
+  "weather": {
+   "current": {
+    "date": "2026-10-20",
+    "temp_high_c": 39,
+    "temp_low_c": 27.2,
+    "precipitation_mm": 0,
+    "description": "Clear sky"
+   },
+   "forecast": [
+    {
+     "date": "2026-10-20",
+     "temp_high_c": 39,
+     "temp_low_c": 27.2,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-21",
+     "temp_high_c": 37.4,
+     "temp_low_c": 27.3,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-22",
+     "temp_high_c": 39.9,
+     "temp_low_c": 26.3,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-23",
+     "temp_high_c": 38,
+     "temp_low_c": 26,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-24",
+     "temp_high_c": 34.7,
+     "temp_low_c": 26.1,
+     "precipitation_mm": 0,
+     "description": "Clear sky"
+    },
+    {
+     "date": "2026-10-25",
+     "temp_high_c": 34.4,
+     "temp_low_c": 28.1,
+     "precipitation_mm": 0,
+     "description": "Partly cloudy"
+    },
+    {
+     "date": "2026-10-26",
+     "temp_high_c": 32.8,
+     "temp_low_c": 27.9,
+     "precipitation_mm": 0,
+     "description": "Partly cloudy"
+    }
+   ]
+  },
+  "safety": {
+   "level": 0,
+   "advisory": "",
+   "source": "",
+   "last_updated": ""
+  },
+  "currency": {
+   "local_currency": "",
+   "exchange_rate": 0,
+   "base_currency": ""
+  },
+  "timezone": "Asia/Dubai"
+ },
+ "hotels": [
+  {
+   "name": "CLEAN HOMES ",
+   "hotel_id": "78982689",
+   "rating": 8.2,
+   "review_count": 3,
+   "stars": 3,
+   "price": 22.58,
+   "currency": "EUR",
+   "comparable_price": 22.58,
+   "address": "Dubai, United Arab Emirates",
+   "image_url": "https://pix8.agoda.net/hotelImages/78982689/0/d4812eaa9b5699357a4f0d776eea64fd.jpg?ce=2",
+   "room_types": [
+    {
+     "name": "Agoda room rate",
+     "price": 22.58,
+     "nightly_price": 22.58,
+     "total_price": 75.03,
+     "taxes_and_fees": 7.290000000000006,
+     "taxes_fees_included": true,
+     "currency": "EUR",
+     "provider": "agoda",
+     "provider_url": "https://www.agoda.com/clean-homes/hotel/deira-ae.html",
+     "match_confidence": "similar_room_match",
+     "price_basis": "tax_inclusive_total",
+     "price_confidence": "verified",
+     "free_cancellation": true,
+     "refundable": true,
+     "cancellation_policy": "Free cancellation"
+    }
+   ],
+   "lat": 25.2816276,
+   "lon": 55.3158794,
+   "distance_km": 26.376379171065373,
+   "property_type": "singleroom",
+   "booking_url": "https://www.agoda.com/clean-homes/hotel/deira-ae.html",
+   "sources": [
+    {
+     "provider": "agoda",
+     "price": 22.58,
+     "max_price": 24.28,
+     "currency": "EUR",
+     "booking_url": "https://www.agoda.com/clean-homes/hotel/deira-ae.html",
+     "price_basis": "room_nightly",
+     "price_confidence": "unverified",
+     "retrieved_at": "2026-10-20T23:39:49.695067+05:30",
+     "freshness": "live"
+    }
+   ],
+   "price_basis": "room_nightly",
+   "price_confidence": "unverified",
+   "retrieved_at": "2026-10-20T23:39:49.695067+05:30",
+   "freshness": "live",
+   "confidence": {
+    "rated": true,
+    "score": 0.7428571428571428,
+    "label": "medium",
+    "freshness": "live",
+    "basis": "74% likely bookable — live price, 1-source corroboration",
+    "signals": [
+     "freshness:live",
+     "sources:1",
+     "verification:unverified"
+    ]
+   }
+  },
+  {
+   "name": "Regal Peninsula Hotel",
+   "hotel_id": "4059",
+   "rating": 6.4,
+   "review_count": 4980,
+   "stars": 2,
+   "price": 27.27,
+   "currency": "EUR",
+   "comparable_price": 27.27,
+   "address": "Dubai, United Arab Emirates",
+   "image_url": "https://pix8.agoda.net/hotelImages/4059/0/422b68b5d591788f294da162ed0d8fe2.jpeg?ce=3",
+   "room_types": [
+    {
+     "name": "Agoda room rate",
+     "price": 27.27,
+     "nightly_price": 27.27,
+     "total_price": 107.52000000000001,
+     "taxes_and_fees": 25.71000000000001,
+     "taxes_fees_included": true,
+     "currency": "EUR",
+     "provider": "agoda",
+     "provider_url": "https://www.agoda.com/new-penninsula-hotel/hotel/dubai-ae.html",
+     "match_confidence": "similar_room_match",
+     "price_basis": "tax_inclusive_total",
+     "price_confidence": "verified",
+     "free_cancellation": true,
+     "refundable": true,
+     "cancellation_policy": "Free cancellation"
+    }
+   ],
+   "lat": 25.2622661590576,
+   "lon": 55.2895355224609,
+   "distance_km": 23.242001496388802,
+   "property_type": "hotel",
+   "booking_url": "https://www.agoda.com/new-penninsula-hotel/hotel/dubai-ae.html",
+   "sources": [
+    {
+     "provider": "agoda",
+     "price": 27.27,
+     "max_price": 109.08,
+     "currency": "EUR",
+     "booking_url": "https://www.agoda.com/new-penninsula-hotel/hotel/dubai-ae.html",
+     "price_basis": "room_nightly",
+     "price_confidence": "unverified",
+     "retrieved_at": "2026-10-20T23:39:49.695067+05:30",
+     "freshness": "live"
+    }
+   ],
+   "price_basis": "room_nightly",
+   "price_confidence": "unverified",
+   "retrieved_at": "2026-10-20T23:39:49.695067+05:30",
+   "freshness": "live",
+   "confidence": {
+    "rated": true,
+    "score": 0.7428571428571428,
+    "label": "medium",
+    "freshness": "live",
+    "basis": "74% likely bookable — live price, 1-source corroboration",
+    "signals": [
+     "freshness:live",
+     "sources:1",
+     "verification:unverified"
+    ]
+   }
+  },
+  {
+   "name": "Aavri Hotel Deira, Dubai",
+   "hotel_id": "19947707",
+   "rating": 7.3,
+   "review_count": 6764,
+   "stars": 4,
+   "price": 28.35,
+   "currency": "EUR",
+   "comparable_price": 28.35,
+   "address": "Dubai, United Arab Emirates",
+   "image_url": "https://pix8.agoda.net/hotelImages/19947707/0/69662b48ef8be59556527e3f1dab0879.jpeg?ce=2",
+   "room_types": [
+    {
+     "name": "Agoda room rate",
+     "price": 28.35,
+     "nightly_price": 28.35,
+     "total_price": 115.08,
+     "taxes_and_fees": 30.029999999999994,
+     "taxes_fees_included": true,
+     "currency": "EUR",
+     "provider": "agoda",
+     "provider_url": "https://www.agoda.com/avari-dubai-hotel/hotel/dubai-ae.html",
+     "match_confidence": "similar_room_match",
+     "price_basis": "tax_inclusive_total",
+     "price_confidence": "verified",
+     "refundable": false,
+     "cancellation_policy": "Non-refundable"
+    }
+   ],
+   "lat": 25.260589599609375,
+   "lon": 55.32661056518555,
+   "distance_km": 24.94366769975538,
+   "property_type": "hotel",
+   "booking_url": "https://www.agoda.com/avari-dubai-hotel/hotel/dubai-ae.html",
+   "sources": [
+    {
+     "provider": "agoda",
+     "price": 28.35,
+     "max_price": 113.38,
+     "currency": "EUR",
+     "booking_url": "https://www.agoda.com/avari-dubai-hotel/hotel/dubai-ae.html",
+     "price_basis": "room_nightly",
+     "price_confidence": "unverified",
+     "retrieved_at": "2026-10-20T23:39:49.695067+05:30",
+     "freshness": "live"
+    }
+   ],
+   "price_basis": "room_nightly",
+   "price_confidence": "unverified",
+   "retrieved_at": "2026-10-20T23:39:49.695067+05:30",
+   "freshness": "live",
+   "confidence": {
+    "rated": true,
+    "score": 0.7428571428571428,
+    "label": "medium",
+    "freshness": "live",
+    "basis": "74% likely bookable — live price, 1-source corroboration",
+    "signals": [
+     "freshness:live",
+     "sources:1",
+     "verification:unverified"
+    ]
+   }
+  },
+  {
+   "name": "Comfort Inn",
+   "hotel_id": "146582",
+   "rating": 7.1,
+   "review_count": 2122,
+   "stars": 3,
+   "price": 0,
+   "currency": "",
+   "address": "Dubai, United Arab Emirates",
+   "image_url": "https://pix8.agoda.net/hotelImages/146582/0/e40e557e6dce6ea386df1a4fb4b19591.jpeg?ce=3",
+   "lat": 25.265291213989258,
+   "lon": 55.3167610168457,
+   "distance_km": 24.850634699557457,
+   "property_type": "hotel",
+   "booking_url": "https://www.agoda.com/comfort-inn/hotel/dubai-ae.html",
+   "retrieved_at": "0001-01-01T00:00:00Z",
+   "confidence": {
+    "rated": false,
+    "label": "unrated",
+    "basis": "no price to assess"
+   }
+  },
+  {
+   "name": "Rolla Suites Hotel",
+   "hotel_id": "51363",
+   "rating": 6.9,
+   "review_count": 4853,
+   "stars": 3,
+   "price": 0,
+   "currency": "",
+   "address": "Dubai, United Arab Emirates",
+   "image_url": "https://pix8.agoda.net/hotelImages/51363/0/6adcc7ba95a6e586832493f8bd486db9.jpeg?ce=2",
+   "lat": 25.256650924682617,
+   "lon": 55.293094635009766,
+   "distance_km": 22.844924083961814,
+   "property_type": "hotel",
+   "booking_url": "https://www.agoda.com/imperial-suites-hotel/hotel/dubai-ae.html",
+   "retrieved_at": "0001-01-01T00:00:00Z",
+   "confidence": {
+    "rated": false,
+    "label": "unrated",
+    "basis": "no price to assess"
+   }
+  }
+ ],
+ "_sample_note": "3 priced + up to 2 unpriced of 135 total; full payload not stored"
+}

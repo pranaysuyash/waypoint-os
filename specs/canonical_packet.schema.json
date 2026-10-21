@@ -78,8 +78,12 @@
     },
     "lifecycle": {
       "oneOf": [
-        { "$ref": "#/$defs/LifecycleInfo" },
-        { "type": "null" }
+        {
+          "$ref": "#/$defs/LifecycleInfo"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "ambiguities": {
@@ -93,6 +97,18 @@
       "items": {
         "$ref": "#/$defs/UnknownField"
       }
+    },
+    "assumptions": {
+      "type": "array",
+      "description": "System-defaulted values with rationale (F-37 slice: assumptions are serialized with the runtime packet).",
+      "items": {
+        "type": "object"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Feature-gate / pipeline metadata bag (e.g. agent_flags).",
+      "additionalProperties": true
     },
     "contradictions": {
       "type": "array",
@@ -173,11 +189,17 @@
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "start": { "type": "integer" },
-                "end": { "type": "integer" }
+                "start": {
+                  "type": "integer"
+                },
+                "end": {
+                  "type": "integer"
+                }
               }
             },
-            { "type": "null" }
+            {
+              "type": "null"
+            }
           ]
         },
         "confidence": {
@@ -275,16 +297,38 @@
         "notes"
       ],
       "properties": {
-        "field_name": { "type": "string" },
-        "ambiguity_type": { "type": "string" },
-        "raw_value": { "type": "string" },
-        "normalized_value": { "type": [ "string", "null" ] },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "field_name": {
+          "type": "string"
+        },
+        "ambiguity_type": {
+          "type": "string"
+        },
+        "raw_value": {
+          "type": "string"
+        },
+        "normalized_value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
         "evidence_refs": {
           "type": "array",
-          "items": { "$ref": "#/$defs/EvidenceRef" }
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          }
         },
-        "notes": { "type": [ "string", "null" ] }
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "UnknownField": {
@@ -297,7 +341,9 @@
         "notes"
       ],
       "properties": {
-        "field_name": { "type": "string" },
+        "field_name": {
+          "type": "string"
+        },
         "reason": {
           "type": "string",
           "enum": [
@@ -307,8 +353,18 @@
             "intentionally_unknown"
           ]
         },
-        "attempted_at": { "type": [ "string", "null" ] },
-        "notes": { "type": [ "string", "null" ] }
+        "attempted_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "ContradictionValue": {
@@ -322,9 +378,18 @@
       ],
       "properties": {
         "value": {},
-        "source": { "type": "string" },
-        "authority": { "type": "string" },
-        "timestamp": { "type": [ "string", "null" ] }
+        "source": {
+          "type": "string"
+        },
+        "authority": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "Contradiction": {
@@ -341,7 +406,9 @@
         "resolved_by"
       ],
       "properties": {
-        "field_name": { "type": "string" },
+        "field_name": {
+          "type": "string"
+        },
         "values": {
           "type": "array",
           "items": {
@@ -353,9 +420,13 @@
         },
         "sources": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "detected_at": { "type": "string" },
+        "detected_at": {
+          "type": "string"
+        },
         "state": {
           "type": "string",
           "enum": [
@@ -364,9 +435,24 @@
             "resolved"
           ]
         },
-        "resolved_at": { "type": [ "string", "null" ] },
-        "resolution": { "type": [ "string", "null" ] },
-        "resolved_by": { "type": [ "string", "null" ] }
+        "resolved_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolution": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolved_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "LifecycleInfo": {
@@ -383,9 +469,16 @@
         "details"
       ],
       "properties": {
-        "event_id": { "type": "integer" },
-        "event_type": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
+        "event_id": {
+          "type": "integer"
+        },
+        "event_type": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
         "details": {
           "type": "object",
           "additionalProperties": true

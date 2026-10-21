@@ -15,6 +15,11 @@ from spine_api.services.live_checker_service import (
 )
 from src.intake.safety import StrictLeakageViolation
 
+# Module-level so decision-metrics recording inside _checkpoint_result_steps
+# cannot silently NameError behind its defensive except (the function-local
+# import in _record_terminal_metrics stays as-is for terminal-call paths).
+from spine_api import metrics_registry
+
 
 class LeadPersistenceError(RuntimeError):
     """PA-27: the ESCALATE lead could not be persisted after retry.
@@ -586,6 +591,7 @@ def execute_spine_pipeline(
 
     def _checkpoint_result_steps(run_id: str, result: Any) -> None:
         """Persist core result artifacts for observability even on partial/early exits."""
+        decision_recorded = False
         try:
             existing = run_ledger.get_all_steps(run_id)
             if "packet" not in existing and hasattr(result, "packet"):
@@ -594,6 +600,7 @@ def execute_spine_pipeline(
                 run_ledger.save_step(run_id, "validation", to_dict(result.validation))
             if "decision" not in existing and hasattr(result, "decision"):
                 run_ledger.save_step(run_id, "decision", to_dict(result.decision))
+                decision_recorded = True
             if "strategy" not in existing and hasattr(result, "strategy"):
                 run_ledger.save_step(run_id, "strategy", to_dict(result.strategy))
         except Exception as e:
@@ -601,6 +608,22 @@ def execute_spine_pipeline(
             # side-effect that must never crash the pipeline. Covers asyncpg,
             # serialization, to_dict failures, and any DB transient errors.
             logger.error("Wave A: result step checkpointing failed for run %s: %s", run_id, e)
+
+        # Decision-state frequency + follow-up friction metrics (gap-assessment
+        # P2-2 residuals). Recorded once per run when the decision step is first
+        # checkpointed — the single point where a completed decision payload is
+        # in scope on every terminal path. Side-effect only: must never break
+        # the pipeline.
+        if decision_recorded:
+            try:
+                decision_payload = to_dict(result.decision)
+                state = decision_payload.get("decision_state")
+                if state:
+                    metrics_registry.inc_decision_outcome(str(state))
+                questions = decision_payload.get("follow_up_questions") or []
+                metrics_registry.inc_follow_up_questions(len(questions))
+            except Exception as e:
+                logger.debug("Decision metrics recording skipped for run %s: %s", run_id, e)
 
     def _finalize_result(result: Any) -> None:
         raw_text = collect_raw_text_sources(

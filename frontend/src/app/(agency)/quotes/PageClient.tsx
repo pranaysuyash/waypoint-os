@@ -1,38 +1,79 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
-import SimulatedBadge from '@/components/ui/SimulatedBadge';
-import { useTrip, useTrips } from '@/hooks/useTrips';
+import { useTrips } from '@/hooks/useTrips';
 import { formatTripPickerLabel } from '@/lib/trip-picker-label';
 import {
   FileText,
   DollarSign,
   ShieldCheck,
   Sparkles,
-  Share2,
-  CheckCircle2,
-  Send,
   Layers,
-  ChevronRight,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
 
-interface QuoteVersion {
-  id: string;
-  versionNumber: string;
-  tier: 'saver' | 'curated' | 'luxury';
-  tierLabel: string;
-  netCost: number;
-  marginPercent: number;
-  taxPercent: number;
-  rackPrice: number;
-  status: 'draft' | 'under_review' | 'sent' | 'accepted' | 'expired';
-  createdAt: string;
-  highlights: string[];
-  inclusions: string[];
+// T4 (FND-0303): this page renders the REAL quote read model from
+// GET /api/v1/trips/{trip_id}/quotes — spine-persisted recommended option,
+// policy-resolved margin (FND-0268 provenance), real review/proposal status.
+// The former fabricated tier matrix (v1/v2/v3 from a fixed budget) is gone.
+
+interface QuoteProvenance {
+  applied_rule_id?: string;
+  markup_amount_usd?: number;
+  flat_planning_fee_usd?: number;
 }
+
+interface QuoteView {
+  trip_id: string;
+  title: string;
+  currency: string;
+  net_cost: number;
+  net_cost_basis: string;
+  margin_percent: number;
+  margin_basis: string;
+  margin_provenance: QuoteProvenance;
+  tax_percent: number | null;
+  rack_price: number;
+  rack_price_basis: string;
+  status: string;
+  created_at: string;
+  updated_at?: string | null;
+  highlights: string[];
+  summary?: string | null;
+}
+
+interface QuoteBranch {
+  label: string;
+  description?: string | null;
+  priced: boolean;
+}
+
+interface QuotesResponse {
+  trip_id: string;
+  quote_ready: boolean;
+  quotes: QuoteView[];
+  branches: QuoteBranch[];
+  budget_breakdown?: {
+    verdict?: string;
+    buckets?: Array<{ bucket: string; low: number; high: number; covered: boolean }>;
+    missing_buckets?: string[];
+    total_estimated_low?: number;
+    total_estimated_high?: number;
+  } | null;
+  missing: string[];
+}
+
+const STATUS_STYLES: Record<string, string> = {
+  draft: 'text-[#8b949e]',
+  under_review: 'text-[#d29922]',
+  approved: 'text-[#3fb950]',
+  rejected: 'text-[#f85149]',
+  revision_needed: 'text-[#e36f2f]',
+  sent: 'text-[#58a6ff]',
+};
 
 export default function QuotesPageClient() {
   const router = useRouter();
@@ -48,91 +89,64 @@ export default function QuotesPageClient() {
   );
   const selectedTripExists = trips.some((trip) => trip.id === urlTripId);
   const effectiveSelectedTripId = selectedTripExists ? urlTripId : trips[0]?.id ?? '';
-  const { data: selectedTrip } = useTrip(effectiveSelectedTripId || null);
 
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('v2');
-  const [marginAdjustment, setMarginAdjustment] = useState<number>(15);
+  const [quotesData, setQuotesData] = useState<QuotesResponse | null>(null);
+  const [quotesLoading, setQuotesLoading] = useState(false);
+  const [quotesError, setQuotesError] = useState<string | null>(null);
 
-  const handleTripChange = useCallback(
-    (newTripId: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (newTripId) {
-        params.set('tripId', newTripId);
-      } else {
-        params.delete('tripId');
-      }
-      router.push(`${pathname}?${params.toString()}`, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
+  const handleTripChange = (newTripId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newTripId) {
+      params.set('tripId', newTripId);
+    } else {
+      params.delete('tripId');
+    }
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
-  const quoteVersions: QuoteVersion[] = useMemo(() => {
-    if (!selectedTrip) return [];
+  useEffect(() => {
+    if (!effectiveSelectedTripId) {
+      setQuotesData(null);
+      return;
+    }
+    let cancelled = false;
+    setQuotesLoading(true);
+    setQuotesError(null);
+    fetch(`/api/v1/trips/${effectiveSelectedTripId}/quotes`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Quote lookup failed (${res.status})`);
+        return res.json();
+      })
+      .then((data: QuotesResponse) => {
+        if (!cancelled) setQuotesData(data);
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setQuotesError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setQuotesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveSelectedTripId]);
 
-    const baseBudget = 4200;
-
-    return [
-      {
-        id: 'v1',
-        versionNumber: 'Quote v1.0',
-        tier: 'saver',
-        tierLabel: 'Essential Saver',
-        netCost: Math.round(baseBudget * 0.85),
-        marginPercent: 12,
-        taxPercent: 5,
-        rackPrice: Math.round(baseBudget * 0.85 * 1.12 * 1.05),
-        status: 'draft',
-        createdAt: '2026-08-28',
-        highlights: ['4-Star City Center Hotel', 'Standard Airport Transfers', 'Semi-Private City Excursions'],
-        inclusions: ['Accommodation (Room Only)', 'Shared Van Transfers', 'Scheduled Sightseeing'],
-      },
-      {
-        id: 'v2',
-        versionNumber: 'Quote v2.1 (Recommended)',
-        tier: 'curated',
-        tierLabel: 'Signature Curator',
-        netCost: baseBudget,
-        marginPercent: marginAdjustment,
-        taxPercent: 5,
-        rackPrice: Math.round(baseBudget * (1 + marginAdjustment / 100) * 1.05),
-        status: 'draft',
-        createdAt: '2026-08-29',
-        highlights: ['5-Star Boutique Villa', 'Private Chauffeur Throughout', 'Curated Chef Tastings & Fast-Track Access'],
-        inclusions: ['Breakfast & Curated Dining', 'Dedicated Private Vehicle', 'VIP Concierge & Skip-the-line Tickets'],
-      },
-      {
-        id: 'v3',
-        versionNumber: 'Quote v3.0 (Prestige)',
-        tier: 'luxury',
-        tierLabel: 'Ultra Prestige Suite',
-        netCost: Math.round(baseBudget * 1.6),
-        marginPercent: 22,
-        taxPercent: 5,
-        rackPrice: Math.round(baseBudget * 1.6 * 1.22 * 1.05),
-        status: 'draft',
-        createdAt: '2026-08-30',
-        highlights: ['Presidential / Overwater Suite', 'Helicopter Transfer & Yacht Charter', '24/7 Private Host & Michelin Dining'],
-        inclusions: ['All-Inclusive Luxury Plan', 'Private Helicopter & Luxury Fleet', 'Private Yacht Day Tour & Bespoke Butler'],
-      },
-    ];
-  }, [selectedTrip, marginAdjustment]);
-
-  const activeQuote = quoteVersions.find((q) => q.id === selectedVersionId) || quoteVersions[1] || quoteVersions[0];
+  const activeQuote = quotesData?.quotes[0] ?? null;
+  const budget = quotesData?.budget_breakdown ?? null;
 
   return (
     <div className='p-6 space-y-6'>
-      <BackToOverviewLink />
 
-      {/* Header & Mission */}
+      {/* Header */}
       <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
         <div>
           <h1 className='text-ui-xl font-semibold text-[#e6edf3] flex items-center gap-2'>
             <FileText className='size-6 text-[#58a6ff]' />
             Quotes & Commercial Proposals
-            <SimulatedBadge label='Sample data' />
           </h1>
           <p className='text-ui-sm text-[#8b949e] mt-1'>
-            Multi-version proposal studio, wholesale net vs rack margin modeling, approval governance, and client links.
+            Spine-derived quote for the selected trip: persisted itinerary cost, policy-resolved margin
+            (rule provenance shown), and real review status. Nothing on this page is invented.
           </p>
         </div>
 
@@ -156,330 +170,217 @@ export default function QuotesPageClient() {
         )}
       </div>
 
-      {/* Honesty banner (FND-0260): this page is an illustrative pricing model. */}
-      <div
-        data-testid='quotes-sample-banner'
-        role='note'
-        className='rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200 space-y-1'
-      >
-        <p className='font-semibold uppercase tracking-wide'>Illustrative pricing model — not real quotes</p>
-        <p>
-          Every tier, price, margin, status, and date on this page is generated from a fixed example budget for
-          exploration only. No quote has been created, persisted, or sent to a client, and client web links are
-          unavailable until quotes are persisted by the spine. Real quote state lives in the{' '}
-          <Link href='/reviews' className='underline hover:text-amber-100'>
-            Quote Review queue
-          </Link>
-          .
-        </p>
+      {/* Trip Picker */}
+      <div className='rounded-lg border border-[#30363d] p-4 bg-[#0d1117] space-y-3'>
+        <label htmlFor='quotes-trip-select' className='block text-xs font-medium text-[#8b949e] uppercase tracking-wider'>
+          Active Trip Proposal Scope
+        </label>
+        <select
+          id='quotes-trip-select'
+          data-testid='quotes-trip-select'
+          value={effectiveSelectedTripId}
+          onChange={(e) => handleTripChange(e.target.value)}
+          className='w-full md:w-[460px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#58a6ff] outline-none'
+          disabled={isLoading || tripOptions.length === 0}
+        >
+          {tripOptions.length === 0 ? (
+            <option value=''>No trips in planning</option>
+          ) : (
+            tripOptions.map((trip) => (
+              <option key={trip.id} value={trip.id}>
+                {trip.label}
+              </option>
+            ))
+          )}
+        </select>
       </div>
 
-      {/* Trip Picker Selector */}
-      <div className='rounded-lg border border-[#30363d] p-4 bg-[#0d1117] space-y-3'>
-        <div className='flex flex-col md:flex-row md:items-center justify-between gap-3'>
-          <div className='space-y-1'>
-            <label htmlFor='quotes-trip-select' className='block text-xs font-medium text-[#8b949e] uppercase tracking-wider'>
-              Active Trip Proposal Scope
-            </label>
-            <select
-              id='quotes-trip-select'
-              data-testid='quotes-trip-select'
-              value={effectiveSelectedTripId}
-              onChange={(e) => handleTripChange(e.target.value)}
-              className='w-full md:w-[460px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#58a6ff] outline-none'
-              disabled={isLoading || tripOptions.length === 0}
-            >
-              {tripOptions.length === 0 ? (
-                <option value=''>No trips in planning</option>
-              ) : (
-                tripOptions.map((trip) => (
-                  <option key={trip.id} value={trip.id}>
-                    {trip.label}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
+      {/* Real quote content */}
+      {quotesLoading && (
+        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-8 text-center text-sm text-[#8b949e]'>
+          Loading quote…
+        </div>
+      )}
 
-          {selectedTrip && (
-            <div className='flex items-center gap-3 text-xs bg-[#161b22] px-3 py-2 rounded-md border border-[#30363d]'>
-              <div className='text-[#8b949e]'>
-                Destination: <span className='text-[#e6edf3] font-medium'>{selectedTrip.destination || 'Unspecified'}</span>
-              </div>
-              <div className='w-px h-4 bg-[#30363d]' />
-              <div className='text-[#8b949e]'>
-                Party Size: <span className='text-[#e6edf3] font-medium'>{selectedTrip.party || 1} travelers</span>
-              </div>
-              <div className='w-px h-4 bg-[#30363d]' />
-              <div className='text-[#8b949e]'>
-                Stated Budget: <span className='text-[#3fb950] font-medium'>{selectedTrip.budget || ',500'}</span>
-              </div>
-            </div>
+      {quotesError && (
+        <div role='alert' data-testid='quotes-error' className='rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400 flex items-center gap-2'>
+          <AlertTriangle className='size-4' /> {quotesError}
+        </div>
+      )}
+
+      {!quotesLoading && !quotesError && quotesData && !quotesData.quote_ready && (
+        <div data-testid='quotes-not-ready' className='rounded-lg border border-[#30363d] bg-[#0d1117] p-6'>
+          <div className='flex items-center gap-2 mb-3'>
+            <AlertTriangle className='size-5 text-[#d29922]' />
+            <h2 className='text-ui-base font-semibold text-[#e6edf3]'>No quote yet for this trip</h2>
+          </div>
+          <p className='text-ui-sm text-[#8b949e] mb-3'>
+            Quotes are derived from spine output. This trip doesn&apos;t have the persisted inputs a real
+            quote needs yet:
+          </p>
+          <ul className='space-y-1.5'>
+            {quotesData.missing.map((m) => (
+              <li key={m} className='text-ui-sm text-[#8b949e] flex items-start gap-2'>
+                <span className='text-[#d29922] mt-0.5'>•</span> {m}
+              </li>
+            ))}
+          </ul>
+          {effectiveSelectedTripId && (
+            <Link
+              href={`/trips/${effectiveSelectedTripId}`}
+              className='inline-block mt-4 px-3.5 py-2 bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-xs font-medium rounded-md border border-[#30363d]'
+            >
+              Open trip to process intake
+            </Link>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Metrics Row */}
-      <div className='grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'>
-        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
-          <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Active Proposals</span>
-            <FileText className='size-4 text-[#58a6ff]' />
-          </div>
-          <div className='text-2xl font-bold text-[#e6edf3]'>{quoteVersions.length} Tiers</div>
-          <div className='text-xs text-[#8b949e]'>Saver, Recommended & Luxury</div>
-        </div>
-
-        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
-          <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Recommended Total</span>
-            <DollarSign className='size-4 text-[#3fb950]' />
-          </div>
-          <div className='text-2xl font-bold text-[#3fb950]'>
-            ${activeQuote?.rackPrice ? activeQuote.rackPrice.toLocaleString() : '—'}
-          </div>
-          <div className='text-xs text-[#8b949e]'>Illustrative net + markup + tax</div>
-        </div>
-
-        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
-          <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Agency Net Margin</span>
-            <Sparkles className='size-4 text-[#d29922]' />
-          </div>
-          <div className='text-2xl font-bold text-[#d29922]'>
-            ${activeQuote ? Math.round(activeQuote.netCost * (activeQuote.marginPercent / 100)).toLocaleString() : '630'} ({activeQuote?.marginPercent ?? 15}%)
-          </div>
-          <div className='text-xs text-[#8b949e]'>Wholesale markup protection</div>
-        </div>
-
-        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
-          <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
-            <span>Commercial Status</span>
-            <ShieldCheck className='size-4 text-[#a371f7]' />
-          </div>
-          <div className='text-2xl font-bold text-[#a371f7] capitalize'>
-            {activeQuote?.status.replace('_', ' ') || 'Ready'}
-          </div>
-          <div className='text-xs text-[#8b949e]'>Illustrative model — nothing persisted or sent</div>
-        </div>
-      </div>
-
-      {/* Main Quote Workspace: Versions Matrix & Interactive Simulator */}
-      {selectedTrip ? (
-        <div className='grid gap-6 lg:grid-cols-3'>
-          {/* Version Matrix Table */}
-          <div className='lg:col-span-2 space-y-4'>
-            <div className='rounded-lg border border-[#30363d] bg-[#0d1117] overflow-hidden'>
-              <div className='p-4 border-b border-[#30363d] flex items-center justify-between bg-[#161b22]'>
-                <div className='flex items-center gap-2 font-semibold text-sm text-[#e6edf3]'>
-                  <Layers className='size-4 text-[#58a6ff]' />
-                  <span>Multi-Tier Quote Comparison Matrix</span>
-                </div>
-                <span className='text-xs text-[#8b949e]'>Click a tier to inspect commercials</span>
+      {!quotesLoading && !quotesError && activeQuote && (
+        <>
+          {/* Metrics */}
+          <div className='grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'>
+            <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
+              <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
+                <span>Client Retail</span>
+                <DollarSign className='size-4 text-[#3fb950]' />
               </div>
+              <div className='text-2xl font-bold text-[#3fb950]' data-testid='quote-rack-price'>
+                {activeQuote.currency === 'USD' ? '$' : `${activeQuote.currency} `}
+                {activeQuote.rack_price.toLocaleString()}
+              </div>
+              <div className='text-xs text-[#484f58]'>Computed preview — net cost + policy margin</div>
+            </div>
 
-              <div className='overflow-x-auto'>
-                <table className='w-full text-left text-sm'>
-                  <thead>
-                    <tr className='border-b border-[#30363d] bg-[#0d1117] text-xs font-semibold text-[#8b949e] uppercase tracking-wider'>
-                      <th className='p-3.5'>Quote Tier</th>
-                      <th className='p-3.5'>Net Sourcing</th>
-                      <th className='p-3.5'>Margin</th>
-                      <th className='p-3.5'>Client Total</th>
-                      <th className='p-3.5'>Status</th>
-                      <th className='p-3.5 text-right'>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className='divide-y divide-[#30363d]'>
-                    {quoteVersions.map((q) => {
-                      const isSelected = q.id === selectedVersionId;
-                      return (
-                        <tr
-                          key={q.id}
-                          onClick={() => setSelectedVersionId(q.id)}
-                          className={`cursor-pointer transition-colors ${
-                            isSelected ? 'bg-[#1f242c]' : 'hover:bg-[#161b22]'
-                          }`}
-                        >
-                          <td className='p-3.5'>
-                            <div className='font-semibold text-[#e6edf3] flex items-center gap-2'>
-                              {q.tierLabel}
-                              {q.tier === 'curated' && (
-                                <span className='px-1.5 py-0.5 text-[10px] font-bold bg-[#1f6feb] text-white rounded'>
-                                  BEST FIT
-                                </span>
-                              )}
-                            </div>
-                            <div className='text-xs text-[#8b949e]'>{q.versionNumber}</div>
-                          </td>
-                          <td className='p-3.5 font-mono text-[#8b949e]'>${q.netCost.toLocaleString()}</td>
-                          <td className='p-3.5 font-mono text-[#d29922]'>{q.marginPercent}%</td>
-                          <td className='p-3.5 font-mono font-semibold text-[#3fb950]'>
-                            ${q.rackPrice.toLocaleString()}
-                          </td>
-                          <td className='p-3.5'>
-                            <span
-                              className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                q.status === 'accepted'
-                                  ? 'bg-[#238636]/20 text-[#3fb950] border border-[#238636]/40'
-                                  : q.status === 'sent'
-                                  ? 'bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/40'
-                                  : q.status === 'under_review'
-                                  ? 'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/40'
-                                  : 'bg-[#30363d]/50 text-[#8b949e] border border-[#30363d]'
-                              }`}
-                            >
-                              {q.status.replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className='p-3.5 text-right'>
-                            <button
-                              type='button'
-                              disabled
-                              title='Client web links unlock when quotes are persisted by the spine — this page is an illustrative model'
-                              data-testid='quotes-share-disabled'
-                              className='p-1.5 text-xs text-[#8b949e] rounded inline-flex items-center gap-1 cursor-not-allowed opacity-60'
-                            >
-                              <Share2 className='size-3.5' />
-                              <span className='text-[11px]'>Share</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
+              <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider'>Net Cost</div>
+              <div className='text-2xl font-bold text-[#e6edf3]' data-testid='quote-net-cost'>
+                {activeQuote.currency === 'USD' ? '$' : `${activeQuote.currency} `}
+                {activeQuote.net_cost.toLocaleString()}
+              </div>
+              <div className='text-xs text-[#484f58]'>Persisted modeled cost (spine)</div>
+            </div>
+
+            <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
+              <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider'>Margin</div>
+              <div className='text-2xl font-bold text-[#d29922]' data-testid='quote-margin'>
+                {activeQuote.margin_percent}%
+              </div>
+              <div className='text-xs text-[#484f58] truncate' title={activeQuote.margin_provenance.applied_rule_id}>
+                {activeQuote.margin_provenance.applied_rule_id ?? 'policy'}
               </div>
             </div>
 
-            {/* Inclusions & Experience Breakdown for Selected Version */}
-            {activeQuote && (
-              <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-3'>
-                <div className='flex items-center justify-between border-b border-[#30363d] pb-2'>
-                  <div className='text-sm font-semibold text-[#e6edf3] flex items-center gap-2'>
-                    <Sparkles className='size-4 text-[#d29922]' />
-                    <span>Inclusions & Experience Scope ({activeQuote.tierLabel})</span>
-                  </div>
-                  <span className='text-xs text-[#8b949e]'>Version Created: {activeQuote.createdAt}</span>
-                </div>
-
-                <div className='grid gap-3 sm:grid-cols-2 pt-1'>
-                  <div>
-                    <div className='text-xs font-semibold text-[#8b949e] uppercase mb-2'>Key Highlights</div>
-                    <ul className='space-y-1.5 text-xs text-[#c9d1d9]'>
-                      {activeQuote.highlights.map((h, i) => (
-                        <li key={i} className='flex items-center gap-2'>
-                          <CheckCircle2 className='size-3.5 text-[#3fb950] shrink-0' />
-                          <span>{h}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <div className='text-xs font-semibold text-[#8b949e] uppercase mb-2'>Commercial Inclusions</div>
-                    <ul className='space-y-1.5 text-xs text-[#c9d1d9]'>
-                      {activeQuote.inclusions.map((inc, i) => (
-                        <li key={i} className='flex items-center gap-2'>
-                          <ChevronRight className='size-3.5 text-[#58a6ff] shrink-0' />
-                          <span>{inc}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+            <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
+              <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between'>
+                <span>Commercial Status</span>
+                <ShieldCheck className='size-4 text-[#a371f7]' />
               </div>
-            )}
+              <div
+                className='text-2xl font-bold capitalize'
+                data-testid='quote-status'
+                style={{ color: STATUS_STYLES[activeQuote.status] ?? '#e6edf3' }}
+              >
+                {activeQuote.status.replace('_', ' ')}
+              </div>
+              <div className='text-xs text-[#484f58]'>Live review-queue + proposal-link state</div>
+            </div>
           </div>
 
-          {/* Pricing & Commercial Controls Drawer */}
-          <div className='space-y-4'>
-            <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-4'>
-              <div className='flex items-center justify-between border-b border-[#30363d] pb-3'>
-                <div className='font-semibold text-sm text-[#e6edf3] flex items-center gap-2'>
-                  <DollarSign className='size-4 text-[#3fb950]' />
-                  <span>Live Margin & Fee Modeling</span>
+          {/* Quote detail */}
+          <div className='grid gap-6 lg:grid-cols-3'>
+            <div className='lg:col-span-2 space-y-4'>
+              <div className='rounded-lg border border-[#30363d] bg-[#0d1117] overflow-hidden'>
+                <div className='p-4 border-b border-[#30363d] flex items-center justify-between bg-[#161b22]'>
+                  <div className='flex items-center gap-2 font-semibold text-sm text-[#e6edf3]'>
+                    <Layers className='size-4 text-[#58a6ff]' />
+                    <span data-testid='quote-title'>{activeQuote.title}</span>
+                  </div>
+                  <span className='text-xs text-[#484f58]'>
+                    {activeQuote.updated_at
+                      ? `Reviewed ${new Date(activeQuote.updated_at).toLocaleDateString()}`
+                      : `Created ${activeQuote.created_at ? new Date(activeQuote.created_at).toLocaleDateString() : '—'}`}
+                  </span>
                 </div>
-                <span className='text-xs font-mono text-[#3fb950]'>{marginAdjustment}% Target</span>
+                <div className='p-4 space-y-3'>
+                  {activeQuote.summary && (
+                    <p className='text-ui-sm text-[#8b949e]'>{activeQuote.summary}</p>
+                  )}
+                  {activeQuote.highlights.length > 0 && (
+                    <ul className='space-y-1.5'>
+                      {activeQuote.highlights.map((h) => (
+                        <li key={h} className='text-ui-sm text-[#8b949e] flex items-start gap-2'>
+                          <CheckCircle2 className='size-4 text-[#3fb950] shrink-0 mt-0.5' /> {h}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className='text-xs text-[#484f58] space-y-0.5 pt-2 border-t border-[#21262d]'>
+                    <p>Net cost basis: {activeQuote.net_cost_basis}</p>
+                    <p>
+                      Margin basis: {activeQuote.margin_basis}
+                      {activeQuote.margin_provenance.flat_planning_fee_usd != null &&
+                        ` · planning fee $${activeQuote.margin_provenance.flat_planning_fee_usd}`}
+                      {activeQuote.margin_provenance.markup_amount_usd != null &&
+                        ` · markup $${activeQuote.margin_provenance.markup_amount_usd}`}
+                    </p>
+                    {activeQuote.tax_percent == null && <p>Tax: no persisted tax producer yet — not estimated.</p>}
+                  </div>
+                </div>
               </div>
 
-              {/* Slider for Margin % */}
-              <div className='space-y-2'>
-                <div className='flex justify-between text-xs text-[#8b949e]'>
-                  <span>Adjust Agency Markup</span>
-                  <span className='font-medium text-[#e6edf3]'>{marginAdjustment}%</span>
-                </div>
-                <input
-                  type='range'
-                  min='5'
-                  max='35'
-                  step='1'
-                  value={marginAdjustment}
-                  onChange={(e) => setMarginAdjustment(Number(e.target.value))}
-                  className='w-full accent-[#58a6ff] cursor-pointer'
-                />
-                <div className='flex justify-between text-[10px] text-[#8b949e]'>
-                  <span>5% (Volume)</span>
-                  <span>15% (Standard)</span>
-                  <span>35% (Bespoke)</span>
-                </div>
-              </div>
-
-              {/* Commercial Cost Breakdown Box */}
-              {activeQuote && (
-                <div className='bg-[#161b22] p-3.5 rounded-md border border-[#30363d] space-y-2 text-xs'>
-                  <div className='flex justify-between text-[#8b949e]'>
-                    <span>Wholesale Sourcing Net</span>
-                    <span className='font-mono text-[#e6edf3]'>${activeQuote.netCost.toLocaleString()}</span>
-                  </div>
-                  <div className='flex justify-between text-[#8b949e]'>
-                    <span>Agency Gross Markup ({marginAdjustment}%)</span>
-                    <span className='font-mono text-[#d29922]'>
-                      +${Math.round(activeQuote.netCost * (marginAdjustment / 100)).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className='flex justify-between text-[#8b949e]'>
-                    <span>Illustrative tax placeholder (5%)</span>
-                    <span className='font-mono text-[#8b949e]'>
-                      +${Math.round(activeQuote.netCost * (1 + marginAdjustment / 100) * 0.05).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className='border-t border-[#30363d] pt-2 flex justify-between font-semibold text-sm'>
-                    <span className='text-[#e6edf3]'>Client Proposal Price</span>
-                    <span className='font-mono text-[#3fb950]'>
-                      ${Math.round(activeQuote.netCost * (1 + marginAdjustment / 100) * 1.05).toLocaleString()}
-                    </span>
-                  </div>
+              {/* Unpriced decision branches — real, never priced here */}
+              {(quotesData?.branches.length ?? 0) > 0 && (
+                <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4'>
+                  <div className='font-semibold text-sm text-[#e6edf3] mb-2'>Open decision branches</div>
+                  <p className='text-xs text-[#484f58] mb-3'>
+                    The decision engine flagged open questions that change the trip design. These resolve
+                    through the decision flow — they carry no price until the spine prices them.
+                  </p>
+                  <ul className='space-y-2'>
+                    {quotesData!.branches.map((b) => (
+                      <li key={b.label} className='text-ui-sm text-[#8b949e]'>
+                        <span className='text-[#e6edf3] font-medium'>{b.label}</span>
+                        {b.description ? ` — ${b.description}` : ''}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
+            </div>
 
-              {/* Client Proposal Dispatch Options */}
-              <div className='space-y-2 pt-2'>
-                <button
-                  type='button'
-                  disabled
-                  title='Client web links unlock when quotes are persisted by the spine — this page is an illustrative model'
-                  data-testid='quotes-client-link-disabled'
-                  className='w-full py-2 bg-[#21262d] text-[#8b949e] text-xs font-semibold rounded-md border border-[#30363d] flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60'
-                >
-                  Client Web Link — unavailable for illustrative quotes
-                </button>
-
-                <Link
-                  href={`/trips/${effectiveSelectedTripId}/output`}
-                  className='w-full py-2 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition-colors'
-                >
-                  <Send className='size-3.5' />
-                  Open Full Output & Export PDF
-                </Link>
-              </div>
+            {/* Budget buckets */}
+            <div className='space-y-4'>
+              {budget?.buckets && budget.buckets.length > 0 ? (
+                <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4'>
+                  <div className='font-semibold text-sm text-[#e6edf3] mb-1'>Cost basis buckets</div>
+                  <div className='text-xs text-[#484f58] mb-3 capitalize'>
+                    Verdict: {budget.verdict ?? '—'}
+                  </div>
+                  <ul className='space-y-2'>
+                    {budget.buckets.map((b) => (
+                      <li key={b.bucket} className='flex items-center justify-between text-ui-sm'>
+                        <span className='text-[#8b949e] capitalize'>{b.bucket.replace(/_/g, ' ')}</span>
+                        <span className={b.covered ? 'text-[#3fb950]' : 'text-[#d29922]'}>
+                          {`$${b.low.toLocaleString()}–$${b.high.toLocaleString()}`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {(budget.missing_buckets?.length ?? 0) > 0 && (
+                    <p className='text-xs text-[#d29922] mt-3'>
+                      Not yet estimated: {budget.missing_buckets!.join(', ')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 text-ui-sm text-[#8b949e]'>
+                  No cost bucket breakdown persisted for this trip yet.
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      ) : (
-        <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-8 text-center text-[#8b949e]'>
-          {isLoading ? 'Loading agency proposals…' : 'No trip selected. Choose a trip above to manage quotes.'}
-        </div>
+        </>
       )}
     </div>
   );

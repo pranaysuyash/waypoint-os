@@ -1,0 +1,1 @@
+[integrity] records_or_std_all2.jsonl: 17608 rows -> 3622 clean cold rows (warm/cache-replay and rules-only rows excluded)

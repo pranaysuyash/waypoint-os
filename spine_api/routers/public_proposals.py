@@ -128,6 +128,10 @@ class PublicProposalView(BaseModel):
     # observed quote from the explicitly gated demo fixture. The frontend
     # badges ``demo``; "persisted_observed" marks real agency data.
     reality_tier: Optional[str] = None
+    # T8 trust render: plan-scoped stated requirements (dietary, mobility,
+    # occasion) de-attributed from travelers[] facts — never carries traveler
+    # names. Empty unless speaker-attributed facts exist.
+    stated_requirements: List[str] = Field(default_factory=list)
 
 
 class UpdateOptionsRequest(BaseModel):
@@ -468,23 +472,26 @@ def generate_signed_proposal_token(
     trip_id: str,
     agency_id: str = "system",
     ttl_hours: int = 168,  # 7 days default TTL
+    purpose: str = "proposal",
 ) -> str:
-    """Generate a tamper-evident, cryptographically signed capability token with TTL."""
+    """Generate a tamper-evident, cryptographically signed capability token with TTL and purpose."""
     if not trip_id or not isinstance(trip_id, str):
         raise ValueError("trip_id must be a non-empty string")
     if not agency_id or not isinstance(agency_id, str):
         raise ValueError("agency_id must be a non-empty string")
+    if not purpose or not isinstance(purpose, str):
+        raise ValueError("purpose must be a non-empty string")
     exp_ts = int((datetime.now(timezone.utc) + timedelta(hours=ttl_hours)).timestamp())
     agency_field = _encode_agency_field(agency_id)
-    # The HMAC payload carries the RAW agency id; the token carries the encoded
+    # The HMAC payload carries the RAW agency id and purpose; the token carries the encoded
     # form. _decode_agency_field(_encode_agency_field(a)) == a, and the encoded
     # form is unchanged by HTTP percent-decoding, so verification is canonical
     # over both direct and wire-transit paths.
-    payload = f"{trip_id}:{agency_id}:{exp_ts}"
+    payload = f"{trip_id}:{agency_id}:{exp_ts}:{purpose}"
     # PT-06 (S-11b): full SHA-256 hex digest (256-bit) — the previous
     # hexdigest()[:16] truncation gave only 64 bits of signature.
     signature = hmac.new(_SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
-    return f"prop_{trip_id}_{agency_field}_{exp_ts}_{signature}"
+    return f"prop_{trip_id}_{agency_field}_{exp_ts}_{purpose}_{signature}"
 
 
 def _store() -> ProposalTokenStore:
@@ -534,9 +541,12 @@ def issue_proposal_capability(
     return token, record
 
 
-def verify_proposal_token(token: str) -> tuple[bool, str, Optional[str]]:
+def verify_proposal_token(
+    token: str,
+    expected_purpose: str = "proposal",
+) -> tuple[bool, str, Optional[str]]:
     """
-    Verify capability token (v3 store-backed or legacy v2 signed), TTL, and
+    Verify capability token (v3 store-backed or legacy v2 signed), TTL, purpose, and
     revocation status.
     Returns: (is_valid, reason, trip_id)
     """
@@ -563,6 +573,11 @@ def verify_proposal_token(token: str) -> tuple[bool, str, Optional[str]]:
                 detail="Proposal verification temporarily unavailable",
             ) from exc
         if credential_status == TokenStatus.VALID and record is not None:
+            if expected_purpose:
+                rec_purpose = getattr(record, "purpose", None) or "proposal"
+                valid_purposes = {"proposal", "proposal_share"} if expected_purpose == "proposal" else {expected_purpose}
+                if rec_purpose not in valid_purposes:
+                    return False, f"Token purpose mismatch: expected '{expected_purpose}', got '{rec_purpose}'", None
             # Resource binding comes from the durable row — a credential only
             # ever resolves to the trip it was issued for.
             return True, "valid", record.trip_id
@@ -580,15 +595,27 @@ def verify_proposal_token(token: str) -> tuple[bool, str, Optional[str]]:
         return False, "Malformed proposal token", None
 
     body = token[len(_TOKEN_PREFIX):]
-    parts = body.rsplit("_", 2)
-    if len(parts) != 3:
-        return False, "Malformed proposal token", None
+    candidate_parts = body.rsplit("_", 3)
+    if len(candidate_parts) == 4 and candidate_parts[1].isdigit() and len(candidate_parts[3]) == 64:
+        head = candidate_parts[0]
+        exp_ts_str = candidate_parts[1]
+        token_purpose = candidate_parts[2]
+        signature = candidate_parts[3]
+        has_purpose = True
+    else:
+        parts = body.rsplit("_", 2)
+        if len(parts) != 3:
+            return False, "Malformed proposal token", None
+        head = parts[0]
+        exp_ts_str = parts[1]
+        signature = parts[2]
+        token_purpose = None
+        has_purpose = False
 
-    head, _, agency_field = parts[0].rpartition("_")
-    if not head:
+    head_trip_id, _, agency_field = head.rpartition("_")
+    if not head_trip_id:
         return False, "Malformed proposal token", None
-    trip_id = head
-    exp_ts_str, signature = parts[1], parts[2]
+    trip_id = head_trip_id
 
     try:
         exp_ts = int(exp_ts_str)
@@ -609,7 +636,15 @@ def verify_proposal_token(token: str) -> tuple[bool, str, Optional[str]]:
     # by routers/proxies.
     if not agency_id or _encode_agency_field(agency_id) != agency_field:
         return False, "Malformed proposal token", None
-    payload = f"{trip_id}:{agency_id}:{exp_ts}"
+
+    if has_purpose:
+        if expected_purpose and token_purpose != expected_purpose:
+            return False, f"Token purpose mismatch: expected '{expected_purpose}', got '{token_purpose}'", None
+        payload = f"{trip_id}:{agency_id}:{exp_ts}:{token_purpose}"
+    else:
+        # Legacy 4-part token: during migration, accepted for "proposal" or "ask"
+        payload = f"{trip_id}:{agency_id}:{exp_ts}"
+
     expected_sig = hmac.new(_SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
     if len(signature) != len(expected_sig) or not hmac.compare_digest(signature, expected_sig):
         return False, "Invalid cryptographic token signature", None
@@ -749,10 +784,15 @@ def _verified_agency_id(token: str) -> Optional[str]:
     """
     if token in _DEMO_TOKEN_ALLOWLIST or not token.startswith(_TOKEN_PREFIX):
         return None
-    parts = token[len(_TOKEN_PREFIX) :].rsplit("_", 2)
-    if len(parts) != 3:
-        return None
-    head = parts[0]
+    body = token[len(_TOKEN_PREFIX) :]
+    candidate_parts = body.rsplit("_", 3)
+    if len(candidate_parts) == 4 and candidate_parts[1].isdigit() and len(candidate_parts[3]) == 64:
+        head = candidate_parts[0]
+    else:
+        parts = body.rsplit("_", 2)
+        if len(parts) != 3:
+            return None
+        head = parts[0]
     _trip_id, separator, agency_field = head.rpartition("_")
     if not separator:
         return None
@@ -822,7 +862,10 @@ def _build_persisted_proposal(token: str, trip_id: str, agency_id: str) -> Publi
     if not trip:
         raise HTTPException(status_code=404, detail="Proposal resource not found or link expired")
 
-    safe_trip = TripStore.get_trip_for_public_access(trip_id)
+    try:
+        safe_trip = TripStore.get_trip_for_public_access(trip_id, agency_id=agency_id)
+    except TypeError:
+        safe_trip = TripStore.get_trip_for_public_access(trip_id)
     if not safe_trip:
         raise HTTPException(status_code=404, detail="Proposal resource not found or link expired")
 
@@ -861,14 +904,15 @@ def _build_persisted_proposal(token: str, trip_id: str, agency_id: str) -> Publi
         days=[],
         available_options=[],
         reality_tier="persisted_observed",
+        stated_requirements=(safe_trip.get("packet") or {}).get("stated_requirements", []),
     )
 
 
 def _get_or_create_proposal(token: str) -> PublicProposalView:
-    is_valid, reason, trip_id = verify_proposal_token(token)
+    is_valid, reason, trip_id = verify_proposal_token(token, expected_purpose="proposal")
     if not is_valid:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED if "signature" in reason.lower() or "malformed" in reason.lower() else status.HTTP_410_GONE,
+            status_code=status.HTTP_401_UNAUTHORIZED if ("signature" in reason.lower() or "malformed" in reason.lower() or "purpose" in reason.lower()) else status.HTTP_410_GONE,
             detail=f"Proposal access denied: {reason}",
         )
 
@@ -982,7 +1026,11 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
             "proposal_acceptance_reality_tier": "real",
             "proposal_acceptance_storage": "trip_record_durable",
         }
-        persisted_trip = TripStore.update_trip(proposal.trip_id, acceptance_updates)
+        agency_id = _verified_agency_for_token(token)
+        if agency_id:
+            persisted_trip = TripStore.update_trip_for_agency(proposal.trip_id, agency_id, acceptance_updates)
+        else:
+            persisted_trip = TripStore.update_trip(proposal.trip_id, acceptance_updates)
         if not persisted_trip:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -1005,8 +1053,12 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
         {
             "proposal_token": token,
             "trip_id": proposal.trip_id,
-            "signer_name": req.signer_name,
-            "signer_email": req.signer_email,
+            "signer_name_masked": (req.signer_name[:2] + "***") if req.signer_name else "",
+            "signer_email_hash": (
+                hashlib.sha256(req.signer_email.strip().lower().encode("utf-8")).hexdigest()[:16]
+                if req.signer_email
+                else ""
+            ),
             "total_price_usd": proposal.selected_total_price_usd,
             "accepted_at": now_iso,
             "persisted_on_trip": token not in _DEMO_TOKEN_ALLOWLIST,

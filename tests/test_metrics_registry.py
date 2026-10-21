@@ -92,3 +92,38 @@ def test_metrics_endpoint_content_type_and_body(session_client):
     assert "spine_runs_total" in body
     # The old static-JSON contract is gone.
     assert '"status": "ok"' not in body
+
+
+# ---------------------------------------------------------------------------
+# Decision-state frequency + follow-up friction (gap-assessment P2-2, 2026-09-18)
+# ---------------------------------------------------------------------------
+
+
+def test_decision_outcome_counters_preseeded_zero():
+    text = mr.render()
+    for state in (
+        "ASK_FOLLOWUP",
+        "PROCEED_INTERNAL_DRAFT",
+        "PROCEED_TRAVELER_SAFE",
+        "BRANCH_OPTIONS",
+        "STOP_NEEDS_REVIEW",
+    ):
+        assert f'spine_decisions_total{{decision_state="{state}"}} 0' in text
+
+
+def test_inc_decision_outcome_increments_only_that_series():
+    mr.inc_decision_outcome("ASK_FOLLOWUP")
+    mr.inc_decision_outcome("ASK_FOLLOWUP")
+    mr.inc_decision_outcome("STOP_NEEDS_REVIEW")
+    text = mr.render()
+    assert 'spine_decisions_total{decision_state="ASK_FOLLOWUP"} 2' in text
+    assert 'spine_decisions_total{decision_state="STOP_NEEDS_REVIEW"} 1' in text
+    assert 'spine_decisions_total{decision_state="BRANCH_OPTIONS"} 0' in text
+
+
+def test_inc_follow_up_questions_accumulates_count():
+    mr.inc_follow_up_questions(3)
+    mr.inc_follow_up_questions(0)
+    mr.inc_follow_up_questions(2)
+    text = mr.render()
+    assert "spine_follow_up_questions_total 5" in text

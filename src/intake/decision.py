@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -22,13 +23,19 @@ from .packet_models import (    CanonicalPacket,
     AuthorityLevel,
 )
 from .constants import DecisionState, assert_valid_decision_state
-from .validation import FIELD_REQUIRED_FOR, question_priority_order
+from .validation import FIELD_REQUIRED_FOR, blocking_unknowns, question_priority_order
 from src.intake.config.agency_settings import AgencySettings
 from src.intake.telemetry import emit_ambiguity_synthesis
 
 # =============================================================================
 # HYBRID DECISION ENGINE INTEGRATION
 # =============================================================================
+
+# FND-0313 (2026-10-05): cap on the Phase 9b completeness ask-floor. The
+# primary Phase 9 branches stay authoritative; the floor only backfills
+# blocking unknowns the branches missed, and stops here to avoid question
+# spam on very messy notes (highest-priority asks win).
+MAX_FALLBACK_QUESTIONS = 6
 
 # Feature flag to enable hybrid decision engine.
 # PA-03 (P1, 2026-09-06): default is now OFF so serving determinism is
@@ -77,7 +84,12 @@ def _reset_hybrid_engine() -> None:
 
 
 def _get_hybrid_engine():
-    """Get or create the hybrid decision engine instance."""
+    """Get or create the hybrid decision engine instance.
+
+    The LLM rung's model is resolved by the ratified decision-lane policy
+    (ADR-008 §8: gpt-4.1-nano primary, fallback ladder, flagship blacklist) —
+    not by ambient LLM_PROVIDER/OPENAI_MODEL env, which stay lane-agnostic.
+    """
     global _hybrid_engine_instance
     if not _is_hybrid_engine_enabled():
         return None
@@ -85,10 +97,27 @@ def _get_hybrid_engine():
     if _hybrid_engine_instance is None:
         try:
             from src.decision.hybrid_engine import create_hybrid_engine
+            from src.decision.model_policy import build_decision_lane_client
+
+            client, policy_status = build_decision_lane_client()
+            if client is None:
+                logger.error(
+                    "decision lane: policy resolved no servable model "
+                    "(%s) — deterministic core serves",
+                    policy_status,
+                )
+                return None
             _hybrid_engine_instance = create_hybrid_engine(
                 enable_cache=True,
                 enable_rules=True,
                 enable_llm=True,
+                llm_client=client,
+            )
+            logger.info(
+                "decision lane model: %s (position %s, %s)",
+                policy_status.get("resolved"),
+                policy_status.get("resolved_position", 0),
+                policy_status.get("resolved_reason", "env-override"),
             )
         except ImportError:
             # Hybrid engine not available
@@ -407,6 +436,12 @@ CONTRADICTION_FIELD_MAP = {
     "origin_city": "origin_conflict",
     "passport_status": "document_conflict",
     "visa_status": "document_conflict",
+    # The synthetic feasibility contradiction (appended by the Phase 5
+    # stage-gating block) must classify as its own type — without this entry
+    # it fell through to general_conflict, which would (a) misattribute it and
+    # (b) once medium ASK actions became honored, leak it past the deliberate
+    # stage-gating design into an unconditional escalation.
+    "budget_feasibility": "budget_feasibility",
 }
 
 CONTRADICTION_ACTIONS = {
@@ -882,6 +917,107 @@ _SEASON_MULTIPLIER_PEAK = 1.30
 _MULTI_COUNTRY_PENALTY = 1.10
 _FAMILY_BUFFER_BUMP = 0.02
 
+# --- Season-tier feasibility (2026-09-18) -----------------------------------
+# Per-destination season tiers superseding the previously unwired flat
+# multipliers above (the constants now serve as the tier lookup values).
+# Closes the gap recorded in
+# Docs/CORE_INSIGHT_AND_HARDCODED_INVENTORY_2026-04-16.md ("No seasonality
+# factor… multipliers don't vary by destination").
+# Off-peak baseline = 1.0; monsoon/monsoon-adjacent months are off (cheapest),
+# consistent with the monsoon risk tables in src/public_checker/live_checks.py.
+# Unknown destination or unresolvable travel month → multiplier 1.0 (behavior
+# byte-for-byte identical to the pre-season implementation; table absence must
+# never inflate a verdict). First-pass heuristic table — falsifiable data, same
+# maturity class as BUDGET_FEASIBILITY_TABLE.
+_DESTINATION_SEASON_TIERS: Dict[str, Dict[str, set]] = {
+    "Dubai": {"peak": {11, 12, 1, 2}, "shoulder": {3, 10}},
+    "Maldives": {"peak": {12, 1, 2}, "shoulder": {11, 3}},
+    "Singapore": {"peak": {6, 12}, "shoulder": {5, 7, 11}},
+    "Thailand": {"peak": {11, 12, 1, 2}, "shoulder": {3, 10}},
+    "Japan": {"peak": {3, 4, 10, 11}, "shoulder": {5, 9, 12}},
+    "Europe": {"peak": {6, 7, 8}, "shoulder": {5, 9}},
+    "Bali": {"peak": {7, 8}, "shoulder": {6, 9}},
+    "Goa": {"peak": {11, 12, 1, 2}, "shoulder": {3, 10}},
+    "Kerala": {"peak": {12, 1}, "shoulder": {2, 11}},
+    "Kashmir": {"peak": {5, 6, 7}, "shoulder": {4, 8}},
+    "Sri Lanka": {"peak": {12, 1, 2}, "shoulder": {3, 7, 8}},
+    "Vietnam": {"peak": {11, 12, 1, 2, 3}, "shoulder": {4, 10}},
+    "Andaman": {"peak": {11, 12, 1, 2, 3}, "shoulder": {4, 10}},
+    "Nepal": {"peak": {3, 4, 10, 11}, "shoulder": {2, 9, 12}},
+    "Bhutan": {"peak": {3, 4, 10, 11}, "shoulder": {2, 9}},
+    "Mauritius": {"peak": {10, 11, 12, 1, 2}, "shoulder": {9, 3}},
+    "Seychelles": {"peak": {4, 5, 10, 11}, "shoulder": {3, 12}},
+    "Turkey": {"peak": {6, 7, 8}, "shoulder": {5, 9}},
+    "__default__": {"peak": set(), "shoulder": set()},
+}
+
+_MONTH_NAME_PATTERNS: Dict[str, Any] = {
+    # (month_number, compiled word-boundary pattern) — longest names first is
+    # unnecessary with word boundaries; both "sept" and "september" tokens map.
+    **{
+        name: (num, re.compile(rf"\b{re.escape(name)}\b", re.IGNORECASE))
+        for name, num in {
+            "january": 1, "february": 2, "march": 3, "april": 4, "may": 5,
+            "june": 6, "july": 7, "august": 8, "september": 9, "october": 10,
+            "november": 11, "december": 12,
+            "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7,
+            "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
+        }.items()
+    }
+}
+
+
+def _resolve_travel_month(packet: CanonicalPacket) -> Optional[int]:
+    """Derive the travel month (1-12) from structured date facts.
+
+    Prefers the ISO date_start/date_end facts the extractor already stores;
+    falls back to a word-boundary month-name scan of the raw date_window text.
+    Returns None when no month can be resolved — the caller then keeps the
+    season multiplier at 1.0 rather than guessing.
+    """
+    for field_name in ("date_start", "date_end"):
+        slot = packet.facts.get(field_name)
+        value = getattr(slot, "value", None)
+        if isinstance(value, str) and len(value) >= 7 and value[4] == "-" and value[7] == "-":
+            try:
+                month = int(value[5:7])
+            except ValueError:
+                continue
+            if 1 <= month <= 12:
+                return month
+    raw_slot = packet.facts.get("date_window")
+    raw = getattr(raw_slot, "value", None)
+    if isinstance(raw, str):
+        # Earliest-mentioned month in the text wins (pattern-dict order must
+        # not decide); ties (same position) broken by the longer name.
+        best: Optional[tuple] = None
+        for _num, pattern in _MONTH_NAME_PATTERNS.values():
+            match = pattern.search(raw)
+            if match and (best is None or match.start() < best[0]):
+                best = (match.start(), _num)
+        if best is not None:
+            return best[1]
+    return None
+
+
+def _resolve_season_tier(packet: CanonicalPacket, dest: str) -> tuple:
+    """Resolve (season_label, cost_multiplier) for a destination.
+
+    Conservative by construction: unknown destination, unresolvable month, or
+    an off-peak month all return multiplier 1.0. Labels: "peak", "shoulder",
+    "off", or None when the month could not be resolved.
+    """
+    month = _resolve_travel_month(packet)
+    if month is None:
+        return None, 1.0
+    primary = _DESTINATION_ALIASES.get(dest, dest)
+    tiers = _DESTINATION_SEASON_TIERS.get(primary, _DESTINATION_SEASON_TIERS["__default__"])
+    if month in tiers["peak"]:
+        return "peak", _SEASON_MULTIPLIER_PEAK
+    if month in tiers["shoulder"]:
+        return "shoulder", _SEASON_MULTIPLIER_SHOULDER
+    return "off", 1.0
+
 
 def get_numeric_budget(packet: CanonicalPacket) -> Optional[int]:
     """Extract numeric budget_min from packet facts."""
@@ -976,19 +1112,28 @@ def check_budget_feasibility(
     if not entry:
         return {"status": "unknown", "gap": None, "maturity": "heuristic"}
 
+    # Season-tier adjustment (2026-09-18): peak/shoulder months raise the
+    # destination minimum before margin application. Unknown destination or
+    # unresolvable month keeps multiplier 1.0 — behavior identical to the
+    # pre-season implementation.
+    season, season_multiplier = _resolve_season_tier(packet, dest)
+
     min_per_person = entry.get("min_per_person", 0)
     base_estimated_minimum = min_per_person * party_size
-    
+
     # Apply agency margin correctly (Base Cost * (1 + Margin% / 100))
     margin_pct = agency_settings.target_margin_pct if agency_settings else 15.0
-    estimated_minimum = base_estimated_minimum * (1.0 + margin_pct / 100.0)
+    estimated_minimum = base_estimated_minimum * season_multiplier * (1.0 + margin_pct / 100.0)
 
     gap = budget_min - estimated_minimum
+    season_payload: Dict[str, Any] = {}
+    if season is not None:
+        season_payload = {"season": season, "season_multiplier": season_multiplier}
     if gap < -0.3 * estimated_minimum:
-        return {"status": "infeasible", "gap": gap, "maturity": entry.get("maturity", "heuristic")}
+        return {"status": "infeasible", "gap": gap, "maturity": entry.get("maturity", "heuristic"), **season_payload}
     elif gap < 0:
-        return {"status": "tight", "gap": gap, "maturity": entry.get("maturity", "heuristic")}
-    return {"status": "feasible", "gap": gap, "maturity": entry.get("maturity", "heuristic")}
+        return {"status": "tight", "gap": gap, "maturity": entry.get("maturity", "heuristic"), **season_payload}
+    return {"status": "feasible", "gap": gap, "maturity": entry.get("maturity", "heuristic"), **season_payload}
 
 
 def _resolve_bucket_table(dest: str, packet: CanonicalPacket) -> Dict[str, Tuple[int, int, float]]:
@@ -1365,10 +1510,13 @@ def generate_risk_flags(
         feasibility = cached_feasibility if cached_feasibility is not None else check_budget_feasibility(packet, agency_settings=agency_settings)
         if feasibility["status"] == "infeasible":
             gap = feasibility["gap"]
+            season_note = ""
+            if feasibility.get("season") == "peak":
+                season_note = " (peak-season minimum — real quotes typically run higher)"
             risks.append({
                 "flag": "margin_risk",
                 "severity": "high",
-                "message": f"Budget infeasible — gap of ₹{abs(gap):,} below minimum viable cost",
+                "message": f"Budget infeasible — gap of ₹{abs(gap):,} below minimum viable cost{season_note}",
                 "maturity": feasibility.get("maturity", "heuristic"),
             })
 
@@ -1430,7 +1578,18 @@ def generate_risk_flags(
         })
 
     # --- EPISTEMIC ASSUMPTION RISK: Unacknowledged critical assumptions ---
-    if hasattr(packet, "assumptions") and packet.assumptions:
+    # Stage-gated (2026-09-19, KDD substrate-FP fix): at discovery a fresh
+    # run ALWAYS has acknowledged_by_operator=False, so this flag fired on
+    # 100% of notes with a routine convention default (unmarked currency →
+    # USD, unmarked scope → total) — it detected "the run just started",
+    # not risk. Discovery surfaces defaults via the Assumptions panel and
+    # ambiguity asks; the risk-flag escalation belongs where defaults feed
+    # money (shortlist/proposal/booking), matching the suitability block.
+    if (
+        stage in ("shortlist", "proposal", "booking")
+        and hasattr(packet, "assumptions")
+        and packet.assumptions
+    ):
         unacknowledged = [
             a for a in packet.assumptions
             if getattr(a, "criticality", "advisory") == "critical"
@@ -2248,7 +2407,22 @@ def run_gap_and_decision(
             and action.get("priority") == "high"
             and ctype in HIGH_PRIORITY_ESCALATION_TYPES
         )
-        if is_stop or is_critical_escalation or is_high_priority_escalation:
+        # Gap-assessment fix (2026-09-18): medium-priority ASK actions
+        # (general_conflict) were silently dropped — the action table declares
+        # ASK_FOLLOWUP but Phase 9 never asked, contradicting the
+        # contradiction→question one-to-one contract. Any detected conflict on
+        # an unmapped field is a real two-source disagreement; the declared
+        # action must be honored.
+        is_medium_ask_escalation = (
+            action.get("decision") == "ASK_FOLLOWUP"
+            and action.get("priority") == "medium"
+        )
+        if (
+            is_stop
+            or is_critical_escalation
+            or is_high_priority_escalation
+            or is_medium_ask_escalation
+        ):
             actionable_contradictions.append({**c, "action": action, "type": ctype})
 
     # --- Phase 8: Confidence ---
@@ -2404,6 +2578,47 @@ def run_gap_and_decision(
             # confidence edge, asserts PROCEED_TRAVELER_SAFE at conf 0.496), so
             # no independent confidence gate is applied at this branch point.
 
+    # --- Phase 9b: Completeness ask-floor (FND-0313, 2026-10-05) -------------
+    # Phase 9 emits questions only in specific rule branches (contradictions,
+    # hard blockers, soft blockers, blocking ambiguities). A packet can still
+    # carry BLOCKING_FOR unknowns with no question emitted (SIM3 run FND-0313:
+    # 3 blocking unknowns in packet.unknowns, follow_up_questions == []), which
+    # 409s the T1 ask-traveler loop — POST /followups/{trip_id}/send reads
+    # decision.follow_up_questions via public_asks._open_questions.
+    # Floor rule: every blocking unknown gets exactly one question. Existing
+    # branches stay authoritative — this pass is additive, dedupes against
+    # already-asked fields, and caps output to avoid question spam on very
+    # messy notes. Data-only: it never changes decision_state.
+    if packet.unknowns:
+        asked_fields = {
+            q.get("field_name") for q in follow_up_questions if isinstance(q, dict)
+        }
+        floor_questions: List[Dict[str, Any]] = []
+        for blocking in blocking_unknowns(packet):
+            blocker = blocking["field_name"]
+            if blocker in asked_fields:
+                continue
+            asked_fields.add(blocker)
+            # Mirror the hard-blocker branch's hypothesis suggestion shape so
+            # the ask loop can offer an inferred value alongside the question.
+            hyp_slot = packet.hypotheses.get(blocker)
+            hyp_core = hypothesis_core_value(hyp_slot)
+            suggested = [hyp_core] if hyp_core not in (None, "", [], {}) else []
+            floor_questions.append({
+                "field_name": blocker,
+                "question": generate_question(blocker),
+                "priority": blocking["priority"],
+                "can_infer": hyp_slot is not None,
+                "inference_confidence": round(hyp_slot.confidence * 0.3, 2) if hyp_slot else 0.0,
+                "suggested_values": suggested,
+                "required_for": blocking["ops"],
+            })
+        priority_rank = {"high": 0, "medium": 1}
+        # Stable sort: priority first, then packet.unknowns field order.
+        floor_questions.sort(key=lambda q: priority_rank.get(q["priority"], 2))
+        follow_up_questions.extend(floor_questions[:MAX_FALLBACK_QUESTIONS])
+
+
     # --- Phase 10: Risk flags (reuse cached feasibility) ---
     risk_flags = generate_risk_flags(packet, stage, cached_feasibility=feasibility)
 
@@ -2445,6 +2660,20 @@ def run_gap_and_decision(
     # --- Invariant check: infeasible budget never PROCEED_TRAVELER_SAFE ---
     if feasibility["status"] == "infeasible" and decision_state == "PROCEED_TRAVELER_SAFE":
         decision_state = "ASK_FOLLOWUP"
+
+    # --- ADR-008 / Expedition Lane A3: Calibrated Confidence-Gated Operator Routing ---
+    # When semantic ambiguity analysis is present in packet metadata and confidence
+    # falls below autonomous threshold (0.60), ensure non-blocking operator advisory flag
+    semantic_amb = (getattr(packet, "metadata", {}) or {}).get("semantic_ambiguity")
+    if semantic_amb and isinstance(semantic_amb, dict):
+        amb_conf = semantic_amb.get("confidence")
+        if amb_conf is not None and float(amb_conf) < 0.60:
+            risk_flags.append({
+                "flag": "low_confidence_semantic_ambiguity",
+                "severity": "medium",
+                "message": f"Semantic clarity confidence ({float(amb_conf):.2f}) is below autonomous threshold (0.60) — operator review recommended.",
+                "source": "jev_calibrated_confidence",
+            })
 
     intent_scores = compute_intent_scores(packet)
     commercial_decision, commercial_next_action = decide_commercial_action(packet, intent_scores)

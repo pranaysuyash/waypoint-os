@@ -1,0 +1,1944 @@
+[
+  {
+    "step": "login",
+    "request": {
+      "url": "/api/auth/login"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "user": {
+        "id": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+        "email": "newuser@test.com",
+        "name": "New User",
+        "platform_role": "none"
+      },
+      "agency": {
+        "id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "name": "Test",
+        "slug": "test",
+        "logo_url": null
+      },
+      "membership": {
+        "role": "owner",
+        "is_primary": true
+      }
+    },
+    "at": "2026-10-05T18:10:17.665390+00:00"
+  },
+  {
+    "step": "C-inbound-probe",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/inbound/parse",
+      "json": {
+        "channel": "email",
+        "raw_text": "hi, vikram shetty here — you booked our bangkok trip (booking SIM3-WP7K2M). our flight TG318 bkk to bom yesterday got cancelled at the gate, 2 of us travelling. airline put us on a flight 19 hours later, no hotel, no meal voucher. this can't be right? what are our options, what is the airline supposed to give us?",
+        "customer_name": "Vikram Shetty",
+        "customer_contact": "vikram.shetty.sim3@waypointtest.dev"
+      }
+    },
+    "status": 422,
+    "response": {
+      "detail": {
+        "reason": "Real user trip data cannot be persisted in plaintext in this mode. Detected: Detected email address: 'vikram.shetty.sim3@waypointtest.dev...'. Enable encryption/migration (TRIPSTORE_BACKEND=sql|postgres and ENCRYPTION_KEY) before storing real user data.",
+        "remediation": "Enable encryption/migration (TRIPSTORE_BACKEND=sql|postgres and ENCRYPTION_KEY) or remove real-user PII from the request."
+      }
+    },
+    "at": "2026-10-05T18:10:18.965405+00:00"
+  },
+  {
+    "step": "C-seed-draft",
+    "request": {
+      "method": "POST",
+      "path": "/api/drafts",
+      "json": {
+        "name": "booking confirmation for vikram shetty — bangkok return trip",
+        "customer_message": "booking confirmation for vikram shetty — bangkok return trip, booking reference SIM3-WP7K2M, 2 passengers (vikram shetty, lata shetty), outbound TG318 bkk-bom. hotel: riverside bangkok, 4 nights. traveler contact on file: vikram dot shetty dot sim3 at waypointtest dot dev"
+      }
+    },
+    "status": 200,
+    "response": {
+      "draft_id": "draft_17b029f7ab73",
+      "name": "booking confirmation for vikram shetty — bangkok return trip",
+      "status": "open",
+      "created_at": "2026-10-05T18:10:19.014919+00:00"
+    },
+    "at": "2026-10-05T18:10:19.256665+00:00"
+  },
+  {
+    "step": "C-seed-run",
+    "request": {
+      "method": "POST",
+      "path": "/run",
+      "json": {
+        "raw_note": "booking confirmation for vikram shetty — bangkok return trip, booking reference SIM3-WP7K2M, 2 passengers (vikram shetty, lata shetty), outbound TG318 bkk-bom. hotel: riverside bangkok, 4 nights. traveler contact on file: vikram dot shetty dot sim3 at waypointtest dot dev",
+        "draft_id": "draft_17b029f7ab73"
+      }
+    },
+    "status": 200,
+    "response": {
+      "run_id": "8444a7fd-636b-41e5-8842-54d45569b0f1",
+      "state": "queued",
+      "idempotent_replay": false
+    },
+    "at": "2026-10-05T18:10:19.358283+00:00"
+  },
+  {
+    "step": "C-seed",
+    "request": {
+      "method": "GET",
+      "path": "/runs/8444a7fd-636b-41e5-8842-54d45569b0f1"
+    },
+    "status": 200,
+    "response": {
+      "run_id": "8444a7fd-636b-41e5-8842-54d45569b0f1",
+      "state": "blocked",
+      "trip_id": "trip_1eb1782e150b",
+      "stage": "discovery",
+      "operating_mode": "normal_intake",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "created_at": "2026-10-05T18:10:19.285643+00:00",
+      "started_at": "2026-10-05T18:10:19.372307+00:00",
+      "completed_at": "2026-10-05T18:10:22.301716+00:00",
+      "total_ms": null,
+      "steps_completed": [
+        "packet",
+        "validation",
+        "decision",
+        "strategy",
+        "blocked_result"
+      ],
+      "events": [
+        {
+          "event_id": "evt_71580e82",
+          "event_type": "run_started",
+          "run_id": "8444a7fd-636b-41e5-8842-54d45569b0f1",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:19.657557+00:00",
+          "stage": "discovery",
+          "operating_mode": "normal_intake"
+        },
+        {
+          "event_id": "evt_9d796a15",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "8444a7fd-636b-41e5-8842-54d45569b0f1",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:19.675801+00:00",
+          "stage_name": "packet"
+        },
+        {
+          "event_id": "evt_d9941827",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "8444a7fd-636b-41e5-8842-54d45569b0f1",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:20.071427+00:00",
+          "stage_name": "packet",
+          "execution_ms": 395.61
+        },
+        {
+          "event_id": "evt_a8007313",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "8444a7fd-636b-41e5-8842-54d45569b0f1",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:20.079720+00:00",
+          "stage_name": "validation"
+        },
+        {
+          "event_id": "evt_58c63a88",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "8444a7fd-636b-41e5-8842-54d45569b0f1",
+          "trip_id": null,
+          "timestamp": "2026-10-05T18:10:20.096631+00:00",
+          "stage_name": "validation",
+          "execution_ms": 16.87
+        },
+        {
+          "event_id": "evt_0f8b91d4",
+          "event_type": "run_blocked",
+          "run_id": "8444a7fd-636b-41e5-8842-54d45569b0f1",
+          "trip_id": "trip_1eb1782e150b",
+          "timestamp": "2026-10-05T18:10:22.346636+00:00",
+          "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
+          "stage_at_block": "validation"
+        }
+      ],
+      "error_type": null,
+      "error_message": null,
+      "stage_at_failure": null,
+      "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
+      "validation": {
+        "status": "ESCALATED",
+        "stage": "intake_extraction",
+        "gate": "intake_completion",
+        "legacy_gate": "NB01",
+        "reasons": [
+          "Structural validation failed (1 error)"
+        ]
+      },
+      "packet": {
+        "packet_id": "pkt_ddd60b75",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Bangkok"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "bangkok",
+                "ref_id": "ref_e60597",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.680662",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_62367b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.680719",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 4,
+              "max": 4
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "4 nights",
+                "ref_id": "ref_3934ef",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.681132",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "party_size": {
+            "value": 2,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "2",
+                "ref_id": "ref_d86d5f",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.685514",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_f211a1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.688590",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_b2422c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.688762",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "feedback": null,
+        "raw_note": null,
+        "suitability_flags": [],
+        "ambiguities": [],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "budget_raw_text",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_d008bff0"
+        ],
+        "revision_count": 0,
+        "event_cursor": 10,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.680697",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Bangkok"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.680724",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.681153",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 4,
+                "max": 4
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.685548",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.688618",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:40:19.688768",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.688986",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.689425",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.689434",
+            "details": {
+              "field_name": "budget_raw_text",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.689439",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "assumptions": [],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.76,
+            "missing_dimensions": [
+              "dates",
+              "budget"
+            ],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.92); dates_clarity=False (noul=0.3); party_clarity=True (noul=0.91); budget_clarity=False (noul=0.2); intake_action=PROCEED (p=0.84, conf=0.76); coherence_override=blocking_unknowns:[origin_city,date_window,budget_raw_text,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": false,
+                "probability": 0.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": false,
+                "probability": 0.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "decision_state": "STOP_NEEDS_REVIEW",
+      "follow_up_questions": [],
+      "hard_blockers": [
+        "extraction_quality"
+      ],
+      "soft_blockers": [],
+      "branch_options": [],
+      "report_fingerprint": null,
+      "access_token": null,
+      "retention_days": null,
+      "frontier_result": null
+    },
+    "at": "2026-10-05T18:10:22.418268+00:00"
+  },
+  {
+    "step": "C-flight-facts",
+    "request": {
+      "method": "PATCH",
+      "path": "/trips/trip_1eb1782e150b",
+      "json": {
+        "flight_status_updates": [
+          {
+            "flight_number": "TG318",
+            "status": "CANCELLED",
+            "delay_hours": 19,
+            "reported_at": "2026-10-04T09:00:00Z",
+            "source": "traveler_message"
+          }
+        ]
+      }
+    },
+    "status": 200,
+    "response": {
+      "id": "trip_1eb1782e150b",
+      "status": "incomplete",
+      "stage": "discovery",
+      "dateWindow": null,
+      "destination": "Bangkok",
+      "origin": null,
+      "budget": null,
+      "party": 2,
+      "tripType": "leisure",
+      "tripPurpose": "leisure",
+      "customerName": "Client 2E150B",
+      "customerMessage": null,
+      "agentNotes": null,
+      "follow_up_due_date": null,
+      "extracted": {
+        "packet_id": "pkt_ddd60b75",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Bangkok"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "bangkok",
+                "ref_id": "ref_e60597",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.680662",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_62367b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.680719",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 4,
+              "max": 4
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "4 nights",
+                "ref_id": "ref_3934ef",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.681132",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "party_size": {
+            "value": 2,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "2",
+                "ref_id": "ref_d86d5f",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.685514",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_f211a1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.688590",
+            "notes": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_b2422c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.688762",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "ambiguities": [],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "budget_raw_text",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "assumptions": [],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_d008bff0"
+        ],
+        "revision_count": 0,
+        "event_cursor": 10,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.680697",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Bangkok"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.680724",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.681153",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 4,
+                "max": 4
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.685548",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.688618",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:40:19.688768",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.688986",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.689425",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.689434",
+            "details": {
+              "field_name": "budget_raw_text",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.689439",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.76,
+            "missing_dimensions": [
+              "dates",
+              "budget"
+            ],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.92); dates_clarity=False (noul=0.3); party_clarity=True (noul=0.91); budget_clarity=False (noul=0.2); intake_action=PROCEED (p=0.84, conf=0.76); coherence_override=blocking_unknowns:[origin_city,date_window,budget_raw_text,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": false,
+                "probability": 0.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": false,
+                "probability": 0.0,
+                "notes": ""
+              }
+            }
+          }
+        },
+        "public_checker_live_checks": {
+          "destination": "Bangkok",
+          "country_code": "TH",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Bangkok",
+            "current": {
+              "temperature_c": 25.0,
+              "apparent_temperature_c": 30.9,
+              "precipitation_mm": 0.4,
+              "relative_humidity_pct": 96.0,
+              "wind_kmh": 2.9,
+              "weather_code": 80
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Bangkok is currently very humid (96% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Bangkok is currently very humid (96% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Bangkok is currently very humid (96% relative humidity)."
+            ]
+          }
+        },
+        "score": 39
+      },
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'budget_raw_text' missing — needed to generate a quote, but trip can still be saved",
+            "field": "budget_raw_text"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "party_size": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {},
+        "overall_score": 39,
+        "public_checker_live_checks": {
+          "destination": "Bangkok",
+          "country_code": "TH",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Bangkok",
+            "current": {
+              "temperature_c": 25.0,
+              "apparent_temperature_c": 30.9,
+              "precipitation_mm": 0.4,
+              "relative_humidity_pct": 96.0,
+              "wind_kmh": 2.9,
+              "weather_code": 80
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Bangkok is currently very humid (96% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Bangkok is currently very humid (96% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Bangkok is currently very humid (96% relative humidity)."
+            ]
+          }
+        }
+      },
+      "strategy": {
+        "session_goal": "Gate failure — early exit.",
+        "priority_sequence": [],
+        "tonal_guardrails": [],
+        "risk_flags": [],
+        "suggested_opening": "",
+        "exit_criteria": [],
+        "next_action": "STOP_NEEDS_REVIEW",
+        "assumptions": [],
+        "suggested_tone": "professional"
+      },
+      "frontier_result": null,
+      "safety": null,
+      "party_composition": null,
+      "pace_preference": null,
+      "date_year_confidence": null,
+      "lead_source": null,
+      "activity_provenance": null,
+      "activity_interests": null,
+      "trip_priorities": null,
+      "date_flexibility": null,
+      "passenger_claim": null,
+      "ghost_concierge": {
+        "origin": "ghost_concierge_monitor",
+        "trip_id": "trip_1eb1782e150b",
+        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "overall_health": "DISRUPTED",
+        "evaluated_at": "2026-10-05T18:10:22.482043+00:00",
+        "connection_risks": [],
+        "drafted_interventions": [
+          {
+            "action_type": "SEARCH_FALLBACK_FLIGHTS",
+            "severity": "CRITICAL",
+            "summary": "Flight TG318 has been CANCELLED.",
+            "recommended_action": "Hold alternative seats immediately on next available codeshare departure.",
+            "status": "DRAFT_AWAITING_OPERATOR"
+          },
+          {
+            "action_type": "DRAFT_CLAIM",
+            "severity": "INFO",
+            "summary": "Cancellation of TG318 is outside the EU261/UK261/US DOT statutory scope — claimable under the Montreal Convention 1999, Article 19 via the carrier's claims process.",
+            "recommended_action": "Trigger automated passenger rights claim filing.",
+            "status": "DRAFT_AWAITING_OPERATOR"
+          }
+        ],
+        "reality_note": "evaluated from operator/traveler-reported flight facts; live provider feed pending B6/B7 gate (2026-10-06)",
+        "healer_note": "healer not chained: trip has no stored journey graph"
+      },
+      "traveler_answers": null
+    },
+    "at": "2026-10-05T18:10:22.542517+00:00"
+  },
+  {
+    "step": "C-trip-after-ghost",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_1eb1782e150b"
+    },
+    "status": 200,
+    "response": {
+      "id": "trip_1eb1782e150b",
+      "status": "incomplete",
+      "stage": "discovery",
+      "dateWindow": null,
+      "destination": "Bangkok",
+      "origin": null,
+      "budget": null,
+      "party": 2,
+      "tripType": "leisure",
+      "tripPurpose": "leisure",
+      "customerName": "Client 2E150B",
+      "customerMessage": null,
+      "agentNotes": null,
+      "follow_up_due_date": null,
+      "extracted": {
+        "packet_id": "pkt_ddd60b75",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Bangkok"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "bangkok",
+                "ref_id": "ref_e60597",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.680662",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_62367b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.680719",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 4,
+              "max": 4
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "4 nights",
+                "ref_id": "ref_3934ef",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.681132",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "party_size": {
+            "value": 2,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "2",
+                "ref_id": "ref_d86d5f",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.685514",
+            "notes": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_d008bff0",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_f211a1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.688590",
+            "notes": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_b2422c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-05T23:40:19.688762",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "ambiguities": [],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "budget_raw_text",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "assumptions": [],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_d008bff0"
+        ],
+        "revision_count": 0,
+        "event_cursor": 10,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.680697",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Bangkok"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.680724",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.681153",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 4,
+                "max": 4
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.685548",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-05T23:40:19.688618",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-05T23:40:19.688768",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.688986",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.689425",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.689434",
+            "details": {
+              "field_name": "budget_raw_text",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-05T23:40:19.689439",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.76,
+            "missing_dimensions": [
+              "dates",
+              "budget"
+            ],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.92); dates_clarity=False (noul=0.3); party_clarity=True (noul=0.91); budget_clarity=False (noul=0.2); intake_action=PROCEED (p=0.84, conf=0.76); coherence_override=blocking_unknowns:[origin_city,date_window,budget_raw_text,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": false,
+                "probability": 0.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": false,
+                "probability": 0.0,
+                "notes": ""
+              }
+            }
+          }
+        },
+        "public_checker_live_checks": {
+          "destination": "Bangkok",
+          "country_code": "TH",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Bangkok",
+            "current": {
+              "temperature_c": 25.0,
+              "apparent_temperature_c": 30.9,
+              "precipitation_mm": 0.4,
+              "relative_humidity_pct": 96.0,
+              "wind_kmh": 2.9,
+              "weather_code": 80
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Bangkok is currently very humid (96% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Bangkok is currently very humid (96% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Bangkok is currently very humid (96% relative humidity)."
+            ]
+          }
+        },
+        "score": 39
+      },
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'budget_raw_text' missing — needed to generate a quote, but trip can still be saved",
+            "field": "budget_raw_text"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "party_size": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {},
+        "overall_score": 39,
+        "public_checker_live_checks": {
+          "destination": "Bangkok",
+          "country_code": "TH",
+          "travel_window": null,
+          "seasonality": null,
+          "current_conditions": {
+            "destination": "Bangkok",
+            "current": {
+              "temperature_c": 25.0,
+              "apparent_temperature_c": 30.9,
+              "precipitation_mm": 0.4,
+              "relative_humidity_pct": 96.0,
+              "wind_kmh": 2.9,
+              "weather_code": 80
+            },
+            "signals": [
+              "humid right now"
+            ],
+            "hard_blockers": [],
+            "soft_blockers": [
+              "Bangkok is currently very humid (96% relative humidity)."
+            ],
+            "score_penalty": 3,
+            "source": "open-meteo-current-conditions"
+          },
+          "signals": [
+            "humid right now"
+          ],
+          "hard_blockers": [],
+          "soft_blockers": [
+            "Bangkok is currently very humid (96% relative humidity)."
+          ],
+          "structured_risks": [],
+          "score_penalty": 3,
+          "source": "open-meteo",
+          "d6_public_surface": {
+            "category_status": {},
+            "category_authority": {},
+            "category_authority_source": {},
+            "category_authority_reasons": {},
+            "authoritative_hard_blockers": [],
+            "authoritative_soft_blockers": [],
+            "advisory_hard_blockers": [],
+            "advisory_soft_blockers": [
+              "Bangkok is currently very humid (96% relative humidity)."
+            ]
+          }
+        }
+      },
+      "strategy": {
+        "session_goal": "Gate failure — early exit.",
+        "priority_sequence": [],
+        "tonal_guardrails": [],
+        "risk_flags": [],
+        "suggested_opening": "",
+        "exit_criteria": [],
+        "next_action": "STOP_NEEDS_REVIEW",
+        "assumptions": [],
+        "suggested_tone": "professional"
+      },
+      "frontier_result": null,
+      "safety": null,
+      "party_composition": null,
+      "pace_preference": null,
+      "date_year_confidence": null,
+      "lead_source": null,
+      "activity_provenance": null,
+      "activity_interests": null,
+      "trip_priorities": null,
+      "date_flexibility": null,
+      "passenger_claim": null,
+      "ghost_concierge": {
+        "origin": "ghost_concierge_monitor",
+        "trip_id": "trip_1eb1782e150b",
+        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "overall_health": "DISRUPTED",
+        "evaluated_at": "2026-10-05T18:10:22.482043+00:00",
+        "connection_risks": [],
+        "drafted_interventions": [
+          {
+            "action_type": "SEARCH_FALLBACK_FLIGHTS",
+            "severity": "CRITICAL",
+            "summary": "Flight TG318 has been CANCELLED.",
+            "recommended_action": "Hold alternative seats immediately on next available codeshare departure.",
+            "status": "DRAFT_AWAITING_OPERATOR"
+          },
+          {
+            "action_type": "DRAFT_CLAIM",
+            "severity": "INFO",
+            "summary": "Cancellation of TG318 is outside the EU261/UK261/US DOT statutory scope — claimable under the Montreal Convention 1999, Article 19 via the carrier's claims process.",
+            "recommended_action": "Trigger automated passenger rights claim filing.",
+            "status": "DRAFT_AWAITING_OPERATOR"
+          }
+        ],
+        "reality_note": "evaluated from operator/traveler-reported flight facts; live provider feed pending B6/B7 gate (2026-10-06)",
+        "healer_note": "healer not chained: trip has no stored journey graph"
+      },
+      "traveler_answers": null
+    },
+    "at": "2026-10-05T18:10:22.560513+00:00"
+  },
+  {
+    "step": "C-evaluate",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/passenger-rights/evaluate",
+      "json": {
+        "trip_id": "trip_1eb1782e150b",
+        "flight_number": "TG318",
+        "disruption_type": "CANCELLED",
+        "delay_hours": 19,
+        "distance_km": 2400,
+        "passengers_count": 2,
+        "airline_name": "Thai Airways"
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_1eb1782e150b",
+      "flight_number": "TG318",
+      "is_eligible": false,
+      "regulatory_framework": "NONE",
+      "compensation_per_passenger_eur": 0.0,
+      "total_statutory_compensation_eur": 0.0,
+      "total_claim_amount_usd": 0.0,
+      "passengers_count": 2,
+      "claim_reason": "Route geography unknown — no EU261/UK261/US DOT statutory scheme can be confirmed without it; carrier Thailand operates under no EU261/UK261/US DOT scheme. Claimable under the Montreal Convention 1999, Article 19 via the carrier's claims process."
+    },
+    "at": "2026-10-05T18:10:22.589227+00:00"
+  },
+  {
+    "step": "C-generate-claim",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/passenger-rights/trip_1eb1782e150b/generate-claim",
+      "json": {
+        "trip_id": "trip_1eb1782e150b",
+        "passenger_names": [
+          "Vikram Shetty",
+          "Lata Shetty"
+        ],
+        "booking_reference": "SIM3-WP7K2M",
+        "advisor_notes": "Sim #3 — gate cancellation, 19h rebooking, no care provided."
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_1eb1782e150b",
+      "claim_id": "claim_trip_1eb_4022",
+      "regulatory_framework": "NONE",
+      "claim_letter_text": "FORMAL CLAIM FOR FLIGHT DISRUPTION DAMAGES UNDER THE MONTREAL CONVENTION 1999, ARTICLE 19\nDate: 2026-10-05\nTrip ID: trip_1eb1782e150b\nBooking Reference: SIM3-WP7K2M\nPassengers: Vikram Shetty, Lata Shetty\n\nDear Airline Customer Relations,\nWe acknowledge this disruption falls outside the EU261/UK261/US DOT statutory compensation regimes. Our claim is therefore brought under the Montreal Convention 1999, Article 19 for damages caused by delay/cancellation, subject to the convention's liability limits, and under the airline's own customer-care policy. Please provide the carrier's claims reference and settlement process for the passengers' documented losses.",
+      "generated_at": "2026-10-05T18:10:22.612978+00:00"
+    },
+    "at": "2026-10-05T18:10:22.724960+00:00"
+  },
+  {
+    "step": "C-dispo-get-initial",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/passenger-rights/trip_1eb1782e150b/claims/claim_trip_1eb_4022/disposition"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_1eb1782e150b",
+      "claim_id": "claim_trip_1eb_4022",
+      "disposition": {
+        "state": "SUBMITTED",
+        "history": [
+          {
+            "state": "SUBMITTED",
+            "at": "2026-10-05T18:10:22.613040+00:00",
+            "by": "system",
+            "note": "claim generated"
+          }
+        ],
+        "outcome": null,
+        "overdue": false,
+        "claim_id": "claim_trip_1eb_4022"
+      }
+    },
+    "at": "2026-10-05T18:10:22.767235+00:00"
+  },
+  {
+    "step": "C-dispo-illegal",
+    "request": {
+      "method": "PATCH",
+      "path": "/api/v1/passenger-rights/trip_1eb1782e150b/claims/claim_trip_1eb_4022/disposition",
+      "json": {
+        "new_state": "TRAVELER_PAID",
+        "note": "sim3 illegal jump probe"
+      }
+    },
+    "status": 409,
+    "response": {
+      "detail": "illegal transition: SUBMITTED → TRAVELER_PAID"
+    },
+    "at": "2026-10-05T18:10:22.790902+00:00"
+  },
+  {
+    "step": "C-dispo-backwards",
+    "request": {
+      "method": "PATCH",
+      "path": "/api/v1/passenger-rights/trip_1eb1782e150b/claims/claim_trip_1eb_4022/disposition",
+      "json": {
+        "new_state": "DRAFTED",
+        "note": "sim3 backwards probe"
+      }
+    },
+    "status": 409,
+    "response": {
+      "detail": "illegal transition: SUBMITTED → DRAFTED"
+    },
+    "at": "2026-10-05T18:10:22.823619+00:00"
+  },
+  {
+    "step": "C-dispo-partial",
+    "request": {
+      "method": "PATCH",
+      "path": "/api/v1/passenger-rights/trip_1eb1782e150b/claims/claim_trip_1eb_4022/disposition",
+      "json": {
+        "new_state": "AIRLINE_PARTIAL",
+        "note": "airline offered 50%"
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_1eb1782e150b",
+      "claim_id": "claim_trip_1eb_4022",
+      "disposition": {
+        "state": "AIRLINE_PARTIAL",
+        "history": [
+          {
+            "state": "SUBMITTED",
+            "at": "2026-10-05T18:10:22.613040+00:00",
+            "by": "system",
+            "note": "claim generated"
+          },
+          {
+            "state": "AIRLINE_PARTIAL",
+            "at": "2026-10-05T18:10:22.849126+00:00",
+            "by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "note": "airline offered 50%"
+          }
+        ],
+        "outcome": null,
+        "overdue": false,
+        "claim_id": "claim_trip_1eb_4022"
+      }
+    },
+    "at": "2026-10-05T18:10:22.953988+00:00"
+  },
+  {
+    "step": "C-dispo-paid",
+    "request": {
+      "method": "PATCH",
+      "path": "/api/v1/passenger-rights/trip_1eb1782e150b/claims/claim_trip_1eb_4022/disposition",
+      "json": {
+        "new_state": "TRAVELER_PAID",
+        "note": "airline paid traveler directly",
+        "outcome": {
+          "amount": "EUR 300",
+          "channel": "airline_direct",
+          "recorded_only": true
+        }
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_1eb1782e150b",
+      "claim_id": "claim_trip_1eb_4022",
+      "disposition": {
+        "state": "TRAVELER_PAID",
+        "history": [
+          {
+            "state": "SUBMITTED",
+            "at": "2026-10-05T18:10:22.613040+00:00",
+            "by": "system",
+            "note": "claim generated"
+          },
+          {
+            "state": "AIRLINE_PARTIAL",
+            "at": "2026-10-05T18:10:22.849126+00:00",
+            "by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "note": "airline offered 50%"
+          },
+          {
+            "state": "TRAVELER_PAID",
+            "at": "2026-10-05T18:10:22.978569+00:00",
+            "by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "note": "airline paid traveler directly"
+          }
+        ],
+        "outcome": {
+          "amount": "EUR 300",
+          "channel": "airline_direct",
+          "recorded_only": true
+        },
+        "overdue": false,
+        "claim_id": "claim_trip_1eb_4022"
+      }
+    },
+    "at": "2026-10-05T18:10:23.031346+00:00"
+  },
+  {
+    "step": "C-dispo-closed",
+    "request": {
+      "method": "PATCH",
+      "path": "/api/v1/passenger-rights/trip_1eb1782e150b/claims/claim_trip_1eb_4022/disposition",
+      "json": {
+        "new_state": "CLOSED",
+        "note": "resolved"
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_1eb1782e150b",
+      "claim_id": "claim_trip_1eb_4022",
+      "disposition": {
+        "state": "CLOSED",
+        "history": [
+          {
+            "state": "SUBMITTED",
+            "at": "2026-10-05T18:10:22.613040+00:00",
+            "by": "system",
+            "note": "claim generated"
+          },
+          {
+            "state": "AIRLINE_PARTIAL",
+            "at": "2026-10-05T18:10:22.849126+00:00",
+            "by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "note": "airline offered 50%"
+          },
+          {
+            "state": "TRAVELER_PAID",
+            "at": "2026-10-05T18:10:22.978569+00:00",
+            "by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "note": "airline paid traveler directly"
+          },
+          {
+            "state": "CLOSED",
+            "at": "2026-10-05T18:10:23.045461+00:00",
+            "by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "note": "resolved"
+          }
+        ],
+        "outcome": {
+          "amount": "EUR 300",
+          "channel": "airline_direct",
+          "recorded_only": true
+        },
+        "overdue": false,
+        "claim_id": "claim_trip_1eb_4022"
+      }
+    },
+    "at": "2026-10-05T18:10:23.092057+00:00"
+  },
+  {
+    "step": "C-dispo-after-terminal",
+    "request": {
+      "method": "PATCH",
+      "path": "/api/v1/passenger-rights/trip_1eb1782e150b/claims/claim_trip_1eb_4022/disposition",
+      "json": {
+        "new_state": "SUBMITTED",
+        "note": "terminal probe"
+      }
+    },
+    "status": 409,
+    "response": {
+      "detail": "disposition is terminal (CLOSED); no further transitions"
+    },
+    "at": "2026-10-05T18:10:23.105503+00:00"
+  },
+  {
+    "step": "C-dispo-final",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/passenger-rights/trip_1eb1782e150b/claims/claim_trip_1eb_4022/disposition"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_1eb1782e150b",
+      "claim_id": "claim_trip_1eb_4022",
+      "disposition": {
+        "state": "CLOSED",
+        "history": [
+          {
+            "state": "SUBMITTED",
+            "at": "2026-10-05T18:10:22.613040+00:00",
+            "by": "system",
+            "note": "claim generated"
+          },
+          {
+            "state": "AIRLINE_PARTIAL",
+            "at": "2026-10-05T18:10:22.849126+00:00",
+            "by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "note": "airline offered 50%"
+          },
+          {
+            "state": "TRAVELER_PAID",
+            "at": "2026-10-05T18:10:22.978569+00:00",
+            "by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "note": "airline paid traveler directly"
+          },
+          {
+            "state": "CLOSED",
+            "at": "2026-10-05T18:10:23.045461+00:00",
+            "by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "note": "resolved"
+          }
+        ],
+        "outcome": {
+          "amount": "EUR 300",
+          "channel": "airline_direct",
+          "recorded_only": true
+        },
+        "overdue": false,
+        "claim_id": "claim_trip_1eb_4022"
+      }
+    },
+    "at": "2026-10-05T18:10:23.120489+00:00"
+  },
+  {
+    "step": "C-messages",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/trips/trip_1eb1782e150b/messages"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_1eb1782e150b",
+      "messages": [],
+      "count": 0
+    },
+    "at": "2026-10-05T18:10:23.136498+00:00"
+  }
+]

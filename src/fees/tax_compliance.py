@@ -18,7 +18,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+import re
 from typing import List, Optional
+
+_PAN_REGEX = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]$")
 
 
 class GSTTaxScheme(str, Enum):
@@ -133,7 +136,7 @@ class TaxComplianceEngine:
             )
 
         clean_pan = (pan_number or "").strip().upper()
-        has_valid_pan = len(clean_pan) == 10
+        has_valid_pan = bool(_PAN_REGEX.match(clean_pan))
 
         # Non-PAN penalty rule: 20% flat on entire transaction
         if not has_valid_pan:

@@ -1,5 +1,4 @@
-import http from "node:http";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiClient } from "../api-client";
 
 // Synthetic test fixtures — NOT credentials. These strings exist so the
@@ -7,7 +6,6 @@ import { ApiClient } from "../api-client";
 // every real credential check by construction (Part N, scanner remediation).
 const FIXTURE_ACCESS_TOKEN = 'proxy-test-fixture-access-value';
 const FIXTURE_REFRESH_TOKEN = 'proxy-test-fixture-refresh-value';
-
 
 const localStorageMock = {
   store: {} as Record<string, string>,
@@ -32,83 +30,57 @@ Object.defineProperty(window, "localStorage", {
 
 afterEach(() => {
   localStorageMock.clear();
+  vi.restoreAllMocks();
 });
-
-async function startServer(handler: http.RequestListener): Promise<{
-  origin: string;
-  close: () => Promise<void>;
-}> {
-  const server = http.createServer(handler);
-  await new Promise<void>((resolve) => {
-    server.listen(0, "127.0.0.1", () => resolve());
-  });
-  const address = server.address();
-  if (!address || typeof address === "string") {
-    throw new Error("Failed to start test server");
-  }
-  return {
-    origin: `http://127.0.0.1:${address.port}`,
-    close: () =>
-      new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      }),
-  };
-}
 
 describe("api client auth transport", () => {
   it("does not emit Authorization header from localStorage token", async () => {
-    let observedHeaders: http.IncomingHttpHeaders | undefined;
-    const { origin, close } = await startServer((req, res) => {
-      observedHeaders = req.headers;
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ ok: true }));
+    let observedHeaders: Record<string, string> | undefined;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      observedHeaders = init?.headers as Record<string, string>;
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     });
 
-    try {
-      const client = new ApiClient({ baseUrl: origin });
-      localStorage.setItem("access_token", "stale-local-token");
+    const client = new ApiClient({ baseUrl: "http://api.test.local" });
+    localStorage.setItem("access_token", "stale-local-token");
 
-      await client.get("/api/spine/health");
+    await client.get("/api/spine/health");
 
-      expect(observedHeaders).toBeDefined();
-      const capturedHeaders = observedHeaders as http.IncomingHttpHeaders;
-      expect(capturedHeaders.authorization).toBeUndefined();
-      expect(capturedHeaders["content-type"]).toBe("application/json");
-      expect(capturedHeaders.cookie).toBeUndefined();
-    } finally {
-      await close();
-    }
+    expect(observedHeaders).toBeDefined();
+    expect(observedHeaders?.authorization).toBeUndefined();
+    expect(observedHeaders?.Authorization).toBeUndefined();
+    expect(observedHeaders?.["Content-Type"]).toBe("application/json");
   });
 
   it("sends JSON request bodies exactly once through post", async () => {
-    let observedBody = "";
-    let observedMethod = "";
-    const { origin, close } = await startServer(async (req, res) => {
-      observedMethod = req.method ?? "";
-      const chunks: Buffer[] = [];
-      for await (const chunk of req) {
-        chunks.push(Buffer.from(chunk));
-      }
-      observedBody = Buffer.concat(chunks).toString("utf8");
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ ok: true }));
+    let observedBody: string | undefined;
+    let observedMethod: string | undefined;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      observedMethod = init?.method;
+      observedBody = typeof init?.body === "string" ? init.body : undefined;
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     });
 
-    try {
-      const client = new ApiClient({ baseUrl: origin });
+    const client = new ApiClient({ baseUrl: "http://api.test.local" });
 
-      await client.post("/api/auth/login", {
-        email: "newuser@test.com",
-        password: "testpass123",
-      });
+    await client.post("/api/auth/login", {
+      email: "newuser@test.com",
+      password: "testpass123",
+    });
 
-      expect(observedMethod).toBe("POST");
-      expect(observedBody).toBe(JSON.stringify({
-        email: "newuser@test.com",
-        password: "testpass123",
-      }));
-    } finally {
-      await close();
-    }
+    expect(observedMethod).toBe("POST");
+    expect(observedBody).toBe(JSON.stringify({
+      email: "newuser@test.com",
+      password: "testpass123",
+    }));
   });
 });
+

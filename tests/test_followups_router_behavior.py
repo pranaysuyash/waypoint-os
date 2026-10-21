@@ -267,3 +267,83 @@ def test_reschedule_followup_invalid_date_format(session_client, monkeypatch):
     resp = session_client.patch("/followups/trip-3/reschedule", params={"new_date": "05/25/2026 09:30"})
     assert resp.status_code == 400
     assert resp.json()["detail"] == "Invalid date format. Use ISO-8601"
+
+
+# ---------------------------------------------------------------------------
+# FND-0301: send open follow-up questions to the traveler
+# ---------------------------------------------------------------------------
+
+def test_send_followup_questions_records_ask_and_dispatches(session_client, monkeypatch):
+    trip = {
+        "id": "trip-ask-9",
+        "agency_id": "agency_test",
+        "destination": "Kerala",
+        "packet": {"destination": "Kerala"},
+        "decision": {
+            "follow_up_questions": [
+                {"field_name": "origin_city", "question": "Which city would you fly out from?", "priority": "high"},
+            ],
+        },
+        "traveler_asks": [],
+    }
+    captured_updates = {}
+
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: trip)
+
+    def _update(trip_id, agency_id, fields):
+        captured_updates.update(fields)
+        trip.update(fields)
+        return trip
+
+    monkeypatch.setattr(followups.TripStore, "update_trip_for_agency", _update)
+
+    import spine_api.services.message_dispatch as dispatch_mod
+    monkeypatch.setattr(
+        followups,
+        "dispatch_outbound_message",
+        None,
+        raising=False,
+    )
+    # followups imports dispatch lazily inside the endpoint; patch the service
+    monkeypatch.setattr(
+        dispatch_mod,
+        "dispatch_outbound_message",
+        lambda *, recipient, channel, content: {
+            "dispatch_status": "NOT_CONFIGURED",
+            "provider": "whatsapp_cloud_api",
+            "detail": "creds absent (test)",
+        },
+    )
+    monkeypatch.delenv("WHATSAPP_ACCESS_TOKEN", raising=False)
+
+    # The endpoint signs a real proposal token; ensure the signing key exists.
+    monkeypatch.setenv("PROPOSAL_SIGNING_KEY", "test-signing-key-for-fnd0301-0123456789abcdef")
+
+    resp = session_client.post(
+        "/followups/trip-ask-9/send",
+        json={"recipient": "+919820000000", "channel": "whatsapp"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["ok"] is True
+    assert body["dispatch_status"] == "NOT_CONFIGURED"  # honest: no creds in test env
+    assert body["question_count"] == 1
+    assert "/a/" in body["ask_path"]
+
+    asks = captured_updates["traveler_asks"]
+    assert len(asks) == 1
+    assert asks[0]["fields"] == ["origin_city"]
+    assert asks[0]["dispatch_status"] == "NOT_CONFIGURED"
+    assert asks[0]["token"].startswith("prop_")
+
+
+def test_send_followup_questions_409_without_open_questions(session_client, monkeypatch):
+    trip = {"id": "trip-ask-empty", "agency_id": "agency_test", "decision": {"follow_up_questions": []}, "traveler_asks": []}
+    monkeypatch.setattr(followups.TripStore, "get_trip_for_agency", lambda trip_id, agency_id: trip)
+
+    resp = session_client.post(
+        "/followups/trip-ask-empty/send",
+        json={"recipient": "+919820000000", "channel": "whatsapp"},
+    )
+    assert resp.status_code == 409
+    assert "no open follow-up questions" in resp.json()["detail"]

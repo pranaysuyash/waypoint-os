@@ -27,6 +27,16 @@ export default defineConfig({
         '**/*.config.{js,ts}',
         '**/types/**',
       ],
+      // FND-0209 ratchet: floors pinned just under the 2026-09-16 baseline
+      // (68.32 lines / 61.85 branch / 62.92 functions / 70.67 statements) so
+      // coverage regressions fail CI while the suite is free to improve.
+      // Raise these floors as coverage grows — never lower them.
+      thresholds: {
+        lines: 68,
+        branches: 61,
+        functions: 62,
+        statements: 70,
+      },
     },
   },
   resolve: {

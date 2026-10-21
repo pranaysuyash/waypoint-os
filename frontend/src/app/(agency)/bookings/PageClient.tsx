@@ -3,7 +3,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { SimulatedBadge } from '@/components/ui/SimulatedBadge';
 import { useTrip, useTrips } from '@/hooks/useTrips';
 import { formatTripPickerLabel } from '@/lib/trip-picker-label';
@@ -252,7 +251,6 @@ export default function BookingsPageClient() {
 
   return (
     <div className='p-6 space-y-6'>
-      <BackToOverviewLink />
 
       {/* Header */}
       <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>

@@ -10,22 +10,6 @@ import { describe, expect, it } from 'vitest';
  * dispatch, slot, or compliance result.
  */
 describe('D-08 sibling sample-panel boundaries', () => {
-  it('contains MemoryArchitectPanel writes, search, freshness, and erasure claims', async () => {
-    const { MemoryArchitectPanel } = await import('../MemoryArchitectPanel');
-
-    render(<MemoryArchitectPanel />);
-
-    expect(screen.getByTestId('simulated-badge')).toHaveTextContent('Sample data');
-    expect(screen.getByText(/Preference Intake Preview/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Preview Ingest \(No Save\)/i })).toBeInTheDocument();
-    expect(screen.queryByText(/Verified Preference Intake|Auto-Curation Active|Save to Traveler Profile/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/One-Click Compliance|Automatically included in new trip proposals|Permanently purges/i)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Preview Erasure \(No Deletion\)/i }));
-    expect(screen.getByText(/no records were purged/i)).toBeInTheDocument();
-    expect(screen.getByText(/Nothing was erased in this demo/i)).toBeInTheDocument();
-  });
-
   it('contains MemorySettingsTab persistence and compliance claims', async () => {
     const { MemorySettingsTab } = await import('@/app/(agency)/settings/components/MemorySettingsTab');
 

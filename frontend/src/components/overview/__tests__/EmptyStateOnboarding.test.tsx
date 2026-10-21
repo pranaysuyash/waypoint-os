@@ -32,10 +32,10 @@ describe('EmptyStateOnboarding', () => {
     expect(inviteLink).toHaveAttribute('href', '/settings?tab=people');
   });
 
-  it('step 2 links to workbench intake', () => {
+  it('step 2 links to the canonical intake flow', () => {
     render(<EmptyStateOnboarding />);
     const intakeLink = screen.getByText('Add your first inquiry').closest('a');
-    expect(intakeLink).toHaveAttribute('href', '/workbench?draft=new&tab=intake');
+    expect(intakeLink).toHaveAttribute('href', '/inquiries/new?draft=new&tab=intake');
   });
 
   it('step 3 links to inbox', () => {

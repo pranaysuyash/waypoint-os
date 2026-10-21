@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import OpsPanel from '../workbench/OpsPanel';
 import { useTrip, useTrips } from '@/hooks/useTrips';
-import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { formatTripPickerLabel } from '@/lib/trip-picker-label';
 
 export default function DocumentsPage() {
@@ -39,7 +38,6 @@ export default function DocumentsPage() {
 
   return (
     <div className='p-6 space-y-6'>
-      <BackToOverviewLink />
       <div>
         <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Documents</h1>
         <p className='text-ui-sm text-[#8b949e] mt-1'>

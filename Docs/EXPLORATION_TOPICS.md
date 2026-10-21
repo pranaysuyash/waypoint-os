@@ -1723,3 +1723,110 @@ These are **blocking** for moving from notebooks to real implementation.
   - `confidence_score`
   - `owner_constraint`
 - This belongs in the exploration map because it is a persistence/contract gap, not just a UI-state issue. The live browser replay proved the gap and the contract fix closed it.
+
+### 34. Property-Based Testing for Intake Normalization 🟡
+**Status**: Explored (2026-09-18) — bounded experiment done, adoption pending owner. See [E14](exploration/E14_PROPERTY_BASED_TESTING_ADOPTION_2026-09-18.md).
+
+**Overview**: The gap assessment's Stage-B ask ("property-like tests for deterministic transformations") maps to adopting `hypothesis` as a dev dependency over the pure normalizer transforms (`parse_budget`, `parse_date_window`). The bounded experiment immediately paid for itself: a digit-strategy fuzz found a real `OverflowError` crash on 300+-digit paste artifacts (fixed same wave, regression tests in `tests/test_extraction_fixes.py`). Runtime cost ~5s.
+
+**Key Questions**:
+- Approve `hypothesis` as a dev dependency (repo dependency policy)?
+- Which invariants to pin: min<=max, currency vocabulary, re-parse idempotence, no-crash on digit runs?
+- Falsifier: if a month of runs finds nothing beyond the (fixed) overflow, shrink or retire the suite.
+
+### 35. Tiered Option Generator (Conservative/Balanced/Premium) ⚪
+**Status**: Researched (2026-09-18) — original framing rejected. See [E15](exploration/E15_TIERED_OPTION_GENERATOR_DEMAND_2026-09-18.md).
+
+**Overview**: No product doc demands trip-tier option generation; the niche is occupied by scored route-structure candidates (TS-06), budget-tier framing, and budget bucket bands. The one surviving sharp question: should `branch_options` gain a second producer (budget-tier variants from `BUDGET_BUCKET_RANGES`) reusing the existing scored-candidate contract? Revisit only on operator demand, after the branch-options serving fix (2026-09-18 wave) makes options operator-visible.
+
+**Key Questions**:
+- Do operators ask for tiered choices once options are visible in the workbench?
+- Can budget-tier variants reuse `route_structure`-style scoring, or do they need a different comparison contract?
+
+### 36. Ask-Traveler Channel Architecture 🟢
+**Status**: Researched (2026-09-29) — link-only channel SHIPPED; provider channels designed. See [E1](exploration/E1_ASK_TRAVELER_CHANNEL_2026-09-29.md).
+
+**Overview**: The FND-0301 ask loop is live: `POST /followups/{trip_id}/send` composes open questions + a token-gated `/a/{token}` answer page (same signed-token machinery as public proposals), dispatches via `spine_api/services/message_dispatch.py` (WhatsApp Cloud API / SendGrid adapters with honest `NOT_CONFIGURED`), and answers write back with `authority=explicit_user`. Channel options (link-only → WhatsApp direct → email → in-thread bot) ranked; per-message India rates flagged UNVERIFIED until the 2026-10-06 web-quota reset.
+
+**Key Questions**:
+- Owner DECIDE: WhatsApp direct as primary channel (Meta business verification + 2–3 templates) vs link-only?
+- BSP vs direct Cloud API after rate verification?
+
+### 37. Jev Ask-Loop Probe (question rendering + answer parsing) ⚪
+**Status**: DESIGNED (2026-09-29) — run when Jev creds available. See [E2](exploration/E2_JEV_ASK_LOOP_PROBE_2026-09-29.md).
+
+**Overview**: Two rubric-explicit probes on the 16 colloquial fixtures (G1 lesson applied): (1) traveler-voiced question rendering — F1 ≥ 0.80 gate, zero fabricated facts, 1:1 field mapping enforced by deterministic validator; (2) answer parsing — proposals only (`derived_from_traveler_reply`, never `explicit_user`), re-validated through the canonical extractor stack, explicit `unparsed` markers. Cost < $0.02. Shipped verbatim/link-form behavior is the floor either way.
+
+### 38. Cross-Dock EDIFACT/NDC Payloads into Trip Documents ⚪
+**Status**: Registered (2026-09-29) from open finding FND-0234. Research-only until a live supplier lane (B6/B7, gated to 2026-10-06) exists — cross-dock payload parsing without a producer is speculative.
+
+**Overview**: EDIFACT/NDC supplier messages flowed straight into trip documents. With the distribution lane PREVIEW_ONLY, the research question is the normalization contract: which payload fields map to the canonical trip document schema, and where validation gates sit before anything reaches a traveler-visible document.
+
+### 39. Forward-Loaded Capacity Planning ⚪
+**Status**: Registered (2026-09-29) from open finding FND-0235. Depends on departure-date demand data that only accumulates once real agencies run on the platform.
+
+**Overview**: Lease/capacity planning against departure-date demand. No current demand dataset exists; revisit when pilot-scale booking data exists or an agency supplies forecasts.
+
+### 40. Quarantine Follow-Ons: Auto-Classifier + Unified Ledger ⚪
+**Status**: Registered (2026-09-29) from open finding FND-0237.
+
+**Overview**: The quarantine path exists; the follow-on ideas (auto-classifier for quarantined items, unified ledger, dry-run + batch replay) are genuine products improvements. Sequence after the confirmation defect grading (T9, shipped) proves the grading contract — quarantine classification can reuse it.
+
+### 44. Currency / Locale / Timezone Strategy 🟡
+**Status**: New — from launch-readiness council (E3, 2026-09-29). See `Docs/review/LAUNCH_READINESS_TASK_INVENTORY_2026-09-29.md`.
+
+**Overview**: INR-first today (feasibility tables, MarginPolicy, cost gauge all INR-denominated; foreign-currency budgets short-circuit to `unknown` by design). No localization module exists. Multi-currency is a real-launch surface gap.
+
+**Key Questions**: Which markets first? Where does FX conversion live (one canonical rate source, cached, dated)? Which tables become currency-parameterized (BUDGET_FEASIBILITY_TABLE, MarginPolicy floors)?
+
+### 45. Multi-User Trip Concurrency 🟡
+**Status**: New — council E4, REVISED: `draft_store.py` already has version increment + conflict detection; scope is **trips-level locking only**.
+
+**Key Questions**: Do trips need `expected_version` guards like drafts? Which write paths are multi-advisor-contended first?
+
+### 46. Mobile / Responsive + PWA Audit 🟡
+**Status**: New — council E5. No PWA manifest found; responsive evidence unverified.
+
+**Key Questions**: Browser/device sweep (playwright-interactive) of the workbench + /a/[token] traveler page at phone widths; manifest + service-worker scope.
+
+### 47. B6/B7 Live-Provider Lane Sequencing 🟡
+**Status**: New — council E6. Quota gate clears 2026-10-06.
+
+**Key Questions**: Prep scoping now (adapter contracts, sandbox lanes), execute after the gate; pairs with E1 channel choice and FND-0268 margin-gate reopen condition.
+
+### 48. External Ideas Sweep — Non-Traditional Sources ⚪
+**Status**: Researched (2026-10-18); producer probe executed (2026-10-20) — trvl sandboxed run, evidence in `data/experiments/trvl_probe_2026-10-20/`. See [EXTERNAL_IDEAS_SWEEP_NONTRADITIONAL_2026-10-18.md](exploration/EXTERNAL_IDEAS_SWEEP_NONTRADITIONAL_2026-10-18.md).
+
+**Overview**: One-pass sweep of X / Reddit / Medium / GitHub / HN (non-mainstream channels) for ideas and signals outside the project's usual diet. Four converging findings: (1) agent-native booking rails commoditizing (LetsFG 2.1k⭐, trvl, Dida wholesale-MCP, Agentic Commerce Protocol) → sandbox producer candidates under ADR-008, never a rail build; (2) agent replay + model-fork standardizing (OrcaReplay, orca-trace-v0 spec) → pairs with KDD harness + sim replays; (3) causal tamper-evident audit (ZizkaDB, EU AI Act Art. 12) → launch-readiness posture candidate; (4) r/travelagents practitioner pain points — standout: manual fare-drop → reprice-or-upgrade → commission-offset playbook, a natural tracking-only decision-card feature. Gaps: X unfetchable this session (rerun after search-quota reset 2026-11-06); Reddit search API blocked.
+
+**Key Questions**:
+- Owner DECIDE: adopt MCP sandbox producer rails for B6/B7 lane? fare-drop decision card as a feature?
+- Which of replay/fork harness vs constraint-DSL gate core (ChinaTravel) delivers more launch credibility per effort?
+
+### 49. Fare-Drop Decision Card (post-booking reprice-vs-upgrade) 🟡
+**Status**: Task package ready (2026-10-21), awaiting owner GO. See [FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md](exploration/FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md). Implements roadmap-registry item "Price-drop re-shopping" (documented, not implemented).
+
+**Overview**: Practitioner-validated gap (r/travelagents top thread of the year): booked fares drop, the advisor discovers it by accident and decides reprice-vs-upgrade under commission pressure with no numbers. Three adjacent surfaces exist and none covers it — `TicketPriceWatchAgent` (pre-booking quote drift), Price-Lock Sentinel (72h quote window, preview-only), claim disposition ledger (the pattern to mirror). Package = 4 atomic tasks: T-FD1 post-booking detection branch on the existing agent; T-FD2 disposition ledger + commission-impact calculator with FND-0268 basis labels + GET/PATCH on the existing `price_lock` router; T-FD3 `FareDropDecisionCard` on the decision page (contract-verified first); T-FD4 draft-only traveler message gated on E1. Tracking-only — system never moves money or contacts suppliers.
+
+**Key Questions**:
+- Owner GO on the feature (DECIDE #2 from topic 48)?
+- Canonical booked-price anchor field on the trip contract (implementer verifies, never guesses).
+
+### 50. Plan Constraint Gate — executable constraint catalog (ChinaTravel pattern) 🟡
+**Status**: Paper design (2026-10-21). See [CONSTRAINT_DSL_GATE_CORE_PAPER_DESIGN_2026-10-21.md](exploration/CONSTRAINT_DSL_GATE_CORE_PAPER_DESIGN_2026-10-21.md).
+
+**Overview**: Transplant ChinaTravel's verification *protocol* (not its China-domestic data): a typed two-family constraint catalog — ENVIRONMENT (entity grounding, price-has-source, price basis, currency consistency, cost arithmetic, chronology, spatial continuity, lodging-for-multiday, no duplicate POI) and PERSONAL (budget cap, party size, date window, must-include/avoid, accessibility/dietary, pace) compiled deterministically from intake facts — evaluated over the journey graph by a new `PipelineGate` (`GateIdentifier.PLAN_CONSTRAINTS`) before anything becomes a quote. Adopts the zero-out rule (no suitability score on HARD-failed plans), UNVERIFIED-never-passes honesty, per-constraint evidence into the audit trail, and an FPR lane to catch over-constraint. Phase 1 = Python predicate registry, no DSL interpreter; phase 2 restricted-AST DSL only on agency demand. Verdict on the topic-48 question: **constraint gate before replay/fork harness** — it is the launch-credibility item.
+
+**Key Questions**:
+- Owner DECIDE: adopt the zero-out rule (suppress suitability scores on HARD-failed plans)?
+- Gate position: after options/strategy only, or also re-run at proposal time when producer data refreshes?
+
+### 51. Production Durability, Multi-Instance State & Disaster Recovery Drill 🟡
+**Status**: New — from Launch Readiness Council (2026-10-21). See `Docs/review/COUNCIL_LAUNCH_READINESS_2026-10-21.md` and `Docs/review/POST_COUNCIL_AUDIT_FINDINGS_AND_IMPLEMENTATION_PLAN_2026-10-21.md`.
+
+**Overview**: Launch Readiness Blocker 2 and 4 mandate shared durability and proven backup/restore failover before any public release. Live codebase inspection confirmed that `FileTripStore` is the default when `DATABASE_URL` is omitted, and fallback encryption keys can be accidentally accepted if `DATA_PRIVACY_MODE` is not explicitly set to production. A full-launch deployment across Fly.io or Render containers requires strict PostgreSQL multi-instance clustering, connection pooling safety under async event loop isolation, verified Fernet key provision via KMS/env, and a documented, reproducible backup/restore recovery drill receipt.
+
+**Key Questions**:
+- Target hosted database provider (Fly Postgres vs AWS RDS vs Supabase) and connection pool sizing.
+- Backup RTO/RPO SLA definitions and verification protocol for Art. 17 GDPR tombstones during point-in-time recovery.
+

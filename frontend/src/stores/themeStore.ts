@@ -29,7 +29,9 @@ const defaultVariants: Record<string, ComponentVariant> = {
   DataCard: "v2",
   IntakeTab: "v2",
   PacketTab: "v2",
-  DecisionTab: "v2",
+  // DecisionTab removed (Supersession T2, 2026-09-29): the workbench decision
+  // surface is the canonical DecisionPanel (components/workspace/panels) —
+  // DecisionTab's unique sections were merged into it before removal.
   StrategyTab: "v2",
   SafetyTab: "v2",
   RouteMap: "travel",

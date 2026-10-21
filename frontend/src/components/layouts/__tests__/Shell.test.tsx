@@ -9,8 +9,11 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+// A7 contract: the sidebar card yields to the page header on the trip's own
+// routes and renders only when the operator is away from the trip.
+let mockPathname = '/overview';
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/trips/trip_1/intake',
+  usePathname: () => mockPathname,
 }));
 
 function makeTrip(overrides: Partial<Trip> = {}): Trip {
@@ -37,7 +40,8 @@ describe('SidebarTripContext', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('summarizes current trip status and next action with the canonical trip route', () => {
+  it('summarizes current trip status and next action when away from the trip', () => {
+    mockPathname = '/overview';
     render(<SidebarTripContext trip={makeTrip()} />);
 
     expect(screen.getByRole('region', { name: 'Current trip context' })).toBeInTheDocument();
@@ -49,5 +53,11 @@ describe('SidebarTripContext', () => {
       'href',
       '/trips/trip_1/intake',
     );
+  });
+
+  it('suppresses the card on the active trip own routes (A7: page header owns that surface)', () => {
+    mockPathname = '/trips/trip_1/intake';
+    const { container } = render(<SidebarTripContext trip={makeTrip()} />);
+    expect(container).toBeEmptyDOMElement();
   });
 });

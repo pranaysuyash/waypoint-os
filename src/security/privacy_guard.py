@@ -87,6 +87,7 @@ _load_fixture_ids()
 # Also common synthetic fixture prefixes/patterns
 _SYNTHETIC_PATTERNS = {
     "fixture_id",
+    "fixture",
     "test",
     "seed",
     "demo",
@@ -193,23 +194,24 @@ def _extract_field_names(value: Any, prefix: str = "", max_depth: int = 5) -> Se
 # =============================================================================
 
 def _is_known_fixture(trip_data: Dict[str, Any]) -> bool:
-    """Check if trip data is from a known synthetic fixture."""
+    """Check if trip data is from a known synthetic fixture.
+
+    AUD-01 / FND-0315: RunMeta always serializes ``"fixture_id": None`` for live
+    ``/run`` executions. A ``None`` or empty ``fixture_id`` is NOT a fixture;
+    only a non-empty string matching a known fixture ID or synthetic pattern
+    (or a synthetic ``source`` label) qualifies.
+    """
     raw_input = trip_data.get("raw_input") or {}
-    fixture_id = raw_input.get("fixture_id")
-    if fixture_id:
+    fixture_id = raw_input.get("fixture_id") if isinstance(raw_input, dict) else None
+    if isinstance(fixture_id, str) and fixture_id.strip():
         if fixture_id in KNOWN_FIXTURE_IDS:
             return True
-        # Also allow known synthetic prefixes
         if any(fixture_id.startswith(p) or p in fixture_id.lower() for p in _SYNTHETIC_PATTERNS):
             return True
 
     # Check if source field indicates fixture
-    source = trip_data.get("source", "")
+    source = str(trip_data.get("source") or "")
     if any(p in source.lower() for p in _SYNTHETIC_PATTERNS):
-        return True
-
-    # Check if the raw_input contains a fixture_id key (even if value is None)
-    if isinstance(raw_input, dict) and "fixture_id" in raw_input:
         return True
 
     return False
@@ -240,9 +242,25 @@ def _has_phone(data: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+_SYSTEM_GENERATED_COMPARTMENTS = frozenset({
+    "strategy",
+    "traveler_bundle",
+    "internal_bundle",
+    "validation",
+    "decision",
+    "safety",
+    "frontier_result",
+    "fees",
+    "analytics",
+})
+
+
 def _has_medical_indicator(data: Dict[str, Any]) -> Optional[str]:
-    """Return field name if a medical/health keyword is found, else None."""
-    all_text = " ".join(_extract_strings(data))
+    """Return matched medical/health keyword if found in user-supplied fields, else None."""
+    user_scoped = {
+        k: v for k, v in data.items() if k not in _SYSTEM_GENERATED_COMPARTMENTS
+    } if isinstance(data, dict) else data
+    all_text = " ".join(_extract_strings(user_scoped))
     match = _MEDICAL_KEYWORDS.search(all_text)
     if match:
         return match.group(0)

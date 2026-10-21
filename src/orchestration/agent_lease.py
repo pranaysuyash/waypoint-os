@@ -25,6 +25,38 @@ from typing import Any, AsyncIterator, Dict, Optional
 logger = logging.getLogger("src.orchestration.agent_lease")
 
 AGENT_LEASE_BACKEND_ENV = "SPINE_API_AGENT_LEASE_BACKEND"
+PIPELINE_VERSION_ENV = "SPINE_API_PIPELINE_VERSION"
+TERMINAL_LEASE_RETENTION_DAYS_ENV = "SPINE_API_LEASE_TERMINAL_RETENTION_DAYS"
+_DEFAULT_TERMINAL_RETENTION_DAYS = 30
+
+
+class PipelineVersionMismatchError(ValueError):
+    """A lease acquired under a different pipeline version cannot be renewed.
+
+    FND-0227: a deploy must not silently split a run across two code
+    generations. The holder must release (or let expire) and re-acquire under
+    the current version; the fencing token protects the window in between.
+    """
+
+
+def _resolve_pipeline_version() -> str:
+    raw = (os.environ.get(PIPELINE_VERSION_ENV) or "").strip()
+    return raw or "1"
+
+
+def _resolve_terminal_retention_days() -> int:
+    raw = (os.environ.get(TERMINAL_LEASE_RETENTION_DAYS_ENV) or "").strip()
+    try:
+        value = int(raw) if raw else _DEFAULT_TERMINAL_RETENTION_DAYS
+    except ValueError:
+        raise ValueError(
+            f"{TERMINAL_LEASE_RETENTION_DAYS_ENV} must be a non-negative integer, got {raw!r}"
+        )
+    if value < 0:
+        raise ValueError(
+            f"{TERMINAL_LEASE_RETENTION_DAYS_ENV} must be a non-negative integer, got {raw!r}"
+        )
+    return value
 
 
 @dataclass(slots=True)
@@ -100,6 +132,11 @@ class MemoryAgentLeaseBackend:
             lease_token = f"lease_{uuid.uuid4().hex[:16]}"
             expires_at = now + timedelta(seconds=ttl_seconds)
 
+            resolved_metadata = dict(metadata or {})
+            # FND-0227: stamp the pipeline version the lease was acquired
+            # under so renew can refuse to carry a run across a deploy.
+            resolved_metadata.setdefault("pipeline_version", _resolve_pipeline_version())
+
             record = AgentLeaseRecord(
                 trip_id=trip_id,
                 holder_id=holder_id,
@@ -109,10 +146,26 @@ class MemoryAgentLeaseBackend:
                 expires_at=expires_at,
                 ttl_seconds=ttl_seconds,
                 is_active=True,
-                metadata=dict(metadata or {}),
+                metadata=resolved_metadata,
             )
             self._leases[trip_id] = record
             return record
+
+    @staticmethod
+    def _check_pipeline_version(metadata: Optional[Dict[str, Any]], trip_id: str) -> None:
+        """FND-0227: refuse to renew a lease acquired under another pipeline version.
+
+        Leases without a version stamp (pre-dating the check) stay compatible —
+        the fence only applies once a version has been recorded.
+        """
+        leased_version = (metadata or {}).get("pipeline_version")
+        if leased_version is not None and str(leased_version) != _resolve_pipeline_version():
+            raise PipelineVersionMismatchError(
+                f"Lease for trip '{trip_id}' was acquired under pipeline version "
+                f"'{leased_version}' but the current version is "
+                f"'{_resolve_pipeline_version()}'; release and re-acquire under the "
+                f"current version (fencing token protects the transition)."
+            )
 
     def renew_lease(self, trip_id: str, lease_token: str, ttl_seconds: int = 30) -> AgentLeaseRecord:
         self._validate_ttl(ttl_seconds)
@@ -121,6 +174,8 @@ class MemoryAgentLeaseBackend:
             current = self._leases.get(trip_id)
             if not current or current.lease_token != lease_token or not current.is_active:
                 raise ValueError(f"No active lease found matching token for trip '{trip_id}'")
+
+            self._check_pipeline_version(current.metadata, trip_id)
 
             if self._expire_if_needed(current, now):
                 raise ValueError(f"Lease for trip '{trip_id}' has expired and cannot be renewed")
@@ -165,6 +220,18 @@ class MemoryAgentLeaseBackend:
                     swept += 1
         return swept
 
+    def prune_terminal_leases(self, older_than_days: Optional[int] = None) -> int:
+        """FND-0160: drop terminal (inactive) leases older than the retention window."""
+        days = _resolve_terminal_retention_days() if older_than_days is None else older_than_days
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        pruned = 0
+        with self._lock:
+            for trip_id, record in list(self._leases.items()):
+                if not record.is_active and record.expires_at <= cutoff:
+                    del self._leases[trip_id]
+                    pruned += 1
+        return pruned
+
     def clear(self) -> None:
         with self._lock:
             self._leases.clear()
@@ -181,14 +248,24 @@ class SqlAgentLeaseBackend:
 
     def _get_engine(self):
         if self._engine is None:
+            import asyncio
+            from spine_api.persistence import tripstore_session_maker, _tripstore_engines
+            try:
+                loop = asyncio.get_running_loop()
+                tripstore_session_maker()
+                eng = _tripstore_engines.get(loop)
+                if eng is not None:
+                    return eng
+            except RuntimeError:
+                pass
             from spine_api.core.database import engine as app_engine
             self._engine = app_engine
         return self._engine
 
     def _get_session_maker(self):
         if self._session_maker is None:
-            from spine_api.core.database import async_session_maker
-            self._session_maker = async_session_maker
+            from spine_api.persistence import tripstore_session_maker
+            return tripstore_session_maker
         return self._session_maker
 
     def _run(self, coro):
@@ -231,6 +308,9 @@ class SqlAgentLeaseBackend:
             now = datetime.now(timezone.utc)
             expires_at = now + timedelta(seconds=ttl_seconds)
             maker = self._get_session_maker()
+            resolved_metadata = dict(metadata or {})
+            # FND-0227: stamp the acquiring pipeline version (explicit wins).
+            resolved_metadata.setdefault("pipeline_version", _resolve_pipeline_version())
             async with maker() as session:
                 async with session.begin():
                     stmt = select(AgentLeaseModel).where(AgentLeaseModel.trip_id == trip_id).with_for_update()
@@ -252,7 +332,7 @@ class SqlAgentLeaseBackend:
                         row.expires_at = expires_at
                         row.ttl_seconds = ttl_seconds
                         row.is_active = True
-                        row.lease_metadata = dict(metadata or {})
+                        row.lease_metadata = resolved_metadata
                         await session.flush()
                         return AgentLeaseRecord(
                             trip_id=trip_id,
@@ -276,7 +356,7 @@ class SqlAgentLeaseBackend:
                             expires_at=expires_at,
                             ttl_seconds=ttl_seconds,
                             is_active=True,
-                            lease_metadata=dict(metadata or {}),
+                            lease_metadata=resolved_metadata,
                         )
                         session.add(row)
                         await session.flush()
@@ -312,6 +392,8 @@ class SqlAgentLeaseBackend:
 
                     if not row or row.lease_token != lease_token or not row.is_active:
                         raise ValueError(f"No active lease found matching token for trip '{trip_id}'")
+
+                    self._check_pipeline_version(row.lease_metadata, trip_id)
 
                     row_exp = self._as_utc(row.expires_at)
                     if now >= row_exp:
@@ -428,6 +510,31 @@ class SqlAgentLeaseBackend:
 
         return self._run(_async_sweep())
 
+    def prune_terminal_leases(self, older_than_days: Optional[int] = None) -> int:
+        """FND-0160: delete terminal (inactive) leases past the retention window."""
+        days = _resolve_terminal_retention_days() if older_than_days is None else older_than_days
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+        async def _async_prune():
+            await self._ensure_table()
+            from sqlalchemy import delete
+            from spine_api.models.agent_lease import AgentLeaseModel
+
+            maker = self._get_session_maker()
+            async with maker() as session:
+                async with session.begin():
+                    stmt = (
+                        delete(AgentLeaseModel)
+                        .where(
+                            AgentLeaseModel.is_active.is_(False),
+                            AgentLeaseModel.expires_at <= cutoff,
+                        )
+                    )
+                    res = await session.execute(stmt)
+                    return res.rowcount or 0
+
+        return self._run(_async_prune())
+
     def clear(self) -> None:
         async def _async_clear():
             await self._ensure_table()
@@ -480,6 +587,11 @@ class DurableAgentLeaseManager:
     @classmethod
     def sweep_stale_leases(cls) -> int:
         return cls._get_backend().sweep_stale_leases()
+
+    @classmethod
+    def prune_terminal_leases(cls, older_than_days: Optional[int] = None) -> int:
+        """FND-0160: retention for terminal (inactive) lease rows."""
+        return cls._get_backend().prune_terminal_leases(older_than_days)
 
     @classmethod
     def clear(cls) -> None:

@@ -7,6 +7,7 @@ from src.evals.judge import (
     build_default_rubrics,
     judge_agent_output,
     build_judge_report,
+    compute_judge_shadow_agreement,
 )
 from src.evals.judge.scorer import (
     _build_dimension_prompt,
@@ -393,3 +394,166 @@ class TestLLMAssistedScoring:
         # 1 dimension fell back, 3 succeeded → mixed
         assert score.scoring_method == "mixed"
         assert score.overall_score > 0
+
+
+class TestJevShadowScoring:
+    def test_shadow_judge_scoring_integration(self):
+        class _MockJevClient:
+            def is_available(self) -> bool:
+                return True
+
+            def raw_query(self, state: str, questions: dict) -> dict:
+                # Return mock answers for score questions
+                answers = {}
+                for qkey in questions:
+                    answers[qkey] = {
+                        "type": "score",
+                        "score": 2.5,  # on 0-3 scale -> 8.33/10
+                        "confidence": 0.88,
+                    }
+                return {"answers": answers, "model": "jev-1.13.0"}
+
+        output = {
+            "front_door_assessment": {"assessed_at": "2026-06-21T00:00:00Z"},
+            "priority": "high",
+            "missing_fields": ["destination"],
+            "acknowledgment_draft": "Thanks for contacting us.",
+        }
+
+        jev_client = _MockJevClient()
+        score = judge_agent_output(
+            "front_door_agent",
+            "t_shadow_1",
+            output,
+            shadow_judge_client=jev_client,  # type: ignore[arg-type]
+        )
+
+        assert score.scoring_method == "heuristic"
+        assert score.shadow_score is not None
+        assert score.shadow_score.scoring_method == "jev_shadow"
+        assert score.shadow_score.overall_score > 8.0
+        assert score.shadow_score.verdict == "pass"
+        assert score.shadow_disagreement is not None
+        assert score.shadow_metrics is not None
+        assert score.shadow_metrics["shadow_method"] == "jev_shadow"
+        assert score.shadow_metrics["primary_method"] == "heuristic"
+        # Test to_dict includes shadow_score, shadow_metrics, and discrepancy_alert
+        d = score.to_dict()
+        assert "shadow_score" in d
+        assert "shadow_disagreement" in d
+        assert "shadow_metrics" in d
+        assert "discrepancy_alert" in d
+
+    def test_discrepancy_alert_in_judge_report(self):
+        from src.evals.judge import JudgeScore, build_judge_report
+
+        s1 = JudgeScore("agent", "t1", overall_score=8.0, verdict="pass")
+        s1.shadow_score = JudgeScore("agent", "t1", overall_score=3.0, verdict="fail")
+        s1.shadow_disagreement = 5.0
+        s1.discrepancy_alert = True
+
+        s2 = JudgeScore("agent", "t2", overall_score=7.0, verdict="pass")
+        s2.shadow_score = JudgeScore("agent", "t2", overall_score=6.8, verdict="pass")
+        s2.shadow_disagreement = 0.2
+        s2.discrepancy_alert = False
+
+        report = build_judge_report([s1, s2])
+        assert "discrepant_evals" in report
+        assert len(report["discrepant_evals"]) == 1
+        assert report["discrepant_evals"][0]["trip_id"] == "t1"
+        assert report["discrepant_evals"][0]["score_delta"] == 5.0
+
+    def test_shadow_scoring_handles_client_failure_gracefully(self):
+        class _FailingJevClient:
+            def is_available(self) -> bool:
+                return True
+
+            def raw_query(self, state: str, questions: dict) -> dict:
+                raise RuntimeError("API timeout")
+
+        output = {"priority": "high"}
+        score = judge_agent_output(
+            "front_door_agent",
+            "t_shadow_2",
+            output,
+            shadow_judge_client=_FailingJevClient(),  # type: ignore[arg-type]
+        )
+
+        assert score.shadow_score is None
+        assert score.shadow_disagreement is None
+        assert score.overall_score > 0
+
+    def test_shadow_scoring_when_client_not_available(self):
+        class _UnavailableJevClient:
+            def is_available(self) -> bool:
+                return False
+
+        output = {"priority": "high"}
+        score = judge_agent_output(
+            "front_door_agent",
+            "t_shadow_3",
+            output,
+            shadow_judge_client=_UnavailableJevClient(),  # type: ignore[arg-type]
+        )
+
+        assert score.shadow_score is None
+
+
+class TestJudgeShadowAgreement:
+    def test_empty_agreement(self):
+        res = compute_judge_shadow_agreement([])
+        assert res["total_pairs"] == 0
+        assert res["cohens_kappa"] == 0.0
+        assert res["interpretation"] == "no_data"
+
+    def test_perfect_agreement(self):
+        from src.evals.judge import JudgeScore
+
+        pairs = []
+        for i in range(10):
+            primary = JudgeScore("agent", f"t{i}", overall_score=8.5, verdict="pass")
+            shadow = JudgeScore("agent", f"t{i}", overall_score=8.5, verdict="pass")
+            primary.shadow_score = shadow
+            pairs.append(primary)
+
+        res = compute_judge_shadow_agreement(pairs)
+        assert res["total_pairs"] == 10
+        assert res["raw_agreement"] == 1.0
+        assert res["cohens_kappa"] == 1.0
+        assert res["interpretation"] == "almost_perfect"
+        assert res["mean_score_delta"] == 0.0
+
+    def test_mixed_agreement_kappa_calculation(self):
+        from src.evals.judge import JudgeScore
+
+        # 8 agreeing passes, 2 agreeing fails, 1 disagreement
+        primary_list = []
+        shadow_list = []
+
+        # 6 passes agree
+        for i in range(6):
+            primary_list.append(JudgeScore("agent", f"t{i}", overall_score=8.0, verdict="pass"))
+            shadow_list.append(JudgeScore("agent", f"t{i}", overall_score=8.0, verdict="pass"))
+
+        # 2 needs_review agree
+        for i in range(6, 8):
+            primary_list.append(JudgeScore("agent", f"t{i}", overall_score=6.0, verdict="needs_review"))
+            shadow_list.append(JudgeScore("agent", f"t{i}", overall_score=6.0, verdict="needs_review"))
+
+        # 2 fails agree
+        for i in range(8, 10):
+            primary_list.append(JudgeScore("agent", f"t{i}", overall_score=3.0, verdict="fail"))
+            shadow_list.append(JudgeScore("agent", f"t{i}", overall_score=3.0, verdict="fail"))
+
+        # 2 disagreements (primary says pass, shadow says needs_review)
+        for i in range(10, 12):
+            primary_list.append(JudgeScore("agent", f"t{i}", overall_score=7.5, verdict="pass"))
+            shadow_list.append(JudgeScore("agent", f"t{i}", overall_score=6.0, verdict="needs_review"))
+
+        res = compute_judge_shadow_agreement(primary_list, shadow_list)
+        assert res["total_pairs"] == 12
+        assert res["raw_agreement"] == round(10 / 12, 4)
+        assert res["cohens_kappa"] > 0.6  # substantial agreement
+        assert res["interpretation"] in ("substantial", "almost_perfect")
+        assert "confusion_matrix" in res
+

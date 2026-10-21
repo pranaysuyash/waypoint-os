@@ -463,6 +463,18 @@ class FileTripStore:
                             f"Trip {trip_id} belongs to agency {existing_agency}, "
                             f"cannot save with agency {agency_id}"
                         )
+                    # AUD-09: Preserve auxiliary operational keys (traveler_answers,
+                    # traveler_asks, passenger_claim, ghost_concierge, booking_data,
+                    # flight_status_updates, etc.) across reprocess saves.
+                    for k, v in existing_data.items():
+                        if k not in serializable_data and v is not None:
+                            serializable_data[k] = v
+                        elif (
+                            k in ("assigned_to_id", "booking_data", "pending_booking_data", "booking_data_source")
+                            and serializable_data.get(k) is None
+                            and v is not None
+                        ):
+                            serializable_data[k] = v
                     # Trip-status invariant (register N-2): intake-blocked trips
                     # never become quote-capable in one hop; transitions audited
                     # into the record's status_history (seeded from the persisted
@@ -758,26 +770,37 @@ class SQLTripStore:
     _PII_KEY_FIELDS = frozenset({
         "extracted",
         "raw_input",
+        "analytics",
     })
 
     _PII_FIELDS = {
         "address",
+        "agent_notes",
+        "agentnotes",
+        "answer",
         "contact_email",
         "contact_name",
         "contact_phone",
+        "customer_contact",
         "customer_email",
+        "customer_message",
         "customer_name",
         "customer_phone",
         "dietary_restrictions",
         "email",
         "full_name",
+        "itinerary_text",
+        "lead_traveler_name",
         "medical_notes",
         "mobile",
         "name",
+        "owner_note",
         "passport",
         "passport_number",
         "phone",
         "phone_number",
+        "raw_note",
+        "respondent_name",
         "special_requests",
         "traveler_email",
         "traveler_name",
@@ -839,7 +862,9 @@ class SQLTripStore:
                 return {}
             return SQLTripStore._encrypt_blob(value)
         if field in SQLTripStore._PII_KEY_FIELDS:
-            return SQLTripStore._encrypt_pii(value or {})
+            if value is None:
+                return None if field == "analytics" else {}
+            return SQLTripStore._encrypt_pii(value)
         return value
 
     @staticmethod
@@ -863,6 +888,11 @@ class SQLTripStore:
 
     @staticmethod
     def _to_dict(trip_obj: Trip) -> dict:
+        decrypted_analytics = (
+            SQLTripStore._decrypt_field_from_storage("analytics", trip_obj.analytics)
+            if trip_obj.analytics
+            else trip_obj.analytics
+        )
         res = {
             "id": trip_obj.id,
             "run_id": trip_obj.run_id,
@@ -888,13 +918,15 @@ class SQLTripStore:
             "frontier_result": SQLTripStore._decrypt_field_from_storage("frontier_result", trip_obj.frontier_result),
             "fees": SQLTripStore._decrypt_field_from_storage("fees", trip_obj.fees),
             "raw_input": SQLTripStore._decrypt_field_from_storage("raw_input", trip_obj.raw_input or {}),
-            "analytics": trip_obj.analytics,
+            "analytics": decrypted_analytics,
+            "booking_data": SQLTripStore._decrypt_field_from_storage("booking_data", getattr(trip_obj, "booking_data", None)),
+            "pending_booking_data": SQLTripStore._decrypt_field_from_storage("pending_booking_data", getattr(trip_obj, "pending_booking_data", None)),
             "booking_data_source": trip_obj.booking_data_source,
             "created_at": trip_obj.created_at.isoformat() if trip_obj.created_at else None,
             "updated_at": trip_obj.updated_at.isoformat() if trip_obj.updated_at else None,
         }
-        if trip_obj.analytics and isinstance(trip_obj.analytics, dict):
-            extra = trip_obj.analytics.get("_extra")
+        if decrypted_analytics and isinstance(decrypted_analytics, dict):
+            extra = decrypted_analytics.get("_extra")
             if isinstance(extra, dict):
                 for k, v in extra.items():
                     if k not in res:
@@ -904,6 +936,11 @@ class SQLTripStore:
     @staticmethod
     def _to_summary_dict(row: Any) -> dict:
         """Return the summary fields needed by list/projection views."""
+        decrypted_analytics = (
+            SQLTripStore._decrypt_field_from_storage("analytics", row.analytics)
+            if row.analytics
+            else row.analytics
+        )
         return {
             "id": row.id,
             "run_id": row.run_id,
@@ -923,7 +960,7 @@ class SQLTripStore:
             "validation": row.validation or {},
             "decision": row.decision or {},
             "raw_input": SQLTripStore._decrypt_field_from_storage("raw_input", row.raw_input or {}),
-            "analytics": row.analytics,
+            "analytics": decrypted_analytics,
             "created_at": row.created_at.isoformat() if row.created_at else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
         }
@@ -1018,45 +1055,60 @@ class SQLTripStore:
                         f"Trip {trip_id} belongs to agency {existing.agency_id}, "
                         f"cannot save with agency {save_agency}"
                     )
-                # Trip-status invariant (register N-2): intake-blocked trips never
-                # become quote-capable in one hop; transition audited into
-                # analytics._extra.status_history (no dedicated column yet).
-                # getattr-defensive: row-like stubs in tests must not brick saves.
-                # History is seeded from the DB record on every save of an existing
-                # trip so a stale caller copy can never regress the audit trail.
+                # AUD-09: Preserve operational columns when not explicitly provided on reprocess.
+                for col in ("assigned_to_id", "booking_data", "pending_booking_data", "booking_data_source"):
+                    if trip_data.get(col) is None and getattr(existing, col, None) is not None:
+                        model_data[col] = getattr(existing, col)
+
                 old_status = getattr(existing, "status", None)
                 new_status = model_data.get("status")
                 enforce_status_transition(old_status, new_status)
-                existing_analytics = getattr(existing, "analytics", None)
-                db_history = (
-                    (existing_analytics or {}).get("_extra", {}).get("status_history")
-                    if isinstance(existing_analytics, dict)
+                existing_analytics_raw = getattr(existing, "analytics", None)
+                existing_analytics = (
+                    SQLTripStore._decrypt_field_from_storage("analytics", existing_analytics_raw)
+                    if isinstance(existing_analytics_raw, dict)
                     else None
                 )
+                db_extra = (
+                    dict((existing_analytics or {}).get("_extra") or {})
+                    if isinstance(existing_analytics, dict)
+                    else {}
+                )
+                db_history = db_extra.get("status_history")
                 transitioned = (
                     old_status is not None
                     and new_status is not None
                     and str(old_status) != str(new_status)
                 )
-                if transitioned or isinstance(db_history, list):
-                    prior_history: list = list(db_history) if isinstance(db_history, list) else []
-                    if transitioned:
-                        prior_history.append(
-                            {
-                                "from": str(old_status),
-                                "to": str(new_status),
-                                "at": datetime.now(timezone.utc).isoformat(),
-                            }
-                        )
+                if db_extra or transitioned or isinstance(db_history, list):
                     analytics_dict = dict(model_data.get("analytics") or {})
-                    extra = dict(analytics_dict.get("_extra") or {})
-                    extra["status_history"] = prior_history[-STATUS_HISTORY_CAP:]
-                    analytics_dict["_extra"] = extra
+                    incoming_extra = dict(analytics_dict.get("_extra") or {})
+                    merged_extra = {**db_extra, **incoming_extra}
+                    if transitioned or isinstance(db_history, list):
+                        prior_history: list = list(db_history) if isinstance(db_history, list) else []
+                        if transitioned:
+                            prior_history.append(
+                                {
+                                    "from": str(old_status),
+                                    "to": str(new_status),
+                                    "at": datetime.now(timezone.utc).isoformat(),
+                                }
+                            )
+                        merged_extra["status_history"] = prior_history[-STATUS_HISTORY_CAP:]
+                    analytics_dict["_extra"] = merged_extra
                     model_data["analytics"] = analytics_dict
+                if model_data.get("analytics") is not None:
+                    model_data["analytics"] = SQLTripStore._encrypt_field_for_storage(
+                        "analytics", model_data["analytics"]
+                    )
                 for key, value in model_data.items():
                     setattr(existing, key, value)
                 existing.updated_at = datetime.now(timezone.utc)
             else:
+                if model_data.get("analytics") is not None:
+                    model_data["analytics"] = SQLTripStore._encrypt_field_for_storage(
+                        "analytics", model_data["analytics"]
+                    )
                 session.add(Trip(**model_data))
             await session.commit()
         return trip_id
@@ -1234,7 +1286,11 @@ class SQLTripStore:
         # is the correct check (as FileTripStore does) but requires extra DB read
         # + decryption; the guard on save_trip already prevents initial PII entry.
         # Check only email/phone-like values in updates (fast, no false positives).
-        _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
+        _pii_sensitive_keys = {
+            "raw_input", "raw_note", "extracted", "extracted_facts", "packet",
+            "customer_contact", "customer_email", "customer_phone",
+            "contact_email", "contact_phone", "agent_notes", "agentNotes", "owner_note",
+        }
         if set(updates.keys()) & _pii_sensitive_keys:
             from src.security.privacy_guard import check_trip_data
             check_trip_data(updates)
@@ -1270,6 +1326,11 @@ class SQLTripStore:
 
         Mirrors _to_dict but works on raw SQLAlchemy Row objects instead of ORM Trip instances.
         """
+        decrypted_analytics = (
+            SQLTripStore._decrypt_field_from_storage("analytics", row.analytics)
+            if row.analytics
+            else row.analytics
+        )
         result = {
             "id": row.id,
             "run_id": row.run_id,
@@ -1295,7 +1356,9 @@ class SQLTripStore:
             "frontier_result": SQLTripStore._decrypt_field_from_storage("frontier_result", row.frontier_result),
             "fees": SQLTripStore._decrypt_field_from_storage("fees", row.fees),
             "raw_input": SQLTripStore._decrypt_field_from_storage("raw_input", row.raw_input or {}),
-            "analytics": row.analytics,
+            "analytics": decrypted_analytics,
+            "booking_data": SQLTripStore._decrypt_field_from_storage("booking_data", getattr(row, "booking_data", None)),
+            "pending_booking_data": SQLTripStore._decrypt_field_from_storage("pending_booking_data", getattr(row, "pending_booking_data", None)),
             "booking_data_source": row.booking_data_source,
             "created_at": row.created_at.isoformat() if row.created_at else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
@@ -1303,7 +1366,7 @@ class SQLTripStore:
         # Fold analytics._extra to top level, mirroring _to_dict, so CAS-update
         # returns carry the same shape as reads (unmapped keys like packet_version
         # are persisted inside _extra on the SQL backend).
-        extra = (row.analytics or {}).get("_extra") if isinstance(row.analytics, dict) else None
+        extra = (decrypted_analytics or {}).get("_extra") if isinstance(decrypted_analytics, dict) else None
         if isinstance(extra, dict):
             for k, v in extra.items():
                 if k not in result:
@@ -1353,6 +1416,8 @@ class SQLTripStore:
             existing_analytics = raw_analytics
         else:
             existing_analytics = {}
+        if existing_analytics:
+            existing_analytics = SQLTripStore._decrypt_field_from_storage("analytics", existing_analytics)
         existing_extra = dict(existing_analytics.get("_extra") or {}) if isinstance(existing_analytics, dict) else {}
 
         merged_updates = dict(updates)
@@ -1393,7 +1458,11 @@ class SQLTripStore:
 
         Returns the updated trip on success, None if version mismatch or trip missing.
         """
-        _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
+        _pii_sensitive_keys = {
+            "raw_input", "raw_note", "extracted", "extracted_facts", "packet",
+            "customer_contact", "customer_email", "customer_phone",
+            "contact_email", "contact_phone", "agent_notes", "agentNotes", "owner_note",
+        }
         if set(updates.keys()) & _pii_sensitive_keys:
             from src.security.privacy_guard import check_trip_data
             check_trip_data(updates)
@@ -1466,7 +1535,11 @@ class SQLTripStore:
         RETURNING *. This is fully atomic at the database level — two concurrent
         requests with the same expected_updated_at cannot both succeed.
         """
-        _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
+        _pii_sensitive_keys = {
+            "raw_input", "raw_note", "extracted", "extracted_facts", "packet",
+            "customer_contact", "customer_email", "customer_phone",
+            "contact_email", "contact_phone", "agent_notes", "agentNotes", "owner_note",
+        }
         if set(updates.keys()) & _pii_sensitive_keys:
             from src.security.privacy_guard import check_trip_data
             check_trip_data(updates)
@@ -1542,15 +1615,17 @@ class SQLTripStore:
     @staticmethod
     async def update_trip_for_agency(trip_id: str, agency_id: str, updates: dict) -> Optional[dict]:
         """Update a trip only if it belongs to the given agency. Sets RLS explicitly."""
-        _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
+        _pii_sensitive_keys = {
+            "raw_input", "raw_note", "extracted", "extracted_facts", "packet",
+            "customer_contact", "customer_email", "customer_phone",
+            "contact_email", "contact_phone", "agent_notes", "agentNotes", "owner_note",
+        }
         if set(updates.keys()) & _pii_sensitive_keys:
             from src.security.privacy_guard import check_trip_data
             check_trip_data(updates)
 
         updates = _fold_unmapped_updates(updates)
         updates = await SQLTripStore._prepare_raw_update(trip_id, updates, agency_id)
-
-        _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
 
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
         now = datetime.now(timezone.utc)
@@ -1794,9 +1869,12 @@ class TripStore:
         return TripStore._get_trip_internal(trip_id)
 
     @staticmethod
-    def get_trip_for_public_access(trip_id: str) -> Optional[dict]:
+    def get_trip_for_public_access(trip_id: str, agency_id: Optional[str] = None) -> Optional[dict]:
         """Get a trip by ID, returning an explicit allowlisted traveler-safe projection with sanitized nested DTOs."""
-        trip = TripStore._get_trip_internal(trip_id)
+        if agency_id:
+            trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+        else:
+            trip = TripStore._get_trip_internal(trip_id)
         if not trip:
             return None
 
@@ -1810,6 +1888,38 @@ class TripStore:
             "pace_preference": raw_packet.get("pace_preference"),
             "travel_style": raw_packet.get("travel_style"),
         }
+
+        # Plan-scoped stated requirements (launch-inventory T8 trust render):
+        # the public proposal may show WHAT the plan accounts for, never WHO
+        # stated it — traveler names and attribution stay internal under the
+        # same PII boundary as the rest of this allowlisted projection. Empty
+        # unless speaker-attributed travelers[] facts exist (FND-0275).
+        stated: list = []
+        travelers_fact = (raw_packet.get("facts") or {}).get("travelers")
+        travelers_value = (
+            travelers_fact.get("value") if isinstance(travelers_fact, dict) else travelers_fact
+        )
+        for traveler in travelers_value or []:
+            if not isinstance(traveler, dict):
+                continue
+            for constraint in traveler.get("constraints") or []:
+                if isinstance(constraint, str) and constraint.strip():
+                    clean = constraint.strip()[:160]
+                    if clean not in stated:
+                        stated.append(clean)
+            occasion = traveler.get("occasion")
+            if isinstance(occasion, dict):
+                label = " ".join(
+                    str(occasion.get(key)).strip()
+                    for key in ("type", "date")
+                    if occasion.get(key)
+                ).strip()
+                if label and label not in stated:
+                    stated.append(label[:160])
+            if len(stated) >= 12:
+                break
+        if stated:
+            safe_packet["stated_requirements"] = stated
 
         raw_strategy = trip.get("strategy", {}) or {}
         raw_rec = raw_strategy.get("recommended_option", {}) or {}

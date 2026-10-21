@@ -43,6 +43,75 @@ Everything in Wave A (A1–A7) and the L7-authenticated walk is implementation w
 
 ## Wave B — EXPLORE (research + document BEFORE code)
 
+### A6/A7 continuation receipt — 2026-10-04
+
+Owner: Codex, under the user's request to execute A6 and then the remaining
+Wave A items sequentially. Scope: reversible implementation, isolated tests,
+and documentation. Git mutations, deployed changes, persistent database
+modification, external provider calls, and automatic candidate promotion are
+excluded from this receipt.
+
+Current source supersedes the September shorthand: A6's JSON surfaces already
+carry tier metadata, including `yield_benchmark`. A remaining export edge was
+reproduced and repaired in `spine_api/routers/itinerary_export.py`: nonempty
+`days` did not prove that traveler name, price, travel dates, allergies, or
+emergency contact came from the caller. Export provenance now uses Pydantic's
+explicit-field set. Any omitted sample-bearing field retains `sample-payload`
+and `deterministic_preview` headers. Fully supplied content gets
+`caller-provided` and `real` for local rendering, including an explicitly empty
+day list. This does not certify the supplied content or provider availability.
+`tests/test_itinerary_export_provenance.py` exercises actual HTTP responses
+through an isolated FastAPI app; both checks failed before and passed after.
+The HTML body is unchanged; no rendered-browser claim is made.
+
+A7 work completed in this continuation:
+
+- `spine_api/services/execution_event_service.py`: verifier now detects a
+  missing predecessor at the first retained anchored event, a missing hash on
+  a row that retains its predecessor, unhashed rows after chain start, and
+  repeated genesis predecessors. Only the genuine unhashed prefix counts as
+  legacy. Four added SQLite integration regressions in
+  `tests/test_execution_event_chain.py` failed before and passed after. No
+  audit rows are rewritten or re-anchored by verification.
+- `src/evals/agentic_feedback.py`: latency/cost reduction rejects booleans,
+  negative values, NaN, infinity, and overflowing numeric values. Cost metrics
+  additionally expose `avg_per_observed_event`, `event_count_without_cost`, and
+  `coverage_rate`; zero remains a valid observation and absent observations
+  have no measured average. Existing `total` remains an observed subtotal and
+  `avg_per_eval_event` retains its previous denominator. Three regressions in
+  `tests/evals/test_agentic_feedback.py` failed before and passed after.
+
+Evidence: 210 tests passed in the combined targeted run over export provenance,
+execution-event chain/service, reality tiers, autoresearch, agentic feedback,
+adversarial gate, D6 snapshot, routing-health gate, and both closed-loop-learning
+test files. All six changed Python files passed Ruff. Evidence is Tier 3 for
+the isolated HTTP and SQLite integrations, Tier 2 for metric reduction, and S2
+for the nine new regression checks. No production, hosted, provider, PostgreSQL
+concurrency, or full-suite verification is claimed. The run emitted the existing
+Starlette/httpx deprecation warning. Scoped `git diff --check` passed; the wider
+dirty tree has unrelated whitespace findings and was preserved.
+
+A7 remains **partial**, not complete:
+
+| Branch | Current evidence and next required unit |
+|---|---|
+| 3.1 audit verification | Execution-event boundaries hardened here. The separate RULE_015 `AuditLog` verification/signature path needs independent inspection; historical closure events do not prove that distinct path. Missing-prefix detection does not supply a trusted retention checkpoint or detect deletion of every row/tail without an external anchor. |
+| 3.2 usage/outcome rollups | Run/trip correlation exists in `src/llm/usage_store.py`. Decision-level/outcome rollups remain distinct work. Correction after inspecting the append-only findings history: FND-0036/A-20 is closed at event 520; its imported open row and the older live view are not current status. Verify the ratified E-C contract and actual migration/model custody before introducing persistent columns; do not treat A-20 as an open prerequisite. |
+| 3.3 autoresearch lineage | Current `src/evals/autoresearch_loop.py` already blocks simulated acceptance and records producer-bound provenance; existing tests passed. This is local regression evidence, not proof of real provider-backed evaluation. |
+| 3.4 fixture reexecution | `src/agents/closed_loop_learning.py` still reports heuristic shadow results with `demonstrated=False`. Real candidate application and independent fixture reexecution remain required before upgrading that claim. |
+| 3.5 eval dimensions | Cost, latency, and review/escalation counts exist; observation validation and cost coverage improved here. Fixture-level costs and human-time attribution remain incomplete; unknown data must not be filled with invented rates. |
+| E-H adversarial lane | Existing lane tests passed locally. The roadmap's research/design prerequisite and real coverage/provenance assessment remain separate from the test count. |
+
+Correctness review: legacy prefix and intact-chain behavior preserved by existing
+checks; malformed evidence now fails explicitly. Architecture review: existing
+router, verifier, and reducer extended in place; no second store or pipeline.
+Rule review: dirty work preserved, no Git mutation, no persistent database
+change, and no lifecycle closure based solely on passing counts. Recovery is a
+selective reversal of this receipt's bounded source/test edits; historical
+documents and findings history remain intact. User value is more truthful export
+provenance; operator/team value is detection of incomplete audit chains and
+missing telemetry; internal value is reproducible regression evidence.
+
 | # | Exploration | Produces | Blocks |
 |---|---|---|---|
 | B1 | **E-D memory read-path slot spec** — where preferences may rank QUESTIONS, never inventory | `Docs/architecture/MEMORY_READ_PATH_SLOT_SPEC_*.md` | PA-18 wiring |

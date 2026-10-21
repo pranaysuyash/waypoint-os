@@ -1,0 +1,223 @@
+{
+  "_meta": {
+    "created": "2026-10-13",
+    "purpose": "E2 Jev ask-loop probe fixtures (Docs/exploration/E2_JEV_ASK_LOOP_PROBE_2026-09-29.md)",
+    "probe1_role": "Jev GRADES candidate question renderings (noul intent-preservation + no-new-facts, score naturalness). Jev cannot generate text (jaggedness #9) — the E2 doc's original 'Jev renders' framing was corrected to grader/selector; production renderings would come from the generative ladder, Jev grades/ranks them behind a flag.",
+    "probe2_role": "Jev ROUTES free-text traveler replies to canonical packet fields (Choice over FIELD_REQUIRED_FOR vocabulary + explicit 'unparsed' marker). Proposed values stay proposal-only; deterministic extractor stack re-validates.",
+    "labels": {
+      "probe1.good": "must PASS both rubric nouls",
+      "probe1.drift": "asks a different canonical field — must FAIL intent noul",
+      "probe1.fabricated": "injects a fact absent from the engine question — must FAIL no-new-facts noul",
+      "probe2.direct": "clear answer — must route to question field_name",
+      "probe2.colloquial": "Hinglish/casual answer — must route to question field_name",
+      "probe2.nonanswer": "does not answer — must route to explicit 'unparsed' (zero silent drops)",
+      "probe2.implicit_answer": "implicit partial answer ('applying', 'standard is fine') — must NOT route to unparsed; may route to the asked field or a sibling field, ideally at flagged confidence"
+    }
+  },
+  "questions": [
+    {
+      "id": "q_dest_01",
+      "field_name": "destination_candidates",
+      "engine_question": "Which destination(s) are you considering for this trip?",
+      "packet_context": "New lead, no destination extracted yet. Trip planning stage.",
+      "renderings": {
+        "good": "Where are you thinking of going?",
+        "drift": "When would you like to travel?",
+        "fabricated": "Is Bali still your first choice for the trip?"
+      },
+      "replies": {
+        "direct": "We are thinking Bali.",
+        "colloquial": "bali hi soch rahe hain, maybe thailand bhi",
+        "nonanswer": "Sounds good, will confirm soon!",
+        "implicit_answer": "Bali was lovely last time — somewhere like that again."
+      }
+    },
+    {
+      "id": "q_dest_02",
+      "field_name": "destination_candidates",
+      "engine_question": "Where would you like to go on this trip?",
+      "packet_context": "Repeat inquiry; customer mentioned 'somewhere cool' in first message. Planning stage.",
+      "renderings": {
+        "good": "Any places on your mind for the trip?",
+        "drift": "How many people are travelling?",
+        "fabricated": "Would you prefer Japan or Korea for this one?"
+      },
+      "replies": {
+        "direct": "We want to do Japan.",
+        "colloquial": "japan ya korea, abhi decide nahi kiya",
+        "nonanswer": "Let me check with my family and get back.",
+        "implicit_answer": "Somewhere in the same region as our anniversary trip."
+      }
+    },
+    {
+      "id": "q_date_01",
+      "field_name": "date_window",
+      "engine_question": "What travel dates or date range are you considering?",
+      "packet_context": "No dates extracted. Fare quote stage.",
+      "renderings": {
+        "good": "Around which dates are you planning to travel?",
+        "drift": "What is your total budget for the trip?",
+        "fabricated": "Would mid-December work for your departure?"
+      },
+      "replies": {
+        "direct": "Sometime in the second week of December.",
+        "colloquial": "dec ke second week ke around",
+        "nonanswer": "Dates are still flexible, not finalised.",
+        "implicit_answer": "Before the kids' exams start."
+      }
+    },
+    {
+      "id": "q_date_02",
+      "field_name": "date_window",
+      "engine_question": "When are you planning to travel?",
+      "packet_context": "Destination known (Goa). Dates missing; quote stage.",
+      "renderings": {
+        "good": "When are you planning to go?",
+        "drift": "Do you need visa assistance for this trip?",
+        "fabricated": "Shall I check availability for next weekend?"
+      },
+      "replies": {
+        "direct": "First week of January.",
+        "colloquial": "jan ke pehle hafte mein",
+        "nonanswer": "Not sure yet, depends on leaves.",
+        "implicit_answer": "Right after New Year."
+      }
+    },
+    {
+      "id": "q_origin_01",
+      "field_name": "origin_city",
+      "engine_question": "Which city would you fly out from?",
+      "packet_context": "No origin extracted; outbound flights needed for quote.",
+      "renderings": {
+        "good": "Which city will you be flying out from?",
+        "drift": "Which city are you planning to visit?",
+        "fabricated": "Are you flying out of Mumbai?"
+      },
+      "replies": {
+        "direct": "We would fly from Delhi.",
+        "colloquial": "delhi se hi",
+        "nonanswer": "We might drive, actually.",
+        "implicit_answer": "We're all in Pune these days."
+      }
+    },
+    {
+      "id": "q_party_01",
+      "field_name": "party_size",
+      "engine_question": "How many travellers will be on this trip?",
+      "packet_context": "Party size unknown; needed for quote and room planning.",
+      "renderings": {
+        "good": "How many people will be travelling?",
+        "drift": "What kind of hotel do you prefer?",
+        "fabricated": "Is it just the two of you travelling?"
+      },
+      "replies": {
+        "direct": "Four adults.",
+        "colloquial": "hum chaar log hain, do bachche bhi",
+        "nonanswer": "Still deciding who all can come.",
+        "implicit_answer": "The whole family is coming this time."
+      }
+    },
+    {
+      "id": "q_budget_01",
+      "field_name": "budget_raw_text",
+      "engine_question": "What is your approximate budget for this trip?",
+      "packet_context": "No budget stated. Quote stage.",
+      "renderings": {
+        "good": "Roughly what budget are you working with?",
+        "drift": "How many nights is the trip?",
+        "fabricated": "Is your budget around 1 lakh?"
+      },
+      "replies": {
+        "direct": "Around 150000 total.",
+        "colloquial": "1.5 lakh ke andar total",
+        "nonanswer": "Haven't thought about money yet.",
+        "implicit_answer": "Last trip cost us about 2 lakh, similar this time."
+      }
+    },
+    {
+      "id": "q_budget_02",
+      "field_name": "budget_raw_text",
+      "engine_question": "What budget should we plan this trip around?",
+      "packet_context": "Repeat client; prior trips mid-range. Quote stage.",
+      "renderings": {
+        "good": "What budget range should I plan around?",
+        "drift": "Would you like window seats?",
+        "fabricated": "Should I keep it under 2 lakh like your last trip?"
+      },
+      "replies": {
+        "direct": "Max 80000 per person.",
+        "colloquial": "80 hazar tak per person chalega",
+        "nonanswer": "Show me options first.",
+        "implicit_answer": "Same range as our Goa trip."
+      }
+    },
+    {
+      "id": "q_purpose_01",
+      "field_name": "trip_purpose",
+      "engine_question": "What is the purpose of this trip (holiday, honeymoon, family visit, work)?",
+      "packet_context": "Purpose not stated; affects hotel category and pace suggestions.",
+      "renderings": {
+        "good": "What's the occasion for this trip — holiday, honeymoon, family visit, or work?",
+        "drift": "When do you plan to book the flights?",
+        "fabricated": "Is this your anniversary trip?"
+      },
+      "replies": {
+        "direct": "It's our honeymoon.",
+        "colloquial": "honeymoon ke liye ja rahe hain",
+        "nonanswer": "Just a regular trip.",
+        "implicit_answer": "It's just the two of us this time."
+      }
+    },
+    {
+      "id": "q_passport_01",
+      "field_name": "passport_status",
+      "engine_question": "Do all travellers have valid passports?",
+      "packet_context": "International destination; passport validity needed for entry validation.",
+      "renderings": {
+        "good": "Do all travellers have valid passports right now?",
+        "drift": "What is your hotel preference?",
+        "fabricated": "Are your passports expiring next month?"
+      },
+      "replies": {
+        "direct": "Yes, all valid.",
+        "colloquial": "haan sabke paas hai, valid hai",
+        "nonanswer": "I'll check and tell you.",
+        "implicit_answer": "One of us is applying, not sure about the rest."
+      }
+    },
+    {
+      "id": "q_visa_01",
+      "field_name": "visa_status",
+      "engine_question": "Have you checked visa requirements or started a visa application?",
+      "packet_context": "International destination with visa-on-arrival uncertainty; entry validation stage.",
+      "renderings": {
+        "good": "Have you looked into the visa yet, or started an application?",
+        "drift": "Do you prefer early morning flights?",
+        "fabricated": "Your visa application is already in process, correct?"
+      },
+      "replies": {
+        "direct": "Not started yet.",
+        "colloquial": "abhi visa ka kuch nahi kiya",
+        "nonanswer": "Is a visa needed for that place?",
+        "implicit_answer": "We got the e-visa last time, same process probably."
+      }
+    },
+    {
+      "id": "q_dietary_01",
+      "field_name": "dietary_requirements",
+      "engine_question": "Any dietary requirements or restrictions we should plan meals around?",
+      "packet_context": "Multi-city itinerary with included meals; preference field, never blocking.",
+      "renderings": {
+        "good": "Any dietary preferences or restrictions we should plan meals around?",
+        "drift": "How many days will the trip be?",
+        "fabricated": "Should we arrange only Jain meals for everyone?"
+      },
+      "replies": {
+        "direct": "One of us is vegetarian.",
+        "colloquial": "ek ko sirf veg chahiye",
+        "nonanswer": "No idea yet, you decide.",
+        "implicit_answer": "Whatever is standard is fine."
+      }
+    }
+  ]
+}

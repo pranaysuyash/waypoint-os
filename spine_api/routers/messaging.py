@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
+from typing import Any, Dict, List
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -21,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from spine_api.contract import OutboundMessageRequest, OutboundMessageResponse
 from spine_api.core.auth import get_current_agency_id
 from spine_api.persistence import AuditStore, TripStore
+from spine_api.services.message_dispatch import dispatch_outbound_message
 
 import hmac
 import hashlib
@@ -57,10 +59,20 @@ async def send_outbound_message(
         raise HTTPException(status_code=404, detail="Trip not found")
 
     message_id = f"msg_{uuid4().hex[:12]}"
-    provider = "whatsapp_cloud_api" if body.channel.lower() == "whatsapp" else "sendgrid_email"
+
+    # T1 slice (FND-0301): real provider dispatch when credentials exist;
+    # honest NOT_CONFIGURED / FAILED otherwise. The response never claims
+    # SENT without a provider accepting the message.
+    result = dispatch_outbound_message(
+        recipient=body.recipient,
+        channel=body.channel,
+        content=body.content,
+    )
+    dispatch_status = result["dispatch_status"]
+    provider = result["provider"]
 
     AuditStore.log_event(
-        event_type="outbound_message_queued",
+        event_type="outbound_message_dispatch",
         user_id=agency_id,
         details={
             "message_id": message_id,
@@ -68,22 +80,20 @@ async def send_outbound_message(
             "channel": body.channel,
             "recipient": body.recipient,
             "provider": provider,
-            "dispatch_status": "QUEUED",
+            "dispatch_status": dispatch_status,
+            "dispatch_detail": result["detail"],
         },
     )
 
-    # No provider HTTP call is made in this build. Return the honest QUEUED
-    # state, not "SENT", so the operator is never misled into believing the
-    # message was delivered to WhatsApp/SendGrid when no dispatch occurred.
     return OutboundMessageResponse(
-        ok=True,
+        ok=dispatch_status in ("SENT", "NOT_CONFIGURED"),
         message_id=message_id,
         trip_id=body.trip_id,
         channel=body.channel,
-        status="QUEUED",
+        status=dispatch_status,
         provider=provider,
         dispatched_at=datetime.now(timezone.utc).isoformat(),
-        dispatch_status="QUEUED",
+        dispatch_status=dispatch_status,
     )
 
 
@@ -155,6 +165,122 @@ async def process_messaging_webhook(
     message_id = payload.get("message_id") or payload.get("id") or "unknown"
     status = payload.get("status", "DELIVERED")
 
+    # T6 (FND-0305): persist actual inbound traveler messages so operators can
+    # consume them. Meta Cloud API shape (entry[].changes[].value.messages[]) is
+    # the production format; the flat {event:"message", from, body} shape is
+    # accepted for provider adapters/tests. Agency attribution: Meta webhooks
+    # carry no JWT — the phone-number-id env binding names the agency that
+    # configured this webhook; unconfigured -> messages are stored under the
+    # webhook-scope agency id rather than dropped.
+    stored = 0
+    inbound_records: List[Dict[str, Any]] = []
+    for value in _extract_meta_message_values(payload):
+        for m in value.get("messages") or []:
+            if not isinstance(m, dict):
+                continue
+            body = ""
+            mime = None
+            filename = None
+            text_obj = m.get("text") or {}
+            if isinstance(text_obj, dict):
+                body = str(text_obj.get("body") or "")
+            media_obj = m.get(m.get("type") or "") if isinstance(m.get("type"), str) else None
+            if isinstance(media_obj, dict):
+                mime = media_obj.get("mime_type")
+                filename = media_obj.get("filename")
+            from_phone = str(((m.get("from") or "") if isinstance(m.get("from"), str) else "") or value.get("metadata", {}).get("display_phone_number", ""))
+            if not body and not mime:
+                continue
+            inbound_records.append(
+                {
+                    "provider_message_id": str(m.get("id") or "") or None,
+                    "channel": "whatsapp",
+                    "from_party": from_phone,
+                    "to_party": str(value.get("metadata", {}).get("display_phone_number") or ""),
+                    "body": body,
+                    "mime": mime,
+                    "filename": filename,
+                    "received_at": None,
+                }
+            )
+    flat_from = payload.get("from")
+    if not inbound_records and isinstance(flat_from, str) and (payload.get("body") or payload.get("text")):
+        inbound_records.append(
+            {
+                "provider_message_id": message_id if message_id != "unknown" else None,
+                "channel": str(provider or "whatsapp").lower(),
+                "from_party": flat_from,
+                "to_party": str(payload.get("to") or ""),
+                "body": str(payload.get("body") or payload.get("text") or ""),
+                "mime": None,
+                "filename": None,
+                "received_at": None,
+            }
+        )
+
+    if inbound_records:
+        from spine_api.services import message_store
+        from spine_api.services.messaging_webhooks import InboundMessage, process_inbound_traveler_message
+        from spine_api.services.message_dispatch import dispatch_outbound_message
+
+        webhook_agency = os.getenv("MESSAGING_WEBHOOK_AGENCY_ID", "").strip() or "webhook-unattributed"
+        for rec in inbound_records:
+            trip_id = message_store.match_trip_by_phone(webhook_agency, rec["from_party"])
+            message_store.append_message(
+                agency_id=webhook_agency,
+                channel=rec["channel"],
+                direction="inbound",
+                from_party=rec["from_party"],
+                to_party=rec["to_party"],
+                body=rec["body"],
+                trip_id=trip_id,
+                mime=rec["mime"],
+                filename=rec["filename"],
+                provider_message_id=rec["provider_message_id"],
+                received_at=rec["received_at"],
+            )
+            stored += 1
+
+            # FND-0126 wiring: the concierge reply engine (honesty-hardened,
+            # idempotent per provider message id) now runs on real ingested
+            # messages, and its reply is dispatched through the same honest
+            # provider adapter (NOT_CONFIGURED without creds) and stored so
+            # the operator sees both sides of the conversation.
+            if rec["body"]:
+                reply = process_inbound_traveler_message(
+                    InboundMessage(
+                        message_id=rec["provider_message_id"] or f"local_{stored}",
+                        channel=rec["channel"],
+                        from_phone=rec["from_party"],
+                        to_phone=rec["to_party"],
+                        body=rec["body"],
+                    ),
+                    active_trip_lookup=({rec["from_party"]: trip_id} if trip_id else None),
+                )
+                if reply.reply_text:
+                    dispatch_outbound_message(
+                        recipient=reply.to_phone,
+                        channel=reply.channel,
+                        content=reply.reply_text,
+                    )
+                    message_store.append_message(
+                        agency_id=webhook_agency,
+                        channel=reply.channel,
+                        direction="outbound",
+                        from_party=rec["to_party"],
+                        to_party=reply.to_phone,
+                        body=reply.reply_text,
+                        trip_id=reply.trip_id,
+                        provider_message_id=reply.reply_to_message_id,
+                    )
+
+        if stored:
+            AuditStore.log_event(
+                event_type="inbound_messages_stored",
+                user_id=webhook_agency,
+                details={"provider": provider, "stored": stored},
+            )
+
     logger.info(f"Received {provider} webhook event {event_type} for message {message_id}: status={status}")
 
     return {
@@ -163,6 +289,22 @@ async def process_messaging_webhook(
         "message_id": message_id,
         "status": status,
         "signature_verified": bool(app_secret and sig_header),
+        "inbound_messages_stored": stored,
         "processed_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def _extract_meta_message_values(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Pull changes[].value dicts out of the Meta Cloud API webhook envelope."""
+    values: List[Dict[str, Any]] = []
+    for entry in payload.get("entry") or []:
+        if not isinstance(entry, dict):
+            continue
+        for change in entry.get("changes") or []:
+            if not isinstance(change, dict):
+                continue
+            value = change.get("value")
+            if isinstance(value, dict) and value.get("messages"):
+                values.append(value)
+    return values
 

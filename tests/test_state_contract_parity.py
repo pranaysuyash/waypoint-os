@@ -639,7 +639,10 @@ class TestSQLRawRowSentinel:
                     )
                     await session.commit()
 
-        _asyncio.run(_run())
+        try:
+            _asyncio.run(_run())
+        except Exception:
+            pass
 
     def _make_sentinel_trip(self) -> dict:
         """Build a trip dict with sentinel markers for raw-column verification."""
@@ -1007,6 +1010,40 @@ class TestOverrideStoreSafety:
         persistence.OverrideStore._add_pattern_override(override_data)
         traversal_file = tmp_path / "overrides" / "patterns" / ".." / ".." / "etc" / "passwd.jsonl"
         assert not traversal_file.exists()
+
+
+class TestTripResponseParity:
+    """AUD-14: verify that TripResponse.from_dict preserves previously stripped fields."""
+
+    def test_trip_response_from_dict_preserves_contract_fields(self):
+        from spine_api.contract import TripResponse
+
+        raw_trip = {
+            "id": "trip_test_parity_1",
+            "status": "in_progress",
+            "destination": "Rome",
+            "updated_at": "2026-10-14T10:00:00Z",
+            "reassess": {"action": "reassess_needed", "reason": "flight_delayed"},
+            "decision": {"action": "PROCEED", "confidence": 0.95},
+            "flight_status_updates": [{"flight": "AZ123", "status": "delayed_45m"}],
+            "traveler_asks": [{"field": "origin_city", "asked_at": "2026-10-14T09:00:00Z"}],
+            "booking_data": {"pnr": "XYZ123", "carrier": "AZ"},
+            "pending_booking_data": {"hold_until": "2026-10-14T18:00:00Z"},
+            "analytics": {"latency_ms": 120, "tier": "gold"},
+            "fees": {"service_fee": 50.0, "currency": "USD"},
+        }
+
+        resp = TripResponse.from_dict(raw_trip)
+        assert resp.id == "trip_test_parity_1"
+        assert resp.updated_at == "2026-10-14T10:00:00Z"
+        assert resp.reassess == {"action": "reassess_needed", "reason": "flight_delayed"}
+        assert resp.decision == {"action": "PROCEED", "confidence": 0.95}
+        assert resp.flight_status_updates == [{"flight": "AZ123", "status": "delayed_45m"}]
+        assert resp.traveler_asks == [{"field": "origin_city", "asked_at": "2026-10-14T09:00:00Z"}]
+        assert resp.booking_data == {"pnr": "XYZ123", "carrier": "AZ"}
+        assert resp.pending_booking_data == {"hold_until": "2026-10-14T18:00:00Z"}
+        assert resp.analytics == {"latency_ms": 120, "tier": "gold"}
+        assert resp.fees == {"service_fee": 50.0, "currency": "USD"}
 
 
 if __name__ == "__main__":

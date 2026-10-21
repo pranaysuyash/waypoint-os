@@ -96,6 +96,16 @@ class SqlIdempotencyBackend:
 
     def _get_engine(self):
         if self._engine is None:
+            import asyncio
+            from spine_api.persistence import tripstore_session_maker, _tripstore_engines
+            try:
+                loop = asyncio.get_running_loop()
+                tripstore_session_maker()
+                eng = _tripstore_engines.get(loop)
+                if eng is not None:
+                    return eng
+            except RuntimeError:
+                pass
             from spine_api.core.database import engine as app_engine
 
             self._engine = app_engine
@@ -103,9 +113,9 @@ class SqlIdempotencyBackend:
 
     def _get_session_maker(self):
         if self._session_maker is None:
-            from spine_api.core.database import async_session_maker
+            from spine_api.persistence import tripstore_session_maker
 
-            self._session_maker = async_session_maker
+            return tripstore_session_maker
         return self._session_maker
 
     def _run(self, coro):

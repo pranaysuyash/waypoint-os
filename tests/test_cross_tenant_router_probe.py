@@ -83,30 +83,11 @@ def _ensure_agencies() -> None:
     asyncio.run(_insert())
 
 
-def test_ghost_workflow_read_fails_closed_cross_tenant(session_client):
-    """RQ-03: ghost_workflows is RLS-exempt — the read path must stay
-    agency-checked. Agency B must get 404 (existence not confirmed)."""
-    # The SQL schema intentionally enforces the agency FK; seed the two
-    # synthetic tenants before exercising the cross-tenant read contract.
-    _ensure_agencies()
-    created = session_client.post(
-        "/frontier/ghost/workflows",
-        json={"trip_id": "tenant_probe_trip_001", "task_type": "monitor", "autonomic_level": 0},
-        headers=_headers_for(AGENCY_A),
-    )
-    assert created.status_code == 200, created.text
-    workflow_id = created.json()["id"]
-
-    own = session_client.get(
-        f"/frontier/ghost/workflows/{workflow_id}", headers=_headers_for(AGENCY_A)
-    )
-    assert own.status_code == 200, own.text
-    assert own.json()["agency_id"] == AGENCY_A
-
-    other = session_client.get(
-        f"/frontier/ghost/workflows/{workflow_id}", headers=_headers_for(AGENCY_B)
-    )
-    assert other.status_code == 404, f"Agency B saw Agency A's ghost workflow: {other.text}"
+# T11b (2026-09-30): the fabricated /frontier/ghost/workflows routes were RETIRED
+# (rows were simulated PLANNED and never advanced — see
+# Docs/review/DECISION_PACK_T11B_GHOST_CONCIERGE_2026-09-30.md §2/§4). The
+# cross-tenant read probe for that surface is retired with it; the real
+# ghost-concierge ledger lives on the trip record (TripResponse.ghost_concierge).
 
 
 def test_team_members_list_scoped_to_caller_agency(session_client):

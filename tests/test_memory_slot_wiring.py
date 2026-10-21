@@ -394,39 +394,55 @@ def test_x14_gdpr_forget_propagates_to_slot_candidates(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_strategy_hook_emits_audit_event(monkeypatch, tmp_path):
+def test_strategy_hook_emits_audit_event(monkeypatch, tmp_path, caplog):
+    import logging
+
     from src.intake import strategy as strategy_mod
     from spine_api.core.auth import _jwt_agency_id
 
-    store = _real_store(tmp_path)
-    store.ingest_memory(
-        agency_id="agency-1",
-        entity_id="cust_audit@x.com",
-        raw_text="customer prefers aisle seats on flights",
-        source_type=MemorySourceType.TRAVELER_DIRECT,
-        category_hint="preference",
-    )
-    monkeypatch.setattr(strategy_mod, "_slot_store", lambda: store)
-    monkeypatch.delenv("MEMORY_SLOT_READ_MODE", raising=False)  # default: shadow
-
-    events: list = []
-
-    class _FakeAuditStore:
-        @staticmethod
-        def log_event(event_type, user_id, details):
-            events.append((event_type, user_id, details))
-
-    import spine_api.persistence as persistence_mod
-
-    monkeypatch.setattr(persistence_mod, "AuditStore", _FakeAuditStore)
-
-    token = _jwt_agency_id.set("agency-1")
-    try:
-        ordered = strategy_mod.sort_questions_by_priority(
-            _unknowns("seat_preference", "budget_min")
+    # FND-0293 hardening: _audit_slot_promotion is failure-tolerant by design
+    # (swallows + debug-logs). A transient error inside it previously surfaced
+    # only as a confusing len(events)==1 flake. Capture the swallow-path so the
+    # next occurrence names its real cause instead of failing on the count.
+    with caplog.at_level(logging.DEBUG, logger="src.intake.strategy"):
+        store = _real_store(tmp_path)
+        store.ingest_memory(
+            agency_id="agency-1",
+            entity_id="cust_audit@x.com",
+            raw_text="customer prefers aisle seats on flights",
+            source_type=MemorySourceType.TRAVELER_DIRECT,
+            category_hint="preference",
         )
-    finally:
-        _jwt_agency_id.reset(token)
+        monkeypatch.setattr(strategy_mod, "_slot_store", lambda: store)
+        monkeypatch.delenv("MEMORY_SLOT_READ_MODE", raising=False)  # default: shadow
+
+        events: list = []
+
+        class _FakeAuditStore:
+            @staticmethod
+            def log_event(event_type, user_id, details):
+                events.append((event_type, user_id, details))
+
+        import spine_api.persistence as persistence_mod
+
+        monkeypatch.setattr(persistence_mod, "AuditStore", _FakeAuditStore)
+
+        token = _jwt_agency_id.set("agency-1")
+        try:
+            ordered = strategy_mod.sort_questions_by_priority(
+                _unknowns("seat_preference", "budget_min")
+            )
+        finally:
+            _jwt_agency_id.reset(token)
+
+    swallowed = [
+        r for r in caplog.records if "memory slot promotion audit unavailable" in r.getMessage()
+    ]
+    assert not swallowed, (
+        "Audit emit hit its failure-tolerant swallow path — this is the "
+        "FND-0293 flake mechanism. Underlying error: "
+        + "; ".join(r.getMessage() for r in swallowed)
+    )
 
     # Shadow: order untouched (still static constraint-first priority), but
     # the audit records the would-be promotion.

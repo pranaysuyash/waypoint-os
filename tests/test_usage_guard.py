@@ -844,3 +844,171 @@ class TestGuardConcurrency:
         )
         assert not decision.allowed
         assert decision.block_reason == "guard_unavailable"
+
+
+class TestAutoQuiesce:
+    """FND-0228: repeated limit blocks trip an agency-scoped auto-quiesce."""
+
+    def _make_clock(self):
+        state = {"now": datetime(2026, 4, 26, 12, 0, 0)}
+
+        def now():
+            return state["now"]
+
+        return state, now
+
+    def _blocked_call(self, guard):
+        return guard.check_before_call(
+            model="gemini-2.0-flash", estimated_cost=0.1, feature="hybrid_engine"
+        )
+
+    def test_quiesce_trips_after_threshold_and_lifts_after_cooldown(self):
+        state, now = self._make_clock()
+        guard = LLMUsageGuard(
+            store=InMemoryUsageStore(),
+            now_func=now,
+            max_calls_per_hour=1,
+            quiesce_block_threshold=3,
+            quiesce_cooldown_seconds=300,
+        )
+        # First call allowed (hourly=1), next three blocked → streak hits 3.
+        assert self._blocked_call(guard).allowed is True
+        for _ in range(3):
+            decision = self._blocked_call(guard)
+        # By the 3rd block the quiesce has tripped mid-flight; the decision is
+        # either the original rate-limit block or the quiesce fast-fail.
+        assert decision.allowed is False
+
+        quiesced = self._blocked_call(guard)
+        assert quiesced.allowed is False
+        assert quiesced.block_reason == "quiesced"
+
+        # Cooldown expiry lifts the quiesce (frozen-clock bypass via state);
+        # advance past the cooldown AND the hourly window so the next call is clean.
+        state["now"] = datetime(2026, 4, 26, 13, 1, 0)
+        lifted = self._blocked_call(guard)
+        assert lifted.allowed is True  # new hourly window under the advanced clock
+        assert guard.get_state()["quiesced"] is False
+
+    def test_successful_call_resets_block_streak(self):
+        state, now = self._make_clock()
+        guard = LLMUsageGuard(
+            store=InMemoryUsageStore(),
+            now_func=now,
+            max_calls_per_hour=1,
+            quiesce_block_threshold=3,
+        )
+        assert self._blocked_call(guard).allowed is True
+        assert self._blocked_call(guard).block_reason == "rate_limit_exceeded"
+        state["now"] = datetime(2026, 4, 26, 13, 0, 0)  # new hourly window → allow resets streak
+        assert self._blocked_call(guard).allowed is True
+        assert self._blocked_call(guard).block_reason == "rate_limit_exceeded"
+        assert self._blocked_call(guard).block_reason == "rate_limit_exceeded"
+        # Streak never reached 3: still rate-limit blocks, not quiesced.
+        assert self._blocked_call(guard).block_reason == "rate_limit_exceeded"
+
+    def test_quiesce_disabled_with_zero_threshold(self):
+        _, now = self._make_clock()
+        guard = LLMUsageGuard(
+            store=InMemoryUsageStore(),
+            now_func=now,
+            max_calls_per_hour=1,
+            quiesce_block_threshold=0,
+        )
+        for _ in range(25):
+            decision = self._blocked_call(guard)
+        assert decision.block_reason != "quiesced"
+
+    def test_storage_failure_blocks_do_not_quiesce(self):
+        class BrokenStore(InMemoryUsageStore):
+            def check_and_reserve(self, **kwargs):
+                from src.llm.usage_store import GuardStorageError
+
+                raise GuardStorageError("db unavailable")
+
+        _, now = self._make_clock()
+        guard = LLMUsageGuard(
+            store=BrokenStore(),
+            now_func=now,
+            quiesce_block_threshold=2,
+        )
+        for _ in range(5):
+            decision = guard.check_before_call(
+                model="gemini-2.0-flash", estimated_cost=0.1, feature="hybrid_engine"
+            )
+            assert decision.block_reason == "guard_unavailable"
+        assert guard.get_state()["quiesced"] is False
+
+
+class TestParentChildReservation:
+    """FND-0228: nested subagent spend draws from the parent run reservation."""
+
+    def _make_guard(self):
+        state = {"now": datetime(2026, 4, 26, 12, 0, 0)}
+        guard = LLMUsageGuard(store=InMemoryUsageStore(), now_func=lambda: state["now"])
+        return guard
+
+    def test_child_draws_from_parent_budget_and_exhaustion_blocks(self):
+        guard = self._make_guard()
+        run_id = guard.open_run_reservation(budget=1.0)
+
+        first = guard.check_before_call(
+            model="gemini-2.0-flash", estimated_cost=0.6, feature="subagent",
+            parent_request_id=run_id,
+        )
+        assert first.allowed is True
+
+        second = guard.check_before_call(
+            model="gemini-2.0-flash", estimated_cost=0.6, feature="subagent",
+            parent_request_id=run_id,
+        )
+        assert second.allowed is False
+        assert second.block_reason == "parent_reservation_exhausted"
+
+    def test_unknown_parent_fails_closed(self):
+        guard = self._make_guard()
+        decision = guard.check_before_call(
+            model="gemini-2.0-flash", estimated_cost=0.1, feature="subagent",
+            parent_request_id="run_does_not_exist",
+        )
+        assert decision.allowed is False
+        assert decision.block_reason == "parent_reservation_missing"
+
+    def test_record_call_reconciles_actual_vs_estimated(self):
+        guard = self._make_guard()
+        run_id = guard.open_run_reservation(budget=1.0)
+        decision = guard.check_before_call(
+            model="gemini-2.0-flash", estimated_cost=0.4, feature="subagent",
+            parent_request_id=run_id,
+        )
+        assert decision.allowed is True
+        # Actual came in 0.3 over estimate → parent ledger must reflect it.
+        guard.record_call(decision, actual_cost=0.7, success=True)
+        summary = guard.close_run_reservation(run_id)
+        assert summary is not None
+        assert abs(summary["spent"] - 0.7) < 1e-9
+
+    def test_close_returns_summary_and_reopens_window(self):
+        guard = self._make_guard()
+        run_id = guard.open_run_reservation(budget=0.5)
+        decision = guard.check_before_call(
+            model="gemini-2.0-flash", estimated_cost=0.5, feature="subagent",
+            parent_request_id=run_id,
+        )
+        assert decision.allowed is True
+        summary = guard.close_run_reservation(run_id)
+        assert summary["budget"] == 0.5
+        # After close, further child calls fail closed (reservation gone).
+        after = guard.check_before_call(
+            model="gemini-2.0-flash", estimated_cost=0.1, feature="subagent",
+            parent_request_id=run_id,
+        )
+        assert after.block_reason == "parent_reservation_missing"
+
+    def test_negative_budget_rejected(self):
+        guard = self._make_guard()
+        try:
+            guard.open_run_reservation(budget=-1.0)
+            raise AssertionError("expected ValueError")
+        except ValueError:
+            pass
