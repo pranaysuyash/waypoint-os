@@ -1803,22 +1803,22 @@ These are **blocking** for moving from notebooks to real implementation.
 - Owner DECIDE: adopt MCP sandbox producer rails for B6/B7 lane? fare-drop decision card as a feature?
 - Which of replay/fork harness vs constraint-DSL gate core (ChinaTravel) delivers more launch credibility per effort?
 
-### 49. Fare-Drop Decision Card (post-booking reprice-vs-upgrade) 🟡
-**Status**: Task package ready (2026-10-21), awaiting owner GO. See [FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md](exploration/FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md). Implements roadmap-registry item "Price-drop re-shopping" (documented, not implemented).
+### 49. Fare-Drop Decision Card (post-booking reprice-vs-upgrade) 🟢
+**Status**: IMPLEMENTED + review-hardened (2026-10-22); outcome record in the task package. owner GO answered ("do all"). See [FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md](exploration/FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md). Implements roadmap-registry item "Price-drop re-shopping" (documented, not implemented).
 
 **Overview**: Practitioner-validated gap (r/travelagents top thread of the year): booked fares drop, the advisor discovers it by accident and decides reprice-vs-upgrade under commission pressure with no numbers. Three adjacent surfaces exist and none covers it — `TicketPriceWatchAgent` (pre-booking quote drift), Price-Lock Sentinel (72h quote window, preview-only), claim disposition ledger (the pattern to mirror). Package = 4 atomic tasks: T-FD1 post-booking detection branch on the existing agent; T-FD2 disposition ledger + commission-impact calculator with FND-0268 basis labels + GET/PATCH on the existing `price_lock` router; T-FD3 `FareDropDecisionCard` on the decision page (contract-verified first); T-FD4 draft-only traveler message gated on E1. Tracking-only — system never moves money or contacts suppliers.
 
 **Key Questions**:
-- Owner GO on the feature (DECIDE #2 from topic 48)?
-- Canonical booked-price anchor field on the trip contract (implementer verifies, never guesses).
+- Owner GO on the feature (DECIDE #2 from topic 48)? **→ Answered: "do all"; shipped 2026-10-22.**
+- Canonical booked-price anchor field on the trip contract? **→ Resolved: `booking_data` via the scoped accessor; `TripStoreAdapter.list_active` enriches post-booking rows (SQL list views exclude `booking_data` by design).**
 
-### 50. Plan Constraint Gate — executable constraint catalog (ChinaTravel pattern) 🟡
-**Status**: Paper design (2026-10-21). See [CONSTRAINT_DSL_GATE_CORE_PAPER_DESIGN_2026-10-21.md](exploration/CONSTRAINT_DSL_GATE_CORE_PAPER_DESIGN_2026-10-21.md).
+### 50. Plan Constraint Gate — executable constraint catalog (ChinaTravel pattern) 🟢
+**Status**: Phase 1 SHIPPED as a supersession correction (2026-10-22): the mandated supersession check found the catalog already existed — `src/decision/constraint_engine.py` (PER-0711) implements the environment families over the journey graph with `is_feasible` validity, wired into `proposal_compiler`. What was genuinely missing was FINANCIAL_BOUND (declared in the schema, parameters dead) — completed in-place: cost arithmetic HARD, mixed-currency HARD, provenance SOFT, partial-costing advisory, budget bound gated on `budget_currency` (unverified ⇒ warning, never block); proposal-compiler nodes now carry cost metadata with FND-0268 basis labels; `/constraints/rules` lists the four rules. See [CONSTRAINT_DSL_GATE_CORE_PAPER_DESIGN_2026-10-21.md](exploration/CONSTRAINT_DSL_GATE_CORE_PAPER_DESIGN_2026-10-21.md).
 
 **Overview**: Transplant ChinaTravel's verification *protocol* (not its China-domestic data): a typed two-family constraint catalog — ENVIRONMENT (entity grounding, price-has-source, price basis, currency consistency, cost arithmetic, chronology, spatial continuity, lodging-for-multiday, no duplicate POI) and PERSONAL (budget cap, party size, date window, must-include/avoid, accessibility/dietary, pace) compiled deterministically from intake facts — evaluated over the journey graph by a new `PipelineGate` (`GateIdentifier.PLAN_CONSTRAINTS`) before anything becomes a quote. Adopts the zero-out rule (no suitability score on HARD-failed plans), UNVERIFIED-never-passes honesty, per-constraint evidence into the audit trail, and an FPR lane to catch over-constraint. Phase 1 = Python predicate registry, no DSL interpreter; phase 2 restricted-AST DSL only on agency demand. Verdict on the topic-48 question: **constraint gate before replay/fork harness** — it is the launch-credibility item.
 
 **Key Questions**:
-- Owner DECIDE: adopt the zero-out rule (suppress suitability scores on HARD-failed plans)?
+- Owner DECIDE: adopt the zero-out rule (suppress suitability scores on HARD-failed plans)? **Still open.**
 - Gate position: after options/strategy only, or also re-run at proposal time when producer data refreshes?
 
 ### 51. Production Durability, Multi-Instance State & Disaster Recovery Drill 🟡
@@ -1830,3 +1830,6 @@ These are **blocking** for moving from notebooks to real implementation.
 - Target hosted database provider (Fly Postgres vs AWS RDS vs Supabase) and connection pool sizing.
 - Backup RTO/RPO SLA definitions and verification protocol for Art. 17 GDPR tombstones during point-in-time recovery.
 
+- 49 (2026-10-21, Sim #4): LLM-lane destination resolver vs epithet homonyms ('Solo'/'Young') — does the agentic context resolver (f2b14aef) correct them with the LLM lane on? Owner-gated posture sim (X-09).
+- 50 (2026-10-21, Sim #4): Jev triage intent taxonomy — passport-expiry panic triaged `general_inquiry` with confidence 0.28 yet routed SENIOR_AGENT_DISPATCH; calibration/threshold review on the live jev lane (FND-0322 lineage).
+- 51 (2026-10-21, Sim #4): Suite-composition pollution (FND-0359) — bisection harness for order-dependent doc-extraction failures (dual-store/env class).

@@ -1,8 +1,8 @@
 # Fare-Drop Decision Card — Implementation Task Package
 
-**Date:** 2026-10-21
+**Date:** 2026-10-21 · **Status:** IMPLEMENTED + review-hardened (2026-10-22). See "Implementation outcome" at the bottom.
 **Origin:** Exploration topic 48 (external ideas sweep) → r/travelagents practitioner playbook ("Price drops — Commission losses", top thread of the year) + trvl `watch`/`forecast` design patterns (probe 2026-10-20).
-**Roadmap anchor:** `Docs/CANONICAL_PRODUCT_OPPORTUNITY_AND_ROADMAP_REGISTRY_2026-08-04.md` § Explicitly documented → **"Price-drop re-shopping"** (documented, not implemented).
+**Roadmap anchor:** `Docs/CANONICAL_PRODUCT_OPPORTUNITY_AND_ROADMAP_REGISTRY_2026-08-04.md` § Explicitly documented → **"Price-drop re-shopping"** (documented, not implemented — now implemented).
 **Owner constraint (hard):** the system NEVER initiates, holds, or receives money, and NEVER contacts suppliers or sends customer messages autonomously. Everything below is tracking + decision support; the advisor executes.
 
 `Checklist applied: IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md`
@@ -91,3 +91,24 @@ Risk register for the gaps: post-booking eligibility wiring (**medium** — must
 Sequencing note: the `MockPriceWatchTool` default means T-FD1 is testable end-to-end today without a provider; the producer DECIDE (topic 48 probe: commercially-licensed MCP rails, FX/unpriced/converted clamps at the boundary) supplies a *real* drift source later without changing this package.
 
 What would make me say no: if the owner wants autonomous repricing. That crosses the money/supplier boundary and is explicitly out of every task above.
+
+---
+
+## Implementation outcome (2026-10-22)
+
+**All four tasks shipped** — T-FD1, T-FD2, T-FD3, T-FD4 — plus an independent code-review pass whose findings were all fixed before acceptance.
+
+**ACCEPT+MODIFY deviations from this package (documented per protocol):**
+- *T-FD2 guard:* the package specified `expected_version` + `idempotency_key` like `ReLockRequest`. Trips carry no version counter, so the guard is **`expected_state`** (compare-and-set on the disposition itself — the resource's own state is the honest optimistic lock) plus the store-level `updated_at` CAS. `idempotency_key` is accepted and audited; a replay after success is already rejected by the state machine (409).
+- *T-FD2 persist:* originally a whole-trip `save_trip` (read-modify-write); review found the lost-update window against the observation-appending supervisor, so the PATCH now persists **only the ledger key via `TripStore.update_trip_if_version`** (targeted, CAS on `updated_at`) and the audit event fires only after the write lands.
+- *T-FD4:* implemented as a **read-time draft** (`compose_traveler_draft` → `DRAFT_AWAITING_OPERATOR`, `channel: "unsent"`) surfaced on the decision card with copy-to-clipboard — the link-only floor. Channel dispatch (WhatsApp/email adapters) remains gated on the E1 owner decision, exactly as specified.
+
+**Review findings fixed (all verified by tests):**
+1. **P1 — the scan was dead on the pinned SQL backend:** generic trip views deliberately exclude `booking_data` (PII boundary, `TripStore._to_dict`), so `list_active` rows never carried a booking anchor. Fix: `TripStoreAdapter.list_active` now enriches post-booking rows through the scoped accessor (`get_booking_data_for_agency`); pre-booking rows stay excluded. Pinned by `test_runtime_adapter_enriches_post_booking_rows_via_scoped_accessor`.
+2. **P2 — currency guard was decorative:** both shipped price tools fall back to echoing the query's own currency. Tools now emit `currency_source` (`provider` | `query_echo`), and the agent attaches a signal only on a provider-observed currency; anything else is a skipped `currency_unverified` observation. Pinned by `test_fare_drop_watch_echoed_currency_is_unverified_and_never_signals`.
+3. **P2 — PATCH race** (fixed as above).
+4. **P3 — drafts addressed to a fabricated placeholder name** ("Client XXXXXX"): the projection helper's fallback is now filtered; nameless trips greet generically.
+5. **P3 — card cents mismatch vs draft:** money formatting keeps up to 2 fraction digits.
+6. **P3 — budget currency** (constraint-side, recorded in the companion doc `CONSTRAINT_DSL_GATE_CORE_PAPER_DESIGN_2026-10-21.md`): the budget bound requires `budget_currency` to match the components' single currency, else `BUDGET_CURRENCY_UNVERIFIED` is reported and nothing blocks.
+
+**Verification evidence:** `tests/test_agent_runtime.py` 48/48 (10 fare-drop tests) · `tests/test_fare_drop_disposition.py` 27/27 (incl. the real `/trips/{id}` contract check and the money-boundary + custody-vocabulary invariants) · frontend `FareDropDecisionCard` 10/10 + `route-map` 22/22 · full frontend suite 1,435/1,435 · full backend suite 5,378 passed / 1 failed — the single failure (`test_feature_gates.py::test_checker_agent_disabled_skips_audit`) passes in isolation and its surface (`frontier_orchestrator.py`, `conftest.py`) is modified by the parallel SIM4 wave, not this diff · `ruff` clean · production `npm run build` clean. A full persona-council acceptance pass on the live UI (servers on :8000/:3005, real booked trip, screenshot per the Strict Visual E2E rule) remains the one open verification step — it needs the dev servers, so it is listed for the next interactive session rather than claimed done here.

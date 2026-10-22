@@ -1,7 +1,17 @@
 # Constraint-DSL Gate Core — Paper Design (ChinaTravel pattern → Waypoint gates)
 
-**Date:** 2026-10-21
-**Status:** Paper design only — no implementation. Answers the topic 48 question: *does a constraint-DSL gate core or the replay/fork harness deliver more launch credibility per effort?*
+**Date:** 2026-10-21 · **Status:** Phase 1 SHIPPED 2026-10-22 — see "Supersession correction" below; §5's open DECIDE (zero-out rule) remains with the owner.
+
+## Supersession correction (2026-10-22 — what contact with the codebase changed)
+
+The design's own supersession mandate did its job: on implementation, the codebase check found that **most of this design already existed**. `src/decision/constraint_engine.py` (PER-0711) already implements the two-family structure over the journey graph — spatial continuity, chronology/MCT buffers, lodging necessity, rooming capacity, passport/Schengen/age rules — with `ConstraintType.HARD/SOFT`, `blocking/warning` severities, an `is_feasible` validity bit ("preference cannot bypass validity" in data-model form), and a relaxation hierarchy. It is already wired at the right gate position (`proposal_compiler` step 5). A `FINANCIAL_BOUND` category existed in the schema and `budget_cents`/`hard_budget_ceiling` parameters existed on the evaluate signature — **declared but never implemented** (dead parameters, zero rules emitted).
+
+Phase 1 therefore landed as **completion, not construction**: the FINANCIAL_BOUND family was implemented inside the authoritative engine (`_node_cost` normalizer + `_evaluate_financial_bound`), exactly the ENV-money subset of the §3.1 catalog that the 2026-10-20 producer probe made evidence-backed — cost arithmetic (HARD), single settlement currency (HARD), cost provenance (SOFT), partial-costing advisory, and the budget bound. Two honesty refinements beyond the paper: (a) a graph with no costed nodes emits nothing, so every existing caller is unaffected; (b) the budget bound requires a `budget_currency` matching the components' single currency — without it, `BUDGET_CURRENCY_UNVERIFIED` is reported and nothing blocks (a cross-currency comparison would be a fabricated number). The proposal compiler now costs its nodes with FND-0268 basis labels, so the family is exercised on the real compile path (`tests/test_constraint_engine_financial.py`, 14 tests; all pre-existing constraint/compiler/router tests green).
+
+Still open from this design: the zero-out rule (§3.3, owner DECIDE), the PERSONAL-family compilation from intake facts (§3.1 second table), the CI FPR lane (§3.5), and phase-2 agency-authored constraints (§3.2, default off). The replay/fork harness remains the next infrastructure item per §4.
+
+---
+
 **Source pattern:** [ChinaTravel](https://github.com/LAMDA-NeSy/ChinaTravel) (ICLR'26; official benchmark of the IJCAI 2025 + 2026 Travel Planning Challenge) — `chinatravel/symbol_verification/{commonsense_constraint,hard_constraint,dsl,preference}.py` and its evaluation readme, read 2026-10-21.
 
 ---
