@@ -99,7 +99,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000  # Should return 20
 |------|--------|---------------|-----------------|------------|------------|
 | C1 | Navigate to `http://localhost:3000/login` | Browser | Login form loads | ✅ | ✅ |
 | C2 | Enter email: `pranay.suyash@gmail.com` | Email field | | ✅ | ✅ |
-| C3 | Enter password: `Osddeies_12` | Password field | | ✅ | ✅ |
+| C3 | Enter password: `<REDACTED-rotate-in-Supabase>` | Password field | | ✅ | ✅ |
 | C4 | Click "Log In" | Button click | Redirect to workspace | ✅ | ⚠️ Redirected to `/workbench` (last visited page?) |
 | C5 | Observe dashboard/overview | Browser | **All zeros / empty state** | ✅ | ✅ All zeros |
 | C6 | Check for any old mock data leaking | Browser | **No trips from other users** | ✅ | ✅ No trips |
