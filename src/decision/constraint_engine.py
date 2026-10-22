@@ -255,6 +255,63 @@ def _node_age_bounds(node: Any) -> Tuple[Optional[int], Optional[int]]:
     return min_age, max_age
 
 
+def _node_cost(node: Any) -> Optional[Dict[str, Any]]:
+    """Normalize a node's cost metadata for the FINANCIAL_BOUND family.
+
+    Accepted shapes (nodes opt in; absence means "not costed", never an error):
+
+        metadata["cost"] = {
+            "unit_price": 1250.0,   # per unit (pax, night, car)
+            "quantity": 2,          # units purchased
+            "total": 2500.0,        # declared component total
+            "currency": "USD",      # ISO code, upper-cased here
+            "basis": "live",        # preview | live | modeled_synthetic | converted_estimate …
+            "source": "Delta Air Lines (sandbox)",  # producer / feed / confirmation
+        }
+
+    Flat keys on ``metadata`` (``cost_total``, ``cost_currency``, …) are
+    accepted for producers that cannot nest. Numeric fields that fail to
+    parse are dropped individually so one bad field does not hide the rest.
+    """
+    meta = getattr(node, "metadata", None) or {}
+    raw = meta.get("cost")
+    if not isinstance(raw, dict):
+        flat = {
+            "unit_price": meta.get("cost_unit_price"),
+            "quantity": meta.get("cost_quantity"),
+            "total": meta.get("cost_total"),
+            "currency": meta.get("cost_currency"),
+            "basis": meta.get("cost_basis"),
+            "source": meta.get("cost_source"),
+        }
+        if all(value is None for value in flat.values()):
+            return None
+        raw = flat
+
+    def _num(value: Any) -> Optional[float]:
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    currency = raw.get("currency")
+    basis = raw.get("basis")
+    source = raw.get("source")
+    normalized = {
+        "unit_price": _num(raw.get("unit_price")),
+        "quantity": _num(raw.get("quantity")),
+        "total": _num(raw.get("total")),
+        "currency": str(currency).strip().upper() if currency else None,
+        "basis": str(basis).strip() if basis else None,
+        "source": str(source).strip() if source else None,
+    }
+    if all(value is None for value in normalized.values()):
+        return None
+    return normalized
+
+
 class ConstraintEngine:
     """Deterministic Constraint Satisfaction Engine for Travel Itineraries."""
 
@@ -337,6 +394,7 @@ class ConstraintEngine:
         budget_cents: Optional[int] = None,
         hard_budget_ceiling: bool = False,
         party_size: Optional[int] = None,
+        budget_currency: Optional[str] = None,
     ) -> ConstraintEvaluationReport:
         """Evaluate all hard and soft constraints across a JourneyDependencyGraph.
 
@@ -344,6 +402,17 @@ class ConstraintEngine:
         proposal compiler, which only knows a count) still participate in
         occupancy and pax checks. When both ``travelers`` and ``party_size``
         are supplied, the traveler list wins.
+
+        ``budget_cents`` / ``hard_budget_ceiling`` / ``budget_currency`` drive
+        the FINANCIAL_BOUND family (completed 2026-10-21, exploration topic
+        50): component cost arithmetic, settlement-currency consistency, cost
+        provenance, and the budget bound. Nodes opt in by carrying
+        ``metadata["cost"]`` — see ``_node_cost`` for the accepted shape. A
+        graph with no costed nodes produces no financial findings, so existing
+        callers are unaffected. The budget bound is only enforced when
+        ``budget_currency`` matches the components' single currency; otherwise
+        a ``BUDGET_CURRENCY_UNVERIFIED`` warning is emitted and no block is
+        raised (a cross-currency comparison would be a fabricated number).
         """
         trip_id = graph.trip_id
         hard_violations: List[ConstraintViolation] = []
@@ -895,23 +964,39 @@ class ConstraintEngine:
                                 )
                             )
 
+        # 4b. Financial bound: cost arithmetic, currency consistency, provenance,
+        # and the budget bound (FINANCIAL_BOUND family — topic 50).
+        cls._evaluate_financial_bound(
+            graph,
+            budget_cents=budget_cents,
+            budget_currency=budget_currency,
+            hard_budget_ceiling=hard_budget_ceiling,
+            hard_violations=hard_violations,
+            soft_violations=soft_violations,
+        )
+
         # 5. Synthesize 4-Tier Relaxation Hierarchy
         # Priority 0: HARD_SAFETY (Never relaxed)
         # Priority 1: REGULATORY (Passport / Visa / Schengen)
-        # Priority 2: COMMERCIAL (Supplier policies / rooming)
+        # Priority 2: COMMERCIAL (Supplier policies / rooming / financial bound)
         # Priority 3: SOFT_PREFERENCE (Pacing / tight buffers)
         for hv in hard_violations:
-            tier_num = 0 if hv.category in (ConstraintCategory.SPATIAL_CONTINUITY, ConstraintCategory.REGULATORY_HEALTH_VACCINATION) else 1
+            if hv.category in (ConstraintCategory.SPATIAL_CONTINUITY, ConstraintCategory.REGULATORY_HEALTH_VACCINATION):
+                tier_num, tier_name = 0, "HARD_SAFETY"
+            elif hv.category == ConstraintCategory.FINANCIAL_BOUND:
+                tier_num, tier_name = 2, "COMMERCIAL"
+            else:
+                tier_num, tier_name = 1, "REGULATORY"
             if hv.relaxation_option:
                 relaxation_hierarchy.append({
                     "priority_tier": tier_num,
-                    "tier_name": "HARD_SAFETY" if tier_num == 0 else "REGULATORY",
+                    "tier_name": tier_name,
                     "constraint_id": hv.constraint_id,
                     "violation": hv.name,
                     "action": hv.relaxation_option,
                 })
         for sv in soft_violations:
-            tier_num = 2 if sv.category in (ConstraintCategory.COMMERCIAL_SUPPLIER_POLICY, ConstraintCategory.CAPACITY_ROOMING) else 3
+            tier_num = 2 if sv.category in (ConstraintCategory.COMMERCIAL_SUPPLIER_POLICY, ConstraintCategory.CAPACITY_ROOMING, ConstraintCategory.FINANCIAL_BOUND) else 3
             if sv.relaxation_option:
                 relaxation_hierarchy.append({
                     "priority_tier": tier_num,
@@ -934,3 +1019,222 @@ class ConstraintEngine:
             relaxation_hierarchy=relaxation_hierarchy,
             evaluated_at=now_iso,
         )
+
+    # ------------------------------------------------------------------
+    # FINANCIAL_BOUND family (exploration topic 50, 2026-10-21)
+    #
+    # Completes the family the PER-0711 design declared (ConstraintCategory
+    # .FINANCIAL_BOUND, the ``budget_cents`` / ``hard_budget_ceiling``
+    # parameters) but never implemented. The rules come from two pieces of
+    # evidence: ChinaTravel's commonsense catalog (cost = price × tickets,
+    # price must match its source) and the 2026-10-20 producer probe (30% of
+    # live rows unpriced, converted estimates, five currencies in one result
+    # set). Honesty rule throughout: a cost that cannot be verified is a
+    # warning, never a silent pass — and never a block either, because a
+    # missing number is not a wrong number.
+    # ------------------------------------------------------------------
+
+    # Relative tolerance for unit × quantity vs declared total (rounding,
+    # taxes folded into totals); the absolute floor keeps tiny totals from
+    # tripping on cents.
+    COST_ARITHMETIC_RELATIVE_TOLERANCE = 0.01
+    COST_ARITHMETIC_ABSOLUTE_TOLERANCE = 1.0
+
+    @classmethod
+    def _evaluate_financial_bound(
+        cls,
+        graph: JourneyDependencyGraph,
+        budget_cents: Optional[int],
+        budget_currency: Optional[str],
+        hard_budget_ceiling: bool,
+        hard_violations: List[ConstraintViolation],
+        soft_violations: List[ConstraintViolation],
+    ) -> None:
+        costed: List[Tuple[Any, Dict[str, Any]]] = []
+        uncosted_ids: List[str] = []
+        for node in graph.nodes.values():
+            cost = _node_cost(node)
+            if cost is None:
+                uncosted_ids.append(node.node_id)
+            else:
+                costed.append((node, cost))
+
+        # No node opted into cost verification → nothing to say. Existing
+        # callers whose graphs carry no cost metadata are unaffected.
+        if not costed:
+            return
+
+        # 1. Cost arithmetic: total must equal unit_price × quantity.
+        for node, cost in costed:
+            unit, qty, total = cost.get("unit_price"), cost.get("quantity"), cost.get("total")
+            if unit is None or qty is None or total is None:
+                continue
+            expected = round(unit * qty, 2)
+            tolerance = max(cls.COST_ARITHMETIC_ABSOLUTE_TOLERANCE, abs(expected) * cls.COST_ARITHMETIC_RELATIVE_TOLERANCE)
+            if abs(expected - total) > tolerance:
+                hard_violations.append(
+                    ConstraintViolation(
+                        constraint_id=f"COST_ARITHMETIC_{node.node_id}",
+                        name="Component cost arithmetic mismatch",
+                        category=ConstraintCategory.FINANCIAL_BOUND,
+                        constraint_type=ConstraintType.HARD,
+                        severity="blocking",
+                        affected_elements=[node.node_id],
+                        description=(
+                            f"{node.title}: declared total {total} does not equal unit price {unit} × "
+                            f"quantity {qty} = {expected} (tolerance ±{round(tolerance, 2)})."
+                        ),
+                        relaxation_option="Re-price the component from its source; do not present a total that does not reconcile.",
+                        metadata={
+                            "unit_price": unit,
+                            "quantity": qty,
+                            "declared_total": total,
+                            "expected_total": expected,
+                            "currency": cost.get("currency"),
+                            "basis": cost.get("basis"),
+                        },
+                    )
+                )
+
+        # 2. Settlement-currency consistency across costed components.
+        currencies: Dict[str, List[str]] = {}
+        for node, cost in costed:
+            currency = cost.get("currency")
+            if currency:
+                currencies.setdefault(currency, []).append(node.node_id)
+        if len(currencies) > 1:
+            hard_violations.append(
+                ConstraintViolation(
+                    constraint_id="COST_CURRENCY_MIXED",
+                    name="Mixed settlement currencies",
+                    category=ConstraintCategory.FINANCIAL_BOUND,
+                    constraint_type=ConstraintType.HARD,
+                    severity="blocking",
+                    affected_elements=[nid for ids in currencies.values() for nid in ids],
+                    description=(
+                        "Component costs are expressed in more than one currency "
+                        f"({', '.join(sorted(currencies))}); a single plan total cannot be stated honestly."
+                    ),
+                    relaxation_option="Normalize every component to one settlement currency with a dated FX record before totalling.",
+                    metadata={"currencies": {code: ids for code, ids in sorted(currencies.items())}},
+                )
+            )
+
+        # 3. Provenance: a cost that carries no basis or source is unverifiable.
+        for node, cost in costed:
+            if not cost.get("basis") or not cost.get("source"):
+                soft_violations.append(
+                    ConstraintViolation(
+                        constraint_id=f"COST_SOURCE_MISSING_{node.node_id}",
+                        name="Component cost has no provenance",
+                        category=ConstraintCategory.FINANCIAL_BOUND,
+                        constraint_type=ConstraintType.SOFT,
+                        severity="warning",
+                        affected_elements=[node.node_id],
+                        description=f"{node.title}: cost is stated without a basis and source; it cannot be verified.",
+                        relaxation_option="Attach the producer, retrieval time, and price basis (preview | live | converted estimate) to the component.",
+                        metadata={"basis": cost.get("basis"), "source": cost.get("source"), "total": cost.get("total")},
+                    )
+                )
+
+        # 4. Partial costing: some components verified, others not. One
+        # aggregate advisory so the operator knows the total is a lower bound.
+        if uncosted_ids:
+            soft_violations.append(
+                ConstraintViolation(
+                    constraint_id="COST_PROVENANCE_UNVERIFIED",
+                    name="Plan is only partially costed",
+                    category=ConstraintCategory.FINANCIAL_BOUND,
+                    constraint_type=ConstraintType.SOFT,
+                    severity="advisory",
+                    affected_elements=list(uncosted_ids),
+                    description=(
+                        f"{len(uncosted_ids)} of {len(graph.nodes)} components carry no cost; "
+                        "any plan total is a lower bound, not a quote."
+                    ),
+                    relaxation_option="Cost every component before presenting a total.",
+                    metadata={"costed": [n.node_id for n, _ in costed], "uncosted": list(uncosted_ids)},
+                )
+            )
+
+        # 5. Budget bound — only meaningful when the costed components share
+        # one currency (a mixed-currency sum would be a fabricated number) AND
+        # the budget itself is denominated in that same currency. Without that
+        # corroboration the bound is skipped with a warning instead of blocking.
+        if budget_cents is None or len(currencies) > 1:
+            return
+        totals = [cost.get("total") for _, cost in costed if cost.get("total") is not None]
+        if not totals:
+            return
+        total_cents = int(round(sum(totals) * 100))
+        currency = next(iter(currencies), None)
+        if not budget_currency or str(budget_currency).strip().upper() != (currency or ""):
+            soft_violations.append(
+                ConstraintViolation(
+                    constraint_id="BUDGET_CURRENCY_UNVERIFIED",
+                    name="Budget bound not enforced (currency unverified)",
+                    category=ConstraintCategory.FINANCIAL_BOUND,
+                    constraint_type=ConstraintType.SOFT,
+                    severity="warning",
+                    affected_elements=[n.node_id for n, _ in costed],
+                    description=(
+                        f"Components total {total_cents / 100:.2f} {currency or ''}; the budget's currency"
+                        + (f" ({str(budget_currency).strip().upper()})" if budget_currency else " is unknown")
+                        + " — the bound is reported, not enforced, rather than compare across currencies."
+                    ),
+                    relaxation_option="Record the budget's currency (budget_currency) so the bound can be enforced.",
+                    metadata={
+                        "budget_cents": int(budget_cents),
+                        "budget_currency": str(budget_currency).strip().upper() if budget_currency else None,
+                        "component_currency": currency,
+                        "total_cents": total_cents,
+                    },
+                )
+            )
+            return
+        if total_cents <= int(budget_cents):
+            return
+        overage_cents = total_cents - int(budget_cents)
+        common_metadata = {
+            "budget_cents": int(budget_cents),
+            "total_cents": total_cents,
+            "overage_cents": overage_cents,
+            "currency": currency,
+            "partial_costing": bool(uncosted_ids),
+            "costed": [n.node_id for n, _ in costed],
+        }
+        if hard_budget_ceiling:
+            hard_violations.append(
+                ConstraintViolation(
+                    constraint_id="BUDGET_CEILING_EXCEEDED",
+                    name="Hard budget ceiling exceeded",
+                    category=ConstraintCategory.FINANCIAL_BOUND,
+                    constraint_type=ConstraintType.HARD,
+                    severity="blocking",
+                    affected_elements=[n.node_id for n, _ in costed],
+                    description=(
+                        f"Costed components total {total_cents / 100:.2f} {currency or ''} against a hard ceiling of "
+                        f"{int(budget_cents) / 100:.2f} (over by {overage_cents / 100:.2f})."
+                        + (" Total is a lower bound: some components are uncosted." if uncosted_ids else "")
+                    ),
+                    relaxation_option="Reduce component spend or confirm a higher ceiling with the traveler before presenting.",
+                    metadata=common_metadata,
+                )
+            )
+        else:
+            soft_violations.append(
+                ConstraintViolation(
+                    constraint_id="BUDGET_TARGET_EXCEEDED",
+                    name="Budget target exceeded",
+                    category=ConstraintCategory.FINANCIAL_BOUND,
+                    constraint_type=ConstraintType.SOFT,
+                    severity="warning",
+                    affected_elements=[n.node_id for n, _ in costed],
+                    description=(
+                        f"Costed components total {total_cents / 100:.2f} {currency or ''} against a target of "
+                        f"{int(budget_cents) / 100:.2f} (over by {overage_cents / 100:.2f})."
+                    ),
+                    relaxation_option="Present the overage explicitly or offer a lower-cost variant.",
+                    metadata=common_metadata,
+                )
+            )

@@ -250,8 +250,59 @@ class AutonomousProposalCompiler:
         t_trans = t_arr + timedelta(minutes=45)
         t_hotel = t_trans + timedelta(hours=1)
 
-        f_node = JourneyNode("N_FLT_01", NodeType.FLIGHT, f"Flight to {destination}", t_dep, t_arr, "NYC", provider=flight_provider)
-        t_node = JourneyNode("N_TRF_01", NodeType.TRANSFER, "Chauffeur Airport Transfer", t_trans, t_trans + timedelta(hours=1), destination, provider="Blacklane")
+        # Topic 50: nodes carry their cost so the constraint engine's
+        # FINANCIAL_BOUND family verifies arithmetic, currency, and provenance
+        # on the real compile path (basis labels per FND-0268).
+        f_node = JourneyNode(
+            "N_FLT_01",
+            NodeType.FLIGHT,
+            f"Flight to {destination}",
+            t_dep,
+            t_arr,
+            "NYC",
+            provider=flight_provider,
+            metadata={
+                "cost": {
+                    "unit_price": flight_price_per_pax,
+                    "quantity": traveler_count,
+                    "total": flight_cost,
+                    "currency": "USD",
+                    "basis": flight_basis,
+                    "source": flight_provider,
+                }
+            },
+        )
+        t_node = JourneyNode(
+            "N_TRF_01",
+            NodeType.TRANSFER,
+            "Chauffeur Airport Transfer",
+            t_trans,
+            t_trans + timedelta(hours=1),
+            destination,
+            provider="Blacklane",
+            metadata={
+                "cost": {
+                    "unit_price": transfer_cost,
+                    "quantity": 1,
+                    "total": transfer_cost,
+                    "currency": "USD",
+                    "basis": "modeled_synthetic",
+                    "source": "Blacklane (modeled)",
+                }
+            },
+        )
+        hotel_metadata: Dict[str, Any] = {
+            "cost": {
+                "unit_price": round(hotel_cost / lodging_days, 2),
+                "quantity": lodging_days,
+                "total": hotel_cost,
+                "currency": "USD",
+                "basis": hotel_basis,
+                "source": hotel_provider,
+            }
+        }
+        if hotel_rate_key:
+            hotel_metadata["rate_key"] = hotel_rate_key
         h_node = JourneyNode(
             "N_HTL_01",
             NodeType.HOTEL_CHECKIN,
@@ -260,7 +311,7 @@ class AutonomousProposalCompiler:
             t_hotel + timedelta(days=max(1, (return_date - departure_date).days)),
             destination,
             provider=hotel_provider,
-            metadata={"rate_key": hotel_rate_key} if hotel_rate_key else {},
+            metadata=hotel_metadata,
         )
 
         graph.add_node(f_node)

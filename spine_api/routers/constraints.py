@@ -76,6 +76,40 @@ ACTIVE_RULES_CATALOG: List[ConstraintRuleItem] = [
         description="Advises when layovers meet legal MCT but leave minimal comfort buffer for traveler.",
         threshold_info="Warns if buffer < MCT + 30m",
     ),
+    # FINANCIAL_BOUND family — completed 2026-10-21 (exploration topic 50).
+    # Nodes opt in via metadata["cost"]; a graph with no costed nodes emits nothing.
+    ConstraintRuleItem(
+        rule_id="RULE_COST_ARITHMETIC",
+        category="FINANCIAL_BOUND",
+        constraint_type="HARD",
+        title="Component Cost Arithmetic",
+        description="A component's declared total must equal unit price × quantity; a total that does not reconcile is never presented.",
+        threshold_info="|unit × qty − total| ≤ max(1.00, 1% of expected)",
+    ),
+    ConstraintRuleItem(
+        rule_id="RULE_COST_CURRENCY",
+        category="FINANCIAL_BOUND",
+        constraint_type="HARD",
+        title="Single Settlement Currency",
+        description="All costed components must share one currency; mixed currencies block any plan total until normalized with a dated FX record.",
+        threshold_info="Exactly one currency across costed components",
+    ),
+    ConstraintRuleItem(
+        rule_id="RULE_COST_PROVENANCE",
+        category="FINANCIAL_BOUND",
+        constraint_type="SOFT",
+        title="Cost Provenance & Partial Costing",
+        description="Warns when a cost has no basis/source, and advises when only some components are costed (the total is then a lower bound, not a quote).",
+        threshold_info="basis + source present on every costed component",
+    ),
+    ConstraintRuleItem(
+        rule_id="RULE_BUDGET_BOUND",
+        category="FINANCIAL_BOUND",
+        constraint_type="HARD",
+        title="Budget Bound",
+        description="Costed total vs the packet budget: blocking when hard_budget_ceiling is set, a warning otherwise. Requires the budget currency to match the components' single currency; otherwise BUDGET_CURRENCY_UNVERIFIED is reported and the bound is not enforced.",
+        threshold_info="Σ component totals ≤ budget_cents, same currency (budget_currency)",
+    ),
 ]
 
 
@@ -106,7 +140,10 @@ def evaluate_trip_constraints(
         raise HTTPException(status_code=404, detail="Trip not found")
 
     packet = trip.get("packet") or {}
-    travelers = (trip.get("booking_data") or {}).get("travelers") or []
+    # Tenant-scoped accessor — booking_data left the generic trip dict
+    # (privacy boundary, tests/test_booking_data.py).
+    booking_data = TripStore.get_booking_data_for_agency(trip_id, agency_id) or {}
+    travelers = booking_data.get("travelers") or []
 
     # Construct JourneyDependencyGraph from trip legs or default flight nodes
     graph = JourneyDependencyGraph(trip_id)
@@ -149,6 +186,7 @@ def evaluate_trip_constraints(
                 start_time=st,
                 end_time=et,
                 location=leg.get("location") or "Destination",
+                metadata={"cost": leg["cost"]} if isinstance(leg.get("cost"), dict) else {},
             )
             graph.add_node(node)
 
@@ -156,6 +194,8 @@ def evaluate_trip_constraints(
         graph=graph,
         travelers=travelers,
         budget_cents=packet.get("budget_cents"),
+        hard_budget_ceiling=bool(packet.get("hard_budget_ceiling", False)),
+        budget_currency=packet.get("budget_currency"),
     )
 
     return ConstraintEvaluationResponse(
