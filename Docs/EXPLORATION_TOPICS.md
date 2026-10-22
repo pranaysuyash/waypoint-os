@@ -1800,7 +1800,7 @@ These are **blocking** for moving from notebooks to real implementation.
 **Overview**: One-pass sweep of X / Reddit / Medium / GitHub / HN (non-mainstream channels) for ideas and signals outside the project's usual diet. Four converging findings: (1) agent-native booking rails commoditizing (LetsFG 2.1k⭐, trvl, Dida wholesale-MCP, Agentic Commerce Protocol) → sandbox producer candidates under ADR-008, never a rail build; (2) agent replay + model-fork standardizing (OrcaReplay, orca-trace-v0 spec) → pairs with KDD harness + sim replays; (3) causal tamper-evident audit (ZizkaDB, EU AI Act Art. 12) → launch-readiness posture candidate; (4) r/travelagents practitioner pain points — standout: manual fare-drop → reprice-or-upgrade → commission-offset playbook, a natural tracking-only decision-card feature. Gaps: X unfetchable this session (rerun after search-quota reset 2026-11-06); Reddit search API blocked.
 
 **Key Questions**:
-- Owner DECIDE: adopt MCP sandbox producer rails for B6/B7 lane? fare-drop decision card as a feature?
+- Owner DECIDE: adopt MCP sandbox producer rails for B6/B7 lane? **→ Registered as TRV-DP-04a in Docs/DECISIONS_PENDING.md (vendor choice + clamp-gate evidence).** Fare-drop decision card as a feature? **→ Shipped (topic 49).**
 - Which of replay/fork harness vs constraint-DSL gate core (ChinaTravel) delivers more launch credibility per effort?
 
 ### 49. Fare-Drop Decision Card (post-booking reprice-vs-upgrade) 🟢
