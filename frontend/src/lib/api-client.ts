@@ -380,6 +380,12 @@ export interface Trip {
     healer_note?: string;
     reality_note?: string;
   };
+  // Topic 49 (2026-10-21): post-booking fare-drop watch. The agent attaches the
+  // signal and a bounded observation log; the advisor records the decision.
+  // Tracking-only — the system never reprices, contacts suppliers, or moves money.
+  fare_drop_signal?: FareDropSignal | null;
+  fare_drop_disposition?: FareDropDisposition | null;
+  price_observations?: PriceObservation[] | null;
   agentOperations?: AgentOperationsMetadata;
   rawInput?: unknown;
   // Input fields (returned by the backend API)
@@ -1069,6 +1075,119 @@ export async function transitionTripStage(
     reason,
     expected_current_stage: expectedCurrentStage,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Post-booking fare-drop decision (exploration topic 49, 2026-10-21)
+//
+// Shapes below mirror the backend verbatim: TicketPriceWatchAgent writes the
+// signal/observations (src/agents/runtime.py), the ledger + options come from
+// spine_api/services/fare_drop_disposition.py via the price-lock router.
+// Verified against the real response in tests/test_fare_drop_disposition.py.
+// ---------------------------------------------------------------------------
+
+export interface FareDropSignal {
+  checked_at?: string;
+  source?: string;
+  detection_marker?: string;
+  booking_ref?: string | null;
+  booked_price?: number;
+  booked_currency?: string | null;
+  current_price?: number;
+  current_currency?: string | null;
+  drop_amount?: number;
+  drop_percent?: number;
+  threshold_percent?: number;
+  severity?: string;
+  tool_evidence?: Array<Record<string, unknown>>;
+  authority?: string;
+}
+
+export interface PriceObservation {
+  checked_at?: string;
+  detection_marker?: string;
+  booking_ref?: string | null;
+  booked_price?: number;
+  booked_currency?: string | null;
+  current_price?: number;
+  current_currency?: string | null;
+  drift_percent?: number;
+  status?: "observed" | "tool_unavailable" | "no_current_price" | "currency_mismatch" | string;
+}
+
+export type FareDropDispositionState =
+  | "DETECTED"
+  | "PRESENTED"
+  | "REPRICED"
+  | "UPGRADED"
+  | "DEFERRED"
+  | "DISMISSED"
+  | "CLOSED";
+
+export interface FareDropDisposition {
+  state: FareDropDispositionState | string;
+  history?: Array<{ state: string; at: string; by?: string; note?: string }>;
+  // Recorded outcome of what the supplier and client did between themselves.
+  outcome?: {
+    option?: "reprice" | "upgrade" | string;
+    client_delta?: number;
+    supplier_reference?: string;
+    executed_by?: string;
+    recorded_at?: string;
+    recorded_by?: string;
+  } | null;
+  detection_marker?: string;
+}
+
+export interface FareDropOptions {
+  booked_price: number;
+  current_price: number;
+  drop_amount: number;
+  drop_percent: number;
+  reprice: { client_saving: number; commission_delta: number };
+  upgrade: { upgrade_budget: number; commission_delta: number; note?: string };
+  commission: { pct: number; basis: "trip_recorded" | "estimate" | string; source: string };
+  basis: "trip_recorded" | "estimate" | string;
+}
+
+export interface FareDropTravelerDraft {
+  status: "DRAFT_AWAITING_OPERATOR" | string;
+  subject?: string;
+  body: string;
+  channel?: "unsent" | string;
+  based_on?: { drop_amount?: number; currency?: string | null; detection_marker?: string };
+}
+
+export interface FareDropDispositionResponse {
+  ok: boolean;
+  trip_id: string;
+  signal: FareDropSignal;
+  disposition: FareDropDisposition;
+  options?: FareDropOptions | null;
+  options_unavailable_reason?: string | null;
+  observations?: PriceObservation[];
+  // Practitioner-framed client message. Draft only — the advisor sends it
+  // through their own channel; the system never dispatches it.
+  traveler_draft?: FareDropTravelerDraft | null;
+}
+
+export interface FareDropDispositionUpdate {
+  new_state: FareDropDispositionState;
+  note?: string;
+  outcome?: NonNullable<FareDropDisposition["outcome"]>;
+  expected_state?: string;
+  idempotency_key: string;
+}
+
+export async function getFareDropDisposition(tripId: string): Promise<FareDropDispositionResponse> {
+  return api.get(`/api/v1/price-lock/${tripId}/fare-drop/disposition`);
+}
+
+export async function updateFareDropDisposition(
+  tripId: string,
+  body: FareDropDispositionUpdate,
+): Promise<FareDropDispositionResponse> {
+  return api.patch(`/api/v1/price-lock/${tripId}/fare-drop/disposition`, body);
 }
 
 export interface ExplicitReassessRequest {

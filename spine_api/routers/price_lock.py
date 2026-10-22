@@ -8,16 +8,22 @@ PA-06 (2026-09-06): the rate source is still simulated (in-memory supplier
 contract rows with hardcoded fallbacks), so the re-lock endpoint is
 PREVIEW-ONLY — it never mutates the trip of record. See ReLockResponse and the
 re_lock_lower_rate docstring.
+
+Topic 49 (2026-10-21): this router also hosts the POST-booking fare-drop
+disposition ledger (``/{trip_id}/fare-drop/disposition``) so all re-shopping
+surfaces live in one place. Unlike the preview endpoints above, the ledger IS
+persisted — it records the advisor's decision, never a payment.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 
 from spine_api.core.auth import get_current_agency_id
-from spine_api.persistence import TripStore
+from spine_api.persistence import AuditStore, TripStore
 from spine_api.routers.supplier import CONTRACTS_STORE
+from spine_api.services import fare_drop_disposition
 
 router = APIRouter(prefix="/api/v1/price-lock", tags=["Price Lock Sentinel"])
 
@@ -328,3 +334,173 @@ async def re_lock_lower_rate(
         would_persist=False,
         not_persisted_reason="simulated_rate_source",
     )
+
+
+# ---------------------------------------------------------------------------
+# Post-booking fare-drop disposition (exploration topic 49, 2026-10-21)
+#
+# The sentinel above watches the PRE-booking quote window. Once a trip is
+# booked, ``TicketPriceWatchAgent`` (post-booking branch) attaches
+# ``fare_drop_signal`` when the live fare falls below the booked price. These
+# endpoints let the advisor see the two practitioner options with numbers and
+# record what they decided. Tracking-only: the system never reprices, never
+# contacts the supplier, never moves money — the advisor does, and records it.
+# ---------------------------------------------------------------------------
+
+
+class FareDropDispositionUpdateRequest(BaseModel):
+    new_state: str
+    note: str = ""
+    # Recorded outcome for REPRICED / UPGRADED: option chosen, client delta,
+    # supplier reference, who executed it. Informational only — no money moves here.
+    outcome: Optional[Dict[str, Any]] = None
+    # Compare-and-set guard on the disposition itself (trips carry no version
+    # counter; the resource's own state is the honest optimistic lock).
+    expected_state: Optional[str] = None
+    # Accepted for replay protection parity with ReLockRequest; a transition
+    # re-sent after success is already rejected by the state machine (409).
+    idempotency_key: str
+
+
+class FareDropDispositionResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    signal: Dict[str, Any]
+    disposition: Dict[str, Any]
+    options: Optional[Dict[str, Any]] = None
+    options_unavailable_reason: Optional[str] = None
+    observations: List[Dict[str, Any]] = []
+    # Practitioner-framed client message, DRAFT_AWAITING_OPERATOR. Computed at
+    # read time from verified options only; never sent by the system.
+    traveler_draft: Optional[Dict[str, Any]] = None
+
+
+def _fare_drop_options_for(trip: dict, signal: dict) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """Compute options at read time so the numbers always carry a current basis label."""
+    try:
+        pct, source = fare_drop_disposition.resolve_trip_commission(trip)
+        return (
+            fare_drop_disposition.compute_fare_drop_options(
+                booked_price=float(signal.get("booked_price") or 0),
+                current_price=float(signal.get("current_price") or 0),
+                commission_pct=pct,
+                commission_source=source,
+            ),
+            None,
+        )
+    except (TypeError, ValueError) as exc:
+        return None, str(exc)
+
+
+def _fare_drop_response(trip_id: str, trip: dict, signal: dict, disposition: dict) -> FareDropDispositionResponse:
+    from spine_api.services.inbox_projection import _derive_customer_name, resolve_trip_field
+
+    options, reason = _fare_drop_options_for(trip, signal)
+    observations = [o for o in (trip.get("price_observations") or []) if isinstance(o, dict)]
+    traveler_name = _derive_customer_name(trip, trip_id) or None
+    # The projection helper synthesizes "Client XXXXXX" when no real name is on
+    # file; a draft must never be addressed to a fabricated placeholder.
+    if traveler_name and traveler_name == f"Client {trip_id[-6:].upper()}":
+        traveler_name = None
+    draft = fare_drop_disposition.compose_traveler_draft(
+        signal,
+        options,
+        traveler_name=traveler_name,
+        destination=(resolve_trip_field(trip, "destination") or None),
+    )
+    return FareDropDispositionResponse(
+        trip_id=trip_id,
+        signal=signal,
+        disposition=disposition,
+        options=options,
+        options_unavailable_reason=reason,
+        observations=observations[-10:],
+        traveler_draft=draft,
+    )
+
+
+@router.get("/{trip_id}/fare-drop/disposition", response_model=FareDropDispositionResponse)
+def get_fare_drop_disposition(
+    trip_id: str,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Operator view of a detected post-booking fare drop: signal, the two
+    quantified options (with commission basis label), and the decision ledger.
+
+    Read-only. A signal without a ledger yet is surfaced as ``DETECTED``
+    without persisting anything; the first PATCH creates the ledger.
+    """
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    signal = trip.get("fare_drop_signal")
+    if not isinstance(signal, dict) or not signal:
+        raise HTTPException(status_code=404, detail="No fare-drop signal on this trip")
+    disposition = dict(trip.get("fare_drop_disposition") or {})
+    if not disposition or disposition.get("detection_marker") != signal.get("detection_marker"):
+        disposition = fare_drop_disposition.new_disposition(str(signal.get("detection_marker") or ""))
+    return _fare_drop_response(trip_id, trip, signal, disposition)
+
+
+@router.patch("/{trip_id}/fare-drop/disposition", response_model=FareDropDispositionResponse)
+def update_fare_drop_disposition(
+    trip_id: str,
+    body: FareDropDispositionUpdateRequest,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Advance the fare-drop decision one legal step (operator-entered).
+
+    The advisor records what they presented and what the supplier and client
+    then did. Illegal transitions, a stale ``expected_state``, or a decision
+    state without its recorded outcome are rejected with 409. This endpoint
+    moves a STATUS, never money (owner invariant).
+    """
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    signal = trip.get("fare_drop_signal")
+    if not isinstance(signal, dict) or not signal:
+        raise HTTPException(status_code=404, detail="No fare-drop signal on this trip")
+
+    disposition = trip.get("fare_drop_disposition")
+    marker = str(signal.get("detection_marker") or "")
+    if not isinstance(disposition, dict) or disposition.get("detection_marker") != marker:
+        # First decision on this signal (or the signal was re-detected at a new
+        # booked price): start a fresh ledger for the current marker.
+        disposition = fare_drop_disposition.new_disposition(marker)
+
+    try:
+        fare_drop_disposition.apply_transition(
+            disposition,
+            body.new_state,
+            by=agency_id,
+            note=body.note,
+            outcome=body.outcome,
+            expected_state=body.expected_state,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+    # Targeted CAS persist (expected_updated_at guard inside the store): the
+    # ledger is the only key written, so a supervisor appending price
+    # observations between our read and write cannot be clobbered, and an
+    # audit event is only recorded after the write actually landed.
+    persisted = TripStore.update_trip_if_version(
+        trip_id,
+        {"fare_drop_disposition": disposition},
+        expected_updated_at=(trip.get("updated_at") or None),
+    )
+    if persisted is None:
+        raise HTTPException(status_code=409, detail="Trip changed concurrently; retry the transition")
+    trip = persisted
+    AuditStore.log_event(
+        event_type="fare_drop_disposition_updated",
+        user_id=agency_id,
+        details={
+            "trip_id": trip_id,
+            "detection_marker": marker,
+            "new_state": body.new_state,
+            "idempotency_key": body.idempotency_key,
+        },
+    )
+    return _fare_drop_response(trip_id, trip, signal, disposition)

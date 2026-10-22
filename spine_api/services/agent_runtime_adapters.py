@@ -14,6 +14,12 @@ from typing import Any, Optional
 class TripStoreAdapter:
     """Thin adapter so backend agents can query TripStore through a stable boundary."""
 
+    # Stages past the booking decision (mirrors TicketPriceWatchAgent). Generic
+    # trip views deliberately exclude booking_data (PII boundary in
+    # TripStore._to_dict); the runtime is a system-context caller, so post-
+    # booking rows are enriched here through the scoped booking accessor.
+    _POST_BOOKING_STAGES = {"booked", "ticketed", "pre_departure"}
+
     def __init__(self, trip_store: Any = None):
         self._trip_store = trip_store
 
@@ -23,7 +29,20 @@ class TripStoreAdapter:
         store = self._trip_store or TripStore
         trips_raw = self._resolve_sync(store.list_trips(limit=500))
         terminal = {"closed", "cancelled", "completed", "archived"}
-        return [t for t in trips_raw if (t.get("stage") or t.get("state") or t.get("status")) not in terminal]
+        active = [t for t in trips_raw if (t.get("stage") or t.get("state") or t.get("status")) not in terminal]
+        for trip in active:
+            stage = str(trip.get("stage") or trip.get("status") or "").lower()
+            if stage not in self._POST_BOOKING_STAGES or "booking_data" in trip:
+                continue
+            agency_id = trip.get("agency_id")
+            booking = (
+                self._resolve_sync(store.get_booking_data_for_agency(trip["id"], agency_id))
+                if agency_id
+                else self._resolve_sync(store.get_booking_data(trip["id"]))
+            )
+            if isinstance(booking, dict) and booking:
+                trip["booking_data"] = booking
+        return active
 
     def set_review_status(self, trip_id: str, status: str) -> None:
         from spine_api.persistence import TripStore

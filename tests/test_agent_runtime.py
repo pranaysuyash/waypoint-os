@@ -930,6 +930,218 @@ def test_ticket_price_watch_agent_flags_quote_drift():
     assert alert["tool_evidence"][0]["fresh"] is True
 
 
+# --- Post-booking fare-drop watch (exploration topic 49) --------------------
+#
+# The same agent gains a second branch for trips past booking. These tests pin
+# the acceptance criteria from FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21:
+# signal + observation on a qualifying drop, observation-only below threshold,
+# no signal on stale tool / missing price / currency mismatch / price rise,
+# recheck window honoured, observation log capped, and the pre-booking quote
+# path never reached for a booked trip.
+
+
+def _fare_drop_tool_result(fetched_at, current_price, currency="INR", max_age=1800, currency_source="provider"):
+    data = {"current_price": current_price, "quoted_price": 100000, "currency": currency}
+    if currency_source is not None:
+        data["currency_source"] = currency_source
+    return ToolResult.from_static(
+        tool_name="mock_price_watch",
+        query={"quote_id": "ABC123"},
+        data=data,
+        source="unit_test_price",
+        freshness=ToolFreshnessPolicy(max_age_seconds=max_age),
+        now=fetched_at,
+    )
+
+
+def _booked_trip(**overrides):
+    trip = {
+        "id": "trip_booked",
+        "stage": "booked",
+        "booking_data": {"confirmation_number": "ABC123", "total_price": 100000, "currency": "INR"},
+    }
+    trip.update(overrides)
+    return trip
+
+
+_BOOKED_MARKER = "fare_drop|ABC123|100000.0|INR"
+
+
+def test_fare_drop_watch_attaches_signal_and_observation():
+    fetched_at = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    repo = _Repo([_booked_trip()])
+    agent = TicketPriceWatchAgent(
+        price_tool=_FakePriceWatchTool(_fare_drop_tool_result(fetched_at, 88000)),
+        now_provider=lambda: fetched_at + timedelta(minutes=5),
+    )
+
+    work_item = next(agent.scan(repo))
+    assert work_item.action == "watch_fare_drop"
+    result = agent.execute(work_item, repo)
+
+    assert result.success is True
+    trip = repo.trips["trip_booked"]
+    signal = trip["fare_drop_signal"]
+    assert signal["detection_marker"] == _BOOKED_MARKER
+    assert signal["booked_price"] == 100000.0
+    assert signal["current_price"] == 88000.0
+    assert signal["drop_amount"] == 12000.0
+    assert signal["drop_percent"] == -12.0
+    assert signal["severity"] == "medium"
+    assert signal["threshold_percent"] == 5.0
+    assert signal["tool_evidence"][0]["fresh"] is True
+    assert "Do not purchase" in signal["authority"]
+    observations = trip["price_observations"]
+    assert len(observations) == 1
+    assert observations[0]["status"] == "observed"
+    assert observations[0]["drift_percent"] == -12.0
+    # Pre-booking keys are untouched by the post-booking branch.
+    assert "ticket_price_watch_alert" not in trip
+    assert "price_watch_risk_level" not in trip
+
+
+def test_fare_drop_watch_below_threshold_records_observation_only():
+    fetched_at = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    repo = _Repo([_booked_trip()])
+    agent = TicketPriceWatchAgent(
+        price_tool=_FakePriceWatchTool(_fare_drop_tool_result(fetched_at, 97000)),
+        now_provider=lambda: fetched_at + timedelta(minutes=5),
+    )
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    trip = repo.trips["trip_booked"]
+    assert "fare_drop_signal" not in trip
+    assert trip["price_observations"][0]["drift_percent"] == -3.0
+    assert trip["price_observations"][0]["status"] == "observed"
+
+
+def test_fare_drop_watch_price_rise_never_signals():
+    fetched_at = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    repo = _Repo([_booked_trip()])
+    agent = TicketPriceWatchAgent(
+        price_tool=_FakePriceWatchTool(_fare_drop_tool_result(fetched_at, 120000)),
+        now_provider=lambda: fetched_at + timedelta(minutes=5),
+    )
+
+    agent.execute(next(agent.scan(repo)), repo)
+
+    trip = repo.trips["trip_booked"]
+    assert "fare_drop_signal" not in trip
+    assert trip["price_observations"][0]["drift_percent"] == 20.0
+
+
+def test_fare_drop_watch_currency_mismatch_skips_signal():
+    fetched_at = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    repo = _Repo([_booked_trip()])
+    agent = TicketPriceWatchAgent(
+        price_tool=_FakePriceWatchTool(_fare_drop_tool_result(fetched_at, 900, currency="USD")),
+        now_provider=lambda: fetched_at + timedelta(minutes=5),
+    )
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    trip = repo.trips["trip_booked"]
+    assert "fare_drop_signal" not in trip
+    observation = trip["price_observations"][0]
+    assert observation["status"] == "currency_mismatch"
+    assert "drift_percent" not in observation
+
+
+def test_fare_drop_watch_echoed_currency_is_unverified_and_never_signals():
+    """A tool that echoes the query's own currency (both shipped tools' fallback)
+    must not produce refund figures: the observation is skipped as unverified."""
+    fetched_at = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    repo = _Repo([_booked_trip()])
+    agent = TicketPriceWatchAgent(
+        # currency_source omitted entirely = query echo (MockPriceWatchTool behavior)
+        price_tool=_FakePriceWatchTool(_fare_drop_tool_result(fetched_at, 50000, currency_source=None)),
+        now_provider=lambda: fetched_at + timedelta(minutes=5),
+    )
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    trip = repo.trips["trip_booked"]
+    assert "fare_drop_signal" not in trip
+    observation = trip["price_observations"][0]
+    assert observation["status"] == "currency_unverified"
+    assert "drift_percent" not in observation
+
+
+def test_fare_drop_watch_stale_tool_records_skipped_observation():
+    fetched_at = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    repo = _Repo([_booked_trip()])
+    agent = TicketPriceWatchAgent(
+        price_tool=_FakePriceWatchTool(_fare_drop_tool_result(fetched_at, 50000, max_age=60)),
+        now_provider=lambda: fetched_at + timedelta(hours=1),
+    )
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    trip = repo.trips["trip_booked"]
+    assert "fare_drop_signal" not in trip
+    assert trip["price_observations"][0]["status"] == "tool_unavailable"
+
+
+def test_fare_drop_watch_honours_recheck_window():
+    now = datetime(2026, 10, 21, 12, tzinfo=timezone.utc)
+    recent = _booked_trip(fare_drop_signal={"detection_marker": _BOOKED_MARKER, "checked_at": (now - timedelta(hours=1)).isoformat()})
+    stale = _booked_trip(id="trip_stale", fare_drop_signal={"detection_marker": _BOOKED_MARKER, "checked_at": (now - timedelta(days=2)).isoformat()})
+    repo = _Repo([recent, stale])
+    agent = TicketPriceWatchAgent(price_tool=_FakePriceWatchTool(_fare_drop_tool_result(now, 90000)), now_provider=lambda: now)
+
+    work_items = list(agent.scan(repo))
+
+    assert [item.trip_id for item in work_items] == ["trip_stale"]
+
+
+def test_fare_drop_watch_rebooking_starts_fresh_watch():
+    now = datetime(2026, 10, 21, 12, tzinfo=timezone.utc)
+    # Same booking reference, new booked price → different marker → watched immediately.
+    trip = _booked_trip(fare_drop_signal={"detection_marker": _BOOKED_MARKER, "checked_at": now.isoformat()})
+    trip["booking_data"]["total_price"] = 95000
+    repo = _Repo([trip])
+    agent = TicketPriceWatchAgent(price_tool=_FakePriceWatchTool(_fare_drop_tool_result(now, 90000)), now_provider=lambda: now)
+
+    work_item = next(agent.scan(repo))
+
+    assert work_item.payload["detection_marker"] == "fare_drop|ABC123|95000.0|INR"
+
+
+def test_fare_drop_watch_caps_observation_log(monkeypatch):
+    monkeypatch.setenv("FARE_DROP_OBSERVATION_CAP", "3")
+    fetched_at = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    prior = [{"detection_marker": "old", "checked_at": "2026-01-01T00:00:00+00:00", "status": "observed"} for _ in range(3)]
+    repo = _Repo([_booked_trip(price_observations=prior)])
+    agent = TicketPriceWatchAgent(
+        price_tool=_FakePriceWatchTool(_fare_drop_tool_result(fetched_at, 97000)),
+        now_provider=lambda: fetched_at + timedelta(minutes=5),
+    )
+
+    agent.execute(next(agent.scan(repo)), repo)
+
+    observations = repo.trips["trip_booked"]["price_observations"]
+    assert len(observations) == 3
+    assert observations[-1]["detection_marker"] == _BOOKED_MARKER
+
+
+def test_fare_drop_watch_skips_unpriced_booking_and_never_uses_quote_path():
+    now = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    repo = _Repo([
+        {"id": "trip_unpriced", "stage": "booked", "booking_data": {"confirmation_number": "X"}},
+        # A booked trip with a quote but no booking anchor must NOT fall back to the
+        # pre-booking quote watch — booked trips are only ever fare-drop watched.
+        {"id": "trip_quote_only", "stage": "ticketed", "quote": {"id": "q", "price": 1000, "currency": "USD"}},
+    ])
+    agent = TicketPriceWatchAgent(price_tool=_FakePriceWatchTool(_fare_drop_tool_result(now, 900)), now_provider=lambda: now)
+
+    assert list(agent.scan(repo)) == []
+
+
 class _FakeSafetyAlertTool:
     def __init__(self, result: ToolResult):
         self.result = result

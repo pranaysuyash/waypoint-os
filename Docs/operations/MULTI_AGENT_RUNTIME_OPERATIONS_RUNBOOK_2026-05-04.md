@@ -99,6 +99,11 @@ Backend product-agent runtime operations for `travel_agency_agent`.
   - Provider option: set `TRAVEL_AGENT_PRICE_WATCH_URL_TEMPLATE`
   - Optional provider label: `TRAVEL_AGENT_PRICE_WATCH_PROVIDER`
   - Optional headers: `TRAVEL_AGENT_PRICE_WATCH_HEADER_<HEADER_NAME>`
+- Post-booking fare-drop watch (topic 49, 2026-10-22; same agent, `booked/ticketed/pre_departure` stages):
+  - `FARE_DROP_MIN_PERCENT` (default 5.0) — minimum drop vs the booked price before a `fare_drop_signal` attaches
+  - `FARE_DROP_RECHECK_SECONDS` (default 86400) — minimum interval between checks per booking marker
+  - `FARE_DROP_OBSERVATION_CAP` (default 90) — max entries kept in the trip's `price_observations[]`
+  - Honesty: a signal requires a provider-observed currency (`currency_source == "provider"`); echo/stale/missing prices record a skipped observation only
 - Safety alerts:
   - Default: deterministic `MockSafetyAlertTool`
   - Provider option: set `TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE`

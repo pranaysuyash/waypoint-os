@@ -126,6 +126,10 @@ class MockPriceWatchTool:
                 "quoted_price": quoted_price,
                 "current_price": current_price,
                 "currency": quote.get("currency") or "USD",
+                # The mock never observes a market; its currency is echoed from
+                # the query. The fare-drop watch treats anything but "provider"
+                # as unverified and refuses to attach a drop signal on it.
+                "currency_source": "query_echo",
                 "drift_percent": drift_percent,
                 "mode": "mock",
             },
@@ -308,13 +312,18 @@ class HTTPPriceWatchTool:
         payload = _get_json(url, self.timeout_seconds, self.headers)
         current_price = _number(_first_nested(payload, ["current_price", "price", "total", "data.current_price", "data.price", "data.total", "offers.0.total"]))
         quoted_price = _number(mapping.get("quoted_price") or mapping.get("price") or mapping.get("total"))
+        provider_currency = _first_nested(payload, ["currency", "data.currency", "offers.0.currency"])
         drift_percent = None
         if quoted_price and current_price:
             drift_percent = round(((current_price - quoted_price) / quoted_price) * 100, 2)
         normalized = {
             "quoted_price": quoted_price,
             "current_price": current_price,
-            "currency": _first_nested(payload, ["currency", "data.currency", "offers.0.currency"]) or mapping.get("currency") or "USD",
+            # Kept for backward-compatible consumers, but tagged: an echo of the
+            # query's own currency is NOT an observation. The fare-drop watch
+            # only signals on currency_source == "provider".
+            "currency": provider_currency or mapping.get("currency") or "USD",
+            "currency_source": "provider" if provider_currency else "query_echo",
             "drift_percent": drift_percent,
             "provider": self.provider_name,
             "mode": "live",

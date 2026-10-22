@@ -124,6 +124,8 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["v1/trips/{id}/quotes", { backendPath: "api/v1/trips/{id}/quotes" }],
   ["trips/{id}/messages", { backendPath: "api/v1/trips/{id}/messages" }],
   ["v1/trips/{id}/messages", { backendPath: "api/v1/trips/{id}/messages" }],
+  // Topic 49: post-booking fare-drop decision ledger (hosted on the price-lock router).
+  ["v1/price-lock/{id}/fare-drop/disposition", { backendPath: "api/v1/price-lock/{id}/fare-drop/disposition" }],
   ["messages", { backendPath: "api/v1/messages" }],
   ["v1/messages", { backendPath: "api/v1/messages" }],
   ["trips/{id}/timeline", { backendPath: "api/trips/{id}/timeline" }],
@@ -252,6 +254,11 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["v1/logistics/route-geometry/open-jaw", { backendPath: "api/v1/logistics/route-geometry/open-jaw" }],
   ["v1/epistemic/constraints/extract-implicit", { backendPath: "api/v1/epistemic/constraints/extract-implicit" }],
   ["v1/passenger-rights/evaluate", { backendPath: "api/v1/passenger-rights/evaluate" }],
+  // RAG knowledge retrieval (mount 2026-10-22).
+  ["v1/rag/status", { backendPath: "api/v1/rag/status" }],
+  ["v1/rag/query", { backendPath: "api/v1/rag/query" }],
+  ["v1/rag/documents", { backendPath: "api/v1/rag/documents" }],
+  ["v1/rag/documents/index", { backendPath: "api/v1/rag/documents/index" }],
   ["v1/financial-ops/convert-currency", { backendPath: "api/v1/financial-ops/convert-currency" }],
   ["v1/counterfactual/replan-disruption", { backendPath: "api/v1/counterfactual/replan-disruption" }],
   ["v1/counterfactual/group-consensus", { backendPath: "api/v1/counterfactual/group-consensus" }],

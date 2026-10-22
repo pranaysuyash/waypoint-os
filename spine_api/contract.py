@@ -1192,8 +1192,15 @@ class TripResponse(BaseModel):
     updated_at: Optional[str] = None
     flight_status_updates: Optional[List[Dict[str, Any]]] = None
     traveler_asks: Optional[List[Dict[str, Any]]] = None
-    booking_data: Optional[Dict[str, Any]] = None
-    pending_booking_data: Optional[Dict[str, Any]] = None
+    # booking_data / pending_booking_data intentionally not TripResponse
+    # fields — served via the dedicated tenant-scoped booking-data and
+    # pending-booking-data routes only (privacy boundary).
+    # Topic 49 (2026-10-21): post-booking fare-drop watch — detection signal,
+    # bounded observation log, and the advisor's decision ledger. Tracking-only
+    # (owner invariant: the system never reprices, contacts suppliers, or moves money).
+    fare_drop_signal: Optional[Dict[str, Any]] = None
+    fare_drop_disposition: Optional[Dict[str, Any]] = None
+    price_observations: Optional[List[Dict[str, Any]]] = None
     analytics: Optional[Dict[str, Any]] = None
     fees: Optional[Dict[str, Any]] = None
 
@@ -1323,8 +1330,14 @@ class TripResponse(BaseModel):
                 or (trip.get("analytics") or {}).get("_extra", {}).get("traveler_asks")
                 or None
             ),
-            booking_data=trip.get("booking_data") or None,
-            pending_booking_data=trip.get("pending_booking_data") or None,
+            # booking_data / pending_booking_data deliberately absent from
+            # TripResponse — customer PII is served only via the dedicated
+            # tenant-scoped /trips/{id}/booking-data and
+            # /trips/{id}/pending-booking-data routes (privacy boundary pinned
+            # by tests/test_booking_data.py and tests/test_booking_collection.py).
+            fare_drop_signal=trip.get("fare_drop_signal") or None,
+            fare_drop_disposition=trip.get("fare_drop_disposition") or None,
+            price_observations=trip.get("price_observations") or None,
             analytics=trip.get("analytics") or None,
             fees=trip.get("fees") or None,
         )

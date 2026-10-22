@@ -60,6 +60,12 @@ describe("resolveBackendPath", () => {
     );
   });
 
+  it("resolves the post-booking fare-drop disposition path on the price-lock router (topic 49)", () => {
+    expect(resolveBackendPath(["v1", "price-lock", "trip_1cad495b9586", "fare-drop", "disposition"])).toBe(
+      "api/v1/price-lock/trip_1cad495b9586/fare-drop/disposition"
+    );
+  });
+
   it("maps product-agent runtime and trip event surfaces through the canonical proxy", () => {
     expect(resolveBackendPath(["agents", "runtime"])).toBe("agents/runtime");
     expect(resolveBackendRoute(["agents", "runtime", "run-once"])).toEqual({

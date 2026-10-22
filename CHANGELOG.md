@@ -4,6 +4,13 @@ All notable changes to Waypoint OS are documented in this file.
 
 ## [Unreleased]
 
+### Fare-Drop Decision Card + FINANCIAL_BOUND constraints (topics 49/50, 2026-10-22)
+- **Post-booking fare-drop watch**: `TicketPriceWatchAgent` gained a `booked/ticketed/pre_departure` branch — anchors on the booked price, appends a bounded `price_observations[]` history, attaches `fare_drop_signal` only for provider-verified currency drops ≥ `FARE_DROP_MIN_PERCENT` (default 5%). Env: `FARE_DROP_MIN_PERCENT`, `FARE_DROP_RECHECK_SECONDS`, `FARE_DROP_OBSERVATION_CAP`.
+- **Fare-drop disposition ledger** (`spine_api/services/fare_drop_disposition.py`): 7-state advisor decision machine (DETECTED→PRESENTED→REPRICED/UPGRADED/DEFERRED/DISMISSED→CLOSED) with the same custody-vocabulary and no-money-movement guards as the claims ledger; commission-impact options calculator with FND-0268 basis labels; GET/PATCH `/api/v1/price-lock/{trip_id}/fare-drop/disposition` on the existing re-shopping router with `expected_state` CAS plus a store-level `updated_at` targeted persist. Tracking-only: the system never reprices, contacts suppliers, or moves money.
+- **Runtime storage boundary**: `TripStoreAdapter.list_active` enriches post-booking rows with the booking anchor via the scoped accessor (generic views exclude `booking_data` by design); `PriceWatchTool` implementations now tag `currency_source` (`provider` vs `query_echo`) and unverified-currency drops never signal.
+- **FareDropDecisionCard** on the trip decision page: refund-vs-upgrade options with a commission basis badge, `DRAFT_AWAITING_OPERATOR` client message with copy-to-clipboard, legal transitions with 409 surfacing; BFF route-map allowlist entry + test.
+- **FINANCIAL_BOUND constraint family** (topic 50): completed the declared-but-dead family in `ConstraintEngine` — cost arithmetic (HARD), mixed settlement currencies (HARD), missing cost provenance (SOFT), partial-costing advisory, budget bound gated on `budget_currency` match; proposal-compiler nodes now carry per-component cost metadata; `/constraints/rules` catalog gained the four rules.
+
 ### Platform Hardening & Findings Remediation (2026-09-14)
 - **RAG Semantic Provider Abstraction**: Added `EmbeddingProvider` protocol, `HashEmbeddingProvider` (deterministic local), and `SemanticEmbeddingProvider` (OpenAI adapter) in `src/rag/embeddings.py` (FND-0018).
 - **Motto Doctrine Re-homing**: Consolidated legacy motto-v4 filename references into canonical `Docs/FIRST_PRINCIPLES_MOTTO_V4_DOCTRINE.md` with zero dangling references verified via `scripts/check_dangling_docs.py` (FND-0024 / FND-0208).

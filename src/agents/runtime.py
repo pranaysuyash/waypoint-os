@@ -8,6 +8,7 @@ then supervised through deterministic scans and single-owner work execution.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import threading
 import time
@@ -2855,20 +2856,66 @@ class FlightStatusAgent:
         return "unknown"
 
 
+def _env_float(name: str, default: float) -> float:
+    try:
+        value = float(os.getenv(name, "").strip() or default)
+    except (TypeError, ValueError):
+        return default
+    return value if value >= 0 else default
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        value = int(os.getenv(name, "").strip() or default)
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+# Post-booking fare-drop watch defaults (exploration topic 49). Thresholds are
+# env-tunable so an agency can decide what "worth telling the client" means.
+_FARE_DROP_MIN_PERCENT_DEFAULT = 5.0
+_FARE_DROP_RECHECK_SECONDS_DEFAULT = 86_400
+_FARE_DROP_OBSERVATION_CAP_DEFAULT = 90
+
+
 class TicketPriceWatchAgent:
     definition = AgentDefinition(
         name="ticket_price_watch_agent",
         description="Checks quote/fare drift and creates internal revalidation alerts without purchasing.",
-        trigger_contract="Trip has quote/proposal price data and no current ticket_price_watch_alert for the same quote marker.",
-        input_contract="Trip record with quote/proposal price, currency, quote id, and stage metadata.",
-        output_contract="Trip is updated with ticket_price_watch_alert, quote_revalidation_required, and operator next action.",
-        idempotency_contract="One price watch alert per trip_id plus quote marker until quote data changes.",
-        failure_contract="Stale/tool failures produce unknown-risk revalidation alert; update failures retry and poison after retry budget.",
+        trigger_contract=(
+            "Pre-booking: trip has quote/proposal price data and no current ticket_price_watch_alert for the same quote marker. "
+            "Post-booking (fare-drop watch): trip stage is booked/ticketed/pre_departure with a priced booking_data anchor, "
+            "checked at most once per FARE_DROP_RECHECK_SECONDS per booking marker."
+        ),
+        input_contract=(
+            "Pre-booking: trip record with quote/proposal price, currency, quote id, and stage metadata. "
+            "Post-booking: booking_data with a total price, currency, and booking reference."
+        ),
+        output_contract=(
+            "Pre-booking: trip is updated with ticket_price_watch_alert, quote_revalidation_required, and operator next action. "
+            "Post-booking: every check appends a bounded price_observations[] entry; a drop of at least FARE_DROP_MIN_PERCENT "
+            "with matching currencies additionally attaches fare_drop_signal. Tracking-only: nothing is purchased, repriced, "
+            "or sent."
+        ),
+        idempotency_contract=(
+            "Pre-booking: one price watch alert per trip_id plus quote marker until quote data changes. "
+            "Post-booking: one check per booking marker per recheck window; the marker includes the booked price so a "
+            "rebooking starts a fresh watch."
+        ),
+        failure_contract=(
+            "Pre-booking: stale/tool failures produce unknown-risk revalidation alert. Post-booking: stale/tool failures, "
+            "missing current price, a currency mismatch, or a currency that is not provider-observed record a skipped "
+            "observation and never fabricate a signal. Update failures retry and poison after retry budget."
+        ),
         retry_policy=RetryPolicy(max_attempts=3, backoff_seconds=(0, 1, 5)),
     )
 
     _terminal_statuses = {"closed", "cancelled", "completed", "archived", "lost"}
     _eligible_stages = {"quoted", "proposal", "booking", "payment"}
+    # Stages past the booking decision. Explicit on purpose: an unfamiliar stage
+    # must never be treated as booked by falling through an "everything else" branch.
+    _post_booking_stages = {"booked", "ticketed", "pre_departure"}
 
     def __init__(self, price_tool: Optional[PriceWatchTool] = None, now_provider: Callable[[], datetime] | None = None):
         self.price_tool = price_tool or build_price_watch_tool_from_env()
@@ -2879,24 +2926,100 @@ class TicketPriceWatchAgent:
             trip_id = str(get_field(trip, "id") or "")
             status = str(get_field(trip, "status") or "").lower()
             stage = str(first_non_empty(get_field(trip, "stage"), status, "")).lower()
-            if not trip_id or status in self._terminal_statuses or stage not in self._eligible_stages:
+            if not trip_id or status in self._terminal_statuses:
                 continue
-            quote = self._extract_quote(trip)
-            if not quote:
+            if stage in self._post_booking_stages:
+                work_item = self._scan_post_booking(trip, trip_id)
+            elif stage in self._eligible_stages:
+                work_item = self._scan_pre_booking(trip, trip_id)
+            else:
                 continue
-            marker = self._marker(quote)
-            existing = get_field(trip, "ticket_price_watch_alert")
-            if isinstance(existing, dict) and existing.get("quote_marker") == marker:
+            if work_item is not None:
+                yield work_item
+
+    def _scan_pre_booking(self, trip: Any, trip_id: str) -> Optional[WorkItem]:
+        quote = self._extract_quote(trip)
+        if not quote:
+            return None
+        marker = self._marker(quote)
+        existing = get_field(trip, "ticket_price_watch_alert")
+        if isinstance(existing, dict) and existing.get("quote_marker") == marker:
+            return None
+        return WorkItem(
+            agent_name=self.definition.name,
+            trip_id=trip_id,
+            action="watch_ticket_price",
+            idempotency_key=f"{self.definition.name}:{trip_id}:{marker}",
+            payload={"quote": quote, "quote_marker": marker},
+        )
+
+    def _scan_post_booking(self, trip: Any, trip_id: str) -> Optional[WorkItem]:
+        booking = get_field(trip, "booking_data", "booking")
+        if not isinstance(booking, dict) or not booking:
+            return None
+        booked_price = _as_float(get_field(booking, "total_price", "total", "price", "booked_price"))
+        if not booked_price or booked_price <= 0:
+            return None
+        booked_currency = str(get_field(booking, "currency", "booking_currency") or "").strip().upper()
+        booking_ref = str(
+            get_field(booking, "confirmation_number", "record_locator", "reference", "booking_id", "id") or "booking"
+        )
+        marker = f"fare_drop|{booking_ref}|{booked_price}|{booked_currency}"
+        now = self.now_provider()
+        recheck_seconds = _env_int("FARE_DROP_RECHECK_SECONDS", _FARE_DROP_RECHECK_SECONDS_DEFAULT)
+        last_checked = self._last_fare_drop_check(trip, marker)
+        if last_checked is not None and (now - last_checked).total_seconds() < recheck_seconds:
+            return None
+        quote: dict[str, Any] = {"id": booking_ref, "price": booked_price, "currency": booked_currency}
+        for hint in ("origin", "destination", "departure_date", "return_date", "check_in", "check_out"):
+            value = get_field(booking, hint)
+            if value:
+                quote[hint] = value
+        prior = get_field(trip, "price_observations")
+        recheck_bucket = int(now.timestamp() // max(1, recheck_seconds))
+        return WorkItem(
+            agent_name=self.definition.name,
+            trip_id=trip_id,
+            action="watch_fare_drop",
+            idempotency_key=f"{self.definition.name}:{trip_id}:{marker}:{recheck_bucket}",
+            payload={
+                "mode": "post_booking",
+                "quote": quote,
+                "detection_marker": marker,
+                "booking_ref": booking_ref,
+                "booked_price": booked_price,
+                "booked_currency": booked_currency,
+                "prior_observations": [o for o in _flatten_values(prior) if isinstance(o, dict)],
+            },
+        )
+
+    def _last_fare_drop_check(self, trip: Any, marker: str) -> Optional[datetime]:
+        """Most recent check timestamp for this booking marker, from the signal or the observation log."""
+        candidates: list[Any] = []
+        signal = get_field(trip, "fare_drop_signal")
+        if isinstance(signal, dict) and signal.get("detection_marker") == marker:
+            candidates.append(signal.get("checked_at"))
+        for observation in _flatten_values(get_field(trip, "price_observations")):
+            if isinstance(observation, dict) and observation.get("detection_marker") == marker:
+                candidates.append(observation.get("checked_at"))
+        latest: Optional[datetime] = None
+        for raw in candidates:
+            try:
+                parsed = datetime.fromisoformat(str(raw))
+            except (TypeError, ValueError):
                 continue
-            yield WorkItem(
-                agent_name=self.definition.name,
-                trip_id=trip_id,
-                action="watch_ticket_price",
-                idempotency_key=f"{self.definition.name}:{trip_id}:{marker}",
-                payload={"quote": quote, "quote_marker": marker},
-            )
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            if latest is None or parsed > latest:
+                latest = parsed
+        return latest
 
     def execute(self, work_item: WorkItem, trip_repo: TripRepository) -> AgentExecutionResult:
+        if work_item.payload.get("mode") == "post_booking":
+            return self._execute_post_booking(work_item, trip_repo)
+        return self._execute_pre_booking(work_item, trip_repo)
+
+    def _execute_pre_booking(self, work_item: WorkItem, trip_repo: TripRepository) -> AgentExecutionResult:
         checked_at = self.now_provider()
         quote = work_item.payload.get("quote", {})
         tool_result = self._call_tool(quote)
@@ -2929,6 +3052,94 @@ class TicketPriceWatchAgent:
         if not updated:
             return AgentExecutionResult(work_item, WorkStatus.RETRY_PENDING, False, "Trip update returned empty result")
         return AgentExecutionResult(work_item, WorkStatus.COMPLETED, True, "Attached ticket price watch alert", output)
+
+    def _execute_post_booking(self, work_item: WorkItem, trip_repo: TripRepository) -> AgentExecutionResult:
+        checked_at = self.now_provider()
+        booked_price = _as_float(work_item.payload.get("booked_price"))
+        booked_currency = str(work_item.payload.get("booked_currency") or "").strip().upper()
+        marker = str(work_item.payload.get("detection_marker") or "")
+        tool_result = self._call_tool(work_item.payload.get("quote") or {})
+        fresh = tool_result.is_fresh(now=checked_at)
+        data = tool_result.data if fresh else {}
+        current_price = _as_float(data.get("current_price"))
+        current_currency = str(data.get("currency") or "").strip().upper()
+        # Only a provider-observed currency may corroborate a drop. Both shipped
+        # price tools fall back to echoing the query's own currency; acting on
+        # that echo would put concrete refund figures behind zero currency evidence.
+        currency_source = str(data.get("currency_source") or "").strip().lower()
+
+        observation: dict[str, Any] = {
+            "checked_at": checked_at.isoformat(),
+            "source": self.definition.name,
+            "detection_marker": marker,
+            "booking_ref": work_item.payload.get("booking_ref"),
+            "booked_price": booked_price,
+            "booked_currency": booked_currency or None,
+            "currency_source": currency_source or None,
+        }
+        skip_reason = ""
+        if not fresh:
+            skip_reason = "tool_unavailable"
+        elif not current_price or current_price <= 0:
+            skip_reason = "no_current_price"
+        elif booked_currency and current_currency and booked_currency != current_currency:
+            skip_reason = "currency_mismatch"
+        elif not current_currency or currency_source != "provider":
+            skip_reason = "currency_unverified"
+        observation["status"] = skip_reason or "observed"
+        if not skip_reason:
+            observation["current_price"] = current_price
+            observation["current_currency"] = current_currency or None
+            observation["drift_percent"] = round(((current_price - booked_price) / booked_price) * 100, 2)
+
+        updates: dict[str, Any] = {
+            "price_observations": self._capped_observations(
+                work_item.payload.get("prior_observations") or [], observation
+            ),
+            "last_agent_action": self.definition.name,
+            "last_agent_action_at": checked_at.isoformat(),
+        }
+        summary: dict[str, Any] = {"observation": observation, "signal_attached": False}
+        drift = observation.get("drift_percent")
+        if isinstance(drift, (int, float)):
+            min_percent = _env_float("FARE_DROP_MIN_PERCENT", _FARE_DROP_MIN_PERCENT_DEFAULT)
+            if drift <= -min_percent:
+                signal = {
+                    "checked_at": checked_at.isoformat(),
+                    "source": self.definition.name,
+                    "detection_marker": marker,
+                    "booking_ref": work_item.payload.get("booking_ref"),
+                    "booked_price": booked_price,
+                    "booked_currency": booked_currency or None,
+                    "current_price": current_price,
+                    "current_currency": current_currency or None,
+                    "drop_amount": round(booked_price - current_price, 2),
+                    "drop_percent": drift,
+                    "threshold_percent": min_percent,
+                    "severity": self._risk_level(abs(drift)),
+                    "tool_evidence": [tool_result.to_dict(now=checked_at)],
+                    "authority": (
+                        "Internal fare-drop watch support only. Do not purchase, reprice, contact suppliers, "
+                        "or send customer messages."
+                    ),
+                }
+                updates["fare_drop_signal"] = signal
+                summary["signal_attached"] = True
+                summary["signal"] = signal
+        updated = trip_repo.update_trip(work_item.trip_id, updates)
+        if not updated:
+            return AgentExecutionResult(work_item, WorkStatus.RETRY_PENDING, False, "Trip update returned empty result")
+        message = (
+            f"Attached fare-drop signal ({observation.get('drift_percent')}%)"
+            if summary["signal_attached"]
+            else f"Recorded fare-drop observation ({observation['status']})"
+        )
+        return AgentExecutionResult(work_item, WorkStatus.COMPLETED, True, message, summary)
+
+    @staticmethod
+    def _capped_observations(prior: list[dict[str, Any]], observation: dict[str, Any]) -> list[dict[str, Any]]:
+        cap = _env_int("FARE_DROP_OBSERVATION_CAP", _FARE_DROP_OBSERVATION_CAP_DEFAULT)
+        return [*prior, observation][-cap:]
 
     def _extract_quote(self, trip: Any) -> dict[str, Any]:
         quote = first_non_empty(get_field(trip, "quote"), get_field(trip, "proposal"), get_nested(trip, "structured_json.quote"), {})
