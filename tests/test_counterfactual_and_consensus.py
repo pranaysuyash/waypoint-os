@@ -107,6 +107,77 @@ def test_group_consensus_pareto_scoring():
     assert len(scores[1].budget_violations) > 0
 
 
+# ---------------------------------------------------------------------------
+# Validity-first zero-out (exploration topic 50, adopted 2026-10-22)
+#
+# A declared hard bound (a traveler's max budget) is not a preference. Before
+# this rule, a budget-busting option kept a consensus score (only a -50
+# penalty) and could rank as ACCEPTABLE_COMPROMISE or even Pareto-optimal.
+# Now it contributes zero and can never dominate a valid option.
+# ---------------------------------------------------------------------------
+
+
+def test_hard_budget_breach_zeroes_the_composite():
+    travelers = [
+        TravelerPreferenceProfile(traveler_id="t1", name="Alice", max_budget_usd=1500.0, preferred_pacing="RELAXED", priority_activities=[]),
+        TravelerPreferenceProfile(traveler_id="t2", name="Bob", max_budget_usd=3000.0, preferred_pacing="BALANCED", priority_activities=[]),
+    ]
+    # Pacing and activities align perfectly with everyone — under the old
+    # penalty model this option still scored ~75-100 and could rank well.
+    option = ItineraryOptionProposal(
+        option_id="opt_over_budget",
+        title="Perfect-fit but unaffordable",
+        total_cost_per_person_usd=2800.0,  # breaches Alice's hard bound
+        pacing="RELAXED",
+        included_activities=[],
+        rooming_configuration="2x single",
+    )
+
+    (score,) = GroupConsensusOptimizer.evaluate_group_consensus(travelers, [option])
+
+    assert score.overall_consensus_score == 0.0
+    assert score.recommendation_tier == "INFEASIBLE"
+    assert score.preference_scoring_suppressed is True
+    assert score.hard_violations and "Alice" in score.hard_violations[0]
+    assert score.is_pareto_optimal is False
+
+
+def test_infeasible_option_cannot_dominate_a_valid_one():
+    travelers = [
+        TravelerPreferenceProfile(traveler_id="t1", name="Alice", max_budget_usd=1500.0, preferred_pacing="BALANCED", priority_activities=[]),
+    ]
+    # Same pacing/activities, so individual satisfactions are IDENTICAL except
+    # for the budget penalty — under the old dominance logic the over-budget
+    # option (with the penalty) is dominated, but a version without the penalty
+    # applied at composite level could suppress valid peers. The rule: a
+    # disqualified option never removes a qualifying one from the ranking.
+    valid = ItineraryOptionProposal("opt_valid", "Within budget", 1200.0, "BALANCED", [], "2x single")
+    infeasible = ItineraryOptionProposal("opt_over", "Over budget", 2800.0, "BALANCED", [], "2x single")
+
+    scores = GroupConsensusOptimizer.evaluate_group_consensus(travelers, [valid, infeasible])
+    by_id = {s.option_id: s for s in scores}
+
+    assert by_id["opt_valid"].is_pareto_optimal is True
+    assert by_id["opt_valid"].overall_consensus_score > 0.0
+    assert by_id["opt_over"].overall_consensus_score == 0.0
+    assert by_id["opt_over"].is_pareto_optimal is False
+
+
+def test_valid_options_are_unaffected_by_the_zero_out():
+    travelers = [
+        TravelerPreferenceProfile(traveler_id="t1", name="Alice", max_budget_usd=1500.0, preferred_pacing="RELAXED", priority_activities=["beach"]),
+    ]
+    option = ItineraryOptionProposal("opt_ok", "Coastal", 1200.0, "RELAXED", ["beach"], "1x single")
+
+    (score,) = GroupConsensusOptimizer.evaluate_group_consensus(travelers, [option])
+
+    assert score.overall_consensus_score == 100.0
+    assert score.recommendation_tier == "STRONG_MATCH"
+    assert score.preference_scoring_suppressed is False
+    assert score.hard_violations == []
+    assert score.is_pareto_optimal is True
+
+
 def test_counterfactual_and_consensus_api_endpoints(session_client):
     """Verify API endpoints for counterfactual replanning and group consensus."""
     # Test replan endpoint

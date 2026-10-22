@@ -217,3 +217,57 @@ def test_proposal_compiler_nodes_are_costed_and_pass(monkeypatch):
     assert fin["hard"] == {}, fin["hard"]
     assert fin["soft"] == {}, fin["soft"]
     assert package.is_feasibility_passed is True
+    # Zero-out rule (topic 50): a valid package carries no suppression.
+    assert package.preference_scoring_suppressed is False
+    assert package.to_dict()["feasibility_hard_violations"] == []
+
+
+def test_proposal_package_suppresses_preference_when_infeasible(monkeypatch):
+    """Zero-out rule on the compile surface: a hard violation must flip the
+    package into invalid-with-reasons, never a presentable scored option."""
+    from datetime import date
+
+    from src.orchestration.proposal_compiler import AutonomousProposalCompiler
+    from src.schemas.constraints import ConstraintCategory, ConstraintEvaluationReport, ConstraintType, ConstraintViolation
+
+    monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+
+    def infeasible(graph, **kwargs):
+        return ConstraintEvaluationReport(
+            trip_id=graph.trip_id,
+            is_feasible=False,
+            hard_violations=[
+                ConstraintViolation(
+                    constraint_id="COST_CURRENCY_MIXED",
+                    name="Mixed settlement currencies",
+                    category=ConstraintCategory.FINANCIAL_BOUND,
+                    constraint_type=ConstraintType.HARD,
+                    severity="blocking",
+                    affected_elements=["N_FLT_01"],
+                    description="Component costs span INR and USD.",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(ConstraintEngine, "evaluate_itinerary_graph", infeasible)
+
+    dep = date.today() + timedelta(days=60)
+    package = AutonomousProposalCompiler.compile_from_intake(
+        trip_id="TRIP-FIN-INFEASIBLE",
+        raw_intake_text="Luxury week in Paris.",
+        destination="Paris",
+        departure_date=dep,
+        return_date=dep + timedelta(days=7),
+        traveler_count=2,
+        price_sensitivity=0.1,
+        peak_season=True,
+    )
+
+    assert package.is_feasibility_passed is False
+    assert package.preference_scoring_suppressed is True
+    payload = package.to_dict()
+    assert payload["preference_scoring_suppressed"] is True
+    assert payload["feasibility_hard_violations"] == [
+        {"constraint_id": "COST_CURRENCY_MIXED", "description": "Component costs span INR and USD."}
+    ]

@@ -63,6 +63,13 @@ class CompiledProposalPackage:
     margin_policy_version: Optional[str] = None
     margin_floor_gate: Optional[str] = None
     margin_floor_reason: Optional[str] = None
+    # Validity-first zero-out (topic 50, adopted 2026-10-22): when the
+    # constraint engine reports hard violations, the package's preference
+    # signals are suppressed — consumers must render "invalid, with reasons"
+    # rather than presenting the package as a scored option. Same doctrine as
+    # the margin-basis exclusion above: a failing plan has no honest composite.
+    feasibility_hard_violations: List[Dict[str, str]] = field(default_factory=list)
+    preference_scoring_suppressed: bool = False
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> Dict[str, Any]:
@@ -77,6 +84,8 @@ class CompiledProposalPackage:
             "gross_customer_price_usd": self.gross_customer_price_usd,
             "gross_margin_usd": self.gross_margin_usd,
             "is_feasibility_passed": self.is_feasibility_passed,
+            "feasibility_hard_violations": self.feasibility_hard_violations,
+            "preference_scoring_suppressed": self.preference_scoring_suppressed,
             "journey_graph_node_count": self.journey_graph_node_count,
             "provenance_assertion_count": self.provenance_assertion_count,
             "proposal_share_url": self.proposal_share_url,
@@ -394,6 +403,11 @@ class AutonomousProposalCompiler:
             gross_customer_price_usd=gross_customer_price,
             gross_margin_usd=gross_margin,
             is_feasibility_passed=feasibility_report.is_feasible,
+            feasibility_hard_violations=[
+                {"constraint_id": v.constraint_id, "description": v.description}
+                for v in feasibility_report.hard_violations
+            ],
+            preference_scoring_suppressed=not feasibility_report.is_feasible,
             journey_graph_node_count=len(graph.nodes),
             provenance_assertion_count=len(slots) + len(epistemic_data.get("implicit_needs", [])),
             proposal_share_url=share_url,

@@ -4,6 +4,9 @@ All notable changes to Waypoint OS are documented in this file.
 
 ## [Unreleased]
 
+### Zero-out rule adopted (topic 50, 2026-10-22)
+- **Validity-first preference scoring**: a hard-constraint failure now disqualifies a plan from preference scoring instead of merely penalizing it. `GroupConsensusOptimizer`: a breached traveler budget zeroes the consensus composite, forces tier INFEASIBLE, and the option can never be Pareto-optimal or dominate a valid option (member-level numbers remain honest diagnostics). `CompiledProposalPackage`: compile responses now carry `preference_scoring_suppressed` + `feasibility_hard_violations` — the previously-orphaned `is_feasibility_passed` verdict became a usable contract signal for rendering invalid-with-reasons. Valid paths pinned unchanged.
+
 ### Fare-Drop Decision Card + FINANCIAL_BOUND constraints (topics 49/50, 2026-10-22)
 - **Post-booking fare-drop watch**: `TicketPriceWatchAgent` gained a `booked/ticketed/pre_departure` branch — anchors on the booked price, appends a bounded `price_observations[]` history, attaches `fare_drop_signal` only for provider-verified currency drops ≥ `FARE_DROP_MIN_PERCENT` (default 5%). Env: `FARE_DROP_MIN_PERCENT`, `FARE_DROP_RECHECK_SECONDS`, `FARE_DROP_OBSERVATION_CAP`.
 - **Fare-drop disposition ledger** (`spine_api/services/fare_drop_disposition.py`): 7-state advisor decision machine (DETECTED→PRESENTED→REPRICED/UPGRADED/DEFERRED/DISMISSED→CLOSED) with the same custody-vocabulary and no-money-movement guards as the claims ledger; commission-impact options calculator with FND-0268 basis labels; GET/PATCH `/api/v1/price-lock/{trip_id}/fare-drop/disposition` on the existing re-shopping router with `expected_state` CAS plus a store-level `updated_at` targeted persist. Tracking-only: the system never reprices, contacts suppliers, or moves money.
