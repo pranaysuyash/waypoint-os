@@ -1801,7 +1801,7 @@ These are **blocking** for moving from notebooks to real implementation.
 
 **Key Questions**:
 - Owner DECIDE: adopt MCP sandbox producer rails for B6/B7 lane? **→ Registered as TRV-DP-04a in Docs/DECISIONS_PENDING.md (vendor choice + clamp-gate evidence).** Fare-drop decision card as a feature? **→ Shipped (topic 49).**
-- Which of replay/fork harness vs constraint-DSL gate core (ChinaTravel) delivers more launch credibility per effort?
+- Which of replay/fork harness vs constraint-DSL gate core (ChinaTravel) delivers more launch credibility per effort? **→ Both resolved: constraint family shipped (topic 50, incl. zero-out adoption); replay shipped as `src/llm/replay.py` Recording/Replay clients (fork-to-another-model stays owned by the KDD harness `--models` lane).**
 
 ### 49. Fare-Drop Decision Card (post-booking reprice-vs-upgrade) 🟢
 **Status**: IMPLEMENTED + review-hardened (2026-10-22); outcome record in the task package. owner GO answered ("do all"). See [FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md](exploration/FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md). Implements roadmap-registry item "Price-drop re-shopping" (documented, not implemented).

@@ -39,7 +39,15 @@ from spine_api.core.trip_status import (
 )
 from spine_api.core import trip_lifecycle
 from spine_api.models.trips import Trip
-from src.security.encryption import decrypt, encrypt
+from cryptography.fernet import InvalidToken
+
+from src.security.encryption import (
+    decrypt,
+    decrypt_strict,
+    encrypt,
+    key_fingerprint,
+    looks_like_fernet_token,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -442,6 +450,9 @@ class FileTripStore:
             trip_id = f"trip_{uuid4().hex[:12]}"
         trip_data["id"] = trip_id
         trip_data["saved_at"] = datetime.now(timezone.utc).isoformat()
+        # Every persisted save participates in optimistic concurrency, even
+        # an initial file-store row or a full reprocess overwrite.
+        trip_data["updated_at"] = trip_data["saved_at"]
         
         # Store agency_id with trip for scoping
         if agency_id:
@@ -819,35 +830,79 @@ class SQLTripStore:
             return [SQLTripStore._encrypt_pii(item) for item in data]
         return data
 
+    # FND-0327: a PII string that is a Fernet token under ANOTHER key must not
+    # be surfaced as if it were the value (the operator would see ciphertext
+    # as a customer name). ``decrypt`` keeps its plaintext-fallback for
+    # pre-migration rows; here we tell the two cases apart.
+    UNREADABLE_PII_SENTINEL = "[unreadable: encryption key mismatch]"
+
     @staticmethod
     def _decrypt_pii(data: Any) -> Any:
         if isinstance(data, dict):
-            return {
-                key: decrypt(value) if key.lower() in SQLTripStore._PII_FIELDS and isinstance(value, str)
-                else SQLTripStore._decrypt_pii(value)
-                for key, value in data.items()
-            }
+            out = {}
+            for key, value in data.items():
+                if key.lower() in SQLTripStore._PII_FIELDS and isinstance(value, str):
+                    plain = decrypt(value)
+                    if plain == value and looks_like_fernet_token(value):
+                        plain = SQLTripStore.UNREADABLE_PII_SENTINEL
+                    out[key] = plain
+                else:
+                    out[key] = SQLTripStore._decrypt_pii(value)
+            return out
         if isinstance(data, list):
             return [SQLTripStore._decrypt_pii(item) for item in data]
         return data
 
     @staticmethod
     def _encrypt_blob(data: Any) -> Any:
-        """Encrypt an entire JSON object as a single Fernet token."""
+        """Encrypt an entire JSON object as a single Fernet token.
+
+        ``kid`` (FND-0327) records which key produced the ciphertext so a read
+        under a different key can name the key it needs.
+        """
         if data is None:
             return None
         serialized = json.dumps(data, default=str)
         token = encrypt(serialized)
-        return {"__encrypted_blob": True, "v": 1, "ciphertext": token}
+        return {"__encrypted_blob": True, "v": 2, "kid": key_fingerprint(), "ciphertext": token}
+
+    @staticmethod
+    def unreadable_blob_marker(expected_kid: Any) -> dict:
+        """The honest replacement for a blob this process cannot decrypt."""
+        return {
+            "__unreadable": True,
+            "reason": "encryption_key_mismatch",
+            "kid_expected": expected_kid,
+            "kid_active": key_fingerprint(),
+            "remediation": (
+                "This field was encrypted under a different ENCRYPTION_KEY. Restore that "
+                "key, or re-encrypt the row with tools/reencrypt_trip_rows.py "
+                "--from-key <old> --to-key <active>."
+            ),
+        }
 
     @staticmethod
     def _decrypt_blob(data: Any) -> Any:
-        """Decrypt a blob-encrypted JSON object back to its original form."""
+        """Decrypt a blob-encrypted JSON object back to its original form.
+
+        Three cases are kept distinct (FND-0327):
+        - legacy plaintext (no wrapper) → returned as-is;
+        - wrapper decryptable by the active key → the original object;
+        - wrapper encrypted under ANOTHER key → an explicit unreadable marker
+          (never a 500, never the ciphertext masquerading as data).
+        """
         if data is None:
             return None
         if isinstance(data, dict) and data.get("__encrypted_blob"):
             token = data.get("ciphertext", "")
-            serialized = decrypt(token)
+            try:
+                serialized = decrypt_strict(token)
+            except InvalidToken:
+                logger.warning(
+                    "encrypted blob unreadable under active key (kid_expected=%s kid_active=%s)",
+                    data.get("kid"), key_fingerprint(),
+                )
+                return SQLTripStore.unreadable_blob_marker(data.get("kid"))
             return json.loads(serialized)
         # Not a blob wrapper — return as-is (handles pre-migration plaintext)
         return data
@@ -919,8 +974,15 @@ class SQLTripStore:
             "fees": SQLTripStore._decrypt_field_from_storage("fees", trip_obj.fees),
             "raw_input": SQLTripStore._decrypt_field_from_storage("raw_input", trip_obj.raw_input or {}),
             "analytics": decrypted_analytics,
-            "booking_data": SQLTripStore._decrypt_field_from_storage("booking_data", getattr(trip_obj, "booking_data", None)),
-            "pending_booking_data": SQLTripStore._decrypt_field_from_storage("pending_booking_data", getattr(trip_obj, "pending_booking_data", None)),
+            # booking_data + pending_booking_data are deliberately EXCLUDED
+            # from the generic dict (privacy boundary pinned by
+            # tests/test_booking_collection.py and tests/test_booking_data.py):
+            # pre-acceptance AND accepted customer PII ride only tenant-scoped
+            # accessors (get_booking_data_for_agency /
+            # get_pending_booking_data_for_agency) and the dedicated
+            # /trips/{id}/booking-data* and /trips/{id}/pending-booking-data*
+            # routes — never the generic trip view. 57113daf briefly exposed
+            # both here; the consuming flows use the scoped accessors.
             "booking_data_source": trip_obj.booking_data_source,
             "created_at": trip_obj.created_at.isoformat() if trip_obj.created_at else None,
             "updated_at": trip_obj.updated_at.isoformat() if trip_obj.updated_at else None,
@@ -931,6 +993,17 @@ class SQLTripStore:
                 for k, v in extra.items():
                     if k not in res:
                         res[k] = v
+        # FND-0327: surface key-mismatch blobs as explicit warnings instead of
+        # a 500 or silent garbage — the operator sees what is unreadable and why.
+        unreadable = [
+            field for field in SQLTripStore._PRIVATE_BLOB_FIELDS
+            if isinstance(res.get(field), dict) and res[field].get("__unreadable")
+        ]
+        if unreadable:
+            res["encryption_warnings"] = [
+                {"field": field, **{k: v for k, v in res[field].items() if k != "__unreadable"}}
+                for field in sorted(unreadable)
+            ]
         return res
 
     @staticmethod
@@ -1026,7 +1099,7 @@ class SQLTripStore:
             "raw_input": SQLTripStore._encrypt_field_for_storage("raw_input", trip_data.get("raw_input") or {}),
             "analytics": trip_data.get("analytics"),
             "created_at": SQLTripStore._parse_datetime(trip_data.get("created_at")) or datetime.now(timezone.utc),
-            "updated_at": SQLTripStore._parse_datetime(trip_data.get("updated_at")),
+            "updated_at": SQLTripStore._parse_datetime(trip_data.get("updated_at")) or datetime.now(timezone.utc),
         }
         known_model_keys = set(model_data.keys())
         unmapped = {k: v for k, v in trip_data.items() if k not in known_model_keys and k != "saved_at"}
@@ -1357,8 +1430,8 @@ class SQLTripStore:
             "fees": SQLTripStore._decrypt_field_from_storage("fees", row.fees),
             "raw_input": SQLTripStore._decrypt_field_from_storage("raw_input", row.raw_input or {}),
             "analytics": decrypted_analytics,
-            "booking_data": SQLTripStore._decrypt_field_from_storage("booking_data", getattr(row, "booking_data", None)),
-            "pending_booking_data": SQLTripStore._decrypt_field_from_storage("pending_booking_data", getattr(row, "pending_booking_data", None)),
+            # booking_data / pending_booking_data excluded — mirrors _to_dict
+            # (privacy boundary; scoped accessors serve them).
             "booking_data_source": row.booking_data_source,
             "created_at": row.created_at.isoformat() if row.created_at else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
@@ -1980,12 +2053,88 @@ class TripStore:
         if not token:
             return None
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-        for trip in TripStore._iter_all_trips():
-            if trip.get("proposal_token_hash") == token_hash:
-                return trip
-            if trip.get("proposal_link_token") == token:
-                return trip
+
+        def _proposal_matcher(trip: dict) -> bool:
+            return (
+                trip.get("proposal_token_hash") == token_hash
+                or trip.get("proposal_link_token") == token
+            )
+
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            for trip in TripStore._iter_all_trips():
+                if _proposal_matcher(trip):
+                    return trip
+            return None
+        # SQL branch: same FORCE-RLS hole as the group lookup (FND-0330 twin).
+        return _run_async_blocking(TripStore._scan_all_agencies_for_trip(_proposal_matcher))
+
+
+    @staticmethod
+    async def _scan_all_agencies_for_trip(matcher) -> Optional[dict]:
+        """FND-0330 (Sim #4): capability-token lookups are CROSS-AGENCY by
+        design — the unguessable token IS the authorization — but `trips`
+        carries FORCE RLS keyed on ``app.current_agency_id``, so a GUC-less
+        scan (the old implementation) saw zero rows and every public share
+        link 404'd on the SQL backend.
+
+        Enumerates agency ids from the ``agencies`` table (not tenant-RLS'd)
+        and scans each agency under its own GUC. ``matcher(trip)`` decides the
+        hit. Long-term fix remains R-03's dedicated indexed token table.
+        """
+        from sqlalchemy import text as sa_text
+
+        agency_ids: list[str] = []
+        async with tripstore_session_maker() as session:
+            await session.execute(sa_text("SET LOCAL app.current_agency_id = ''"))
+            rows = await session.execute(sa_text("SELECT id FROM agencies"))
+            agency_ids = [r[0] for r in rows]
+
+        for aid in agency_ids:
+            async with tripstore_session_maker() as session:
+                await session.execute(
+                    sa_text("SELECT set_config('app.current_agency_id', :aid, true)"),
+                    {"aid": aid},
+                )
+                result = await session.execute(sa_text("SELECT id, agency_id, analytics, extracted, raw_input FROM trips"))
+                for row in result:
+                    trip = TripStore._to_dict_from_row(row)
+                    if trip and matcher(trip):
+                        return trip
         return None
+
+    @staticmethod
+    def _to_dict_from_row(row) -> Optional[dict]:
+        """Best-effort dict for raw scan rows (analytics may hold _extra keys
+        like group_booking that token matchers need)."""
+        try:
+
+            analytics = row.analytics
+            if isinstance(analytics, str):
+                try:
+                    analytics = json.loads(analytics)
+                except (TypeError, ValueError):
+                    analytics = None
+            # canonical decrypt — group_booking/invite PII inside _extra is
+            # encrypted at rest (save_trip encrypts PII-key fields); the public
+            # share must present the invitee their NAME, not a Fernet token.
+            if isinstance(analytics, dict):
+                analytics = SQLTripStore._decrypt_field_from_storage("analytics", analytics)
+            trip = {
+                "id": row.id,
+                "agency_id": row.agency_id,
+                "analytics": analytics,
+                "extracted": row.extracted,
+                "raw_input": row.raw_input,
+            }
+            extra = (analytics or {}).get("_extra") if isinstance(analytics, dict) else None
+            if isinstance(extra, dict):
+                for k, v in extra.items():
+                    if k not in trip:
+                        trip[k] = v
+            return trip
+        except Exception:
+            return None
 
     @staticmethod
     def get_trip_by_group_token(token: str) -> Optional[dict]:
@@ -2007,24 +2156,17 @@ class TripStore:
                 except Exception:
                     continue
             return None
-        # SQL branch: page through the corpus. A single capped page silently
-        # failed to resolve group tokens belonging to trips past the first 1000
-        # (same defect as get_trip_by_proposal_token, R-03).
-        offset = 0
-        page_size = 1000
-        while True:
-            page = _run_async_blocking(
-                SQLTripStore.list_trips(limit=page_size, offset=offset)
-            )
-            for trip in page:
-                gb = trip.get("group_booking", {}) or {}
-                invites = gb.get("invites", [])
-                for inv in invites:
-                    if inv.get("token_hash") == token_hash or inv.get("raw_token") == token:
-                        return trip
-            if len(page) < page_size:
-                return None
-            offset += page_size
+        # SQL branch (FND-0330): the old GUC-less page-scan saw zero rows under
+        # FORCE RLS — every public share link 404'd. Scan per-agency instead.
+
+        def _group_matcher(trip: dict) -> bool:
+            gb = trip.get("group_booking", {}) or {}
+            for inv in gb.get("invites", []):
+                if inv.get("token_hash") == token_hash or inv.get("raw_token") == token:
+                    return True
+            return False
+
+        return _run_async_blocking(TripStore._scan_all_agencies_for_trip(_group_matcher))
 
     @staticmethod
     def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
@@ -3734,6 +3876,7 @@ def save_processed_trip(
         preserve_created_at=preserve_created_at,
     )
     _carry_forward_acknowledged_assumptions(serializable_trip, existing_trip)
+    _preserve_authoritative_facts(serializable_trip, existing_trip)
     logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
 
     trip_id = TripStore.save_trip(serializable_trip, agency_id=agency_id)
@@ -3758,6 +3901,48 @@ def save_processed_trip(
     })
     
     return trip_id
+
+
+_AUTHORITATIVE_FACT_AUTHORITIES = {"explicit_user", "operator"}
+
+
+def _preserve_authoritative_facts(serializable_trip: dict, existing_trip: Optional[dict]) -> None:
+    """FND-0351 (Sim #4): a preserved-trip re-run must never silently ERASE
+    fact slots the traveler or an operator authored.
+
+    ``extracted.facts`` on a preserved trip can hold traveler-answer slots
+    (``authority_level="explicit_user"``, ``extraction_mode="traveler_ask_link"``)
+    and operator-authored slots. A fresh re-extraction reproduces only what its
+    input contained; when it lacks a high-authority slot (or produces a
+    lower-authority value for it), the existing slot is carried forward so an
+    answered question can never regress to unknown. Re-extracted values still
+    win for plain system-authority fields.
+    """
+    if not isinstance(existing_trip, dict):
+        return
+    _raw_extracted = existing_trip.get("extracted")
+    existing_extracted: Dict[str, Any] = _raw_extracted if isinstance(_raw_extracted, dict) else {}
+    old_facts = existing_extracted.get("facts") if isinstance(existing_extracted.get("facts"), dict) else None
+    if not old_facts:
+        return
+    new_extracted = serializable_trip.get("extracted")
+    if not isinstance(new_extracted, dict):
+        new_extracted = {}
+        serializable_trip["extracted"] = new_extracted
+    new_facts = new_extracted.get("facts")
+    if not isinstance(new_facts, dict):
+        new_facts = {}
+        new_extracted["facts"] = new_facts
+    for field, old_slot in old_facts.items():
+        if not isinstance(old_slot, dict):
+            continue
+        if old_slot.get("authority_level") not in _AUTHORITATIVE_FACT_AUTHORITIES:
+            continue
+        new_slot = new_facts.get(field)
+        if not isinstance(new_slot, dict) or new_slot.get("authority_level") not in _AUTHORITATIVE_FACT_AUTHORITIES:
+            carried = dict(old_slot)
+            carried.setdefault("carried_forward_from", "previous_assessment")
+            new_facts[field] = carried
 
 
 def _carry_forward_acknowledged_assumptions(
@@ -3843,6 +4028,7 @@ async def save_processed_trip_async(
         preserve_created_at=preserve_created_at,
     )
     _carry_forward_acknowledged_assumptions(serializable_trip, existing_trip)
+    _preserve_authoritative_facts(serializable_trip, existing_trip)
     logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
 
     trip_id = await TripStore.asave_trip(serializable_trip, agency_id=agency_id)

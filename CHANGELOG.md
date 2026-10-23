@@ -4,6 +4,9 @@ All notable changes to Waypoint OS are documented in this file.
 
 ## [Unreleased]
 
+### LLM record/replay clients (topic 48, 2026-10-22)
+- **`src/llm/replay.py`**: `RecordingLLMClient` wraps any provider client and appends a hash-verifiable JSONL trace per `decide()` call; `ReplayLLMClient` serves the same run offline byte-identically at zero cost — hash-matched (prompt+schema), duplicate-safe in recorded order, fail-closed (`LLMError` on unknown prompts, exhausted duplicates, or tampered traces; no inner network client exists). Full `BaseLLMClient` protocol, so any client-injected consumer gains replay without a parallel pipeline. Fork-to-another-model stays owned by the KDD `--models` lane. Traces default to `data/llm_traces/` (gitignored — prompts may carry customer text).
+
 ### Zero-out rule adopted (topic 50, 2026-10-22)
 - **Validity-first preference scoring**: a hard-constraint failure now disqualifies a plan from preference scoring instead of merely penalizing it. `GroupConsensusOptimizer`: a breached traveler budget zeroes the consensus composite, forces tier INFEASIBLE, and the option can never be Pareto-optimal or dominate a valid option (member-level numbers remain honest diagnostics). `CompiledProposalPackage`: compile responses now carry `preference_scoring_suppressed` + `feasibility_hard_violations` — the previously-orphaned `is_feasibility_passed` verdict became a usable contract signal for rendering invalid-with-reasons. Valid paths pinned unchanged.
 

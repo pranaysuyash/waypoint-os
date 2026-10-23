@@ -94,7 +94,7 @@ Four converging signals from outside the usual channels, each with a concrete Wa
 
 ## Recommended next steps
 
-*Status 2026-10-22: #1 probe DONE · #2 fare-drop card SHIPPED (topic 49, review-hardened) · #4 constraint-gate phase 1 SHIPPED as supersession completion of FINANCIAL_BOUND (topic 50) · #3 replay/fork harness remains the next EXPLORE → IMPLEMENT infrastructure item · #5/#6 EXPLORE · #7 waits on the quota reset (2026-11-06).*
+*Status 2026-10-22 (round 2): #1 probe DONE · #2 fare-drop card SHIPPED (topic 49) · #4 constraint family SHIPPED + zero-out rule ADOPTED (topic 50) · #3 replay/fork SHIPPED as `src/llm/replay.py` Recording/Replay client pair (fork-to-another-model stays owned by the KDD `--models` lane) · #5/#6 EXPLORE · #7 waits on the quota reset (2026-11-06).*
 
 1. **DECIDE-package: sandbox MCP producer rail** — evaluate LetsFG / trvl / Dida-MCP as gated producers for the B6/B7 lane (ADR-008 posture: sandbox = preview, never live; rate-cap + honesty badges like the existing checker caps). **→ DONE as evidence: see probe addendum; reframed to "adopt the provenance+honesty contract, pick a commercially-licensed producer, clamp unpriced/converted/multi-currency at the boundary."**
 2. **IMPLEMENT-candidate: fare-drop decision card** — price-watch producer on booked trips + operator decision card (reprice vs upgrade with commission impact); tracking-only; reuses claim_disposition-style state machine. **→ Task package: `FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md` (topic 49).**

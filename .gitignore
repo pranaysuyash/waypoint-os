@@ -190,3 +190,6 @@ data/experiments/**/cache_*/
 
 # Generated attestation review artifact (hook regenerates each commit)
 Docs/reviews/motto_review.md
+
+# LLM call traces may carry customer text in prompts — session-local evidence, never committed
+data/llm_traces/
