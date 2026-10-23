@@ -179,3 +179,23 @@ class ReplayLLMClient(BaseLLMClient):
     def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
         """Replay moves no money and spends no tokens: cost is structurally zero."""
         return 0.0
+
+
+def _main(argv: Optional[List[str]] = None) -> int:
+    """`python -m src.llm.replay <trace.jsonl>` — verify a trace file's integrity.
+
+    Exit 0 when every entry parses and its recorded hashes match; exit 1 with
+    the error list otherwise. Read-only.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Verify an LLM call trace file (read-only).")
+    parser.add_argument("trace", type=Path, help="path to a recorded trace JSONL")
+    args = parser.parse_args(argv)
+    report = trace_integrity_report(args.trace)
+    print(json.dumps(report, indent=2))
+    return 0 if report["ok"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main())
