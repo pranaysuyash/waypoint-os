@@ -241,6 +241,27 @@ async def process_messaging_webhook(
             )
             stored += 1
 
+            # A1 work-intake classification: one WorkItem per inbound channel
+            # message (authority = explicit_user — these are the traveler's
+            # own words; C3 identity + C2 returning-guest ride the same call).
+            # Best-effort: classification never fails the webhook.
+            try:
+                from spine_api.services.work_intake import classify_and_record
+
+                classify_and_record(
+                    "channel_webhook",
+                    agency_id=webhook_agency,
+                    text=rec["body"],
+                    contact=rec["from_party"],
+                    channel=rec["channel"],
+                    trip_id=trip_id,
+                )
+            except Exception as work_item_err:
+                logger.debug(
+                    "Work-item classification skipped for webhook message: %s",
+                    work_item_err,
+                )
+
             # FND-0126 wiring: the concierge reply engine (honesty-hardened,
             # idempotent per provider message id) now runs on real ingested
             # messages, and its reply is dispatched through the same honest

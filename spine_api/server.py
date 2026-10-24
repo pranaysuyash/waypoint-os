@@ -1688,6 +1688,10 @@ app.include_router(message_triage_router.router, dependencies=[Depends(_auth_or_
 from spine_api.routers import pre_departure as pre_departure_router  # noqa: E402
 app.include_router(pre_departure_router.router, dependencies=[Depends(_auth_or_skip)])
 
+# Work-intake classification queue (A1/C1, INCOMING_WORK_CLASSIFICATION_MAP_2026-10-24)
+from spine_api.routers import work_items as work_items_mount_router  # noqa: E402
+app.include_router(work_items_mount_router.router, dependencies=[Depends(_auth_or_skip)])
+
 # G-4: Twilio IVR gateway
 from spine_api.routers import ivr_gateway as ivr_gateway_router  # noqa: E402
 app.include_router(ivr_gateway_router.router, dependencies=[Depends(_auth_or_skip)])
@@ -2275,6 +2279,24 @@ def _launch_spine_pipeline_thread(
     run_id: str, request: SpineRunRequest, agency_id: str, user_id: str
 ) -> None:
     """Start the pipeline daemon thread (shared by both /run entry paths)."""
+    # A1 work-intake classification: every /run submission records one
+    # classified WorkItem (origin/intent/authority/urgency/identity + C2
+    # returning-guest annotation). Best-effort by contract — classification
+    # can never fail the run.
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "run",
+            agency_id=agency_id,
+            text=request.raw_note,
+            contact=None,
+            run_id=run_id,
+            draft_id=request.draft_id,
+            actor=user_id,
+        )
+    except Exception as exc:
+        logger.debug("work-item classification skipped for run %s: %s", run_id, exc)
     request_dict = request.model_dump(exclude_none=True)
     # Run pipeline in a daemon thread (not multiprocessing) to avoid
     # all file-descriptor-inheritance and lock-deadlock issues across

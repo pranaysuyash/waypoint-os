@@ -1,0 +1,295 @@
+"""
+tests/test_work_intake.py — the work-intake classification choke point
+(A1/A2/C1/C2/C3/E2 of Docs/architecture/INCOMING_WORK_CLASSIFICATION_MAP_2026-10-24.md).
+
+Covers: door contracts, identity normalization + hashing, urgency heuristics,
+duplicate flagging (C3), returning-guest annotation (C2, via the memory-lookup
+seam), PII-never-persisted invariant, queue ranking (C1), the /work-items
+router, the inbound/parse door closed loop (recorded item after a real parse),
+and triage consuming the classifier (E2).
+
+Sensitivity: S1 for behavior assertions; S3 mutations noted inline
+(queue-order shuffle, dedup-window intent mutation, no-PII content check).
+"""
+
+import json
+import os
+import uuid
+
+os.environ["RUNNING_TESTS"] = "1"
+if not os.environ.get("JWT_SECRET"):
+    os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-only-32byt"
+
+import pytest
+
+from spine_api.services import work_intake
+
+
+@pytest.fixture(autouse=True)
+def setup_test_env(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+    monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+    # Isolated per-test store (FND-0366 discipline: never touch shared stores).
+    monkeypatch.setenv("WAYPOINT_WORK_ITEMS_DIR", str(tmp_path / "work_items"))
+    yield
+
+
+AGENCY = "agency_work_intake_test"
+
+
+# ---------------------------------------------------------------------------
+# Classifier core (A1/A2)
+# ---------------------------------------------------------------------------
+
+def test_door_contracts_are_complete_and_valid():
+    """Every registered door classifies into the legal vocabularies."""
+    for door, contract in work_intake.DOOR_CONTRACTS.items():
+        assert contract["origin"] in work_intake.WORK_ORIGINS, door
+        assert contract["intent"] in work_intake.WORK_INTENTS, door
+        assert contract["authority"] in work_intake.WORK_AUTHORITIES, door
+
+
+def test_unknown_door_is_rejected():
+    """A door must declare its class at the seam — unregistered doors fail loud."""
+    with pytest.raises(ValueError):
+        work_intake.classify("not_a_door", agency_id=AGENCY)
+
+
+def test_door_defaults_and_overrides():
+    item = work_intake.classify("run", agency_id=AGENCY, text=None)
+    assert item["origin"] == "demand"
+    assert item["intent"] == "new_demand"
+    assert item["authority"] == "operator"  # operator submits on the traveler's behalf
+
+    item = work_intake.classify(
+        "channel_webhook", agency_id=AGENCY, text=None, intent_override="new_demand"
+    )
+    assert item["intent"] == "new_demand"
+    assert item["authority"] == "explicit_user"  # traveler's own words (A2)
+
+
+def test_identity_key_normalized_stable_and_scoped():
+    """Same traveler (case/format variants) -> same key; other agency -> other key."""
+    a1 = work_intake.identity_key(AGENCY, "Ravi.K@example.COM")
+    a2 = work_intake.identity_key(AGENCY, "ravi.k@example.com")
+    assert a1 == a2
+
+    p1 = work_intake.identity_key(AGENCY, "+91 98765-43210")
+    p2 = work_intake.identity_key(AGENCY, "919876543210")
+    assert p1 == p2 and p1 is not None
+
+    other = work_intake.identity_key("agency_other", "ravi.k@example.com")
+    assert other != a1
+    assert work_intake.identity_key(AGENCY, "") is None
+    assert work_intake.identity_key(AGENCY, None) is None
+
+
+def test_urgency_heuristics():
+    assert work_intake.urgency_from_text("URGENT: need to fly tomorrow") == "high"
+    assert work_intake.urgency_from_text("just exploring, no rush, sometime next year") == "low"
+    assert work_intake.urgency_from_text("Planning a trip to Japan.") == "normal"
+    assert work_intake.urgency_from_text(None) == "normal"
+
+
+# ---------------------------------------------------------------------------
+# Recording (store invariants)
+# ---------------------------------------------------------------------------
+
+def test_recorded_item_never_persists_pii():
+    """S3: the stored JSONL must not contain the raw email/phone — only the hash."""
+    email = f"ravi.{uuid.uuid4().hex[:6]}@example.com"
+    item = work_intake.classify_and_record(
+        "inbound_parse",
+        agency_id=AGENCY,
+        text=f"Trip to Goa, reach me at {email} or +91 98765 43210",
+        contact=email,
+    )
+    assert item["pii_present"] is True
+    assert item["identity_key"]
+
+    path = work_intake._agency_path(AGENCY)
+    raw = path.read_text(encoding="utf-8")
+    assert email not in raw
+    assert "98765" not in raw
+    stored = json.loads(raw.strip().splitlines()[-1])
+    assert stored["identity_key"] == item["identity_key"]
+    assert stored["payload_summary"] == {"text_chars": len(f"Trip to Goa, reach me at {email} or +91 98765 43210")}
+
+
+def test_duplicate_flagging_c3():
+    """C3 S2/S3: same contact + new_demand within window flags; different intent does not."""
+    contact = f"same.{uuid.uuid4().hex[:6]}@example.com"
+    first = work_intake.classify_and_record(
+        "inbound_parse", agency_id=AGENCY, text="Want Japan trip", contact=contact
+    )
+    assert first["duplicate_of"] is None
+
+    second = work_intake.classify_and_record(
+        "inbound_parse", agency_id=AGENCY, text="Japan again please", contact=contact
+    )
+    assert second["duplicate_of"] == first["item_id"]
+
+    # S3 mutation: a different intent on the same identity must NOT flag.
+    answer = work_intake.classify_and_record(
+        "ask_answers", agency_id=AGENCY, text=None, contact=contact
+    )
+    assert answer["duplicate_of"] is None
+
+
+def test_returning_guest_annotation_c2(monkeypatch):
+    """C2: memory facts at the canonical entity id -> returning_customer; none -> False.
+    Seam: _memory_facts_for_contact is the memory-read seam (display-only contract)."""
+    contact = f"elena.{uuid.uuid4().hex[:6]}@example.com"
+    monkeypatch.setattr(
+        work_intake,
+        "_memory_facts_for_contact",
+        lambda agency_id, c: (
+            {"returning_customer": True, "memory_entity_id": f"cust_{c}", "memory_fact_count": 3}
+            if c == contact
+            else {"returning_customer": False, "memory_entity_id": None, "memory_fact_count": 0}
+        ),
+    )
+    known = work_intake.classify("inbound_parse", agency_id=AGENCY, text=None, contact=contact)
+    assert known["returning_customer"] is True
+    assert known["memory_fact_count"] == 3
+
+    fresh = work_intake.classify(
+        "inbound_parse", agency_id=AGENCY, text=None, contact=f"new.{uuid.uuid4().hex[:6]}@example.com"
+    )
+    assert fresh["returning_customer"] is False
+
+
+def test_ranked_queue_c1():
+    """C1 with S3 shuffle: ranking = urgency, then returning guest, then recency."""
+    plain = work_intake.classify_and_record(
+        "inbound_parse", agency_id=AGENCY, text="trip to Bali", contact=f"a{uuid.uuid4().hex[:6]}@x.com"
+    )
+    low = work_intake.classify_and_record(
+        "inbound_parse", agency_id=AGENCY, text="just exploring no rush", contact=f"b{uuid.uuid4().hex[:6]}@x.com"
+    )
+    urgent = work_intake.classify_and_record(
+        "inbound_parse", agency_id=AGENCY, text="URGENT flight tonight", contact=f"c{uuid.uuid4().hex[:6]}@x.com"
+    )
+    assert urgent["urgency"] == "high" and low["urgency"] == "low"
+
+    queue = work_intake.ranked_queue(AGENCY)
+    ids = [i["item_id"] for i in queue["items"]]
+    # urgency dominates insertion order (plain was recorded first but urgent ranks above it)
+    assert ids.index(urgent["item_id"]) < ids.index(plain["item_id"]) < ids.index(low["item_id"])
+    assert queue["counts"]["by_urgency"]["high"] == 1
+    assert queue["counts"]["by_origin"]["demand"] >= 3
+    assert queue["count_basis"] == "work_item_log_total"
+
+
+def test_duplicate_risk_preview_seam():
+    contact = f"prev.{uuid.uuid4().hex[:6]}@example.com"
+    assert work_intake.duplicate_risk(AGENCY, contact) is False
+    work_intake.classify_and_record(
+        "inbound_parse", agency_id=AGENCY, text="new demand", contact=contact
+    )
+    assert work_intake.duplicate_risk(AGENCY, contact) is True
+    assert work_intake.duplicate_risk(AGENCY, None) is False
+
+
+# ---------------------------------------------------------------------------
+# Router + doors (Tier 2/3)
+# ---------------------------------------------------------------------------
+
+def test_work_items_router_requires_agency_and_ranks(session_client):
+    unique = uuid.uuid4().hex[:8]
+    work_intake.classify_and_record(
+        "inbound_parse",
+        agency_id=f"agency_q_{unique}",
+        text="URGENT trip to Delhi tomorrow",
+        contact=f"q{unique}@example.com",
+    )
+    work_intake.classify_and_record(
+        "inbound_parse",
+        agency_id=f"agency_q_{unique}",
+        text="thinking about japan sometime",
+        contact=f"r{unique}@example.com",
+    )
+    res = session_client.get(
+        "/api/v1/work-items", headers={"X-Agency-ID": f"agency_q_{unique}"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 2
+    assert data["items"][0]["urgency"] == "high"
+    assert data["items"][0]["origin"] == "demand"
+    assert data["counts"]["by_intent"]["new_demand"] == 2
+    # tenant isolation: another agency sees none of these
+    other = session_client.get(
+        "/api/v1/work-items", headers={"X-Agency-ID": f"agency_z_{unique}"}
+    ).json()
+    assert other["total"] == 0
+
+
+def test_inbound_parse_door_records_work_item_closed_loop(session_client):
+    """Invariant-4 style closed loop: exercise the door -> the queue surface changes."""
+    suffix = uuid.uuid4().hex[:8]
+    contact = f"closedloop.{suffix}@example.com"
+    res = session_client.post(
+        "/api/v1/inbound/parse",
+        json={
+            "channel": "whatsapp_web",
+            "raw_text": f"Family of 4 to Paris in December, budget 12000 USD. Contact {contact}",
+            "customer_name": f"CL Tester {suffix}",
+            "customer_contact": contact,
+            "strict_leakage": False,
+        },
+        headers={"X-Agency-ID": f"agency_cl_{suffix}"},
+    )
+    assert res.status_code == 200
+    trip_id = res.json()["trip_id"]
+
+    queue = session_client.get(
+        "/api/v1/work-items", headers={"X-Agency-ID": f"agency_cl_{suffix}"}
+    ).json()
+    assert queue["total"] >= 1
+    item = queue["items"][0]
+    assert item["door"] == "inbound_parse"
+    assert item["trip_id"] == trip_id
+    assert item["identity_known"] is True
+    assert item["authority"] == "explicit_user"
+
+
+def test_messaging_webhook_door_records_work_item(session_client):
+    """Closed loop for the channel door: webhook message -> classified item."""
+    suffix = uuid.uuid4().hex[:8]
+    res = session_client.post(
+        "/api/v1/messaging/webhook/testprovider",
+        json={"event": "message", "from": f"+1555019{suffix[:4]}", "body": "hi, need urgent visa help"},
+    )
+    assert res.status_code == 200
+    assert res.json()["inbound_messages_stored"] == 1
+
+    queue = session_client.get(
+        "/api/v1/work-items",
+        headers={"X-Agency-ID": os.environ.get("MESSAGING_WEBHOOK_AGENCY_ID", "").strip() or "webhook-unattributed"},
+    ).json()
+    assert queue["total"] >= 1
+    assert any(i["door"] == "channel_webhook" and i["urgency"] == "high" for i in queue["items"])
+
+
+def test_triage_consumes_classifier_e2(session_client, boundary_principal_factory):
+    """E2: triage response carries the canonical work axes (preview-only).
+    Triage resolves the SQL Agency object, so the tenant must exist."""
+    boundary_principal_factory("usr_triage_e2", "agency_triage_e2")
+    res = session_client.post(
+        "/api/triage/message",
+        json={"text": "urgent: my flight tomorrow was cancelled, need help now", "channel": "whatsapp"},
+        headers={"X-Agency-ID": "agency_triage_e2"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["work_origin"] == "demand"
+    assert data["work_authority"] == "explicit_user"
+    assert data["urgency_class"] == "high"
+    assert "returning_customer" in data and "duplicate_risk" in data
+    # preview-only: nothing recorded for this agency by a triage call alone
+    queue = session_client.get(
+        "/api/v1/work-items", headers={"X-Agency-ID": "agency_triage_e2"}
+    ).json()
+    assert queue["total"] == 0

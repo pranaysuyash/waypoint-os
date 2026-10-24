@@ -165,3 +165,42 @@ Practical order I'd argue for: roadmap Phase 0 (DP-03 owner calls) → Phase 1 (
 - Live status of hybrid engine posture and RAG egress toggles is env-dependent (`.env`); read at deploy time, not from this doc.
 - The working tree is hot (memory/custmem lane in flight: `spine_api/contract.py`, `persistence.py` modified; `tests/test_probe_mem.py` untracked). This map reflects the tree as of 2026-10-24; the memory lane may add doors — re-sweep §2 before citing after that lands.
 - Feature counts (93 mounts / 52 pages) are mine, counted today; the FEATURE_LIST_V3 status counts (93 LIVE/…) are a different enumeration (features, not surfaces).
+
+---
+
+## 8. Implementation record (2026-10-24, same session — A1/A2/C1/C2/C3/E2 SHIPPED)
+
+Owner directive "continue and do all" executed. **FND-0371 registered and closed with this evidence.**
+
+### Shipped
+
+| Item | What | Where |
+|---|---|---|
+| **A1/A2** | Canonical work classifier + append-only store: origin/intent/authority/urgency/entity/money/PII axes; door registry with reserved seams (`whatsapp_channel`, `vendor_quote_inbox`, `disruption_feed`); door-level authority (`/run`→operator, channel/asks→explicit_user) | `spine_api/services/work_intake.py` (new) |
+| **C1** | Urgency-ranked operator queue endpoint with honest counts (`count_basis: work_item_log_total` — invariant-3 style) | `spine_api/routers/work_items.py` (new) → `GET /api/v1/work-items`; mounted in `server.py` |
+| **C2** | Returning-guest annotation at intake: contact → canonical `cust_` entity id → durable memory read (`memory_on_file_facts`); surfaced on the queue, **never written into the packet** | inside `classify()`; all wired doors + triage |
+| **C3** | Agency-scoped SHA-256 `identity_key` (never raw contact) + 24h `duplicate_of` flagging; public `duplicate_risk()` preview seam | `work_intake.py` |
+| **E2** | Triage consumes the canonical classifier (preview-only, no recording): `work_origin/work_authority/urgency_class/identity_known/returning_customer/duplicate_risk` on `MessageTriageResponse` | `spine_api/routers/message_triage.py` |
+| Doors wired | `/run` (single call site in `_launch_spine_pipeline_thread`, both idempotency branches), `POST /api/v1/inbound/parse`, `POST /api/v1/messaging/webhook/{provider}` (per inbound record), `POST /api/public-asks/{token}/answers` | `server.py`, `inbound.py`, `messaging.py`, `public_asks.py` |
+
+### Design decisions (recorded)
+
+1. **C2 boundary honored, not overridden.** The roadmap's U13 slot-injection (authority_level "profile" below explicit_user) collides with the **ratified** ADR-008 §7 row 4 / E-D §3 slot 2 display-only contract (`customer_memory.py:400-407` states the packet-mutating path is forbidden). Shipped the contested-state-safe cut: returning-guest is queue/display metadata read through the same entity-id convention the remember path writes (`traveler_entity_for`); slot injection stays roadmap Phase-2 (Invariant 2) work with its own owner gate.
+2. **No PII in the store — structurally.** Records carry a one-way `identity_key` and derived flags only; the raw text/contact never lands in `data/work_items/*.jsonl`. Test-proven by content assertion (S3): stored bytes contain neither the seeded email nor the phone.
+3. **Classification is best-effort by contract** — every door wraps it in try/except; a classification failure can never fail a door (mirrors the run-meta enrichment pattern).
+4. **Router-local response models** (message_triage precedent) — no `contract.py` churn while that file is a live lane; promotion to `contract.py` can ride the I2/I3 schema pass.
+
+### Evidence (doctrine §3 labels)
+
+- Tests: `tests/test_work_intake.py` **14/14** — door contracts, unknown-door rejection, identity normalization/stability/scoping, urgency heuristics, **no-PII-persisted (S3 content check)**, **C3 dedup S2+S3** (same-contact flags; intent mutation un-flags), C2 via memory-seam, **C1 ranking S3** (insertion order ≠ rank order), tenant isolation, **closed-loop Tier-3**: inbound/parse → queue surface changes; webhook → queue; triage carries axes and persists nothing.
+- Regression: route/OpenAPI snapshots regenerated via `scripts/snapshot_server_routes.py --write` (398→399 routes, only `/api/v1/work-items` added); parity suites green (`test_server_route_parity`, `test_server_openapi_path_parity`, `test_bff_parity_gate`); `test_inbound_router`, `test_messaging_router`, `test_public_asks`, `test_live_triage`, `test_customer_memory_router` green; `uv run ruff check --fix .` → **All checks passed**.
+- `/run` door wiring is **Tier 1** (shared single call site; the same record path is Tier-2/3-proven at three other doors; a full `/run` POST test would drag the pipeline thread into the suite — deferred).
+- Residue note: suites that exercise the wired webhook door write benign classified records to `data/work_items/` (same posture as `data/messages/`; no PII possible by design). Cleaned once; expect it to re-appear as test data accumulates.
+
+### Not shipped (still open, owner-gated or producer-gated)
+
+- **B1** WhatsApp live channel (needs provider creds/decision; seam reserved), **B2** vendor quote inbox, **B3** live disruption/FX feeds (producer decisions per roadmap out-of-scope list).
+- **E1** route-grammar cleanup (`/intake/fast`, `/v2..v5`, `/quotes` sample data) — deletions need the supersession workflow + owner sign-off; not bundled here.
+- **E3** W4 unification (loops → same queue) — store + endpoint are the seam; loop writers not yet wired.
+- I2 generalization: `merge_facts` + projection (roadmap Phase 2) — the WorkItem contract is its intake-side counterpart, ready to fold in.
+

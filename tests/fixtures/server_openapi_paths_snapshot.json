@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 362,
+  "openapi_path_count": 363,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -292,6 +292,7 @@
     "/api/v1/trips/{trip_id}/stage",
     "/api/v1/visa-radar/check",
     "/api/v1/visa-radar/{trip_id}/requirements",
+    "/api/v1/work-items",
     "/api/v1/yield-arbitrage/benchmark/simulate",
     "/api/v1/yield/arbitrage/{trip_id}",
     "/api/v1/yield/opportunities",

@@ -46,6 +46,15 @@ class MessageTriageResponse(BaseModel):
     advisory_chips: List[str]
     latency_ms: float = 0.0
     raw_probabilities: Dict[str, Any] = Field(default_factory=dict)
+    # E2 (INCOMING_WORK_CLASSIFICATION_MAP_2026-10-24): triage is the first
+    # consumer of the canonical work classifier — the same axes every door
+    # records. Preview-only: nothing is persisted here.
+    work_origin: str = "demand"
+    work_authority: str = "explicit_user"
+    urgency_class: str = "normal"
+    identity_known: bool = False
+    returning_customer: bool = False
+    duplicate_risk: bool = False
 
 
 @router.post("/message", response_model=MessageTriageResponse)
@@ -56,12 +65,55 @@ def triage_inbound_message(
     """Triage an inbound customer message in sub-second time.
 
     Returns intent, urgency probability, customer emotional tone, policy risk,
-    and visual advisory chips for the workbench interface.
+    and visual advisory chips for the workbench interface — now classified on
+    the canonical work-intake axes (origin/authority/urgency/identity) via
+    spine_api.services.work_intake.classify (E2; preview-only, no recording).
     """
     _ = agency
     t0 = time.perf_counter()
     result = _triage_service.triage(text=req.text, channel=req.channel or "web")
     latency_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    # Canonical classification on the shared axes. The triage intent maps onto
+    # the work-intake intents where a clean mapping exists; unknown intents
+    # keep the door default (info). Failures degrade to door defaults.
+    intent_map = {
+        "price_quote": "query",
+        "trip_modification": "info",
+        "cancellation": "decision",
+        "complaint": "exception",
+        "general": "query",
+    }
+    try:
+        from spine_api.services import work_intake
+
+        work = work_intake.classify(
+            "triage_preview",
+            agency_id=agency.id,
+            text=req.text,
+            channel=req.channel,
+            intent_override=intent_map.get(result.intent),
+            urgency_override="high" if result.is_urgent else None,
+        )
+    except Exception:
+        work = {
+            "origin": "demand",
+            "authority": "explicit_user",
+            "urgency": "high" if result.is_urgent else "normal",
+            "identity_known": False,
+            "returning_customer": False,
+            "identity_key": None,
+        }
+    duplicate_risk = False
+    if work.get("identity_known"):
+        try:
+            from spine_api.services.work_intake import duplicate_risk as _has_duplicate
+            from spine_api.services.work_intake import harvest_contact
+
+            harvested = harvest_contact(req.text)
+            duplicate_risk = bool(harvested) and _has_duplicate(agency.id, harvested)
+        except Exception:
+            duplicate_risk = False
 
     # Derive sentiment tone matching frontend UI expectations
     frustration = (result.frustration_level or "").lower()
@@ -106,4 +158,10 @@ def triage_inbound_message(
         advisory_chips=result.advisory_chips,
         latency_ms=latency_ms,
         raw_probabilities=result.raw_probabilities,
+        work_origin=str(work.get("origin", "demand")),
+        work_authority=str(work.get("authority", "explicit_user")),
+        urgency_class=str(work.get("urgency", "normal")),
+        identity_known=bool(work.get("identity_known")),
+        returning_customer=bool(work.get("returning_customer")),
+        duplicate_risk=duplicate_risk,
     )

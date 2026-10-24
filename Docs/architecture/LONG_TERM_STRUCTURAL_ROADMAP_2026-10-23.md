@@ -1,16 +1,44 @@
 # Long-Term Structural Roadmap — the five invariants (2026-10-23)
 
-**Author:** ZCode · **Status:** Proposed — phased plan, owner-gated items marked
+**Author:** ZCode · **Status:** Active — phased plan, owner-gated items marked
 **Derivation:** the complete Sim #2/#3/#4 arc, the 2026-10-12 council audit
 (AUD-01..20), and the 2026-10-12/23 remediation waves. Every finding registered
 across those arcs clusters into five structural invariants the system keeps
-violating. The point fixes are landed and closed (see
-`Docs/sims/SIM4_META_AUDIT_AND_PLAN_2026-10-21.md` §5–§8); this roadmap is the
-work that makes each *class* impossible rather than repeatedly patched.
+violating. This roadmap names the invariants, maps the slices ALREADY LANDED
+(see §0), and sequences the remaining work so each class becomes impossible
+rather than repeatedly patched.
+
+**Correction (2026-10-23, owner callout):** an earlier summary characterized
+the session's landed work as "point fixes." That was wrong. Several landed
+changes ARE structural slices of these invariants — mapped in §0 below. The
+genuine failure was stopping at the write-up instead of continuing the
+remaining slices, and this mischaracterization on top of it.
 
 **Doctrine anchors:** truth taxonomy (§2), one canonical store per fact, "no
 number without a basis" (§13 claim reality), verify intent not just function,
 additive-better-comprehensive, failure-becomes-fixture.
+
+---
+
+## §0. Already-landed invariant slices (mapped — not "point fixes")
+
+The 2026-10-21/23 waves landed real structural machinery. This mapping is the
+correct record of where the roadmap already starts:
+
+| Landed slice | Invariant | Why it is structural |
+|---|---|---|
+| Versioned ciphertext (`kid` v2 blobs), legacy/foreign-token discrimination, `encryption_warnings`, `tools/reencrypt_trip_rows.py` | **1** | key lifecycle as infrastructure: rotation is now maintenance, not an outage |
+| `_preserve_authoritative_facts` + canonical traveler-answer slot writes | **2** | the fact-store merge's preservation rule and slot contract — answers can never regress |
+| Per-agency GUC scan for capability-token lookups (`_scan_all_agencies_for_trip`) | **1** | the architectural pattern for cross-agency lookups under FORCE RLS (group + proposal twins) |
+| Budget through the canonical ConstraintEngine FINANCIAL_BOUND family + `budget_check` tri-state | **3** | honesty enforced via the canonical engine, not a per-endpoint hack |
+| Noop/Mock extractor split (honest default, explicit opt-in sentinels) + `provider_note` + duplicate flag | **3** | honesty enforced at the provider seam |
+| `readPacketFacts` in the planning gate (canonical facts over display columns) | **2** | the FE reads the canonical view — display lag can't dead-end |
+| CI BFF parity gate + 46-route snapshot | **4** | reachability enforced in CI |
+| Sim-voice fixtures + acceptance tests per fix (S2 pattern) | **5** | the flywheel, working manually |
+| Draft-note fallback in reassessment requests | **2** | reassessment input loss closed at the root |
+| Inbound lead resolution by contact identity + always-write message rows | **2** | dedupe as identity resolution, not per-message patching |
+
+§1–§5 below describe what REMAINS of each invariant after these slices.
 
 ---
 

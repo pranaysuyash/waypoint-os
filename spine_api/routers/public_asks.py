@@ -240,6 +240,22 @@ def submit_traveler_answers(token: str, body: TravelerAnswerSubmission) -> dict:
         },
     )
 
+    # A1 work-intake classification: traveler answers are a demand-side work
+    # item (intent=answer, authority=explicit_user). No text persisted — only
+    # derived metadata. Best-effort.
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "ask_answers",
+            agency_id=agency_id,
+            text=None,
+            trip_id=trip_id,
+            actor="traveler_ask",
+        )
+    except Exception as work_item_err:
+        logger.debug("Work-item classification skipped for asks %s: %s", trip_id, work_item_err)
+
     # If the execution pipeline is configured, trigger reassessment to resolve blockers immediately
     try:
         from spine_api.routers import trip_lifecycle

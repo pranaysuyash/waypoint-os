@@ -1,5 +1,5 @@
 {
-  "route_count": 398,
+  "route_count": 399,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -2556,6 +2556,14 @@
     {
       "path": "/api/v1/visa-radar/{trip_id}/requirements",
       "name": "get_trip_visa_requirements",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/work-items",
+      "name": "get_work_item_queue",
       "methods": [
         "GET"
       ],

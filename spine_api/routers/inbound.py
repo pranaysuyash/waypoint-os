@@ -285,6 +285,23 @@ def parse_inbound_inquiry(
         except Exception as store_err:
             logger.warning("Inbound message store write skipped for %s: %s", trip_id, store_err)
 
+        # A1 work-intake classification: the inbound/parse door records one
+        # classified WorkItem (identity from the structured contact field —
+        # C3 duplicate flagging + C2 returning-guest annotation). Best-effort.
+        try:
+            from spine_api.services.work_intake import classify_and_record
+
+            classify_and_record(
+                "inbound_parse",
+                agency_id=agency_id,
+                text=body.raw_text,
+                contact=body.customer_contact,
+                channel=str(body.channel),
+                trip_id=trip_id,
+            )
+        except Exception as work_item_err:
+            logger.debug("Work-item classification skipped for %s: %s", trip_id, work_item_err)
+
         packet_dict = spine_result.packet.to_dict() if hasattr(spine_result.packet, "to_dict") else dict(spine_result.packet)
         
         if body.customer_name:

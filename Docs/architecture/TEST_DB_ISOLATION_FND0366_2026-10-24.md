@@ -193,9 +193,33 @@ hazard — forbidden).
   atexit remains as the non-pytest fallback. SIGKILLed sessions (Bash
   timeouts, parallel-session kills) leave orphans by design; the 6-hour epoch
   sweep reaps them.
-- Full backend gate + **canonical-unchanged proof** (row counts of every
-  canonical table captured before and after the gate must be identical):
-  recorded in the session log of 2026-10-24 (`/tmp/full_suite_isolation_gate.log`).
+- **Full backend gate under isolation (2026-10-24, 2h30m wall under heavy
+  machine contention): 5,507 passed / 13 failed / 50 skipped.** All 13
+  classified: 9 were pre-existing parallel-session failures (quote/retail +
+  patch_trip in-flight rework, reproducible before isolation); 3 were REAL
+  defects the isolated runs surfaced and this pass FIXED —
+  (a) template RLS steady state: fresh run DBs carried FORCE RLS on
+  `RLS_FORCE_EXEMPT_TABLES` (memberships/workspace_codes) before the app's
+  in-session exemption strip ran, so login/backfill flows were RLS-denied;
+  fixed by applying the exemption at template build (third build step,
+  reusing the app's own constant), verified: template matches canonical
+  steady state exactly; auth pair green after fix;
+  (b) `_get_sync_async_bridge` was not thread-safe — concurrent first-callers
+  each built an orphaned bridge, executing sync SQL on different event loops
+  (the FND-0367 lock removal had incidentally serialized bridge creation);
+  fixed with double-checked locking on the getter;
+  (c) the RULE_015 audit hash chain's read-latest → INSERT was a racy
+  read-modify-write across those loops; fixed with a transaction-scoped
+  Postgres advisory lock (`pg_advisory_xact_lock`) inside
+  `_persist_sql_event` — DB-level serialization, no app-side locks, verified
+  5/5 under the concurrent-writers test;
+  (d) customer-memory lifecycle test failed on STALE accumulated file-store
+  leads (FND-0370): fixed with a per-run unique customer identity, verified
+  2× green.
+- **Canonical-unchanged proof:** row counts of every canonical table captured
+  before and after all gate + debug runs — **zero diffs across all 31
+  tables** (`docs record 2026-10-24`; backup
+  `Docs/backups/waypoint_os_pre_bc_component_identity_2026-10-24.sql.gz`).
 
 ## 9. Residuals and honest limits
 
