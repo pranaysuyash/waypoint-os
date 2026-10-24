@@ -1654,18 +1654,26 @@ class TripQuoteBranch(BaseModel):
 
 class TripQuoteView(BaseModel):
     """One real quote derived from persisted spine data (T4). Every monetary
-    field carries an honesty ``basis`` label; nothing here is invented."""
+    field carries an honesty ``basis`` label; nothing here is invented.
+
+    FND-0337/roadmap invariant 3: the basis labels are REQUIRED and
+    vocabulary-checked at construction — a writer who cannot name where a
+    number came from cannot construct the response at all (the honesty is a
+    type error, not a review catch). Extend the vocabularies as real
+    producers land (B6/B7 live wholesale); never add a basis default."""
+    model_config = {"extra": "forbid"}
+
     trip_id: str
     title: str
     currency: str = "USD"
     net_cost: float
-    net_cost_basis: str = "persisted_modeled_cost"  # persisted_modeled_cost | live_wholesale_cost (future B6/B7)
+    net_cost_basis: str  # persisted_modeled_cost | live_wholesale_cost (future B6/B7)
     margin_percent: Optional[float] = None
-    margin_basis: str = "policy_preview"  # policy_preview | live_wholesale_margin (future)
+    margin_basis: str  # policy_preview | live_wholesale_margin (future)
     margin_provenance: Dict[str, Any] = Field(default_factory=dict)
     tax_percent: Optional[float] = None  # None = no persisted tax producer; never a default
     rack_price: Optional[float] = None
-    rack_price_basis: str = "computed_preview"
+    rack_price_basis: str  # computed_preview | live_priced (future)
     pricing_status: str = "priced"  # priced | pricing_review; known costs survive an unpriced retail
     missing: List[str] = Field(default_factory=list)
     status: str = "draft"  # draft | under_review | approved | rejected | revision_needed | sent
@@ -1673,6 +1681,38 @@ class TripQuoteView(BaseModel):
     updated_at: Optional[str] = None
     highlights: List[str] = Field(default_factory=list)
     summary: Optional[str] = None
+
+    # Vocabulary derived from the actual producers (commercial_agreement.py
+    # + quotes.py) — extend only when a real producer lands a new basis.
+    _BASIS_VOCABULARY = {
+        "net_cost_basis": {"persisted_modeled_cost", "live_wholesale_cost"},
+        # unpriced: known costs survive an unpriced retail (pricing_review);
+        # operator_approved_retail: retail-approval flow with bound operator
+        # evidence backing the native-currency retail.
+        "margin_basis": {
+            "policy_preview", "live_wholesale_margin",
+            "operator_approved_retail", "unpriced",
+        },
+        "rack_price_basis": {"computed_preview", "live_priced", "unpriced", "operator_approved_retail"},
+    }
+
+    from pydantic import model_validator
+
+    @model_validator(mode="after")
+    def _bases_must_be_named_and_known(self):
+        for field, allowed in self._BASIS_VOCABULARY.items():
+            value = (getattr(self, field) or "").strip()
+            if not value:
+                raise ValueError(
+                    f"{field} is required: a monetary number without a named "
+                    "basis is a fabricated number (roadmap invariant 3)"
+                )
+            if value not in allowed:
+                raise ValueError(
+                    f"{field}={value!r} is not a known basis {sorted(allowed)} — "
+                    "extend the vocabulary only when a real producer lands"
+                )
+        return self
 
 
 class TripQuotesResponse(BaseModel):

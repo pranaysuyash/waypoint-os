@@ -254,6 +254,14 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 TRIPS_DIR = DATA_DIR / "trips"
 ASSIGNMENTS_DIR = DATA_DIR / "assignments"
 AUDIT_DIR = DATA_DIR / "audit"
+# RULE_015 chain RMW serialization key. The read-latest → INSERT sequence must
+# be atomic or concurrent writers fork the chain. Serialization happens at the
+# DATABASE level (transaction-scoped advisory lock) rather than in-process:
+# callers arrive on several event loops (the sync/async bridge plus async
+# request paths), the FND-0367 bridge call timeout bounds queue waiting, and
+# an app-side lock would either be loop-bound (fragile) or re-create the
+# cross-thread head-of-line blocking FND-0367 removed.
+AUDIT_CHAIN_ADVISORY_KEY = "waypoint_audit_chain_v1"
 PUBLIC_CHECKER_DIR = DATA_DIR / "public_checker"
 PUBLIC_CHECKER_UPLOADS_DIR = PUBLIC_CHECKER_DIR / "uploads"
 PUBLIC_CHECKER_MANIFESTS_DIR = PUBLIC_CHECKER_DIR / "manifests"
@@ -1902,11 +1910,23 @@ _SYNC_ASYNC_BRIDGE: _SyncAsyncBridge | None = None
 
 
 def _get_sync_async_bridge() -> _SyncAsyncBridge:
+    """Process-wide bridge accessor — thread-safe (double-checked).
+
+    Concurrent first-callers (e.g. the audit-chain test's 8 worker threads)
+    must not each build their own bridge: orphaned bridges mean sync calls
+    execute on different event loops, which forks the audit hash chain
+    (reads interleave with uncommitted writes across loops) and breaks any
+    loop-bound state. The old FND-0366-era process-wide lock incidentally
+    serialized creation; its FND-0367 removal exposed this, so creation is
+    now explicitly guarded.
+    """
+    import threading
+
     global _SYNC_ASYNC_BRIDGE
-    if _SYNC_ASYNC_BRIDGE is None:
-        _SYNC_ASYNC_BRIDGE = _SyncAsyncBridge()
-    elif _SYNC_ASYNC_BRIDGE.loop.is_closed():
-        _SYNC_ASYNC_BRIDGE = _SyncAsyncBridge()
+    if _SYNC_ASYNC_BRIDGE is None or _SYNC_ASYNC_BRIDGE.loop.is_closed():
+        with threading.Lock():
+            if _SYNC_ASYNC_BRIDGE is None or _SYNC_ASYNC_BRIDGE.loop.is_closed():
+                _SYNC_ASYNC_BRIDGE = _SyncAsyncBridge()
     return _SYNC_ASYNC_BRIDGE
 
 
@@ -2804,6 +2824,14 @@ class AuditStore:
 
         async_session = tripstore_session_maker()
         try:
+            # Serialize the chain read-modify-write at the DB level: the
+            # transaction-scoped advisory lock blocks concurrent writers until
+            # this transaction commits, so every writer reads the true
+            # predecessor (released automatically at commit/rollback).
+            await async_session.execute(
+                sa_text("SELECT pg_advisory_xact_lock(hashtext(:chain_key))"),
+                {"chain_key": AUDIT_CHAIN_ADVISORY_KEY},
+            )
             prev_rows = list(
                 (
                     await async_session.execute(

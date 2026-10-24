@@ -25,14 +25,28 @@ def materialize_custmem_tenant(boundary_principal_factory):
 
 def test_customer_memory_lifecycle_end_to_end(session_client):
     """Test indexing customer preferences, searching relationship memory by email/phone, and auto-hydrating a new trip packet."""
+    # Per-run identity (test-isolation, FND-0366 architecture follow-up): the
+    # inbound door resolves leads by email/phone/name (FND-0334), so a fixed
+    # "Eleanor Vance" matches STALE leads accumulated in the shared file store
+    # — including pre-ADR-008 trips whose packet still carries memory facts —
+    # and the display-only invariant then asserts against the wrong trip. A
+    # unique identity per run guarantees the lifecycle exercises only trips
+    # this test created, regardless of store history.
+    import uuid as _uuid
+
+    _suffix = _uuid.uuid4().hex[:8]
+    cust_name = f"Eleanor Vance {_suffix}"
+    cust_email = f"eleanor.vance.{_suffix}@example.com"
+    cust_phone = f"+1-555-019-{int(_suffix[:4], 16) % 10000:04d}"
+    cust_phone_digits = cust_phone.replace("-", "").replace("+", "")
 
     # 1. Remember preferences for repeat customer "Eleanor Vance"
     remember_res = session_client.post(
         "/api/v1/customers/remember",
         json={
-            "name": "Eleanor Vance",
-            "email": "eleanor.vance@example.com",
-            "phone": "+1-555-019-2834",
+            "name": cust_name,
+            "email": cust_email,
+            "phone": cust_phone,
             "dietary_requirements": "Strict Vegan & Nut-Free",
             "room_preference": "High-floor quiet corner suite",
             "seating_preference": "Window seat forward cabin",
@@ -45,21 +59,21 @@ def test_customer_memory_lifecycle_end_to_end(session_client):
 
     assert remember_res.status_code == 200
     remember_data = remember_res.json()
-    assert remember_data["name"] == "Eleanor Vance"
-    assert remember_data["email"] == "eleanor.vance@example.com"
+    assert remember_data["name"] == cust_name
+    assert remember_data["email"] == cust_email
     assert remember_data["dietary_requirements"] == "Strict Vegan & Nut-Free"
     assert "trip_past_001" in remember_data["source_trip_ids"]
 
     # 2. Lookup customer memory by email and phone
     email_lookup = session_client.get(
-        "/api/v1/customers/memory?email=ELEANOR.VANCE@EXAMPLE.COM",
+        "/api/v1/customers/memory?email=" + cust_email.upper(),
         headers={"X-Agency-ID": "agency_custmem_test"},
     )
     assert email_lookup.status_code == 200
     assert email_lookup.json()["customer_id"] == remember_data["customer_id"]
 
     phone_lookup = session_client.get(
-        "/api/v1/customers/memory?phone=5550192834",
+        "/api/v1/customers/memory?phone=" + cust_phone_digits,
         headers={"X-Agency-ID": "agency_custmem_test"},
     )
     assert phone_lookup.status_code == 200
@@ -71,8 +85,8 @@ def test_customer_memory_lifecycle_end_to_end(session_client):
         json={
             "channel": "email",
             "raw_text": "Safari in Tanzania in August for 2 people. Budget $15,000.",
-            "customer_name": "Eleanor Vance",
-            "customer_email": "eleanor.vance@example.com",
+            "customer_name": cust_name,
+            "customer_email": cust_email,
         },
         headers={"X-Agency-ID": "agency_custmem_test"},
     ).json()
@@ -89,7 +103,7 @@ def test_customer_memory_lifecycle_end_to_end(session_client):
     hydrate_data = hydrate_res.json()
     assert hydrate_data["ok"] is True
     assert hydrate_data["memory_found"] is True
-    assert hydrate_data["customer_name"] == "Eleanor Vance"
+    assert hydrate_data["customer_name"] == cust_name
     assert "dietary_requirements" in hydrate_data["hydrated_fields"]
     assert hydrate_data["preferences"]["dietary_requirements"] == "Strict Vegan & Nut-Free"
     assert hydrate_data["preferences"]["room_preference"] == "High-floor quiet corner suite"
