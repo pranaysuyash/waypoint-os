@@ -141,21 +141,63 @@ class FileDraftStore:
 
     @staticmethod
     def _load_json(path: Path) -> Optional[dict]:
+        """Load a draft-store JSON file, decrypting at-rest envelopes.
+
+        FND-0326 residual (2026-10-23): payloads are ENCRYPTED at rest — the
+        file holds an ``__encrypted_draft`` envelope (v2, kid fingerprint),
+        same shape as TripStore blobs. Legacy plaintext files (pre-envelope)
+        still load transparently and re-encrypt on the next save.
+        """
         if not path.exists():
             return None
         try:
             with open(path, "r", encoding="utf-8") as fh:
-                return json.load(fh)
+                raw = fh.read()
+            data = json.loads(raw)
         except json.JSONDecodeError:
             logger.error("Corrupt draft file: %s", path)
             return None
+        if isinstance(data, dict) and data.get("__encrypted_draft") is True:
+            from cryptography.fernet import InvalidToken
+            from src.security.encryption import decrypt_strict
+
+            try:
+                plaintext = decrypt_strict(data.get("ciphertext") or "")
+            except InvalidToken:
+                # Key mismatch (FND-0327 philosophy: name the key problem —
+                # do not mask it as "corrupt file").
+                logger.error(
+                    "Draft file encrypted under a different key (kid=%s): %s",
+                    data.get("kid"),
+                    path,
+                )
+                return None
+            try:
+                return json.loads(plaintext)
+            except json.JSONDecodeError:
+                logger.error("Decrypted draft unparsable: %s", path)
+                return None
+        return data
 
     @staticmethod
     def _save_json(path: Path, data: dict) -> None:
-        """Atomic write: write to temp file, then rename."""
+        """Atomic write: write to temp file, then rename.
+
+        Payloads are ENCRYPTED at rest (FND-0326 residual): the same
+        customer-identity and freeform fields TripStore refuses-or-encrypts
+        must not persist as plaintext JSON here either."""
+        from src.security.encryption import encrypt, key_fingerprint
+
+        token = encrypt(json.dumps(data, default=str))
+        envelope = {
+            "__encrypted_draft": True,
+            "v": 2,
+            "kid": key_fingerprint(),
+            "ciphertext": token,
+        }
         temp_path = path.with_suffix(path.suffix + ".tmp")
         with open(temp_path, "w", encoding="utf-8") as fh:
-            json.dump(data, fh, indent=2, default=str)
+            json.dump(envelope, fh, indent=2, default=str)
         os.replace(temp_path, path)
 
     @staticmethod
@@ -499,12 +541,29 @@ class DraftStore:
 
     Phase 0: delegates to FileDraftStore.
     Future: can be swapped to SQLDraftStore without changing callers.
+
+    Privacy boundary (FND-0326, 2026-10-23): every WRITE door (create /
+    save / patch / update_run_state) runs the payload through the same
+    privacy guard as TripStore — dogfood fails closed on real-user PII
+    (agent_notes and the other freeform fields are in the guard's scan
+    list), beta/production+SQL audits without blocking. Drafts previously
+    bypassed the guard entirely, which is the FND-0326 hole.
     """
 
     _backend = FileDraftStore
 
     @staticmethod
+    def _run_privacy_guard(payload: Any) -> None:
+        from src.security.privacy_guard import check_trip_data
+
+        check_trip_data(payload)
+
+    @staticmethod
     def create(*args: Any, **kwargs: Any) -> Draft:
+        if args:
+            DraftStore._run_privacy_guard(args[0].model_dump())
+        elif kwargs.get("draft") is not None:
+            DraftStore._run_privacy_guard(kwargs["draft"].model_dump())
         return DraftStore._backend.create(*args, **kwargs)
 
     @staticmethod
@@ -513,10 +572,12 @@ class DraftStore:
 
     @staticmethod
     def save(draft: Draft, auto_save: bool = False) -> Draft:
+        DraftStore._run_privacy_guard(draft.model_dump())
         return DraftStore._backend.save(draft, auto_save=auto_save)
 
     @staticmethod
     def patch(draft_id: str, updates: dict, expected_version: Optional[int] = None) -> Optional[Draft]:
+        DraftStore._run_privacy_guard(updates)
         return DraftStore._backend.patch(draft_id, updates, expected_version=expected_version)
 
     @staticmethod
@@ -551,6 +612,9 @@ class DraftStore:
         run_snapshot: Optional[dict] = None,
         linked_trip_id: Optional[str] = None,
     ) -> Optional[Draft]:
+        # run_snapshots carry packet snapshots — the FND-0326 payload class.
+        if run_snapshot is not None:
+            DraftStore._run_privacy_guard(run_snapshot)
         return DraftStore._backend.update_run_state(draft_id, run_id, run_state, run_snapshot=run_snapshot, linked_trip_id=linked_trip_id)
 
     @staticmethod

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -35,8 +36,10 @@ import requests
 REPO = Path(__file__).resolve().parent.parent
 ASSETS = REPO / "Docs" / "sims" / "assets" / "sim3"
 EVIDENCE = ASSETS / "evidence"
-FRONTEND = "http://localhost:3005"
-BACKEND = "http://localhost:8000"
+FRONTEND = os.environ.get("SIM_FRONTEND_URL", "http://localhost:3005")
+# Env-configurable so later suites (Sim #4 runs on :8010 when :8000 is
+# occupied by an unrelated process) reuse this client unchanged.
+BACKEND = os.environ.get("SIM_BACKEND_URL", "http://localhost:8000")
 TEST_USER = "newuser@test.com"
 TEST_PASSWORD = "testpass123"
 

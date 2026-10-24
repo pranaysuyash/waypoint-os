@@ -1,9 +1,8 @@
 """ESCALATE lead persistence — ADR_ESCALATE_LEAD_PERSISTENCE_2026-08-31.
 
 A blocked (ESCALATE) run must persist the inquiry as an incomplete lead so the
-Lead Inbox promise holds. ESCALATE must NEVER overwrite an existing trip: when
-the run belongs to a trip that already has a record (auto-reassess-on-edit or
-draft reprocess), the save is skipped and the record stands.
+Lead Inbox promise holds. Existing records refresh assessment-owned surfaces
+through tenant/revision CAS, preserving lifecycle and commercial state.
 """
 
 from __future__ import annotations
@@ -105,7 +104,10 @@ def _run_escalate(draft_store, trip_store=None, save_processed_trip=None, target
         to_dict=lambda obj: obj if isinstance(obj, dict) else getattr(obj, "__dict__", obj),
         close_inherited_lock_fds=lambda: None,
         save_processed_trip=save_mock,
-        trip_store=trip_store or SimpleNamespace(get_trip=MagicMock(return_value={})),
+        trip_store=trip_store or SimpleNamespace(
+            get_trip=MagicMock(return_value={"id": target_trip_id, "status": "incomplete", "updated_at": "2026-10-23T00:00:00+00:00"} if target_trip_id else {}),
+            update_trip_if_version_for_agency=MagicMock(return_value={"id": target_trip_id}),
+        ),
         audit_store=SimpleNamespace(log_event=MagicMock()),
         run_spine_once_fn=lambda **_kwargs: _escalating_result(),
         logger=logger,
@@ -165,7 +167,7 @@ def test_escalate_persists_incomplete_lead_and_links_draft() -> None:
 
 
 def test_escalate_with_existing_linked_trip_never_overwrites_it() -> None:
-    """Draft reprocess: the linked trip already holds the record — skip the save."""
+    """Draft reprocess refreshes assessment only, preserving the existing record."""
     draft = SimpleNamespace(
         promoted_trip_id=None,
         linked_trip_ids=["trip-42"],
@@ -175,19 +177,24 @@ def test_escalate_with_existing_linked_trip_never_overwrites_it() -> None:
         update_run_state=MagicMock(),
     )
     trip_store = SimpleNamespace(
-        get_trip=MagicMock(return_value={"status": "awaiting_customer_details"}),
+        get_trip=MagicMock(return_value={"status": "awaiting_customer_details", "updated_at": "2026-10-23T00:00:00+00:00"}),
+        update_trip_if_version_for_agency=MagicMock(return_value={"id": "trip-42"}),
     )
 
     result = _run_escalate(draft_store, trip_store=trip_store)
 
     # The early-exit packet must not clobber the existing trip record.
     result.save_processed_trip.assert_not_called()
+    trip_store.update_trip_if_version_for_agency.assert_called_once()
+    updates = trip_store.update_trip_if_version_for_agency.call_args.args[2]
+    assert "status" not in updates
+    assert "extracted" in updates and "decision" in updates and "validation" in updates
     result.emit_blocked.assert_called_once()
     assert result.emit_blocked.call_args.kwargs["trip_id"] == "trip-42"
 
 
 def test_escalate_with_target_trip_id_reassessment_skips_save() -> None:
-    """Auto-reassess-on-edit flow: target_trip_id set — record stands, run blocks."""
+    """Auto-reassess-on-edit uses assessment CAS instead of whole-record save."""
     draft_store = SimpleNamespace(
         get=MagicMock(return_value=None),
         update_run_state=MagicMock(),
@@ -306,7 +313,8 @@ def test_degrade_reprocess_resolves_linked_trip_too() -> None:
         update_run_state=MagicMock(),
     )
     trip_store = SimpleNamespace(
-        get_trip=MagicMock(return_value={"status": "incomplete"}),
+        get_trip=MagicMock(return_value={"status": "incomplete", "updated_at": "2026-10-23T00:00:00+00:00"}),
+        update_trip_if_version_for_agency=MagicMock(return_value={"id": "trip-7"}),
     )
     save_mock = MagicMock(return_value="trip-7")
     logger = MagicMock()
@@ -356,6 +364,9 @@ def test_degrade_reprocess_resolves_linked_trip_too() -> None:
         emit_stage_completed_fn=MagicMock(),
     )
 
-    call_kwargs = save_mock.call_args.kwargs
-    assert call_kwargs["preserve_trip_id"] == "trip-7"
-    assert call_kwargs["trip_status"] == "incomplete"
+    save_mock.assert_not_called()
+    trip_store.update_trip_if_version_for_agency.assert_called_once()
+    call = trip_store.update_trip_if_version_for_agency.call_args
+    assert call.args[:2] == ("trip-7", "agency-1")
+    assert "status" not in call.args[2]
+    assert call.kwargs["expected_updated_at"] == "2026-10-23T00:00:00+00:00"

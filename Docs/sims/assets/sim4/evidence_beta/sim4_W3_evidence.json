@@ -1,0 +1,2194 @@
+[
+  {
+    "step": "login",
+    "request": {
+      "url": "/api/auth/login"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "user": {
+        "id": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+        "email": "newuser@test.com",
+        "name": "New User",
+        "platform_role": "none"
+      },
+      "agency": {
+        "id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "name": "Test",
+        "slug": "test",
+        "logo_url": null
+      },
+      "membership": {
+        "role": "owner",
+        "is_primary": true
+      }
+    },
+    "at": "2026-10-21T16:02:20.850501+00:00"
+  },
+  {
+    "step": "W3-G-question-fields",
+    "fields": []
+  },
+  {
+    "step": "W3-G-answers-post",
+    "request": {
+      "answers": [],
+      "auth": false
+    },
+    "status": 422,
+    "response": {
+      "detail": [
+        {
+          "type": "too_short",
+          "loc": [
+            "body",
+            "answers"
+          ],
+          "msg": "List should have at least 1 item after validation, not 0",
+          "input": [],
+          "ctx": {
+            "field_type": "List",
+            "min_length": 1,
+            "actual_length": 0
+          }
+        }
+      ]
+    }
+  },
+  {
+    "step": "trip-trip_8e8b133",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_8e8b1339d31b"
+    },
+    "status": 200,
+    "response": {
+      "id": "trip_8e8b1339d31b",
+      "status": "incomplete",
+      "stage": "discovery",
+      "dateWindow": "arriving nov 16 evening, leaving nov 19 morning",
+      "destination": null,
+      "origin": "kolkata",
+      "budget": null,
+      "party": 1,
+      "tripType": "leisure",
+      "tripPurpose": "leisure",
+      "customerName": "Client 39D31B",
+      "customerMessage": null,
+      "agentNotes": null,
+      "follow_up_due_date": null,
+      "extracted": {
+        "packet_id": "pkt_fb7883c9",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": [
+          "destination_candidates",
+          "destination_status",
+          "trip_duration_days",
+          "budget_raw_text",
+          "budget_min",
+          "budget_max",
+          "budget_currency",
+          "budget_flexibility",
+          "budget_scope",
+          "party_size",
+          "party_composition",
+          "mobility_constraints",
+          "occasion",
+          "soft_preferences",
+          "trip_priorities",
+          "traveler_plan",
+          {
+            "fact": "origin_city: kolkata",
+            "field": "origin_city",
+            "value": "kolkata",
+            "source": "traveler_ask",
+            "authority": "explicit_user",
+            "timestamp": "2026-10-21T16:01:06.275220+00:00"
+          },
+          {
+            "fact": "date_window: arriving nov 16 evening, leaving nov 19 morning",
+            "field": "date_window",
+            "value": "arriving nov 16 evening, leaving nov 19 morning",
+            "source": "traveler_ask",
+            "authority": "explicit_user",
+            "timestamp": "2026-10-21T16:01:06.275220+00:00"
+          },
+          {
+            "fact": "trip_purpose: 45th anniversary pilgrimage for my parents",
+            "field": "trip_purpose",
+            "value": "45th anniversary pilgrimage for my parents",
+            "source": "traveler_ask",
+            "authority": "explicit_user",
+            "timestamp": "2026-10-21T16:01:06.275220+00:00"
+          }
+        ],
+        "derived_signals": {
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_9783f5",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:28:25.514870",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": "INFERRED"
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_dc1526",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:28:25.514890",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": "INFERRED"
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "ambiguities": [
+          {
+            "field_name": "budget_flexibility",
+            "ambiguity_type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair.",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          }
+        ],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "assumptions": [],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_515250a0"
+        ],
+        "revision_count": 0,
+        "event_cursor": 22,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512542",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Varanasi"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512551",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512778",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 3,
+                "max": 3
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512885",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget around ₹90,000"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512891",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512898",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512912",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512946",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "firm"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.513023",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-21T21:28:25.513518",
+            "details": {
+              "field_name": "budget_flexibility",
+              "ambiguity_type": "date_window_only"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514218",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514228",
+            "details": {
+              "field_name": "party_composition",
+              "old_value": null,
+              "new_value": {
+                "elderly": 2
+              }
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514315",
+            "details": {
+              "field_name": "mobility_constraints",
+              "old_value": null,
+              "new_value": "wheelchair and needs step-free access everywhere; my mother kamala sen"
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514734",
+            "details": {
+              "field_name": "occasion",
+              "old_value": null,
+              "new_value": {
+                "type": "anniversary",
+                "date": "november 18th"
+              }
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514743",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "varanasi for their 45th anniversary on november 18th"
+              ]
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514749",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food",
+                "relaxed pace"
+              ]
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514831",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:28:25.514872",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:28:25.514892",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 20,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:28:25.514904",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 21,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:28:25.514906",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 22,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:28:25.514907",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.94,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.96); dates_clarity=True (noul=0.58); party_clarity=True (noul=0.88); budget_clarity=True (noul=0.8); intake_action=PROCEED (p=0.96, conf=0.94); coherence_override=blocking_unknowns:[origin_city,date_window,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        },
+        "origin": "kolkata",
+        "dateWindow": "arriving nov 16 evening, leaving nov 19 morning"
+      },
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "budget_flexibility",
+            "type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair."
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "mobility_constraints": 1,
+          "occasion": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "strategy": {
+        "session_goal": "Gate failure — early exit.",
+        "priority_sequence": [],
+        "tonal_guardrails": [],
+        "risk_flags": [],
+        "suggested_opening": "",
+        "exit_criteria": [],
+        "next_action": "STOP_NEEDS_REVIEW",
+        "assumptions": [],
+        "suggested_tone": "professional"
+      },
+      "frontier_result": null,
+      "safety": null,
+      "party_composition": null,
+      "pace_preference": null,
+      "date_year_confidence": null,
+      "lead_source": null,
+      "activity_provenance": null,
+      "activity_interests": null,
+      "trip_priorities": null,
+      "date_flexibility": null,
+      "passenger_claim": null,
+      "ghost_concierge": null,
+      "traveler_answers": [
+        {
+          "field_name": "origin_city",
+          "answer": "kolkata",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        },
+        {
+          "field_name": "date_window",
+          "answer": "arriving nov 16 evening, leaving nov 19 morning",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        },
+        {
+          "field_name": "trip_purpose",
+          "answer": "45th anniversary pilgrimage for my parents",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        }
+      ],
+      "reassess": null,
+      "decision": {
+        "packet_id": "pkt_fb7883c9",
+        "current_stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": "STOP_NEEDS_REVIEW",
+        "hard_blockers": [
+          "extraction_quality"
+        ],
+        "soft_blockers": [],
+        "ambiguities": [],
+        "contradictions": [],
+        "follow_up_questions": [
+          {
+            "field_name": "origin_city",
+            "priority": "high",
+            "question": "Please provide origin city to continue planning."
+          },
+          {
+            "field_name": "date_window",
+            "priority": "high",
+            "question": "Please provide date window to continue planning."
+          },
+          {
+            "field_name": "trip_purpose",
+            "priority": "high",
+            "question": "Please provide trip purpose to continue planning."
+          }
+        ],
+        "branch_options": [],
+        "rationale": {
+          "gate_failure": "intake_completion",
+          "reasons": [
+            "Structural validation failed (1 error)"
+          ]
+        },
+        "confidence": {
+          "data_quality": 0.0,
+          "judgment_confidence": 0.0,
+          "commercial_confidence": 0.0,
+          "overall": 0.0
+        },
+        "risk_flags": [],
+        "suitability_profile": null,
+        "commercial_decision": "NONE",
+        "intent_scores": {},
+        "next_best_action": null,
+        "commercial_next_action": null,
+        "travel_next_action": null,
+        "budget_breakdown": null,
+        "decision_id": null
+      },
+      "updated_at": "2026-10-21T16:01:06.433662+00:00",
+      "flight_status_updates": null,
+      "traveler_asks": [
+        {
+          "asked_at": "2026-10-21T15:58:29.821736+00:00",
+          "channel": "email",
+          "recipient": "priyanka.sen.sim4@waypointtest.dev",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "question_count": 3,
+          "fields": [
+            "origin_city",
+            "date_window",
+            "trip_purpose"
+          ],
+          "dispatch_status": "NOT_CONFIGURED"
+        },
+        {
+          "asked_at": "2026-10-21T15:58:29.854253+00:00",
+          "channel": "email",
+          "recipient": "priyanka.sen.sim4@waypointtest.dev",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "question_count": 3,
+          "fields": [
+            "origin_city",
+            "date_window",
+            "trip_purpose"
+          ],
+          "dispatch_status": "NOT_CONFIGURED"
+        }
+      ],
+      "booking_data": null,
+      "pending_booking_data": null,
+      "analytics": {
+        "margin_pct": 17.0,
+        "quality_score": 57.0,
+        "quality_breakdown": {
+          "completeness": 0.0,
+          "feasibility": 50.0,
+          "risk": 100.0,
+          "profitability": 73.3
+        },
+        "requires_review": true,
+        "review_reason": "Decision state STOP_NEEDS_REVIEW requires owner review",
+        "feedback_reopen": false,
+        "feedback_severity": null,
+        "followup_needed": false,
+        "recovery_status": null,
+        "recovery_started_at": null,
+        "recovery_deadline": null,
+        "is_escalated": true,
+        "sla_status": "on_track",
+        "owner_review_deadline": "2026-10-21T17:58:27.669769+00:00",
+        "escalation_severity": "critical",
+        "approval_required_for_send": true,
+        "send_policy_reason": "Trip is in review-required state; Decision state STOP_NEEDS_REVIEW; Confidence below threshold (0.75)",
+        "revision_count": 0,
+        "_extra": {
+          "traveler_asks": [
+            {
+              "asked_at": "2026-10-21T15:58:29.821736+00:00",
+              "channel": "email",
+              "recipient": "priyanka.sen.sim4@waypointtest.dev",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "question_count": 3,
+              "fields": [
+                "origin_city",
+                "date_window",
+                "trip_purpose"
+              ],
+              "dispatch_status": "NOT_CONFIGURED"
+            },
+            {
+              "asked_at": "2026-10-21T15:58:29.854253+00:00",
+              "channel": "email",
+              "recipient": "priyanka.sen.sim4@waypointtest.dev",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "question_count": 3,
+              "fields": [
+                "origin_city",
+                "date_window",
+                "trip_purpose"
+              ],
+              "dispatch_status": "NOT_CONFIGURED"
+            }
+          ],
+          "traveler_answers": [
+            {
+              "field_name": "origin_city",
+              "answer": "kolkata",
+              "question": "",
+              "respondent_name": "Priyanka Sen",
+              "authority": "explicit_user",
+              "channel": "ask_link",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "answered_at": "2026-10-21T16:01:06.275220+00:00"
+            },
+            {
+              "field_name": "date_window",
+              "answer": "arriving nov 16 evening, leaving nov 19 morning",
+              "question": "",
+              "respondent_name": "Priyanka Sen",
+              "authority": "explicit_user",
+              "channel": "ask_link",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "answered_at": "2026-10-21T16:01:06.275220+00:00"
+            },
+            {
+              "field_name": "trip_purpose",
+              "answer": "45th anniversary pilgrimage for my parents",
+              "question": "",
+              "respondent_name": "Priyanka Sen",
+              "authority": "explicit_user",
+              "channel": "ask_link",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "answered_at": "2026-10-21T16:01:06.275220+00:00"
+            }
+          ],
+          "origin": "kolkata",
+          "dateWindow": "arriving nov 16 evening, leaving nov 19 morning"
+        }
+      },
+      "fees": null
+    },
+    "at": "2026-10-21T16:02:20.862849+00:00"
+  },
+  {
+    "step": "W3-G-after-answers",
+    "packet_summary": {
+      "trip_id": "trip_8e8b1339d31b",
+      "status": "incomplete",
+      "decision_state": null,
+      "facts": {},
+      "packet": {},
+      "unknowns": null,
+      "follow_up_questions": [
+        {
+          "field_name": "origin_city",
+          "priority": "high",
+          "question": "Please provide origin city to continue planning."
+        },
+        {
+          "field_name": "date_window",
+          "priority": "high",
+          "question": "Please provide date window to continue planning."
+        },
+        {
+          "field_name": "trip_purpose",
+          "priority": "high",
+          "question": "Please provide trip purpose to continue planning."
+        }
+      ],
+      "branch_options": [],
+      "strategy_cost": null,
+      "strategy_currency": null,
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "budget_flexibility",
+            "type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair."
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "mobility_constraints": 1,
+          "occasion": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "traveler_asks": [
+        {
+          "asked_at": "2026-10-21T15:58:29.821736+00:00",
+          "channel": "email",
+          "recipient": "priyanka.sen.sim4@waypointtest.dev",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "question_count": 3,
+          "fields": [
+            "origin_city",
+            "date_window",
+            "trip_purpose"
+          ],
+          "dispatch_status": "NOT_CONFIGURED"
+        },
+        {
+          "asked_at": "2026-10-21T15:58:29.854253+00:00",
+          "channel": "email",
+          "recipient": "priyanka.sen.sim4@waypointtest.dev",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "question_count": 3,
+          "fields": [
+            "origin_city",
+            "date_window",
+            "trip_purpose"
+          ],
+          "dispatch_status": "NOT_CONFIGURED"
+        }
+      ],
+      "traveler_answers": [
+        {
+          "field_name": "origin_city",
+          "answer": "kolkata",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        },
+        {
+          "field_name": "date_window",
+          "answer": "arriving nov 16 evening, leaving nov 19 morning",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        },
+        {
+          "field_name": "trip_purpose",
+          "answer": "45th anniversary pilgrimage for my parents",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        }
+      ],
+      "passenger_claim": false,
+      "ghost_concierge": false,
+      "date_window": null,
+      "supersession": null
+    },
+    "traveler_answers_raw": [
+      {
+        "field_name": "origin_city",
+        "answer": "kolkata",
+        "question": "",
+        "respondent_name": "Priyanka Sen",
+        "authority": "explicit_user",
+        "channel": "ask_link",
+        "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+        "answered_at": "2026-10-21T16:01:06.275220+00:00"
+      },
+      {
+        "field_name": "date_window",
+        "answer": "arriving nov 16 evening, leaving nov 19 morning",
+        "question": "",
+        "respondent_name": "Priyanka Sen",
+        "authority": "explicit_user",
+        "channel": "ask_link",
+        "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+        "answered_at": "2026-10-21T16:01:06.275220+00:00"
+      },
+      {
+        "field_name": "trip_purpose",
+        "answer": "45th anniversary pilgrimage for my parents",
+        "question": "",
+        "respondent_name": "Priyanka Sen",
+        "authority": "explicit_user",
+        "channel": "ask_link",
+        "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+        "answered_at": "2026-10-21T16:01:06.275220+00:00"
+      }
+    ]
+  },
+  {
+    "step": "W3-G-reassess",
+    "request": {
+      "method": "POST",
+      "path": "/trips/trip_8e8b1339d31b/reassess"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_8e8b1339d31b",
+      "run_id": "e9d5c06a-e2c1-40f5-9a8e-4cd4b5cd0998",
+      "state": "queued",
+      "trigger": "explicit"
+    },
+    "at": "2026-10-21T16:02:20.912319+00:00"
+  },
+  {
+    "step": "trip-trip_8e8b133",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_8e8b1339d31b"
+    },
+    "status": 200,
+    "response": {
+      "id": "trip_8e8b1339d31b",
+      "status": "incomplete",
+      "stage": "discovery",
+      "dateWindow": "arriving nov 16 evening, leaving nov 19 morning",
+      "destination": null,
+      "origin": "kolkata",
+      "budget": null,
+      "party": 1,
+      "tripType": "leisure",
+      "tripPurpose": "leisure",
+      "customerName": "Client 39D31B",
+      "customerMessage": null,
+      "agentNotes": null,
+      "follow_up_due_date": null,
+      "extracted": {
+        "packet_id": "pkt_fb7883c9",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": [
+          "destination_candidates",
+          "destination_status",
+          "trip_duration_days",
+          "budget_raw_text",
+          "budget_min",
+          "budget_max",
+          "budget_currency",
+          "budget_flexibility",
+          "budget_scope",
+          "party_size",
+          "party_composition",
+          "mobility_constraints",
+          "occasion",
+          "soft_preferences",
+          "trip_priorities",
+          "traveler_plan",
+          {
+            "fact": "origin_city: kolkata",
+            "field": "origin_city",
+            "value": "kolkata",
+            "source": "traveler_ask",
+            "authority": "explicit_user",
+            "timestamp": "2026-10-21T16:01:06.275220+00:00"
+          },
+          {
+            "fact": "date_window: arriving nov 16 evening, leaving nov 19 morning",
+            "field": "date_window",
+            "value": "arriving nov 16 evening, leaving nov 19 morning",
+            "source": "traveler_ask",
+            "authority": "explicit_user",
+            "timestamp": "2026-10-21T16:01:06.275220+00:00"
+          },
+          {
+            "fact": "trip_purpose: 45th anniversary pilgrimage for my parents",
+            "field": "trip_purpose",
+            "value": "45th anniversary pilgrimage for my parents",
+            "source": "traveler_ask",
+            "authority": "explicit_user",
+            "timestamp": "2026-10-21T16:01:06.275220+00:00"
+          }
+        ],
+        "derived_signals": {
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_9783f5",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:28:25.514870",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": "INFERRED"
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_dc1526",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:28:25.514890",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": "INFERRED"
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "ambiguities": [
+          {
+            "field_name": "budget_flexibility",
+            "ambiguity_type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair.",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          }
+        ],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "assumptions": [],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_515250a0"
+        ],
+        "revision_count": 0,
+        "event_cursor": 22,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512542",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Varanasi"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512551",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512778",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 3,
+                "max": 3
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512885",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget around ₹90,000"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512891",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512898",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 90000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512912",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.512946",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "firm"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.513023",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-21T21:28:25.513518",
+            "details": {
+              "field_name": "budget_flexibility",
+              "ambiguity_type": "date_window_only"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514218",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 2
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514228",
+            "details": {
+              "field_name": "party_composition",
+              "old_value": null,
+              "new_value": {
+                "elderly": 2
+              }
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514315",
+            "details": {
+              "field_name": "mobility_constraints",
+              "old_value": null,
+              "new_value": "wheelchair and needs step-free access everywhere; my mother kamala sen"
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514734",
+            "details": {
+              "field_name": "occasion",
+              "old_value": null,
+              "new_value": {
+                "type": "anniversary",
+                "date": "november 18th"
+              }
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514743",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "varanasi for their 45th anniversary on november 18th"
+              ]
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514749",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food",
+                "relaxed pace"
+              ]
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:28:25.514831",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:28:25.514872",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:28:25.514892",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 20,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:28:25.514904",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 21,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:28:25.514906",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 22,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:28:25.514907",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.94,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.96); dates_clarity=True (noul=0.58); party_clarity=True (noul=0.88); budget_clarity=True (noul=0.8); intake_action=PROCEED (p=0.96, conf=0.94); coherence_override=blocking_unknowns:[origin_city,date_window,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        },
+        "origin": "kolkata",
+        "dateWindow": "arriving nov 16 evening, leaving nov 19 morning"
+      },
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "budget_flexibility",
+            "type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair."
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "mobility_constraints": 1,
+          "occasion": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "strategy": {
+        "session_goal": "Gate failure — early exit.",
+        "priority_sequence": [],
+        "tonal_guardrails": [],
+        "risk_flags": [],
+        "suggested_opening": "",
+        "exit_criteria": [],
+        "next_action": "STOP_NEEDS_REVIEW",
+        "assumptions": [],
+        "suggested_tone": "professional"
+      },
+      "frontier_result": null,
+      "safety": null,
+      "party_composition": null,
+      "pace_preference": null,
+      "date_year_confidence": null,
+      "lead_source": null,
+      "activity_provenance": null,
+      "activity_interests": null,
+      "trip_priorities": null,
+      "date_flexibility": null,
+      "passenger_claim": null,
+      "ghost_concierge": null,
+      "traveler_answers": [
+        {
+          "field_name": "origin_city",
+          "answer": "kolkata",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        },
+        {
+          "field_name": "date_window",
+          "answer": "arriving nov 16 evening, leaving nov 19 morning",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        },
+        {
+          "field_name": "trip_purpose",
+          "answer": "45th anniversary pilgrimage for my parents",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        }
+      ],
+      "reassess": null,
+      "decision": {
+        "packet_id": "pkt_fb7883c9",
+        "current_stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": "STOP_NEEDS_REVIEW",
+        "hard_blockers": [
+          "extraction_quality"
+        ],
+        "soft_blockers": [],
+        "ambiguities": [],
+        "contradictions": [],
+        "follow_up_questions": [
+          {
+            "field_name": "origin_city",
+            "priority": "high",
+            "question": "Please provide origin city to continue planning."
+          },
+          {
+            "field_name": "date_window",
+            "priority": "high",
+            "question": "Please provide date window to continue planning."
+          },
+          {
+            "field_name": "trip_purpose",
+            "priority": "high",
+            "question": "Please provide trip purpose to continue planning."
+          }
+        ],
+        "branch_options": [],
+        "rationale": {
+          "gate_failure": "intake_completion",
+          "reasons": [
+            "Structural validation failed (1 error)"
+          ]
+        },
+        "confidence": {
+          "data_quality": 0.0,
+          "judgment_confidence": 0.0,
+          "commercial_confidence": 0.0,
+          "overall": 0.0
+        },
+        "risk_flags": [],
+        "suitability_profile": null,
+        "commercial_decision": "NONE",
+        "intent_scores": {},
+        "next_best_action": null,
+        "commercial_next_action": null,
+        "travel_next_action": null,
+        "budget_breakdown": null,
+        "decision_id": null
+      },
+      "updated_at": "2026-10-21T16:01:06.433662+00:00",
+      "flight_status_updates": null,
+      "traveler_asks": [
+        {
+          "asked_at": "2026-10-21T15:58:29.821736+00:00",
+          "channel": "email",
+          "recipient": "priyanka.sen.sim4@waypointtest.dev",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "question_count": 3,
+          "fields": [
+            "origin_city",
+            "date_window",
+            "trip_purpose"
+          ],
+          "dispatch_status": "NOT_CONFIGURED"
+        },
+        {
+          "asked_at": "2026-10-21T15:58:29.854253+00:00",
+          "channel": "email",
+          "recipient": "priyanka.sen.sim4@waypointtest.dev",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "question_count": 3,
+          "fields": [
+            "origin_city",
+            "date_window",
+            "trip_purpose"
+          ],
+          "dispatch_status": "NOT_CONFIGURED"
+        }
+      ],
+      "booking_data": null,
+      "pending_booking_data": null,
+      "analytics": {
+        "margin_pct": 17.0,
+        "quality_score": 57.0,
+        "quality_breakdown": {
+          "completeness": 0.0,
+          "feasibility": 50.0,
+          "risk": 100.0,
+          "profitability": 73.3
+        },
+        "requires_review": true,
+        "review_reason": "Decision state STOP_NEEDS_REVIEW requires owner review",
+        "feedback_reopen": false,
+        "feedback_severity": null,
+        "followup_needed": false,
+        "recovery_status": null,
+        "recovery_started_at": null,
+        "recovery_deadline": null,
+        "is_escalated": true,
+        "sla_status": "on_track",
+        "owner_review_deadline": "2026-10-21T17:58:27.669769+00:00",
+        "escalation_severity": "critical",
+        "approval_required_for_send": true,
+        "send_policy_reason": "Trip is in review-required state; Decision state STOP_NEEDS_REVIEW; Confidence below threshold (0.75)",
+        "revision_count": 0,
+        "_extra": {
+          "traveler_asks": [
+            {
+              "asked_at": "2026-10-21T15:58:29.821736+00:00",
+              "channel": "email",
+              "recipient": "priyanka.sen.sim4@waypointtest.dev",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "question_count": 3,
+              "fields": [
+                "origin_city",
+                "date_window",
+                "trip_purpose"
+              ],
+              "dispatch_status": "NOT_CONFIGURED"
+            },
+            {
+              "asked_at": "2026-10-21T15:58:29.854253+00:00",
+              "channel": "email",
+              "recipient": "priyanka.sen.sim4@waypointtest.dev",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "question_count": 3,
+              "fields": [
+                "origin_city",
+                "date_window",
+                "trip_purpose"
+              ],
+              "dispatch_status": "NOT_CONFIGURED"
+            }
+          ],
+          "traveler_answers": [
+            {
+              "field_name": "origin_city",
+              "answer": "kolkata",
+              "question": "",
+              "respondent_name": "Priyanka Sen",
+              "authority": "explicit_user",
+              "channel": "ask_link",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "answered_at": "2026-10-21T16:01:06.275220+00:00"
+            },
+            {
+              "field_name": "date_window",
+              "answer": "arriving nov 16 evening, leaving nov 19 morning",
+              "question": "",
+              "respondent_name": "Priyanka Sen",
+              "authority": "explicit_user",
+              "channel": "ask_link",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "answered_at": "2026-10-21T16:01:06.275220+00:00"
+            },
+            {
+              "field_name": "trip_purpose",
+              "answer": "45th anniversary pilgrimage for my parents",
+              "question": "",
+              "respondent_name": "Priyanka Sen",
+              "authority": "explicit_user",
+              "channel": "ask_link",
+              "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+              "answered_at": "2026-10-21T16:01:06.275220+00:00"
+            }
+          ],
+          "origin": "kolkata",
+          "dateWindow": "arriving nov 16 evening, leaving nov 19 morning"
+        }
+      },
+      "fees": null
+    },
+    "at": "2026-10-21T16:02:40.993372+00:00"
+  },
+  {
+    "step": "W3-G-after-reassess",
+    "packet_summary": {
+      "trip_id": "trip_8e8b1339d31b",
+      "status": "incomplete",
+      "decision_state": null,
+      "facts": {},
+      "packet": {},
+      "unknowns": null,
+      "follow_up_questions": [
+        {
+          "field_name": "origin_city",
+          "priority": "high",
+          "question": "Please provide origin city to continue planning."
+        },
+        {
+          "field_name": "date_window",
+          "priority": "high",
+          "question": "Please provide date window to continue planning."
+        },
+        {
+          "field_name": "trip_purpose",
+          "priority": "high",
+          "question": "Please provide trip purpose to continue planning."
+        }
+      ],
+      "branch_options": [],
+      "strategy_cost": null,
+      "strategy_currency": null,
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [
+          {
+            "field": "budget_flexibility",
+            "type": "date_window_only",
+            "raw_value": "hello, i'm booking for my parents — they don't use apps much so i manage everything. col. arvind sen, 72, uses a wheelchair and needs step-free access everywhere; my mother kamala sen, 68, has knee trouble so please plan a slow pace for her. they want varanasi for their 45th anniversary on november 18th, 3 nights, pure veg meals only. budget around ₹90,000 total. i can share exact travel dates once you confirm ghats access is doable for a wheelchair."
+          }
+        ],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "party_size": 1,
+          "party_composition": 1,
+          "mobility_constraints": 1,
+          "occasion": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "traveler_asks": [
+        {
+          "asked_at": "2026-10-21T15:58:29.821736+00:00",
+          "channel": "email",
+          "recipient": "priyanka.sen.sim4@waypointtest.dev",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "question_count": 3,
+          "fields": [
+            "origin_city",
+            "date_window",
+            "trip_purpose"
+          ],
+          "dispatch_status": "NOT_CONFIGURED"
+        },
+        {
+          "asked_at": "2026-10-21T15:58:29.854253+00:00",
+          "channel": "email",
+          "recipient": "priyanka.sen.sim4@waypointtest.dev",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "question_count": 3,
+          "fields": [
+            "origin_city",
+            "date_window",
+            "trip_purpose"
+          ],
+          "dispatch_status": "NOT_CONFIGURED"
+        }
+      ],
+      "traveler_answers": [
+        {
+          "field_name": "origin_city",
+          "answer": "kolkata",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        },
+        {
+          "field_name": "date_window",
+          "answer": "arriving nov 16 evening, leaving nov 19 morning",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        },
+        {
+          "field_name": "trip_purpose",
+          "answer": "45th anniversary pilgrimage for my parents",
+          "question": "",
+          "respondent_name": "Priyanka Sen",
+          "authority": "explicit_user",
+          "channel": "ask_link",
+          "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+          "answered_at": "2026-10-21T16:01:06.275220+00:00"
+        }
+      ],
+      "passenger_claim": false,
+      "ghost_concierge": false,
+      "date_window": null,
+      "supersession": null
+    },
+    "traveler_answers_raw": [
+      {
+        "field_name": "origin_city",
+        "answer": "kolkata",
+        "question": "",
+        "respondent_name": "Priyanka Sen",
+        "authority": "explicit_user",
+        "channel": "ask_link",
+        "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+        "answered_at": "2026-10-21T16:01:06.275220+00:00"
+      },
+      {
+        "field_name": "date_window",
+        "answer": "arriving nov 16 evening, leaving nov 19 morning",
+        "question": "",
+        "respondent_name": "Priyanka Sen",
+        "authority": "explicit_user",
+        "channel": "ask_link",
+        "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+        "answered_at": "2026-10-21T16:01:06.275220+00:00"
+      },
+      {
+        "field_name": "trip_purpose",
+        "answer": "45th anniversary pilgrimage for my parents",
+        "question": "",
+        "respondent_name": "Priyanka Sen",
+        "authority": "explicit_user",
+        "channel": "ask_link",
+        "token": "prop_trip_8e8b1339d31b_d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b_1793203109_ask_9d352df039088e8eab52c20ae004ac91dc9c52bf3fe7dc8bb675f5362553bd97",
+        "answered_at": "2026-10-21T16:01:06.275220+00:00"
+      }
+    ]
+  },
+  {
+    "step": "W3-K-stage-proposal",
+    "request": {
+      "method": "PATCH",
+      "path": "/trips/trip_45f8693cafee/stage",
+      "json": {
+        "target_stage": "proposal",
+        "reason": "sim4-K: passports needed for VoA paperwork"
+      }
+    },
+    "status": 200,
+    "response": {
+      "trip_id": "trip_45f8693cafee",
+      "old_stage": "discovery",
+      "new_stage": "proposal",
+      "changed": true,
+      "readiness": {}
+    },
+    "at": "2026-10-21T16:02:41.064131+00:00"
+  },
+  {
+    "step": "W3-K-upload-valid-png",
+    "request": {
+      "method": "POST",
+      "path": "/trips/trip_45f8693cafee/documents",
+      "filename": "farhan_passport.png",
+      "mime": "image/png",
+      "bytes": 70
+    },
+    "status": 200,
+    "response": {
+      "id": "a2fe3ac1-fd25-41f2-83b1-e1d1c500425e",
+      "trip_id": "trip_45f8693cafee",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "document_type": "passport",
+      "status": "pending_review",
+      "filename_ext": ".png",
+      "mime_type": "image/png",
+      "byte_size": 70,
+      "sha256_checksum": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581",
+      "scan_status": "skipped",
+      "filename_present": true,
+      "uploaded_by_type": "agent",
+      "uploaded_by_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "review_notes_present": false,
+      "uploaded_at": "2026-10-21T16:02:41.083788+00:00",
+      "reviewed_at": null,
+      "reviewed_by": null,
+      "deleted_at": null,
+      "deleted_by": null
+    },
+    "at": "2026-10-21T16:02:41.141535+00:00"
+  },
+  {
+    "step": "W3-K-upload-zip-as-png",
+    "request": {
+      "method": "POST",
+      "path": "/trips/trip_45f8693cafee/documents",
+      "filename": "farhan_passport2.png",
+      "mime": "image/png",
+      "bytes": 68
+    },
+    "status": 415,
+    "response": {
+      "detail": "File content type not allowed"
+    },
+    "at": "2026-10-21T16:02:41.157458+00:00"
+  },
+  {
+    "step": "W3-K-upload-duplicate",
+    "request": {
+      "method": "POST",
+      "path": "/trips/trip_45f8693cafee/documents",
+      "filename": "farhan_passport_again.png",
+      "mime": "image/png",
+      "bytes": 70
+    },
+    "status": 200,
+    "response": {
+      "id": "9e3356c9-f412-41e7-981e-d61f2f69f6db",
+      "trip_id": "trip_45f8693cafee",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "document_type": "passport",
+      "status": "pending_review",
+      "filename_ext": ".png",
+      "mime_type": "image/png",
+      "byte_size": 70,
+      "sha256_checksum": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581",
+      "scan_status": "skipped",
+      "filename_present": true,
+      "uploaded_by_type": "agent",
+      "uploaded_by_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "review_notes_present": false,
+      "uploaded_at": "2026-10-21T16:02:41.165960+00:00",
+      "reviewed_at": null,
+      "reviewed_by": null,
+      "deleted_at": null,
+      "deleted_by": null
+    },
+    "at": "2026-10-21T16:02:41.197556+00:00"
+  },
+  {
+    "step": "W3-K-upload-summary",
+    "doc_id": "a2fe3ac1-fd25-41f2-83b1-e1d1c500425e",
+    "keys": [
+      "agency_id",
+      "byte_size",
+      "deleted_at",
+      "deleted_by",
+      "document_type",
+      "filename_ext",
+      "filename_present",
+      "id",
+      "mime_type",
+      "review_notes_present",
+      "reviewed_at",
+      "reviewed_by"
+    ]
+  },
+  {
+    "step": "W3-K-extract",
+    "request": {
+      "method": "POST",
+      "path": "/trips/trip_45f8693cafee/documents/a2fe3ac1-fd25-41f2-83b1-e1d1c500425e/extract"
+    },
+    "status": 200,
+    "response": {
+      "id": "5d8f1970-5221-455d-aa42-f3eab9a907df",
+      "document_id": "a2fe3ac1-fd25-41f2-83b1-e1d1c500425e",
+      "status": "pending_review",
+      "extracted_by": "noop_extractor",
+      "overall_confidence": 0.85,
+      "field_count": 5,
+      "fields": [
+        {
+          "field_name": "nationality",
+          "value": "US",
+          "confidence": 0.85,
+          "present": true
+        },
+        {
+          "field_name": "date_of_birth",
+          "value": "DO_NOT_LOG_DOB",
+          "confidence": 0.85,
+          "present": true
+        },
+        {
+          "field_name": "passport_number",
+          "value": "DO_NOT_LOG_PASSPORT",
+          "confidence": 0.85,
+          "present": true
+        },
+        {
+          "field_name": "passport_expiry",
+          "value": "DO_NOT_LOG_EXPIRY",
+          "confidence": 0.85,
+          "present": true
+        },
+        {
+          "field_name": "full_name",
+          "value": "DO_NOT_LOG_NAME",
+          "confidence": 0.85,
+          "present": true
+        }
+      ],
+      "created_at": "2026-10-21T16:02:41.218869+00:00",
+      "updated_at": "2026-10-21T16:02:41.243506+00:00",
+      "reviewed_at": null,
+      "reviewed_by": null,
+      "provider_name": "noop_extractor",
+      "model_name": "noop",
+      "latency_ms": null,
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "total_tokens": null,
+      "cost_estimate_usd": null,
+      "error_code": null,
+      "error_summary": null,
+      "confidence_method": "model",
+      "attempt_count": 1,
+      "run_count": 1,
+      "current_attempt_id": "73b9cbe2-51bf-4a07-bdb4-03ad85b6537e",
+      "page_count": null
+    },
+    "at": "2026-10-21T16:02:41.272371+00:00"
+  },
+  {
+    "step": "W3-K-accept",
+    "request": {
+      "method": "POST",
+      "path": "/trips/trip_45f8693cafee/documents/a2fe3ac1-fd25-41f2-83b1-e1d1c500425e/accept",
+      "json": {
+        "note": "sim4-K accepted"
+      }
+    },
+    "status": 200,
+    "response": {
+      "id": "a2fe3ac1-fd25-41f2-83b1-e1d1c500425e",
+      "trip_id": "trip_45f8693cafee",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "document_type": "passport",
+      "status": "accepted",
+      "filename_ext": ".png",
+      "mime_type": "image/png",
+      "byte_size": 70,
+      "sha256_checksum": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581",
+      "scan_status": "skipped",
+      "filename_present": true,
+      "uploaded_by_type": "agent",
+      "uploaded_by_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "review_notes_present": false,
+      "uploaded_at": "2026-10-21T16:02:41.083788+00:00",
+      "reviewed_at": "2026-10-21T16:02:41.280045+00:00",
+      "reviewed_by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "deleted_at": null,
+      "deleted_by": null
+    },
+    "at": "2026-10-21T16:02:41.305032+00:00"
+  },
+  {
+    "step": "W3-K-download-url",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_45f8693cafee/documents/a2fe3ac1-fd25-41f2-83b1-e1d1c500425e/download-url"
+    },
+    "status": 200,
+    "response": {
+      "url": "/api/internal/documents/a2fe3ac1-fd25-41f2-83b1-e1d1c500425e/download?token=57ba3ec6e45528587ba49f3700394a23e62c43270323164618f0c42eef49939f&expires=1792599461",
+      "expires_in": 900
+    },
+    "at": "2026-10-21T16:02:41.312793+00:00"
+  },
+  {
+    "step": "W3-K-list",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_45f8693cafee/documents"
+    },
+    "status": 200,
+    "response": {
+      "trip_id": "trip_45f8693cafee",
+      "documents": [
+        {
+          "id": "9e3356c9-f412-41e7-981e-d61f2f69f6db",
+          "trip_id": "trip_45f8693cafee",
+          "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+          "document_type": "passport",
+          "status": "pending_review",
+          "filename_ext": ".png",
+          "mime_type": "image/png",
+          "byte_size": 70,
+          "sha256_checksum": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581",
+          "scan_status": "skipped",
+          "filename_present": true,
+          "uploaded_by_type": "agent",
+          "uploaded_by_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+          "review_notes_present": false,
+          "uploaded_at": "2026-10-21T16:02:41.165960+00:00",
+          "reviewed_at": null,
+          "reviewed_by": null,
+          "deleted_at": null,
+          "deleted_by": null
+        },
+        {
+          "id": "a2fe3ac1-fd25-41f2-83b1-e1d1c500425e",
+          "trip_id": "trip_45f8693cafee",
+          "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+          "document_type": "passport",
+          "status": "accepted",
+          "filename_ext": ".png",
+          "mime_type": "image/png",
+          "byte_size": 70,
+          "sha256_checksum": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581",
+          "scan_status": "skipped",
+          "filename_present": true,
+          "uploaded_by_type": "agent",
+          "uploaded_by_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+          "review_notes_present": false,
+          "uploaded_at": "2026-10-21T16:02:41.083788+00:00",
+          "reviewed_at": "2026-10-21T16:02:41.280045+00:00",
+          "reviewed_by": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+          "deleted_at": null,
+          "deleted_by": null
+        }
+      ]
+    },
+    "at": "2026-10-21T16:02:41.318876+00:00"
+  },
+  {
+    "step": "W3-C-trip-id",
+    "trip_id": "trip_cd544f9b777a"
+  },
+  {
+    "step": "W3-A-invite-keys",
+    "keys": [
+      "agency_payment_url",
+      "deposit_per_passenger_cents",
+      "ok",
+      "passenger_count",
+      "passenger_invites",
+      "payment_instructions",
+      "total_deposit_cents",
+      "trip_id"
+    ],
+    "token_present": false
+  },
+  {
+    "step": "W3-F-memory-forget",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/customers/memory/forget",
+      "json": {
+        "customer_id": "cust_meera.krishnan.sim4@waypointtest.dev"
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "certificate": {
+        "certificate_id": "cert_75f6fba606b0",
+        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "customer_id": "cust_meera.krishnan.sim4@waypointtest.dev",
+        "erased_memory_ids": [
+          "mem_8b1043b65573",
+          "mem_65276f0fed56",
+          "mem_65c6b4744622",
+          "mem_0b870aceb8a6",
+          "mem_f092fb1b1f9e",
+          "mem_67a420e8f58d"
+        ],
+        "tombstone_count": 6,
+        "erased_at": "2026-10-21T16:02:41.323893+00:00",
+        "verification_signature": "0586f0bef9427411e8fb780815027682697ca1a65c147463975b3092cab789e4"
+      }
+    },
+    "at": "2026-10-21T16:02:41.373384+00:00"
+  },
+  {
+    "step": "W3-F-lookup-after-forget",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/customers/memory?email=meera.krishnan.sim4@waypointtest.dev"
+    },
+    "status": 200,
+    "response": null,
+    "at": "2026-10-21T16:02:41.378519+00:00"
+  }
+]

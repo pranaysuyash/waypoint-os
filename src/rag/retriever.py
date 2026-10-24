@@ -7,6 +7,8 @@ isolation.
 """
 
 from typing import List, Dict, Optional
+import logging
+
 from src.rag.models import (
     RAGChunk,
     RAGSearchResult,
@@ -14,6 +16,8 @@ from src.rag.models import (
 )
 from src.rag.store import SQLiteRAGStore
 from src.rag.embeddings import EmbeddingProvider, HashEmbeddingProvider
+
+logger = logging.getLogger(__name__)
 
 
 class HybridGraphVectorRetriever:
@@ -27,11 +31,13 @@ class HybridGraphVectorRetriever:
         self.rrf_k = rrf_k
         self.embedding_provider = embedding_provider or HashEmbeddingProvider()
 
-    def retrieve(self, search_query: HybridSearchQuery) -> List[RAGSearchResult]:
+    def retrieve(self, search_query: HybridSearchQuery, skip_dense: bool = False) -> List[RAGSearchResult]:
         """Perform local-vector/lexical retrieval fused via RRF.
 
         ``include_graph`` enables entity-reference matching and 1-hop edge
         traversal across knowledge nodes and edges stored for the agency.
+        ``skip_dense`` serves sparse-only (quota-blocked query embeddings —
+        the caller logs the reason).
         """
         agency_id = search_query.agency_id
         query_text = search_query.query
@@ -43,13 +49,33 @@ class HybridGraphVectorRetriever:
             else None
         )
 
-        # 1. Vector similarity search (provider-backed or deterministic hash fallback).
-        query_vector = self.embedding_provider.embed_text(query_text)
-        dense_results = self.store.search_dense(
-            query_vector=query_vector,
-            agency_id=agency_id,
-            top_k=top_k * 2,
-            source_types=source_type_filter,
+        # 1. Vector similarity search — scoped to THIS provider's model
+        # (FND-0362: cross-model comparison is refused at the store; a
+        # provider switch shows up as an empty dense leg, never silent zeros).
+        # A live-provider failure degrades to sparse-only with a logged
+        # reason — the provider raises rather than emitting hash vectors
+        # under its own name (see SemanticEmbeddingProvider failure
+        # semantics), so there is no hash-vs-semantic contamination here.
+        query_vector = None
+        if not skip_dense:
+            try:
+                query_vector = self.embedding_provider.embed_text(query_text)
+            except Exception as exc:
+                logger.warning(
+                    "Query embedding failed (%s); serving sparse-only for agency %s",
+                    exc, agency_id,
+                )
+                query_vector = None
+        dense_results = (
+            self.store.search_dense(
+                query_vector=query_vector,
+                agency_id=agency_id,
+                top_k=top_k * 2,
+                source_types=source_type_filter,
+                embedding_model=self.embedding_provider.model_name,
+            )
+            if query_vector is not None
+            else []
         )
 
         # 2. Sparse substring lexical heuristic (not standards-compliant BM25).
@@ -92,7 +118,16 @@ class HybridGraphVectorRetriever:
         if search_query.include_graph:
             graph_nodes = self.store.get_nodes(agency_id)
             query_lower = query_text.lower()
-            matching_node_ids = {n.id for n in graph_nodes if n.label.lower() in query_lower}
+
+            def _node_matches(node) -> bool:
+                if node.label.lower() in query_lower:
+                    return True
+                keywords = node.properties.get("keywords") or []
+                return any(
+                    str(kw).lower() in query_lower for kw in keywords if kw
+                )
+
+            matching_node_ids = {n.id for n in graph_nodes if _node_matches(n)}
 
             one_hop_node_ids: set[str] = set()
             for nid in matching_node_ids:

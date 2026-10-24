@@ -183,7 +183,7 @@ def _seed_trip(cost: float = 4500.0) -> str:
         {
             "id": trip_id,
             "agency_id": "system",
-            "status": "assigned",
+            "status": "approved",
             "destination": "Paris",
             "packet": {
                 "destination": "Paris",
@@ -201,10 +201,13 @@ def _seed_trip(cost: float = 4500.0) -> str:
 
 
 def _accept_and_fulfill(trip_id: str, token: str):
+    from spine_api.routers.public_proposals import _get_or_create_proposal
+
     accepted = accept_proposal(
         token=token,
         req=AcceptProposalRequest(
-            signer_name="Sarah Connor", signer_email="sarah@sky.net", e_signature_consent=True
+            signer_name="Sarah Connor", signer_email="sarah@sky.net", e_signature_consent=True,
+            revision_id=_get_or_create_proposal(token).revision_id,
         ),
     )
     assert accepted.status == "accepted"
@@ -217,7 +220,7 @@ def _accept_and_fulfill(trip_id: str, token: str):
 async def test_fulfillment_with_covering_mandate_consumes_and_records():
     trip_id = _seed_trip(cost=4500.0)
     mandate = _register(
-        agency_id="system", trip_id=trip_id, max_authorized_cents=500_000
+        agency_id="system", trip_id=trip_id, max_authorized_cents=600_000
     )
     token = generate_signed_proposal_token(trip_id=trip_id, agency_id="system")
 
@@ -228,7 +231,7 @@ async def test_fulfillment_with_covering_mandate_consumes_and_records():
     d = result.to_dict()
     assert d["mandate_id"] == mandate.mandate_id
     consumed = PaymentMandateLedger.get_mandate(agency_id="system", mandate_id=mandate.mandate_id)
-    assert consumed["consumed_amount_cents"] == 450_000  # 4500.00 USD
+    assert consumed["consumed_amount_cents"] == 528_000  # canonical customer retail, USD5280
 
 
 @pytest.mark.asyncio
@@ -564,3 +567,61 @@ def test_movement_replay_fence_is_service_level():
         agency_id="agency_fnd0221", mandate_id=mandate.mandate_id
     )
     assert after["consumed_amount_cents"] == 10_000
+
+
+@pytest.mark.parametrize("changed", ["amount", "mandate", "scope"])
+def test_movement_replay_rejects_changed_authorization_identity(changed):
+    first_mandate = _grant_payout_mandate(max_authorized_cents=50_000)
+    second_mandate = _grant_payout_mandate(max_authorized_cents=50_000)
+    key = f"bound-movement-{uuid.uuid4().hex}"
+    original = dict(
+        agency_id="agency_fnd0221", mandate_id=first_mandate.mandate_id,
+        amount_cents=10_000, scope="payout", movement_idempotency_key=key,
+    )
+    assert PaymentMandateLedger.authorize_charge(**original)["authorized"] is True
+    modified = dict(original)
+    modified.update({
+        "amount": {"amount_cents": 11_000},
+        "mandate": {"mandate_id": second_mandate.mandate_id},
+        "scope": {"scope": "deposit"},
+    }[changed])
+    replay = PaymentMandateLedger.authorize_charge(**modified)
+    assert replay["authorized"] is False
+    assert replay["reason"] == "movement_idempotency_key_payload_mismatch"
+    after = PaymentMandateLedger.get_mandate(
+        agency_id="agency_fnd0221", mandate_id=first_mandate.mandate_id
+    )
+    assert after["consumed_amount_cents"] == 10_000
+
+
+@pytest.mark.parametrize("backend", ["memory", "sql"])
+def test_concurrent_movement_is_consumed_once_and_persisted_identity_is_exact(
+    backend, monkeypatch, boundary_principal_factory
+):
+    from concurrent.futures import ThreadPoolExecutor
+
+    agency_id = str(uuid.uuid4())
+    if backend == "sql":
+        boundary_principal_factory(str(uuid.uuid4()), agency_id)
+    monkeypatch.setenv("SPINE_API_PAYMENT_MANDATE_BACKEND", backend)
+    mandate = _register(agency_id=agency_id, max_authorized_cents=20_000, scope="balance")
+    key = f"concurrent-movement-{uuid.uuid4().hex}"
+    request = dict(
+        agency_id=agency_id, mandate_id=mandate.mandate_id,
+        amount_cents=10_000, scope="balance", movement_idempotency_key=key,
+    )
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(lambda _i: PaymentMandateLedger.authorize_charge(**request), range(2)))
+    assert all(outcome["authorized"] for outcome in outcomes)
+    assert sum(bool(outcome.get("replayed")) for outcome in outcomes) == 1
+    stored = PaymentMandateLedger.get_mandate(agency_id=agency_id, mandate_id=mandate.mandate_id)
+    assert stored["consumed_amount_cents"] == 10_000
+    wrong_amount = PaymentMandateLedger.authorize_charge(**{**request, "amount_cents": 11_000})
+    assert wrong_amount == {"authorized": False, "reason": "movement_idempotency_key_payload_mismatch"}
+    another = _register(agency_id=agency_id, max_authorized_cents=20_000, scope="balance")
+    wrong_mandate = PaymentMandateLedger.authorize_charge(**{**request, "mandate_id": another.mandate_id})
+    assert wrong_mandate["authorized"] is False
+    # Loading/replaying uses the durable ledger record on SQL, not the memory
+    # outcome cache (which must not become a second source of truth).
+    replay = PaymentMandateLedger.authorize_charge(**request)
+    assert replay["replayed"] is True

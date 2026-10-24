@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 
 /**
  * AT-20 public proposal honesty: an invalid, expired, revoked, or unreachable
@@ -151,5 +151,71 @@ describe('Public proposal page honesty (AT-20)', () => {
     await waitFor(() => {
       expect(screen.getByText(/Demo content/i)).toBeInTheDocument();
     });
+  });
+
+  const proposal = {
+    token: 'tok-revision', trip_id: 'trip-revision',
+    title: 'Kyoto Garden Journey', destination: 'Japan', duration_days: 7,
+    traveler_name: 'Traveler', currency: 'INR', status: 'open',
+    base_price: 125000, selected_total_price: 125000,
+    base_price_usd: 125000, selected_total_price_usd: 125000,
+    revision_id: 'agreement-revision-123', reality_tier: 'persisted_observed',
+    days: [], available_options: [],
+  };
+
+  async function submitAcceptance() {
+    fireEvent.change(screen.getByPlaceholderText('e.g. Priya Sharma'), { target: { value: 'Test Traveler' } });
+    fireEvent.change(screen.getByPlaceholderText('priya@example.com'), { target: { value: 'traveler@example.test' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm & E-Sign Proposal' }));
+  }
+
+  it('binds acceptance to the received revision and displays native currency', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => proposal })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...proposal, status: 'accepted' }) });
+    vi.stubGlobal('fetch', fetch);
+    const { default: PublicProposalPage } = await import('../page');
+    render(<PublicProposalPage params={{ token: proposal.token }} />);
+    await screen.findByPlaceholderText('e.g. Priya Sharma');
+    await submitAcceptance();
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    const body = JSON.parse(fetch.mock.calls[1][1].body);
+    expect(body.revision_id).toBe(proposal.revision_id);
+    expect(screen.queryByText(/125,000 USD/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/₹1,25,000|₹125,000/).length).toBeGreaterThan(0);
+  });
+
+  it('shows a recoverable error when the revision changed before acceptance', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => proposal })
+      .mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({ detail: 'This proposal changed. Review the latest version before accepting.' }) });
+    vi.stubGlobal('fetch', fetch);
+    const { default: PublicProposalPage } = await import('../page');
+    render(<PublicProposalPage params={{ token: proposal.token }} />);
+    await screen.findByPlaceholderText('e.g. Priya Sharma');
+    await submitAcceptance();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/changed|latest version/i);
+    expect(screen.queryByText('Proposal Successfully Accepted')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Review latest proposal/i })).toBeInTheDocument();
+  });
+
+  it('shows previously accepted terms when a new version needs renewed consent', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...proposal,
+        requires_reacceptance: true,
+        accepted_agreement: {
+          revision_id: 'older-revision', selected_total_price: 100000,
+          currency: 'INR', accepted_at: '2026-10-22T10:00:00Z',
+        },
+      }),
+    }));
+    const { default: PublicProposalPage } = await import('../page');
+    render(<PublicProposalPage params={{ token: proposal.token }} />);
+    expect(await screen.findByText(/previously accepted/i)).toBeInTheDocument();
+    expect(screen.getByText(/review.*updated.*proposal|updated.*proposal.*accept/i)).toBeInTheDocument();
+    expect(screen.queryByText('Proposal Successfully Accepted')).not.toBeInTheDocument();
   });
 });

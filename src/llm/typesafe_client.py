@@ -34,6 +34,8 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from .base import record_llm_call
+
 logger = logging.getLogger(__name__)
 
 def _resolve_api_key(explicit_key: Optional[str] = None) -> str:
@@ -300,14 +302,29 @@ class TypesafeJevClient:
         last_error: Optional[Exception] = None
         for attempt in range(self._max_retries + 1):
             try:
+                started = time.perf_counter()
                 with httpx.Client(timeout=self._timeout_s) as client:
                     response = client.post(url, json=payload, headers=headers)
+                latency_ms = (time.perf_counter() - started) * 1000.0
                 if response.status_code == 429 or response.status_code >= 500:
                     last_error = RuntimeError(
                         f"typesafe: transient HTTP {response.status_code}: "
                         f"{response.text[:200]}"
                     )
                 elif response.status_code == 200:
+                    # Jev (System One) exposes no sampling knob — calibrated
+                    # primitives, provider-controlled — so temperature is
+                    # recorded as None, not as a number we never sent.
+                    record_llm_call(
+                        provider="typesafe",
+                        model=str(payload.get("model") or self.model),
+                        prompt=payload.get("state"),
+                        response_text=response.text,
+                        temperature_requested=None,
+                        temperature_effective=None,
+                        latency_ms=latency_ms,
+                        client=self,
+                    )
                     return response.json()
                 else:
                     raise RuntimeError(

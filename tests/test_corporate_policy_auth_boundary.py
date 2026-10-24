@@ -257,11 +257,10 @@ def test_corporate_policy_epistemic_audit_provenance_and_dates(
 
     # Case 2: Trip with missing dates and missing cost
     trip_id_absent = f"trip_cp_abs_{uuid.uuid4().hex[:8]}"
-    boundary_trip_factory(trip_id_absent, CANONICAL_AGENCY_ID)
+    boundary_trip_factory(trip_id_absent, CANONICAL_AGENCY_ID, destination=None)
     trip2 = TripStore.get_trip_for_agency(trip_id_absent, CANONICAL_AGENCY_ID)
     trip2.pop("strategy", None)
     trip2.pop("budget", None)
-    trip2.pop("destination", None)
     TripStore.save_trip(trip2)
 
     resp2 = session_client.post(f"/api/v1/corporate/audit-policy/{trip_id_absent}", json={})

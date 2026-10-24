@@ -104,7 +104,14 @@ _PHONE_PATTERN = re.compile(
     r"(\+91[-\s]?)?((\d{5}[-\s]?\d{5})|(\d{10})|(\d{3}[-\s]?\d{3}[-\s]?\d{4}))"
 )
 _GENERATED_ID_PATTERN = re.compile(
-    r"^(?:draft|trip|pkt|run|ref|pkt_[a-z0-9]+|draft_[a-z0-9]+|trip_[a-z0-9]+|run_[a-z0-9]+)$",
+    # System-generated identifiers: bare known prefixes, or a prefix followed
+    # by underscore-separated segments (e.g. trip_hist_scope_2360617619,
+    # tfu_patch_ab12cd34ef56). Underscore segments were added 2026-10-22 —
+    # snake_case fixture/production ids whose uuid suffix happened to be
+    # all-digits were false-positiving the phone scan. Still anchored: the
+    # WHOLE string must look generated, so freeform text with real phone
+    # numbers never matches.
+    r"^(?:draft|trip|pkt|run|ref)(?:_[a-z0-9]+)*$",
     re.IGNORECASE,
 )
 _MEDICAL_KEYWORDS = re.compile(
@@ -537,11 +544,20 @@ def _uses_plaintext_store() -> bool:
 
 
 def _block_message(reason: str) -> str:
+    # FND-0347 (Sim #4): the remediation must name the control that actually
+    # opens the door. Per the mode matrix (module docstring), the fail-closed
+    # branch is DATA_PRIVACY_MODE (dogfood default, or beta/production over a
+    # plaintext file store); TRIPSTORE_BACKEND/ENCRYPTION_KEY alone change
+    # nothing here.
+    mode = os.getenv("DATA_PRIVACY_MODE", "dogfood").lower().strip()
+    backend = os.getenv("TRIPSTORE_BACKEND", "").strip().lower() or "unset"
     return (
-        f"Real user trip data cannot be persisted in plaintext in this mode. "
+        f"Real user trip data cannot be persisted in plaintext in this mode "
+        f"(DATA_PRIVACY_MODE={mode}, TRIPSTORE_BACKEND={backend}). "
         f"Detected: {reason}. "
-        f"Enable encryption/migration (TRIPSTORE_BACKEND=sql|postgres and "
-        f"ENCRYPTION_KEY) before storing real user data."
+        f"Remediation: run with DATA_PRIVACY_MODE=beta|production over a SQL store "
+        f"(TRIPSTORE_BACKEND=sql|postgres) so encryption/RLS is the boundary — "
+        f"or remove the real-user PII from the request."
     )
 
 

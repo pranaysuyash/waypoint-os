@@ -29,6 +29,8 @@ def test_hybrid_rrf_retrieval(rag_store):
             agency_id="agency_a",
             source_type=DocumentSourceType.ITINERARY_TEMPLATE,
             title="Luxury Beach Escape",
+            embedding_model="md5_word_bucket",
+            embedding_dimension=3,
         ),
         token_count=10,
     )
@@ -42,6 +44,8 @@ def test_hybrid_rrf_retrieval(rag_store):
             agency_id="agency_a",
             source_type=DocumentSourceType.SUPPLIER_CONTRACT,
             title="Amanpuri Contract",
+            embedding_model="md5_word_bucket",
+            embedding_dimension=3,
         ),
         token_count=8,
     )
@@ -136,6 +140,8 @@ def test_graph_edge_traversal_boosted_retrieval(rag_store):
             source_type=DocumentSourceType.ITINERARY_TEMPLATE,
             title="Ryokan Profile",
             entity_references=["hotel:hoshinoya"],
+            embedding_model="md5_word_bucket",
+            embedding_dimension=3,
         ),
         token_count=9,
     )

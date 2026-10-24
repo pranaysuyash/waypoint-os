@@ -112,7 +112,9 @@ def test_tier3_contextual_fatigue_evaluation():
 
     result = scorer.score(activity, participant, context_fatigued)
 
-    assert result.source == "llm"
+    # No llm_client → the contextual heuristic served; it must not claim a
+    # model evaluated this (FND-0355 — previously pinned the lie as "llm").
+    assert result.source == "rule"
     assert any("fatigue" in w.lower() for w in result.warnings)
     assert result.tier == "discourage"
 
@@ -131,9 +133,9 @@ def test_tier3_cache_hit_and_reuse():
     participant = ParticipantRef(kind="person", ref_id="p1", label="adult", metadata={"medical": "hypertension"})
     context = SuitabilityContext(destination_keys=["japan"])
 
-    # First evaluation: evaluates and stores to cache
+    # First evaluation: evaluates (heuristic path, no llm_client) and stores to cache
     res1 = scorer.score(activity, participant, context)
-    assert res1.source == "llm"
+    assert res1.source == "rule"
 
     # Second evaluation: retrieved from cache
     res2 = scorer.score(activity, participant, context)

@@ -1,0 +1,60 @@
+{
+  "name": "rag_specialty_qa_v1",
+  "description": "Deterministic retrieval eval for the Waypoint specialty-knowledge lane (RAGAS-inspired: retrieval hit-rate + negative rejection; faithfulness is enforced by the grounding evaluator's overlap guard). Positive queries must surface the expected niche as the TOP hit through the serving seam (SpecialtyKnowledgeService.identify_niche); negative queries must return no niche at all. Designed against the hash lane; the semantic lane runs the same corpus via tools/rag_eval.py --semantic.",
+  "questions": [
+    {
+      "question": "professor needs field site sampling equipment for a university research grant",
+      "expected_niche": "Academic Research Logistics",
+      "category": "keyword_rich",
+      "negative": false
+    },
+    {
+      "question": "academic expedition taking measurement instruments abroad for a study",
+      "expected_niche": "Academic Research Logistics",
+      "category": "paraphrase",
+      "negative": false
+    },
+    {
+      "question": "repatriation of remains with death certificate and funeral casket transport",
+      "expected_niche": "Human Remains Repatriation",
+      "category": "keyword_rich",
+      "negative": false
+    },
+    {
+      "question": "scuba diving expedition using nitrox compressor and saturation rebreather gear",
+      "expected_niche": "Sub-Aquatic & Diving Operations",
+      "category": "keyword_rich",
+      "negative": false
+    },
+    {
+      "question": "post-op surgery recovery patient planning dental clinic treatment abroad",
+      "expected_niche": "Medical Tourism & Post-Op Recovery",
+      "category": "keyword_rich",
+      "negative": false
+    },
+    {
+      "question": "conference exhibition with keynote speakers and delegate summit logistics",
+      "expected_niche": "MICE (Meetings & Incentives)",
+      "category": "keyword_rich",
+      "negative": false
+    },
+    {
+      "question": "what is the weather like in paris tomorrow morning",
+      "expected_niche": null,
+      "category": "out_of_domain",
+      "negative": true
+    },
+    {
+      "question": "qwerty zzz xkcd flibbertigibbet",
+      "expected_niche": null,
+      "category": "gibberish",
+      "negative": true
+    },
+    {
+      "question": "my cat knocked over a plant",
+      "expected_niche": null,
+      "category": "non_travel",
+      "negative": true
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "route_count": 388,
+  "route_count": 397,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -2146,6 +2146,22 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/price-lock/{trip_id}/fare-drop/disposition",
+      "name": "get_fare_drop_disposition",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/price-lock/{trip_id}/fare-drop/disposition",
+      "name": "update_fare_drop_disposition",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/price-lock/{trip_id}/re-lock",
       "name": "re_lock_lower_rate",
       "methods": [
@@ -2188,6 +2204,62 @@
     {
       "path": "/api/v1/proposals/{trip_id}/trust-scorecard",
       "name": "get_proposal_trust_scorecard",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/rag/documents",
+      "name": "list_documents",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/rag/documents/index",
+      "name": "index_document",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/rag/edges",
+      "name": "add_knowledge_edge",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/rag/nodes",
+      "name": "get_knowledge_nodes",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/rag/nodes",
+      "name": "add_knowledge_node",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/rag/query",
+      "name": "query_rag",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/rag/status",
+      "name": "rag_status",
       "methods": [
         "GET"
       ],

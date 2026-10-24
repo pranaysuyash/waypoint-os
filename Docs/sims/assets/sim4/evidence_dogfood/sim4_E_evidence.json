@@ -1,0 +1,2757 @@
+[
+  {
+    "step": "login",
+    "request": {
+      "url": "/api/auth/login"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "user": {
+        "id": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+        "email": "newuser@test.com",
+        "name": "New User",
+        "platform_role": "none"
+      },
+      "agency": {
+        "id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "name": "Test",
+        "slug": "test",
+        "logo_url": null
+      },
+      "membership": {
+        "role": "owner",
+        "is_primary": true
+      }
+    },
+    "at": "2026-10-21T15:33:09.775940+00:00"
+  },
+  {
+    "step": "E1-draft",
+    "request": {
+      "method": "POST",
+      "path": "/api/drafts",
+      "json": {
+        "name": "solo trip to japan (tokyo + kyoto) for 12 days at the end of",
+        "customer_message": "solo trip to japan (tokyo + kyoto) for 12 days at the end of march for the cherry blossoms. indian passport, expires 15 aug 2027. budget ₹2.2 lakh. i eat only vegetarian and i'm a bit nervous about the language barrier — would love help with that."
+      }
+    },
+    "status": 200,
+    "response": {
+      "draft_id": "draft_a79545891d2c",
+      "name": "solo trip to japan (tokyo + kyoto) for 12 days at the end of",
+      "status": "open",
+      "created_at": "2026-10-21T15:33:09.784836+00:00"
+    },
+    "at": "2026-10-21T15:33:09.814917+00:00"
+  },
+  {
+    "step": "E1-run",
+    "request": {
+      "method": "POST",
+      "path": "/run",
+      "json": {
+        "raw_note": "solo trip to japan (tokyo + kyoto) for 12 days at the end of march for the cherry blossoms. indian passport, expires 15 aug 2027. budget ₹2.2 lakh. i eat only vegetarian and i'm a bit nervous about the language barrier — would love help with that.",
+        "draft_id": "draft_a79545891d2c"
+      }
+    },
+    "status": 200,
+    "response": {
+      "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+      "state": "queued",
+      "idempotent_replay": false
+    },
+    "at": "2026-10-21T15:33:09.835300+00:00"
+  },
+  {
+    "step": "E1-poll",
+    "request": {
+      "method": "GET",
+      "path": "/runs/445c2d2a-5b33-450f-bde1-81f465f124f1"
+    },
+    "status": 200,
+    "response": {
+      "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+      "state": "running",
+      "trip_id": null,
+      "stage": "discovery",
+      "operating_mode": "normal_intake",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "created_at": "2026-10-21T15:33:09.822561+00:00",
+      "started_at": "2026-10-21T15:33:09.837519+00:00",
+      "completed_at": null,
+      "total_ms": null,
+      "steps_completed": [
+        "packet",
+        "validation"
+      ],
+      "events": [
+        {
+          "event_id": "evt_0da4e645",
+          "event_type": "run_started",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:09.868511+00:00",
+          "stage": "discovery",
+          "operating_mode": "normal_intake"
+        },
+        {
+          "event_id": "evt_e54f9e22",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:09.872909+00:00",
+          "stage_name": "packet"
+        },
+        {
+          "event_id": "evt_22df0b8c",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:10.384282+00:00",
+          "stage_name": "packet",
+          "execution_ms": 511.35
+        },
+        {
+          "event_id": "evt_c91a8d22",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:10.386764+00:00",
+          "stage_name": "validation"
+        },
+        {
+          "event_id": "evt_972f9ab2",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:10.392940+00:00",
+          "stage_name": "validation",
+          "execution_ms": 6.18
+        }
+      ],
+      "error_type": null,
+      "error_message": null,
+      "stage_at_failure": null,
+      "block_reason": null,
+      "validation": {
+        "status": "ESCALATED",
+        "stage": "intake_extraction",
+        "gate": "intake_completion",
+        "legacy_gate": "NB01",
+        "reasons": [
+          "Structural validation failed (1 error)"
+        ]
+      },
+      "packet": {
+        "packet_id": "pkt_ec1f0033",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Solo"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "solo",
+                "ref_id": "ref_4ad710",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873720",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_44c0e2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873738",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 12,
+              "max": 12
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "12 days",
+                "ref_id": "ref_a8148f",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873887",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_raw_text": {
+            "value": "budget ₹2.2 lakh",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_f1f3f2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873968",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_min": {
+            "value": 220000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_3c008a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873975",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_max": {
+            "value": 220000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_a4bd0b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873983",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_currency": {
+            "value": "INR",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_e3e53e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873996",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_flexibility": {
+            "value": "firm",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "firm",
+                "ref_id": "ref_299ca4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.874021",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from budget context",
+                "ref_id": "ref_1b99af",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.874094",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "meal_preferences": {
+            "value": "vegetarian",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "vegetarian",
+                "ref_id": "ref_13d979",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875065",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "soft_preferences": {
+            "value": [
+              "help with that"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "['help with that']",
+                "ref_id": "ref_ac8b2b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875076",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_priorities": {
+            "value": [
+              "vegetarian food"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "['vegetarian food']",
+                "ref_id": "ref_3a4a8c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875083",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_7bf7a1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875150",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "visa_concerns_present": {
+            "value": true,
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "Stage-gated passport/visa concern detected for visa_concerns_present",
+                "ref_id": "ref_ecbb87",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875139",
+            "notes": null,
+            "maturity": "heuristic",
+            "epistemic_status": {}
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_0009a4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875195",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "feedback": null,
+        "raw_note": null,
+        "suitability_flags": [],
+        "ambiguities": [],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "party_size",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_0f821b6d"
+        ],
+        "revision_count": 0,
+        "event_cursor": 19,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873729",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Solo"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873740",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873889",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 12,
+                "max": 12
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873970",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget ₹2.2 lakh"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873977",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 220000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873984",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 220000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873998",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.874023",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "firm"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.874095",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875068",
+            "details": {
+              "field_name": "meal_preferences",
+              "old_value": null,
+              "new_value": "vegetarian"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875078",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "help with that"
+              ]
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875084",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food"
+              ]
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:03:09.875142",
+            "details": {
+              "field_name": "visa_concerns_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875151",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:03:09.875197",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875212",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875214",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875215",
+            "details": {
+              "field_name": "party_size",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875217",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "assumptions": [
+          {
+            "slot_name": "budget_scope",
+            "assumed_value": "total",
+            "rationale": "Value defaulted by system business rules — no explicit traveler input for 'budget_scope'. Epistemic status: ASSUMED. Operator confirmation recommended.",
+            "criticality": "critical",
+            "created_at": "2026-10-21T21:03:09.875224",
+            "acknowledged_by_operator": false,
+            "operator_notes": null,
+            "source_field": "budget"
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 1.0,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.97); dates_clarity=True (noul=0.83); party_clarity=True (noul=0.95); budget_clarity=True (noul=0.85); intake_action=PROCEED (p=1.0, conf=1.0); coherence_override=blocking_unknowns:[origin_city,date_window,party_size,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "decision_state": null,
+      "follow_up_questions": [],
+      "hard_blockers": [],
+      "soft_blockers": [],
+      "branch_options": [],
+      "report_fingerprint": null,
+      "access_token": null,
+      "retention_days": null,
+      "frontier_result": null
+    },
+    "at": "2026-10-21T15:33:10.502923+00:00"
+  },
+  {
+    "step": "E1-poll",
+    "request": {
+      "method": "GET",
+      "path": "/runs/445c2d2a-5b33-450f-bde1-81f465f124f1"
+    },
+    "status": 200,
+    "response": {
+      "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+      "state": "blocked",
+      "trip_id": "trip_3e25ac985434",
+      "stage": "discovery",
+      "operating_mode": "normal_intake",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "created_at": "2026-10-21T15:33:09.822561+00:00",
+      "started_at": "2026-10-21T15:33:09.837519+00:00",
+      "completed_at": "2026-10-21T15:33:12.532313+00:00",
+      "total_ms": null,
+      "steps_completed": [
+        "packet",
+        "validation",
+        "decision",
+        "strategy",
+        "blocked_result"
+      ],
+      "events": [
+        {
+          "event_id": "evt_0da4e645",
+          "event_type": "run_started",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:09.868511+00:00",
+          "stage": "discovery",
+          "operating_mode": "normal_intake"
+        },
+        {
+          "event_id": "evt_e54f9e22",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:09.872909+00:00",
+          "stage_name": "packet"
+        },
+        {
+          "event_id": "evt_22df0b8c",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:10.384282+00:00",
+          "stage_name": "packet",
+          "execution_ms": 511.35
+        },
+        {
+          "event_id": "evt_c91a8d22",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:10.386764+00:00",
+          "stage_name": "validation"
+        },
+        {
+          "event_id": "evt_972f9ab2",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:33:10.392940+00:00",
+          "stage_name": "validation",
+          "execution_ms": 6.18
+        },
+        {
+          "event_id": "evt_24d98fb5",
+          "event_type": "run_blocked",
+          "run_id": "445c2d2a-5b33-450f-bde1-81f465f124f1",
+          "trip_id": "trip_3e25ac985434",
+          "timestamp": "2026-10-21T15:33:12.558641+00:00",
+          "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
+          "stage_at_block": "validation"
+        }
+      ],
+      "error_type": null,
+      "error_message": null,
+      "stage_at_failure": null,
+      "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
+      "validation": {
+        "status": "ESCALATED",
+        "stage": "intake_extraction",
+        "gate": "intake_completion",
+        "legacy_gate": "NB01",
+        "reasons": [
+          "Structural validation failed (1 error)"
+        ]
+      },
+      "packet": {
+        "packet_id": "pkt_ec1f0033",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Solo"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "solo",
+                "ref_id": "ref_4ad710",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873720",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_44c0e2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873738",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 12,
+              "max": 12
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "12 days",
+                "ref_id": "ref_a8148f",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873887",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_raw_text": {
+            "value": "budget ₹2.2 lakh",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_f1f3f2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873968",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_min": {
+            "value": 220000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_3c008a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873975",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_max": {
+            "value": 220000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_a4bd0b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873983",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_currency": {
+            "value": "INR",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_e3e53e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873996",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_flexibility": {
+            "value": "firm",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "firm",
+                "ref_id": "ref_299ca4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.874021",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from budget context",
+                "ref_id": "ref_1b99af",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.874094",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "meal_preferences": {
+            "value": "vegetarian",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "vegetarian",
+                "ref_id": "ref_13d979",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875065",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "soft_preferences": {
+            "value": [
+              "help with that"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "['help with that']",
+                "ref_id": "ref_ac8b2b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875076",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_priorities": {
+            "value": [
+              "vegetarian food"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "['vegetarian food']",
+                "ref_id": "ref_3a4a8c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875083",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_7bf7a1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875150",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "visa_concerns_present": {
+            "value": true,
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "Stage-gated passport/visa concern detected for visa_concerns_present",
+                "ref_id": "ref_ecbb87",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875139",
+            "notes": null,
+            "maturity": "heuristic",
+            "epistemic_status": {}
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_0009a4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875195",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "feedback": null,
+        "raw_note": null,
+        "suitability_flags": [],
+        "ambiguities": [],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "party_size",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_0f821b6d"
+        ],
+        "revision_count": 0,
+        "event_cursor": 19,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873729",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Solo"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873740",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873889",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 12,
+                "max": 12
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873970",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget ₹2.2 lakh"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873977",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 220000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873984",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 220000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873998",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.874023",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "firm"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.874095",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875068",
+            "details": {
+              "field_name": "meal_preferences",
+              "old_value": null,
+              "new_value": "vegetarian"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875078",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "help with that"
+              ]
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875084",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food"
+              ]
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:03:09.875142",
+            "details": {
+              "field_name": "visa_concerns_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875151",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:03:09.875197",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875212",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875214",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875215",
+            "details": {
+              "field_name": "party_size",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875217",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "assumptions": [
+          {
+            "slot_name": "budget_scope",
+            "assumed_value": "total",
+            "rationale": "Value defaulted by system business rules — no explicit traveler input for 'budget_scope'. Epistemic status: ASSUMED. Operator confirmation recommended.",
+            "criticality": "critical",
+            "created_at": "2026-10-21T21:03:09.875224",
+            "acknowledged_by_operator": false,
+            "operator_notes": null,
+            "source_field": "budget"
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 1.0,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.97); dates_clarity=True (noul=0.83); party_clarity=True (noul=0.95); budget_clarity=True (noul=0.85); intake_action=PROCEED (p=1.0, conf=1.0); coherence_override=blocking_unknowns:[origin_city,date_window,party_size,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "decision_state": "STOP_NEEDS_REVIEW",
+      "follow_up_questions": [
+        {
+          "field_name": "origin_city",
+          "priority": "high",
+          "question": "Please provide origin city to continue planning."
+        },
+        {
+          "field_name": "date_window",
+          "priority": "high",
+          "question": "Please provide date window to continue planning."
+        },
+        {
+          "field_name": "party_size",
+          "priority": "high",
+          "question": "Please provide party size to continue planning."
+        },
+        {
+          "field_name": "trip_purpose",
+          "priority": "high",
+          "question": "Please provide trip purpose to continue planning."
+        }
+      ],
+      "hard_blockers": [
+        "extraction_quality"
+      ],
+      "soft_blockers": [],
+      "branch_options": [],
+      "report_fingerprint": null,
+      "access_token": null,
+      "retention_days": null,
+      "frontier_result": null,
+      "draft_id": "draft_a79545891d2c"
+    },
+    "at": "2026-10-21T15:33:13.594759+00:00"
+  },
+  {
+    "step": "trip-trip_3e25ac9",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_3e25ac985434"
+    },
+    "status": 200,
+    "response": {
+      "id": "trip_3e25ac985434",
+      "status": "incomplete",
+      "stage": "discovery",
+      "dateWindow": null,
+      "destination": "Solo",
+      "origin": null,
+      "budget": "budget ₹2.2 lakh",
+      "party": 1,
+      "tripType": "leisure",
+      "tripPurpose": "leisure",
+      "customerName": "Client 985434",
+      "customerMessage": null,
+      "agentNotes": null,
+      "follow_up_due_date": null,
+      "extracted": {
+        "packet_id": "pkt_ec1f0033",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Solo"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "solo",
+                "ref_id": "ref_4ad710",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873720",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "destination_status": {
+            "value": "definite",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_44c0e2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873738",
+            "notes": null,
+            "epistemic_status": "INFERRED"
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 12,
+              "max": 12
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "12 days",
+                "ref_id": "ref_a8148f",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873887",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_raw_text": {
+            "value": "budget ₹2.2 lakh",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_f1f3f2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873968",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_min": {
+            "value": 220000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_3c008a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873975",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_max": {
+            "value": 220000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_a4bd0b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873983",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_currency": {
+            "value": "INR",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "budget ₹2.2 lakh",
+                "ref_id": "ref_e3e53e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.873996",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_flexibility": {
+            "value": "firm",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "firm",
+                "ref_id": "ref_299ca4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.874021",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from budget context",
+                "ref_id": "ref_1b99af",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.874094",
+            "notes": null,
+            "epistemic_status": "ASSUMED"
+          },
+          "meal_preferences": {
+            "value": "vegetarian",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "vegetarian",
+                "ref_id": "ref_13d979",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875065",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "soft_preferences": {
+            "value": [
+              "help with that"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "['help with that']",
+                "ref_id": "ref_ac8b2b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875076",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "trip_priorities": {
+            "value": [
+              "vegetarian food"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "['vegetarian food']",
+                "ref_id": "ref_3a4a8c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875083",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_7bf7a1",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875150",
+            "notes": null,
+            "epistemic_status": "FACT"
+          }
+        },
+        "derived_signals": {
+          "visa_concerns_present": {
+            "value": true,
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_0f821b6d",
+                "evidence_type": "text_span",
+                "excerpt": "Stage-gated passport/visa concern detected for visa_concerns_present",
+                "ref_id": "ref_ecbb87",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875139",
+            "notes": null,
+            "maturity": "heuristic",
+            "epistemic_status": "INFERRED"
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_0009a4",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:03:09.875195",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": "INFERRED"
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "ambiguities": [],
+        "unknowns": [
+          {
+            "field_name": "origin_city",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "party_size",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          },
+          {
+            "field_name": "trip_purpose",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote, booking [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "assumptions": [
+          {
+            "slot_name": "budget_scope",
+            "assumed_value": "total",
+            "rationale": "Value defaulted by system business rules — no explicit traveler input for 'budget_scope'. Epistemic status: ASSUMED. Operator confirmation recommended.",
+            "criticality": "critical",
+            "created_at": "2026-10-21T21:03:09.875224",
+            "acknowledged_by_operator": false,
+            "operator_notes": null,
+            "source_field": "budget"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_0f821b6d"
+        ],
+        "revision_count": 0,
+        "event_cursor": 19,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873729",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Solo"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873740",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "definite"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873889",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 12,
+                "max": 12
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873970",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget ₹2.2 lakh"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873977",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 220000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873984",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 220000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.873998",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.874023",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "firm"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.874095",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875068",
+            "details": {
+              "field_name": "meal_preferences",
+              "old_value": null,
+              "new_value": "vegetarian"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875078",
+            "details": {
+              "field_name": "soft_preferences",
+              "old_value": null,
+              "new_value": [
+                "help with that"
+              ]
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875084",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food"
+              ]
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:03:09.875142",
+            "details": {
+              "field_name": "visa_concerns_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:03:09.875151",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:03:09.875197",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875212",
+            "details": {
+              "field_name": "origin_city",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875214",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875215",
+            "details": {
+              "field_name": "party_size",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:03:09.875217",
+            "details": {
+              "field_name": "trip_purpose",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 1.0,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.97); dates_clarity=True (noul=0.83); party_clarity=True (noul=0.95); budget_clarity=True (noul=0.85); intake_action=PROCEED (p=1.0, conf=1.0); coherence_override=blocking_unknowns:[origin_city,date_window,party_size,trip_purpose]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'party_size' missing — needed to generate a quote, but trip can still be saved",
+            "field": "party_size"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "meal_preferences": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "strategy": {
+        "session_goal": "Gate failure — early exit.",
+        "priority_sequence": [],
+        "tonal_guardrails": [],
+        "risk_flags": [],
+        "suggested_opening": "",
+        "exit_criteria": [],
+        "next_action": "STOP_NEEDS_REVIEW",
+        "assumptions": [],
+        "suggested_tone": "professional"
+      },
+      "frontier_result": null,
+      "safety": null,
+      "party_composition": null,
+      "pace_preference": null,
+      "date_year_confidence": null,
+      "lead_source": null,
+      "activity_provenance": null,
+      "activity_interests": null,
+      "trip_priorities": "vegetarian food",
+      "date_flexibility": null,
+      "passenger_claim": null,
+      "ghost_concierge": null,
+      "traveler_answers": null,
+      "reassess": null,
+      "decision": {
+        "packet_id": "pkt_ec1f0033",
+        "current_stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": "STOP_NEEDS_REVIEW",
+        "hard_blockers": [
+          "extraction_quality"
+        ],
+        "soft_blockers": [],
+        "ambiguities": [],
+        "contradictions": [],
+        "follow_up_questions": [
+          {
+            "field_name": "origin_city",
+            "priority": "high",
+            "question": "Please provide origin city to continue planning."
+          },
+          {
+            "field_name": "date_window",
+            "priority": "high",
+            "question": "Please provide date window to continue planning."
+          },
+          {
+            "field_name": "party_size",
+            "priority": "high",
+            "question": "Please provide party size to continue planning."
+          },
+          {
+            "field_name": "trip_purpose",
+            "priority": "high",
+            "question": "Please provide trip purpose to continue planning."
+          }
+        ],
+        "branch_options": [],
+        "rationale": {
+          "gate_failure": "intake_completion",
+          "reasons": [
+            "Structural validation failed (1 error)"
+          ]
+        },
+        "confidence": {
+          "data_quality": 0.0,
+          "judgment_confidence": 0.0,
+          "commercial_confidence": 0.0,
+          "overall": 0.0
+        },
+        "risk_flags": [],
+        "suitability_profile": null,
+        "commercial_decision": "NONE",
+        "intent_scores": {},
+        "next_best_action": null,
+        "commercial_next_action": null,
+        "travel_next_action": null,
+        "budget_breakdown": null,
+        "decision_id": null
+      },
+      "updated_at": null,
+      "flight_status_updates": null,
+      "traveler_asks": null,
+      "booking_data": null,
+      "pending_booking_data": null,
+      "analytics": {
+        "margin_pct": 18.0,
+        "quality_score": 58.0,
+        "quality_breakdown": {
+          "completeness": 0.0,
+          "feasibility": 50.0,
+          "risk": 100.0,
+          "profitability": 76.7
+        },
+        "requires_review": true,
+        "review_reason": "Decision state STOP_NEEDS_REVIEW requires owner review",
+        "feedback_reopen": false,
+        "feedback_severity": null,
+        "followup_needed": false,
+        "recovery_status": null,
+        "recovery_started_at": null,
+        "recovery_deadline": null,
+        "is_escalated": true,
+        "sla_status": "on_track",
+        "owner_review_deadline": "2026-10-21T17:33:12.407545+00:00",
+        "escalation_severity": "critical",
+        "approval_required_for_send": true,
+        "send_policy_reason": "Trip is in review-required state; Decision state STOP_NEEDS_REVIEW; Confidence below threshold (0.75)",
+        "revision_count": 0
+      },
+      "fees": null
+    },
+    "at": "2026-10-21T15:33:13.622485+00:00"
+  },
+  {
+    "step": "E1-packet",
+    "packet_summary": {
+      "trip_id": "trip_3e25ac985434",
+      "status": "incomplete",
+      "decision_state": null,
+      "facts": {
+        "destination_candidates": {
+          "value": [
+            "Solo"
+          ],
+          "confidence": 0.5,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_0f821b6d",
+              "evidence_type": "text_span",
+              "excerpt": "solo",
+              "ref_id": "ref_4ad710",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:03:09.873720",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "destination_status": {
+          "value": "definite",
+          "confidence": 0.8,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_0f821b6d",
+              "evidence_type": "text_span",
+              "excerpt": "Derived from destination text",
+              "ref_id": "ref_44c0e2",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:03:09.873738",
+          "notes": null,
+          "epistemic_status": "INFERRED"
+        },
+        "budget_min": {
+          "value": 220000,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_0f821b6d",
+              "evidence_type": "text_span",
+              "excerpt": "budget ₹2.2 lakh",
+              "ref_id": "ref_3c008a",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:03:09.873975",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "budget_max": {
+          "value": 220000,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_0f821b6d",
+              "evidence_type": "text_span",
+              "excerpt": "budget ₹2.2 lakh",
+              "ref_id": "ref_a4bd0b",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:03:09.873983",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "budget_scope": {
+          "value": "total",
+          "confidence": 0.7,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_0f821b6d",
+              "evidence_type": "text_span",
+              "excerpt": "Derived from budget context",
+              "ref_id": "ref_1b99af",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:03:09.874094",
+          "notes": null,
+          "epistemic_status": "ASSUMED"
+        },
+        "budget_flexibility": {
+          "value": "firm",
+          "confidence": 0.85,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_0f821b6d",
+              "evidence_type": "text_span",
+              "excerpt": "firm",
+              "ref_id": "ref_299ca4",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:03:09.874021",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "budget_currency": {
+          "value": "INR",
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_0f821b6d",
+              "evidence_type": "text_span",
+              "excerpt": "budget ₹2.2 lakh",
+              "ref_id": "ref_e3e53e",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:03:09.873996",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "soft_preferences": {
+          "value": [
+            "help with that"
+          ],
+          "confidence": 0.8,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_0f821b6d",
+              "evidence_type": "text_span",
+              "excerpt": "['help with that']",
+              "ref_id": "ref_ac8b2b",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:03:09.875076",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "meal_preferences": {
+          "value": "vegetarian",
+          "confidence": 0.8,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_0f821b6d",
+              "evidence_type": "text_span",
+              "excerpt": "vegetarian",
+              "ref_id": "ref_13d979",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:03:09.875065",
+          "notes": null,
+          "epistemic_status": "FACT"
+        }
+      },
+      "packet": {},
+      "unknowns": null,
+      "follow_up_questions": [
+        {
+          "field_name": "origin_city",
+          "priority": "high",
+          "question": "Please provide origin city to continue planning."
+        },
+        {
+          "field_name": "date_window",
+          "priority": "high",
+          "question": "Please provide date window to continue planning."
+        },
+        {
+          "field_name": "party_size",
+          "priority": "high",
+          "question": "Please provide party size to continue planning."
+        },
+        {
+          "field_name": "trip_purpose",
+          "priority": "high",
+          "question": "Please provide trip purpose to continue planning."
+        }
+      ],
+      "branch_options": [],
+      "strategy_cost": null,
+      "strategy_currency": null,
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'origin_city' missing — needed to generate a quote, but trip can still be saved",
+            "field": "origin_city"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'party_size' missing — needed to generate a quote, but trip can still be saved",
+            "field": "party_size"
+          },
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'trip_purpose' missing — needed to generate a quote, but trip can still be saved",
+            "field": "trip_purpose"
+          }
+        ],
+        "ambiguity_report": [],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "destination_status": 1,
+          "trip_duration_days": 1,
+          "budget_raw_text": 1,
+          "budget_min": 1,
+          "budget_max": 1,
+          "budget_currency": 1,
+          "budget_flexibility": 1,
+          "budget_scope": 1,
+          "meal_preferences": 1,
+          "soft_preferences": 1,
+          "trip_priorities": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "traveler_asks": null,
+      "traveler_answers": null,
+      "passenger_claim": false,
+      "ghost_concierge": false,
+      "date_window": null,
+      "supersession": null
+    }
+  },
+  {
+    "step": "E-visa-check-IN-JP",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/visa-radar/check",
+      "json": {
+        "passport_country": "IN",
+        "destination_country": "JP",
+        "passport_expiry_date": "2027-08-15",
+        "travel_date": "2027-03-25"
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "passport_country": "IN",
+      "destination_country": "JP",
+      "months_validity_remaining": 4.7,
+      "passport_validity_compliant": false,
+      "requires_visa": true,
+      "visa_type_required": "E_VISA",
+      "action_required": "URGENT: Expedite passport renewal immediately before travel",
+      "warnings": [
+        "Passport expires in 4.7 months. JP requires minimum 6 months validity remaining.",
+        "Traveler holding IN passport requires E_VISA to enter JP."
+      ],
+      "registry_match": false
+    },
+    "at": "2026-10-21T15:33:13.638030+00:00"
+  },
+  {
+    "step": "E-visa-check-IN-TH-contrast",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/visa-radar/check",
+      "json": {
+        "passport_country": "IN",
+        "destination_country": "TH",
+        "passport_expiry_date": "2027-08-15",
+        "travel_date": "2027-03-25"
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "passport_country": "IN",
+      "destination_country": "TH",
+      "months_validity_remaining": 4.7,
+      "passport_validity_compliant": false,
+      "requires_visa": true,
+      "visa_type_required": "E_VISA",
+      "action_required": "URGENT: Expedite passport renewal immediately before travel",
+      "warnings": [
+        "Passport expires in 4.7 months. TH requires minimum 6 months validity remaining.",
+        "Traveler holding IN passport requires E_VISA to enter TH."
+      ],
+      "registry_match": true
+    },
+    "at": "2026-10-21T15:33:13.647465+00:00"
+  },
+  {
+    "step": "E-trip-requirements",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/visa-radar/trip_3e25ac985434/requirements"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_3e25ac985434",
+      "destination": "Destination",
+      "passport_country": "UNKNOWN",
+      "visa_required": false,
+      "visa_type": "UNKNOWN",
+      "min_passport_validity_months": 6,
+      "entry_protocol_summary": "Visa radar abstains from a legal determination: this trip is missing traveler passport country/nationality, travel date, passport expiry date.",
+      "application_portal_url": null
+    },
+    "at": "2026-10-21T15:33:13.668962+00:00"
+  }
+]

@@ -2,21 +2,71 @@ from typing import List, Dict, Optional, Literal, Any
 from pydantic import BaseModel, Field
 
 
+class CurrencyTotal(BaseModel):
+    currency: str
+    amount: float
+    amountDecimal: str = Field(default="0", description="Exact recorded decimal sum before display formatting")
+    minorUnitDigits: int = 2
+    tripCount: int = Field(default=0)
+
+
+class MonetaryMeasure(BaseModel):
+    """Money retains its unit and missing-evidence state; no implicit FX."""
+
+    availability: Literal["available", "partial", "unavailable"] = "unavailable"
+    totals: List[CurrencyTotal] = Field(default_factory=list)
+    evidenceTripCount: int = 0
+    missingAmountTripCount: int = 0
+    missingCurrencyTripCount: int = 0
+    excludedPreviewTripCount: int = 0
+    reason: str = "No evidence recorded."
+
+
+class CommercialOutcomes(BaseModel):
+    budgetPipeline: MonetaryMeasure = Field(default_factory=MonetaryMeasure)
+    weightedPipelineBudget: MonetaryMeasure = Field(default_factory=MonetaryMeasure)
+    nearCloseBudget: MonetaryMeasure = Field(default_factory=MonetaryMeasure)
+    bookedCustomerValue: MonetaryMeasure = Field(default_factory=MonetaryMeasure)
+    recordedCustomerCollections: MonetaryMeasure = Field(default_factory=MonetaryMeasure)
+    agencyEarnedRevenue: MonetaryMeasure = Field(default_factory=MonetaryMeasure)
+    agencyRealizedRevenue: MonetaryMeasure = Field(default_factory=MonetaryMeasure)
+
+
+class ActivationSummary(BaseModel):
+    """Lifetime agency progress derived from persisted work, never link clicks."""
+
+    inquiryCount: int = 0
+    needsDetailsCount: int = 0
+    readyBriefCount: int = Field(default=0, description="Inquiries with canonical quote-ready evidence or a recorded approved brief")
+    reviewedBriefCount: int = 0
+    planningStartedCount: int = 0
+    firstValueAchieved: bool = False
+    nextAction: Literal["add_inquiry", "resolve_details", "review_brief", "continue_work"] = "add_inquiry"
+    nextTripId: Optional[str] = None
+
+
 class MonthlyRevenue(BaseModel):
     month: str
-    revenue: float = Field(default=0.0)
+    revenue: Optional[float] = Field(default=None, description="Deprecated single-currency customer booking value; not agency revenue")
     inquiries: int = Field(default=0)
     booked: int = Field(default=0)
+    currency: Optional[str] = None
+    customerValueByCurrency: List[CurrencyTotal] = Field(default_factory=list)
 
 
 class RevenueMetrics(BaseModel):
     period: str = Field(default="30d")
-    totalPipelineValue: float = Field(default=0.0)
-    bookedRevenue: float = Field(default=0.0)
-    projectedRevenue: float = Field(default=0.0)
-    nearCloseRevenue: float = Field(default=0.0)
-    avgTripValue: float = Field(default=0.0)
+    periodStart: Optional[str] = None
+    periodEnd: Optional[str] = None
+    snapshotBasis: str = "Pipeline budgets and recorded collections are current cumulative snapshots."
+    currency: Optional[str] = Field(default=None, description="Unit of legacy scalar fields; null when units differ or evidence is incomplete")
+    totalPipelineValue: Optional[float] = Field(default=None, description="Deprecated single-currency pipeline budget, never earned revenue")
+    bookedRevenue: Optional[float] = Field(default=None, description="Deprecated alias for receipt-backed customer booking value, never agency revenue")
+    projectedRevenue: Optional[float] = Field(default=None, description="Deprecated assumed customer value (booked value plus stage-weighted budgets)")
+    nearCloseRevenue: Optional[float] = Field(default=None, description="Deprecated single-currency budget of output/safety pipeline stages")
+    avgTripValue: Optional[float] = Field(default=None, description="Deprecated mean budget in one known currency")
     revenueByMonth: List[MonthlyRevenue] = Field(default_factory=list)
+    commercial: CommercialOutcomes = Field(default_factory=CommercialOutcomes)
 
 
 
@@ -37,14 +87,16 @@ class InsightsSummary(BaseModel):
         default=None,
         description="Hours from creation to first status transition; None until timing data exists",
     )
-    pipelineValue: float = Field(default=0.0)
-    # FND-0269 (2026-09-11): gross merchandise value = sum of recorded trip
-    # budgets for terminal-status trips (booked/delivered/completed). Real
-    # recorded values only; 0.0 when none exist — never a placeholder.
-    gmv: float = Field(
-        default=0.0,
-        description="Gross merchandise value: sum of recorded trip budgets for terminal-status trips",
+    pipelineValue: Optional[float] = Field(default=None, description="Deprecated single-currency current pipeline budget")
+    gmv: Optional[float] = Field(
+        default=None,
+        description="Deprecated single-currency receipt-backed customer booking value; not budget or agency revenue",
     )
+    currency: Optional[str] = None
+    period: str = "all"
+    periodStart: Optional[str] = None
+    periodEnd: Optional[str] = None
+    activation: ActivationSummary = Field(default_factory=ActivationSummary)
     pipelineVelocity: PipelineVelocity = Field(default_factory=PipelineVelocity)
 
 

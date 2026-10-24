@@ -643,6 +643,11 @@ class BookingConfirmation(Base):
     )
 
     confirmation_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Opaque itinerary component identity, independent of encrypted PNR/PII.
+    # Existing writers retain their historical one-per-type replay slot.
+    component_key: Mapped[str] = mapped_column(
+        String(96), nullable=False, default="primary", server_default="primary"
+    )
     confirmation_status: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="draft"
     )
@@ -686,17 +691,15 @@ class BookingConfirmation(Base):
         Index("ix_bc_status", "confirmation_status"),
         Index("ix_bc_type", "confirmation_type"),
         Index("ix_bc_trip_status", "trip_id", "confirmation_status"),
-        # Part-J #3 (2026-09-07): at most ONE active confirmation per
-        # (trip, type). Voids are excluded so a legitimate re-issue after a
-        # void stays legal. This is the durable guard against duplicate
-        # confirmation rows from concurrent or replayed fulfillment repairs —
-        # the failure mode codex flagged when replay-repair landed without a
-        # uniqueness backstop. Mirrored in alembic revision
-        # ``bc_active_type_uniqueness``.
+        # Extends Part-J replay protection to real multi-component itineraries.
+        # Legacy records/writers use primary; void history remains reusable.
+        # Migration: bc_component_identity (preservation analysis in audit doc).
         Index(
-            "uq_bc_trip_type_active",
+            "uq_bc_component_active",
+            "agency_id",
             "trip_id",
             "confirmation_type",
+            "component_key",
             unique=True,
             sqlite_where=text("confirmation_status != 'voided'"),
             postgresql_where=text("confirmation_status != 'voided'"),

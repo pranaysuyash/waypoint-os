@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 
 from src.evals.audit.rules.extraction import (
     ExtractionFixture,
@@ -178,6 +179,28 @@ class TestCompareFixture:
         assert len(mismatches) == 1
         assert mismatches[0].field_name == "full_name"
 
+    @pytest.mark.parametrize("mode", ["exact", "contains"])
+    def test_wrong_populated_value_reduces_precision_and_recall(self, mode) -> None:
+        fixture = _fixture(expected={"full_name": "JOHN DOE", "passport_number": "AB123456"})
+        comp = compare_fixture(
+            fixture, {"full_name": "JOHN DOE", "passport_number": "WRONG999"}, mode=mode
+        )
+        # Independently counted: one correct prediction out of two attempted
+        # predictions and two required values. A wrong value is not an omission.
+        assert comp.precision == 0.5
+        assert comp.recall == 0.5
+        assert comp.f1 == 0.5
+
+    def test_contains_eligible_value_is_mismatch_under_exact_policy(self) -> None:
+        fixture = _fixture(expected={"nationality": "BRITISH CITIZEN"})
+        actual = {"nationality": "BRITISH CITIZEN (UNITED KINGDOM)"}
+        exact = compare_fixture(fixture, actual, mode="exact")
+        contains = compare_fixture(fixture, actual, mode="contains")
+        assert exact.field_comparisons[0].match_type == "mismatch"
+        assert exact.f1 == 0.0
+        assert contains.field_comparisons[0].match_type == "contains_match"
+        assert contains.f1 == 1.0
+
     def test_contains_mode(self) -> None:
         fixture = _fixture(expected={
             "full_name": "BRITISH CITIZEN",
@@ -209,6 +232,40 @@ class TestCompareFixture:
 
 
 class TestAggregateComparisons:
+    def test_wrong_values_count_in_field_and_micro_average_denominators(self) -> None:
+        fixtures = [
+            _fixture(fixture_id="correct", expected={"passport_number": "AB123456"}),
+            _fixture(fixture_id="wrong", expected={"passport_number": "AB123456"}),
+        ]
+        report = run_extraction_eval(fixtures, saved_results={
+            "correct": {"passport_number": "AB123456"},
+            "wrong": {"passport_number": "WRONG999"},
+        })
+        field = report.overall.field_metrics["passport_number"]
+        assert field.total_expected == 2
+        assert field.total_extracted == 2
+        assert field.mismatches == 1
+        assert field.false_negatives == 0  # Preserve omission diagnostics.
+        assert (field.precision, field.recall, field.f1) == (0.5, 0.5, 0.5)
+        assert (
+            report.overall.overall_precision,
+            report.overall.overall_recall,
+            report.overall.overall_f1,
+        ) == (0.5, 0.5, 0.5)
+        assert report.by_document_type["passport"].overall_f1 == 0.5
+        assert report.by_difficulty["easy"].overall_f1 == 0.5
+        assert report.summary()["overall"]["f1"] == 0.5
+
+    def test_micro_average_combines_wrong_missing_and_hallucinated_values(self) -> None:
+        fixture = _fixture(expected={"correct": "A", "wrong": "B", "missing": "C"})
+        report = run_extraction_eval([fixture], saved_results={"test_001": {
+            "correct": "A", "wrong": "D", "hallucinated": "E",
+        }})
+        # One correct value / three returned values; one / three expected.
+        assert report.overall.overall_precision == pytest.approx(1 / 3)
+        assert report.overall.overall_recall == pytest.approx(1 / 3)
+        assert report.overall.overall_f1 == pytest.approx(1 / 3)
+
     def test_perfect_aggregate(self) -> None:
         fixture = _fixture()
         actual = {

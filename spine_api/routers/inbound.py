@@ -16,9 +16,10 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.responses import StreamingResponse
@@ -134,6 +135,61 @@ def _broadcast_trip_event(trip_id: str, event_type: str, payload: Dict[str, Any]
             logger.debug(f"Failed to deliver SSE event to queue for trip {trip_id}: {e}")
 
 
+_INBOUND_EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+_INBOUND_PHONE_RE = re.compile(r"(?:\+?\d[\d\s().-]{6,}\d)")
+
+
+def _resolve_existing_lead(agency_id: str, body) -> Optional[str]:
+    """FND-0334 (Sim #4): the inbound door used to mint a NEW lead for every
+    message even when the traveler already had one, and wrote no message row —
+    FND-0284's duplicate-lead class on a new door. Match order:
+    1. explicit customer_contact (email/phone, normalized),
+    2. contact identity scraped from the message text itself,
+    3. customer_name exact match on a recent open lead.
+    Returns the matched trip_id, or None to create a new lead.
+    """
+    emails: set[str] = set()
+    phones: set[str] = set()
+    name = (body.customer_name or "").strip().lower() or None
+
+    contact = (body.customer_contact or "").strip()
+    if "@" in contact:
+        emails.add(contact.lower())
+    digits = "".join(ch for ch in contact if ch.isdigit())
+    if len(digits) >= 7:
+        phones.add(digits)
+    for m in _INBOUND_EMAIL_RE.finditer(body.raw_text or ""):
+        emails.add(m.group(0).lower())
+    for m in _INBOUND_PHONE_RE.finditer(body.raw_text or ""):
+        digits = "".join(ch for ch in m.group(0) if ch.isdigit())
+        if len(digits) >= 7:
+            phones.add(digits)
+
+    # Bounded multi-page scan (5 x 500): the corpus accumulates (KNOWN_TEST_
+    # DATA_ACCUMULATION), so a single capped page misses recent leads.
+    for page in range(5):
+        try:
+            recent = TripStore.list_trips(agency_id=agency_id, limit=500, offset=page * 500)
+        except Exception:
+            return None
+        if not recent:
+            return None
+        for trip in recent:
+            if str(trip.get("status")) in ("completed", "cancelled"):
+                continue
+            t_emails = {
+                str(trip.get(k) or "").lower() for k in ("contact_email", "customer_email", "traveler_email")
+            }
+            t_phones = {
+                "".join(ch for ch in str(trip.get(k) or "") if ch.isdigit())
+                for k in ("contact_phone", "customer_phone", "traveler_phone", "mobile")
+            }
+            t_name = str(trip.get("customer_name") or trip.get("contact_name") or "").strip().lower()
+            if (emails and emails & t_emails) or (phones and phones & t_phones) or (name and t_name == name):
+                return trip.get("id")
+    return None
+
+
 @router.post("/parse", response_model=InboundInquiryResponse)
 def parse_inbound_inquiry(
     body: InboundInquiryRequest,
@@ -205,8 +261,29 @@ def parse_inbound_inquiry(
             strict_leakage=body.strict_leakage,
         )
 
-        trip_id = f"trip_{uuid.uuid4().hex[:12]}"
+        # FND-0334: attach to the traveler's existing lead when one matches —
+        # the message follows the lead instead of minting a duplicate.
+        existing_lead_id = _resolve_existing_lead(agency_id, body)
+        trip_id = existing_lead_id or f"trip_{uuid.uuid4().hex[:12]}"
         now_str = datetime.now(timezone.utc).isoformat()
+
+        # T6 store half (FND-0334/0319): the message itself is always recorded
+        # against the resolved (or newly created) lead.
+        try:
+            from spine_api.services.message_store import append_message
+
+            append_message(
+                agency_id=agency_id,
+                channel=str(body.channel),
+                direction="inbound",
+                from_party=body.customer_name or body.customer_contact or "traveler",
+                to_party="agency",
+                body=body.raw_text,
+                trip_id=trip_id,
+                received_at=now_str,
+            )
+        except Exception as store_err:
+            logger.warning("Inbound message store write skipped for %s: %s", trip_id, store_err)
 
         packet_dict = spine_result.packet.to_dict() if hasattr(spine_result.packet, "to_dict") else dict(spine_result.packet)
         
@@ -228,6 +305,10 @@ def parse_inbound_inquiry(
             "agency_id": agency_id,
             "channel": body.channel,
             "customer_name": body.customer_name,
+            # FND-0334: top-level contact identity — future inbound messages
+            # resolve THIS lead by email/phone only if these columns exist.
+            "contact_email": body.customer_contact if (body.customer_contact and "@" in body.customer_contact) else None,
+            "contact_phone": body.customer_contact if (body.customer_contact and "@" not in body.customer_contact) else None,
             "customer_contact": body.customer_contact,
             "status": "new" if missing_fields else "active",
             "decision_state": decision_state,

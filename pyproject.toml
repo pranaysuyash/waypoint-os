@@ -11,6 +11,7 @@ dependencies = [
     "jupyter>=1.1.1",
     "pandas>=3.0.2",
     "pydantic>=2.12.5",
+    "babel>=2.17,<3",
     "rich>=14.3.3",
     # --- Auth & Database (Phase 0) ---
     "sqlalchemy[asyncio]>=2.0.0",
@@ -61,6 +62,7 @@ llm = [
     "transformers>=4.30.0",
     "torch>=2.0.0",
     "sentencepiece>=0.1.99",
+    "sentence-transformers>=6.2.0",
 ]
 
 # =============================================================================

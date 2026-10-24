@@ -123,7 +123,7 @@ def export_trip_personal_data(trip: dict, agency_id: str) -> Dict[str, Any]:
             personal[f"packet.{key}"] = packet[key]
     if isinstance(ext_facts, dict):
         for fk, fval in ext_facts.items():
-            if fk in _PACKET_PII_FIELDS or any(sub in fk for sub in ("contact", "name", "email", "phone")):
+            if fk in _PACKET_PII_FIELDS or any(sub in fk for sub in ("contact", "name", "email", "phone", "speaker")):
                 if isinstance(fval, dict) and fval.get("value") not in (None, ""):
                     personal[f"extracted.facts.{fk}"] = fval["value"]
                 elif isinstance(fval, str) and fval:
@@ -131,6 +131,15 @@ def export_trip_personal_data(trip: dict, agency_id: str) -> Dict[str, Any]:
 
     if trip.get("traveler_answers"):
         personal["traveler_answers"] = trip["traveler_answers"]
+
+    # FND-0336 (Sim #4): the raw note IS personal data the platform holds —
+    # an export without it is a non-answer to the DSAR even though every
+    # structured field is present. Include it verbatim.
+    raw_input = trip.get("raw_input")
+    if isinstance(raw_input, dict):
+        note = (raw_input.get("submission") or {}).get("raw_note") or raw_input.get("raw_note")
+        if note:
+            personal["raw_note"] = note
 
     if trip.get("passenger_claim"):
         claim = trip["passenger_claim"]
@@ -276,7 +285,7 @@ def erase_trip_personal_data(
         if isinstance(p_facts, dict):
             p_facts_copy = dict(p_facts)
             for fk in list(p_facts_copy.keys()):
-                if fk in _PACKET_PII_FIELDS or any(sub in fk for sub in ("contact", "name", "email", "phone")):
+                if fk in _PACKET_PII_FIELDS or any(sub in fk for sub in ("contact", "name", "email", "phone", "speaker")):
                     if isinstance(p_facts_copy[fk], dict):
                         f_item = dict(p_facts_copy[fk])
                         f_item["value"] = REDACTION_MARKER
@@ -308,7 +317,7 @@ def erase_trip_personal_data(
         if isinstance(e_facts, dict):
             e_facts_copy = dict(e_facts)
             for fk in list(e_facts_copy.keys()):
-                if fk in _PACKET_PII_FIELDS or any(sub in fk for sub in ("contact", "name", "email", "phone")):
+                if fk in _PACKET_PII_FIELDS or any(sub in fk for sub in ("contact", "name", "email", "phone", "speaker")):
                     if isinstance(e_facts_copy[fk], dict):
                         f_item = dict(e_facts_copy[fk])
                         f_item["value"] = REDACTION_MARKER

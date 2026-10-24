@@ -150,6 +150,32 @@ class SQLRunCheckpointStore:
             elif key not in ("reconciled_at", "reconciled_reason"):
                 extra[key] = value
         values.setdefault("state", "queued")
+        # Privacy boundary (FND-0326, 2026-10-23): `extra` is the wildcard
+        # carrier where payload data can ride into plaintext JSONB. Same
+        # guard as TripStore; on a dogfood refusal the lifecycle record
+        # STILL persists (state machine honesty) but extra_meta is redacted
+        # to a non-PII marker and the refusal is logged loudly.
+        if extra:
+            from src.security.privacy_guard import (
+                PrivacyGuardError,
+                check_trip_data,
+            )
+
+            try:
+                check_trip_data(extra)
+            except PrivacyGuardError as exc:
+                # The persisted marker must be non-PII: the guard's message
+                # quotes the detected text, so only the log carries details.
+                logger.warning(
+                    "run_ledger.mirror_meta redacted extra_meta after privacy "
+                    "refusal (run=%s): %s",
+                    meta.get("run_id"),
+                    exc,
+                )
+                extra = {
+                    "privacy_redacted": True,
+                    "redaction": "extra_meta refused by privacy guard (FND-0326)",
+                }
         values["extra_meta"] = extra or None
 
         target = RunCheckpointModel.__table__
@@ -169,8 +195,33 @@ class SQLRunCheckpointStore:
 
     @classmethod
     def mirror_step(cls, run_id: str, step_name: str, checkpoint: dict[str, Any]) -> None:
-        """Best-effort mirror of one pipeline step artifact (cache, not truth)."""
+        """Best-effort mirror of one pipeline step artifact (cache, not truth).
+
+        Privacy boundary (FND-0326, 2026-10-23): the checkpoint payload runs
+        through the same privacy guard as TripStore. A dogfood refusal SKIPS
+        the mirror (this table is cache-grade — losing one mirror write
+        degrades replay, never lifecycle honesty) so refused PII never
+        persists in plaintext here; the refusal is logged loudly."""
         cls._ensure_table()
+
+        from src.security.privacy_guard import (
+            PrivacyGuardError,
+            check_trip_data,
+        )
+
+        payload = checkpoint.get("data")
+        if isinstance(payload, dict):
+            try:
+                check_trip_data(payload)
+            except PrivacyGuardError as exc:
+                logger.warning(
+                    "run_ledger.mirror_step refused by privacy guard "
+                    "(run=%s step=%s): %s — checkpoint NOT mirrored",
+                    run_id,
+                    step_name,
+                    exc,
+                )
+                return
 
         from sqlalchemy.dialects.postgresql import insert
 

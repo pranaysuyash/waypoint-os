@@ -229,17 +229,24 @@ class TestEarlyExit:
     def test_early_exit_never_overwrites_existing_trip(
         self, pipeline_mocks
     ) -> None:
-        """ESCALATE with a preserve target (existing trip) must not save — the record stands."""
+        """ESCALATE refreshes only assessment surfaces under revision CAS."""
         from spine_api.server import save_processed_trip
 
         mock_run = pipeline_mocks["run"]
         mock_run.return_value = MockSpineResult(
             early_exit=True, early_exit_reason="Missing destination"
         )
+        pipeline_mocks["trip"].get_trip_for_agency.return_value = {
+            "id": "trip-existing-001", "status": "assigned",
+            "updated_at": "2026-10-23T00:00:00+00:00",
+        }
 
         _run_pipeline(target_trip_id="trip-existing-001")
 
         pipeline_mocks["ledger"].block.assert_called_once()
+        pipeline_mocks["trip"].update_trip_if_version_for_agency.assert_called_once()
+        updates = pipeline_mocks["trip"].update_trip_if_version_for_agency.call_args.args[2]
+        assert "status" not in updates
         save_processed_trip.assert_not_called()
 
 

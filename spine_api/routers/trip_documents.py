@@ -60,6 +60,9 @@ class DocumentResponse(BaseModel):
     reviewed_by: Optional[str] = None
     deleted_at: Optional[str] = None
     deleted_by: Optional[str] = None
+    # FND-0333 (Sim #4): same-bytes re-upload is flagged, never silently added —
+    # the operator decides whether the duplicate matters for the visa packet.
+    duplicate_of_document_id: Optional[str] = None
 
 
 class DocumentListResponse(BaseModel):
@@ -94,6 +97,9 @@ class ExtractionResponse(BaseModel):
     provider_name: Optional[str] = None
     model_name: Optional[str] = None
     latency_ms: Optional[int] = None
+    # FND-0333: when no provider ran, say so here instead of implying the
+    # empty result came from a real read of the document.
+    provider_note: Optional[str] = None
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
     total_tokens: Optional[int] = None
@@ -139,7 +145,7 @@ class ApplyExtractionResponse(BaseModel):
     extraction: Optional[ExtractionResponse] = None
 
 
-def _doc_to_response(doc: Any) -> DocumentResponse:
+def _doc_to_response(doc: Any, duplicate_of_document_id: Optional[str] = None) -> DocumentResponse:
     byte_size = getattr(doc, "size_bytes", None) or getattr(doc, "byte_size", 0)
     sha256 = getattr(doc, "sha256", None) or getattr(doc, "sha256_checksum", "")
     created_at = getattr(doc, "created_at", None) or getattr(doc, "uploaded_at", None)
@@ -189,6 +195,13 @@ def _extraction_to_response(ext: Any) -> ExtractionResponse:
                 )
             )
 
+    provider_note = None
+    if getattr(ext, "confidence_method", None) == "noop" or ext.extracted_by == "noop_extractor":
+        provider_note = (
+            "No OCR/vision provider configured (set EXTRACTION_MODEL_CHAIN or "
+            "EXTRACTION_PROVIDER). No fields were inferred from this document."
+        )
+
     return ExtractionResponse(
         id=ext.id,
         document_id=ext.document_id,
@@ -204,6 +217,7 @@ def _extraction_to_response(ext: Any) -> ExtractionResponse:
         provider_name=getattr(ext, "provider_name", None),
         model_name=getattr(ext, "model_name", None),
         latency_ms=getattr(ext, "latency_ms", None),
+        provider_note=provider_note,
         prompt_tokens=getattr(ext, "prompt_tokens", None),
         completion_tokens=getattr(ext, "completion_tokens", None),
         total_tokens=getattr(ext, "total_tokens", None),
@@ -234,6 +248,7 @@ async def upload_trip_document(
     """Upload a new document for a trip."""
     import hashlib
     from spine_api.services.document_service import (
+        get_documents_for_trip,
         upload_document,
         validate_file_upload,
         sanitize_extension,
@@ -249,6 +264,15 @@ async def upload_trip_document(
     filename_ext = sanitize_extension(file.filename)
     file_data, detected_mime = await validate_file_upload(file)
     filename_hash = hashlib.sha256((file.filename or "").encode()).hexdigest()
+    content_sha256 = hashlib.sha256(file_data).hexdigest()
+
+    # FND-0333: flag identical re-uploads (same trip + same bytes) instead of
+    # silently adding a second passport row.
+    duplicate_of_document_id: Optional[str] = None
+    for existing in await get_documents_for_trip(db, trip_id=trip_id, agency_id=agency.id):
+        if existing.sha256 == content_sha256:
+            duplicate_of_document_id = existing.id
+            break
 
     doc = await upload_document(
         db,
@@ -272,7 +296,7 @@ async def upload_trip_document(
         "mime_type": doc.mime_type,
     })
 
-    return _doc_to_response(doc)
+    return _doc_to_response(doc, duplicate_of_document_id=duplicate_of_document_id)
 
 
 @router.get("/trips/{trip_id}/documents", response_model=DocumentListResponse)

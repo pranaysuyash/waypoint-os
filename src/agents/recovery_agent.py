@@ -59,11 +59,23 @@ def _get_failure_taxonomy():
 
 
 def _get_failure_triage_engine():
-    """Lazy import of FailureTriageEngine for second-opinion failure adjudication."""
+    """Lazy import of FailureTriageEngine for second-opinion failure adjudication.
+
+    FND-0354: the engine was constructed bare (``jev_client=None``), so its
+    Jev second-opinion branch could never run and the heuristic always
+    served while the code read as model-backed. It now receives the
+    canonical Jev client the same credential-gated way every other Jev lane
+    does (ambiguity_classifier, live_triage): with no ``TYPESAFE_API_KEY`` /
+    ``JEV_API_KEY`` the client reports unavailable and the heuristic serves
+    unchanged; with a key, Jev classifies the PII-stripped, delimited failure
+    state (``TypesafeJevClient.raw_query`` egress guard). The opinion only
+    ever moves recovery toward escalation — never away from it.
+    """
     try:
         from src.decision.failure_triage import FailureTriageEngine
+        from src.llm.typesafe_client import TypesafeJevClient
 
-        return FailureTriageEngine()
+        return FailureTriageEngine(jev_client=TypesafeJevClient())
     except Exception:
         return None
 

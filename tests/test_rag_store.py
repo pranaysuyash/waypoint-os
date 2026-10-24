@@ -22,6 +22,9 @@ def test_insert_and_retrieve_chunk(rag_store):
         source_type=DocumentSourceType.GOVERNMENT_ADVISORY,
         title="Singapore Visa Policy 2026",
         page_number=1,
+        # FND-0362 contract: vectors carry provenance or are refused.
+        embedding_model="test-model",
+        embedding_dimension=4,
     )
     chunk = RAGChunk(
         id="chunk_1",
@@ -33,12 +36,63 @@ def test_insert_and_retrieve_chunk(rag_store):
 
     rag_store.insert_chunk(chunk)
     retrieved = rag_store.get_chunk("chunk_1", "agency_a")
-    
+
     assert retrieved is not None
     assert retrieved.id == "chunk_1"
     assert retrieved.metadata.title == "Singapore Visa Policy 2026"
     assert retrieved.metadata.source_type == DocumentSourceType.GOVERNMENT_ADVISORY
     assert retrieved.embedding == [0.1, 0.2, 0.3, 0.4]
+    assert retrieved.metadata.embedding_model == "test-model"
+
+
+def test_embedding_contract_is_fail_closed(rag_store):
+    """S2 (FND-0362): a vector without provenance is refused, and a declared
+    dimension that disagrees with the payload is refused — an unlabeled or
+    mislabeled vector can never enter the corpus."""
+    from src.rag.models import RAGChunkMetadata as M
+
+    with pytest.raises(ValueError, match="provenance"):
+        rag_store.insert_chunk(RAGChunk(
+            id="no_model",
+            content="x",
+            embedding=[1.0, 0.0],
+            metadata=M(document_id="d", agency_id="a", source_type=DocumentSourceType.AGENCY_POLICY, title="t"),
+        ))
+    with pytest.raises(ValueError, match="dimension"):
+        rag_store.insert_chunk(RAGChunk(
+            id="bad_dim",
+            content="x",
+            embedding=[1.0, 0.0],
+            metadata=M(document_id="d", agency_id="a", source_type=DocumentSourceType.AGENCY_POLICY, title="t", embedding_model="m", embedding_dimension=7),
+        ))
+    # Text-only chunks (no embedding) remain legal without provenance.
+    rag_store.insert_chunk(RAGChunk(
+        id="text_only",
+        content="lexical only",
+        embedding=None,
+        metadata=M(document_id="d", agency_id="a", source_type=DocumentSourceType.AGENCY_POLICY, title="t"),
+    ))
+    assert rag_store.get_chunk("text_only", "a") is not None
+
+
+def test_dense_search_requires_and_filters_by_model(rag_store):
+    """S3 (FND-0362): dense search without a model is refused; a query under
+    one model never sees chunks embedded by another (or legacy unprovenanced)
+    rows — an empty leg, never fabricated similarity."""
+    from src.rag.models import RAGChunkMetadata as M
+
+    def mk(cid, model):
+        return RAGChunk(
+            id=cid, content=f"content {cid}", embedding=[1.0, 0.0],
+            metadata=M(document_id="d", agency_id="a", source_type=DocumentSourceType.AGENCY_POLICY, title=cid, embedding_model=model, embedding_dimension=2),
+        )
+
+    rag_store.insert_chunk(mk("m1_chunk", "m1"))
+    rag_store.insert_chunk(mk("m2_chunk", "m2"))
+    with pytest.raises(ValueError, match="embedding_model"):
+        rag_store.search_dense([1.0, 0.0], agency_id="a")
+    assert [c.id for c, _ in rag_store.search_dense([1.0, 0.0], agency_id="a", embedding_model="m1")] == ["m1_chunk"]
+    assert rag_store.search_dense([1.0, 0.0], agency_id="a", embedding_model="m9") == []
 
 
 def test_tenant_isolation(rag_store):
@@ -51,6 +105,8 @@ def test_tenant_isolation(rag_store):
             agency_id="agency_a",
             source_type=DocumentSourceType.SUPPLIER_CONTRACT,
             title="Agency A Rates",
+            embedding_model="m",
+            embedding_dimension=2,
         ),
     )
     chunk_b = RAGChunk(
@@ -62,6 +118,8 @@ def test_tenant_isolation(rag_store):
             agency_id="agency_b",
             source_type=DocumentSourceType.SUPPLIER_CONTRACT,
             title="Agency B Rates",
+            embedding_model="m",
+            embedding_dimension=2,
         ),
     )
 
@@ -70,9 +128,9 @@ def test_tenant_isolation(rag_store):
 
     # Agency A should not see Agency B chunk
     assert rag_store.get_chunk("chunk_b", "agency_a") is None
-    
+
     # Vector search for Agency A should return only chunk_a
-    results_a = rag_store.search_dense([1.0, 0.0], agency_id="agency_a")
+    results_a = rag_store.search_dense([1.0, 0.0], agency_id="agency_a", embedding_model="m")
     assert len(results_a) == 1
     assert results_a[0][0].id == "chunk_a"
 

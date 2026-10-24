@@ -68,12 +68,24 @@ def allow_beta_privacy(monkeypatch):
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
 
 
+@pytest.fixture(autouse=True)
+def mock_extraction_provider(monkeypatch):
+    """Field-bearing flow tests opt into the explicit mock provider.
+
+    FND-0333: the DEFAULT extraction provider (noop) now honestly returns
+    no fields; these flows exercise apply/reject/readiness paths that need
+    extracted fields, so they pin EXTRACTION_PROVIDER=mock explicitly."""
+    monkeypatch.setenv("EXTRACTION_PROVIDER", "mock")
+
+
 # ---------------------------------------------------------------------------
 # 1. NoopExtractor unit tests
 # ---------------------------------------------------------------------------
 
 class TestNoopExtractor:
-    def test_returns_sentinel_values(self):
+    """FND-0333: the DEFAULT extractor is honest — it extracts nothing."""
+
+    def test_returns_no_fields_and_discloses_provider_gap(self):
         from spine_api.services.extraction_service import NoopExtractor
 
         ext = NoopExtractor()
@@ -81,16 +93,34 @@ class TestNoopExtractor:
         result = asyncio.run(
             ext.extract(_make_pdf_bytes(), "application/pdf", "passport")
         )
+        assert result.fields == {}
+        assert result.overall_confidence == 0.0
+        assert result.confidence_method == "noop"
+        assert result.provider_metadata["status"] == "NOT_EXTRACTED"
+
+
+class TestMockExtractor:
+    """The sentinel-bearing provider is an explicit opt-in for flow tests."""
+
+    def test_returns_sentinel_values(self):
+        from spine_api.services.extraction_service import MockExtractor
+
+        ext = MockExtractor()
+        import asyncio
+        result = asyncio.run(
+            ext.extract(_make_pdf_bytes(), "application/pdf", "passport")
+        )
         assert result.fields["full_name"] == "DO_NOT_LOG_NAME"
         assert result.fields["passport_number"] == "DO_NOT_LOG_PASSPORT"
         assert result.overall_confidence > 0
+        assert result.confidence_method == "mock"
         assert "full_name" in result.confidence_scores
 
     def test_per_document_type(self):
-        from spine_api.services.extraction_service import NoopExtractor
+        from spine_api.services.extraction_service import MockExtractor
         import asyncio
 
-        ext = NoopExtractor()
+        ext = MockExtractor()
         passport = asyncio.run(
             ext.extract(_make_pdf_bytes(), "application/pdf", "passport")
         )

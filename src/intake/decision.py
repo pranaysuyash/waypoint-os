@@ -2662,17 +2662,48 @@ def run_gap_and_decision(
         decision_state = "ASK_FOLLOWUP"
 
     # --- ADR-008 / Expedition Lane A3: Calibrated Confidence-Gated Operator Routing ---
-    # When semantic ambiguity analysis is present in packet metadata and confidence
-    # falls below autonomous threshold (0.60), ensure non-blocking operator advisory flag
+    # Raise a non-blocking operator advisory whenever the semantic clarity
+    # assessment is NOT autonomously trustworthy. Policy (FND-0352):
+    #   * calibrated confidence < 0.60                      → advisory
+    #   * model lane answered with NO calibrated confidence → advisory
+    #   * model lane configured but the call FAILED         → advisory
+    #     (rule heuristic served; ops should see the degradation)
+    #   * model lane deliberately unconfigured (ADR-008 posture) → no
+    #     advisory; rule mode is the designed offline path and its
+    #     provenance (confidence=None, confidence_method=rule_heuristic,
+    #     fallback_reason) is recorded on the packet. Flagging every run
+    #     for an intentionally-off feature would be alert fatigue, not
+    #     honesty.
+    # The previous behaviour trusted a hardcoded 0.85 from the rule engine,
+    # which silently suppressed this flag whenever the model lane was down.
     semantic_amb = (getattr(packet, "metadata", {}) or {}).get("semantic_ambiguity")
     if semantic_amb and isinstance(semantic_amb, dict):
         amb_conf = semantic_amb.get("confidence")
-        if amb_conf is not None and float(amb_conf) < 0.60:
+        amb_method = str(semantic_amb.get("confidence_method") or "unknown")
+        amb_fallback = semantic_amb.get("fallback_reason")
+        advisory_message: Optional[str] = None
+        if amb_conf is not None:
+            if float(amb_conf) < 0.60:
+                advisory_message = (
+                    f"Semantic clarity confidence ({float(amb_conf):.2f}) is below "
+                    "autonomous threshold (0.60) — operator review recommended."
+                )
+        elif amb_method == "model_calibrated":
+            advisory_message = (
+                "Semantic clarity model verdict carried no calibrated confidence "
+                "— operator review recommended."
+            )
+        elif amb_fallback == "model_call_failed":
+            advisory_message = (
+                "Semantic clarity model lane failed; a rule heuristic served with "
+                "no calibrated confidence — operator review recommended."
+            )
+        if advisory_message:
             risk_flags.append({
                 "flag": "low_confidence_semantic_ambiguity",
                 "severity": "medium",
-                "message": f"Semantic clarity confidence ({float(amb_conf):.2f}) is below autonomous threshold (0.60) — operator review recommended.",
-                "source": "jev_calibrated_confidence",
+                "message": advisory_message,
+                "source": f"semantic_ambiguity:{amb_method}",
             })
 
     intent_scores = compute_intent_scores(packet)

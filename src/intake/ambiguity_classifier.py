@@ -38,6 +38,28 @@ _CLARITY_THRESHOLD = 0.50
 # Minimum confidence required to trust a PROCEED choice autonomously
 _AUTONOMOUS_PROCEED_CONFIDENCE = 0.60
 
+# Confidence provenance (FND-0352). A confidence number is data, not
+# decoration: it must trace to a calibrated model output or be absent.
+#   model_calibrated — Jev's own calibrated ``jev_confidence``.
+#   rule_heuristic   — the deterministic keyword scan. It has NO calibration,
+#                      so it reports ``confidence=None`` ("unknown"), never a
+#                      constant chosen to feel right. Downstream routing
+#                      (decision.py, ADR-008 Lane A3) treats an unknown
+#                      confidence as not autonomously trustworthy and raises
+#                      the operator-review flag — the honest degradation when
+#                      the model lane is unavailable.
+CONFIDENCE_METHOD_MODEL = "model_calibrated"
+CONFIDENCE_METHOD_RULE = "rule_heuristic"
+
+# Why the rule path served instead of the model lane (FND-0352). Downstream
+# routing distinguishes a DELIBERATE posture (lane unconfigured per ADR-008 —
+# rule mode by design, provenance recorded, no advisory nag on every run)
+# from a FAILURE (lane configured but the call failed — advisory raised so
+# ops can see the degradation).
+FALLBACK_MODEL_LANE_UNCONFIGURED = "model_lane_unconfigured"
+FALLBACK_MODEL_CALL_FAILED = "model_call_failed"
+FALLBACK_EMPTY_INPUT = "empty_input"
+
 
 @dataclass(slots=True)
 class DimensionClarity:
@@ -58,6 +80,8 @@ class AmbiguityReport:
     source: str = "jev"  # "jev" | "deterministic_fallback"
     reasoning: str = ""
     raw_decision: Dict[str, Any] = field(default_factory=dict)
+    confidence_method: str = CONFIDENCE_METHOD_MODEL
+    fallback_reason: Optional[str] = None
 
     @property
     def is_proceed(self) -> bool:
@@ -75,6 +99,8 @@ class AmbiguityReport:
         return {
             "action": self.action,
             "confidence": self.confidence,
+            "confidence_method": self.confidence_method,
+            "fallback_reason": self.fallback_reason,
             "missing_dimensions": self.missing_dimensions,
             "source": self.source,
             "reasoning": self.reasoning,
@@ -110,10 +136,12 @@ class IntakeAmbiguityClassifier:
         if not cleaned_text:
             return AmbiguityReport(
                 action="ESCALATE",
-                confidence=1.0,
+                confidence=None,
                 missing_dimensions=["destination", "dates", "party", "budget"],
                 source="deterministic_fallback",
                 reasoning="Empty input text",
+                confidence_method=CONFIDENCE_METHOD_RULE,
+                fallback_reason=FALLBACK_EMPTY_INPUT,
             )
 
         if self.client and self.client.is_available():
@@ -124,9 +152,13 @@ class IntakeAmbiguityClassifier:
                     "IntakeAmbiguityClassifier: Jev call failed (%s); using deterministic fallback",
                     exc,
                 )
-                return self._evaluate_deterministic(cleaned_text)
+                return self._evaluate_deterministic(
+                    cleaned_text, fallback_reason=FALLBACK_MODEL_CALL_FAILED
+                )
 
-        return self._evaluate_deterministic(cleaned_text)
+        return self._evaluate_deterministic(
+            cleaned_text, fallback_reason=FALLBACK_MODEL_LANE_UNCONFIGURED
+        )
 
     def _evaluate_with_jev(self, text: str) -> AmbiguityReport:
         schema = {
@@ -219,12 +251,23 @@ class IntakeAmbiguityClassifier:
             dimensions=dimensions,
             missing_dimensions=missing,
             source="jev",
+            confidence_method=CONFIDENCE_METHOD_MODEL,
             reasoning=decision.get("reasoning", ""),
             raw_decision=decision,
         )
 
-    def _evaluate_deterministic(self, text: str) -> AmbiguityReport:
-        """Deterministic rule-based fallback when Jev is offline."""
+    def _evaluate_deterministic(
+        self,
+        text: str,
+        fallback_reason: str = FALLBACK_MODEL_LANE_UNCONFIGURED,
+    ) -> AmbiguityReport:
+        """Deterministic rule-based fallback when Jev is offline.
+
+        Reports ``confidence=None``: a keyword indicator scan has no
+        calibration, and a fabricated constant would silently pass the
+        downstream autonomy gate (FND-0352). ``fallback_reason`` records why
+        the rule path served so routing can tell posture from failure.
+        """
         lower = text.lower()
 
         # Destination heuristic: look for prepositions / keywords
@@ -282,9 +325,11 @@ class IntakeAmbiguityClassifier:
 
         return AmbiguityReport(
             action=action,
-            confidence=0.85,
+            confidence=None,
             dimensions=dimensions,
             missing_dimensions=missing,
             source="deterministic_fallback",
+            confidence_method=CONFIDENCE_METHOD_RULE,
+            fallback_reason=fallback_reason,
             reasoning="[rule] deterministic indicator scan",
         )

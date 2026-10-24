@@ -1,7 +1,13 @@
 import pytest
 
 
-@pytest.fixture()
+# Autouse: these tests ingest freeform social copy (agent_notes freeform text)
+# that the dogfood privacy guard blocks categorically over a SQL store. Beta
+# keeps the guard's audit scan while encryption/RLS is the boundary. (The
+# fixture previously existed but only applied to tests that requested it —
+# the ingest tests silently regressed when the guard's freeform detection
+# landed; 2026-10-22.)
+@pytest.fixture(autouse=True)
 def setup_test_env(monkeypatch):
     monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
     monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")

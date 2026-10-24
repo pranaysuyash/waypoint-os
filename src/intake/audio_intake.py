@@ -1,8 +1,17 @@
 """
-src/intake/audio_intake.py — Multimodal Spoken Voice Briefing Intake Engine.
+src/intake/audio_intake.py — Spoken Voice Briefing Intake Engine.
 
-Transcribes spoken voice memos, phone call recordings, or operator audio briefs,
-sanitizes speech-to-text artifacts, and extracts structured entities into CanonicalPacket.
+Processes an ALREADY-TRANSCRIBED voice memo / call recording / operator
+brief: sanitizes speech-to-text artifacts and extracts structured entities
+into a canonical SourceEnvelope.
+
+STATUS: no speech-to-text lane is integrated — the transcript is supplied by
+the caller (``simulated_transcript``). ``AudioTranscriptResult.confidence_score``
+is therefore ``None`` (no transcription confidence exists) and
+``transcription_method`` records ``supplied_transcript``. A real STT provider
+must enter through this same contract, carry its own calibrated confidence,
+and set ``transcription_method`` to ``stt:<provider>`` (determinism audit
+2026-10-21, FND-0357 — previously a hardcoded 0.96 with no model behind it).
 """
 
 from __future__ import annotations
@@ -10,10 +19,12 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from src.intake.extractors import extract_flight_inclusiveness, _extract_trip_intent
 from src.intake.packet_models import SourceEnvelope
+
+TRANSCRIPTION_METHOD_SUPPLIED = "supplied_transcript"
 
 
 @dataclass(slots=True)
@@ -21,8 +32,9 @@ class AudioTranscriptResult:
     audio_file_name: str
     duration_seconds: float
     raw_transcript: str
-    confidence_score: float
+    confidence_score: Optional[float]
     detected_language: str
+    transcription_method: str = TRANSCRIPTION_METHOD_SUPPLIED
     extracted_fields: Dict[str, Any] = field(default_factory=dict)
     source_envelope: Dict[str, Any] = field(default_factory=dict)
     processed_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -72,8 +84,9 @@ class VoiceBriefingIntakeEngine:
             audio_file_name=audio_file_name,
             duration_seconds=duration_seconds,
             raw_transcript=cleaned_text,
-            confidence_score=0.96,
+            confidence_score=None,
             detected_language=language,
+            transcription_method=TRANSCRIPTION_METHOD_SUPPLIED,
             extracted_fields=intents,
             source_envelope={
                 "envelope_id": envelope.envelope_id,

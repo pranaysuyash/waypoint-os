@@ -39,14 +39,13 @@ import hashlib
 import hmac
 import json
 import logging
-import math
 import os
 import threading
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 try:
     import fcntl
@@ -55,6 +54,14 @@ except ImportError:  # pragma: no cover - Windows has no fcntl; DB is required t
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
+from spine_api.services.commercial_agreement import (
+    agreement_snapshot,
+    finite_money,
+    project_commercial_pricing,
+    public_accepted_agreement,
+    token_digest,
+    verified_accepted_agreement,
+)
 
 try:
     from spine_api import persistence
@@ -116,9 +123,20 @@ class PublicProposalView(BaseModel):
     destination: str
     duration_days: int
     traveler_name: str
-    base_price_usd: float
-    selected_total_price_usd: float
+    # Legacy wire aliases retain their numeric behavior. ``currency`` owns
+    # the unit; neutral fields are authoritative for new consumers.
+    base_price_usd: Optional[float]
+    selected_total_price_usd: Optional[float]
+    base_price: Optional[float] = None
+    selected_total_price: Optional[float] = None
     currency: str = "USD"
+    pricing_status: str = "priced"
+    pricing_basis: str = "computed_preview"
+    pricing_message: Optional[str] = None
+    revision_id: Optional[str] = None
+    acceptance_revision_id: Optional[str] = None
+    requires_reacceptance: bool = False
+    accepted_agreement: Optional[Dict[str, Any]] = None
     status: str = "open"  # "open" | "accepted" | "expired"
     accepted_at: Optional[str] = None
     accepted_by: Optional[str] = None
@@ -132,6 +150,11 @@ class PublicProposalView(BaseModel):
     # occasion) de-attributed from travelers[] facts — never carries traveler
     # names. Empty unless speaker-attributed facts exist.
     stated_requirements: List[str] = Field(default_factory=list)
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    party_size: Optional[int] = None
+    summary: Optional[str] = None
+    highlights: List[str] = Field(default_factory=list)
 
 
 class UpdateOptionsRequest(BaseModel):
@@ -143,6 +166,7 @@ class AcceptProposalRequest(BaseModel):
     signer_email: str
     selected_option_ids: List[str] = Field(default_factory=list)
     e_signature_consent: bool
+    revision_id: Optional[str] = None
 
 
 class _ProposalViewCache:
@@ -826,13 +850,7 @@ def _verified_agency_for_token(token: str) -> Optional[str]:
 
 def _as_finite_price(value: object) -> Optional[float]:
     """Convert an observed proposal price without inventing a value."""
-    if isinstance(value, bool) or value is None:
-        return None
-    try:
-        price = float(value)
-    except (TypeError, ValueError):
-        return None
-    return price if math.isfinite(price) and price >= 0 else None
+    return finite_money(value, positive=False)
 
 
 def _duration_from_packet(packet: dict) -> Optional[int]:
@@ -874,19 +892,17 @@ def _build_persisted_proposal(token: str, trip_id: str, agency_id: str) -> Publi
     recommendation = strategy.get("recommended_option") or {}
     destination = packet.get("destination") or safe_trip.get("destination")
     title = recommendation.get("name")
-    base_price = _as_finite_price(recommendation.get("cost"))
+    commercial = project_commercial_pricing(
+        {**safe_trip, "commercial_pricing": trip.get("commercial_pricing")}, agency_id
+    )
     duration_days = _duration_from_packet(packet)
 
     # A public proposal must have enough observed data to be meaningful. Do
     # not turn absent dates, title, or price into plausible-looking fixtures.
-    if not destination or not title or base_price is None or duration_days is None:
+    if not destination or not title or commercial is None or duration_days is None:
         raise HTTPException(status_code=404, detail="Proposal resource not found or link expired")
-
-    currency = recommendation.get("currency") or "USD"
-    if not isinstance(currency, str) or not currency.strip():
-        currency = "USD"
-
-    return PublicProposalView(
+    accepted = public_accepted_agreement(trip)
+    proposal = PublicProposalView(
         token=token,
         trip_id=trip_id,
         title=str(title),
@@ -895,17 +911,47 @@ def _build_persisted_proposal(token: str, trip_id: str, agency_id: str) -> Publi
         # The safe projection intentionally does not expose traveler PII. A
         # neutral label is truthful and avoids claiming an unobserved name.
         traveler_name="Traveler",
-        base_price_usd=base_price,
-        selected_total_price_usd=base_price,
-        currency=currency,
-        status="accepted" if trip.get("proposal_accepted_at") else "open",
+        base_price_usd=commercial.retail_price,
+        selected_total_price_usd=commercial.retail_price,
+        base_price=commercial.retail_price,
+        selected_total_price=commercial.retail_price,
+        currency=commercial.currency,
+        pricing_status="priced" if commercial.ready else "pricing_review",
+        pricing_basis=commercial.retail_basis,
+        pricing_message=" ".join(commercial.missing) or None,
+        status="open",
         accepted_at=trip.get("proposal_accepted_at"),
         accepted_by=None,
         days=[],
         available_options=[],
         reality_tier="persisted_observed",
         stated_requirements=(safe_trip.get("packet") or {}).get("stated_requirements", []),
+        start_date=packet.get("start_date"),
+        end_date=packet.get("end_date"),
+        party_size=packet.get("party_size"),
+        summary=recommendation.get("summary"),
+        highlights=[str(item) for item in recommendation.get("highlights") or [] if isinstance(item, (str, int, float))],
+        accepted_agreement=accepted,
+        acceptance_revision_id=(accepted or {}).get("revision_id"),
     )
+    proposal.revision_id = _proposal_snapshot(proposal)["revision_id"]
+    saved = verified_accepted_agreement(trip)
+    is_current_acceptance = bool(
+        saved and saved["revision_id"] == proposal.revision_id
+        and saved.get("proposal_token_sha256") == token_digest(token)
+        and commercial.ready
+    )
+    proposal.status = "accepted" if is_current_acceptance else "open"
+    proposal.requires_reacceptance = bool(trip.get("proposal_accepted_at")) and not is_current_acceptance
+    return proposal
+
+
+def _proposal_snapshot(proposal: PublicProposalView) -> dict:
+    content = proposal.model_dump()
+    content["base_price"] = proposal.base_price if proposal.base_price is not None else proposal.base_price_usd
+    content["selected_total_price"] = proposal.selected_total_price if proposal.selected_total_price is not None else proposal.selected_total_price_usd
+    content["selected_option_ids"] = sorted(option.id for option in proposal.available_options if option.selected)
+    return agreement_snapshot(content)
 
 
 def _get_or_create_proposal(token: str) -> PublicProposalView:
@@ -927,12 +973,9 @@ def _get_or_create_proposal(token: str) -> PublicProposalView:
             return cached_demo
         return _build_demo_proposal(token, trip_id or _DEMO_LEGACY_TRIP_ID)
 
-    # Projection cache only — the credential was verified above, so a cached
-    # view may be served; TTL/revocation is re-enforced on every request.
-    cached = _PROPOSAL_VIEW_CACHE.get(token)
-    if cached is not None:
-        return cached
-
+    # Current TripStore content and immutable acceptance are authoritative.
+    # Rebuild real views on reads so TTL/cache residency cannot authorize an
+    # edited plan. The bounded cache remains useful for explicit demo choices.
     agency_id = _verified_agency_for_token(token)
     if not agency_id or not trip_id:
         raise HTTPException(status_code=401, detail="Proposal access denied: malformed proposal token")
@@ -953,6 +996,14 @@ def calculate_proposal_options(token: str, req: UpdateOptionsRequest) -> PublicP
     """Recalculate proposal total based on selected option IDs."""
     proposal = _get_or_create_proposal(token)
     selected_set = set(req.selected_option_ids)
+    known = {option.id for option in proposal.available_options}
+    if selected_set - known:
+        raise HTTPException(status_code=400, detail="Unknown proposal option selection.")
+    current_selection = {option.id for option in proposal.available_options if option.selected}
+    if proposal.status == "accepted" and selected_set != current_selection:
+        raise HTTPException(status_code=409, detail="Accepted proposal terms are immutable. Ask your advisor for a revised proposal.")
+    if proposal.base_price_usd is None:
+        raise HTTPException(status_code=409, detail=proposal.pricing_message or "Customer retail is awaiting pricing review.")
 
     updated_options = []
     options_total = 0.0
@@ -974,6 +1025,9 @@ def calculate_proposal_options(token: str, req: UpdateOptionsRequest) -> PublicP
 
     proposal.available_options = updated_options
     proposal.selected_total_price_usd = round(proposal.base_price_usd + options_total, 2)
+    proposal.base_price = proposal.base_price_usd
+    proposal.selected_total_price = proposal.selected_total_price_usd
+    proposal.revision_id = _proposal_snapshot(proposal)["revision_id"]
     _PROPOSAL_VIEW_CACHE.set(token, proposal)
     return proposal
 
@@ -996,6 +1050,22 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
         )
 
     proposal = _get_or_create_proposal(token)
+    known = {option.id for option in proposal.available_options}
+    selected = set(req.selected_option_ids)
+    if selected - known:
+        raise HTTPException(status_code=400, detail="Unknown proposal option selection.")
+    if token not in _DEMO_TOKEN_ALLOWLIST:
+        if not req.revision_id or req.revision_id != proposal.revision_id:
+            raise HTTPException(status_code=409, detail="This proposal changed or its revision is missing. Review the latest version before accepting.")
+        if proposal.pricing_status != "priced" or proposal.selected_total_price is None:
+            raise HTTPException(status_code=409, detail=proposal.pricing_message or "Customer retail is awaiting pricing review.")
+    if proposal.status == "accepted":
+        if selected != {option.id for option in proposal.available_options if option.selected}:
+            raise HTTPException(status_code=409, detail="Accepted proposal terms are immutable. Ask your advisor for a revised proposal.")
+        return proposal
+    # The signed selection is the submitted selection, not whichever browser
+    # most recently populated the process cache. Unknown IDs fail above.
+    proposal = calculate_proposal_options(token, UpdateOptionsRequest(selected_option_ids=sorted(selected)))
     now_iso = datetime.now(timezone.utc).isoformat()
 
     # PA-02: durable persistence on the trip record FIRST — the registry row
@@ -1007,11 +1077,39 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
     # durably.
     signer_label = f"{req.signer_name} <{req.signer_email}>"
     if token not in _DEMO_TOKEN_ALLOWLIST:
+        agency_id = _verified_agency_for_token(token)
+        trip = TripStore.get_trip_for_agency(proposal.trip_id, agency_id) if agency_id else None
+        if not trip or not trip.get("updated_at"):
+            raise HTTPException(status_code=409, detail="Proposal acceptance requires a versioned durable trip record.")
+        current = _build_persisted_proposal(token, proposal.trip_id, agency_id)
+        if current.revision_id != req.revision_id or proposal.revision_id != req.revision_id:
+            raise HTTPException(status_code=409, detail="This proposal changed. Review the latest version before accepting.")
+        prior = trip.get("proposal_accepted_agreement")
+        history = trip.get("proposal_acceptance_history") or []
+        if not isinstance(history, list):
+            raise HTTPException(status_code=409, detail="Proposal agreement history needs advisor review before a new acceptance.")
+        if (trip.get("booking_confirmation") or {}).get("side_effects_started_at"):
+            raise HTTPException(status_code=409, detail="Fulfillment has started for the previous agreement. Ask your advisor to review an amendment.")
+        snapshot = {
+            **_proposal_snapshot(proposal),
+            "agency_id": agency_id,
+            "proposal_token_sha256": token_digest(token),
+            "accepted_at": now_iso,
+            "e_signature_consent": True,
+        }
+        # Preserve any earlier exact agreement, including rows written before
+        # history was introduced. Never reconstruct old terms from current data.
+        history = list(history)
+        if isinstance(prior, dict) and prior not in history:
+            history.append(prior)
+        history.append(snapshot)
         acceptance_updates = {
             "proposal_accepted_at": now_iso,
             "proposal_accepted_by": signer_label,
             "proposal_acceptance_token": token,
             "proposal_esign_consent": True,
+            "proposal_accepted_agreement": snapshot,
+            "proposal_acceptance_history": history,
             # FND-0174: explicit honest markers. The acceptance is
             # consequential state (it authorizes the money path), so it may
             # never look like a silently blob-only record: the durable
@@ -1026,11 +1124,9 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
             "proposal_acceptance_reality_tier": "real",
             "proposal_acceptance_storage": "trip_record_durable",
         }
-        agency_id = _verified_agency_for_token(token)
-        if agency_id:
-            persisted_trip = TripStore.update_trip_for_agency(proposal.trip_id, agency_id, acceptance_updates)
-        else:
-            persisted_trip = TripStore.update_trip(proposal.trip_id, acceptance_updates)
+        persisted_trip = TripStore.update_trip_if_version_for_agency(
+            proposal.trip_id, agency_id, acceptance_updates, trip["updated_at"]
+        )
         if not persisted_trip:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -1040,10 +1136,18 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
                     "refused rather than kept process-local (PA-02)."
                 ),
             )
+        durable = TripStore.get_trip_for_agency(proposal.trip_id, agency_id)
+        recorded = verified_accepted_agreement(durable or {})
+        if not recorded or recorded != snapshot:
+            raise HTTPException(status_code=409, detail="Proposal acceptance could not be verified. Reload the proposal before retrying.")
 
     proposal.status = "accepted"
     proposal.accepted_at = now_iso
-    proposal.accepted_by = signer_label
+    proposal.accepted_by = signer_label if token in _DEMO_TOKEN_ALLOWLIST else None
+    proposal.requires_reacceptance = False
+    proposal.acceptance_revision_id = proposal.revision_id
+    if token not in _DEMO_TOKEN_ALLOWLIST:
+        proposal.accepted_agreement = public_accepted_agreement(durable)
 
     # Audit the acceptance — emitted from the durable-persistence path, before
     # and independent of the registry cache write below.
@@ -1051,7 +1155,7 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
         "proposal_accepted",
         "public_client",
         {
-            "proposal_token": token,
+            "proposal_token_sha256": token_digest(token),
             "trip_id": proposal.trip_id,
             "signer_name_masked": (req.signer_name[:2] + "***") if req.signer_name else "",
             "signer_email_hash": (
@@ -1060,6 +1164,8 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
                 else ""
             ),
             "total_price_usd": proposal.selected_total_price_usd,
+            "currency": proposal.currency,
+            "revision_id": proposal.revision_id,
             "accepted_at": now_iso,
             "persisted_on_trip": token not in _DEMO_TOKEN_ALLOWLIST,
             # FND-0174: mirror the acceptance markers so the audit trail

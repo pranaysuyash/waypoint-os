@@ -1,6 +1,6 @@
 # Exploration Backlog
 
-**Last Updated:** 2026-07-02
+**Last Updated:** 2026-10-22
 
 A living document of areas to explore, ideas to investigate, and potential improvements. Add items freely — this is a brainstorming space, not a commitment queue.
 
@@ -408,6 +408,21 @@ A living document of areas to explore, ideas to investigate, and potential impro
 - [ ] Content reuse/snippets
 - [ ] AI-generated content review
 - [ ] Multi-language content
+
+### Knowledge & Retrieval (RAG) — see Docs/exploration/RAG_EMBEDDINGS_MOUNT_EXPLORATION_2026-10-22.md (2026-10-22)
+
+- [x] Mount `spine_api/routers/rag.py` + inject `rag_service` into `SpecialtyKnowledgeService.identify_niche` (Option A/B in the exploration doc) — MOUNTED 2026-10-22 (Option B; frontier wiring + auto-seed)
+- [x] Embedding contract per chunk: model + version + dimension, fail-closed, search filtered by model (FND-0362; CoverWise pattern) — DONE 2026-10-22 (model+dimension, fail-closed insert, model-scoped dense search; version field deferred)
+- [x] FTS5 sparse leg for SQLite (replace substring-count "BM25" heuristic) — DONE 2026-10-22 (with honest heuristic fallback)
+- [x] Egress-gated semantic embedding provider (PII strip + `record_llm_call` + usage/cost accounting) — RATIFIED 2026-10-22 (owner ruling: semantic lane DEFAULT-ON when key present; PII strip + forensics live; usage/cost rollup deferred)
+- [x] Router hardening: input caps on `/rag/documents/index` + `/rag/query`, usage-guard, stop leaking `str(e)` in 500s — DONE 2026-10-22 (caps 413/422, slowapi limits, opaque 500s)
+- [x] Retrieval audit trail (hashes-only runs/candidates/answers rows — CoverWise `retrieval_audit_service` pattern) — DONE 2026-10-22 (rag_runs table: hashed query, model, latency, result ids; candidates/answers tables deferred)
+- [x] Retrieval eval corpus + CI gate (RAGAS-style faithfulness with negative questions; KDD-ladder pattern) — DONE 2026-10-22 (`tests/evals/test_rag_eval_gate.py` + corpus v1 + `tools/rag_eval.py`; the gate immediately caught the unconditional-hit defect in identify_niche)
+- [x] Adjacent-chunk context expansion via stored `parent_id` (CoverWise `get_adjacent_chunks` pattern) — DONE 2026-10-22 (parent_context citations in query_and_ground, capped at 5)
+- [x] `source_text` vs `retrieval_text` separation for verbatim-provable citations — DONE 2026-10-22 (source_text metadata + verbatim citation excerpts; retrieval-side transform deferred until one exists)
+- [x] Cross-encoder reranker (optional dependency — note only, do not install by default) — DONE 2026-10-22 (`src/rag/reranker.py`; dark until RAG_RERANKER=1 AND sentence-transformers importable; RRF ordering preserved as floor)
+- [x] Corpus governance: manifest with license_class (redistribution-safe vs LOCAL-EVAL-ONLY) before indexing third-party content — DONE 2026-10-22 (license_class on every chunk + API validation + `/rag/documents` listing + panel/citation badges)
+- [ ] SQLite single-writer constraint documented; Postgres endgame link (DURABLE_STORE_ENDGAME_2026-09-08)
 
 ## Collaboration Features
 

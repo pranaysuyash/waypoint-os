@@ -24,6 +24,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from spine_api.core.rls import get_rls_db
 from spine_api.core.auth import get_current_agency_id, require_permission, get_current_membership
@@ -42,6 +43,7 @@ router = APIRouter(prefix="/api/trips", tags=["confirmations"])
 
 class CreateConfirmationRequest(BaseModel):
     confirmation_type: str = Field(min_length=1, max_length=20)
+    component_key: str = Field(default="primary", pattern=r"^[a-z0-9][a-z0-9_.:-]{0,95}$")
     task_id: Optional[str] = None
     supplier_name: Optional[str] = Field(default=None, max_length=200)
     confirmation_number: Optional[str] = Field(default=None, max_length=100)
@@ -65,6 +67,7 @@ class ExtractConfirmationRequest(BaseModel):
     document_name: Optional[str] = None
     auto_record: bool = False
     task_id: Optional[str] = None
+    component_key: str = Field(default="primary", pattern=r"^[a-z0-9][a-z0-9_.:-]{0,95}$")
 
 
 # ── Summary response helper ──────────────────────────────────────────────────
@@ -75,6 +78,7 @@ def _summary_to_dict(s: confirmation_service.ConfirmationSummary) -> dict:
         "trip_id": s.trip_id,
         "task_id": s.task_id,
         "confirmation_type": s.confirmation_type,
+        "component_key": s.component_key,
         "confirmation_status": s.confirmation_status,
         "has_supplier": s.has_supplier,
         "has_confirmation_number": s.has_confirmation_number,
@@ -95,6 +99,7 @@ def _detail_to_dict(d: confirmation_service.ConfirmationDetail) -> dict:
         "trip_id": d.trip_id,
         "task_id": d.task_id,
         "confirmation_type": d.confirmation_type,
+        "component_key": d.component_key,
         "confirmation_status": d.confirmation_status,
         "has_supplier": d.has_supplier,
         "has_confirmation_number": d.has_confirmation_number,
@@ -208,6 +213,9 @@ async def create_confirmation(
             created_by=membership.user_id,
             data=data,
         )
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="This booking component already has an active confirmation. Open it to review or void it before reissuing.") from None
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
@@ -509,6 +517,7 @@ async def extract_confirmation_data(
             created_by=membership.user_id,
             data={
                 "confirmation_type": durable_type,
+                "component_key": body.component_key,
                 "supplier_name": supplier_name or "Direct Supplier",
                 "confirmation_number": conf_num,
                 "notes": (

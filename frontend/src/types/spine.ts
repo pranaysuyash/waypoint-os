@@ -426,3 +426,83 @@ export interface FeeCalculationResult {
   fee_adjustment: number;
   risk_summary: string;
 }
+
+// ─── RAG knowledge retrieval (mount 2026-10-22) ─────────────────────────────
+// Shapes verified against the live router (spine_api/routers/rag.py):
+// GET  /api/v1/rag/status
+// GET  /api/v1/rag/documents
+// POST /api/v1/rag/query          (chunk.embedding always null over the wire)
+
+export interface RagCorpusEmbeddingModel {
+  embedding_model: string;
+  embedding_dimension: number;
+  chunk_count: number;
+}
+
+export interface RagStatus {
+  embedding_provider: string;
+  embedding_model: string;
+  embedding_dimension: number;
+  is_semantic: boolean;
+  fts_lexical_leg: boolean;
+  store_path: string;
+  agency_chunk_count?: number;
+  corpus_embedding_models?: RagCorpusEmbeddingModel[];
+}
+
+export interface RagDocument {
+  document_id: string;
+  title: string;
+  source_type: string;
+  license_class: string;
+  embedding_model: string | null;
+  chunk_count: number;
+}
+
+export interface RagChunkMetadata {
+  document_id: string;
+  agency_id: string;
+  source_type: string;
+  title: string;
+  section_heading?: string | null;
+  page_number?: number | null;
+  canonical_url?: string | null;
+  file_path?: string | null;
+  tags: string[];
+  entity_references: string[];
+  embedding_model?: string | null;
+  embedding_dimension?: number | null;
+  source_text?: string | null;
+  license_class: string;
+  created_at: string;
+}
+
+export interface RagChunk {
+  id: string;
+  parent_id: string | null;
+  content: string;
+  embedding: null;
+  metadata: RagChunkMetadata;
+  token_count: number;
+}
+
+export interface RagSearchResult {
+  chunk: RagChunk;
+  score: number;
+  dense_score: number;
+  sparse_score: number;
+  retrieval_method: 'hybrid' | 'dense' | 'sparse' | 'graph' | 'parent_context' | string;
+}
+
+export interface RagGroundedAnswer {
+  query: string;
+  answer: string;
+  groundedness_score: number;
+  is_grounded: boolean;
+  citations: RagSearchResult[];
+  must_confirm: string[];
+  execution_telemetry_id: string;
+  grounding_method?: string;
+  lexical_overlap_score?: number;
+  claim_support_status?: 'no_sources' | 'source_excerpt' | 'not_verified' | 'unsupported_numeric' | 'empty_answer';
+}

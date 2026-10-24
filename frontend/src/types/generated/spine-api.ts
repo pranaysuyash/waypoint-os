@@ -589,12 +589,37 @@ export interface InsightsSummary {
    * Hours from creation to first status transition; None until timing data exists
    */
   avgResponseTime?: number | null;
-  pipelineValue?: number;
   /**
-   * Gross merchandise value: sum of recorded trip budgets for terminal-status trips
+   * Deprecated single-currency current pipeline budget
    */
-  gmv?: number;
+  pipelineValue?: number | null;
+  /**
+   * Deprecated single-currency receipt-backed customer booking value; not budget or agency revenue
+   */
+  gmv?: number | null;
+  currency?: string | null;
+  period?: string;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  activation?: ActivationSummary;
   pipelineVelocity?: PipelineVelocity;
+}
+/**
+ * Lifetime agency progress derived from persisted work, never link clicks.
+ */
+export interface ActivationSummary {
+  inquiryCount?: number;
+  needsDetailsCount?: number;
+  /**
+   * Inquiries with canonical quote-ready evidence or a recorded approved brief
+   */
+  readyBriefCount?: number;
+  reviewedBriefCount?: number;
+  planningStartedCount?: number;
+  firstValueAchieved?: boolean;
+  nextAction?: "add_inquiry" | "resolve_details" | "review_brief" | "continue_work";
+  nextTripId?: string | null;
+  [k: string]: unknown;
 }
 export interface PipelineVelocity {
   stage1To2?: number;
@@ -669,9 +694,25 @@ export interface IssueCapabilityTokenResponse {
 }
 export interface MonthlyRevenue {
   month: string;
-  revenue?: number;
+  /**
+   * Deprecated single-currency customer booking value; not agency revenue
+   */
+  revenue?: number | null;
   inquiries?: number;
   booked?: number;
+  currency?: string | null;
+  customerValueByCurrency?: CurrencyTotal[];
+}
+export interface CurrencyTotal {
+  currency: string;
+  amount: number;
+  /**
+   * Exact recorded decimal sum before display formatting
+   */
+  amountDecimal?: string;
+  minorUnitDigits?: number;
+  tripCount?: number;
+  [k: string]: unknown;
 }
 /**
  * High-priority incident alert for the owner dashboard.
@@ -888,12 +929,58 @@ export interface QuarantineIntakeResponse {
 }
 export interface RevenueMetrics {
   period?: string;
-  totalPipelineValue?: number;
-  bookedRevenue?: number;
-  projectedRevenue?: number;
-  nearCloseRevenue?: number;
-  avgTripValue?: number;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  snapshotBasis?: string;
+  /**
+   * Unit of legacy scalar fields; null when units differ or evidence is incomplete
+   */
+  currency?: string | null;
+  /**
+   * Deprecated single-currency pipeline budget, never earned revenue
+   */
+  totalPipelineValue?: number | null;
+  /**
+   * Deprecated alias for receipt-backed customer booking value, never agency revenue
+   */
+  bookedRevenue?: number | null;
+  /**
+   * Deprecated assumed customer value (booked value plus stage-weighted budgets)
+   */
+  projectedRevenue?: number | null;
+  /**
+   * Deprecated single-currency budget of output/safety pipeline stages
+   */
+  nearCloseRevenue?: number | null;
+  /**
+   * Deprecated mean budget in one known currency
+   */
+  avgTripValue?: number | null;
   revenueByMonth?: MonthlyRevenue[];
+  commercial?: CommercialOutcomes;
+}
+export interface CommercialOutcomes {
+  budgetPipeline?: MonetaryMeasure;
+  weightedPipelineBudget?: MonetaryMeasure;
+  nearCloseBudget?: MonetaryMeasure;
+  bookedCustomerValue?: MonetaryMeasure;
+  recordedCustomerCollections?: MonetaryMeasure;
+  agencyEarnedRevenue?: MonetaryMeasure;
+  agencyRealizedRevenue?: MonetaryMeasure;
+  [k: string]: unknown;
+}
+/**
+ * Money retains its unit and missing-evidence state; no implicit FX.
+ */
+export interface MonetaryMeasure {
+  availability?: "available" | "partial" | "unavailable";
+  totals?: CurrencyTotal[];
+  evidenceTripCount?: number;
+  missingAmountTripCount?: number;
+  missingCurrencyTripCount?: number;
+  excludedPreviewTripCount?: number;
+  reason?: string;
+  [k: string]: unknown;
 }
 export interface ReviewActionRequest {
   action: string;
@@ -1363,6 +1450,11 @@ export interface TripPatchRequest {
   date_window?: string | null;
   trip_purpose?: string | null;
   trip_priorities?: string | null;
+  flight_status_updates?:
+    | {
+        [k: string]: unknown;
+      }[]
+    | null;
   date_flexibility?: string | null;
   pace_preference?: string | null;
   date_year_confidence?: string | null;
@@ -1392,14 +1484,16 @@ export interface TripQuoteView {
   currency?: string;
   net_cost: number;
   net_cost_basis?: string;
-  margin_percent: number;
+  margin_percent?: number | null;
   margin_basis?: string;
   margin_provenance?: {
     [k: string]: unknown;
   };
   tax_percent?: number | null;
-  rack_price: number;
+  rack_price?: number | null;
   rack_price_basis?: string;
+  pricing_status?: string;
+  missing?: string[];
   status?: string;
   created_at?: string;
   updated_at?: string | null;
@@ -1467,6 +1561,51 @@ export interface TripResponse {
   activity_interests?: string | null;
   trip_priorities?: string | null;
   date_flexibility?: string | null;
+  passenger_claim?: {
+    [k: string]: unknown;
+  } | null;
+  ghost_concierge?: {
+    [k: string]: unknown;
+  } | null;
+  traveler_answers?:
+    | {
+        [k: string]: unknown;
+      }[]
+    | null;
+  reassess?: {
+    [k: string]: unknown;
+  } | null;
+  decision?: {
+    [k: string]: unknown;
+  } | null;
+  updated_at?: string | null;
+  flight_status_updates?:
+    | {
+        [k: string]: unknown;
+      }[]
+    | null;
+  traveler_asks?:
+    | {
+        [k: string]: unknown;
+      }[]
+    | null;
+  fare_drop_signal?: {
+    [k: string]: unknown;
+  } | null;
+  fare_drop_disposition?: {
+    [k: string]: unknown;
+  } | null;
+  price_observations?:
+    | {
+        [k: string]: unknown;
+      }[]
+    | null;
+  analytics?: {
+    [k: string]: unknown;
+  } | null;
+  fees?: {
+    [k: string]: unknown;
+  } | null;
 }
 export interface TrustScorecardResponse {
   ok?: boolean;

@@ -285,7 +285,12 @@ class LLMUsageGuard:
         request_id = f"req_{uuid.uuid4().hex[:16]}"
         model_limit = self.max_calls_per_model.get(model)
         try:
-            reservation = self.store.check_and_reserve(
+            # SQLite store returns (allowed, reservation_dict); InMemory
+            # returns the dict directly. Normalize here so BOTH backends
+            # drive the same decision path — the tuple was previously
+            # treated as a dict and crashed check_before_call on every
+            # durable-store call (quota enforcement never ran over SQLite).
+            result = self.store.check_and_reserve(
                 request_id=request_id,
                 agency_id=self.agency_id,
                 model=model,
@@ -298,6 +303,16 @@ class LLMUsageGuard:
                 warning_thresholds=self.budget_warning_thresholds,
                 now_func=self._now_func,
             )
+            if isinstance(result, tuple):
+                allowed, reservation = result
+                if not allowed and "block_reason" not in reservation:
+                    reservation = {
+                        **reservation,
+                        "block_reason": reservation.get("block_reason") or "quota_exceeded",
+                    }
+            else:
+                reservation = result
+                allowed = not reservation.get("block_reason")
         except GuardStorageError as exc:
             logger.error("llm_usage_guard.storage_failed", extra={"error": str(exc)})
             if self.alerts:
@@ -308,7 +323,7 @@ class LLMUsageGuard:
                 block_reason="guard_unavailable",
             )
 
-        if reservation.get("block_reason"):
+        if not allowed or reservation.get("block_reason"):
             decision = LLMUsageDecision(
                 allowed=False,
                 reason=self._blocked_reason(reservation),

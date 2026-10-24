@@ -84,28 +84,97 @@ function formatPlanningFieldListTitleCase(fields: string[]): string {
   return `${normalized.slice(0, -1).join(", ")}, and ${normalized.at(-1)}`;
 }
 
+
+// FND-0332 (Sim #4): the intake packet's facts are the canonical truth — the
+// top-level display columns (budget/origin/destination/party/dateWindow) are
+// derived folds that can lag the packet. When a display column is missing but
+// the packet holds the fact (either shape: dict of slots or slot list), the
+// field is NOT missing and the gate must not dead-end the operator.
+type PacketFacts = Record<string, unknown>;
+
+function readPacketFactValue(value: unknown): unknown {
+  if (value && typeof value === "object" && "value" in (value as Record<string, unknown>)) {
+    return (value as Record<string, unknown>).value;
+  }
+  return value;
+}
+
+export function readPacketFacts(trip?: Trip | null): PacketFacts {
+  const extracted = (trip as { extracted?: { facts?: unknown } } | null | undefined)?.extracted;
+  const raw = extracted?.facts;
+  if (!raw) return {};
+  if (Array.isArray(raw)) {
+    const out: PacketFacts = {};
+    for (const entry of raw) {
+      if (entry && typeof entry === "object" && "field_name" in (entry as Record<string, unknown>)) {
+        const key = String((entry as Record<string, unknown>).field_name);
+        out[key] = (entry as Record<string, unknown>).value;
+      }
+    }
+    return out;
+  }
+  if (typeof raw === "object") {
+    const out: PacketFacts = {};
+    for (const [key, slot] of Object.entries(raw as Record<string, unknown>)) {
+      out[key] = readPacketFactValue(slot);
+    }
+    return out;
+  }
+  return {};
+}
+
+function hasUsableFact(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  if (typeof value === "number") return value > 0;
+  return true;
+}
+
 export function getRequiredPlanningFields(trip?: Trip | null): string[] {
   if (!trip) return [];
 
+  // FND-0332: packet facts are the canonical source — a display column lagging
+  // the packet must not dead-end the operator (the Sens lead had budget +
+  // destination in facts while the gate demanded both).
+  const facts = readPacketFacts(trip);
   const requiredFields: string[] = [];
 
-  if (formatBudgetDisplay(trip.budget) === "Budget missing") {
+  if (
+    formatBudgetDisplay(trip.budget) === "Budget missing" &&
+    !hasUsableFact(facts.budget_max) &&
+    !hasUsableFact(facts.budget_min) &&
+    !hasUsableFact(facts.budget_amount)
+  ) {
     requiredFields.push("Budget range");
   }
 
-  if (needsOriginCity(trip) && isMissingDisplayValue(trip.origin)) {
+  if (
+    needsOriginCity(trip) &&
+    isMissingDisplayValue(trip.origin) &&
+    !hasUsableFact(facts.origin_city)
+  ) {
     requiredFields.push("Origin city");
   }
 
-  if (isMissingDisplayValue(trip.destination)) {
+  if (
+    isMissingDisplayValue(trip.destination) &&
+    !hasUsableFact(facts.destination_candidates) &&
+    !hasUsableFact(facts.destinations)
+  ) {
     requiredFields.push("Destination");
   }
 
-  if (isMissingDisplayValue(trip.dateWindow)) {
+  if (
+    isMissingDisplayValue(trip.dateWindow) &&
+    !hasUsableFact(facts.date_window) &&
+    !hasUsableFact(facts.travel_dates)
+  ) {
     requiredFields.push("Travel window");
   }
 
-  if (!trip.party) {
+  if (!trip.party && !hasUsableFact(facts.party_size)) {
     requiredFields.push("Traveler count");
   }
 

@@ -24,14 +24,18 @@ Trust boundaries (honesty taxonomy):
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from spine_api.contract import TripQuoteBranch, TripQuoteView, TripQuotesResponse
-from spine_api.core.auth import get_current_agency
-from spine_api.models.tenant import Agency
+from spine_api.core.auth import get_current_agency, get_current_membership, get_current_user
+from spine_api.models.tenant import Agency, Membership, User
 from spine_api.persistence import TripStore
+from spine_api.services.commercial_agreement import finite_money, project_commercial_pricing
 
 logger = logging.getLogger("spine_api.quotes")
 
@@ -52,11 +56,7 @@ _REVIEW_STATUS_TO_QUOTE_STATUS = {
 
 
 def _finite_positive(value: Any) -> Optional[float]:
-    try:
-        num = float(value)
-    except (TypeError, ValueError):
-        return None
-    return num if num > 0 else None
+    return finite_money(value)
 
 
 def _review_status(trip: dict) -> str:
@@ -68,34 +68,9 @@ def _derive_quote(trip: dict, agency_id: str) -> Optional[TripQuoteView]:
     """Derive the real quote from persisted strategy + decision data, or None."""
     strategy = trip.get("strategy") or {}
     recommendation = strategy.get("recommended_option") or {}
-    net_cost = _finite_positive(recommendation.get("cost"))
-    if net_cost is None:
+    commercial = project_commercial_pricing(trip, agency_id)
+    if commercial is None:
         return None
-
-    currency = recommendation.get("currency") or "USD"
-    if not isinstance(currency, str) or not currency.strip():
-        currency = "USD"
-
-    # Margin via the canonical path: resolve the dimensioned MarginPolicyRule
-    # (FND-0268), then let fee_matrix do the floor/markup math and emit
-    # applied_rule_id provenance. Preview basis: the net cost itself is a
-    # modeled estimate until a live wholesale-cost producer (B6/B7) lands;
-    # the basis labels make that explicit rather than implying vendor truth.
-    from src.fees.margin_policy import resolve_margin_policy
-    from spine_api.services.fee_matrix import calculate_package_pricing
-
-    margin_rule = resolve_margin_policy(
-        category="custom_tour",
-        package_value_usd=net_cost,
-        agency_id=agency_id,
-    )
-    pricing = calculate_package_pricing(
-        wholesale_cost_usd=net_cost,
-        category="custom_tour",
-        margin_policy_rule=margin_rule,
-    )
-    rack_price = pricing.client_retail_price_usd
-    margin_percent = pricing.effective_agency_margin_pct
 
     review_status = _review_status(trip)
     status = _REVIEW_STATUS_TO_QUOTE_STATUS.get(review_status, "draft")
@@ -116,20 +91,18 @@ def _derive_quote(trip: dict, agency_id: str) -> Optional[TripQuoteView]:
     return TripQuoteView(
         trip_id=trip.get("id") or "",
         title=str(recommendation.get("name") or "Proposed itinerary"),
-        currency=currency,
-        net_cost=net_cost,
+        currency=commercial.currency,
+        net_cost=commercial.net_cost,
         net_cost_basis="persisted_modeled_cost",
-        margin_percent=margin_percent,
-        margin_basis="policy_preview",
-        margin_provenance={
-            "applied_rule_id": pricing.applied_rule_id,
-            "markup_amount_usd": pricing.markup_amount_usd,
-            "flat_planning_fee_usd": pricing.flat_planning_fee_usd,
-        },
+        margin_percent=commercial.margin_percent,
+        margin_basis=commercial.margin_basis,
+        margin_provenance=commercial.provenance,
         tax_percent=None,
-        rack_price=rack_price,
-        rack_price_basis="computed_preview",
-        status=status,
+        rack_price=commercial.retail_price,
+        rack_price_basis=commercial.retail_basis,
+        status=status if commercial.ready else "pricing_review",
+        pricing_status="priced" if commercial.ready else "pricing_review",
+        missing=list(commercial.missing),
         created_at=created_at,
         updated_at=updated_at,
         highlights=highlights,
@@ -179,6 +152,8 @@ def get_trip_quotes(
 
     quote = _derive_quote(trip, agency.id)
     missing = _missing_inputs(trip)
+    if quote is not None:
+        missing.extend(quote.missing)
     budget_breakdown = (trip.get("decision") or {}).get("budget_breakdown") or None
     if not isinstance(budget_breakdown, dict) or not budget_breakdown:
         budget_breakdown = None
@@ -187,9 +162,67 @@ def get_trip_quotes(
 
     return TripQuotesResponse(
         trip_id=trip_id,
-        quote_ready=quote is not None,
+        quote_ready=quote is not None and quote.pricing_status == "priced",
         quotes=[quote] if quote else [],
         branches=_derive_branches(trip),
         budget_breakdown=budget_breakdown,
         missing=missing,
     )
+
+
+class ApproveRetailPriceRequest(BaseModel):
+    retail_amount: Decimal = Field(gt=0, allow_inf_nan=False)
+    currency: str = Field(pattern=r"^[A-Z]{3}$")
+    evidence_ref: str = Field(min_length=1, max_length=500)
+    expected_updated_at: str = Field(min_length=1, max_length=100)
+
+
+def _audit_retail_approval(trip_id: str, agency_id: str, user_id: str, approval: dict) -> None:
+    from spine_api.persistence import AuditStore
+
+    AuditStore.log_event("commercial_retail_approved", user_id, {
+        "trip_id": trip_id, "agency_id": agency_id, **approval,
+        "basis": "operator_approved_retail",
+    })
+
+
+@router.post("/{trip_id}/quotes/retail", response_model=TripQuotesResponse)
+def approve_trip_retail(
+    trip_id: str,
+    request: ApproveRetailPriceRequest,
+    agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
+    membership: Membership = Depends(get_current_membership),
+) -> TripQuotesResponse:
+    """Record a native retail decision with server-owned approval evidence.
+
+    This is an operator commercial decision, not a supplier-price receipt.
+    Saving it changes the material agreement digest, so old customer consent
+    cannot authorize the new price without renewed acceptance.
+    """
+    if membership.agency_id != agency.id or membership.role.lower() not in {"owner", "admin"}:
+        raise HTTPException(status_code=403, detail="Only an agency owner or admin can approve a customer retail price.")
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    commercial = project_commercial_pricing(trip, agency.id)
+    if commercial is None or commercial.currency != request.currency:
+        raise HTTPException(status_code=409, detail="Retail currency must match the trip's persisted supplier-cost currency.")
+    if trip.get("updated_at") != request.expected_updated_at:
+        raise HTTPException(status_code=409, detail="The trip changed. Reload its quote before approving a retail price.")
+    amount = finite_money(request.retail_amount)
+    if amount is None or not request.evidence_ref.strip():
+        raise HTTPException(status_code=422, detail="A finite positive retail price and source evidence are required.")
+    approval = {
+        "retail_amount": amount, "currency": request.currency,
+        "evidence_ref": request.evidence_ref.strip(),
+        "approved_by": f"user:{user.id}",
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = TripStore.update_trip_if_version_for_agency(
+        trip_id, agency.id, {"commercial_pricing": approval}, request.expected_updated_at
+    )
+    if not result:
+        raise HTTPException(status_code=409, detail="The trip changed while approving this retail price. Reload and review it again.")
+    _audit_retail_approval(trip_id, agency.id, user.id, approval)
+    return get_trip_quotes(trip_id=trip_id, agency=agency)

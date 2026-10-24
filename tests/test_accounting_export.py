@@ -16,6 +16,11 @@ client = TestClient(app)
 INR_TRIP = {
     "id": "trip_acct_1",
     "agency_id": "agency_acct",
+    "commercial_pricing": {
+        "retail_amount": 1_025_000, "currency": "INR",
+        "approved_by": "user:advisor@example.test", "approved_at": "2026-10-23T09:00:00+05:30",
+        "evidence_ref": "approved-native-quote-1",
+    },
     "packet": {"customer_name": "Meera Sharma", "destination_country": "IN"},
     "strategy": {
         "recommended_option": {
@@ -66,10 +71,11 @@ def test_tally_export_derives_real_invoice(monkeypatch):
     res = client.get("/api/v1/trips/trip_acct_1/accounting-export", params={"format": "tally"})
     assert res.status_code == 200, res.text
     data = res.json()
-    assert data["basis"] == "persisted_modeled_cost_policy_preview"
+    assert data["basis"] == "operator_approved_retail"
     assert data["provenance"]["net_cost"] == 900000
     assert data["provenance"]["grand_total_payable"] > data["provenance"]["gross_package_price"]
-    assert "@" in data["provenance"]["applied_rule_id"]
+    assert data["provenance"]["evidence_ref"] == "approved-native-quote-1"
+    assert data["provenance"]["gross_package_price"] == 1_025_000
     # Tally XML body carries the ledger scaffold and the customer.
     assert "ALLLEDGERENTRIES.LIST" in data["body"]
     assert "Meera Sharma" in data["body"]
@@ -88,6 +94,7 @@ def test_quickbooks_export_is_valid_json(monkeypatch):
 OVERSEAS_TRIP = {
     "id": "trip_acct_1",
     "agency_id": "agency_acct",
+    "commercial_pricing": INR_TRIP["commercial_pricing"],
     "packet": {"customer_name": "Meera Sharma", "destination_country": "TH"},
     "strategy": {
         "recommended_option": {
@@ -115,6 +122,7 @@ def test_tcs_below_lrs_threshold_is_zero(monkeypatch):
     trip = {
         "id": "trip_acct_1",
         "agency_id": "agency_acct",
+        "commercial_pricing": {**INR_TRIP["commercial_pricing"], "retail_amount": 280_000},
         "packet": {"destination_country": "IN"},
         "strategy": {"recommended_option": {"name": "Short Trip", "cost": 250000, "currency": "INR"}},
     }
@@ -149,3 +157,11 @@ def test_cross_tenant_404(monkeypatch):
     _wire(monkeypatch)
     res = client.get("/api/v1/trips/trip_other/accounting-export")
     assert res.status_code == 404
+
+
+def test_native_net_alone_cannot_be_exported_as_customer_retail(monkeypatch):
+    trip = {key: value for key, value in INR_TRIP.items() if key != "commercial_pricing"}
+    _wire(monkeypatch, trip)
+    response = client.get("/api/v1/trips/trip_acct_1/accounting-export")
+    assert response.status_code == 409
+    assert "approved INR retail" in response.json()["detail"]

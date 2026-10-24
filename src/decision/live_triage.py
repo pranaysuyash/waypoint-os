@@ -47,6 +47,11 @@ class LiveTriageResult:
     policy_risk_probability: float
     confidence: Optional[float]
     source: str = "jev"  # "jev" | "heuristic_fallback"
+    # FND-0352 lane semantics (same contract as intake ambiguity): why the
+    # heuristic served — "model_lane_unconfigured" (ADR-008 posture, no
+    # credentials), "model_call_failed" (configured lane errored — ops should
+    # see the degradation), or None when the model lane served.
+    lane_status: Optional[str] = None
     advisory_chips: List[str] = field(default_factory=list)
     raw_probabilities: Dict[str, Any] = field(default_factory=dict)
 
@@ -60,6 +65,7 @@ class LiveTriageResult:
             "policy_risk_probability": round(self.policy_risk_probability, 3),
             "confidence": round(self.confidence, 3) if self.confidence is not None else None,
             "source": self.source,
+            "lane_status": self.lane_status,
             "advisory_chips": self.advisory_chips,
         }
 
@@ -87,6 +93,7 @@ class LiveMessageTriageService:
                 policy_risk_probability=0.0,
                 confidence=1.0,
                 source="heuristic_fallback",
+                lane_status="empty_input",
                 advisory_chips=["Empty message"],
             )
 
@@ -95,9 +102,9 @@ class LiveMessageTriageService:
                 return self._triage_with_jev(cleaned)
             except Exception as exc:
                 logger.warning("LiveMessageTriageService: Jev triage failed (%s); using fallback", exc)
-                return self._triage_fallback(cleaned)
+                return self._triage_fallback(cleaned, lane_status="model_call_failed")
 
-        return self._triage_fallback(cleaned)
+        return self._triage_fallback(cleaned, lane_status="model_lane_unconfigured")
 
     def _triage_with_jev(self, text: str) -> LiveTriageResult:
         schema = {
@@ -174,8 +181,12 @@ class LiveMessageTriageService:
             raw_probabilities=probs,
         )
 
-    def _triage_fallback(self, text: str) -> LiveTriageResult:
-        """Deterministic rule-based triage heuristic."""
+    def _triage_fallback(self, text: str, lane_status: str) -> LiveTriageResult:
+        """Deterministic rule-based triage heuristic.
+
+        ``lane_status`` records WHY the heuristic served (FND-0352 lane
+        semantics): the model lane was unconfigured, or configured but the
+        call failed. Same vocabulary as the intake ambiguity lane."""
         lower = text.lower()
 
         # Intent
@@ -217,6 +228,10 @@ class LiveMessageTriageService:
         if intent == "cancellation":
             chips.append("ACTION: Cancellation Request")
 
+        # The heuristic carries NO calibrated confidence — 0.80/0.9/0.1 here
+        # are rule-contract constants (FND-0352 lane semantics: the dogfood
+        # posture serves heuristics on purpose, and ops must be able to tell
+        # an unconfigured lane from a failed one via lane_status).
         return LiveTriageResult(
             intent=intent,
             is_urgent=is_urgent,
@@ -226,5 +241,6 @@ class LiveMessageTriageService:
             policy_risk_probability=0.8 if policy_risk else 0.1,
             confidence=0.80,
             source="heuristic_fallback",
+            lane_status=lane_status,
             advisory_chips=chips,
         )

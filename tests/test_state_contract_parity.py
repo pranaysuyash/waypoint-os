@@ -237,13 +237,19 @@ class TestBlobEncryption:
         assert SQLTripStore._decrypt_blob(data) == data
 
     def test_blob_wraps_structure_correctly(self):
-        """Encrypted blob must have the __encrypted_blob wrapper shape."""
+        """Encrypted blob must have the __encrypted_blob wrapper shape.
+
+        v2 (FND-0327 key rotation, 2026-10): the envelope carries ``kid`` —
+        the fingerprint of the key that produced the ciphertext — so a read
+        under a different key can name the key it needs instead of failing
+        with silent garbage."""
         data = {"key": "value"}
         encrypted = SQLTripStore._encrypt_blob(data)
 
         assert isinstance(encrypted, dict)
         assert encrypted["__encrypted_blob"] is True
-        assert encrypted["v"] == 1
+        assert encrypted["v"] == 2
+        assert isinstance(encrypted["kid"], str) and encrypted["kid"]
         assert isinstance(encrypted["ciphertext"], str)
         assert len(encrypted["ciphertext"]) > 0
 
@@ -1040,8 +1046,16 @@ class TestTripResponseParity:
         assert resp.decision == {"action": "PROCEED", "confidence": 0.95}
         assert resp.flight_status_updates == [{"flight": "AZ123", "status": "delayed_45m"}]
         assert resp.traveler_asks == [{"field": "origin_city", "asked_at": "2026-10-14T09:00:00Z"}]
-        assert resp.booking_data == {"pnr": "XYZ123", "carrier": "AZ"}
-        assert resp.pending_booking_data == {"hold_until": "2026-10-14T18:00:00Z"}
+        # 2026-10-22 privacy boundary: booking_data / pending_booking_data are
+        # NO LONGER TripResponse fields — customer PII rides only the dedicated
+        # tenant-scoped /trips/{id}/booking-data* routes
+        # (tests/test_booking_data.py, tests/test_booking_collection.py).
+        # The raw dict may still carry them; TripResponse must drop them and
+        # not leak the keys into the serialized response.
+        assert not hasattr(resp, "booking_data")
+        assert not hasattr(resp, "pending_booking_data")
+        assert "booking_data" not in resp.model_dump()
+        assert "pending_booking_data" not in resp.model_dump()
         assert resp.analytics == {"latency_ms": 120, "tier": "gold"}
         assert resp.fees == {"service_fee": 50.0, "currency": "USD"}
 

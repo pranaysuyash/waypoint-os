@@ -936,3 +936,30 @@ degeneracy, G4 noise bound).
 - Canonical home is the package module (`src/memory/slot_review.py`); this
   README entry is the pointer, not a parallel implementation.
 - Read-only over `data/audit/events.jsonl`; never flips the mode itself.
+
+
+## Sim runners (Waypoint OS live sims)
+
+- `sim3_runner.py` / `sim3_sims.py` — Sim #3 "Four Doors". Backend URL is
+  env-selectable: `SIM_BACKEND_URL` (default :8000; Sim #4 used :8010 because
+  :8000 was occupied).
+- `sim4_runner.py` / `sim4_sims.py` — Sim #4 "Eleven Doors" (group, corporate
+  policy, adversarial, money-path, visa, GDPR, ask-loop, inbound, money ops,
+  reprocess stress, documents, BFF parity probe). Evidence dir is
+  env-selectable: `SIM4_EVIDENCE_DIR` (dogfood vs beta posture lanes live
+  side by side under `Docs/sims/assets/sim4/`). Rules learned the hard way:
+  verify the server's in-process env (`ps eww`) before labelling a lane (a
+  failed bind silently leaves the OLD process serving), and never resolve the
+  trip by "newest trip" — a FAILED run must grade as failed.
+- `sim4_wave3_probes.py` — targeted follow-ups (ask-loop round trip with the
+  trip's real question field names, stage-gated documents, group share).
+- `reencrypt_trip_rows.py` — FND-0327 key-rotation tool. Dry-run by default;
+  `--apply` writes. Requires `--agency` (RLS context + safety scope),
+  `--from-key`/`--to-key` (or REENCRYPT_FROM_KEY/REENCRYPT_TO_KEY env).
+
+Example — beta-posture lane:
+```bash
+DATA_PRIVACY_MODE=beta ENCRYPTION_KEY=<fernet> uvicorn spine_api.server:app --port 8010 &
+SIM_BACKEND_URL=http://127.0.0.1:8010 SIM4_EVIDENCE_DIR=Docs/sims/assets/sim4/evidence_beta \
+  .venv/bin/python tools/sim4_runner.py --sim all
+```

@@ -82,14 +82,30 @@ def audit_visa_and_passport_validity(req: VisaCheckRequest) -> VisaCheckResult:
         )
 
     if requires_visa:
-        warnings.append(f"Traveler holding {p_country} passport requires {visa_type} to enter {d_country}.")
+        if registry_match:
+            warnings.append(f"Traveler holding {p_country} passport requires {visa_type} to enter {d_country}.")
+        else:
+            # FND-0339 (Sim #4): a registry miss returned the conservative
+            # default asserted as a determination ("requires E_VISA") —
+            # identical language to a genuine registry hit. Wrong-but-confident
+            # on a legal surface; disclose the miss and route to verification.
+            warnings.append(
+                f"No curated rule for {p_country}→{d_country} in the visa registry: the "
+                f"visa determination is a conservative default (assume a visa is required) — "
+                f"verify the entry visa type with the airline/Timatic before booking."
+            )
 
     if not passport_compliant:
         action = "URGENT: Expedite passport renewal immediately before travel"
-    elif requires_visa:
+    elif requires_visa and registry_match:
         action = f"Apply for {visa_type} prior to departure"
+    elif requires_visa:
+        action = "Visa likely required (conservative default) — verify entry visa type with the airline/Timatic"
     else:
         action = "No visa action required. Passport validity compliant."
+
+    if not registry_match and visa_type != "NONE":
+        visa_type = "UNKNOWN_VERIFY"
 
     return VisaCheckResult(
         ok=True,

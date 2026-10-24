@@ -115,8 +115,13 @@ def classify_missing_fields(packet: CanonicalPacket) -> Dict[str, Dict[str, Any]
     omitted. Unknown fields are never invented here.
     """
     out: Dict[str, Dict[str, Any]] = {}
+    def has_value(field_name: str) -> bool:
+        slot = packet.facts.get(field_name)
+        value = slot.get("value") if isinstance(slot, dict) else getattr(slot, "value", None)
+        return value is not None and value != "" and value != []
+
     for field_name, ops in FIELD_REQUIRED_FOR.items():
-        if field_name in packet.facts:
+        if has_value(field_name):
             continue
         ordered_ops = [op for op in OPERATIONS if op in ops]
         out[field_name] = {
@@ -125,7 +130,7 @@ def classify_missing_fields(packet: CanonicalPacket) -> Dict[str, Dict[str, Any]
             "class": f"BLOCKING_FOR_{ordered_ops[0]}" if ordered_ops else "OPTIONAL",
         }
     for field_name in PREFERENCE_FIELDS:
-        if field_name not in packet.facts and field_name not in out:
+        if not has_value(field_name) and field_name not in out:
             out[field_name] = {
                 "required_for": [],
                 "blocks_count": 0,

@@ -308,3 +308,44 @@ Implemented the 20 Council Audit Tasks from first principles across security, pe
 15. **Agentic Financial Autonomy Guard (`AUD-17`)**: Gated IROPS lodging VCC issuance under ADR-008 Rung 3 (`DRAFT_AWAITING_OPERATOR_APPROVAL` unless explicitly approved by operator).
 16. **Statutory Indian Tax & Accounting Bridge (`AUD-19`)**: Enforced strict Indian PAN card regex format `^[A-Z]{5}[0-9]{4}[A-Z]$` in `tax_compliance.py`; applied XML escaping to voucher numbers and dates in `export_bridge.py`.
 17. **Findings Store & Map Governance (`AUD-20`)**: Synchronized resolution records in `Docs/review/FINDINGS_STORE.jsonl` and architectural documentation.
+
+---
+
+## Addendum 2026-10-21 — Sim #4 "Eleven Doors" surface register (additive)
+
+Live-verified surface facts from `Docs/sims/SIM4_RESULTS_2026-10-21.md`
+(council: `SIM4_COUNCIL_JUDGEMENT_2026-10-21.md`; plan: `SIM4_META_AUDIT_AND_PLAN_2026-10-21.md`):
+
+- **Persistence doors & the privacy boundary (FND-0326):** a traveler note
+  reaches THREE stores — DraftStore (customer_message), the run ledger
+  (packet in `GET /runs/{id}`), and TripStore. The R-15 guard historically
+  checked TripStore only; ledger/drafts kept refused PII. Any boundary fix
+  must name all doors. Also: `_decrypt_blob` now carries a `kid` (v2 blobs);
+  foreign-key reads surface `encryption_warnings`, never a 500; rotation path
+  is `tools/reencrypt_trip_rows.py`.
+- **Reassess dataflow (FND-0328/0351):** traveler answers →
+  `public_asks._apply_answers_to_facts` writes canonical explicit_user slots +
+  trip-column aliases → `build_reassessment_request_from_trip` folds them into
+  `structured_json` → `_extract_from_structured` re-ingests (IMPORTED_STRUCTURED
+  verified live). Gaps that remain: draft-flow trips carry NO
+  `raw_input.submission.raw_note` (the words live only in the draft), and a
+  blocked reassess does not refresh the trip's decision/validation surfaces.
+- **Destination extraction (FND-0329):** the broad sweep and the verbless
+  branch are the fabrication surfaces; guards are contextual (epithet
+  preceders/followers, `_COMMON_WORD_TOPONYMS`), plus the `_REGION_DESTINATIONS`
+  Indian region layer and paren-tolerant city-sets.
+- **Document extraction (FND-0333):** `NoopExtractor` (default) is honest
+  empty; `MockExtractor` is opt-in via `EXTRACTION_PROVIDER=mock`; uploads
+  carry `duplicate_of_document_id`; extraction responses carry `provider_note`.
+- **Money path truth (FND-0337/0342):** quotes read model derives ONLY from
+  persisted strategy (`quote_ready:false` + `missing` otherwise); the proposal
+  compiler is `deterministic_preview` with `share_blocked_reason` and must
+  gain a budget-feasibility gate + FX basis line.
+- **BFF parity (FND-0340):** deny-by-default holds; product-reachable doors
+  are exactly the route-map keys. Probe distinguishes BFF-deny
+  (`{"error":"Not found"}`) from forwarded backend 404s
+  (`{"detail":"Trip not found"}`) — reuse that signature in the CI gate.
+- **Two privacy postures are part of the product truth:** dogfood (default,
+  fail-closed) and beta/production (SQL + encryption, fail-open audit). Lane
+  evidence lives side by side under `Docs/sims/assets/sim4/`.
+

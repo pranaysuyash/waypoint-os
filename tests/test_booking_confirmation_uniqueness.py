@@ -101,6 +101,67 @@ async def test_same_type_across_different_trips_is_allowed(db_session):
     await db_session.commit()
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("confirmation_type", ["hotel", "flight"])
+async def test_separate_booking_components_coexist_with_replay_guard(db_session, confirmation_type):
+    trip_id = f"trip_{uuid.uuid4().hex[:10]}"
+    for component_key in ("leg_rome", "leg_florence"):
+        db_session.add(BookingConfirmation(
+            agency_id="agency_test", trip_id=trip_id, confirmation_type=confirmation_type,
+            component_key=component_key, confirmation_status="recorded", created_by="operator",
+        ))
+    await db_session.commit()
+    db_session.add(BookingConfirmation(
+        agency_id="agency_test", trip_id=trip_id, confirmation_type=confirmation_type,
+        component_key="leg_rome", confirmation_status="draft", created_by="retry",
+    ))
+    with pytest.raises(IntegrityError):
+        await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_void_reissues_only_its_own_component(db_session):
+    trip_id = f"trip_{uuid.uuid4().hex[:10]}"
+    first = _confirmation(trip_id)
+    first.component_key = "outbound"
+    second = _confirmation(trip_id)
+    second.component_key = "return"
+    db_session.add_all([first, second])
+    await db_session.commit()
+    first.confirmation_status = "voided"
+    replacement = _confirmation(trip_id)
+    replacement.component_key = "outbound"
+    db_session.add(replacement)
+    await db_session.commit()
+    assert second.confirmation_status == "recorded"
+
+
+@pytest.mark.asyncio
+async def test_service_preserves_explicit_component_identity(db_session):
+    from spine_api.services import confirmation_service
+
+    result = await confirmation_service.create_confirmation(
+        db_session, trip_id="trip_components", agency_id="agency_test", created_by="operator",
+        data={"confirmation_type": "hotel", "component_key": "stay_rome"},
+    )
+    assert result.component_key == "stay_rome"
+    summaries = await confirmation_service.list_confirmations(db_session, "trip_components", "agency_test")
+    assert summaries[0].component_key == "stay_rome"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("component_key", ["", "contains a name", "../path", "x" * 97, None])
+async def test_invalid_component_key_cannot_persist(db_session, component_key):
+    from spine_api.services import confirmation_service
+
+    with pytest.raises(ValueError, match="component_key"):
+        await confirmation_service.create_confirmation(
+            db_session, trip_id="trip_components", agency_id="agency_test", created_by="operator",
+            data={"confirmation_type": "hotel", "component_key": component_key},
+        )
+    assert list((await db_session.execute(select(BookingConfirmation))).scalars()) == []
+
+
 # ---------------------------------------------------------------------------
 # F-31 / FND-0118: transaction-participating internals
 #

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -33,7 +34,7 @@ try:
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
-from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError
+from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError, record_llm_call
 
 
 # Default model configuration
@@ -196,15 +197,27 @@ class LocalLLMClient(BaseLLMClient):
         ).to(self._model.device)
 
         try:
+            effective_temperature = temperature if temperature is not None else self.temperature
+            # Temperature 0 means deterministic decoding. HF ``generate``
+            # rejects temperature=0 under ``do_sample=True``, so a zero
+            # request must switch to greedy decoding instead of raising (the
+            # context resolver sends 0 — this rung must not go dark).
+            generate_kwargs: Dict[str, Any] = {
+                "max_new_tokens": min(self.max_tokens, 512),  # Conservative for local models
+                "pad_token_id": self._tokenizer.eos_token_id,
+            }
+            if effective_temperature is not None and effective_temperature > 0:
+                generate_kwargs["do_sample"] = True
+                generate_kwargs["temperature"] = effective_temperature
+            else:
+                generate_kwargs["do_sample"] = False
+                effective_temperature = 0.0
+
             # Generate
+            started = time.perf_counter()
             with torch.no_grad():
-                outputs = self._model.generate(
-                    **inputs,
-                    max_new_tokens=min(self.max_tokens, 512),  # Conservative for local models
-                    temperature=temperature if temperature is not None else self.temperature,
-                    do_sample=True,
-                    pad_token_id=self._tokenizer.eos_token_id,
-                )
+                outputs = self._model.generate(**inputs, **generate_kwargs)
+            latency_ms = (time.perf_counter() - started) * 1000.0
 
             # Decode response
             response_text = self._tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -223,6 +236,16 @@ class LocalLLMClient(BaseLLMClient):
             except (json.JSONDecodeError, ValueError) as e:
                 raise LLMResponseError(f"Failed to parse JSON response: {e}\nResponse: {response_text}")
 
+            record_llm_call(
+                provider="local",
+                model=self.model,
+                prompt=full_prompt,
+                response_text=response_text,
+                temperature_requested=temperature if temperature is not None else self.temperature,
+                temperature_effective=effective_temperature,
+                latency_ms=latency_ms,
+                client=self,
+            )
             return decision
 
         except (LLMUnavailableError, LLMResponseError):

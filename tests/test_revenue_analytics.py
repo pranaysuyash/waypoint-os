@@ -1,11 +1,23 @@
 from datetime import datetime, timezone, timedelta
 from src.analytics.metrics import compute_revenue_metrics
 
+
+def _receipt(value, timestamp):
+    return {
+        "total_charged_usd": value,
+        "fulfilled_at": timestamp,
+        "fulfillment_provider_key": "synthetic-contract-fixture",
+        "pnr_locator": "SYNTHETIC",
+        "reality_tier": "real",
+        "provider_connected": True,
+    }
+
+
 def test_compute_revenue_metrics_empty():
     metrics = compute_revenue_metrics([])
-    assert metrics.bookedRevenue == 0
-    assert metrics.totalPipelineValue == 0
-    assert metrics.projectedRevenue == 0
+    assert metrics.bookedRevenue is None
+    assert metrics.totalPipelineValue is None
+    assert metrics.projectedRevenue is None
     assert len(metrics.revenueByMonth) == 0
 
 def test_compute_revenue_metrics_booked():
@@ -18,20 +30,21 @@ def test_compute_revenue_metrics_booked():
             "id": "trip_1",
             "created_at": month_str,
             "status": "booked",
-            "packet": {"budget": {"value": 10000}}
+            "packet": {"budget": {"value": 99999, "currency": "USD"}},
+            "booking_confirmation": _receipt(10000, month_str),
         },
         {
             "id": "trip_2",
             "created_at": month_str,
             "status": "in_progress",
             "meta": {"stage": "discovery"},
-            "packet": {"budget": {"value": 5000}}
+            "packet": {"budget": {"value": 5000, "currency": "USD"}}
         }
     ]
     
     metrics = compute_revenue_metrics(trips)
     
-    # Booked revenue should be 10000
+    # Legacy key represents confirmed customer value, never the budget or earnings.
     assert metrics.bookedRevenue == 10000
     # Pipeline value should be 5000 (trip_2)
     assert metrics.totalPipelineValue == 5000
@@ -53,7 +66,7 @@ def test_compute_revenue_metrics_near_close():
             "created_at": month_str,
             "status": "in_progress",
             "meta": {"stage": "output"},
-            "packet": {"budget": {"value": 20000}}
+            "packet": {"budget": {"value": 20000, "currency": "USD"}}
         }
     ]
     
@@ -73,13 +86,15 @@ def test_compute_revenue_metrics_monthly_grouping():
             "id": "trip_old",
             "created_at": lm,
             "status": "booked",
-            "packet": {"budget": {"value": 5000}}
+            "packet": {"budget": {"value": 99999, "currency": "USD"}},
+            "booking_confirmation": _receipt(5000, lm),
         },
         {
             "id": "trip_new",
             "created_at": tm,
             "status": "booked",
-            "packet": {"budget": {"value": 7000}}
+            "packet": {"budget": {"value": 99999, "currency": "USD"}},
+            "booking_confirmation": _receipt(7000, tm),
         }
     ]
     
@@ -90,10 +105,8 @@ def test_compute_revenue_metrics_monthly_grouping():
     assert metrics.revenueByMonth[1].revenue == 7000
 
 def test_compute_revenue_metrics_canonical_booked_equivalents():
-    """FND-0122: the metric counts the canonical booked-equivalent states the
-    write gate classifies (spine_api/core/trip_lifecycle.py), not just the
-    literal "booked" no writer emits; audit-gated/ambiguous statuses stay in
-    the pipeline instead of fabricating revenue."""
+    """FND-0122 retained vocabulary coverage, superseded commercial oracle:
+    lifecycle aliases do not independently establish an amount or booking."""
     now = datetime.now(timezone.utc)
     month_str = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -102,7 +115,7 @@ def test_compute_revenue_metrics_canonical_booked_equivalents():
             "id": trip_id,
             "created_at": month_str,
             "status": status,
-            "packet": {"budget": {"value": value}},
+            "packet": {"budget": {"value": value, "currency": "USD"}},
         }
 
     trips = [
@@ -124,15 +137,11 @@ def test_compute_revenue_metrics_canonical_booked_equivalents():
 
     metrics = compute_revenue_metrics(trips)
 
-    # 1000+2000+3000+4000+5000+6000 — the six booked-equivalent rows.
-    assert metrics.bookedRevenue == 21000
-    # Excluded statuses (active/archived/cancelled/in_progress) remain in the
-    # pipeline bucket per the metric's existing non-booked branch.
-    assert metrics.totalPipelineValue == 34000
-    # Projected = 21000 (booked at 100%) + 34000 * 0.10 (all excluded rows
-    # default to the "discovery" stage probability).
-    assert metrics.projectedRevenue == 24400
-    assert metrics.revenueByMonth[0].booked == 6
+    assert metrics.bookedRevenue is None
+    # Archive/cancellation are no longer treated as active sales potential.
+    assert metrics.totalPipelineValue == 17000
+    assert metrics.projectedRevenue == 1700
+    assert metrics.revenueByMonth[0].booked == 0
 
 
 if __name__ == "__main__":

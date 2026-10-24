@@ -38,6 +38,15 @@ class FrontierOrchestrationResult:
     specialty_knowledge: List[Any] = field(default_factory=list)
     requires_manual_audit: bool = False
     audit_reason: Optional[str] = None
+    # FND-0356: whether the checker ran, and why not when it didn't. The
+    # verdict is only meaningful alongside this — an operator must be able
+    # to tell "checker verified" from "checker never ran".
+    #   not_triggered | skipped_gate_disabled | skipped_confidence_above_threshold
+    #   | verified | flagged | failed
+    checker_status: str = "not_triggered"
+    # The checker's advisory +delta (recorded for the audit trail; never
+    # applied to any confidence — see checker_agent.CheckerAuditResult).
+    checker_confidence_delta: Optional[float] = None
     negotiation_active: bool = False
     negotiation_logs: List[Dict[str, Any]] = field(default_factory=list)
 
@@ -94,12 +103,15 @@ def run_frontier_orchestration(
                     audit_result = checker_agent.audit(packet, decision)
                     result.requires_manual_audit = audit_result.requires_manual
                     result.audit_reason = audit_result.reason
+                    result.checker_confidence_delta = audit_result.confidence_delta
                     if audit_result.requires_manual:
+                        result.checker_status = "flagged"
                         logger.warning(
                             "AUDIT REQUIRED: Checker flagged Ghost Workflow %s: %s",
                             result.ghost_workflow_id, audit_result.reason,
                         )
                     else:
+                        result.checker_status = "verified"
                         logger.info(
                             "Checker Agent verified Ghost Workflow %s: %s",
                             result.ghost_workflow_id, audit_result.reason,
@@ -107,8 +119,12 @@ def run_frontier_orchestration(
                 except (TypeError, ValueError, AttributeError, KeyError):
                     logger.exception("Checker Agent audit failed for packet %s", packet.packet_id)
                     result.requires_manual_audit = True
+                    result.checker_status = "failed"
                     result.audit_reason = "Checker Agent audit failed — defaulting to manual review"
+            else:
+                result.checker_status = "skipped_confidence_above_threshold"
         else:
+            result.checker_status = "skipped_gate_disabled"
             logger.info("Checker Agent skipped — enable_checker_agent is disabled")
 
     # 3. Intelligence Pool Lookup
@@ -132,7 +148,18 @@ def run_frontier_orchestration(
         str(packet.facts.get("resolved_destination", "")),
     ])
     try:
-        specialty_hits = SpecialtyKnowledgeService.identify_niche(analysis_text)
+        # RAG-backed specialty identification (mount, 2026-10-22): the
+        # canonical process-wide service is injected so retrieval actually
+        # runs; on any RAG failure identify_niche abstains-with-reason and
+        # the keyword fallback still serves. Tier/gate scoping is inherited
+        # from enable_frontier_orchestration above.
+        from src.rag.service import get_default_rag_service
+
+        specialty_hits = SpecialtyKnowledgeService.identify_niche(
+            analysis_text,
+            agency_id=getattr(agency_settings, "agency_id", "default_agency"),
+            rag_service=get_default_rag_service(),
+        )
         if specialty_hits:
             result.specialty_knowledge = specialty_hits
             logger.info(
@@ -144,7 +171,13 @@ def run_frontier_orchestration(
                 logger.debug("Specialty Knowledge hit for packet %s", packet.packet_id)
                 if urgency == "CRITICAL":
                     result.requires_manual_audit = True
-                    result.audit_reason = "Critical Specialty Niche detected"
+                    # First-wins: keep the more-specific verdict. The checker
+                    # agent's reason (set earlier on the ghost path) names the
+                    # concrete failure pattern; a generic specialty hit must
+                    # not clobber it (surfaced 2026-10-22 when the RAG-backed
+                    # specialty detection started returning real hits).
+                    if not result.audit_reason:
+                        result.audit_reason = "Critical Specialty Niche detected"
     except (TypeError, ValueError, AttributeError, KeyError):
         logger.exception("Specialty Knowledge detection failed for packet %s", packet.packet_id)
 

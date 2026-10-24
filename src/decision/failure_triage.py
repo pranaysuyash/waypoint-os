@@ -39,6 +39,11 @@ class FailureTriageOpinion:
     is_requeueable: bool
     reasoning: str
     model: str
+    # FND-0352 lane semantics: "jev" when the model lane ran,
+    # "model_lane_unconfigured" (no credentials — heuristic by posture), or
+    # "model_call_failed" (configured lane errored — heuristic fallback).
+    # Same vocabulary as the intake ambiguity / live-triage / NL-policy lanes.
+    lane_status: str = "jev"
 
 
 class FailureTriageEngine:
@@ -65,7 +70,11 @@ Traceback:
 
         if self.jev_client and self.jev_client.is_available():
             return self._evaluate_with_jev(state)
-        return self._evaluate_heuristic(error_message, traceback_text)
+        # Unconfigured lane (no credentials) vs call-failed is distinguished
+        # inside _evaluate_with_jev's own exception path (FND-0352).
+        return self._evaluate_heuristic(
+            error_message, traceback_text, lane_status="model_lane_unconfigured"
+        )
 
     def _evaluate_with_jev(self, state: str) -> FailureTriageOpinion:
         questions: Dict[str, Dict[str, Any]] = {
@@ -94,7 +103,9 @@ Traceback:
             model = resp.get("model", self.jev_client.model)
         except Exception as e:
             logger.warning("Jev failure triage query failed (%s), using heuristic", e)
-            return self._evaluate_heuristic(state, "")
+            return self._evaluate_heuristic(
+                state, "", lane_status="model_call_failed"
+            )
 
         fc_answer = answers.get("failure_class", {})
         sev_answer = answers.get("severity", {})
@@ -105,6 +116,10 @@ Traceback:
         except ValueError:
             recommended_class = FailureClass.UNCLASSIFIED
 
+        # Contract: a Jev answer without a calibrated confidence is treated as
+        # 0.5 — deliberately BELOW ``confidence_threshold`` (0.65) so the
+        # missing calibration forces ``requires_human_escalation`` rather
+        # than silently passing as trustworthy. Never raise this default.
         conf = float(fc_answer.get("confidence", 0.5))
         probs = fc_answer.get("probabilities", {})
 
@@ -139,9 +154,21 @@ Traceback:
             is_requeueable=is_requeueable,
             reasoning=reasoning,
             model=model,
+            lane_status="jev",
         )
 
-    def _evaluate_heuristic(self, error_message: str, traceback_text: str) -> FailureTriageOpinion:
+    def _evaluate_heuristic(
+        self,
+        error_message: str,
+        traceback_text: str,
+        lane_status: str = "model_lane_unconfigured",
+    ) -> FailureTriageOpinion:
+        """Deterministic keyword classification.
+
+        ``lane_status`` records WHY the heuristic served (FND-0352 lane
+        semantics): the model lane was unconfigured (no credentials —
+        posture) or configured but the call failed. Same vocabulary as the
+        intake ambiguity / live-triage / NL-policy lanes."""
         combined = f"{error_message} {traceback_text}".lower()
         if "leakage" in combined or "pii" in combined or "blocked by policy" in combined:
             fc = FailureClass.POLICY_BLOCK
@@ -177,4 +204,5 @@ Traceback:
             is_requeueable=is_requeueable,
             reasoning=f"Heuristic classified failure as '{fc.value}'.",
             model="heuristic",
+            lane_status=lane_status,
         )

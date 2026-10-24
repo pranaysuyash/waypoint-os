@@ -17,6 +17,8 @@ import logging
 import re
 import unicodedata
 import uuid
+from copy import deepcopy
+from dataclasses import asdict, replace
 from datetime import datetime
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -43,6 +45,7 @@ from .packet_models import (
     SubGroup,
 )
 from .normalizer import Normalizer
+from .fact_overrides import AUTHORITATIVE_FACT_SNAPSHOT, FACT_DEPENDENTS
 
 logger = logging.getLogger(__name__)
 from .geography import (
@@ -407,6 +410,31 @@ _SWEEP_STOP_WORDS = {
 _COMMON_WORD_TOPONYMS = {
     "reading", "nice", "bath", "ely", "hammer", "born", "burn",
     "salems", "kitchens",
+    # FND-0329 (Sim #4): lifestyle/epithet homonyms demonstrated live —
+    # "solo trip to japan" swept Solo (Indonesia), "kids are too young"
+    # swept Young (town). A word used as an English modifier in this very
+    # sentence is not an asserted destination.
+    "solo", "young",
+}
+
+# FND-0329: word-level sweep hits whose sentence context marks them as
+# modifiers, never places. "solo trip", "too young", "nice hotel" — the
+# neighbouring token, not membership in a gazetteer, decides the reading.
+_EPITHET_PRECEDERS = {"too", "very", "so", "quite", "really", "pretty"}
+_EPITHET_FOLLOWERS = {
+    "trip", "trips", "tour", "tours", "holiday", "vacation", "visit",
+    "getaway", "weekend", "drive", "retreat", "offsite", "hotel", "hotels",
+    "resort", "resorts", "guy", "guys", "couple", "family", "group",
+}
+
+# FND-0329: Indian regions/states that domestic travel names instead of
+# cities. Not in the city gazetteer, so "we want kerala in october" extracted
+# nothing. Regions are destinations; they carry the same guards as cities
+# (origin check, past-trip check) and default to semi_open unless cued.
+_REGION_DESTINATIONS = {
+    "kerala", "coorg", "rajasthan", "ladakh", "himachal", "himachal_pradesh",
+    "andaman", "andamans", "nicobar", "kutch", "rishikesh", "konkan",
+    "malabar", "spiti", "zanskar", "kasol", "gokarna", "alibaug",
 }
 _MAYBE_RE = re.compile(r"\bmaybe\s+(\w+)", re.IGNORECASE)
 # "maybe somewhere like X" / "somewhere like X" — negative lookahead stops at
@@ -591,9 +619,16 @@ _SELF_PLUS_FRIENDS_RE = re.compile(
     re.IGNORECASE,
 )
 _FRIENDS_RE = re.compile(
-    rf"\b(?P<count>{_COUNT_TOKEN_RE})\s+(?:friends?|others?|colleagues?|buddies?|mates?|ppl|log)\b",
+    rf"\b(?P<count>{_COUNT_TOKEN_RE})\s+(?:friends?|others?|colleagues?|buddies?|mates?|guys?|folks?|ladies?|ppl|log)\b",
     re.IGNORECASE,
 )
+# FND-0350 (Sim #4): "6 guys" is the most common bachelor/group phrasing in
+# the wild and was an honest unknown. Also "solo" declares a party of 1.
+_GUYS_RE = re.compile(
+    rf"\b(?P<count>{_COUNT_TOKEN_RE})\s+(?:guys?|folks?|ladies?)\b",
+    re.IGNORECASE,
+)
+_SOLO_RE = re.compile(r"\bsolo\s+(?:trip|travel|tour|holiday|vacation|trip\s)?\b|^\s*solo\b", re.IGNORECASE)
 _OF_US_RE = re.compile(
     rf"\b(?:the\s+)?(?P<count>{_COUNT_TOKEN_RE})\s+of\s+us\b",
     re.IGNORECASE,
@@ -1258,6 +1293,9 @@ def _extract_city_set(text_lower: str, full_text: str) -> Optional[Tuple[List[st
     "do a cooking class somewhere" can never form a set. Past-trip mentions
     are excluded like every other destination pass.
     """
+    # Bracket characters break elements ("japan (tokyo + kyoto)" would split
+    # at the paren and fail the whole set) — treat them as whitespace.
+    text_lower = re.sub(r"[()\[\]{}]", " ", text_lower)
     parts = re.split(r"(\+|,|\band\b|\bor\b)", text_lower, flags=re.IGNORECASE)
     best: List[str] = []
     best_raw: List[str] = []
@@ -1535,6 +1573,13 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
     # past-trip mention; do not turn arbitrary lowercase prose into a city.
     for bare_match in _VERBLESS_DESTINATION_RE.finditer(destination_text):
         span = bare_match.group("destination").strip()
+        # FND-0329: "<modifier> trip" is the same shape as "GOA trip" — but a
+        # modifier ("solo trip") is not a place. The token AFTER the match
+        # ("solo trip to …") decides the reading.
+        _after = destination_text[bare_match.end():].split()
+        _tail = _after[0].lower().strip(".,;:!?()") if _after else ""
+        if _tail in _EPITHET_FOLLOWERS:
+            continue
         words = span.split()
         # The regex is intentionally bounded, but resolve the shortest valid
         # prefix so "Bali trip" cannot become a multi-word false candidate.
@@ -1608,6 +1653,24 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
             status = "definite" if len(candidates) == 1 else "semi_open"
             return candidates, status, ", ".join(raw_matches)
 
+    # --- REGION DESTINATIONS (FND-0329) ---
+    # Domestic Indian travel is region-named ("kerala in october", "add 2
+    # nights in coorg"). Regions are checked before the word sweep and obey
+    # the same guards; cue-less mentions stay semi_open (operator confirms).
+    if not candidates:
+        region_candidates: List[str] = []
+        for region in sorted(_REGION_DESTINATIONS, key=len, reverse=True):
+            if not re.search(rf"\b{re.escape(region)}\b", destination_text, re.IGNORECASE):
+                continue
+            if _is_likely_origin(destination_text, region) or _is_past_trip_mention(destination_text, region):
+                continue
+            title = region.replace("_", " ").title()
+            if title not in region_candidates:
+                region_candidates.append(title)
+        if region_candidates:
+            status = "definite" if len(region_candidates) == 1 else "semi_open"
+            return region_candidates, status, ", ".join(region_candidates)
+
     # --- BROAD DESTINATION SWEEP (FND-0286 fallback) ---
     # If no pattern above matched, scan every word and bigram in the text
     # against the geography database. This catches destinations mentioned
@@ -1638,6 +1701,17 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
             # the first word.
             if word_clean in _NON_DESTINATION_PLACEHOLDERS:
                 continue
+            # FND-0329: an English modifier in this sentence is not a place.
+            # "solo trip", "too young", "nice hotel" — neighbouring tokens
+            # mark the reading, so the sweep never even hypothesizes it.
+            _words_for_ctx = destination_text.split()
+            _pos = destination_text.lower().find(word_clean)
+            if _pos >= 0:
+                _idx = len(destination_text[:_pos].split()) - 1
+                _prev = _words_for_ctx[_idx - 1].lower().strip(".,;:!?()") if _idx > 0 else ""
+                _next = _words_for_ctx[_idx + 1].lower().strip(".,;:!?()") if _idx + 1 < len(_words_for_ctx) else ""
+                if _prev in _EPITHET_PRECEDERS or _next in _EPITHET_FOLLOWERS:
+                    continue
             # Shared past-trip checker (clause + span branches) — memories
             # never become current intent.
             if _is_past_trip_mention(destination_text, word_clean):
@@ -2564,6 +2638,21 @@ def _extract_party(text: str) -> Dict[str, Any]:
         if friends_match:
             companions = _count_token_to_int(friends_match.group("count")) or 0
             composition["adults"] = composition.get("adults", 0) + companions
+        else:
+            # FND-0350 (Sim #4): "6 guys" — the most common colloquial group
+            # phrasing — was an honest unknown. Same max-fallback semantics as
+            # the friends branch: the count is the group, not companions of a
+            # separately-stated speaker.
+            guys_match = _GUYS_RE.search(text_lower)
+            if guys_match:
+                guys_count = _count_token_to_int(guys_match.group("count")) or 0
+                if guys_count > 0:
+                    family_group_size = max(family_group_size or 0, guys_count)
+
+    # FND-0350: "solo trip" declares a party of exactly one — the word was
+    # already guarded as a non-destination on the extraction side.
+    if not composition and not family_group_size and _SOLO_RE.search(text_lower):
+        composition["adults"] = 1
 
     family_size_match = re.search(
         rf"\b(?:family|group|party)\s+(?:of\s+)?(?P<count>{_COUNT_TOKEN_RE})",
@@ -2817,14 +2906,24 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
         r"june|july|august|september|october|november|december))"
     )
     occasion_match = re.search(
-        r"(anniversary|birthday|honeymoon)\b[^.,;()\n]{0,40}?"
-        r"[(\s](" + _OCCASION_DATE + r")\b",
+        r"(?P<occasion>anniversary|birthday|honeymoon)\b[^.,;()\n]{0,40}?"
+        r"[(\s](?P<date>" + _OCCASION_DATE + r")\b",
         text_lower,
     )
+    if not occasion_match:
+        # FND-0349 (Sim #4): the date may PRECEDE the occasion word —
+        # "we're getting married on 6th december and want a honeymoon" has the
+        # date ~40 chars BEFORE "honeymoon". Same co-occurrence contract, the
+        # reverse direction; named groups keep type/date unambiguous.
+        occasion_match = re.search(
+            r"[(\s](?P<date>" + _OCCASION_DATE + r")\b[^.,;()\n]{0,40}?"
+            r"\b(?P<occasion>anniversary|birthday|honeymoon)\b",
+            text_lower,
+        )
     if occasion_match:
         results["occasion"] = {
-            "type": occasion_match.group(1),
-            "date": occasion_match.group(2),
+            "type": occasion_match.group("occasion"),
+            "date": occasion_match.group("date"),
         }
 
     # Speaker self-identification (L2 attribution v1, Sim #2 FND-0275):
@@ -3271,6 +3370,15 @@ class ExtractionPipeline:
             elif envelope.content_type == "hybrid":
                 self._extract_from_hybrid(envelope, packet, stage=stage)
 
+        # Trusted correction context is attached by the server executor after
+        # tenant-scoped trip loading. HTTP structured_json never supplies
+        # SourceEnvelope metadata. Apply replacements only after all historical
+        # sources have been parsed, before any derived or missing-field checks.
+        for envelope in envelopes:
+            snapshot = envelope.metadata.get(AUTHORITATIVE_FACT_SNAPSHOT)
+            if isinstance(snapshot, dict) and envelope.actor_type == "system":
+                self._apply_authoritative_snapshot(envelope, snapshot, packet)
+
         # Set operating mode (top-level, NOT in facts)
         packet.operating_mode = _classify_operating_mode(all_texts)
 
@@ -3292,6 +3400,117 @@ class ExtractionPipeline:
         self._register_assumptions(packet)
 
         return packet
+
+    def _apply_authoritative_snapshot(
+        self, envelope: SourceEnvelope, snapshot: Dict[str, Any], packet: CanonicalPacket
+    ) -> None:
+        """Replace explicit current facts without changing source merge policy.
+
+        Root clears remain provenance-bearing UNKNOWN slots. Dependent values
+        from the superseded root are invalidated and recomputed using existing
+        parsers. This permits decreasing counts, replacing destination lists,
+        and clearing values without reasserting old text as current truth.
+        """
+        for field_name, payload in snapshot.items():
+            if not isinstance(payload, dict) or "value" not in payload:
+                continue
+            authority = payload.get("authority_level", AuthorityLevel.EXPLICIT_USER)
+            if authority == "explicit_user_raw":
+                authority = AuthorityLevel.EXPLICIT_USER
+            if not AuthorityLevel.is_fact(authority):
+                continue
+            refs = []
+            for ref in payload.get("evidence_refs") or []:
+                if not isinstance(ref, dict):
+                    continue
+                evidence_type = ref.get("evidence_type", "manual_entry")
+                metadata = deepcopy(ref.get("metadata") or {})
+                if evidence_type not in {"text_span", "structured_field", "attachment_extract", "derived", "manual_entry"}:
+                    metadata["original_evidence_type"] = evidence_type
+                    evidence_type = "manual_entry"
+                refs.append(EvidenceRef(
+                    envelope_id=ref.get("envelope_id") or envelope.envelope_id,
+                    evidence_type=evidence_type,
+                    excerpt=str(ref.get("excerpt") or ""),
+                    ref_id=str(ref.get("ref_id") or f"{envelope.envelope_id}:{field_name}"),
+                    confidence=float(ref.get("confidence", 1.0)),
+                    field_path=ref.get("field_path"), offset=ref.get("offset"), metadata=metadata,
+                ))
+            value = deepcopy(payload["value"])
+            if isinstance(value, str):
+                value = value.strip() or None
+            slot = Slot(
+                value=value,
+                confidence=float(payload.get("confidence", 1.0)),
+                authority_level=authority,
+                extraction_mode=payload.get("extraction_mode") or "manual_entry",
+                evidence_refs=refs or [EvidenceRef(
+                    envelope_id=envelope.envelope_id, evidence_type="manual_entry",
+                    excerpt=str(value) if value is not None else f"Explicitly cleared {field_name}",
+                )],
+                derived_from=deepcopy(payload.get("derived_from") or []),
+                updated_at=payload.get("updated_at") or envelope.received_at,
+                notes=payload.get("notes"),
+                epistemic_status=payload.get("epistemic_status") or EpistemicStatus.FACT,
+            )
+            affected = {field_name, *FACT_DEPENDENTS.get(field_name, ())}
+            for dependent in FACT_DEPENDENTS.get(field_name, ()):
+                packet.facts.pop(dependent, None)
+            packet.unknowns = [unknown for unknown in packet.unknowns if unknown.field_name not in affected]
+            superseded = [ambiguity for ambiguity in packet.ambiguities if ambiguity.field_name in affected]
+            if superseded:
+                packet.metadata.setdefault("superseded_source_ambiguities", []).extend(asdict(item) for item in superseded)
+                packet.ambiguities = [item for item in packet.ambiguities if item.field_name not in affected]
+
+            updates: Dict[str, Slot] = {}
+            if field_name == "party_size" and value is not None:
+                party = _extract_party(str(value)) if not isinstance(value, int) else {}
+                parsed_count = value if isinstance(value, int) and not isinstance(value, bool) else (
+                    int(value) if isinstance(value, str) and re.fullmatch(r"\d{1,4}", value) else party.get("party_size")
+                )
+                slot.value = parsed_count if isinstance(parsed_count, int) and 0 < parsed_count <= 1000 else None
+                for related in ("party_composition", "child_ages"):
+                    if party.get(related):
+                        updates[related] = replace(slot, value=party[related], extraction_mode="reassessment_derived", derived_from=[field_name])
+            elif field_name == "party_composition" and isinstance(value, str):
+                slot.value = _extract_party(value).get("party_composition") or None
+            elif field_name == "destination_candidates" and value is not None:
+                slot.value = _structured_destination_values(value) or None
+                if slot.value:
+                    updates["destination_status"] = replace(slot, value="definite" if len(slot.value) == 1 else "semi_open", extraction_mode="reassessment_derived", derived_from=[field_name])
+            elif field_name == "origin_city" and value is not None:
+                slot.value = _structured_origin_value(value)
+            elif field_name == "budget_raw_text" and value is not None:
+                slot.value = str(value)
+                parsed = Normalizer.parse_budget(slot.value)
+                for key in ("min", "max"):
+                    if parsed.get(key) is not None:
+                        updates[f"budget_{key}"] = replace(slot, value=parsed[key], extraction_mode="reassessment_derived", derived_from=[field_name])
+                explicit_currency = bool(re.search(r"(?:\b(?:usd|inr|eur|gbp|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|ngn|zar|kes|ghs|dollars?|rupees?|euros?)\b|[₹$€£₦])", slot.value, re.IGNORECASE))
+                updates["budget_currency"] = replace(slot, value=parsed["currency"], extraction_mode="reassessment_derived", derived_from=[field_name], epistemic_status=EpistemicStatus.FACT if explicit_currency else EpistemicStatus.ASSUMED)
+                scope = _extract_budget_scope(slot.value)
+                flexibility = _extract_budget_flexibility(slot.value)
+                for name, parsed_value, default in (("budget_scope", scope, "total"), ("budget_flexibility", flexibility, "soft")):
+                    updates[name] = replace(slot, value=default if parsed_value == "unknown" else parsed_value, extraction_mode="reassessment_derived", derived_from=[field_name], epistemic_status=EpistemicStatus.ASSUMED if parsed_value == "unknown" else EpistemicStatus.FACT)
+            elif field_name == "date_window":
+                packet.derived_signals.pop("date_year_status", None)
+                if value is not None:
+                    dates = _extract_dates(str(value))
+                    if dates:
+                        _, start, end, confidence = dates
+                        for name, parsed_value in (("date_start", start), ("date_end", end), ("date_confidence", confidence)):
+                            if parsed_value is not None:
+                                updates[name] = replace(slot, value=parsed_value, extraction_mode="reassessment_derived", derived_from=[field_name])
+                    year_status = _classify_date_year(str(value))
+                    if year_status:
+                        packet.set_derived_signal("date_year_status", self._make_slot(year_status, 1.0, AuthorityLevel.DERIVED_SIGNAL, str(value), envelope.envelope_id, extraction_mode="derived"))
+            if slot.value is None:
+                slot.epistemic_status = EpistemicStatus.UNKNOWN
+                packet.add_unknown(field_name, "intentionally_unknown", notes="Explicit current value was cleared or could not be normalized; source evidence retained.")
+            packet.facts[field_name] = slot
+            for name, derived_slot in updates.items():
+                packet.facts[name] = derived_slot
+            packet._emit_event("authoritative_fact_applied", {"field_name": field_name, "source_envelope_id": envelope.envelope_id, "cleared": slot.value is None})
 
     # Criticality per slot for harvested ASSUMED facts. These are the
     # business-rule defaults applied when the traveler's input omits the
@@ -3430,10 +3649,12 @@ class ExtractionPipeline:
                 # contract-violating resolver degrades honestly to the
                 # deterministic semi_open result.
                 resolver_outcome = None
+                resolver_candidate_note = ""
                 if dest_status == "semi_open":
                     from src.intake import context_resolver
 
                     if context_resolver.resolver_enabled():
+                        deterministic_candidates = list(dest_candidates)
                         resolver_outcome = (
                             context_resolver.resolve_destination_from_context(
                                 text, dest_candidates, dest_status
@@ -3442,6 +3663,20 @@ class ExtractionPipeline:
                         if resolver_outcome.get("available"):
                             dest_candidates = resolver_outcome["candidates"]
                             dest_status = resolver_outcome["status"]
+                            # FND-0353: the resolver may only narrow/reorder
+                            # (contract enforced in validate_resolver_response),
+                            # so every stored name is still a traveler-written,
+                            # gazetteer-confirmed value — but WHICH names
+                            # survived is a model decision, and the slot's
+                            # evidence must say so.
+                            if dest_candidates != deterministic_candidates:
+                                resolver_candidate_note = (
+                                    f" · context-resolver "
+                                    f"[{resolver_outcome.get('provider')}:"
+                                    f"{resolver_outcome.get('model')}] "
+                                    f"disambiguated {deterministic_candidates} "
+                                    f"→ {dest_candidates}"
+                                )
                         else:
                             logger.info(
                                 "context resolver unavailable for destination "
@@ -3456,7 +3691,7 @@ class ExtractionPipeline:
                 # narrower later pass, and (b) the slot records which values
                 # were carried forward and why.
                 final_candidates = list(dest_candidates)
-                final_raw = dest_raw or "not specified"
+                final_raw = (dest_raw or "not specified") + resolver_candidate_note
                 if existing_candidates:
                     confirmed_existing = [
                         c for c in existing_candidates
@@ -3471,11 +3706,14 @@ class ExtractionPipeline:
                             f"earlier evidence [{', '.join(existing_candidates)}]"
                         )
 
+                # ``final_raw`` is the provenance-bearing evidence (reprocess
+                # merge + resolver note); the bare ``dest_raw`` was previously
+                # passed here, silently dropping the FND-0309 merge record.
                 packet.set_fact("destination_candidates", self._make_slot(
                     final_candidates if final_candidates else [],
                     0.7 if dest_status == "semi_open" else 0.5,
                     AuthorityLevel.EXPLICIT_USER,
-                    dest_raw or "not specified",
+                    final_raw,
                     eid,
                 ))
                 if destination_country_scope:
@@ -4247,11 +4485,16 @@ class ExtractionPipeline:
                     ))
                     # Recompute and set destination_status so structured overrides
                     # never leave destination_status stale, empty, or inconsistent.
+                    # 57113daf wrote EpistemicStatus.VERIFIED here — a member the
+                    # enum never had — crashing every structured-destination
+                    # intake. FACT is the honest member for structured traveler
+                    # input (verified customer input) at IMPORTED_STRUCTURED
+                    # authority.
                     derived_dest_status = "definite" if len(values) == 1 else "semi_open" if len(values) > 1 else "open"
                     packet.set_fact("destination_status", self._make_slot(
                         derived_dest_status, 1.0, AuthorityLevel.IMPORTED_STRUCTURED,
                         "Derived from structured destination", eid,
-                        epistemic_status=EpistemicStatus.VERIFIED,
+                        epistemic_status=EpistemicStatus.FACT,
                     ))
                     continue
                 elif canonical_field == "origin_city":
@@ -4540,7 +4783,7 @@ class ExtractionPipeline:
         existing_unknown_fields = {u.field_name for u in packet.unknowns}
         for field_name in discovery_mvb:
             if (
-                field_name not in packet.facts
+                (field_name not in packet.facts or packet.facts[field_name].value in (None, "", []))
                 and field_name not in existing_unknown_fields
             ):
                 info = classified.get(field_name) or {}

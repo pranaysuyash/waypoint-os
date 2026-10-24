@@ -23,6 +23,60 @@ from src.schemas.journey_graph import DependencyRelation, JourneyDependencyGraph
 logger = logging.getLogger("src.orchestration.proposal_compiler")
 
 
+def _build_budget_check(
+    budget_amount: Optional[float],
+    budget_currency: Optional[str],
+    gross_customer_price_usd: float,
+    feasibility_report: Any,
+) -> Dict[str, Any]:
+    """FND-0337 (Sim #4): an over-budget compile must SAY so.
+
+    Precedence mirrors the FINANCIAL_BOUND engine: same-currency comparison is
+    authoritative; a currency mismatch is REPORTED (the engine raises
+    BUDGET_CURRENCY_UNVERIFIED) rather than fabricating a cross-currency
+    comparison; no budget means no claim.
+    """
+    if not budget_amount:
+        return {"within_budget": None, "basis": "no_budget_provided"}
+    bc = (budget_currency or "").strip().upper()
+    _BUDGET_EXCEEDED_IDS = {"BUDGET_CEILING_EXCEEDED", "BUDGET_TARGET_EXCEEDED"}
+    budget_violation = next(
+        (v for v in feasibility_report.hard_violations + feasibility_report.soft_violations
+         if getattr(v, "constraint_id", "") in _BUDGET_EXCEEDED_IDS),
+        None,
+    )
+    if budget_violation is not None:
+        return {
+            "budget_amount": budget_amount,
+            "budget_currency": bc,
+            "gross_customer_price_usd": gross_customer_price_usd,
+            "within_budget": False,
+            "basis": "same_currency_comparison",
+        }
+    soft_currency = next(
+        (v for v in feasibility_report.soft_violations
+         if getattr(v, "constraint_id", "") == "BUDGET_CURRENCY_UNVERIFIED"),
+        None,
+    )
+    if soft_currency is not None:
+        return {
+            "budget_amount": budget_amount,
+            "budget_currency": bc,
+            "gross_customer_price_usd": gross_customer_price_usd,
+            "within_budget": None,
+            "basis": "currency_unverified_reported",
+            "component_currency": (soft_currency.metadata or {}).get("component_currency"),
+            "component_total": ((soft_currency.metadata or {}).get("total_cents") or 0) / 100.0,
+        }
+    return {
+        "budget_amount": budget_amount,
+        "budget_currency": bc,
+        "gross_customer_price_usd": gross_customer_price_usd,
+        "within_budget": True,
+        "basis": "same_currency_comparison",
+    }
+
+
 @dataclass(slots=True)
 class CompiledProposalPackage:
     """End-to-end compiled proposal artifact.
@@ -70,6 +124,14 @@ class CompiledProposalPackage:
     # the margin-basis exclusion above: a failing plan has no honest composite.
     feasibility_hard_violations: List[Dict[str, str]] = field(default_factory=list)
     preference_scoring_suppressed: bool = False
+    # FND-0337 (Sim #4): the customer's budget, checked against the compiled
+    # economics — never silently absent. Shape:
+    #   {budget_amount, budget_currency, gross_customer_price_usd,
+    #    within_budget: True|False|None, basis: str}
+    # within_budget is None when no budget was provided or the currencies
+    # differ (the FINANCIAL_BOUND engine reports BUDGET_CURRENCY_UNVERIFIED
+    # rather than fabricate a cross-currency comparison).
+    budget_check: Dict[str, Any] = field(default_factory=dict)
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> Dict[str, Any]:
@@ -86,6 +148,7 @@ class CompiledProposalPackage:
             "is_feasibility_passed": self.is_feasibility_passed,
             "feasibility_hard_violations": self.feasibility_hard_violations,
             "preference_scoring_suppressed": self.preference_scoring_suppressed,
+            "budget_check": self.budget_check,
             "journey_graph_node_count": self.journey_graph_node_count,
             "provenance_assertion_count": self.provenance_assertion_count,
             "proposal_share_url": self.proposal_share_url,
@@ -117,6 +180,8 @@ class AutonomousProposalCompiler:
         traveler_count: int = 2,
         price_sensitivity: float = 0.2,  # Luxury / Low sensitivity
         peak_season: bool = True,
+        budget_amount: Optional[float] = None,
+        budget_currency: Optional[str] = None,
         allow_share_for_simulated: bool = False,
         agency_id: Optional[str] = None,
         issued_by: Optional[str] = None,
@@ -358,6 +423,8 @@ class AutonomousProposalCompiler:
         feasibility_report = ConstraintEngine.evaluate_itinerary_graph(
             graph,
             party_size=traveler_count,
+            budget_cents=int(round(budget_amount * 100)) if budget_amount else None,
+            budget_currency=budget_currency,
         )
 
         proposal_id = f"PROP-{trip_id[-6:].upper()}"
@@ -408,6 +475,10 @@ class AutonomousProposalCompiler:
                 for v in feasibility_report.hard_violations
             ],
             preference_scoring_suppressed=not feasibility_report.is_feasible,
+            budget_check=_build_budget_check(
+                budget_amount, budget_currency, gross_customer_price,
+                feasibility_report,
+            ),
             journey_graph_node_count=len(graph.nodes),
             provenance_assertion_count=len(slots) + len(epistemic_data.get("implicit_needs", [])),
             proposal_share_url=share_url,

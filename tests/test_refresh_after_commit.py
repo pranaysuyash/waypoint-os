@@ -57,13 +57,29 @@ def materialize_rls_refresh_tenant(boundary_principal_factory):
 async def _steal_released_connection():
     """Deterministically force the production failure mode.
 
+    The dance must run on the SAME pool the session uses. Since 57113daf,
+    ``rls_session`` draws from the per-loop tripstore engine
+    (``spine_api.persistence.tripstore_session_maker``), NOT
+    ``spine_api.core.database.engine`` — stealing from the old pool checks out
+    a connection that never carried the GUC while the session keeps its own
+    (session-level GUC survives commit by design), which made the GUC-loss
+    assertion vacuous. Retargeted to the tripstore pool (FND-0364 sweep,
+    2026-10-22).
+
     Fresh pool → a holder occupies a slot → the caller's ``rls_session``
     runs on its own connection → ``commit()`` releases that connection to
     the FIFO pool → ``steal()`` checks out that exact (now-oldest-idle)
     connection → the caller's next autobegin must create a brand-new
     connection that never received the session-level RLS GUC.
     """
-    from spine_api.core.database import engine
+    from spine_api.persistence import _tripstore_engines, tripstore_session_maker
+
+    # Constructing the maker registers this loop's tripstore engine
+    # (spine_api/persistence.py `_tripstore_engines`). rls_session draws from
+    # that pool — read it from the registry rather than poking the session.
+    tripstore_session_maker()
+    engine = _tripstore_engines.get(asyncio.get_running_loop())
+    assert engine is not None, "tripstore engine not registered for this loop"
 
     # Fresh pool so the FIFO hand-off below is deterministic.
     await engine.dispose()

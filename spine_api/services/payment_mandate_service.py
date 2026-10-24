@@ -335,7 +335,7 @@ class PaymentMandateLedger:
         the same key returns the stored outcome (``replayed: True``) without
         consuming again — same key, same outcome, no double movement.
         """
-        if amount_cents <= 0:
+        if isinstance(amount_cents, bool) or not isinstance(amount_cents, int) or amount_cents <= 0:
             return {"authorized": False, "reason": "amount_cents must be positive."}
 
         # Movement replay fast path: the stored first-execution outcome IS the
@@ -343,7 +343,7 @@ class PaymentMandateLedger:
         if movement_idempotency_key:
             stored = cls._stored_movement_outcome(agency_id, movement_idempotency_key)
             if stored is not None:
-                return {**stored, "replayed": True}
+                return cls._replay_movement(stored, mandate_id, int(amount_cents), scope)
 
         if _backend() == "sql":
             return cls._sql_authorize(
@@ -352,6 +352,17 @@ class PaymentMandateLedger:
         return cls._memory_authorize(
             agency_id, mandate_id, int(amount_cents), scope, movement_idempotency_key
         )
+
+    @staticmethod
+    def _replay_movement(stored: dict, mandate_id: str, amount_cents: int, scope: Optional[str]) -> dict:
+        """A key identifies an exact authorization, never arbitrary new money."""
+        if (
+            stored.get("mandate_id") != mandate_id
+            or stored.get("charged_cents") != amount_cents
+            or (scope is not None and stored.get("scope") != scope)
+        ):
+            return {"authorized": False, "reason": "movement_idempotency_key_payload_mismatch"}
+        return {**stored, "replayed": True}
 
     @classmethod
     def resolve_for_trip(
@@ -499,6 +510,11 @@ class PaymentMandateLedger:
         movement_key: Optional[str] = None,
     ) -> Dict[str, Any]:
         with cls._MEMORY_LOCK:
+            # Recheck under the consumption lock: two threads may both miss
+            # the public fast path before either records its first movement.
+            stored = cls._MOVEMENT_OUTCOMES.get((agency_id, movement_key)) if movement_key else None
+            if stored is not None:
+                return cls._replay_movement(stored, mandate_id, amount_cents, scope)
             record = cls._MEMORY_STORE.get(mandate_id)
             if record is None or record.agency_id != agency_id:
                 return {"authorized": False, "reason": "Mandate not found in ledger."}
@@ -539,6 +555,9 @@ class PaymentMandateLedger:
                 "consent_text_sha256": record.consent_text_sha256,
                 "status": record.status,
                 "storage_backend": record.storage_backend,
+                "scope": resolved_scope(record),
+                "currency": record.currency,
+                "trip_id": record.trip_id,
             }
             if movement_key:
                 outcome["movement_idempotency_key"] = movement_key
@@ -795,7 +814,8 @@ class PaymentMandateLedger:
         cls._ensure_table()
 
         async def _go() -> Dict[str, Any]:
-            from sqlalchemy import case, func, select, update
+            from sqlalchemy import case, cast, func, select, text, update
+            from sqlalchemy.dialects.postgresql import JSONB, array
 
             from spine_api.models.payment_mandate import PaymentMandateModel
 
@@ -805,11 +825,31 @@ class PaymentMandateLedger:
             # pre-CAS scope check is race-free; the CAS still guards
             # concurrent over-consumption.
             async with cls._rls_session(agency_id) as session:
+                if movement_key:
+                    # Transaction-local, cross-process serialization of the
+                    # agency/key identity also covers attempts to reuse it on
+                    # another mandate row. Hash collisions only serialize
+                    # unrelated movements; they do not alias their outcomes.
+                    await session.execute(
+                        text("SELECT pg_advisory_xact_lock(hashtextextended(:identity, 0))"),
+                        {"identity": f"mandate-movement:{agency_id}:{movement_key}"},
+                    )
+                    prior = await session.execute(
+                        select(PaymentMandateModel).where(
+                            PaymentMandateModel.agency_id == agency_id,
+                            PaymentMandateModel.mandate_metadata["movements"].has_key(movement_key),
+                        ).execution_options(populate_existing=True)
+                    )
+                    prior_row = prior.scalar_one_or_none()
+                    if prior_row is not None:
+                        stored = prior_row.mandate_metadata["movements"][movement_key]
+                        await session.commit()
+                        return cls._replay_movement(stored, mandate_id, amount_cents, scope)
                 current = await session.execute(
                     select(PaymentMandateModel).where(
                         PaymentMandateModel.mandate_id == mandate_id,
                         PaymentMandateModel.agency_id == agency_id,
-                    )
+                    ).with_for_update().execution_options(populate_existing=True)
                 )
                 existing = current.scalar_one_or_none()
                 if existing is None:
@@ -822,10 +862,7 @@ class PaymentMandateLedger:
                     movements = (existing.mandate_metadata or {}).get("movements") or {}
                     if isinstance(movements, dict) and movement_key in movements:
                         await session.commit()
-                        return {
-                            **movements[movement_key],
-                            "replayed": True,
-                        }
+                        return cls._replay_movement(movements[movement_key], mandate_id, amount_cents, scope)
 
                 if existing.status != "ACTIVE":
                     await session.commit()
@@ -871,6 +908,9 @@ class PaymentMandateLedger:
                     >= existing.max_authorized_cents
                     else existing.status,
                     "storage_backend": "sql",
+                    "scope": mandate_scope,
+                    "currency": existing.currency,
+                    "trip_id": existing.trip_id,
                 }
                 if movement_key:
                     outcome["movement_idempotency_key"] = movement_key
@@ -889,12 +929,12 @@ class PaymentMandateLedger:
                 }
                 if movement_key:
                     values["mandate_metadata"] = func.jsonb_set(
-                        func.coalesce(PaymentMandateModel.mandate_metadata, "{}"),
-                        ["{movements}"],
+                        func.coalesce(PaymentMandateModel.mandate_metadata, cast({}, JSONB)),
+                        array(["movements"]),
                         func.coalesce(
-                            PaymentMandateModel.mandate_metadata["movements"], "{}"
+                            PaymentMandateModel.mandate_metadata["movements"], cast({}, JSONB)
                         ).op("||")(
-                            func.jsonb_build_object(movement_key, outcome)
+                            func.jsonb_build_object(movement_key, cast(outcome, JSONB))
                         ),
                     )
 

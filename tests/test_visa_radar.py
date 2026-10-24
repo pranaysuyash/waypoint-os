@@ -71,7 +71,12 @@ def test_unknown_destination_defaults_to_visa_required():
     report = audit_visa_and_passport_validity(req)
 
     assert report.requires_visa is True
-    assert report.visa_type_required == "E_VISA"
+    # FND-0339: a registry miss must not assert an invented visa type —
+    # the conservative default discloses itself and routes to verification.
+    assert report.registry_match is False
+    assert report.visa_type_required == "UNKNOWN_VERIFY"
+    assert "Timatic" in report.action_required
+    assert any("conservative default" in w for w in report.warnings)
 
 
 def test_unknown_pair_is_flagged_as_heuristic():

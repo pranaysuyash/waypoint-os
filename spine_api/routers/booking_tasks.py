@@ -176,6 +176,7 @@ async def update_booking_task(
             task_id=task_id,
             agency_id=agency_id,
             data=data,
+            updated_by=membership.user_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

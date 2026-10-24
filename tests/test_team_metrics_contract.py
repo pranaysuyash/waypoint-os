@@ -52,6 +52,13 @@ class TestTeamMetricsContract:
         assert len(result) == 2
         assert {m.userId for m in result} == {"agent_abc123", "agent_def456"}
 
+    def test_actual_membership_user_and_trip_assignment_contract_join(self):
+        members = [{"id": "membership-alice", "user_id": "user-alice", "name": "Alice", "role": "owner"}]
+        trips = [{"id": "trip-1", "assigned_to_id": "user-alice", "status": "in_progress"}]
+        result = compute_team_metrics(trips, members)
+        assert result[0].userId == "user-alice"
+        assert result[0].activeTrips == 1
+
     def test_counts_active_and_completed_from_real_trips(self):
         """Active / completed counts must reflect the actual trip data."""
         members = FakeTeamStore.two_members()
@@ -71,11 +78,16 @@ class TestTeamMetricsContract:
         assert by_id["agent_def456"].completedTrips == 0
 
     def test_conversion_rate_is_real_not_random(self):
-        """conversionRate must equal completed / total * 100 (not random)."""
+        """Booking conversion follows confirmed receipts, not completed work."""
         members = FakeTeamStore.two_members()
+        receipt = {
+            "fulfilled_at": "2026-10-23T10:00:00Z", "total_charged_usd": 1000,
+            "fulfillment_provider_key": "synthetic-operation", "pnr_locator": "SYNTHETIC",
+            "provider_connected": True, "reality_tier": "real",
+        }
         trips = [
-            {"id": "t1", "assigned_to": "agent_abc123", "status": "completed"},
-            {"id": "t2", "assigned_to": "agent_abc123", "status": "completed"},
+            {"id": "t1", "assigned_to": "agent_abc123", "status": "completed", "booking_confirmation": receipt},
+            {"id": "t2", "assigned_to": "agent_abc123", "status": "completed", "booking_confirmation": receipt},
             {"id": "t3", "assigned_to": "agent_abc123", "status": "new"},
         ]
 
@@ -83,6 +95,12 @@ class TestTeamMetricsContract:
         alice = next(m for m in result if m.userId == "agent_abc123")
 
         assert alice.conversionRate == pytest.approx(66.7, abs=0.1)
+
+    def test_completed_internal_work_without_receipt_does_not_convert(self):
+        trips = [{"id": "t1", "assigned_to": "agent_abc123", "status": "completed"}]
+        alice = compute_team_metrics(trips, FakeTeamStore.two_members())[0]
+        assert alice.completedTrips == 1
+        assert alice.conversionRate == 0
 
     def test_zero_trips_gives_zero_conversion(self):
         """A member with no trips should show 0 conversion, not a random default."""

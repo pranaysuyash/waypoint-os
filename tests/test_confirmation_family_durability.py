@@ -79,7 +79,7 @@ def _seed_trip(prefix: str, agency_id: str, cost: float = 4500.0) -> str:
         {
             "id": trip_id,
             "agency_id": agency_id,
-            "status": "assigned",
+            "status": "approved",
             "destination": "Paris",
             "packet": {
                 "destination": "Paris",
@@ -104,6 +104,7 @@ def _accept(token: str):
     from spine_api.routers.public_proposals import (
         AcceptProposalRequest,
         accept_proposal,
+        _get_or_create_proposal,
     )
 
     return accept_proposal(
@@ -112,6 +113,7 @@ def _accept(token: str):
             signer_name="Sarah Connor",
             signer_email="sarah@fnd0174.test",
             e_signature_consent=True,
+            revision_id=_get_or_create_proposal(token).revision_id,
         ),
     )
 

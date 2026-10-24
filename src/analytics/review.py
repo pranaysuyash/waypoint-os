@@ -104,15 +104,10 @@ def process_review_action(
 
     # Policy-specific logic
     if normalised == "approved":
-        # Automated state change to 'delivered' upon approval
-        update_fields["status"] = "delivered"
-        analytics["delivery_status"] = "delivered"
-        analytics["proactive_feedback_asked"] = True
-        analytics["proactive_feedback_at"] = datetime.now(timezone.utc).isoformat()
-        
-        # Mocking an automated email/WhatsApp dispatch
-        _emit_notification(trip_id, pre_state["assignee"], "DELIVERY_ASK_FEEDBACK", 
-                           "Trip approved and delivered. Automated feedback request sent to customer.")
+        # Review is an internal decision. Delivery, customer feedback dispatch,
+        # and booking each require their own durable effect receipt. Preserve
+        # existing historical evidence; approval alone creates none of it.
+        analytics["owner_approved"] = True
 
     elif normalised == "revision_needed":
         # Mandatory reassignment: reassign_to if provided, else original assignee (already in pre_state)

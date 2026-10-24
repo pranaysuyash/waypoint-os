@@ -639,6 +639,61 @@ async def list_entity_memory_items(
     }
 
 
+
+async def forget_profiles_matching_identity(
+    agency_id: str,
+    *,
+    customer_ids=(),
+    emails=(),
+    phones=(),
+    names=(),
+) -> list[list[str]]:
+    """GDPR propagation by CONTACT IDENTITY (X-14 lineage, FND-0335).
+
+    Removes every durable CustomerMemoryProfile row in ``agency_id`` whose
+    customer_id, normalized email/phone, or name matches the supplied
+    identity. Shared by /memory/forget (entity-id driven) and the DSR
+    erasure cascade (trip-identity driven) so both doors have identical
+    propagation semantics.
+    """
+    from spine_api.models.tenant import CustomerMemoryProfile
+
+    match_fields = {
+        _normalize_email(e) for e in emails if _normalize_email(e)
+    } | {
+        _normalize_phone(ph) for ph in phones if _normalize_phone(ph)
+    }
+    match_fields.discard(None)
+    name_set = {(n or "").strip().lower() for n in names if (n or "").strip()}
+    id_set = {c for c in customer_ids if c}
+
+    removed: list[list[str]] = []
+    await _ensure_profiles_table()
+    async with rls_session(agency_id) as db:
+        rows = (
+            await db.execute(
+                select(CustomerMemoryProfile).where(
+                    CustomerMemoryProfile.agency_id == agency_id
+                )
+            )
+        ).scalars().all()
+        doomed = []
+        for row in rows:
+            if (
+                row.customer_id in id_set
+                or getattr(row, "normalized_email", None) in match_fields
+                or getattr(row, "normalized_phone", None) in match_fields
+                or ((row.name or "").strip().lower() in name_set if name_set else False)
+            ):
+                doomed.append(row)
+        for row in doomed:
+            removed.append([agency_id, row.customer_id])
+            await db.delete(row)
+        if doomed:
+            await db.commit()
+    return removed
+
+
 @router.post("/memory/forget", response_model=GDPRForgetResponse)
 async def forget_customer_gdpr(
     req: GDPRForgetRequest,

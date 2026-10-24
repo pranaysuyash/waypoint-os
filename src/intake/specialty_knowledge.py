@@ -1,7 +1,12 @@
 from typing import List, Optional
+import logging
+import re
+
 from pydantic import BaseModel
-from src.rag.models import DocumentSourceType, HybridSearchQuery
+from src.rag.models import DocumentSourceType, HybridSearchQuery, KnowledgeNode
 from src.rag.service import RAGService
+
+logger = logging.getLogger(__name__)
 
 class SpecialtyKnowledgeEntry(BaseModel):
     niche: str
@@ -56,6 +61,57 @@ KNOWLEDGE_BASE = {
 
 class SpecialtyKnowledgeService:
     @staticmethod
+    def ensure_seeded(agency_id: str, rag_service: RAGService) -> bool:
+        """Seed the specialty knowledge base + graph nodes once per agency.
+
+        Idempotent: a no-op when the agency already holds specialty chunks.
+        Each entry is indexed WITH an entity reference to its graph node so
+        the retriever's graph boost can fire; nodes carry the entry keywords
+        so a query mentioning any keyword matches the niche.
+        """
+        try:
+            if rag_service.store.count_chunks(
+                agency_id, source_type=DocumentSourceType.SPECIALTY_KNOWLEDGE.value
+            ) > 0:
+                return False
+            seeded = 0
+            for key, entry in KNOWLEDGE_BASE.items():
+                node_id = f"niche:{key}"
+                rag_service.index_document(
+                    document_id=f"specialty_{key}",
+                    agency_id=agency_id,
+                    source_type=DocumentSourceType.SPECIALTY_KNOWLEDGE,
+                    title=entry.niche,
+                    text=(
+                        f"Niche: {entry.niche}\n"
+                        f"Keywords: {', '.join(entry.keywords)}\n"
+                        f"Checklist Items: {', '.join(entry.checklists)}\n"
+                        f"Compliance Rules: {', '.join(entry.compliance)}\n"
+                        f"Safety Notes: {entry.safety_notes or ''}\n"
+                        f"Urgency Level: {entry.urgency}"
+                    ),
+                    tags=entry.keywords,
+                    entity_references=[node_id],
+                )
+                rag_service.add_node(KnowledgeNode(
+                    id=node_id,
+                    agency_id=agency_id,
+                    node_type="niche",
+                    label=entry.niche,
+                    properties={
+                        "keywords": entry.keywords,
+                        "urgency": entry.urgency,
+                    },
+                ))
+                seeded += 1
+            logger.info("Seeded %d specialty knowledge entries for agency %s", seeded, agency_id)
+            return True
+        except Exception as exc:
+            # Seeding failure must never break intake — but it must be VISIBLE.
+            logger.warning("Specialty knowledge seeding failed for agency %s: %s", agency_id, exc)
+            return False
+
+    @staticmethod
     def identify_niche(
         text: str,
         agency_id: str = "default_agency",
@@ -66,6 +122,7 @@ class SpecialtyKnowledgeService:
 
         if rag_service:
             try:
+                SpecialtyKnowledgeService.ensure_seeded(agency_id, rag_service)
                 search_res = rag_service.search(
                     HybridSearchQuery(
                         query=text,
@@ -74,7 +131,25 @@ class SpecialtyKnowledgeService:
                         source_types=[DocumentSourceType.SPECIALTY_KNOWLEDGE],
                     )
                 )
-                for res in search_res:
+                # Relevance floor (eval-gate finding, 2026-10-22): RRF always
+                # ranks SOMETHING top-k — raw fused scores are rank-derived
+                # and never zero — so an unfiltered consumer "matched" every
+                # query. Accept a hit only when it carries real lexical
+                # evidence: a substantive query token present in the chunk.
+                query_tokens = {
+                    w.lower() for w in re.findall(r"\w+", text or "") if len(w) > 3
+                }
+                relevant_res = [
+                    res
+                    for res in search_res
+                    if query_tokens
+                    and (
+                        query_tokens & set(re.findall(r"\w+", res.chunk.content.lower()))
+                        or query_tokens
+                        & set(re.findall(r"\w+", res.chunk.metadata.title.lower()))
+                    )
+                ]
+                for res in relevant_res:
                     doc_id = res.chunk.metadata.document_id
                     key = doc_id.replace("specialty_", "")
                     if key in KNOWLEDGE_BASE and KNOWLEDGE_BASE[key] not in hits:
@@ -86,8 +161,13 @@ class SpecialtyKnowledgeService:
                             if entry.niche.lower() in niche_title or entry.niche.lower() in chunk_text:
                                 if entry not in hits:
                                     hits.append(entry)
-            except Exception:
-                pass
+            except Exception as exc:
+                # Abstain-with-reason, never silently: the keyword fallback
+                # below still serves, but the degradation is logged.
+                logger.warning(
+                    "RAG specialty lookup failed for agency %s (%s); keyword fallback served",
+                    agency_id, exc,
+                )
 
         # Fallback to keyword matching if RAG produced no hits
         if not hits:
@@ -98,27 +178,8 @@ class SpecialtyKnowledgeService:
 
         return hits
 
-    @staticmethod
-    def seed_rag_knowledge(agency_id: str, rag_service: RAGService) -> int:
-        """Seed default specialty knowledge entries into RAG store for an agency."""
-        count = 0
-        for key, entry in KNOWLEDGE_BASE.items():
-            doc_id = f"specialty_{key}"
-            text_content = (
-                f"Niche: {entry.niche}\n"
-                f"Keywords: {', '.join(entry.keywords)}\n"
-                f"Checklist Items: {', '.join(entry.checklists)}\n"
-                f"Compliance Rules: {', '.join(entry.compliance)}\n"
-                f"Safety Notes: {entry.safety_notes or ''}\n"
-                f"Urgency Level: {entry.urgency}"
-            )
-            rag_service.index_document(
-                document_id=doc_id,
-                agency_id=agency_id,
-                source_type=DocumentSourceType.SPECIALTY_KNOWLEDGE,
-                title=entry.niche,
-                text=text_content,
-                tags=entry.keywords,
-            )
-            count += 1
-        return count
+    # seed_rag_knowledge removed 2026-10-22 — superseded by ensure_seeded,
+    # which is idempotent (count-guarded), threads entity_references so the
+    # retriever's graph boost can fire, and registers graph nodes.
+    # Removal analysis (doctrine §6): behavior fully covered; sole prior
+    # caller (tests/test_rag_integration.py) migrated to ensure_seeded.

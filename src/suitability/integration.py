@@ -367,13 +367,23 @@ def assess_activity_suitability(packet) -> List[Any]:
                 flags.append(flag)
     
     # Tier 3: Contextual Activity Pacing Sequence
+    # FND-0361: these are deterministic threshold rules — confidence 1.0
+    # asserts the (certain) TRIGGER, never a graded judgment; the explicit
+    # basis marker lets operators and the FE distinguish rule-trigger
+    # certainty from model calibration. The old 0.85/0.90 constants implied
+    # a measured uncertainty that never existed.
     if pace_preference == "relaxed" and len(STATIC_ACTIVITIES[:10]) > 4:
         flags.append(SuitabilityFlag(
             flag_type="suitability_tier3_pacing_overload",
             severity="high",
             reason="Relaxed pace preference conflicts with >4 high-intensity daily activities.",
-            confidence=0.85,
-            details={"tier": "tier3", "pace_preference": pace_preference, "activity_count": len(STATIC_ACTIVITIES[:10])},
+            confidence=1.0,
+            details={
+                "tier": "tier3",
+                "pace_preference": pace_preference,
+                "activity_count": len(STATIC_ACTIVITIES[:10]),
+                "confidence_basis": "deterministic_rule_trigger",
+            },
             affected_travelers=[p.ref_id for p in participants],
         ))
 
@@ -384,8 +394,12 @@ def assess_activity_suitability(packet) -> List[Any]:
             flag_type="suitability_tier4_fatigue_warning",
             severity="low",
             reason="Senior travelers detected: daily schedule padded with mandatory 90min rest windows.",
-            confidence=0.90,
-            details={"tier": "tier4", "fatigue_mitigation": "mandatory_rest_window"},
+            confidence=1.0,
+            details={
+                "tier": "tier4",
+                "fatigue_mitigation": "mandatory_rest_window",
+                "confidence_basis": "deterministic_rule_trigger",
+            },
             affected_travelers=[p.ref_id for p in participants if p.label in ("elderly", "senior")],
         ))
 

@@ -18,11 +18,13 @@ from fastapi.testclient import TestClient
 
 from spine_api.persistence import TripStore
 from spine_api.core.auth import get_current_user
+from spine_api.core.auth import get_current_agency_id
 from spine_api.routers.fulfillment import router as fulfillment_router
 from spine_api.routers.public_proposals import (
     AcceptProposalRequest,
     generate_signed_proposal_token,
     accept_proposal,
+    _get_or_create_proposal,
 )
 from src.orchestration.booking_fulfillment import BookingFulfillmentEngine
 
@@ -41,7 +43,7 @@ def _seed_trip(prefix: str, destination: str = "Paris", cost: float = 4500.0, ag
         {
             "id": trip_id,
             "agency_id": agency_id,
-            "status": "assigned",
+            "status": "approved",
             "destination": destination,
             "packet": {
                 "destination": destination,
@@ -69,6 +71,7 @@ def _accept(token: str, signer: str, email: str):
             signer_name=signer,
             signer_email=email,
             e_signature_consent=True,
+            revision_id=_get_or_create_proposal(token).revision_id,
         ),
     )
 
@@ -112,7 +115,7 @@ async def test_acceptance_persists_durably_and_fulfillment_persists_with_readbac
     assert len(result.pnr_locator) >= 5
     assert result.e_ticket_number.startswith("057-")
     assert result.vcc_card_id.startswith("ic_")
-    assert result.total_charged_usd == 4500.0
+    assert result.total_charged_usd == accepted.selected_total_price_usd
     assert len(result.confirmed_journey_node_ids) > 0
     # PA-05: sim-tier reality metadata on the result.
     assert result.reality_tier == "deterministic_preview"
@@ -126,7 +129,7 @@ async def test_acceptance_persists_durably_and_fulfillment_persists_with_readbac
     persisted = TripStore.get_trip(trip_id)
     confirmation = persisted.get("booking_confirmation") or {}
     assert confirmation.get("pnr_locator") == result.pnr_locator
-    assert confirmation.get("total_charged_usd") == 4500.0
+    assert confirmation.get("total_charged_usd") == accepted.selected_total_price_usd
     assert "vcc_card_id" not in confirmation
     assert "e_ticket_number" not in confirmation
     assert confirmation.get("vcc_last4") == result.vcc_last4
@@ -233,12 +236,12 @@ async def test_fulfillment_raises_when_tripstore_write_fails():
     token = generate_signed_proposal_token(trip_id=trip_id, agency_id="system")
     _accept(token, "Sarah Connor", "sarah@sky.net")
 
-    def _boom(trip_id, updates):  # noqa: ARG001 - signature mirrors staticmethod call
+    def _boom(*args, **kwargs):
         raise RuntimeError("simulated TripStore outage")
 
-    original = TripStore.__dict__["update_trip"]
+    original = TripStore.__dict__["update_trip_if_version_for_agency"]
     try:
-        TripStore.update_trip = staticmethod(_boom)
+        TripStore.update_trip_if_version_for_agency = staticmethod(_boom)
         # The raw store failure must propagate (fail loud). The old code
         # swallowed it with a warning and still returned FULFILLED_CONFIRMED.
         with pytest.raises(RuntimeError, match="simulated TripStore outage"):
@@ -248,7 +251,7 @@ async def test_fulfillment_raises_when_tripstore_write_fails():
                 holder_id="user:advisor@test",
             )
     finally:
-        TripStore.update_trip = staticmethod(original)
+        TripStore.update_trip_if_version_for_agency = original
 
     # Nothing may be claimed as persisted.
     stored = TripStore.get_trip(trip_id)
@@ -307,6 +310,7 @@ def client() -> TestClient:
         id = "stub-user-1"
 
     app.dependency_overrides[get_current_user] = lambda: _StubUser()
+    app.dependency_overrides[get_current_agency_id] = lambda: "system"
     with TestClient(app) as test_client:
         yield test_client
 
@@ -338,7 +342,7 @@ def test_fulfillment_router_endpoint(client: TestClient):
     assert "vcc_card_id" not in fulfillment
     assert "e_ticket_number" not in fulfillment
     assert fulfillment["vcc_last4"] is not None
-    assert fulfillment["total_charged_usd"] == 3500.0
+    assert fulfillment["total_charged_usd"] == 4140.0
     # PA-05: the response truthfully labels the sim tier.
     assert fulfillment["reality_tier"] == "deterministic_preview"
     assert fulfillment["provider_connected"] is False
@@ -557,4 +561,158 @@ async def test_fulfillment_money_execution_mode_hybrid_requires_payment_mandate(
     )
     assert result.status == "FULFILLED_CONFIRMED"
     assert result.mandate_enforced is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("trip_status", ["intake", "cancelled", "lost", "assigned", "unknown-state", None])
+async def test_fulfillment_lifecycle_refusal_precedes_all_money_effects(monkeypatch, trip_status):
+    from fastapi import HTTPException
+    from spine_api.services.payment_mandate_service import PaymentMandateLedger
+
+    trip_id = _seed_trip("lifecycle-refusal")
+    token = generate_signed_proposal_token(trip_id, agency_id="system")
+    _accept(token, "Test Traveler", "traveler@example.test")
+    TripStore.update_trip(trip_id, {"status": trip_status})
+    calls = []
+
+    def forbidden(*_args, **_kwargs):
+        calls.append("mandate")
+        raise AssertionError("a refused lifecycle must never reach mandate resolution")
+
+    monkeypatch.setattr(PaymentMandateLedger, "resolve_for_trip", forbidden)
+    with pytest.raises(HTTPException) as caught:
+        await BookingFulfillmentEngine.fulfill_accepted_proposal(
+            trip_id, token, holder_id="user:advisor@test"
+        )
+    assert caught.value.status_code == 409
+    assert caught.value.detail["error"] == "lifecycle_precondition_refusal"
+    assert calls == []
+    assert not (TripStore.get_trip(trip_id).get("booking_confirmation") or {})
+
+
+@pytest.mark.asyncio
+async def test_fulfillment_binds_accepted_token_to_exact_trip(monkeypatch):
+    first_id = _seed_trip("binding-first")
+    second_id = _seed_trip("binding-second")
+    first_token = generate_signed_proposal_token(first_id, agency_id="system")
+    second_token = generate_signed_proposal_token(second_id, agency_id="system")
+    _accept(first_token, "First Traveler", "first@example.test")
+    _accept(second_token, "Second Traveler", "second@example.test")
+
+    from src.orchestration import booking_fulfillment
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("cross-trip consent must be refused before execution authority")
+
+    monkeypatch.setattr(booking_fulfillment, "enforce_action_authority", forbidden)
+    with pytest.raises(ValueError, match="bind|match|different"):
+        await BookingFulfillmentEngine.fulfill_accepted_proposal(
+            second_id, first_token, holder_id="user:advisor@test"
+        )
+
+
+@pytest.mark.asyncio
+async def test_retry_recovers_consumed_mandate_and_same_operation(monkeypatch):
+    from spine_api.services.payment_mandate_service import PaymentMandateLedger
+    from src.orchestration import booking_fulfillment
+
+    monkeypatch.setenv("SPINE_API_PAYMENT_MANDATE_BACKEND", "memory")
+    monkeypatch.setenv("SPINE_API_REQUIRE_PAYMENT_MANDATES", "1")
+    trip_id = _seed_trip("mandate-retry", cost=1000)
+    token = generate_signed_proposal_token(trip_id, agency_id="system")
+    accepted = _accept(token, "Test Traveler", "traveler@example.test")
+    amount_cents = int(round(accepted.selected_total_price_usd * 100))
+    mandate = PaymentMandateLedger.register_mandate(
+        agency_id="system", trip_id=trip_id, customer_id="retry-customer",
+        max_authorized_cents=amount_cents, purpose="INITIAL_DEPOSIT",
+        consent_text="Authorize the accepted proposal amount",
+        consent_artifact_ref=token,
+    )
+    original = booking_fulfillment.AmadeusSandboxAdapter.create_flight_order
+    keys = []
+
+    def fail_once(*args, **kwargs):
+        keys.append(kwargs["idempotency_key"])
+        if len(keys) == 1:
+            raise RuntimeError("definitive simulated GDS failure")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(booking_fulfillment.AmadeusSandboxAdapter, "create_flight_order", fail_once)
+    with pytest.raises(RuntimeError, match="simulated GDS failure"):
+        await BookingFulfillmentEngine.fulfill_accepted_proposal(
+            trip_id, token, holder_id="user:advisor@test"
+        )
+    consumed = PaymentMandateLedger.get_mandate(agency_id="system", mandate_id=mandate.mandate_id)
+    assert consumed["status"] == "CONSUMED"
+    result = await BookingFulfillmentEngine.fulfill_accepted_proposal(
+        trip_id, token, holder_id="user:advisor@test"
+    )
+    assert result.status == "FULFILLED_CONFIRMED"
+    assert result.mandate_id == mandate.mandate_id
+    after = PaymentMandateLedger.get_mandate(agency_id="system", mandate_id=mandate.mandate_id)
+    assert after["consumed_amount_cents"] == amount_cents
+    assert keys[0] == keys[1]
+
+
+def test_fulfillment_router_scopes_principal_before_replay_or_execution(client, monkeypatch):
+    from spine_api.core.auth import get_current_agency_id
+
+    trip_id = _seed_trip("foreign-principal", agency_id="agency-secret")
+    token = generate_signed_proposal_token(trip_id, agency_id="agency-secret")
+    _accept(token, "Test Traveler", "traveler@example.test")
+    client.app.dependency_overrides[get_current_agency_id] = lambda: "agency-other"
+    response = client.post(
+        "/api/v1/fulfillment/proposals/fulfill",
+        headers={"Idempotency-Key": "foreign-principal-replay"},
+        json={"trip_id": trip_id, "proposal_token": token},
+    )
+    assert response.status_code == 404
+    assert not TripStore.get_trip(trip_id).get("booking_confirmation")
+
+
+def test_sql_agreement_survives_content_change_and_cache_restart(monkeypatch, boundary_principal_factory):
+    from spine_api.routers.public_proposals import _PROPOSAL_VIEW_CACHE
+    from spine_api.services.commercial_agreement import verified_accepted_agreement
+
+    agency_id = str(uuid.uuid4())
+    boundary_principal_factory(str(uuid.uuid4()), agency_id)
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+    trip_id = _seed_trip("sql-agreement", agency_id=agency_id, cost=1000)
+    token = generate_signed_proposal_token(trip_id, agency_id=agency_id)
+    accepted = _accept(token, "Test Traveler", "traveler@example.test")
+    persisted = TripStore.get_trip_for_agency(trip_id, agency_id)
+    exact = verified_accepted_agreement(persisted)
+    assert exact is not None
+    assert exact["selected_total_price"] == 1290
+    TripStore.update_trip_for_agency(trip_id, agency_id, {
+        "strategy": {"recommended_option": {"name": "Revised Paris Journey", "cost": 2000, "currency": "USD"}}
+    })
+    _PROPOSAL_VIEW_CACHE.clear()
+    changed = _get_or_create_proposal(token)
+    assert changed.status == "open"
+    assert changed.requires_reacceptance is True
+    assert changed.accepted_agreement["revision_id"] == accepted.revision_id
+    assert changed.accepted_agreement["selected_total_price"] == 1290
+    assert verified_accepted_agreement(TripStore.get_trip_for_agency(trip_id, agency_id)) == exact
+
+
+@pytest.mark.parametrize("backend", ["file", "sql"])
+def test_create_and_full_save_advance_cas_version_without_losing_agreement_fields(
+    backend, monkeypatch, boundary_principal_factory
+):
+    agency_id = str(uuid.uuid4())
+    if backend == "sql":
+        boundary_principal_factory(str(uuid.uuid4()), agency_id)
+    monkeypatch.setenv("TRIPSTORE_BACKEND", backend)
+    trip_id = _seed_trip("version-contract", agency_id=agency_id)
+    first = TripStore.get_trip_for_agency(trip_id, agency_id)
+    assert first["updated_at"]
+    TripStore.update_trip_for_agency(trip_id, agency_id, {"proposal_acceptance_history": [{"evidence": "preserve-me"}]})
+    observed = TripStore.get_trip_for_agency(trip_id, agency_id)
+    TripStore.save_trip({"id": trip_id, "agency_id": agency_id, "status": "approved", "strategy": first["strategy"]}, agency_id=agency_id)
+    overwritten = TripStore.get_trip_for_agency(trip_id, agency_id)
+    assert overwritten["updated_at"] != observed["updated_at"]
+    assert overwritten["proposal_acceptance_history"] == [{"evidence": "preserve-me"}]
+    assert TripStore.update_trip_if_version_for_agency(trip_id, agency_id, {"marker": "stale"}, observed["updated_at"]) is None
+    assert TripStore.update_trip_if_version_for_agency(trip_id, "foreign-agency", {"marker": "foreign"}, overwritten["updated_at"]) is None
 

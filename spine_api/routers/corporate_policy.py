@@ -152,8 +152,37 @@ def audit_trip_corporate_policy(
         warnings.append("Itinerary dates absent; estimated duration of 5 nights used for nightly rate cap evaluation.")
 
     nightly_rate = cost / float(nights)
+    # FND-0338 (Sim #4): an ESTIMATED baseline may warn, never convict. A
+    # violation derived from a fabricated $3,000 default asserted a real
+    # "$600 nightly exceeds cap" on a lead with no cost data.
     if nightly_rate > policy.max_nightly_hotel_usd:
-        violations.append(f"Nightly hotel rate (${nightly_rate:.2f}) exceeds corporate cap (${policy.max_nightly_hotel_usd:.2f})")
+        rate_finding = (
+            f"Nightly hotel rate (${nightly_rate:.2f}) exceeds corporate cap "
+            f"(${policy.max_nightly_hotel_usd:.2f})"
+        )
+        if cost_source == "estimated_default":
+            warnings.append(f"{rate_finding} — derived from the estimated-default cost, not a sourced trip cost; confirm before acting.")
+        else:
+            violations.append(rate_finding)
+
+    # FND-0338: the policy's cabin-class rule (allowed_flight_class +
+    # max_flight_duration_for_business_hours) exists in policy-rules but was
+    # never evaluated. Grade from the trip's persisted facts when present.
+    requested_class = (
+        (trip.get("extracted") or {}).get("cabin_class")
+        or (trip.get("strategy") or {}).get("cabin_class")
+        or (trip.get("analytics") or {}).get("cabin_class")
+    )
+    route_hours = (trip.get("analytics") or {}).get("route_duration_hours")
+    if requested_class and str(requested_class).upper().startswith("BUSINESS") and route_hours:
+        try:
+            if float(route_hours) > float(policy.max_flight_duration_for_business_hours):
+                violations.append(
+                    f"Business class booked for a {float(route_hours):.1f}h sector; policy allows business "
+                    f"only up to {policy.max_flight_duration_for_business_hours:g}h"
+                )
+        except (TypeError, ValueError):
+            pass
 
     dest = (trip.get("destination") or "").strip()
     dest_lower = dest.lower()

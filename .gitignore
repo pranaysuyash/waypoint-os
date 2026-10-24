@@ -193,3 +193,6 @@ Docs/reviews/motto_review.md
 
 # LLM call traces may carry customer text in prompts — session-local evidence, never committed
 data/llm_traces/
+
+# Runtime state: backend logs, audit dumps, agent-session debris (69MB class)
+.run/

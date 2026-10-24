@@ -205,4 +205,26 @@ describe('QuotesPageClient error state', () => {
     });
     expect(screen.getByText(/Quote lookup failed \(500\)/)).toBeInTheDocument();
   });
+
+  it('preserves known native cost and renders unpriced retail without a crash', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...QUOTES_PAYLOAD_READY,
+        quote_ready: false,
+        quotes: [{
+          ...QUOTES_PAYLOAD_READY.quotes[0], currency: 'INR', net_cost: 100000,
+          rack_price: null, margin_percent: null, pricing_status: 'pricing_review',
+          rack_price_basis: 'unpriced', margin_basis: 'unpriced', margin_provenance: {},
+        }],
+        missing: ['Native currency retail requires operator approval and evidence.'],
+      }),
+    }));
+    render(<QuotesPageClient />);
+    expect(await screen.findByTestId('quote-net-cost')).toHaveTextContent('100,000');
+    expect(screen.getByTestId('quote-rack-price')).toHaveTextContent(/Pricing review/i);
+    expect(screen.getByTestId('quote-margin')).toHaveTextContent(/Awaiting retail/i);
+    expect(screen.getByText(/Native currency retail requires/)).toBeInTheDocument();
+    expect(screen.queryByText('No quote yet for this trip')).not.toBeInTheDocument();
+  });
 });

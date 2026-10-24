@@ -43,11 +43,26 @@ def resolver_enabled() -> bool:
     return os.getenv(_KILL_SWITCH_ENV, "").strip().lower() != "0"
 
 
-def validate_resolver_response(payload: Any) -> Optional[Dict[str, Any]]:
+def validate_resolver_response(
+    payload: Any,
+    current_candidates: List[str],
+) -> Optional[Dict[str, Any]]:
     """Pure validation of a provider response against the resolver contract.
 
     Returns the normalized outcome dict, or None when the payload does not
-    satisfy the contract (wrong shape, unknown status, non-string entries).
+    satisfy the contract (wrong shape, unknown status, non-string entries,
+    or a candidate the deterministic pass never produced).
+
+    Narrowing contract (FND-0353): the resolver DISAMBIGUATES the collision
+    set — it may drop or reorder the deterministic candidates, never add a
+    name. The caller stores candidates as ``explicit_user`` facts, which is
+    only truthful for names the traveler actually wrote and the gazetteer
+    confirmed. A model-invented name therefore violates the contract and
+    the deterministic ``semi_open`` result stands (operator confirms) —
+    never a silently-asserted fact. Matching is case-insensitive and the
+    deterministic casing wins so the stored value is byte-identical to
+    what the gazetteer produced.
+
     Kept pure so the contract is testable without any provider call.
     """
     if not isinstance(payload, dict):
@@ -60,10 +75,21 @@ def validate_resolver_response(payload: Any) -> Optional[Dict[str, Any]]:
         return None
     if status not in _VALID_STATUSES:
         return None
+    canonical_by_key: Dict[str, str] = {}
+    for c in current_candidates or []:
+        if isinstance(c, str) and c.strip():
+            canonical_by_key.setdefault(c.strip().lower(), c.strip())
+    normalized: List[str] = []
+    for c in candidates:
+        canonical = canonical_by_key.get(c.strip().lower())
+        if canonical is None:
+            return None
+        if canonical not in normalized:
+            normalized.append(canonical)
     reasoning = payload.get("reasoning")
     return {
         "available": True,
-        "candidates": [c.strip() for c in candidates],
+        "candidates": normalized,
         "status": status,
         "reasoning": reasoning.strip() if isinstance(reasoning, str) else "",
     }
@@ -100,18 +126,25 @@ def resolve_destination_from_context(
         "explicit travel context is a destination. Current token-level "
         f"extraction guessed candidates={current_candidates!r} with "
         f"status={current_status!r}. Decide from full context.\n\n"
+        "Constraint: destination_candidates must be a subset of the current "
+        "candidate list above — you may drop or reorder names, you must "
+        "NEVER add a name that is not in that list.\n\n"
         f"MESSAGE:\n{raw_text}\n\n"
         "Return JSON with keys: destination_candidates (array of strings), "
         "destination_status (definite|semi_open|open|undecided), reasoning."
     )
     try:
-        payload = client.decide(prompt, _RESPONSE_SCHEMA)
+        # Disambiguation over a closed candidate set + status enum is a
+        # classification: temperature 0 removes sampling variance the task
+        # cannot use (determinism audit 2026-10-21). Reasoning models ignore
+        # the override by provider contract; the client handles that.
+        payload = client.decide(prompt, _RESPONSE_SCHEMA, temperature=0.0)
     except LLMUnavailableError as exc:
         return {"available": False, "reason": f"llm_unavailable: {exc}"}
     except Exception as exc:
         return {"available": False, "reason": f"llm_call_failed: {exc}"}
 
-    outcome = validate_resolver_response(payload)
+    outcome = validate_resolver_response(payload, current_candidates)
     if outcome is None:
         return {
             "available": False,

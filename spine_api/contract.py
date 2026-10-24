@@ -1660,12 +1660,14 @@ class TripQuoteView(BaseModel):
     currency: str = "USD"
     net_cost: float
     net_cost_basis: str = "persisted_modeled_cost"  # persisted_modeled_cost | live_wholesale_cost (future B6/B7)
-    margin_percent: float
+    margin_percent: Optional[float] = None
     margin_basis: str = "policy_preview"  # policy_preview | live_wholesale_margin (future)
     margin_provenance: Dict[str, Any] = Field(default_factory=dict)
     tax_percent: Optional[float] = None  # None = no persisted tax producer; never a default
-    rack_price: float
+    rack_price: Optional[float] = None
     rack_price_basis: str = "computed_preview"
+    pricing_status: str = "priced"  # priced | pricing_review; known costs survive an unpriced retail
+    missing: List[str] = Field(default_factory=list)
     status: str = "draft"  # draft | under_review | approved | rejected | revision_needed | sent
     created_at: str = ""
     updated_at: Optional[str] = None

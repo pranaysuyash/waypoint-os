@@ -77,6 +77,39 @@ describe("planning-status", () => {
     expect(getRecommendedPlanningFields(trip)).toEqual(["Trip priorities / must-haves", "Date flexibility"]);
   });
 
+
+  // FND-0332 (Sim #4): when the display columns lag the intake packet — the
+  // Sens lead held budget_max=90000 + destination_candidates=[Varanasi] in
+  // extracted.facts while budget/destination columns were null — the gate must
+  // NOT demand fields the canonical packet already carries.
+  it("does not demand fields the packet facts already carry", () => {
+    const trip = makeTrip({
+      extracted: {
+        facts: {
+          budget_max: { value: 90000, authority_level: "explicit_user" },
+          destination_candidates: { value: ["Varanasi"], authority_level: "explicit_user" },
+          origin_city: { value: "Kolkata", authority_level: "explicit_user" },
+          party_size: { value: 2, authority_level: "explicit_user" },
+          date_window: { value: "arriving nov 16 evening", authority_level: "explicit_user" },
+        },
+      },
+    });
+    expect(getRequiredPlanningFields(trip)).toEqual([]);
+    // the operator dead-end is gone: nothing REQUIRED blocks the workspace —
+    // recommended-level items may still surface, but the gate cannot lock
+    // tabs over facts the packet already carries.
+    expect(getPlanningBriefStatus(trip)).not.toBe("missing_required_details");
+  });
+
+  it("still demands fields absent from BOTH columns and packet facts", () => {
+    const trip = makeTrip({
+      extracted: {
+        facts: { budget_max: { value: 90000, authority_level: "explicit_user" } },
+      },
+    });
+    expect(getRequiredPlanningFields(trip)).toEqual(["Origin city"]);
+  });
+
   it("allows only intake, trip details, and timeline when required fields are missing", () => {
     const trip = makeTrip();
 

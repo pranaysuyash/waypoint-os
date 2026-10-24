@@ -13,7 +13,14 @@ logger = logging.getLogger("orchestration.checker")
 
 @dataclass(slots=True)
 class CheckerAuditResult:
-    """Result of a secondary agent audit."""
+    """Result of a secondary rule-heuristic audit.
+
+    ``confidence_delta`` is the checker's advisory opinion (+0.05 when it
+    agrees). It is RECORDED on the frontier result/rationale for the audit
+    trail and deliberately never applied to any confidence value: a
+    heuristic may not nudge a calibrated number (determinism audit
+    2026-10-21, FND-0356 — parked pending a calibrated checker lane).
+    """
     is_valid: bool
     requires_manual: bool
     reason: str
@@ -21,9 +28,14 @@ class CheckerAuditResult:
 
 class CheckerAgent:
     """
-    Simulates a 'Checker' agent that audits decisions when confidence is low.
-    In a production system, this would call a different LLM model (e.g. Claude 3.5 -> GPT-4o)
-    or use a more rigorous chain-of-thought prompt.
+    Deterministic rule-heuristic checker that audits low-confidence
+    decisions on the ghost-workflow path (ESCALATE_RECOVERY / emergency).
+
+    This is NOT a model: it runs three fixed checks (budget blindness,
+    high-stakes purpose keywords, low confidence without hard blockers).
+    A model-backed second-opinion checker (different model family, CoT
+    prompt) is the intended future lane; it must enter through the same
+    ``audit()`` contract and carry its own provenance/calibration.
     """
     
     def audit(self, packet: CanonicalPacket, decision: DecisionResult) -> CheckerAuditResult:

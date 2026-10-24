@@ -68,7 +68,42 @@ class ExtractionResult:
 
 
 class NoopExtractor:
-    """Dev/test extractor returning mock data with explicit audit sentinels."""
+    """Dev/test extractor with NO provider behind it.
+
+    FND-0333 (Sim #4): this used to return mock fields ("nationality: US",
+    DO_NOT_LOG_* sentinels) at 0.85 confidence — fabricated values on a
+    compliance surface wearing real confidence. A noop must say "nothing was
+    extracted": empty fields, empty confidence, status NOT_EXTRACTED. The
+    extraction attempt row keeps ``extracted_by="noop_extractor"`` so the
+    operator sees exactly which seam needs a provider.
+    """
+
+    async def extract(self, file_data: bytes, mime_type: str, document_type: str) -> ExtractionResult:
+        return ExtractionResult(
+            fields={},
+            confidence_scores={},
+            overall_confidence=0.0,
+            confidence_method="noop",
+            provider_metadata={
+                "status": "NOT_EXTRACTED",
+                "reason": (
+                    "No OCR/vision provider configured "
+                    "(set EXTRACTION_MODEL_CHAIN or EXTRACTION_PROVIDER). "
+                    "No fields were inferred from this document."
+                ),
+            },
+        )
+
+
+class MockExtractor:
+    """Explicit test provider returning sentinel-bearing mock fields.
+
+    Opt-in ONLY via ``EXTRACTION_PROVIDER=mock`` — never a default. The
+    sentinels (DO_NOT_LOG_*) make accidental persistence visible in audits;
+    ``confidence_method="mock"`` keeps the fabricated confidence from being
+    mistaken for a model's. Flow tests (apply/reject/readiness) use this to
+    exercise field-bearing paths without a real vision provider.
+    """
 
     MOCK_DATA = {
         "passport": {
@@ -100,8 +135,8 @@ class NoopExtractor:
             fields=fields,
             confidence_scores=confidence_scores,
             overall_confidence=0.85,
-            confidence_method="model",
-            provider_metadata=None,
+            confidence_method="mock",
+            provider_metadata={"status": "MOCK", "reason": "explicit test provider (EXTRACTION_PROVIDER=mock)"},
         )
 
 
@@ -118,14 +153,17 @@ def get_extractor() -> Union[DocumentExtractor, "ModelChain"]:
         provider = os.environ.get("EXTRACTION_PROVIDER", "noop").lower()
         if provider == "noop":
             return NoopExtractor()
+        elif provider == "mock":
+            return MockExtractor()
         elif provider == "openai_vision":
             from src.extraction.openai_vision_extractor import OpenAIVisionExtractor
             return OpenAIVisionExtractor()
         else:
             raise RuntimeError(
                 f"Unknown EXTRACTION_PROVIDER '{provider}'. "
-                f"Set EXTRACTION_PROVIDER=noop for mock extraction, or use a valid provider (openai_vision). "
-                f"Silent noop fallback has been removed to prevent misconfiguration.",
+                f"Set EXTRACTION_PROVIDER=noop (honest empty), mock (explicit test sentinels), "
+                f"or a valid provider (openai_vision). "
+                f"Silent mock fallback has been removed to prevent misconfiguration.",
             )
 
     models = [m.strip() for m in chain_str.split(",") if m.strip()]

@@ -22,6 +22,19 @@ pytestmark = pytest.mark.require_postgres
 AGENCY_ID = TEST_AGENCY_ID
 
 
+@pytest.fixture(autouse=True)
+def _persistence_tests_run_in_beta_mode(monkeypatch):
+    """These are SQL-store persistence tests: they exercise PATCH/GET storage
+    mechanics with freeform operator notes and synthetic contact names, which
+    the dogfood privacy guard blocks categorically (any populated freeform
+    field counts as real-user input at Layer 1). Beta over a SQL backend is
+    the mode-matrix posture for persistence testing: the guard still runs its
+    Layer-1 audit scan and logs findings, but encryption/RLS is the boundary.
+    Runs after the conftest reset fixture, mirroring
+    test_inbound_router.setup_test_privacy."""
+    monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+
+
 @pytest.fixture
 def patchable_trip_id():
     unique_suffix = uuid4().hex[:12]

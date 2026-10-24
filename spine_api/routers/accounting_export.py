@@ -30,9 +30,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from spine_api.core.auth import get_current_agency
 from spine_api.models.tenant import Agency
 from spine_api.persistence import TripStore
-from spine_api.services.fee_matrix import calculate_package_pricing
+from spine_api.services.commercial_agreement import finite_money, project_commercial_pricing
 from src.accounting.export_bridge import AccountingExportBridge
-from src.fees.margin_policy import resolve_margin_policy
 from src.fees.tax_compliance import (
     CommercialInvoiceSummary,
     GSTTaxScheme,
@@ -49,11 +48,7 @@ router = APIRouter(prefix="/api/v1/trips", tags=["accounting-export"])
 
 
 def _finite_positive(value) -> Optional[float]:
-    try:
-        num = float(value)
-    except (TypeError, ValueError):
-        return None
-    return num if num > 0 else None
+    return finite_money(value)
 
 
 def _is_overseas(trip: dict) -> bool:
@@ -98,18 +93,10 @@ def export_trip_accounting(
             detail="Accounting export is INR-native (Tally/GST/TCS). This trip's quote is not INR and no live FX producer exists — refusing to invent a conversion.",
         )
 
-    # Margin via the canonical dimensioned-policy path (provenance echoed).
-    margin_rule = resolve_margin_policy(
-        category="custom_tour",
-        package_value_usd=float(net_cost),
-        agency_id=agency.id,
-    )
-    pricing = calculate_package_pricing(
-        wholesale_cost_usd=float(net_cost),
-        category="custom_tour",
-        margin_policy_rule=margin_rule,
-    )
-    gross = pricing.client_retail_price_usd
+    commercial = project_commercial_pricing(trip, agency.id)
+    if commercial is None or not commercial.ready or commercial.retail_price is None:
+        raise HTTPException(status_code=409, detail="Accounting export requires an approved INR retail price with source evidence. USD policy fees cannot price INR amounts.")
+    gross = commercial.retail_price
     margin_amount = round(gross - float(net_cost), 2)
 
     tcs: TCSBreakdown = TaxComplianceEngine.calculate_tcs(
@@ -150,7 +137,7 @@ def export_trip_accounting(
                     supplier_net_amount=bucket_net,
                     fx_rate_to_inr=1.0,
                     supplier_net_inr=bucket_net,
-                    agency_markup_pct=margin_rule.markup_pct,
+                    agency_markup_pct=margin_amount / float(net_cost),
                     agency_markup_inr=round(bucket_gross - bucket_net, 2),
                     gross_client_price_inr=bucket_gross,
                     gst_scheme=GSTTaxScheme.TOUR_PACKAGE_5PCT,
@@ -187,9 +174,10 @@ def export_trip_accounting(
         "ok": True,
         "trip_id": trip_id,
         "format": format,
-        "basis": "persisted_modeled_cost_policy_preview",
+        "basis": commercial.retail_basis,
         "provenance": {
-            "applied_rule_id": pricing.applied_rule_id,
+            **commercial.provenance,
+            "currency": commercial.currency,
             "net_cost": float(net_cost),
             "agency_margin": margin_amount,
             "gross_package_price": round(gross, 2),

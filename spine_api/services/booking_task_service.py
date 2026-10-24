@@ -4,6 +4,7 @@ import hashlib
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import wraps
 from typing import Optional
 
 from sqlalchemy import select
@@ -101,6 +102,25 @@ def _validate_transition(current: str, target: str) -> None:
 # CRUD
 # ---------------------------------------------------------------------------
 
+def _atomic_task_write(operation):
+    """Commit a public mutation and its required events exactly once.
+
+    Generation helpers only flush, so creation and reconciliation share this
+    transaction. Rollback happens before a failed caller can reuse the session.
+    """
+    @wraps(operation)
+    async def commit_with_events(db: AsyncSession, *args, **kwargs):
+        try:
+            result = await operation(db, *args, **kwargs)
+            await db.commit()
+            return result
+        except BaseException:
+            await db.rollback()
+            raise
+
+    return commit_with_events
+
+
 async def list_tasks(db: AsyncSession, trip_id: str, agency_id: str) -> TaskListResult:
     result = await db.execute(
         select(BookingTask)
@@ -115,6 +135,7 @@ async def list_tasks(db: AsyncSession, trip_id: str, agency_id: str) -> TaskList
     return TaskListResult(trip_id=trip_id, tasks=tasks, summary=summary)
 
 
+@_atomic_task_write
 async def create_task(
     db: AsyncSession,
     trip_id: str,
@@ -146,7 +167,7 @@ async def create_task(
         created_by=created_by,
     )
     db.add(task)
-    await db.commit()
+    await db.flush()
     await refresh_or_reselect(db, task)
 
     await execution_event_service.emit_event(
@@ -164,25 +185,29 @@ async def create_task(
         source="agent_action",
         event_metadata={"task_type": task_type},
     )
-    await db.commit()
-
     return task
 
 
+@_atomic_task_write
 async def update_task(
     db: AsyncSession,
     task_id: str,
     agency_id: str,
     data: dict,
+    updated_by: Optional[str] = None,
 ) -> BookingTask:
     result = await db.execute(
         select(BookingTask).where(
             BookingTask.id == task_id, BookingTask.agency_id == agency_id
-        )
+        ).with_for_update()
     )
     task = result.scalar_one_or_none()
     if task is None:
         raise ValueError("Task not found")
+
+    # Validate the complete request before staging state or its history.
+    if "priority" in data and data["priority"] not in TASK_PRIORITIES:
+        raise ValueError(f"Invalid priority: {data['priority']}")
 
     if "status" in data:
         new_status = data["status"]
@@ -191,6 +216,11 @@ async def update_task(
         _validate_transition(task.status, new_status)
         old_status = task.status
         task.status = new_status
+        if new_status != old_status and new_status == "completed":
+            task.completed_at = datetime.now(timezone.utc)
+            task.completed_by = updated_by
+        elif new_status != old_status and new_status == "cancelled":
+            task.cancelled_at = datetime.now(timezone.utc)
 
         # Map status to event type
         event_type_map = {
@@ -198,9 +228,11 @@ async def update_task(
             "blocked": "task_blocked",
             "in_progress": "task_started",
             "waiting_on_customer": "task_waiting",
+            "completed": "task_completed",
+            "cancelled": "task_cancelled",
         }
         event_type = event_type_map.get(new_status)
-        if event_type:
+        if event_type and new_status != old_status:
             await execution_event_service.emit_event(
                 db,
                 agency_id=agency_id,
@@ -212,14 +244,12 @@ async def update_task(
                 status_from=old_status,
                 status_to=new_status,
                 actor_type="agent",
-                actor_id=None,
+                actor_id=updated_by,
                 source="agent_action",
                 event_metadata={"task_type": task.task_type},
             )
 
     if "priority" in data:
-        if data["priority"] not in TASK_PRIORITIES:
-            raise ValueError(f"Invalid priority: {data['priority']}")
         task.priority = data["priority"]
 
     if "owner_id" in data:
@@ -231,11 +261,12 @@ async def update_task(
     if "title" in data:
         task.title = data["title"]
 
-    await db.commit()
+    await db.flush()
     await refresh_or_reselect(db, task)
     return task
 
 
+@_atomic_task_write
 async def complete_task(
     db: AsyncSession,
     task_id: str,
@@ -245,11 +276,14 @@ async def complete_task(
     result = await db.execute(
         select(BookingTask).where(
             BookingTask.id == task_id, BookingTask.agency_id == agency_id
-        )
+        ).with_for_update()
     )
     task = result.scalar_one_or_none()
     if task is None:
         raise ValueError("Task not found")
+
+    if task.status == "completed":
+        return task
 
     if task.status == "blocked":
         raise ValueError("Cannot complete a blocked task. Reconcile or unblock first.")
@@ -259,7 +293,7 @@ async def complete_task(
     task.status = "completed"
     task.completed_by = completed_by
     task.completed_at = datetime.now(timezone.utc)
-    await db.commit()
+    await db.flush()
     await refresh_or_reselect(db, task)
 
     await execution_event_service.emit_event(
@@ -275,13 +309,12 @@ async def complete_task(
         actor_type="agent",
         actor_id=completed_by,
         source="agent_action",
-        metadata={"task_type": task.task_type},
+        event_metadata={"task_type": task.task_type},
     )
-    await db.commit()
-
     return task
 
 
+@_atomic_task_write
 async def cancel_task(
     db: AsyncSession,
     task_id: str,
@@ -290,17 +323,20 @@ async def cancel_task(
     result = await db.execute(
         select(BookingTask).where(
             BookingTask.id == task_id, BookingTask.agency_id == agency_id
-        )
+        ).with_for_update()
     )
     task = result.scalar_one_or_none()
     if task is None:
         raise ValueError("Task not found")
 
+    if task.status == "cancelled":
+        return task
+
     _validate_transition(task.status, "cancelled")
     old_status = task.status
     task.status = "cancelled"
     task.cancelled_at = datetime.now(timezone.utc)
-    await db.commit()
+    await db.flush()
     await refresh_or_reselect(db, task)
 
     await execution_event_service.emit_event(
@@ -316,10 +352,8 @@ async def cancel_task(
         actor_type="agent",
         actor_id=None,
         source="agent_action",
-        metadata={"task_type": task.task_type},
+        event_metadata={"task_type": task.task_type},
     )
-    await db.commit()
-
     return task
 
 
@@ -327,6 +361,7 @@ async def cancel_task(
 # Generation + Reconciliation
 # ---------------------------------------------------------------------------
 
+@_atomic_task_write
 async def generate_tasks(
     db: AsyncSession,
     trip_id: str,
@@ -351,7 +386,11 @@ async def _fetch_trip_state(db: AsyncSession, trip_id: str, agency_id: str) -> d
     if not trip:
         return {}
 
-    booking_data = trip.get("booking_data") or {}
+    # Tenant-scoped accessor — booking_data left the generic trip dict
+    # (privacy boundary, tests/test_booking_data.py).
+    booking_data = await asyncio.to_thread(
+        TripStore.get_booking_data_for_agency, trip_id, agency_id
+    ) or {}
     validation = trip.get("validation") or {}
     readiness = validation.get("readiness") or {}
 
@@ -580,7 +619,7 @@ async def _create_missing_tasks(
         created.append(task)
 
     if created:
-        await db.commit()
+        await db.flush()
         for t in created:
             await refresh_or_reselect(db, t)
 
@@ -599,9 +638,8 @@ async def _create_missing_tasks(
                 actor_type="system",
                 actor_id=None,
                 source="system_generation",
-                metadata={"task_type": t.task_type},
+                event_metadata={"task_type": t.task_type},
             )
-        await db.commit()
 
     return created, skipped
 
@@ -619,7 +657,7 @@ async def _reconcile_active_tasks(
             BookingTask.agency_id == agency_id,
             BookingTask.source.in_(SYSTEM_SOURCES),
             ~BookingTask.status.in_(TERMINAL_STATUSES),
-        )
+        ).with_for_update()
     )
     active_tasks = list(result.scalars().all())
 
@@ -655,15 +693,16 @@ async def _reconcile_active_tasks(
                 task_id=task.id, old_status="blocked", new_status="ready"
             ))
         elif not current_blocked and should_be_blocked:
+            old_status = task.status
             task.status = "blocked"
             task.blocker_code = new_blocker
             task.blocker_refs = candidate.get("blocker_refs")
             reconciled.append(ReconciliationResult(
-                task_id=task.id, old_status=task.status, new_status="blocked"
+                task_id=task.id, old_status=old_status, new_status="blocked"
             ))
 
     if reconciled:
-        await db.commit()
+        await db.flush()
 
         # Emit reconciliation events
         for r in reconciled:
@@ -688,6 +727,4 @@ async def _reconcile_active_tasks(
                     source="reconciliation",
                     event_metadata={"task_type": t.task_type, "blocker_code": t.blocker_code},
                 )
-        await db.commit()
-
     return reconciled

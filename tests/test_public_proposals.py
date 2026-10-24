@@ -178,7 +178,7 @@ def test_signed_token_requires_persisted_agency_bound_proposal(monkeypatch):
     assert data["trip_id"] == trip_id
     assert data["destination"] == "Kyoto"
     assert data["title"] == "Kyoto Garden Villa"
-    assert data["base_price_usd"] == 7500
+    assert data["base_price_usd"] == 8700
     assert data["days"] == []
     assert data["available_options"] == []
     assert "Italy" not in response.text
@@ -478,3 +478,145 @@ def test_public_access_derives_stated_requirements_without_names(monkeypatch, tm
     data = response.json()
     assert data["stated_requirements"] == reqs
     assert "Meera" not in response.text
+
+
+@pytest.fixture
+def commercial_trip(monkeypatch):
+    """Real public/quote projections over an isolated, versioned trip store."""
+    from copy import deepcopy
+
+    trip = {
+        "id": "trip_commercial_contract",
+        "agency_id": "agency_commercial_contract",
+        "status": "approved",
+        "updated_at": "revision-0",
+        "packet": {
+            "destination": "Kyoto",
+            "start_date": "2026-11-01",
+            "end_date": "2026-11-08",
+            "party_size": 2,
+        },
+        "strategy": {
+            "recommended_option": {
+                "name": "Kyoto Garden Journey",
+                "cost": 1000,
+                "currency": "USD",
+                "highlights": ["Garden visits"],
+                "summary": "Seven nights in Kyoto",
+            }
+        },
+    }
+
+    def read(trip_id, agency_id):
+        return deepcopy(trip) if (trip_id, agency_id) == (trip["id"], trip["agency_id"]) else None
+
+    def compare_and_set(trip_id, agency_id, updates, expected_updated_at=None):
+        if read(trip_id, agency_id) is None or expected_updated_at != trip["updated_at"]:
+            return None
+        trip.update(deepcopy(updates))
+        trip["updated_at"] = f"revision-{int(trip['updated_at'].split('-')[-1]) + 1}"
+        return deepcopy(trip)
+
+    def plain_update(trip_id, agency_id, updates):
+        return compare_and_set(trip_id, agency_id, updates, trip["updated_at"])
+
+    monkeypatch.setattr(public_proposals.TripStore, "get_trip_for_agency", read)
+    monkeypatch.setattr(public_proposals.TripStore, "update_trip_if_version_for_agency", compare_and_set)
+    monkeypatch.setattr(public_proposals.TripStore, "update_trip_for_agency", plain_update)
+    monkeypatch.setattr(public_proposals.AuditStore, "log_event", lambda *_args, **_kwargs: None)
+    token = generate_signed_proposal_token(trip["id"], agency_id=trip["agency_id"])
+    return trip, token
+
+
+def _accept_current_revision(token, **overrides):
+    current = client.get(f"/api/public/proposals/{token}").json()
+    return client.post(
+        f"/api/public/proposals/{token}/accept",
+        json={
+            "signer_name": "Test Traveler",
+            "signer_email": "traveler@example.test",
+            "e_signature_consent": True,
+            "selected_option_ids": [],
+            "revision_id": current.get("revision_id"),
+            **overrides,
+        },
+    )
+
+
+def test_public_proposal_and_operator_quote_share_customer_retail(commercial_trip):
+    from spine_api.routers.quotes import _derive_quote
+
+    trip, token = commercial_trip
+    quote = _derive_quote(trip, trip["agency_id"])
+    proposal = client.get(f"/api/public/proposals/{token}").json()
+    assert quote.net_cost == 1000
+    assert quote.rack_price == 1290
+    assert proposal["base_price_usd"] == quote.rack_price
+    assert proposal["selected_total_price"] == quote.rack_price
+    assert proposal["currency"] == quote.currency
+    assert "net_cost" not in proposal, "supplier cost stays inside the agency boundary"
+
+
+def test_material_edit_keeps_accepted_agreement_and_requires_new_consent(commercial_trip):
+    trip, token = commercial_trip
+    response = _accept_current_revision(token)
+    assert response.status_code == 200
+    original = response.json()
+    trip["strategy"]["recommended_option"]["cost"] = 2000
+    trip["updated_at"] = "revision-2"
+
+    # Same-process cache and restart must have identical agreement semantics.
+    changed = client.get(f"/api/public/proposals/{token}").json()
+    public_proposals._PROPOSAL_VIEW_CACHE.clear()
+    restarted = client.get(f"/api/public/proposals/{token}").json()
+    assert changed == restarted
+    assert changed["status"] == "open"
+    assert changed["requires_reacceptance"] is True
+    assert changed["revision_id"] != original["revision_id"]
+    assert changed["accepted_agreement"]["revision_id"] == original["revision_id"]
+    assert changed["accepted_agreement"]["selected_total_price"] == 1290
+    assert trip["proposal_accepted_agreement"]["selected_total_price"] == 1290
+
+
+def test_stale_revision_acceptance_is_refused_without_persisting(commercial_trip):
+    trip, token = commercial_trip
+    before = client.get(f"/api/public/proposals/{token}").json()
+    trip["strategy"]["recommended_option"]["cost"] = 2000
+    trip["updated_at"] = "revision-1"
+    response = _accept_current_revision(token, revision_id=before.get("revision_id"))
+    assert response.status_code == 409
+    assert "proposal_accepted_at" not in trip
+
+
+def test_real_acceptance_requires_revision_identity(commercial_trip):
+    trip, token = commercial_trip
+    response = _accept_current_revision(token, revision_id=None)
+    assert response.status_code == 409
+    assert "proposal_accepted_at" not in trip
+
+
+def test_acceptance_is_immutable_and_reacceptance_preserves_history(commercial_trip):
+    trip, token = commercial_trip
+    first = _accept_current_revision(token)
+    assert first.status_code == 200
+    accepted_at = first.json()["accepted_at"]
+    repeated = _accept_current_revision(token)
+    assert repeated.status_code == 200
+    assert repeated.json()["accepted_at"] == accepted_at
+    assert len(trip["proposal_acceptance_history"]) == 1
+
+    trip["strategy"]["recommended_option"]["highlights"].append("Private transfer")
+    trip["updated_at"] = "revision-2"
+    second = _accept_current_revision(token)
+    assert second.status_code == 200
+    history = trip["proposal_acceptance_history"]
+    assert len(history) == 2
+    assert history[0]["revision_id"] == first.json()["revision_id"]
+    assert history[1]["revision_id"] != history[0]["revision_id"]
+
+
+def test_unknown_selected_option_cannot_be_silently_accepted(commercial_trip):
+    trip, token = commercial_trip
+    response = _accept_current_revision(token, selected_option_ids=["unpriced_upgrade"])
+    assert response.status_code == 400
+    assert "proposal_accepted_at" not in trip

@@ -152,10 +152,12 @@ describe('public marketing pages', () => {
     expect(screen.getByRole('button', { name: /Paste itinerary/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Screenshot/i })).toBeInTheDocument();
 
-    // Real upload drop zone button — aria-label is the accessible name; the
-    // visible "Choose file to score" text is in an aria-hidden span inside the
-    // button (design decision: decorative label, not the accessible name).
-    expect(screen.getByRole('button', { name: /Upload itinerary/i })).toBeInTheDocument();
+    // Upload drop zone — 57113daf rebuilt it as a labeled `region` (it wraps
+    // interactive children: source picker, consent toggle, choose-file button),
+    // so `button` semantics on the container would be nested-interactive and
+    // wrong. The region keeps its aria-label as the accessible name; actual
+    // upload activation lives in the real button inside it.
+    expect(screen.getByRole('region', { name: /Upload itinerary/i })).toBeInTheDocument();
   });
 
   it('itinerary checker upload zone is a real interactive tool, not a sample preview', () => {

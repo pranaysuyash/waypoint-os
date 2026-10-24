@@ -46,7 +46,8 @@ def test_groundedness_evaluator_high_confidence():
     assert result.is_grounded is True
     assert result.groundedness_score >= 0.70
     assert len(result.citations) == 1
-    assert result.must_confirm == []
+    assert result.claim_support_status == "not_verified"
+    assert any("Claim support" in warning for warning in result.must_confirm)
     
     formatted = evaluator.format_citation_text(citations)
     assert "Goa Luxury Resort Partner Directory" in formatted
@@ -86,6 +87,6 @@ def test_groundedness_evaluator_low_confidence_flag():
     result = evaluator.evaluate_answer(query, answer, citations)
     
     assert result.is_grounded is False
-    assert len(result.must_confirm) == 1
+    assert result.must_confirm
     assert "Low grounding confidence" in result.must_confirm[0]
 

@@ -10,7 +10,7 @@ as semantic evidence.
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -38,6 +38,27 @@ class RAGChunkMetadata(BaseModel):
     file_path: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
     entity_references: List[str] = Field(default_factory=list)
+    # Embedding contract (FND-0362): every stored vector must say what
+    # produced it. Chunks without an embedding leave these None; chunks WITH
+    # an embedding may not be inserted without both fields (store enforces,
+    # fail-closed). Cross-model retrieval is filtered, never silently compared.
+    embedding_model: Optional[str] = None
+    embedding_dimension: Optional[int] = None
+    # Verbatim source span for citation provenance (CoverWise source/retrieval
+    # split). None means content IS the verbatim source (the default indexer
+    # slices original text); a future retrieval-optimized transform would fill
+    # both and keep this field as the citable truth.
+    source_text: Optional[str] = None
+    # Retrieval-optimized rendering (FND-0329-style contextual retrieval):
+    # document title (+ part/section context) prepended so contextless child
+    # chunks embed and FTS-match with their document grounding. None means
+    # "same as content" (store/indexer fall back). Citations NEVER quote this.
+    retrieval_text: Optional[str] = None
+    # Corpus license governance (CoverWise manifest pattern): the redistribution
+    # posture of the document this chunk came from. Validated at the API edge;
+    # "agency_owned" is the default for everything the agency writes itself.
+    #   agency_owned | redistribution_safe | local_eval_only
+    license_class: str = "agency_owned"
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
@@ -87,6 +108,14 @@ class GroundedAnswer(BaseModel):
     citations: List[RAGSearchResult] = Field(default_factory=list)
     must_confirm: List[str] = Field(default_factory=list)
     execution_telemetry_id: str = ""
+    # Lexical support and literal provenance are not factual entailment. These
+    # fields let consumers preserve that distinction without guessing from a
+    # score or treating a retrieval hit as claim verification.
+    grounding_method: str = "lexical_overlap_numeric_guard_v1"
+    lexical_overlap_score: float = 0.0
+    claim_support_status: Literal[
+        "no_sources", "source_excerpt", "not_verified", "unsupported_numeric", "empty_answer"
+    ] = "not_verified"
 
 
 class HybridSearchQuery(BaseModel):

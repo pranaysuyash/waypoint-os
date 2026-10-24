@@ -66,6 +66,8 @@ class DocumentIndexer:
         canonical_url: Optional[str] = None,
         file_path: Optional[str] = None,
         tags: Optional[List[str]] = None,
+        entity_references: Optional[List[str]] = None,
+        license_class: str = "agency_owned",
     ) -> List[RAGChunk]:
         """Split raw text into hierarchical parent and child chunks with metadata."""
         if not text or not text.strip():
@@ -86,14 +88,15 @@ class DocumentIndexer:
                 canonical_url=canonical_url,
                 file_path=file_path,
                 tags=tags or [],
+                entity_references=list(entity_references or []),
+                license_class=license_class,
             )
-            
-            p_embedding = self.embedding_provider.embed_text(p_text)
+
             parent_chunk = RAGChunk(
                 id=p_id,
                 parent_id=None,
                 content=p_text,
-                embedding=p_embedding,
+                embedding=None,
                 metadata=p_metadata,
                 token_count=len(p_text.split()),
             )
@@ -113,17 +116,40 @@ class DocumentIndexer:
                             canonical_url=canonical_url,
                             file_path=file_path,
                             tags=tags or [],
+                            entity_references=list(entity_references or []),
+                            license_class=license_class,
                         )
-                        c_embedding = self.embedding_provider.embed_text(c_text)
                         child_chunk = RAGChunk(
                             id=c_id,
                             parent_id=p_id,
                             content=c_text,
-                            embedding=c_embedding,
+                            embedding=None,
                             metadata=c_metadata,
                             token_count=len(c_text.split()),
                         )
                         chunks.append(child_chunk)
+
+        # Step 3: Embed in ONE provider batch for the whole document (N remote
+        # calls → 1; the hash provider batches trivially offline). Provenance
+        # comes from the provider that produced the vectors — never from
+        # caller-supplied values (FND-0362 contract).
+        #
+        # Retrieval-optimized rendering (source/retrieval split): child chunks
+        # are embedded and FTS-indexed on a CONTEXTUAL rendering — title +
+        # section grounding prepended to the verbatim span — so a contextless
+        # child chunk ("...it requires advance booking") can still match a
+        # query naming the document's subject. The verbatim span is preserved
+        # in metadata.source_text and citations quote THAT, never this.
+        for chunk in chunks:
+            contextual = f"{title} — {chunk.content}" if chunk.parent_id else chunk.content
+            chunk.metadata.retrieval_text = contextual
+
+        vectors = self.embedding_provider.embed_batch([c.metadata.retrieval_text for c in chunks])
+        model_name = self.embedding_provider.model_name
+        for chunk, vector in zip(chunks, vectors):
+            chunk.embedding = vector
+            chunk.metadata.embedding_model = model_name
+            chunk.metadata.embedding_dimension = len(vector)
 
         return chunks
 

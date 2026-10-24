@@ -11,11 +11,13 @@ import hashlib
 import json
 import logging
 from typing import Any, Dict, Optional
-from spine_api.core.auth import get_current_user
+from spine_api.core.auth import get_current_agency_id, get_current_user
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 from spine_api.services.authority_approval_service import AuthorityApprovalLedger
+from spine_api.persistence import TripStore
+from spine_api.routers.public_proposals import verify_proposal_token, _verified_agency_for_token
 from src.agents.idempotency import IdempotencyRegistry, IdempotencyStatus
 from src.governance.registry import (
     AuthorityApprovalRequired,
@@ -80,6 +82,7 @@ async def fulfill_proposal(
         "Scopes to the trip's agency + trip id; a COMPLETED key replays the "
         "original fulfillment result, an in-flight key yields 409.",
     ),
+    agency_id: str = Depends(get_current_agency_id),
 ) -> Dict[str, Any]:
     """Execute accepted client proposal into confirmed supplier bookings and VCC settlement.
 
@@ -106,7 +109,13 @@ async def fulfill_proposal(
     """
     # Tenancy anchor for the ratified-approval lookup: resolved via the
     # approval service (never an unscoped router-level trip read).
-    agency_scope = AuthorityApprovalLedger.subject_agency_id("trip", payload.trip_id)
+    trip = TripStore.get_trip_for_agency(payload.trip_id, agency_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    valid, _reason, token_trip = verify_proposal_token(payload.proposal_token, expected_purpose="proposal")
+    if not valid or token_trip != payload.trip_id or _verified_agency_for_token(payload.proposal_token) != agency_id:
+        raise HTTPException(status_code=404, detail="Accepted proposal not found for this trip")
+    agency_scope = agency_id
 
     # PA-40: acquire the idempotency key before any authority or engine work.
     registry: Optional[IdempotencyRegistry] = None

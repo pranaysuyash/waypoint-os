@@ -44,7 +44,8 @@ def test_validate_accepts_contract_conforming_response():
             "destination_candidates": ["Reading"],
             "destination_status": "semi_open",
             "reasoning": "'reading' is a verb here, not the town",
-        }
+        },
+        ["Reading"],
     )
     assert outcome is not None
     assert outcome["available"] is True
@@ -62,10 +63,13 @@ def test_validate_accepts_contract_conforming_response():
         {"destination_candidates": [42], "destination_status": "semi_open"},
         {"destination_candidates": ["Japan"], "destination_status": "totally-sure"},
         {"destination_candidates": [], "destination_status": ""},
+        # FND-0353: a name the deterministic pass never produced is a
+        # contract violation — the resolver narrows, it never invents.
+        {"destination_candidates": ["Lisbon"], "destination_status": "definite"},
     ],
 )
 def test_validate_rejects_contract_violations(payload):
-    assert context_resolver.validate_resolver_response(payload) is None
+    assert context_resolver.validate_resolver_response(payload, ["Reading", "Japan"]) is None
 
 
 def test_unavailable_provider_degrades_honestly(monkeypatch):

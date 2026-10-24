@@ -1,5 +1,17 @@
 from typing import Any, List, Optional
 from datetime import datetime, timezone
+from decimal import Decimal
+
+from src.analytics.commercial import (
+    MoneyAccumulator,
+    activation_summary,
+    budget,
+    has_real_booking,
+    in_window,
+    is_open_pipeline,
+    record,
+    single_currency_scalar,
+)
 
 from src.analytics.models import (
     InsightsSummary,
@@ -11,6 +23,7 @@ from src.analytics.models import (
     MonthlyRevenue,
     OperationalAlert
 )
+from src.analytics.models import CommercialOutcomes, MonetaryMeasure
 
 STAGE_CONVERSION_PROBABILITIES = {
     "discovery": 0.10,
@@ -26,18 +39,8 @@ STAGE_CONVERSION_PROBABILITIES = {
 # from bottleneck/timing analysis.
 _NON_TERMINAL_STAGES = ("new", "assigned", "in_progress")
 
-# Booked-equivalent statuses for revenue metrics (FND-0122). Anchored on the
-# canonical 12-state machine (spine_api/core/trip_lifecycle.py): revenue counts
-# only states at or after the booking commitment — "booked" (commitment),
-# "change_requested" (booked change loop), "in_trip" (post-commitment travel),
-# "returned" (dormant post-trip COMPLETED split), "completed" (terminal), and
-# "delivered" (review-approval terminal writer, src/analytics/review.py:101).
-# Deliberately excluded: "active" (audit-gated alias of in_trip; semantics
-# pending the persisted-distribution audit — counting it would book revenue on
-# possibly-pre-routing leads) and "archived" (its only current writer archives
-# inbox leads, spine_api/routers/inbox.py — not booked-trip evidence), and
-# "cancelled" (refund path). No writer emits canonical "booked" yet — the
-# booking rail is the remaining producer gap.
+# Compatibility vocabulary for callers inspecting lifecycle states. These
+# statuses are not commercial receipts and never establish revenue/conversion.
 BOOKED_REVENUE_STATUSES = frozenset({
     "booked", "change_requested", "in_trip", "returned", "completed", "delivered",
 })
@@ -144,24 +147,23 @@ def _mean(values: list) -> Optional[float]:
     return round(sum(values) / len(values), 1) if values else None
 
 
-def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
+def aggregate_insights(
+    trips: list,
+    days: int = 30,
+    *,
+    window_start: Optional[datetime] = None,
+    window_end: Optional[datetime] = None,
+    period: str = "all",
+) -> InsightsSummary:
     """Compute actual pipeline metrics from trip data.
 
     Uses trip status, timestamps, and stage transitions to calculate
     real velocity metrics. Every unavailable metric is None/0 — never a
     fabricated placeholder.
     """
-    total = len(trips)
-    # Terminal/revenue statuses writers actually emit (F-35): no writer ever
-    # sets "booked"; "delivered" (review approval, review.py:101) and
-    # "completed" are the real terminal vocabulary. "booked" kept for the
-    # future booking-rail writer.
-    _TERMINAL_STATUSES = ("booked", "delivered", "completed")
-    converted = sum(
-        1
-        for t in trips
-        if t.get("status") in _TERMINAL_STATUSES or _trip_analytics(t).get("quality_score", 0) > 80
-    )
+    cohort = [trip for trip in trips if in_window(trip.get("created_at"), window_start, window_end)]
+    total = len(cohort)
+    converted = sum(has_real_booking(trip) for trip in cohort)
 
     rate = (converted / total * 100) if total > 0 else 0
 
@@ -169,7 +171,7 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
     # transition (the first human/system action on the inquiry). None when no
     # trip has both timestamps — never a random placeholder.
     response_times: list = []
-    for trip in trips:
+    for trip in cohort:
         created = _parse_ts(trip.get("created_at"))
         history = trip.get("status_history") or []
         first_at = None
@@ -183,19 +185,12 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
             response_times.append((first_at - created).total_seconds() / 3600)
     avg_response_time = _mean(response_times)
 
-    # Pipeline value = sum of real trip budgets for non-terminal trips.
-    pipeline_value = sum(
-        _trip_budget_value(t) for t in trips if t.get("status") not in _TERMINAL_STATUSES
-    )
-
-    # GMV (FND-0269): sum of real recorded trip budgets for terminal-status
-    # trips — the commercial value actually delivered, not a projection.
-    gmv = sum(_trip_budget_value(t) for t in trips if t.get("status") in _TERMINAL_STATUSES)
+    financial = compute_revenue_metrics(trips, days, window_start=window_start, window_end=window_end, period=period)
 
     # Velocity from real status dwell times (days). Stage boundaries beyond
     # the status vocabulary (strategy→output, output→booked) have no writer
     # yet and stay 0.0 — honest absence, not fabricated spread.
-    dwell = _stage_dwell_samples(trips)
+    dwell = _stage_dwell_samples(cohort)
 
     def _dwell_days(status: str) -> float:
         samples = dwell.get(status, {}).get("exited", []) + dwell.get(status, {}).get("current", [])
@@ -219,8 +214,13 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
         convertedToBooked=converted,
         conversionRate=round(rate, 1) if total > 0 else 0.0,
         avgResponseTime=avg_response_time,
-        pipelineValue=round(pipeline_value, 2),
-        gmv=round(gmv, 2),
+        pipelineValue=financial.totalPipelineValue,
+        gmv=financial.bookedRevenue,
+        currency=financial.currency,
+        period=period,
+        periodStart=window_start.isoformat() if window_start else None,
+        periodEnd=window_end.isoformat() if window_end else None,
+        activation=activation_summary(trips),
         pipelineVelocity=pipeline_velocity,
     )
 
@@ -288,7 +288,7 @@ def compute_team_metrics(trips: list, members: list, days: int = 30) -> List[Tea
     # Build agent slot map from the canonical roster
     agent_data = {}
     for member in members:
-        uid = member.get("id")
+        uid = member.get("user_id") or member.get("id")
         if not uid:
             continue
         agent_data[uid] = {
@@ -297,15 +297,18 @@ def compute_team_metrics(trips: list, members: list, days: int = 30) -> List[Tea
             "ratings": [],
             "active": 0,
             "completed": 0,
+            "booked": 0,
         }
 
     # Aggregate trip counts and ratings by assignee
     for trip in trips:
-        uid = trip.get("assigned_to")
+        uid = trip.get("assigned_to_id") or trip.get("assigned_to")
         if not uid or uid not in agent_data:
             continue
 
         status = trip.get("status", "new")
+        if has_real_booking(trip):
+            agent_data[uid]["booked"] += 1
         if status in ("booked", "delivered", "completed"):
             agent_data[uid]["completed"] += 1
         else:
@@ -333,8 +336,8 @@ def compute_team_metrics(trips: list, members: list, days: int = 30) -> List[Tea
         completed = stats["completed"]
         total = active + completed
 
-        # Real conversion rate from persisted evidence (completed / total * 100)
-        conversion_rate = round((completed / total * 100), 1) if total > 0 else 0.0
+        # Completed work and customer booking conversion are distinct outcomes.
+        conversion_rate = round((stats["booked"] / total * 100), 1) if total > 0 else 0.0
 
         # Workload score maps active count to a 0-100 percentage band
         workload_score = min(100.0, active * 6.0)
@@ -402,103 +405,110 @@ def compute_bottlenecks(trips: list, days: int = 30) -> List[BottleneckAnalysis]
         )
     ]
 
-def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
+def compute_revenue_metrics(
+    trips: list,
+    days: int = 30,
+    *,
+    window_start: Optional[datetime] = None,
+    window_end: Optional[datetime] = None,
+    period: Optional[str] = None,
+) -> RevenueMetrics:
+    """Project commercial evidence without making accounting or FX assumptions.
+
+    Pipeline/collection measures are current snapshots. Booking receipts and
+    inquiry cohorts use their own event timestamps within the requested window.
+    Legacy scalar keys are null whenever one complete currency cannot represent
+    the measure. The additive commercial contract retains separate currencies.
     """
-    Calculate revenue and forecasting metrics from trip data.
+    pipeline, weighted, near_close = MoneyAccumulator(), MoneyAccumulator(), MoneyAccumulator()
+    booked, collections = MoneyAccumulator(), MoneyAccumulator()
+    monthly: dict[str, dict] = {}
 
-    Booked Revenue = Σ(budget where status in BOOKED_REVENUE_STATUSES — the
-    canonical booked-equivalent states, FND-0122)
-    Projected Revenue = Σ(budget * stage_probability)
-    Total Pipeline Value = Σ(budget for non-booked active trips)
-    Near Close Revenue = Σ(budget for output/safety stages)
-    """
-    datetime.now(timezone.utc)
+    def month_slot(timestamp: object) -> Optional[dict]:
+        parsed = _parse_ts(timestamp)
+        if parsed is None or not in_window(timestamp, window_start, window_end):
+            return None
+        return monthly.setdefault(parsed.strftime("%Y-%m"), {"inquiries": 0, "booked": 0, "value": MoneyAccumulator()})
 
-    booked_revenue = 0.0
-    projected_revenue = 0.0
-    pipeline_value = 0.0
-    near_close_revenue = 0.0
-    total_value = 0.0
-    trip_count = 0
+    for trip in trips:
+        inquiry_month = month_slot(trip.get("created_at"))
+        if inquiry_month is not None:
+            inquiry_month["inquiries"] += 1
 
-    # Monthly aggregation
-    monthly_data = {} # "YYYY-MM" -> {"revenue": 0.0, "inquiries": 0, "booked": 0}
+        receipt = record(trip.get("booking_confirmation"))
+        if has_real_booking(trip):
+            if in_window(receipt.get("fulfilled_at"), window_start, window_end):
+                # The current canonical receipt contract fixes this field's
+                # unit as USD; this does not assign USD to other money fields.
+                booked.add(receipt.get("total_charged_usd"), "USD")
+                booking_month = month_slot(receipt.get("fulfilled_at"))
+                if booking_month is not None:
+                    booking_month["booked"] += 1
+                    booking_month["value"].add(receipt.get("total_charged_usd"), "USD")
+        elif receipt and receipt.get("reality_tier") in {"deterministic_preview", "connected_sandbox", "planned"}:
+            booked.excluded_preview += 1
 
-    # Sort trips by date for stable grouping
-    sorted_trips = sorted(
-        trips,
-        key=lambda t: t.get("created_at", ""),
-        reverse=False
+        if is_open_pipeline(trip):
+            raw_value, code = budget(trip)
+            pipeline.add(raw_value, code)
+            stage = trip.get("stage") or record(trip.get("meta")).get("stage", "discovery")
+            probability = Decimal(str(STAGE_CONVERSION_PROBABILITIES.get(stage, 0)))
+            weighted.add(raw_value, code, multiplier=probability)
+            if stage in {"output", "safety"}:
+                near_close.add(raw_value, code)
+
+        tracking = record(record(trip.get("booking_data")).get("payment_tracking"))
+        if tracking:
+            collections.add(tracking.get("amount_paid"), tracking.get("currency"))
+
+    pipeline_measure = pipeline.result("Current customer budget of open inquiries; no quoted value, booking, or earned revenue is inferred.")
+    weighted_measure = weighted.result("Current pipeline budgets weighted by configured stage assumptions, not measured booking probabilities or earned revenue.")
+    near_measure = near_close.result("Current budgets in output/safety stages; stage position is not customer acceptance.")
+    booked_measure = booked.result("Gross customer value from real connected fulfillment receipts in the selected event window, before refunds/reversals. Preview and sandbox receipts are excluded.")
+    collections_measure = collections.result("Current gross operator-recorded amount_paid snapshot from payment tracking. Not verified settlement, net cash, or agency revenue; refund movements are not inferred.")
+    commercial = CommercialOutcomes(
+        budgetPipeline=pipeline_measure,
+        weightedPipelineBudget=weighted_measure,
+        nearCloseBudget=near_measure,
+        bookedCustomerValue=booked_measure,
+        recordedCustomerCollections=collections_measure,
+        agencyEarnedRevenue=MonetaryMeasure(reason="No authoritative contract-specific earned agency fee/commission producer exists. Budget, heuristic margin, customer collections, and advisor payouts are not earned agency revenue."),
+        agencyRealizedRevenue=MonetaryMeasure(reason="No authoritative agency settlement/reversal ledger establishes realized agency revenue. A payout to an advisor is not an agency receipt."),
     )
+    pipeline_scalar, pipeline_currency = single_currency_scalar(pipeline_measure)
+    booked_scalar, booked_currency = single_currency_scalar(booked_measure)
+    near_scalar, _ = single_currency_scalar(near_measure)
+    weighted_scalar, weighted_currency = single_currency_scalar(weighted_measure)
+    known_units = {item for item in (pipeline_currency, booked_currency, weighted_currency) if item}
+    legacy_currency = next(iter(known_units)) if len(known_units) == 1 else None
+    projected = None
+    if legacy_currency and (pipeline_scalar is not None or booked_scalar is not None):
+        if (not pipeline.missing_amount and not pipeline.missing_currency
+                and not booked.missing_amount and not booked.missing_currency):
+            projected = (booked_scalar or 0.0) + (weighted_scalar or 0.0)
+    average = pipeline_scalar / pipeline.evidence_count if pipeline_scalar is not None and pipeline.evidence_count else None
 
-    for trip in sorted_trips:
-        created_at_str = trip.get("created_at")
-        if not created_at_str:
-            continue
-
-        try:
-            created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-        except ValueError:
-            continue
-
-        month_key = created_at.strftime("%Y-%m")
-        if month_key not in monthly_data:
-            monthly_data[month_key] = {"revenue": 0.0, "inquiries": 0, "booked": 0}
-
-        monthly_data[month_key]["inquiries"] += 1
-
-        # Determine value
-        packet = _trip_packet(trip)
-        budget = _dict_payload(packet.get("budget"))
-        # Some sample data has "value" as a string or nested. Normalise to float.
-        raw_val = budget.get("value", 0)
-        try:
-            val = float(raw_val) if raw_val is not None else 0.0
-        except (ValueError, TypeError):
-            val = 0.0
-
-        status = trip.get("status", "new")
-        stage = _dict_payload(trip.get("meta")).get("stage", "discovery")
-
-        if status in BOOKED_REVENUE_STATUSES:
-            booked_revenue += val
-            monthly_data[month_key]["revenue"] += val
-            monthly_data[month_key]["booked"] += 1
-            projected_revenue += val # 100% probability
-        else:
-            # Active pipeline
-            total_value += val
-            trip_count += 1
-            pipeline_value += val
-
-            # Weighted projection
-            prob = STAGE_CONVERSION_PROBABILITIES.get(stage, 0.0)
-            projected_revenue += val * prob
-
-            # Near close revenue (output or safety)
-            if stage in ("output", "safety"):
-                near_close_revenue += val
-
-    # Format monthly results
-    revenue_by_month = [
-        MonthlyRevenue(
-            month=m,
-            revenue=data["revenue"],
-            inquiries=data["inquiries"],
-            booked=data["booked"]
-        ) for m, data in sorted(monthly_data.items())
-    ]
-
-    avg_val = (total_value / trip_count) if trip_count > 0 else 0.0
+    monthly_rows = []
+    for month, data in sorted(monthly.items()):
+        measure = data["value"].result("Receipt month, not inquiry creation month.")
+        value, code = single_currency_scalar(measure)
+        monthly_rows.append(MonthlyRevenue(
+            month=month, inquiries=data["inquiries"], booked=data["booked"],
+            revenue=value, currency=code, customerValueByCurrency=measure.totals,
+        ))
 
     return RevenueMetrics(
-        period=f"{days}d",
-        totalPipelineValue=round(pipeline_value, 2),
-        bookedRevenue=round(booked_revenue, 2),
-        projectedRevenue=round(projected_revenue, 2),
-        nearCloseRevenue=round(near_close_revenue, 2),
-        avgTripValue=round(avg_val, 2),
-        revenueByMonth=revenue_by_month
+        period=period or (f"{days}d" if window_start else "all"),
+        periodStart=window_start.isoformat() if window_start else None,
+        periodEnd=window_end.isoformat() if window_end else None,
+        currency=legacy_currency,
+        totalPipelineValue=pipeline_scalar if legacy_currency else None,
+        bookedRevenue=booked_scalar if legacy_currency else None,
+        projectedRevenue=projected,
+        nearCloseRevenue=near_scalar if legacy_currency else None,
+        avgTripValue=average if legacy_currency else None,
+        revenueByMonth=monthly_rows,
+        commercial=commercial,
     )
 
 

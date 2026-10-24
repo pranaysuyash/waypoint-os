@@ -7,6 +7,7 @@ Privacy tiers:
 """
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -50,6 +51,7 @@ class ConfirmationSummary:
     voided_at: Optional[datetime]
     created_by: str
     created_at: datetime
+    component_key: str = "primary"
 
 
 @dataclass
@@ -78,6 +80,7 @@ class ConfirmationDetail:
     created_by: str
     created_at: datetime
     updated_at: datetime
+    component_key: str = "primary"
 
 
 # ---------------------------------------------------------------------------
@@ -174,6 +177,7 @@ def _to_summary(c: BookingConfirmation) -> ConfirmationSummary:
         trip_id=c.trip_id,
         task_id=c.task_id,
         confirmation_type=c.confirmation_type,
+        component_key=c.component_key,
         confirmation_status=c.confirmation_status,
         has_supplier=c.has_supplier,
         has_confirmation_number=c.has_confirmation_number,
@@ -195,6 +199,7 @@ def _to_detail(c: BookingConfirmation) -> ConfirmationDetail:
         trip_id=c.trip_id,
         task_id=c.task_id,
         confirmation_type=c.confirmation_type,
+        component_key=c.component_key,
         confirmation_status=c.confirmation_status,
         has_supplier=c.has_supplier,
         has_confirmation_number=c.has_confirmation_number,
@@ -277,6 +282,10 @@ async def create_confirmation_in_transaction(
     if c_type not in CONFIRMATION_TYPES:
         raise ValueError(f"Invalid confirmation_type: {c_type}")
 
+    component_key = data.get("component_key", "primary")
+    if not isinstance(component_key, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_.:-]{0,95}", component_key):
+        raise ValueError("component_key must be an opaque lowercase reference of 1 to 96 characters")
+
     task_id = data.get("task_id")
     evidence_refs = data.get("evidence_refs")
 
@@ -300,6 +309,7 @@ async def create_confirmation_in_transaction(
         trip_id=trip_id,
         task_id=task_id,
         confirmation_type=c_type,
+        component_key=component_key,
         confirmation_status="draft",
         supplier_name_encrypted=encrypt_field(supplier_name),
         confirmation_number_encrypted=encrypt_field(confirmation_number),
@@ -581,6 +591,7 @@ async def try_record_fulfillment_confirmation(
                         BookingConfirmation.agency_id == agency_id,
                         BookingConfirmation.trip_id == trip_id,
                         BookingConfirmation.confirmation_type == "flight",
+                        BookingConfirmation.component_key == "primary",
                         BookingConfirmation.confirmation_status != "voided",
                     )
                 )

@@ -109,7 +109,9 @@ class TestSmokeTestRun:
         assert result["passed"] >= 1
         assert result["results"][0].status == "ok"
         assert result["results"][0].fields_found is not None
-        assert result["results"][0].fields_found > 0
+        # FND-0333: the noop provider honestly extracts nothing — the smoke
+        # test proves the SEAM responds, not that the noop fabricates fields.
+        assert result["results"][0].fields_found == 0
 
     @pytest.mark.asyncio
     async def test_run_filters_by_provider(self):

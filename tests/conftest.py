@@ -11,6 +11,7 @@ tests/conftest — Pytest configuration and shared fixtures.
 import asyncio
 import os
 import sys
+import tempfile
 import uuid
 import warnings
 from datetime import timedelta
@@ -50,9 +51,40 @@ os.environ["RUNNING_TESTS"] = "1"
 # explicitly; live evidence is never synthesized from a deterministic run.
 os.environ.setdefault("EXTRACTION_CONTEXT_RESOLVER", "0")
 
+# RAG mount (2026-10-22): the frontier specialty hook now resolves the
+# canonical RAG service, which would otherwise create data/rag_store.db in
+# the repo during any test that runs the spine. Pin the default store to a
+# session-local temp path so tests never touch the repo data directory; the
+# mount tests use their own isolated tmp_path stores regardless.
+os.environ.setdefault(
+    "RAG_STORE_PATH",
+    os.path.join(tempfile.mkdtemp(prefix="waypoint_test_rag_"), "rag_store.db"),
+)
+
+# RAG egress ruling (2026-10-22): production defaults to the semantic
+# embedding lane (see src/rag/embeddings.get_default_embedding_provider).
+# The suite pins the deterministic hash lane so no test ever emits a
+# network call; provider tests construct SemanticEmbeddingProvider
+# explicitly with mocked transport.
+os.environ["RAG_EMBEDDING_PROVIDER"] = "local_hash"
+
+# Reranker posture (2026-10-22): the cross-encoder reranker is validated by
+# the eval gate (run explicitly with RAG_RERANKER=1 — see exploration doc
+# §12); the suite pins it OFF so the deterministic RAG ordering is pinned
+# and the ~15s cross-encoder model load never runs per test process.
+os.environ["RAG_RERANKER"] = "0"
+
 # Ensure startup public-checker agency validation resolves to the canonical
 # seeded test agency used across auth fixtures and JWTs.
 os.environ.setdefault("PUBLIC_CHECKER_AGENCY_ID", "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+
+# Data-safety tripwire (FND-0366, 2026-10-23): abort any test statement that
+# would DELETE/TRUNCATE canonical test data (trips, memory profiles, auth
+# tables) before it executes. Escape hatch: ALLOW_CANONICAL_DATA_DELETION=1.
+from tests import _data_safety_guard as _data_safety_guard_module  # noqa: E402
+
+_data_safety_guard_module.activate()
+_data_safety_guard_module.run_selfcheck()
 
 # Disable OpenTelemetry in tests — the BatchSpanProcessor background thread
 # outlives the TestClient event loop and corrupts the asyncpg pool. OTel would
@@ -346,11 +378,16 @@ def boundary_trip_factory():
     def _make(trip_id: str, agency_id: str, destination: str = "Zurich") -> dict:
         trip = {
             "id": trip_id,
-            "destination": destination,
             "stage": "discovery",
             "status": "active",
-            "packet": {"destination": destination, "agent_notes": "BOUNDARY TEST TRIP"},
+            "packet": {"agent_notes": "BOUNDARY TEST TRIP"},
         }
+        if destination is not None:
+            # destination=None creates a genuinely destination-less trip (the
+            # save fold re-derives the column from packet/_extra, so the
+            # "unknown destination" fixtures must omit it at creation).
+            trip["destination"] = destination
+            trip["packet"]["destination"] = destination
         TripStore.save_trip(trip, agency_id=agency_id)
         return trip
 
@@ -590,12 +627,23 @@ async def db_session():
 
 def _is_postgres_available() -> bool:
     import socket
+    from sqlalchemy.engine import make_url
+
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)
-        result = sock.connect_ex(('localhost', 5432))
-        sock.close()
-        return result == 0
+        # The configured target may be an isolated test cluster. Probing the
+        # developer's default cluster can skip valid tests or falsely advertise
+        # availability. Invalid configuration must not fall back to another DB.
+        configured = os.environ.get("DATABASE_URL")
+        url = make_url(configured) if configured else None
+        host = (url.host if url else None) or "localhost"
+        port = (url.port if url else None) or 5432
+        family = socket.AF_INET6 if ":" in host else socket.AF_INET
+        sock = socket.socket(family, socket.SOCK_STREAM)
+        try:
+            sock.settimeout(1)
+            return sock.connect_ex((host, port)) == 0
+        finally:
+            sock.close()
     except Exception:
         return False
 

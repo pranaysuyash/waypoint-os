@@ -100,7 +100,13 @@ def test_answers_write_back_with_explicit_user_authority(monkeypatch):
     assert recorded[0]["answered_at"]
     assert updates["origin"] == "Mumbai"
     assert updates["extracted"]["origin"] == "Mumbai"
-    assert any(f.get("field") == "origin_city" for f in updates["extracted"]["facts"])
+    # FND-0328: extracted.facts is the canonical DICT of slot dicts keyed by
+    # field name — the old assertion iterated the corrupted bare-key-string
+    # list the pre-fix write produced.
+    origin_slot = updates["extracted"]["facts"]["origin_city"]
+    assert origin_slot["value"] == "Mumbai"
+    assert origin_slot["authority_level"] == "explicit_user"
+    assert origin_slot["epistemic_status"] == "FACT"
 
     # Asked question is now closed on GET
     res2 = client.get(f"/api/public/asks/{token}")

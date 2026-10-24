@@ -484,7 +484,10 @@ class TestAsyncBoundary:
         result = asyncio.run(extractor.extract(b"test", "image/jpeg", "passport"))
         assert isinstance(result, ExtractionResult)
         assert isinstance(result.fields, dict)
-        assert "full_name" in result.fields
+        # FND-0333: the noop provider honestly extracts nothing; the awaited
+        # result is still a well-formed ExtractionResult.
+        assert result.fields == {}
+        assert result.confidence_method == "noop"
 
 
 # ---------------------------------------------------------------------------

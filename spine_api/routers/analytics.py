@@ -11,7 +11,7 @@ import logging
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import List
+from typing import Callable, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +34,7 @@ from src.analytics.metrics import (
     compute_team_metrics,
 )
 from src.analytics.models import InsightsSummary, StageMetrics
+from src.analytics.commercial import analysis_window, record
 from src.analytics.review import process_review_action, trip_to_review
 
 try:
@@ -48,14 +49,49 @@ TripStore = persistence.TripStore
 router = APIRouter()
 
 
+def _all_agency_records(reader: Callable, agency_id: str, *, batch_size: int = 500) -> list[dict]:
+    """Use canonical paged readers with no first-page aggregate truncation.
+
+    Offset readers can observe concurrent changes. Deduplicate stable IDs and
+    fail explicitly if a reader stops making progress rather than spin forever
+    or represent a partial result as a tenant-wide total.
+    """
+    records: dict[str, dict] = {}
+    offset = 0
+    while True:
+        page = reader(agency_id=agency_id, limit=batch_size, offset=offset)
+        if not page:
+            break
+        before = len(records)
+        for item in page:
+            item_id = item.get("id") or item.get("trip_id")
+            if item_id:
+                records[str(item_id)] = item
+        if len(page) < batch_size:
+            break
+        if len(records) == before:
+            raise HTTPException(status_code=503, detail="Analytics source paging did not advance; refresh after source recovery.")
+        offset += len(page)
+    return list(records.values())
+
+
+def _window(period: str, start: Optional[str], end: Optional[str]):
+    try:
+        return analysis_window(period, start=start, end=end)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.get("/analytics/summary", response_model=InsightsSummary)
 def get_analytics_summary(
     range: str = "30d",
+    start: Optional[str] = None,
+    end: Optional[str] = None,
     agency: Agency = Depends(get_current_agency),
 ):
-    trips = TripStore.list_trip_summaries(limit=10000, agency_id=agency.id)
-    canonical_trips = [t for t in trips if t.get("id")]
-    return aggregate_insights(canonical_trips)
+    window_start, window_end = _window(range, start, end)
+    trips = _all_agency_records(TripStore.list_trips, agency.id)
+    return aggregate_insights(trips, window_start=window_start, window_end=window_end, period=range)
 
 
 @router.get("/analytics/pipeline", response_model=List[StageMetrics])
@@ -63,7 +99,10 @@ def get_analytics_pipeline(
     range: str = "30d",
     agency: Agency = Depends(get_current_agency),
 ):
-    trips = TripStore.list_trip_summaries(limit=10000, agency_id=agency.id)
+    # FND-0345 (Sim #4): a capped page presented as a tenant-wide total is a
+    # fabricated number — totalInquiries read exactly 10,000 on a 45k-row
+    # corpus. Use the canonical no-truncation pager (same as team metrics).
+    trips = _all_agency_records(TripStore.list_trip_summaries, agency.id)
     canonical_trips = [t for t in trips if t.get("id")]
     return compute_pipeline_metrics(canonical_trips)
 
@@ -74,7 +113,7 @@ async def get_analytics_team(
     agency: Agency = Depends(get_current_agency),
     db: AsyncSession = Depends(get_rls_db),
 ):
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
+    trips = _all_agency_records(TripStore.list_trips, agency.id)
     members = await membership_service.list_members(db, agency_id=agency.id)
     return compute_team_metrics(trips, members)
 
@@ -84,17 +123,29 @@ def get_analytics_bottlenecks(
     range: str = "30d",
     agency: Agency = Depends(get_current_agency),
 ):
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
+    trips = _all_agency_records(TripStore.list_trips, agency.id)
     return compute_bottlenecks(trips)
 
 
 @router.get("/analytics/revenue", response_model=RevenueMetrics)
 def get_analytics_revenue(
     range: str = "30d",
+    start: Optional[str] = None,
+    end: Optional[str] = None,
     agency: Agency = Depends(get_current_agency),
 ):
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    return compute_revenue_metrics(trips)
+    window_start, window_end = _window(range, start, end)
+    trips = _all_agency_records(TripStore.list_trips, agency.id)
+    # Generic trip responses intentionally exclude private booking data. Reuse
+    # the tenant-scoped batch accessor, retaining only payment tracking for the
+    # reducer; traveler/payer fields never become part of this API's output.
+    payments = _all_agency_records(TripStore.list_trip_payment_records_for_agency, agency.id)
+    tracking_by_id = {
+        str(item.get("id") or item.get("trip_id")): record(record(item.get("booking_data")).get("payment_tracking"))
+        for item in payments
+    }
+    enriched = [{**trip, "booking_data": {"payment_tracking": tracking_by_id.get(str(trip.get("id") or trip.get("trip_id")), {})}} for trip in trips]
+    return compute_revenue_metrics(enriched, window_start=window_start, window_end=window_end, period=range)
 
 
 @router.get("/analytics/agent/{agent_id}/drill-down")
@@ -104,10 +155,10 @@ def get_agent_drill_down(
     agency: Agency = Depends(get_current_agency),
 ):
     """Return trips and metrics for a specific agent."""
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
+    trips = _all_agency_records(TripStore.list_trips, agency.id)
     agent_trips = [
         t for t in trips
-        if t.get("assigned_to") == agent_id or t.get("agent_id") == agent_id
+        if (t.get("assigned_to_id") or t.get("assigned_to")) == agent_id or t.get("agent_id") == agent_id
     ]
 
     return {

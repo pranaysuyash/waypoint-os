@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from typing import Any, Dict, Optional
 
 from spine_api.core.llm_egress import DecisionType, prepare_egress_payload
@@ -24,7 +25,7 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
 
-from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError
+from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError, record_llm_call
 
 logger = logging.getLogger(__name__)
 
@@ -292,16 +293,20 @@ class OpenAIClient(BaseLLMClient):
                     },
                 ],
             }
+            effective_temperature: Optional[float] = None
             if _is_reasoning_model(self.model):
                 params["max_completion_tokens"] = self.max_tokens
             else:
-                params["temperature"] = (
+                effective_temperature = (
                     temperature if temperature is not None else self.temperature
                 )
+                params["temperature"] = effective_temperature
                 params["max_tokens"] = self.max_tokens
                 if _supports_json_mode(self.model):
                     params["response_format"] = {"type": "json_object"}
+            started = time.perf_counter()
             response = _create_with_transient_retry(self._client, params)
+            latency_ms = (time.perf_counter() - started) * 1000.0
 
             # Parse response
             response_text = response.choices[0].message.content
@@ -323,6 +328,16 @@ class OpenAIClient(BaseLLMClient):
                     "(leading preamble stripped)"
                 )
 
+            record_llm_call(
+                provider="openai",
+                model=self.model,
+                prompt=full_prompt,
+                response_text=response_text,
+                temperature_requested=temperature if temperature is not None else self.temperature,
+                temperature_effective=effective_temperature,
+                latency_ms=latency_ms,
+                client=self,
+            )
             return decision
 
         except (LLMUnavailableError, LLMResponseError):

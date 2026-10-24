@@ -341,6 +341,9 @@ export interface Trip {
   stage?: string;
   // Pipeline result fields (returned by the backend API)
   packet?: unknown;
+  // Intake packet (FND-0332): extracted.facts is the canonical fact source —
+  // the planning gate reads it so display-column lag can't dead-end operators.
+  extracted?: { facts?: unknown };
   validation?: ValidationReport;
   decision?: DecisionOutput;
   strategy?: StrategyOutput;
@@ -2043,6 +2046,7 @@ export interface ConfirmationSummary {
   trip_id: string;
   task_id: string | null;
   confirmation_type: string;
+  component_key: string;
   confirmation_status: string;
   has_supplier: boolean;
   has_confirmation_number: boolean;
@@ -2070,6 +2074,7 @@ export interface ConfirmationDetail extends ConfirmationSummary {
 
 export interface CreateConfirmationRequest {
   confirmation_type: string;
+  component_key?: string;
   task_id?: string;
   supplier_name?: string;
   confirmation_number?: string;

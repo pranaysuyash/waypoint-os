@@ -41,6 +41,15 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     "/api/public-checker/disputes",
     "/api/v1/proposals/token/",
     "/api/v1/trust-scorecard/proposal/",
+    # FND-0330 (Sim #4): the group passenger share portal is a capability-token
+    # surface exactly like /api/v1/proposals/token/ — the invitee holds a
+    # 256-bit urlsafe token (secrets.token_urlsafe(32)), has no account, and
+    # the routes expose only that passenger's own share. Without this prefix
+    # the middleware 401s the invitee before the (deliberately unauthenticated)
+    # route runs, and the group door is dead at its last step. Advisor routes
+    # (/api/v1/group/{trip_id}/invites, /manual-override) keep session auth —
+    # this prefix matches only /token/{token} shapes.
+    "/api/v1/group/token/",
 )
 
 

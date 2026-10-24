@@ -75,7 +75,11 @@ class RenderSelection:
     selected: str
     selected_origin: str  # "jev_graded:<candidate origin>" | "verbatim_fallback" | "disabled"
     grades: List[CandidateGrade] = field(default_factory=list)
-    source: str = "jev"  # "jev" | "disabled" | "unavailable"
+    # ``source`` names the lane that produced the SELECTED question — not
+    # merely which lane ran. When the JEV lane graded but nothing passed the
+    # rubric, the selection is the verbatim floor: source says so (2026-10-22
+    # honesty fix; grades[] still carries the full JEV evidence).
+    source: str = "jev"  # "jev" | "verbatim_fallback" | "disabled" | "unavailable"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -126,7 +130,11 @@ class QuestionRenderSelector:
         if not passing:
             return RenderSelection(
                 selected=engine_question, selected_origin="verbatim_fallback",
-                grades=grades, source="jev",
+                grades=grades,
+                # JEV ran but nothing passed the rubric — the SELECTION is the
+                # verbatim floor, so source names the floor (grades[] above
+                # still carries the full JEV evidence).
+                source="verbatim_fallback",
             )
         best = max(passing, key=lambda g: (g.naturalness or 0.0))
         return RenderSelection(

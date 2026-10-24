@@ -6,10 +6,15 @@ never-send/never-fabricate invariants from the decision pack.
 
 import os
 
-# Backend selection happens at persistence import time — force file store
-# BEFORE any spine_api import so tests never touch the shared SQL agency
-# (data-safety rule) and never hit agency-FK violations.
-os.environ["TRIPSTORE_BACKEND"] = "file"
+# NOTE (2026-10-22): this module previously forced
+# ``os.environ["TRIPSTORE_BACKEND"] = "file"`` at module level on the belief
+# that backend selection happens at persistence IMPORT time. It does not —
+# the TripStore facade reads the env per call (TripStore._backend), and the
+# module-level write poisoned the WHOLE pytest session after collection:
+# every later SQL-backed test (e.g. booking_collection token FK inserts)
+# silently hit the file store and failed with trips-FK violations. The
+# per-test ``_hermetic_store`` autouse fixture below delivers the same
+# data-safety guarantee correctly scoped.
 os.environ.setdefault("RUNNING_TESTS", "1")
 
 import pytest  # noqa: E402

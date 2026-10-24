@@ -266,12 +266,18 @@ class LLMContextualScorer:
 
         score = TIER_SCORE.get(tier, baseline.score)
 
+        # FND-0355: this path ran NO model. ``source`` must say so ("rule" is
+        # the closed-vocabulary value for a rule evaluation; scorer_id still
+        # identifies the contextual-heuristic scorer), and the confidence is
+        # the Tier-1 rule engine's own computed value inherited from the
+        # baseline — never a hardcoded constant dressed up as a model's
+        # calibration.
         return ActivitySuitability(
             activity_id=activity.activity_id,
             participant=participant,
             compatible=tier != "exclude",
             score=score,
-            confidence=0.85,
+            confidence=baseline.confidence,
             tier=tier,
             hard_exclusion_reasons=hard_exclusions,
             warnings=warnings,
@@ -279,7 +285,7 @@ class LLMContextualScorer:
             missing_signals=collect_missing_signals(activity, context),
             scorer_id=self.scorer_id,
             scorer_version=self.scorer_version,
-            source="llm",
+            source="rule",
         )
 
     def _build_prompt(

@@ -79,6 +79,7 @@ const FrontierDashboard = dynamic(() =>
 );
 const SettingsPanel = dynamic(() => import('./SettingsPanel'));
 const ScenarioLab = dynamic(() => import('./ScenarioLab'));
+const KnowledgePanel = dynamic(() => import('./KnowledgePanel'));
 
 // react-doctor-disable-next-line react-doctor/prefer-useReducer — too many independent state slices to consolidate meaningfully
 function WorkbenchContent() {
@@ -901,6 +902,8 @@ function WorkbenchContent() {
                 <PacketTab trip={trip} />
               ) : effectiveTab === 'decision' ? (
                 <DecisionPanel trip={trip} tripId={resolvedTripId ?? undefined} />
+              ) : effectiveTab === 'knowledge' ? (
+                <KnowledgePanel />
               ) : (
                 <IntakeTab trip={trip} />
               )}

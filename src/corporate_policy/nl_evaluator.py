@@ -53,6 +53,11 @@ class NaturalLanguagePolicyAuditResult:
     model: str = "heuristic"
     unevaluated_clauses: List[str] = field(default_factory=list)
     all_clauses_evaluated: bool = True
+    # FND-0352 lane semantics: why the heuristic served — "jev" when the
+    # model lane ran, "model_lane_unconfigured" (no credentials), or
+    # "model_call_failed" (configured lane errored mid-audit). Same
+    # vocabulary as the intake ambiguity / live-triage lanes.
+    lane_status: str = "jev"
 
 
 class NaturalLanguagePolicyEngine:
@@ -115,7 +120,9 @@ class NaturalLanguagePolicyEngine:
             model = resp.get("model", self.jev_client.model)
         except Exception as e:
             logger.warning("Jev policy audit query failed (%s), falling back to heuristic", e)
-            return self._audit_heuristic(itinerary_text, clauses)
+            return self._audit_heuristic(
+                itinerary_text, clauses, lane_status="model_call_failed"
+            )
 
         evaluations: List[ClauseEvaluation] = []
         violations: List[str] = []
@@ -173,14 +180,21 @@ class NaturalLanguagePolicyEngine:
             average_confidence=avg_conf,
             low_confidence_clauses=low_conf_clauses,
             model=model,
+            lane_status="jev",
         )
 
     def _audit_heuristic(
         self,
         itinerary_text: str,
         clauses: List[PolicyClause],
+        lane_status: str = "model_lane_unconfigured",
     ) -> NaturalLanguagePolicyAuditResult:
         """Deterministic rule-based fallback when Jev is offline.
+
+        ``lane_status`` records WHY the heuristic served (FND-0352 lane
+        semantics): the model lane was unconfigured (ADR-008 posture) or
+        configured but the call failed. Same vocabulary as the intake
+        ambiguity / live-triage lanes.
 
         Honest-evaluation contract: a clause is marked evaluated only when the
         pattern check produces real evidence for its verdict (a detected
@@ -266,4 +280,5 @@ class NaturalLanguagePolicyEngine:
             model="heuristic",
             unevaluated_clauses=unevaluated,
             all_clauses_evaluated=len(unevaluated) == 0,
+            lane_status=lane_status,
         )

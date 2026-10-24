@@ -1,0 +1,1533 @@
+[
+  {
+    "step": "login",
+    "request": {
+      "url": "/api/auth/login"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "user": {
+        "id": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+        "email": "newuser@test.com",
+        "name": "New User",
+        "platform_role": "none"
+      },
+      "agency": {
+        "id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "name": "Test",
+        "slug": "test",
+        "logo_url": null
+      },
+      "membership": {
+        "role": "owner",
+        "is_primary": true
+      }
+    },
+    "at": "2026-10-21T15:49:42.462701+00:00"
+  },
+  {
+    "step": "B-policy-rules",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/corporate/policy-rules"
+    },
+    "status": 200,
+    "response": {
+      "policy_id": "corp_policy_default",
+      "company_name": "Acme Corp",
+      "max_nightly_hotel_usd": 350.0,
+      "allowed_flight_class": "BUSINESS",
+      "max_flight_duration_for_business_hours": 6.0,
+      "preferred_hotel_chains": [
+        "Marriott",
+        "Hilton",
+        "Hyatt",
+        "Four Seasons"
+      ],
+      "require_pre_approval": true
+    },
+    "at": "2026-10-21T15:49:42.468304+00:00"
+  },
+  {
+    "step": "B1-draft",
+    "request": {
+      "method": "POST",
+      "path": "/api/drafts",
+      "json": {
+        "name": "booking for our VP sales — mumbai to london, 5 nights starti",
+        "customer_message": "booking for our VP sales — mumbai to london, 5 nights starting the 3rd of next month, business class both ways per his grade, hotel near canary wharf. company policy requires economy under 8 hours but this is 9h so should be fine. need it booked within policy and flagged if anything is out of policy. cost centre SALES-EMEA, one traveller (just him)."
+      }
+    },
+    "status": 200,
+    "response": {
+      "draft_id": "draft_0f1ab2e3fe79",
+      "name": "booking for our VP sales — mumbai to london, 5 nights starti",
+      "status": "open",
+      "created_at": "2026-10-21T15:49:42.474061+00:00"
+    },
+    "at": "2026-10-21T15:49:42.505494+00:00"
+  },
+  {
+    "step": "B1-run",
+    "request": {
+      "method": "POST",
+      "path": "/run",
+      "json": {
+        "raw_note": "booking for our VP sales — mumbai to london, 5 nights starting the 3rd of next month, business class both ways per his grade, hotel near canary wharf. company policy requires economy under 8 hours but this is 9h so should be fine. need it booked within policy and flagged if anything is out of policy. cost centre SALES-EMEA, one traveller (just him).",
+        "draft_id": "draft_0f1ab2e3fe79"
+      }
+    },
+    "status": 200,
+    "response": {
+      "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+      "state": "queued",
+      "idempotent_replay": false
+    },
+    "at": "2026-10-21T15:49:42.528452+00:00"
+  },
+  {
+    "step": "B1-poll",
+    "request": {
+      "method": "GET",
+      "path": "/runs/bbb4f15e-a662-4f45-8a6d-4fc9932611da"
+    },
+    "status": 200,
+    "response": {
+      "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+      "state": "running",
+      "trip_id": null,
+      "stage": "discovery",
+      "operating_mode": "normal_intake",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "created_at": "2026-10-21T15:49:42.513938+00:00",
+      "started_at": "2026-10-21T15:49:42.531052+00:00",
+      "completed_at": null,
+      "total_ms": null,
+      "steps_completed": [],
+      "events": [
+        {
+          "event_id": "evt_103540f7",
+          "event_type": "run_started",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:49:42.565785+00:00",
+          "stage": "discovery",
+          "operating_mode": "normal_intake"
+        },
+        {
+          "event_id": "evt_d9d9bf37",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:49:42.572858+00:00",
+          "stage_name": "packet"
+        }
+      ],
+      "error_type": null,
+      "error_message": null,
+      "stage_at_failure": null,
+      "block_reason": null,
+      "validation": null,
+      "packet": null,
+      "decision_state": null,
+      "follow_up_questions": [],
+      "hard_blockers": [],
+      "soft_blockers": [],
+      "branch_options": [],
+      "report_fingerprint": null,
+      "access_token": null,
+      "retention_days": null,
+      "frontier_result": null
+    },
+    "at": "2026-10-21T15:49:43.199025+00:00"
+  },
+  {
+    "step": "B1-poll",
+    "request": {
+      "method": "GET",
+      "path": "/runs/bbb4f15e-a662-4f45-8a6d-4fc9932611da"
+    },
+    "status": 200,
+    "response": {
+      "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+      "state": "running",
+      "trip_id": null,
+      "stage": "discovery",
+      "operating_mode": "normal_intake",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "created_at": "2026-10-21T15:49:42.513938+00:00",
+      "started_at": "2026-10-21T15:49:42.531052+00:00",
+      "completed_at": null,
+      "total_ms": null,
+      "steps_completed": [],
+      "events": [
+        {
+          "event_id": "evt_103540f7",
+          "event_type": "run_started",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:49:42.565785+00:00",
+          "stage": "discovery",
+          "operating_mode": "normal_intake"
+        },
+        {
+          "event_id": "evt_d9d9bf37",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:49:42.572858+00:00",
+          "stage_name": "packet"
+        }
+      ],
+      "error_type": null,
+      "error_message": null,
+      "stage_at_failure": null,
+      "block_reason": null,
+      "validation": null,
+      "packet": null,
+      "decision_state": null,
+      "follow_up_questions": [],
+      "hard_blockers": [],
+      "soft_blockers": [],
+      "branch_options": [],
+      "report_fingerprint": null,
+      "access_token": null,
+      "retention_days": null,
+      "frontier_result": null
+    },
+    "at": "2026-10-21T15:49:46.857224+00:00"
+  },
+  {
+    "step": "B1-poll",
+    "request": {
+      "method": "GET",
+      "path": "/runs/bbb4f15e-a662-4f45-8a6d-4fc9932611da"
+    },
+    "status": 200,
+    "response": {
+      "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+      "state": "blocked",
+      "trip_id": "trip_7790a1a71f24",
+      "stage": "discovery",
+      "operating_mode": "normal_intake",
+      "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+      "created_at": "2026-10-21T15:49:42.513938+00:00",
+      "started_at": "2026-10-21T15:49:42.531052+00:00",
+      "completed_at": "2026-10-21T15:49:49.626977+00:00",
+      "total_ms": null,
+      "steps_completed": [
+        "packet",
+        "validation",
+        "decision",
+        "strategy",
+        "blocked_result"
+      ],
+      "events": [
+        {
+          "event_id": "evt_103540f7",
+          "event_type": "run_started",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:49:42.565785+00:00",
+          "stage": "discovery",
+          "operating_mode": "normal_intake"
+        },
+        {
+          "event_id": "evt_d9d9bf37",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:49:42.572858+00:00",
+          "stage_name": "packet"
+        },
+        {
+          "event_id": "evt_cea1f1d6",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:49:47.643012+00:00",
+          "stage_name": "packet",
+          "execution_ms": 5070.17
+        },
+        {
+          "event_id": "evt_67d14302",
+          "event_type": "pipeline_stage_entered",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:49:47.649436+00:00",
+          "stage_name": "validation"
+        },
+        {
+          "event_id": "evt_73599514",
+          "event_type": "pipeline_stage_completed",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": null,
+          "timestamp": "2026-10-21T15:49:47.661552+00:00",
+          "stage_name": "validation",
+          "execution_ms": 12.1
+        },
+        {
+          "event_id": "evt_bde62239",
+          "event_type": "run_blocked",
+          "run_id": "bbb4f15e-a662-4f45-8a6d-4fc9932611da",
+          "trip_id": "trip_7790a1a71f24",
+          "timestamp": "2026-10-21T15:49:49.645990+00:00",
+          "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
+          "stage_at_block": "validation"
+        }
+      ],
+      "error_type": null,
+      "error_message": null,
+      "stage_at_failure": null,
+      "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
+      "validation": {
+        "status": "ESCALATED",
+        "stage": "intake_extraction",
+        "gate": "intake_completion",
+        "legacy_gate": "NB01",
+        "reasons": [
+          "Structural validation failed (1 error)"
+        ]
+      },
+      "packet": {
+        "packet_id": "pkt_c113d5c2",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "London"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "Sales | London | Ways | Economy | Centre | Canary Wharf",
+                "ref_id": "ref_17a664",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.262434",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 5,
+              "max": 5
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "5 nights",
+                "ref_id": "ref_4d8d5b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.262830",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "party_size": {
+            "value": 1,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "1",
+                "ref_id": "ref_d6ab39",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.265351",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "origin_city": {
+            "value": "Mumbai",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "mumbai to london",
+                "ref_id": "ref_267b5e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.268296",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "trip_purpose": {
+            "value": "business",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "business",
+                "ref_id": "ref_f1a9fa",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.268978",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_44d28a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.269343",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          }
+        },
+        "derived_signals": {
+          "domestic_or_international": {
+            "value": "international",
+            "confidence": 0.9,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Computed from destination_candidates=['London'], origin=Mumbai, origin_country=IN",
+                "ref_id": "ref_9ee9ad",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.269458",
+            "notes": null,
+            "maturity": "heuristic",
+            "epistemic_status": {}
+          },
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_e5380d",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.269642",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": {}
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_a51203",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.269700",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": {}
+          }
+        },
+        "hypotheses": {
+          "destination_status": {
+            "value": {
+              "value": "definite",
+              "_hypothesis_state": {}
+            },
+            "confidence": 0.75,
+            "authority_level": "soft_hypothesis",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "Sales | London | Ways | Economy | Centre | Canary Wharf · context-resolver [OpenAIClient:gpt-4o-mini] London is explicitly mentioned as a travel destination in the context of booking a trip.",
+                "ref_id": "ref_e37509",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.262470",
+            "notes": null,
+            "maturity": null,
+            "epistemic_status": {}
+          }
+        },
+        "lifecycle": null,
+        "feedback": null,
+        "raw_note": null,
+        "suitability_flags": [],
+        "ambiguities": [],
+        "unknowns": [
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "budget_raw_text",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_e3082d71"
+        ],
+        "revision_count": 0,
+        "event_cursor": 12,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.262455",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "London"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "hypothesis_set",
+            "timestamp": "2026-10-21T21:19:47.262476",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": {
+                "value": "definite",
+                "_hypothesis_state": {}
+              }
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.262839",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 5,
+                "max": 5
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.265570",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 1
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.268335",
+            "details": {
+              "field_name": "origin_city",
+              "old_value": null,
+              "new_value": "Mumbai"
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.268990",
+            "details": {
+              "field_name": "trip_purpose",
+              "old_value": null,
+              "new_value": "business"
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.269358",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:19:47.269464",
+            "details": {
+              "field_name": "domestic_or_international",
+              "old_value": null,
+              "new_value": "international"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:19:47.269653",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:19:47.269705",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:19:47.269734",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:19:47.269739",
+            "details": {
+              "field_name": "budget_raw_text",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "assumptions": [],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.97,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.96); dates_clarity=True (noul=0.84); party_clarity=True (noul=0.93); budget_clarity=True (noul=0.54); intake_action=PROCEED (p=0.98, conf=0.97); coherence_override=blocking_unknowns:[date_window,budget_raw_text]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "decision_state": "STOP_NEEDS_REVIEW",
+      "follow_up_questions": [
+        {
+          "field_name": "date_window",
+          "priority": "high",
+          "question": "Please provide date window to continue planning."
+        },
+        {
+          "field_name": "budget_raw_text",
+          "priority": "high",
+          "question": "Please provide budget raw text to continue planning."
+        }
+      ],
+      "hard_blockers": [
+        "extraction_quality"
+      ],
+      "soft_blockers": [],
+      "branch_options": [],
+      "report_fingerprint": null,
+      "access_token": null,
+      "retention_days": null,
+      "frontier_result": null,
+      "draft_id": "draft_0f1ab2e3fe79"
+    },
+    "at": "2026-10-21T15:49:49.943625+00:00"
+  },
+  {
+    "step": "trip-trip_7790a1a",
+    "request": {
+      "method": "GET",
+      "path": "/trips/trip_7790a1a71f24"
+    },
+    "status": 200,
+    "response": {
+      "id": "trip_7790a1a71f24",
+      "status": "incomplete",
+      "stage": "discovery",
+      "dateWindow": null,
+      "destination": "London",
+      "origin": "Mumbai",
+      "budget": null,
+      "party": 1,
+      "tripType": "business",
+      "tripPurpose": "business",
+      "customerName": "Client A71F24",
+      "customerMessage": null,
+      "agentNotes": null,
+      "follow_up_due_date": null,
+      "extracted": {
+        "packet_id": "pkt_c113d5c2",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "London"
+            ],
+            "confidence": 0.5,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "Sales | London | Ways | Economy | Centre | Canary Wharf",
+                "ref_id": "ref_17a664",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.262434",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "trip_duration_days": {
+            "value": {
+              "min": 5,
+              "max": 5
+            },
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "5 nights",
+                "ref_id": "ref_4d8d5b",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.262830",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "party_size": {
+            "value": 1,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "1",
+                "ref_id": "ref_d6ab39",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.265351",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "origin_city": {
+            "value": "Mumbai",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "mumbai to london",
+                "ref_id": "ref_267b5e",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.268296",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "trip_purpose": {
+            "value": "business",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "business",
+                "ref_id": "ref_f1a9fa",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.268978",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_44d28a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.269343",
+            "notes": null,
+            "epistemic_status": "FACT"
+          }
+        },
+        "derived_signals": {
+          "domestic_or_international": {
+            "value": "international",
+            "confidence": 0.9,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Computed from destination_candidates=['London'], origin=Mumbai, origin_country=IN",
+                "ref_id": "ref_9ee9ad",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.269458",
+            "notes": null,
+            "maturity": "heuristic",
+            "epistemic_status": "INFERRED"
+          },
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_e5380d",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.269642",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": "INFERRED"
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_a51203",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.269700",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": "INFERRED"
+          }
+        },
+        "hypotheses": {
+          "destination_status": {
+            "value": {
+              "value": "definite",
+              "_hypothesis_state": "proposed"
+            },
+            "confidence": 0.75,
+            "authority_level": "soft_hypothesis",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_e3082d71",
+                "evidence_type": "text_span",
+                "excerpt": "Sales | London | Ways | Economy | Centre | Canary Wharf · context-resolver [OpenAIClient:gpt-4o-mini] London is explicitly mentioned as a travel destination in the context of booking a trip.",
+                "ref_id": "ref_e37509",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-21T21:19:47.262470",
+            "notes": null,
+            "epistemic_status": "ASSUMED"
+          }
+        },
+        "lifecycle": null,
+        "ambiguities": [],
+        "unknowns": [
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          },
+          {
+            "field_name": "budget_raw_text",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: fare_quote [BLOCKING_FOR_fare_quote]"
+          }
+        ],
+        "assumptions": [],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_e3082d71"
+        ],
+        "revision_count": 0,
+        "event_cursor": 12,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.262455",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "London"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "hypothesis_set",
+            "timestamp": "2026-10-21T21:19:47.262476",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": {
+                "value": "definite",
+                "_hypothesis_state": "proposed"
+              }
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.262839",
+            "details": {
+              "field_name": "trip_duration_days",
+              "old_value": null,
+              "new_value": {
+                "min": 5,
+                "max": 5
+              }
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.265570",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 1
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.268335",
+            "details": {
+              "field_name": "origin_city",
+              "old_value": null,
+              "new_value": "Mumbai"
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.268990",
+            "details": {
+              "field_name": "trip_purpose",
+              "old_value": null,
+              "new_value": "business"
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-21T21:19:47.269358",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:19:47.269464",
+            "details": {
+              "field_name": "domestic_or_international",
+              "old_value": null,
+              "new_value": "international"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:19:47.269653",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-21T21:19:47.269705",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:19:47.269734",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-21T21:19:47.269739",
+            "details": {
+              "field_name": "budget_raw_text",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": 0.97,
+            "missing_dimensions": [],
+            "source": "jev",
+            "reasoning": "[jev] destination_clarity=True (noul=0.96); dates_clarity=True (noul=0.84); party_clarity=True (noul=0.93); budget_clarity=True (noul=0.54); intake_action=PROCEED (p=0.98, conf=0.97); coherence_override=blocking_unknowns:[date_window,budget_raw_text]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'budget_raw_text' missing — needed to generate a quote, but trip can still be saved",
+            "field": "budget_raw_text"
+          }
+        ],
+        "ambiguity_report": [],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "trip_duration_days": 1,
+          "party_size": 1,
+          "origin_city": 1,
+          "trip_purpose": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "strategy": {
+        "session_goal": "Gate failure — early exit.",
+        "priority_sequence": [],
+        "tonal_guardrails": [],
+        "risk_flags": [],
+        "suggested_opening": "",
+        "exit_criteria": [],
+        "next_action": "STOP_NEEDS_REVIEW",
+        "assumptions": [],
+        "suggested_tone": "professional"
+      },
+      "frontier_result": null,
+      "safety": null,
+      "party_composition": null,
+      "pace_preference": null,
+      "date_year_confidence": null,
+      "lead_source": null,
+      "activity_provenance": null,
+      "activity_interests": null,
+      "trip_priorities": null,
+      "date_flexibility": null,
+      "passenger_claim": null,
+      "ghost_concierge": null,
+      "traveler_answers": null,
+      "reassess": null,
+      "decision": {
+        "packet_id": "pkt_c113d5c2",
+        "current_stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": "STOP_NEEDS_REVIEW",
+        "hard_blockers": [
+          "extraction_quality"
+        ],
+        "soft_blockers": [],
+        "ambiguities": [],
+        "contradictions": [],
+        "follow_up_questions": [
+          {
+            "field_name": "date_window",
+            "priority": "high",
+            "question": "Please provide date window to continue planning."
+          },
+          {
+            "field_name": "budget_raw_text",
+            "priority": "high",
+            "question": "Please provide budget raw text to continue planning."
+          }
+        ],
+        "branch_options": [],
+        "rationale": {
+          "gate_failure": "intake_completion",
+          "reasons": [
+            "Structural validation failed (1 error)"
+          ]
+        },
+        "confidence": {
+          "data_quality": 0.0,
+          "judgment_confidence": 0.0,
+          "commercial_confidence": 0.0,
+          "overall": 0.0
+        },
+        "risk_flags": [],
+        "suitability_profile": null,
+        "commercial_decision": "NONE",
+        "intent_scores": {},
+        "next_best_action": null,
+        "commercial_next_action": null,
+        "travel_next_action": null,
+        "budget_breakdown": null,
+        "decision_id": null
+      },
+      "updated_at": null,
+      "flight_status_updates": null,
+      "traveler_asks": null,
+      "booking_data": null,
+      "pending_booking_data": null,
+      "analytics": {
+        "margin_pct": 18.0,
+        "quality_score": 58.0,
+        "quality_breakdown": {
+          "completeness": 0.0,
+          "feasibility": 50.0,
+          "risk": 100.0,
+          "profitability": 76.7
+        },
+        "requires_review": true,
+        "review_reason": "Decision state STOP_NEEDS_REVIEW requires owner review",
+        "feedback_reopen": false,
+        "feedback_severity": null,
+        "followup_needed": false,
+        "recovery_status": null,
+        "recovery_started_at": null,
+        "recovery_deadline": null,
+        "is_escalated": true,
+        "sla_status": "on_track",
+        "owner_review_deadline": "2026-10-21T17:49:49.493042+00:00",
+        "escalation_severity": "critical",
+        "approval_required_for_send": true,
+        "send_policy_reason": "Trip is in review-required state; Decision state STOP_NEEDS_REVIEW; Confidence below threshold (0.75)",
+        "revision_count": 0
+      },
+      "fees": null
+    },
+    "at": "2026-10-21T15:49:49.967970+00:00"
+  },
+  {
+    "step": "B1-packet",
+    "packet_summary": {
+      "trip_id": "trip_7790a1a71f24",
+      "status": "incomplete",
+      "decision_state": null,
+      "facts": {
+        "origin_city": {
+          "value": "Mumbai",
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_e3082d71",
+              "evidence_type": "text_span",
+              "excerpt": "mumbai to london",
+              "ref_id": "ref_267b5e",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:19:47.268296",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "destination_candidates": {
+          "value": [
+            "London"
+          ],
+          "confidence": 0.5,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_e3082d71",
+              "evidence_type": "text_span",
+              "excerpt": "Sales | London | Ways | Economy | Centre | Canary Wharf",
+              "ref_id": "ref_17a664",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:19:47.262434",
+          "notes": null,
+          "epistemic_status": "FACT"
+        },
+        "party_size": {
+          "value": 1,
+          "confidence": 0.9,
+          "authority_level": "explicit_user",
+          "extraction_mode": "direct_extract",
+          "evidence_refs": [
+            {
+              "envelope_id": "env_e3082d71",
+              "evidence_type": "text_span",
+              "excerpt": "1",
+              "ref_id": "ref_d6ab39",
+              "field_path": null,
+              "offset": null,
+              "confidence": 1.0,
+              "metadata": {}
+            }
+          ],
+          "derived_from": [],
+          "updated_at": "2026-10-21T21:19:47.265351",
+          "notes": null,
+          "epistemic_status": "FACT"
+        }
+      },
+      "packet": {},
+      "unknowns": null,
+      "follow_up_questions": [
+        {
+          "field_name": "date_window",
+          "priority": "high",
+          "question": "Please provide date window to continue planning."
+        },
+        {
+          "field_name": "budget_raw_text",
+          "priority": "high",
+          "question": "Please provide budget raw text to continue planning."
+        }
+      ],
+      "branch_options": [],
+      "strategy_cost": null,
+      "strategy_currency": null,
+      "validation": {
+        "is_valid": false,
+        "errors": [
+          {
+            "severity": "error",
+            "code": "MVB_MISSING",
+            "message": "Required field 'date_window' not present",
+            "field": "date_window"
+          }
+        ],
+        "warnings": [
+          {
+            "severity": "warning",
+            "code": "QUOTE_READY_INCOMPLETE",
+            "message": "Field 'budget_raw_text' missing — needed to generate a quote, but trip can still be saved",
+            "field": "budget_raw_text"
+          }
+        ],
+        "ambiguity_report": [],
+        "evidence_coverage": {
+          "destination_candidates": 1,
+          "trip_duration_days": 1,
+          "party_size": 1,
+          "origin_city": 1,
+          "trip_purpose": 1,
+          "traveler_plan": 1
+        },
+        "readiness": {}
+      },
+      "traveler_asks": null,
+      "traveler_answers": null,
+      "passenger_claim": false,
+      "ghost_concierge": false,
+      "date_window": null,
+      "supersession": null
+    }
+  },
+  {
+    "step": "B-audit",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/corporate/audit-policy/trip_7790a1a71f24"
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_7790a1a71f24",
+      "is_compliant": false,
+      "violations": [
+        "Nightly hotel rate ($600.00) exceeds corporate cap ($350.00)"
+      ],
+      "warnings": [
+        "Explicit trip cost absent; estimated baseline of $3,000 used for audit evaluation.",
+        "Itinerary dates absent; estimated duration of 5 nights used for nightly rate cap evaluation.",
+        "Destination is unspecified on trip; duty-of-care advisory risk could not be verified."
+      ],
+      "duty_of_care_risk_level": "UNKNOWN",
+      "pre_approval_required": true,
+      "override_approved": false,
+      "cost_evaluated": 3000.0,
+      "cost_source": "estimated_default",
+      "nights_evaluated": 5,
+      "nights_source": "estimated_default",
+      "authority": "corporate_policy_v1"
+    },
+    "at": "2026-10-21T15:49:49.990366+00:00"
+  },
+  {
+    "step": "B-audit-summary",
+    "violations": [
+      "Nightly hotel rate ($600.00) exceeds corporate cap ($350.00)"
+    ],
+    "warnings": [
+      "Explicit trip cost absent; estimated baseline of $3,000 used for audit evaluation.",
+      "Itinerary dates absent; estimated duration of 5 nights used for nightly rate cap evaluation.",
+      "Destination is unspecified on trip; duty-of-care advisory risk could not be verified."
+    ],
+    "cost_source": "estimated_default",
+    "nights_source": "estimated_default",
+    "source": null
+  },
+  {
+    "step": "B-override",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/corporate/approve-policy-override/trip_7790a1a71f24",
+      "json": {
+        "trip_id": "trip_7790a1a71f24",
+        "reason": "sim4-B: VP grade entitles business class on 9h sector; line-manager signoff on file (synthetic)."
+      }
+    },
+    "status": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_7790a1a71f24",
+      "override_approved": false,
+      "approved_by": "New User",
+      "approved_at": "2026-10-21T15:49:50.011490+00:00",
+      "status": "pending_second_approval",
+      "pending_second_approval": true
+    },
+    "at": "2026-10-21T15:49:50.077599+00:00"
+  }
+]

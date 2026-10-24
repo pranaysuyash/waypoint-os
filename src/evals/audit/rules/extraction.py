@@ -131,7 +131,7 @@ def compare_fixture(
             match_type: MatchType = "null_match"
         elif exp_val is not None and act_val is not None:
             match_type = "exact_match" if _normalise(exp_val) == _normalise(act_val) else (
-                "contains_match" if values_match(exp_val, act_val, mode="contains") else "mismatch"
+                "contains_match" if is_match else "mismatch"
             )
         elif exp_val is None and act_val is not None:
             match_type = "false_positive"
@@ -152,10 +152,13 @@ def compare_fixture(
     tp = sum(1 for c in comparisons if c.expected is not None and c.actual is not None and c.is_match)
     fp = sum(1 for c in comparisons if c.expected is None and c.actual is not None)
     fn = sum(1 for c in comparisons if c.expected is not None and c.actual is None)
-    sum(1 for c in comparisons if c.expected is not None and c.actual is not None and not c.is_match)
+    mismatches = sum(1 for c in comparisons if c.expected is not None and c.actual is not None and not c.is_match)
 
-    extracted_count = tp + fp
-    expected_count = tp + fn
+    # A wrong populated value is both an attempted extraction and an expected
+    # value that was not recovered correctly. Keep its diagnostic category
+    # separate from hallucinations/omissions, but include it in both rates.
+    extracted_count = tp + fp + mismatches
+    expected_count = tp + fn + mismatches
     precision = tp / extracted_count if extracted_count > 0 else 0.0
     recall = tp / expected_count if expected_count > 0 else 0.0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
@@ -229,8 +232,8 @@ def _compute_field_metrics(
         elif c.expected is not None and c.actual is None:
             fn += 1
 
-    extracted = tp + fp
-    expected = tp + fn
+    extracted = tp + fp + mm
+    expected = tp + fn + mm
     correct = tp
     total = tp + fp + fn + mm
     p = _ratio(tp, extracted)
@@ -277,10 +280,8 @@ def aggregate_comparisons(
 
     # Overall TP/FP/FN across all fields
     total_tp = sum(fm.true_positives for fm in field_metrics.values())
-    total_fp = sum(fm.false_positives for fm in field_metrics.values())
-    total_fn = sum(fm.false_negatives for fm in field_metrics.values())
-    total_extracted = total_tp + total_fp
-    total_expected = total_tp + total_fn
+    total_extracted = sum(fm.total_extracted for fm in field_metrics.values())
+    total_expected = sum(fm.total_expected for fm in field_metrics.values())
     op = _ratio(total_tp, total_extracted)
     or_ = _ratio(total_tp, total_expected)
     overall_f1 = (

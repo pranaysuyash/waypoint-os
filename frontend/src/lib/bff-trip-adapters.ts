@@ -520,7 +520,10 @@ export function transformSpineTripToTrip(
     age: calculateAge(createdAt, now),
     createdAt,
     updatedAt: asString(firstPresent(trip.updated_at, trip.created_at), createdAt),
-    party: asNumber(partySizeValue(trip), 1),
+    // FND-0343 (Sim #4): no fabricated fallback-1 — an absent party must
+    // render "Party to confirm", never "1 pax" (the Sens 2-traveler lead
+    // displayed 1 pax from a null column).
+    party: asNumber(partySizeValue(trip), Number.NaN) || undefined,
     dateWindow: asString(dateWindowValue(trip), "TBD"),
     origin: asString(originCityValue(trip), "TBD"),
     budget: (() => {
@@ -533,7 +536,18 @@ export function transformSpineTripToTrip(
       }
       const rawText = getNestedValue(spineTrip, "extracted.facts.budget_raw_text.value", undefined);
       const budgetVal = getNestedValue(spineTrip, "extracted.facts.budget.value", undefined);
-      return asString(rawText ?? budgetVal ?? budgetValue(spineTrip), "Budget missing");
+      const base = asString(rawText ?? budgetVal ?? budgetValue(spineTrip), "Budget missing");
+      // FND-0344 (Sim #4): per-person scope is part of the number's meaning —
+      // "₹18,000" for a 12-pax offsite read as a total until the scope is
+      // surfaced. partyValue comes from the resolved party above.
+      const scopeRaw: unknown = getNestedValue(spineTrip, "extracted.facts.budget_scope.value", undefined);
+      const scope = typeof scopeRaw === "string" ? scopeRaw.trim().toLowerCase() : "";
+      const pax: number | undefined = asNumber(partySizeValue(spineTrip), Number.NaN) || undefined;
+      if (scope === "per_person" && base !== "Budget missing" && pax && pax > 1) {
+        const perPersonTotal = (budgetValue(spineTrip) ?? 0) * pax;
+        return `${base} per person (~${Math.round(perPersonTotal).toLocaleString("en-IN")} total for ${pax})`;
+      }
+      return base;
     })(),
     packet: trip.extracted ?? undefined,
     status,
@@ -653,6 +667,25 @@ export function transformSpineTripToTrip(
     ) || undefined,
     customerMessage: asString(getNestedValue(spineTrip, "customerMessage", ""), "") || undefined,
     agentNotes: asString(getNestedValue(spineTrip, "agentNotes", ""), "") || undefined,
+    // Record-shaped ledger passthrough (T10 claims, T11b ghost concierge,
+    // topic-49 fare drop): the explicit-object transform above strips unknown
+    // keys, which silently removed these contracts from the live trip path —
+    // the operator cards reading them rendered null even when the backend
+    // returned them. Pass them through verbatim only when present.
+    ...(trip.passenger_claim !== undefined && trip.passenger_claim !== null
+      ? { passenger_claim: trip.passenger_claim as Trip["passenger_claim"] }
+      : {}),
+    ...(trip.ghost_concierge !== undefined && trip.ghost_concierge !== null
+      ? { ghost_concierge: trip.ghost_concierge as Trip["ghost_concierge"] }
+      : {}),
+    ...(Array.isArray(trip.traveler_answers) ? { traveler_answers: trip.traveler_answers as Trip["traveler_answers"] } : {}),
+    ...(trip.fare_drop_signal !== undefined && trip.fare_drop_signal !== null
+      ? { fare_drop_signal: trip.fare_drop_signal as Trip["fare_drop_signal"] }
+      : {}),
+    ...(trip.fare_drop_disposition !== undefined && trip.fare_drop_disposition !== null
+      ? { fare_drop_disposition: trip.fare_drop_disposition as Trip["fare_drop_disposition"] }
+      : {}),
+    ...(Array.isArray(trip.price_observations) ? { price_observations: trip.price_observations as Trip["price_observations"] } : {}),
   };
 }
 

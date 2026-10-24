@@ -48,6 +48,30 @@ def get_trip_data_export(
     """Art. 15/20: portable export of the traveler's personal data."""
     trip = _load_trip(trip_id, agency.id)
     envelope = export_trip_personal_data(trip, agency.id)
+
+    # FND-0336 (Sim #4): the traveler's own words live in the linked DRAFT on
+    # the draft-flow path (the trip row carries no raw_input), so an export
+    # without the draft message is a partial answer to the DSAR.
+    try:
+        from spine_api.draft_store import DraftStore
+
+        draft_messages = []
+        for draft in DraftStore.list_by_agency(agency.id, limit=500):
+            linked = draft.promoted_trip_id == trip_id or trip_id in (getattr(draft, "linked_trip_ids", None) or [])
+            if not linked:
+                continue
+            msg = getattr(draft, "customer_message", None)
+            if msg:
+                draft_messages.append({
+                    "draft_id": draft.id,
+                    "created_at": getattr(draft, "created_at", None),
+                    "customer_message": msg,
+                })
+        if draft_messages:
+            envelope["draft_messages"] = draft_messages
+    except Exception as exc:
+        logger.warning("DSR export: draft message collection skipped: %s", exc)
+
     AuditStore.log_event(
         event_type="dsr_data_exported",
         user_id=agency.id,
@@ -120,7 +144,7 @@ def _tombstone_trip_messages(agency_id: str, phones: list, trip_id: Optional[str
 
 
 @router.post("/{trip_id}/erasure")
-def post_trip_erasure(
+async def post_trip_erasure(
     trip_id: str,
     body: ErasureRequest,
     agency: Agency = Depends(get_current_agency),
@@ -186,14 +210,84 @@ def post_trip_erasure(
     except Exception as exc:
         logger.warning("DSR erasure: draft deletion skipped: %s", exc)
 
-    # Cascade erasure to memory store if matching customer profile exists
+    # Cascade erasure to memory store if matching customer profile exists.
+    # FND-0335 (Sim #4): entity-id keys alone missed profiles whose id was
+    # minted from the email; propagate by CONTACT IDENTITY harvested from the
+    # pre-erasure trip (emails/phones/names), via the canonical memory seam.
+    identity_emails = [
+        str(v) for v in (
+            trip.get("contact_email"), trip.get("customer_email"), trip.get("traveler_email"),
+        ) if v
+    ]
+    identity_phones = [
+        str(v) for v in (
+            trip.get("contact_phone"), trip.get("customer_phone"), trip.get("traveler_phone"),
+        ) if v
+    ]
+    identity_names = [
+        str(v) for v in (
+            trip.get("customer_name"), trip.get("contact_name"), trip.get("traveler_name"),
+        ) if v
+    ]
+    identity_texts: list = []
     try:
+        from spine_api.draft_store import DraftStore
+
+        for draft in DraftStore.list_by_agency(agency.id, limit=500):
+            linked = draft.promoted_trip_id == trip_id or trip_id in (getattr(draft, "linked_trip_ids", None) or [])
+            if linked and getattr(draft, "customer_message", None):
+                identity_texts.append(draft.customer_message)
+    except Exception as exc:
+        logger.warning("DSR erasure: draft identity harvest skipped: %s", exc)
+    raw_input_pre = trip.get("raw_input")
+    if isinstance(raw_input_pre, dict):
+        _rn = (raw_input_pre.get("submission") or {}).get("raw_note") or raw_input_pre.get("raw_note")
+        if _rn:
+            identity_texts.append(_rn)
+
+    pre_extracted = trip.get("extracted") if isinstance(trip.get("extracted"), dict) else {}
+    pre_facts = pre_extracted.get("facts") if isinstance(pre_extracted.get("facts"), dict) else {}
+    for fk, fv in (pre_facts or {}).items():
+        if not isinstance(fv, dict):
+            continue
+        val = fv.get("value")
+        if val in (None, ""):
+            continue
+        if "email" in fk or "contact" in fk:
+            identity_emails.append(str(val))
+        elif "phone" in fk or "mobile" in fk:
+            identity_phones.append(str(val))
+        elif "name" in fk or "speaker" in fk:
+            identity_names.extend(str(x) for x in (val if isinstance(val, list) else [val]))
+    try:
+        import re as _re
+
+        from spine_api.routers.customer_memory import forget_profiles_matching_identity
         from src.memory.store import MemoryStore
         mem_store = MemoryStore()
         for cust_key in ("user_id", "customer_id", "contact_email", "customer_email"):
             entity_id = trip.get(cust_key)
             if entity_id:
                 mem_store.forget_entity_gdpr(agency.id, entity_id)
+        # The traveler's identity often lives ONLY in their own words (draft
+        # note / raw note) on the draft-flow path — harvest contact identity
+        # from those texts too (FND-0335 live evidence).
+        _EMAIL_RE = _re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+        for text in (identity_texts or []):
+            identity_emails.extend(_EMAIL_RE.findall(text or ""))
+        removed_profiles = await forget_profiles_matching_identity(
+            agency.id,
+            customer_ids=[trip.get(k) for k in ("user_id", "customer_id") if trip.get(k)],
+            emails=identity_emails,
+            phones=identity_phones,
+            names=identity_names,
+        )
+        if removed_profiles:
+            AuditStore.log_event(
+                event_type="dsr_memory_profile_erased",
+                user_id=agency.id,
+                details={"trip_id": trip_id, "propagated_removals": removed_profiles},
+            )
     except Exception as exc:
         logger.warning("DSR erasure: memory store scrub skipped: %s", exc)
 

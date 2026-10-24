@@ -37,7 +37,12 @@ from spine_api.providers.stripe_issuing_adapter import (
     StripeIssuingAdapter,
     VirtualCardIssuanceRequest,
 )
-from spine_api.routers.public_proposals import _get_or_create_proposal
+from spine_api.routers.public_proposals import (
+    _get_or_create_proposal,
+    _verified_agency_for_token,
+    verify_proposal_token,
+)
+from spine_api.services.commercial_agreement import token_digest, verified_accepted_agreement
 from spine_api.services.commission_reconciliation import reconcile_trip_commission
 from spine_api.services.confirmation_service import try_record_fulfillment_confirmation
 from spine_api.services.payment_mandate_service import PaymentMandateLedger
@@ -134,19 +139,19 @@ class BookingFulfillmentEngine:
     ) -> FulfillmentResult:
         if not trip_id or not proposal_token:
             raise ValueError("trip_id and proposal_token must be non-empty")
-
-        # 1. Retrieve & verify proposal acceptance status
-        proposal = _get_or_create_proposal(proposal_token)
-        if proposal.status != "accepted":
-            raise ValueError(
-                f"Proposal {proposal_token} has status '{proposal.status}'. "
-                "Only accepted proposals can be fulfilled."
-            )
+        valid, reason, token_trip_id = verify_proposal_token(proposal_token, expected_purpose="proposal")
+        if not valid:
+            raise ValueError(f"Proposal capability is invalid: {reason}")
+        if token_trip_id != trip_id:
+            raise ValueError("Proposal capability does not bind to the requested trip.")
+        agency_scope = _verified_agency_for_token(proposal_token)
+        if not agency_scope:
+            raise ValueError("Proposal capability has no verified agency binding.")
 
         # 1b. PA-02: the e-sign acceptance is the authorization artifact for the
         # whole money path, so it must be verified against the DURABLE trip
         # record — not the process-local proposal registry cache.
-        trip_record = TripStore.get_trip(trip_id)
+        trip_record = TripStore.get_trip_for_agency(trip_id, agency_scope)
         if not trip_record:
             raise ValueError(
                 f"Trip '{trip_id}' has no persisted record. Fulfillment requires a "
@@ -159,6 +164,24 @@ class BookingFulfillmentEngine:
                 "(missing proposal_accepted_at). The e-sign acceptance must be "
                 "persisted on the trip record before fulfillment can execute."
             )
+        agreement = verified_accepted_agreement(trip_record)
+        if (
+            agreement is None
+            or agreement.get("proposal_token_sha256") != token_digest(proposal_token)
+            or trip_record.get("proposal_esign_consent") is not True
+            or trip_record.get("proposal_acceptance_token") != proposal_token
+        ):
+            raise ValueError("Proposal acceptance is not durably recorded as an exact, agency-bound agreement for this capability.")
+        proposal = _get_or_create_proposal(proposal_token)
+        if proposal.status != "accepted" or proposal.revision_id != agreement["revision_id"]:
+            raise ValueError("Proposal terms changed; the current revision requires renewed customer acceptance.")
+        if proposal.currency != "USD":
+            raise HTTPException(status_code=409, detail={
+                "error": "execution_currency_review_required",
+                "currency": proposal.currency,
+                "message": "Execution authority and confirmation accounting are USD-denominated. Verified conversion and provider currency support are required before execution.",
+            })
+        cls._require_executable_lifecycle(trip_record, trip_id)
 
         # AT-03: once booked, replay — never issue a second VCC/PNR. This
         # pre-lease check is a fast path; the authoritative re-check runs
@@ -211,36 +234,6 @@ class BookingFulfillmentEngine:
         # Lifecycle precondition (ADR-008 council cross-link, Addendum 8+9):
         # fulfillment is RAISE-class gated on the canonical 12-state machine —
         # money moves only from approved / booking_in_progress / booked.
-        try:
-            from spine_api.core.trip_lifecycle import assess_transition
-
-            _trip_status = trip_record.get("status")
-            _assessment = assess_transition(_trip_status, _trip_status)
-            _life_state = _assessment.new_state
-            if _life_state is not None and _life_state not in (
-                "approved", "booking_in_progress", "booked",
-                "change_requested", "in_trip",
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail={
-                        "error": "lifecycle_precondition_refusal",
-                        "trip_status": _trip_status,
-                        "lifecycle_state": _life_state,
-                        "message": (
-                            f"Trip '{trip_record.get('trip_id') or trip_id}' is in "
-                            f"lifecycle state '{_life_state}'; fulfillment requires "
-                            "approved / booking_in_progress / booked (ADR-008 R1 seam, "
-                            "Addendum 8 canonical lifecycle)."
-                        ),
-                    },
-                )
-        except HTTPException:
-            raise
-        except Exception:
-            logger.warning("lifecycle precondition check skipped (unclassifiable status)", exc_info=True)
-
-        agency_scope = str(trip_record.get("agency_id") or "system")
         agency_settings = AgencySettingsStore.load(agency_scope)
         money_mode = agency_settings.autonomy.money_execution_mode
 
@@ -276,25 +269,6 @@ class BookingFulfillmentEngine:
         # FND-0221: the traveler-paid deposit/balance path may only be covered
         # by deposit/balance/fee mandates — a payout-scope mandate (agency →
         # advisor money) can never satisfy a customer charge, and vice versa.
-        mandate = PaymentMandateLedger.resolve_for_trip(
-            agency_id=agency_scope,
-            trip_id=trip_id,
-            allowed_scopes=("deposit", "balance", "fee"),
-        )
-        if mandate is None and agency_requires_mandate:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "payment_mandate_required",
-                    "escalation_required": True,
-                    "money_execution_mode": money_mode,
-                    "message": (
-                        f"No active payment mandate exists for trip '{trip_id}' and "
-                        f"mandate enforcement is required under '{money_mode}' mode (ADR-008 / F-04). "
-                        "Fulfillment refuses to move money without a consent artifact."
-                    ),
-                },
-            )
         mandate_id_for_audit: Optional[str] = None
         mandate_enforced = False
 
@@ -319,7 +293,14 @@ class BookingFulfillmentEngine:
                     ) from exc
 
             # Part-H P0: authoritative confirmation re-check inside the fence.
-            fresh_trip = TripStore.get_trip(trip_id) or {}
+            fresh_trip = TripStore.get_trip_for_agency(trip_id, agency_scope) or {}
+            fresh_agreement = verified_accepted_agreement(fresh_trip)
+            if fresh_agreement != agreement:
+                raise ValueError("The accepted agreement changed before execution; review the latest proposal.")
+            cls._require_executable_lifecycle(fresh_trip, trip_id)
+            fresh_proposal = _get_or_create_proposal(proposal_token)
+            if fresh_proposal.status != "accepted" or fresh_proposal.revision_id != agreement["revision_id"]:
+                raise ValueError("Proposal terms changed before execution; renewed acceptance is required.")
             fresh_confirmation = fresh_trip.get("booking_confirmation") or {}
             if str(fresh_confirmation.get("pnr_locator") or "").strip():
                 return await cls._replay_and_repair(
@@ -331,17 +312,49 @@ class BookingFulfillmentEngine:
             # confirmation write is now detectable, and re-entry re-uses the
             # same provider idempotency key so the SAME instruments come back
             # instead of a second VCC/PNR being minted.
-            provider_key = fulfillment_provider_key(trip_id, proposal_token)
+            provider_key = fulfillment_provider_key(trip_id, proposal_token, agreement["revision_id"])
+            if fresh_confirmation.get("fulfillment_provider_key") not in (None, provider_key):
+                raise ValueError("An existing fulfillment operation belongs to a different agreement; reconciliation is required.")
+            if fresh_confirmation.get("amount_cents", mandate_charge_cents) != mandate_charge_cents or fresh_confirmation.get("currency", proposal.currency) != proposal.currency:
+                raise ValueError("The persisted fulfillment amount or currency differs from this agreement; reconciliation is required.")
+            saved_mandate_id = fresh_confirmation.get("mandate_id")
+            mandate = None
+            if saved_mandate_id:
+                saved_mandate = PaymentMandateLedger.get_mandate(agency_id=agency_scope, mandate_id=saved_mandate_id)
+                if not saved_mandate or saved_mandate.get("trip_id") != trip_id:
+                    raise ValueError("The fulfillment operation's payment mandate binding is missing or different.")
+                mandate = PaymentMandateLedger._dict_to_record(saved_mandate)
+            else:
+                mandate = PaymentMandateLedger.resolve_for_trip(
+                    agency_id=agency_scope, trip_id=trip_id,
+                    allowed_scopes=("deposit", "balance", "fee"),
+                )
+            if mandate is None and agency_requires_mandate:
+                raise HTTPException(status_code=403, detail={
+                    "error": "payment_mandate_required", "escalation_required": True,
+                    "money_execution_mode": money_mode,
+                    "message": "No payment mandate covers this fulfillment operation. Register customer authorization before execution.",
+                })
+            if mandate is not None:
+                from spine_api.services.payment_mandate_service import resolved_scope
+
+                if mandate.currency.upper() != proposal.currency or resolved_scope(mandate) not in {"deposit", "balance", "fee"}:
+                    raise ValueError("Payment mandate currency or scope does not authorize the accepted agreement.")
             now_iso = datetime.now(timezone.utc).isoformat()
             if not fresh_confirmation.get("side_effects_started_at"):
-                marker_trip = TripStore.update_trip(
-                    trip_id,
+                marker_trip = TripStore.update_trip_if_version_for_agency(
+                    trip_id, agency_scope,
                     {
                         "booking_confirmation": {
                             "side_effects_started_at": now_iso,
                             "fulfillment_provider_key": provider_key,
+                            "agreement_revision_id": agreement["revision_id"],
+                            "mandate_id": mandate.mandate_id if mandate else None,
+                            "amount_cents": mandate_charge_cents,
+                            "currency": proposal.currency,
                         }
                     },
+                    fresh_trip.get("updated_at"),
                 )
                 if not marker_trip:
                     raise RuntimeError(
@@ -366,6 +379,8 @@ class BookingFulfillmentEngine:
                     agency_id=agency_scope,
                     mandate_id=mandate.mandate_id,
                     amount_cents=mandate_charge_cents,
+                    scope=resolved_scope(mandate),
+                    movement_idempotency_key=provider_key,
                 )
                 if not mandate_authz.get("authorized"):
                     raise ValueError(
@@ -465,6 +480,10 @@ class BookingFulfillmentEngine:
                     "booking_confirmation": {
                         "side_effects_started_at": snap_confirmation.get("side_effects_started_at") or now_iso,
                         "fulfillment_provider_key": provider_key,
+                        "agreement_revision_id": agreement["revision_id"],
+                        "mandate_id": mandate_id_for_audit,
+                        "amount_cents": mandate_charge_cents,
+                        "currency": proposal.currency,
                         "pnr_locator": gds_booking.pnr_locator,
                         "vcc_last4": vcc.last4,
                         "fulfilled_at": fulfilled_at_iso,
@@ -609,6 +628,22 @@ class BookingFulfillmentEngine:
             # 8. Release lease
             DurableAgentLeaseManager.release_lease(trip_id, lease.lease_token)
 
+    @staticmethod
+    def _require_executable_lifecycle(trip: dict, trip_id: str) -> None:
+        from spine_api.core.trip_lifecycle import classify
+
+        classification = classify(trip.get("status"))
+        # Preserve the existing approved/active operational states, while
+        # refusing unknown and provisional aliases at an effect boundary.
+        allowed = {"approved", "booking_in_progress", "booked", "change_requested", "in_trip"}
+        if classification is None or classification.audit_gated or classification.state not in allowed:
+            raise HTTPException(status_code=409, detail={
+                "error": "lifecycle_precondition_refusal",
+                "trip_status": trip.get("status"),
+                "lifecycle_state": classification.state if classification else None,
+                "message": f"Trip '{trip_id}' requires an explicitly approved operational lifecycle before fulfillment.",
+            })
+
     @classmethod
     async def _replay_and_repair(
         cls,
@@ -684,13 +719,14 @@ class BookingFulfillmentEngine:
             fulfilled_at=str(confirmation.get("fulfilled_at") or ""),
             reality_tier=RealityTier.DETERMINISTIC_PREVIEW.value,
             provider_connected=False,
-            mandate_id=None,
-            mandate_enforced=False,
+            mandate_id=confirmation.get("mandate_id"),
+            mandate_enforced=bool(confirmation.get("mandate_id")),
+            durable_confirmation=confirmation.get("sql_confirmation"),
             idempotent_replay=True,
         )
 
 
-def fulfillment_provider_key(trip_id: str, proposal_token: str) -> str:
+def fulfillment_provider_key(trip_id: str, proposal_token: str, agreement_revision_id: str | None = None) -> str:
     """Stable provider-side idempotency key for a trip's fulfillment.
 
     Part-H P0 / Part-J #1: the key binds BOTH the trip and the accepted
@@ -699,9 +735,8 @@ def fulfillment_provider_key(trip_id: str, proposal_token: str) -> str:
     different acceptance cannot silently alias the same provider key.
     The VCC issuer and GDS adapter derive their instrument ids from it.
     """
-    return hashlib.sha256(
-        f"fulfill:{trip_id}:{proposal_token}".encode("utf-8")
-    ).hexdigest()[:32]
+    identity = agreement_revision_id or proposal_token
+    return hashlib.sha256(f"fulfill:{trip_id}:{identity}".encode("utf-8")).hexdigest()[:32]
 
 
 # PA-05: exported so the API surface can attach the same tier metadata without

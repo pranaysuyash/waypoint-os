@@ -28,6 +28,7 @@ export const workspaceTabs = [
   { id: 'packet', label: 'Trip Details' },
   { id: 'decision', label: 'Decision' },
   { id: 'safety', label: 'Risk Review' },
+  { id: 'knowledge', label: 'Knowledge' },
   { id: 'council', label: 'Sim Console' },
   { id: 'frontier', label: 'Frontier OS' },
 ] as const;

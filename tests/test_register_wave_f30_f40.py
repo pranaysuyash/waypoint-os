@@ -184,7 +184,7 @@ def test_f32_price_lock_strategy_wins_over_top_level():
 # ---------------------------------------------------------------- F-35
 
 
-def test_f35_metrics_count_delivered_as_converted():
+def test_f35_metrics_require_booking_evidence_beyond_delivered_status():
     from src.analytics.metrics import aggregate_insights
 
     trips = [
@@ -192,7 +192,9 @@ def test_f35_metrics_count_delivered_as_converted():
         {"id": "t2", "status": "new", "analytics": {}},
     ]
     insights = aggregate_insights(trips, days=30)
-    assert insights.conversionRate > 0  # delivered now counts
+    # Internal output review once wrote delivered without a booking receipt.
+    # Keep the historical status fixture while correcting the outcome oracle.
+    assert insights.conversionRate == 0
 
 
 # ---------------------------------------------------------------- F-36

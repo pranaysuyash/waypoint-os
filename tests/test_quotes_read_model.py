@@ -53,6 +53,9 @@ def _agency_override(monkeypatch):
     app.dependency_overrides[
         __import__("spine_api.core.auth", fromlist=["get_current_agency"]).get_current_agency
     ] = lambda: SimpleNamespace(id="agency_quotes")
+    from spine_api.core.auth import get_current_membership, get_current_user
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id="operator-server-id", email="operator@example.test")
+    app.dependency_overrides[get_current_membership] = lambda: SimpleNamespace(agency_id="agency_quotes", role="owner")
     try:
         yield
     finally:
@@ -88,6 +91,14 @@ def test_quote_derived_from_persisted_strategy(monkeypatch):
     assert quote["tax_percent"] is None
     # Draft status (pending review, no proposal link).
     assert quote["status"] == "draft"
+
+
+def test_quote_returns_trip_version_for_reviewed_retail_approval(monkeypatch):
+    version = "2026-10-23T09:00:00.123456+00:00"
+    _wire(monkeypatch, {**BASE_TRIP, "updated_at": version})
+    response = client.get("/api/v1/trips/trip_quote_1/quotes")
+    assert response.status_code == 200
+    assert response.json()["trip_version"] == version
 
 
 def test_status_maps_review_state_and_proposal_link(monkeypatch):
@@ -152,3 +163,112 @@ def test_cross_agency_trip_is_404(monkeypatch):
     _wire(monkeypatch, BASE_TRIP)
     res = client.get("/api/v1/trips/trip_other/quotes")
     assert res.status_code == 404
+
+
+def test_native_currency_keeps_known_cost_without_inventing_dollar_fees(monkeypatch):
+    from copy import deepcopy
+
+    trip = deepcopy(BASE_TRIP)
+    trip["strategy"]["recommended_option"].update(cost=100_000, currency="INR")
+    _wire(monkeypatch, trip)
+    response = client.get("/api/v1/trips/trip_quote_1/quotes")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["quote_ready"] is False
+    quote = data["quotes"][0]
+    assert quote["net_cost"] == 100_000
+    assert quote["currency"] == "INR"
+    assert quote["rack_price"] is None
+    assert quote["margin_percent"] is None
+    assert quote["pricing_status"] == "pricing_review"
+    assert any("currency" in item.lower() for item in data["missing"])
+
+
+def test_native_currency_retail_requires_same_currency_approval_evidence(monkeypatch):
+    from copy import deepcopy
+
+    trip = deepcopy(BASE_TRIP)
+    trip["strategy"]["recommended_option"].update(cost=100_000, currency="INR")
+    trip["commercial_pricing"] = {
+        "retail_amount": 125_000,
+        "currency": "INR",
+        "approved_by": "user:operator@example.test",
+        "approved_at": "2026-10-23T10:00:00+05:30",
+        "evidence_ref": "agency-quote-approved-1",
+    }
+    _wire(monkeypatch, trip)
+    response = client.get("/api/v1/trips/trip_quote_1/quotes").json()
+    assert response["quote_ready"] is True
+    assert response["quotes"][0]["rack_price"] == 125_000
+    assert response["quotes"][0]["rack_price_basis"] == "operator_approved_retail"
+    trip["commercial_pricing"]["currency"] = "USD"
+    changed = client.get("/api/v1/trips/trip_quote_1/quotes").json()
+    assert changed["quote_ready"] is False
+
+
+@pytest.mark.parametrize("bad_cost", [True, float("nan"), float("inf"), -1, "Infinity"])
+def test_invalid_modeled_cost_is_unpriced_not_serialized_as_money(monkeypatch, bad_cost):
+    from copy import deepcopy
+
+    trip = deepcopy(BASE_TRIP)
+    trip["strategy"]["recommended_option"]["cost"] = bad_cost
+    _wire(monkeypatch, trip)
+    response = client.get("/api/v1/trips/trip_quote_1/quotes")
+    assert response.status_code == 200
+    assert response.json()["quote_ready"] is False
+
+
+def test_retail_approval_binds_real_operator_and_native_currency_with_cas(monkeypatch):
+    from copy import deepcopy
+    import spine_api.routers.quotes as quotes_router
+
+    trip = deepcopy(BASE_TRIP)
+    trip["updated_at"] = "2026-10-23T09:00:00+00:00"
+    trip["strategy"]["recommended_option"].update(cost=100_000, currency="INR")
+    _wire(monkeypatch, trip)
+    writes = []
+
+    def cas(trip_id, agency_id, updates, expected_updated_at=None):
+        assert (trip_id, agency_id, expected_updated_at) == (trip["id"], trip["agency_id"], trip["updated_at"])
+        writes.append(updates)
+        trip.update(updates)
+        return trip
+
+    monkeypatch.setattr(quotes_router.TripStore, "update_trip_if_version_for_agency", cas)
+    monkeypatch.setattr(quotes_router, "_audit_retail_approval", lambda *_args, **_kwargs: None, raising=False)
+    response = client.post("/api/v1/trips/trip_quote_1/quotes/retail", json={
+        "retail_amount": 125_000, "currency": "INR", "evidence_ref": "approved-quote-document",
+        "expected_updated_at": trip["updated_at"], "approved_by": "client-spoofed-approver",
+    })
+    assert response.status_code == 200, response.text
+    assert response.json()["trip_version"] == trip["updated_at"]
+    assert response.json()["quotes"][0]["rack_price"] == 125_000
+    assert writes[0]["commercial_pricing"]["approved_by"] == "user:operator-server-id"
+    assert writes[0]["commercial_pricing"]["evidence_ref"] == "approved-quote-document"
+
+
+def test_retail_approval_rejects_currency_mismatch_and_stale_version(monkeypatch):
+    import spine_api.routers.quotes as quotes_router
+
+    _wire(monkeypatch, {**BASE_TRIP, "updated_at": "2026-10-23T09:00:00+00:00"})
+    writes = []
+    monkeypatch.setattr(quotes_router.TripStore, "update_trip_if_version_for_agency", lambda *_args, **_kwargs: writes.append(True))
+    base = {"retail_amount": 125_000, "currency": "INR", "evidence_ref": "quote", "expected_updated_at": "stale"}
+    mismatch = client.post("/api/v1/trips/trip_quote_1/quotes/retail", json=base)
+    assert mismatch.status_code == 409
+    assert writes == []
+    stale = client.post("/api/v1/trips/trip_quote_1/quotes/retail", json={**base, "currency": "USD"})
+    assert stale.status_code == 409
+    assert writes == []
+
+
+def test_retail_approval_requires_owner_or_admin(monkeypatch):
+    from types import SimpleNamespace
+    from spine_api.core.auth import get_current_membership
+
+    app.dependency_overrides[get_current_membership] = lambda: SimpleNamespace(agency_id="agency_quotes", role="senior_agent")
+    _wire(monkeypatch, {**BASE_TRIP, "updated_at": "2026-10-23T09:00:00+00:00"})
+    response = client.post("/api/v1/trips/trip_quote_1/quotes/retail", json={
+        "retail_amount": 9000, "currency": "USD", "evidence_ref": "quote", "expected_updated_at": "2026-10-23T09:00:00+00:00",
+    })
+    assert response.status_code == 403

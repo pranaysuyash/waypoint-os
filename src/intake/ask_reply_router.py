@@ -107,28 +107,40 @@ class AskReplyRouter:
                 noul_contains_answer=None, needs_review=True, source="unavailable",
             )
 
-        resp = self.client.raw_query(
-            state=(
-                f"The travel agency asked the traveler: \"{question}\"\n"
-                f"The traveler replied: \"{reply}\""
-            ),
-            questions={
-                "answered_field": {
-                    "type": "choice",
-                    "instructions": (
-                        "Which piece of trip information does this reply actually answer? "
-                        "If it answers none of them, choose 'unparsed'."
-                    ),
-                    "criteria": {**FIELD_DESCRIPTIONS, "unparsed": UNPARSED_DESCRIPTION},
+        try:
+            resp = self.client.raw_query(
+                state=(
+                    f"The travel agency asked the traveler: \"{question}\"\n"
+                    f"The traveler replied: \"{reply}\""
+                ),
+                questions={
+                    "answered_field": {
+                        "type": "choice",
+                        "instructions": (
+                            "Which piece of trip information does this reply actually answer? "
+                            "If it answers none of them, choose 'unparsed'."
+                        ),
+                        "criteria": {**FIELD_DESCRIPTIONS, "unparsed": UNPARSED_DESCRIPTION},
+                    },
+                    "reply_contains_answer": {
+                        "type": "noul",
+                        "instructions": (
+                            "Does the reply contain a usable answer to the question that was asked?"
+                        ),
+                    },
                 },
-                "reply_contains_answer": {
-                    "type": "noul",
-                    "instructions": (
-                        "Does the reply contain a usable answer to the question that was asked?"
-                    ),
-                },
-            },
-        )
+            )
+        except Exception as exc:
+            # FND-0352 lane semantics: a CONFIGURED lane that failed is a
+            # distinct state from "unavailable" (no credentials) — ops must be
+            # able to tell degradation from posture. Proposal-only, needs_review
+            # always: never auto-applied.
+            logger.warning("AskReplyRouter: Jev routing failed (%s); needs_review fallback", exc)
+            return ReplyRoutingProposal(
+                field_name=None, routed=False, unparsed=True, confidence=None,
+                noul_contains_answer=None, needs_review=True,
+                source="model_call_failed",
+            )
         answers = resp.get("answers", {})
         choice_ans = answers.get("answered_field", {})
         routed_to = choice_ans.get("choice")

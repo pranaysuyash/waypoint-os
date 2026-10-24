@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from typing import Any, Dict, Optional
 
 from spine_api.core.llm_egress import DecisionType, prepare_egress_payload
@@ -26,7 +27,7 @@ try:
 except ImportError:
     GENAI_AVAILABLE = False
 
-from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError
+from .base import BaseLLMClient, LLMUnavailableError, LLMResponseError, record_llm_call
 
 
 # Gemini pricing in INR (approximate)
@@ -154,18 +155,21 @@ class GeminiClient(BaseLLMClient):
             provider="gemini",
         )
 
+        effective_temperature = temperature if temperature is not None else self.temperature
         config = genai_types.GenerateContentConfig(
-            temperature=temperature if temperature is not None else self.temperature,
+            temperature=effective_temperature,
             max_output_tokens=self.max_tokens,
             response_mime_type="application/json",
         )
 
         try:
+            started = time.perf_counter()
             response = self._client.models.generate_content(
                 model=self.model,
                 contents=full_prompt,
                 config=config,
             )
+            latency_ms = (time.perf_counter() - started) * 1000.0
 
             response_text = response.text if hasattr(response, 'text') else None
             if not response_text:
@@ -184,6 +188,16 @@ class GeminiClient(BaseLLMClient):
             except json.JSONDecodeError as e:
                 raise LLMResponseError(f"Failed to parse JSON response: {e}\nResponse: {response_text}")
 
+            record_llm_call(
+                provider="gemini",
+                model=self.model,
+                prompt=full_prompt,
+                response_text=response_text,
+                temperature_requested=effective_temperature,
+                temperature_effective=effective_temperature,
+                latency_ms=latency_ms,
+                client=self,
+            )
             return decision
 
         except (LLMUnavailableError, LLMResponseError):

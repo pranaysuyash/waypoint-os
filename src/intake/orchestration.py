@@ -555,7 +555,28 @@ def run_spine_once(
                 h.model_dump() if hasattr(h, "model_dump") else h
                 for h in (frontier_result.specialty_knowledge or [])
             ],
+            # FND-0356: the checker's verdict was computed here and then
+            # dropped — it never reached the result or the operator. It is
+            # a safety-relevant signal on the ghost-workflow path and must
+            # ride the audit trail alongside its run status.
+            "checker_status": frontier_result.checker_status,
+            "requires_manual_audit": frontier_result.requires_manual_audit,
+            "audit_reason": frontier_result.audit_reason,
+            "checker_confidence_delta": frontier_result.checker_confidence_delta,
         }
+        # A manual-audit verdict must reach the operator surface through the
+        # canonical path (decision.risk_flags → strategy.risk_flags, phase 4),
+        # not only the rationale blob. Additive: never changes decision_state.
+        if frontier_result.requires_manual_audit:
+            decision.risk_flags.append({
+                "flag": "checker_manual_audit_required",
+                "severity": "high",
+                "message": (
+                    "Checker agent requires manual audit of this ghost workflow: "
+                    f"{frontier_result.audit_reason or 'no reason recorded'}"
+                ),
+                "source": f"checker_agent:{frontier_result.checker_status}",
+            })
     else:
         frontier_result = FrontierOrchestrationResult()
         decision.rationale["frontier"] = {

@@ -235,6 +235,29 @@ class TestHeuristicDetails:
         data = {"text": "Reach me at user@domain.com"}
         assert _has_email(data) is not None
 
+    def test_system_generated_ids_are_not_phones(self):
+        """Snake_case generated ids whose suffix happens to be all digits must
+        not trip the phone scan (2026-10-22 fix: the generated-id exemption
+        previously rejected underscore segments, so
+        'trip_hist_scope_2360617619' was scanned as free text and blocked a
+        SQL save of a minimal fixture trip)."""
+        for generated_id in (
+            "trip_hist_scope_2360617619",
+            "tfu_patch_ab12cd34ef56",
+            "trip_1234567890",
+            "run",
+            "draft",
+        ):
+            assert _has_phone({"id": generated_id, "status": "assigned"}) is None, (
+                f"generated id {generated_id!r} must not be flagged as a phone"
+            )
+
+    def test_real_phone_still_detected(self):
+        """The generated-id exemption must stay anchored: freeform text with a
+        real phone number is still caught."""
+        data = {"raw_note": "call me at trip_9876543210 please"}
+        assert _has_phone(data) is not None
+
     def test_email_detection_none(self):
         data = {"text": "Just a normal message without any contact info"}
         assert _has_email(data) is None

@@ -33,20 +33,27 @@ if str(spine_api_dir) not in sys.path:
 class TestFrontierSchemas:
     """Verify agency_id is absent from mutable request schemas."""
 
-    def test_ghost_workflow_create_has_no_agency_id(self):
-        """agency_id must not be a field on GhostWorkflowCreate."""
-        from spine_api.routers.frontier import GhostWorkflowCreate
-        assert "agency_id" not in GhostWorkflowCreate.model_fields, (
-            "GhostWorkflowCreate must not expose agency_id — "
-            "callers cannot be trusted to supply the correct tenant."
+    def test_ghost_workflow_create_is_removed_not_reshaped(self):
+        """57113daf removed the simulated ghost-workflow CRUD entirely
+        (never-fabricate remediation — the honest path is
+        services/ghost_concierge_monitor). The un-scoped sim schema must stay
+        REMOVED: its reintroduction without tenant scoping would reopen the
+        cross-tenant hole this module was written to close."""
+        import spine_api.routers.frontier as frontier_module
+        assert not hasattr(frontier_module, "GhostWorkflowCreate"), (
+            "GhostWorkflowCreate was removed with the simulated ghost-workflow "
+            "CRUD (57113daf). Do not reintroduce it without tenant-scoped "
+            "handler tests."
         )
 
-    def test_ghost_workflow_create_has_required_fields(self):
-        """GhostWorkflowCreate must still require trip_id and task_type."""
-        from spine_api.routers.frontier import GhostWorkflowCreate
-        fields = GhostWorkflowCreate.model_fields
-        assert "trip_id" in fields
-        assert "task_type" in fields
+    def test_ghost_workflow_crud_routes_are_gone(self):
+        """The create/get ghost-workflow routes must stay removed."""
+        import spine_api.routers.frontier as frontier_module
+        for name in ("create_ghost_workflow", "get_ghost_workflow"):
+            assert not hasattr(frontier_module, name), (
+                f"frontier.{name} was removed with the simulated ghost-workflow "
+                "CRUD (57113daf); the honest path is ghost_concierge_monitor."
+            )
 
     def test_emotional_log_request_has_no_agency_id(self):
         """EmotionalLogRequest must not expose agency_id."""
@@ -87,20 +94,11 @@ class TestFrontierHandlerSignatures:
     def _get_param_names(self, fn) -> list[str]:
         return list(inspect.signature(fn).parameters.keys())
 
-    def test_create_ghost_workflow_has_agency_id_param(self):
-        from spine_api.routers.frontier import create_ghost_workflow
-        params = self._get_param_names(create_ghost_workflow)
-        assert "agency_id" in params, (
-            "create_ghost_workflow must accept agency_id as a Depends parameter "
-            "to enforce JWT-sourced tenant scoping."
-        )
-
-    def test_get_ghost_workflow_has_agency_id_param(self):
-        from spine_api.routers.frontier import get_ghost_workflow
-        params = self._get_param_names(get_ghost_workflow)
-        assert "agency_id" in params, (
-            "get_ghost_workflow must accept agency_id to enforce ownership check."
-        )
+    def test_removed_ghost_handlers_stay_removed(self):
+        from spine_api.routers.frontier import log_emotional_state  # noqa: F401
+        import spine_api.routers.frontier as frontier_module
+        for name in ("create_ghost_workflow", "get_ghost_workflow"):
+            assert not hasattr(frontier_module, name)
 
     def test_log_emotional_state_has_agency_id_param(self):
         from spine_api.routers.frontier import log_emotional_state
@@ -126,8 +124,6 @@ class TestFrontierRealityTiers:
     """
 
     _HANDLERS = (
-        "create_ghost_workflow",
-        "get_ghost_workflow",
         "log_emotional_state",
         "report_intelligence",
     )

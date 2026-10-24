@@ -19,6 +19,7 @@ Trust boundaries:
 from __future__ import annotations
 
 import logging
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
@@ -30,10 +31,79 @@ from spine_api.routers.public_proposals import (
     _verified_agency_for_token,
     verify_proposal_token,
 )
+from src.intake.fact_overrides import canonical_fact_name, record_fact_override
 
 logger = logging.getLogger("spine_api.public_asks")
 
 router = APIRouter(prefix="/api/public/asks", tags=["public-asks"])
+
+
+def _apply_answers_to_facts(
+    extracted: Dict[str, Any],
+    answers: List[Dict[str, Any]],
+    token: str,
+    now: str,
+) -> Dict[str, Any]:
+    """Merge traveler answers into ``extracted["facts"]`` in the CANONICAL slot
+    shape, and return the trip-column alias updates the reassessment overlay
+    consumes (``build_reassessment_request_from_trip`` reads trip-level
+    ``origin`` / ``dateWindow`` / ``budget`` / ... columns).
+
+    FND-0328 (Sim #4): the previous implementation did
+    ``facts = list(extracted.get("facts") or [])`` — when facts was the
+    canonical DICT of slots, ``list(dict)`` produced the dict's KEYS, so the
+    answer write corrupted the container (19 bare field-name strings) and no
+    downstream reader (``blocking_unknowns``, decision ask-floor, quote
+    readiness) could see the answered values. Facts are a dict of slots here;
+    legacy corrupted lists are healed in place (dict items survive, bare-key
+    strings are dropped — their values were lost by the old write and cannot
+    be recovered from this row).
+    """
+    facts = extracted.get("facts")
+    if not isinstance(facts, dict):
+        healed: Dict[str, Any] = {}
+        if isinstance(facts, list):
+            for item in facts:
+                if isinstance(item, dict) and (item.get("field") or item.get("field_name")):
+                    key = str(item.get("field") or item.get("field_name"))
+                    healed[key] = item  # value kept as-is; shape normalized below
+        logger.warning(
+            "traveler answers: healed non-dict extracted.facts (%s items) into slot dict",
+            len(facts) if isinstance(facts, list) else "non-list",
+        )
+        facts = healed
+        extracted["facts"] = facts
+
+    alias_updates: Dict[str, Any] = {}
+    for entry in answers:
+        field_name = str(entry.get("field_name") or "").strip()
+        answer = str(entry.get("answer") or "").strip()
+        if not field_name or not answer:
+            continue
+        canonical = canonical_fact_name(field_name)
+        source_ref = "ask_" + hashlib.sha256(f"{token}:{now}:{field_name}".encode()).hexdigest()[:24]
+        slot = record_fact_override(
+            facts, canonical, answer, source_ref=source_ref,
+            mode="traveler_ask_link", updated_at=now,
+        )
+        slot["evidence_refs"][0]["metadata"]["original_question_field"] = field_name
+
+        if field_name in ("destination", "destinations"):
+            alias_updates["destination"] = answer
+            extracted["destination"] = answer
+        elif field_name in ("origin", "origin_city"):
+            alias_updates["origin"] = answer
+            extracted["origin"] = answer
+        elif canonical == "party_size":
+            if isinstance(slot["value"], int) and 0 < slot["value"] <= 1000:
+                alias_updates["party"] = slot["value"]
+        elif field_name in ("budget", "total_budget", "budget_range"):
+            alias_updates["budget"] = answer
+        elif field_name in ("dates", "date_start", "date_window", "dateWindow"):
+            alias_updates["dateWindow"] = answer
+        elif canonical == "trip_purpose":
+            alias_updates["tripPurpose"] = answer
+    return alias_updates
 
 
 def _verify(token: str) -> tuple[str, str]:
@@ -147,47 +217,8 @@ def submit_traveler_answers(token: str, body: TravelerAnswerSubmission) -> dict:
         "traveler_answers": answers,
     }
     extracted = dict(trip.get("extracted") or {})
-    facts = list(extracted.get("facts") or [])
-
-    import re
-    for entry in body.answers:
-        field_name = str(entry.get("field_name") or "").strip()
-        answer = str(entry.get("answer") or "").strip()
-        if not field_name or not answer:
-            continue
-        facts.append({
-            "fact": f"{field_name}: {answer}",
-            "field": field_name,
-            "value": answer,
-            "source": "traveler_ask",
-            "authority": "explicit_user",
-            "timestamp": now,
-        })
-        if field_name in ("destination", "destinations"):
-            updates["destination"] = answer
-            extracted["destination"] = answer
-        elif field_name in ("origin", "origin_city"):
-            updates["origin"] = answer
-            extracted["origin"] = answer
-        elif field_name in ("party_size", "party", "travelers", "traveler_count"):
-            nums = re.findall(r"\d+", answer)
-            if nums:
-                try:
-                    psize = int(nums[0])
-                    updates["party"] = psize
-                    extracted["party_size"] = psize
-                except Exception:
-                    pass
-            updates["partyComposition"] = answer
-            extracted["party"] = answer
-        elif field_name in ("budget", "total_budget", "budget_range"):
-            updates["budget"] = answer
-            extracted["budget"] = answer
-        elif field_name in ("dates", "date_start", "date_window", "dateWindow"):
-            updates["dateWindow"] = answer
-            extracted["dateWindow"] = answer
-
-    extracted["facts"] = facts
+    alias_updates = _apply_answers_to_facts(extracted, body.answers, token, now)
+    updates.update(alias_updates)
     updates["extracted"] = extracted
 
     updated = TripStore.update_trip_for_agency(

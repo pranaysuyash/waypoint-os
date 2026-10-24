@@ -313,6 +313,72 @@ def _origin_value(source: Dict[str, Any]) -> str:
     return "TBD"
 
 
+def resolve_trip_budget(source: Dict[str, Any]) -> tuple[Any, Any]:
+    """Resolve budget evidence losslessly, without assuming a currency.
+
+    Reporting consumers validate amounts/currencies at their own boundary;
+    this resolver retains decimal precision and distinguishes an explicit
+    clear from absent evidence. A parser-defaulted currency is not observed.
+    """
+    from src.intake.fact_overrides import CORRECTION_MODES
+
+    def observed_currency(value: Any) -> Any:
+        if isinstance(value, dict):
+            if value.get("epistemic_status") in {"ASSUMED", "UNKNOWN"}:
+                return None
+            return value.get("value")
+        return value
+
+    def unpack_budget(value: Any, currency: Any) -> tuple[Any, Any]:
+        if isinstance(value, dict):
+            return value.get("value"), observed_currency(value.get("currency")) or currency
+        return value, currency
+
+    facts = _get_nested(source, "extracted.facts", {})
+    facts = facts if isinstance(facts, dict) else {}
+    correction = facts.get("budget_raw_text")
+    if isinstance(correction, dict) and (
+        correction.get("authority_level") == "manual_override"
+        or (correction.get("authority_level") in {"explicit_user", "explicit_user_raw"}
+            and (correction.get("extraction_mode") in CORRECTION_MODES or not correction.get("extraction_mode")))
+    ):
+        value = correction.get("value")
+        if value is None or value == "":
+            return None, None
+        numeric = facts.get("budget_min")
+        if isinstance(numeric, dict) and numeric.get("value") is not None and "budget_raw_text" in (numeric.get("derived_from") or []):
+            value = numeric["value"]
+        return value, observed_currency(facts.get("budget_currency"))
+
+    structured = _get_nested(source, "raw_input.submission.structured_json", {})
+    if isinstance(structured, dict) and structured.get("budget") is not None:
+        return unpack_budget(structured["budget"], structured.get("budget_currency") or structured.get("currency"))
+    submission = _get_nested(source, "raw_input.submission", {})
+    if isinstance(submission, dict) and submission.get("budget") is not None:
+        return unpack_budget(submission["budget"], submission.get("budget_currency") or submission.get("currency"))
+    fact_budget = facts.get("budget")
+    if isinstance(fact_budget, dict) and fact_budget.get("value") is not None:
+        return fact_budget["value"], observed_currency(facts.get("budget_currency")) or observed_currency(fact_budget.get("currency"))
+    minimum = facts.get("budget_min")
+    if isinstance(minimum, dict) and minimum.get("value") is not None:
+        return minimum["value"], observed_currency(facts.get("budget_currency"))
+    packet_budget = _get_nested(source, "packet.budget", None)
+    metadata_budget = _get_nested(source, "extracted.trip_metadata.budget", None)
+    for value, currency in (
+        (_get_nested(source, "extracted.budget", None), _get_nested(source, "extracted.budget_currency", None) or _get_nested(source, "extracted.currency", None)),
+        (metadata_budget, _get_nested(source, "extracted.trip_metadata.currency", None)),
+        (packet_budget, _get_nested(source, "packet.currency", None)),
+        (source.get("budget"), source.get("budget_currency") or source.get("currency")),
+    ):
+        if isinstance(value, dict):
+            amount = value.get("value")
+            if amount is not None:
+                return amount, observed_currency(value.get("currency")) or currency
+        elif value is not None:
+            return value, currency
+    return None, observed_currency(facts.get("budget_currency"))
+
+
 def resolve_trip_field(source: Dict[str, Any], field: str) -> Any:
     """Single source of truth for trip field resolution priority order.
 
@@ -323,6 +389,37 @@ def resolve_trip_field(source: Dict[str, Any], field: str) -> Any:
     Supported fields:
         destination, trip_type, trip_purpose, party_size, budget, date_window, origin
     """
+    # Current explicit corrections outrank retained submission history. A
+    # tombstone must stop fallback, otherwise clearing a field resurrects an
+    # older structured import or a fabricated default party of one.
+    from src.intake.fact_overrides import CORRECTION_MODES
+
+    canonical = {
+        "destination": "destination_candidates", "origin": "origin_city",
+        "budget": "budget_raw_text", "party_size": "party_size",
+        "date_window": "date_window", "trip_purpose": "trip_purpose",
+    }.get(field)
+    slot = _get_nested(source, f"extracted.facts.{canonical}", None) if canonical else None
+    if isinstance(slot, dict) and (
+        slot.get("authority_level") == "manual_override"
+        or (slot.get("authority_level") in {"explicit_user", "explicit_user_raw"}
+            and (slot.get("extraction_mode") in CORRECTION_MODES or not slot.get("extraction_mode")))
+    ):
+        value = slot.get("value")
+        if value is None or value == "" or value == []:
+            return {"destination": "Unknown", "origin": "TBD", "date_window": "TBD",
+                    "party_size": 0, "budget": 0, "trip_purpose": ""}.get(field)
+        if field == "budget":
+            from src.intake.normalizer import Normalizer
+
+            parsed = Normalizer.parse_budget(str(value))
+            return _as_int(parsed.get("min") or parsed.get("max"), 0)
+        if field == "party_size":
+            return max(0, _as_int(value, 0))
+        if field == "destination" and isinstance(value, list):
+            return str(value[0]).strip() if value else "Unknown"
+        return str(value).strip().lower() if field == "trip_purpose" else str(value).strip()
+
     if field == "destination":
         return _destination_value(source)
     if field == "trip_type":

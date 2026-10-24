@@ -33,7 +33,7 @@ def test_aggregate_insights_marks_response_time_none_without_timing_evidence():
     assert result.totalInquiries == 1
     assert result.convertedToBooked == 0
     assert result.avgResponseTime is None
-    assert result.pipelineValue == 0.0
+    assert result.pipelineValue is None
     assert result.pipelineVelocity is not None
 
 
@@ -64,8 +64,12 @@ def test_aggregate_insights_handles_null_analytics_payloads():
 
 def test_aggregate_insights_pipeline_value_sums_real_budgets_not_multiplier():
     trips = [
-        {"id": "t1", "status": "new", "packet": {"budget": {"value": 12000}}},
-        {"id": "t2", "status": "booked", "packet": {"budget": {"value": 30000}}},
+        {"id": "t1", "status": "new", "packet": {"budget": {"value": 12000, "currency": "USD"}}},
+        {"id": "t2", "status": "booked", "booking_confirmation": {
+            "total_charged_usd": 30000, "fulfilled_at": "2026-05-01T12:00:00Z",
+            "fulfillment_provider_key": "synthetic-operation", "pnr_locator": "SYNTHETIC",
+            "provider_connected": True, "reality_tier": "real",
+        }},
     ]
     result = aggregate_insights(trips)
     assert result.totalInquiries == 2
@@ -202,8 +206,8 @@ def test_compute_bottlenecks_reports_slowest_real_stage_without_fabricated_cause
     assert bottleneck.primaryCauses == []
 
 
-def test_aggregate_insights_gmv_sums_terminal_trip_budgets_only():
-    """FND-0269: GMV counts recorded budgets of terminal-status trips only."""
+def test_aggregate_insights_gmv_requires_receipt_instead_of_terminal_budget():
+    """FND-0269 retained terminal/budget coverage with the corrected oracle."""
     delivered = {
         "id": "t1",
         "status": "delivered",
@@ -212,11 +216,11 @@ def test_aggregate_insights_gmv_sums_terminal_trip_budgets_only():
     in_progress = {
         "id": "t2",
         "status": "in_progress",
-        "packet": {"budget": {"value": 9000}},
+        "packet": {"budget": {"value": 9000, "currency": "USD"}},
     }
     no_budget = {"id": "t3", "status": "completed"}
     result = aggregate_insights([delivered, in_progress, no_budget])
-    assert result.gmv == 4200.0
+    assert result.gmv is None
     # Pipeline value covers the non-terminal slice, unchanged.
     assert result.pipelineValue == 9000.0
 
@@ -224,4 +228,4 @@ def test_aggregate_insights_gmv_sums_terminal_trip_budgets_only():
 def test_aggregate_insights_gmv_is_zero_without_terminal_trips():
     trips = [{"id": "t1", "status": "new", "packet": {"budget": {"value": 5000}}}]
     result = aggregate_insights(trips)
-    assert result.gmv == 0.0
+    assert result.gmv is None

@@ -151,7 +151,7 @@ async def test_fulfillment_over_cap_raises_403_escalation():
         {
             "id": trip_id,
             "agency_id": "system",
-            "status": "assigned",
+            "status": "approved",
             "destination": "Paris",
             "packet": {
                 "destination": "Paris",
@@ -165,7 +165,7 @@ async def test_fulfillment_over_cap_raises_403_escalation():
     token = generate_signed_proposal_token(trip_id=trip_id, agency_id="system")
     accept_proposal(
         token=token,
-        req=AcceptProposalRequest(signer_name="Big Spender", signer_email="big@spender.test", e_signature_consent=True),
+        req=AcceptProposalRequest(signer_name="Big Spender", signer_email="big@spender.test", e_signature_consent=True, revision_id=_get_or_create_proposal(token).revision_id),
     )
     # Registry row built from the trip must show accepted + the $90k total.
     proposal = _get_or_create_proposal(token)
@@ -192,7 +192,7 @@ async def test_fulfillment_over_cap_raises_403_escalation():
         # Wave 2: over-cap is approval-remediable, not a terminal denial. The
         # exception carries the exact (action, amount) an operator ratifies.
         assert excinfo.value.action == "fulfill_accepted_proposal"
-        assert excinfo.value.amount_usd == 90000.0
+        assert excinfo.value.amount_usd == proposal.selected_total_price_usd
         assert not isinstance(excinfo.value, AuthorityDenied)
     finally:
         governance_registry.register(original)

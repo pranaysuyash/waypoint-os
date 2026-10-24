@@ -705,7 +705,52 @@ def execute_spine_pipeline(
             operating_mode=request.operating_mode,
         )
 
+        # Resolve trusted correction context from persisted, tenant-scoped
+        # state. No public request field can forge this authority.
+        from spine_api.services.trip_lifecycle_service import (
+            build_reassessment_envelope_from_trip,
+            build_reassessment_request_from_trip,
+            persist_reassessment_result,
+        )
+
+        linked_trip_id, _linked_status = _resolve_draft_reprocess_target(
+            draft_store, run_ledger, trip_store, run_id, logger,
+        )
+        reassessment_id = target_trip_id or linked_trip_id
+        current_trip = None
+        if reassessment_id:
+            lookup = getattr(trip_store, "get_trip_for_agency", None)
+            current_trip = lookup(reassessment_id, agency_id) if callable(lookup) else trip_store.get_trip(reassessment_id)
+            if not isinstance(current_trip, dict) or not current_trip:
+                raise RuntimeError("Reassessment trip is unavailable in the authenticated agency.")
+            current_trip = dict(current_trip)
+            current_trip.setdefault("id", reassessment_id)
+            if target_trip_id:
+                # A queued edit may wait behind other work. Use the current
+                # stored source and corrections, retaining explicit run options.
+                request = SpineRunRequest(**build_reassessment_request_from_trip(
+                    current_trip, stage_override=request.stage,
+                    operating_mode_override=request.operating_mode,
+                    strict_leakage_override=request.strict_leakage,
+                ))
+                consented_submission = build_consented_submission(
+                    request_dict=request.model_dump(), retention_consent=request.retention_consent,
+                )
+            original_save_processed_trip = save_processed_trip
+
+            def save_assessed_trip(output: dict[str, Any], **kwargs: Any) -> str:
+                if kwargs.get("preserve_trip_id") == reassessment_id:
+                    return persist_reassessment_result(
+                        current_trip, output, agency_id=agency_id, user_id=user_id,
+                        trip_store=trip_store, audit_store=audit_store,
+                    )
+                return original_save_processed_trip(output, **kwargs)
+
+            save_processed_trip = save_assessed_trip
+
         envelopes = build_envelopes(request.model_dump(exclude_none=True))
+        if current_trip is not None:
+            envelopes.append(build_reassessment_envelope_from_trip(current_trip))
         fixture_expectations = load_fixture_expectations(request.scenario_id)
         agency_settings = agency_settings_store.load(agency_id)
         stage_started_at: dict[str, float] = {}
@@ -809,19 +854,30 @@ def execute_spine_pipeline(
                 # (ADR_ESCALATE_LEAD_PERSISTENCE_2026-08-31): a customer contact
                 # exists regardless of packet completeness. Gates still refuse
                 # quote generation; the lead surfaces in the inbox for follow-up.
-                # An existing trip is NEVER overwritten here: the early-exit
-                # packet is definitionally incomplete, so when this run belongs
-                # to a trip that already has a record (auto-reassess-on-edit,
-                # draft reprocess), the save is skipped and the record stands.
+                # Existing trips keep lifecycle/commercial state, but their
+                # assessment surfaces must reflect the current blocked run.
                 reprocess_trip_id, _reprocess_status_unused = _resolve_draft_reprocess_target(
                     draft_store, run_ledger, trip_store, run_id, logger,
                 )
                 preserve_id = target_trip_id or reprocess_trip_id
                 trip_id_saved: Optional[str] = None
                 if preserve_id:
-                    trip_id_saved = preserve_id
+                    trip_id_saved = save_processed_trip(
+                        {
+                            "run_id": run_id,
+                            "packet": to_dict(result.packet) if hasattr(result, "packet") else None,
+                            "validation": to_dict(result.validation) if hasattr(result, "validation") else None,
+                            "decision": to_dict(result.decision) if hasattr(result, "decision") else None,
+                            "strategy": to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                            "safety": to_dict(result.safety) if hasattr(result, "safety") else None,
+                            "meta": {**meta.model_dump(), "submission": consented_submission,
+                                     "retention_consent": request.retention_consent,
+                                     "blocked": True, "early_exit_reason": result.early_exit_reason},
+                        },
+                        preserve_trip_id=preserve_id,
+                    )
                     logger.info(
-                        "ESCALATE skipped lead save for run %s: existing trip %s preserved",
+                        "ESCALATE assessment refreshed for run %s: existing trip %s lifecycle preserved",
                         run_id,
                         preserve_id,
                     )

@@ -367,6 +367,7 @@ try:
     from spine_api.routers import corporate as corporate_router
     from spine_api.routers import supplier as supplier_router
     from spine_api.routers import group_booking as group_booking_router
+    from spine_api.routers import rag as rag_router
     from spine_api.routers import price_lock as price_lock_router
     from spine_api.routers import customer_memory as customer_memory_router
     from spine_api.routers import multimodal as multimodal_router
@@ -1584,6 +1585,9 @@ app.include_router(followups_router.router)
 app.include_router(team_router.router)
 app.include_router(settings_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(settings_health_router.router, dependencies=[Depends(_auth_or_skip)])
+# RAG mount (2026-10-22): knowledge retrieval for the authenticated agency;
+# per-route get_current_agency + canonical rate limiter live inside the router.
+app.include_router(rag_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(drafts_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(inbox_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(agent_runtime_router.router, dependencies=[Depends(_auth_or_skip)])
@@ -2515,9 +2519,12 @@ def patch_trip(
             return None
 
     def _sync_manual_trip_fields(current_trip: Dict[str, Any], incoming_updates: Dict[str, Any]) -> Dict[str, Any]:
+        from src.intake.fact_overrides import TRIP_FIELD_FACTS, record_fact_override
+
         synced_updates = dict(incoming_updates)
         extracted = _clone_json(current_trip.get("extracted"), {}) or {}
         facts = extracted.setdefault("facts", {})
+        original_facts = _clone_json(facts, {})
         raw_input = _clone_json(current_trip.get("raw_input"), {}) or {}
         submission = raw_input.setdefault("submission", {})
         structured_json = _clone_json(submission.get("structured_json"), {}) or {}
@@ -2827,6 +2834,19 @@ def patch_trip(
         if "customer_message" in incoming_updates or "agent_notes" in incoming_updates:
             synced_updates["raw_input"] = raw_input
 
+        # Retain an explicit current statement, including intentional clears.
+        # Removing a key loses the difference between "not supplied" and
+        # "operator cleared it", allowing the original note to resurrect it.
+        for field, canonical in TRIP_FIELD_FACTS.items():
+            if field not in incoming_updates:
+                continue
+            record_fact_override(
+                facts, canonical, incoming_updates[field],
+                source_ref=f"manual_{uuid.uuid4().hex}",
+                previous=original_facts.get(canonical),
+            )
+            synced_updates["extracted"] = extracted
+
         return synced_updates
 
     def _apply_assumption_actions(
@@ -2840,6 +2860,8 @@ def patch_trip(
         existing register — this resolves a known assumption, it is not
         arbitrary fact injection. ``actions`` are dumped AssumptionAction
         payloads (model_dump flattens nested models to dicts)."""
+        from src.intake.fact_overrides import record_fact_override
+
         extracted = _clone_json(current_trip.get("extracted"), {}) or {}
         assumptions_list = extracted.get("assumptions")
         if not isinstance(assumptions_list, list) or not assumptions_list:
@@ -2864,11 +2886,7 @@ def patch_trip(
             entry["acknowledged_by_operator"] = True
             corrected_value = action.get("corrected_value")
             if corrected_value is not None:
-                facts[slot_name] = {
-                    "value": corrected_value,
-                    "confidence": 1.0,
-                    "authority_level": "explicit_user",
-                }
+                record_fact_override(facts, slot_name, corrected_value, source_ref=f"assumption_{uuid.uuid4().hex}")
                 entry["operator_notes"] = action.get("operator_notes") or (
                     f"Corrected by operator — assumed "
                     f"{entry.get('assumed_value')!r} replaced with "
@@ -2884,7 +2902,7 @@ def patch_trip(
 
     assumption_actions = updates_dict.get("assumption_actions") or []
     if assumption_actions:
-        updates.update(_apply_assumption_actions(trip, assumption_actions))
+        updates.update(_apply_assumption_actions({**trip, **updates}, assumption_actions))
 
     edited_fields = set(updates.keys())
 

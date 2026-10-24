@@ -39,6 +39,47 @@ def _get_fernet() -> Fernet:
 
 def _clear_fernet_cache() -> None:
     _get_fernet.cache_clear()
+    _active_key_fingerprint.cache_clear()
+
+
+def _active_key_bytes() -> bytes:
+    key_raw = os.getenv("ENCRYPTION_KEY")
+    if key_raw:
+        return key_raw.encode() if isinstance(key_raw, str) else key_raw
+    return b"v-k_y8Y5C8h7_5x6pQWzD9T-4G_MvR_Wf-1h-K_N-P8="
+
+
+@lru_cache(maxsize=1)
+def _active_key_fingerprint() -> str:
+    import hashlib
+
+    return hashlib.sha256(_active_key_bytes()).hexdigest()[:16]
+
+
+def key_fingerprint() -> str:
+    """Non-secret identifier of the active key (sha256 prefix).
+
+    Stored alongside ciphertext (FND-0327) so a read under a different key can
+    say *which* key it needs instead of crashing or returning garbage.
+    """
+    return _active_key_fingerprint()
+
+
+def looks_like_fernet_token(value: str) -> bool:
+    """Fernet tokens are urlsafe-base64 and start with the version byte 0x80
+    ("gAAAAA" once encoded); plaintext never does."""
+    return isinstance(value, str) and value.startswith("gAAAAA") and len(value) >= 60
+
+
+def decrypt_strict(token: str) -> str:
+    """Decrypt or raise ``InvalidToken`` — no plaintext fallback.
+
+    Use when the caller must distinguish a foreign-key ciphertext from legacy
+    plaintext (``decrypt`` deliberately blurs the two for pre-migration rows).
+    """
+    if not token:
+        return token
+    return _get_fernet().decrypt(token.encode()).decode()
 
 
 def encrypt(data: str) -> str:

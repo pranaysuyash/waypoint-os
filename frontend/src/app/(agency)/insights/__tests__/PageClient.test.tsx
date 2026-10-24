@@ -154,4 +154,40 @@ describe('Insights PageClient', () => {
     expect(screen.getByRole('heading', { name: /Insights & Analytics/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /recover now/i })).toHaveAttribute('href', '/inquiries/new?trip=trip_123');
   });
+
+  it('does not relabel missing commercial evidence as confirmed dollars', () => {
+    render(<InsightsPageClient />);
+    expect(screen.queryByText('Confirmed revenue')).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Agency earned revenue' })).toHaveTextContent('Unavailable');
+    expect(screen.getByRole('group', { name: 'Recorded booking value' })).toHaveTextContent('Not recorded');
+    expect(screen.queryByText('$0')).not.toBeInTheDocument();
+  });
+
+  it('renders each recorded pipeline currency and qualifies partial evidence', () => {
+    const unavailable = {
+      availability: 'unavailable', totals: [], evidenceTripCount: 0,
+      missingAmountTripCount: 0, missingCurrencyTripCount: 0, excludedPreviewTripCount: 0,
+      reason: 'No supporting records',
+    };
+    mockUseRevenueMetrics.mockReturnValueOnce({
+      bookedRevenue: null, totalPipelineValue: null, projectedRevenue: null,
+      nearCloseRevenue: null, currency: null, revenueByMonth: [],
+      commercial: {
+        budgetPipeline: { ...unavailable, availability: 'partial', missingCurrencyTripCount: 1,
+          evidenceTripCount: 2, totals: [
+            {currency: 'INR', amount: 300000, amountDecimal: '300000', minorUnitDigits: 2, tripCount: 1},
+            {currency: 'EUR', amount: 1500, amountDecimal: '1500', minorUnitDigits: 2, tripCount: 1},
+          ]},
+        weightedPipelineBudget: unavailable, nearCloseBudget: unavailable,
+        bookedCustomerValue: unavailable, recordedCustomerCollections: unavailable,
+        agencyEarnedRevenue: unavailable, agencyRealizedRevenue: unavailable,
+      },
+    } as never);
+    render(<InsightsPageClient />);
+    const pipeline = screen.getByRole('group', { name: 'Pipeline budgets' });
+    expect(pipeline).toHaveTextContent('INR');
+    expect(pipeline).toHaveTextContent('EUR');
+    expect(pipeline).toHaveTextContent(/partial/i);
+    expect(pipeline).not.toHaveTextContent('$');
+  });
 });

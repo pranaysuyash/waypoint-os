@@ -33,6 +33,7 @@ from spine_api.routers.public_proposals import (
     AcceptProposalRequest,
     accept_proposal,
     generate_signed_proposal_token,
+    _get_or_create_proposal,
 )
 from spine_api.services.authority_approval_service import (
     AuthorityApprovalLedger,
@@ -347,25 +348,27 @@ def test_sql_approval_roundtrip_cas_and_rls_posture(monkeypatch):
 
 
 def _seed_trip_and_accept(cost: float = 90000.0):
+    agency_id = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
     trip_id = f"trip_pa08w2_{uuid.uuid4().hex[:10]}"
     TripStore.save_trip(
         {
             "id": trip_id,
-            "agency_id": "system",
-            "status": "assigned",
+            "agency_id": agency_id,
+            "status": "approved",
             "destination": "Paris",
             "packet": {"destination": "Paris", "start_date": "2026-10-15", "end_date": "2026-10-22"},
             "strategy": {
                 "recommended_option": {"name": "Cap Buster", "cost": cost, "currency": "USD"}
             },
         },
-        agency_id="system",
+        agency_id=agency_id,
     )
-    token = generate_signed_proposal_token(trip_id=trip_id, agency_id="system")
+    token = generate_signed_proposal_token(trip_id=trip_id, agency_id=agency_id)
     accepted = accept_proposal(
         token=token,
         req=AcceptProposalRequest(
-            signer_name="Big Spender", signer_email="big@spender.test", e_signature_consent=True
+            signer_name="Big Spender", signer_email="big@spender.test", e_signature_consent=True,
+            revision_id=_get_or_create_proposal(token).revision_id,
         ),
     )
     assert accepted.status == "accepted"
@@ -382,7 +385,7 @@ async def test_over_cap_fulfillment_403_carries_approval_recipe():
             trip_id=trip_id, proposal_token=token, holder_id="test_advisor"
         )
     assert excinfo.value.action == "fulfill_accepted_proposal"
-    assert excinfo.value.amount_usd == 90000.0
+    assert excinfo.value.amount_usd == _get_or_create_proposal(token).selected_total_price_usd
     # No VCC/GDS/JDG side effects reached the trip record.
     stored = TripStore.get_trip(trip_id)
     assert not stored.get("booking_confirmation")
@@ -441,20 +444,20 @@ def test_fulfillment_router_with_ratified_approval_proceeds(session_client):
 
     # Ratify a dual-control approval for this exact subject (two distinct approvers).
     record = AuthorityApprovalLedger.request_approval(
-        agency_id="system",
+        agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
         action="fulfill_accepted_proposal",
         subject_type="trip",
         subject_id=trip_id,
         requested_by="operator_1",
-        amount_usd=90000.0,
+        amount_usd=_get_or_create_proposal(token).selected_total_price_usd,
         reason="Board-approved VIP booking",
     )
     AuthorityApprovalLedger.approve(
-        agency_id="system", approval_id=record.approval_id,
+        agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b", approval_id=record.approval_id,
         approver_user_id="owner_1", approver_role="owner",
     )
     AuthorityApprovalLedger.approve(
-        agency_id="system", approval_id=record.approval_id,
+        agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b", approval_id=record.approval_id,
         approver_user_id="admin_2", approver_role="admin",
     )
 
