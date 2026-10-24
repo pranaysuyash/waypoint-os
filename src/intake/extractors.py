@@ -536,6 +536,17 @@ _MONTH_DAY_RANGE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Day-first range like "10 June 2027 to 17 June 2027" or "1 May to 5 May" —
+# the dominant written form in Indian English travel notes. Neither the
+# month-first range nor the shared-month day range ("10 to 17 June") covers
+# it; without this the whole date lane silently extracts nothing.
+_DAY_MONTH_RANGE_RE = re.compile(
+    r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(" + _MONTH_ABBR + r")\b(?:\s*,?\s*(\d{4}))?"
+    r"\s*(?:to|-|–|—)\s*"
+    r"(\d{1,2})(?:st|nd|rd|th)?(?:\s+(" + _MONTH_ABBR + r")\b)?(?:\s*,?\s*(\d{4}))?",
+    re.IGNORECASE,
+)
+
 # Date range pattern
 _DAY_RANGE_RE = re.compile(
     r"(\d{4}-\d{2}-\d{2})\s+(?:to|–|-)\s+(\d{4}-\d{2}-\d{2})"
@@ -1859,6 +1870,22 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
             start_iso = f"{year}-{start_month_num:02d}-{int(start_day):02d}"
             end_iso = f"{year}-{end_month_num:02d}-{int(end_day):02d}"
             raw = month_day_range.group(0).strip()
+            return raw, start_iso, end_iso, "tentative"
+
+    # Day-first range: "10 June 2027 to 17 June 2027", "1 May to 5 May".
+    day_month_range = _DAY_MONTH_RANGE_RE.search(text)
+    if day_month_range:
+        start_month_num = _month_to_num(day_month_range.group(2))
+        end_month_num = _month_to_num(day_month_range.group(5) or day_month_range.group(2))
+        year = (
+            day_month_range.group(3)
+            or day_month_range.group(6)
+            or _infer_year_from_context(text)
+        )
+        if start_month_num and end_month_num and year:
+            start_iso = f"{year}-{start_month_num:02d}-{int(day_month_range.group(1)):02d}"
+            end_iso = f"{year}-{end_month_num:02d}-{int(day_month_range.group(4)):02d}"
+            raw = day_month_range.group(0).strip()
             return raw, start_iso, end_iso, "tentative"
 
     # Day range: "9th to 14th Feb", "around 9th to 14th Feb 2025"

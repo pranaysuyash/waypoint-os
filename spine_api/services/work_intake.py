@@ -393,6 +393,109 @@ def record_outcome(agency_id: str, item_id: str, **fields: Any) -> None:
                 fh.write(line + "\n")
 
 
+# ---------------------------------------------------------------------------
+# Outcome-state lifecycle (map §14): open → claimed → resolved/dismissed.
+# Event-sourced — lifecycle transitions append as their own records to the
+# same agency log (record_type="lifecycle_event") and state is DERIVED at
+# read time. The log stays append-only; the event trail IS the audit trail.
+# ---------------------------------------------------------------------------
+
+WORK_ITEM_STATES = ("open", "claimed", "resolved", "dismissed")
+LIFECYCLE_ACTIONS = ("claim", "unclaim", "dismiss", "resolve")
+
+_ACTION_TARGET_STATE = {
+    "claim": "claimed",
+    "unclaim": "open",
+    "dismiss": "dismissed",
+    "resolve": "resolved",
+}
+# (current_state, action) pairs the machine accepts. resolved/dismissed are
+# terminal — done work never re-enters the queue through the same item.
+_VALID_TRANSITIONS = {
+    ("open", "claim"),
+    ("claimed", "unclaim"),
+    ("open", "dismiss"),
+    ("claimed", "dismiss"),
+    ("open", "resolve"),
+    ("claimed", "resolve"),
+}
+
+
+def _derive_lifecycle(items: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """Fold lifecycle events (in append order) into per-item state. Records
+    without record_type are items (backward compat with pre-lifecycle logs)."""
+    states: Dict[str, Dict[str, Any]] = {}
+    for rec in items:
+        if rec.get("record_type") == "lifecycle_event":
+            target = str(rec.get("target_item_id") or "")
+            if not target:
+                continue
+            state = states.setdefault(
+                target,
+                {"state": "open", "claimed_by": None, "claimed_at": None, "actions": 0},
+            )
+            action = str(rec.get("action") or "")
+            if (state["state"], action) not in _VALID_TRANSITIONS:
+                continue  # stale/duplicated event; state machine ignores it
+            state["state"] = _ACTION_TARGET_STATE[action]
+            state["actions"] += 1
+            if action == "claim":
+                state["claimed_by"] = rec.get("actor")
+                state["claimed_at"] = rec.get("at")
+            elif action == "unclaim":
+                state["claimed_by"] = None
+                state["claimed_at"] = None
+    return states
+
+
+def record_lifecycle(
+    agency_id: str,
+    item_id: str,
+    action: str,
+    *,
+    actor: Optional[str] = None,
+    note: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Apply one lifecycle transition to a recorded item. Raises KeyError if
+    the item does not exist in this agency's log and ValueError if the
+    transition is invalid for the item's current state. Returns the derived
+    post-transition state."""
+    if action not in LIFECYCLE_ACTIONS:
+        raise ValueError(f"Unknown lifecycle action: {action!r}")
+    items = _read_all(agency_id)
+    exists = any(
+        r.get("item_id") == item_id and r.get("record_type", "item") == "item" for r in items
+    )
+    if not exists:
+        raise KeyError(f"Work item not found: {item_id!r}")
+
+    states = _derive_lifecycle(items)
+    current = states.get(item_id, {"state": "open", "claimed_by": None})
+    if (current["state"], action) not in _VALID_TRANSITIONS:
+        raise ValueError(
+            f"Invalid transition: item {item_id!r} is {current['state']!r}; "
+            f"action {action!r} is not allowed from that state"
+        )
+
+    event = {
+        "record_type": "lifecycle_event",
+        "target_item_id": item_id,
+        "action": action,
+        "actor": actor,
+        "note": (note or None)[:200] if note else None,
+        "at": datetime.now(timezone.utc).isoformat(),
+    }
+    _append(agency_id, event)
+    new_state = _ACTION_TARGET_STATE[action]
+    return {
+        "item_id": item_id,
+        "previous_state": current["state"],
+        "state": new_state,
+        "claimed_by": (actor if new_state == "claimed" else None),
+        "at": event["at"],
+    }
+
+
 def duplicate_risk(agency_id: str, contact: Optional[str], *, intent: str = "new_demand") -> bool:
     """Public preview seam (E2): would this contact + intent duplicate a
     recently recorded item? Read-only; used by triage without persisting."""
@@ -411,9 +514,23 @@ _URGENCY_RANK = {"high": 0, "normal": 1, "low": 2}
 
 def ranked_queue(agency_id: str, *, limit: int = 50) -> Dict[str, Any]:
     """C1: the operator work queue — urgency first, returning guests next,
-    then recency. Plus honest counts per class."""
-    items = _read_all(agency_id)
-    items.sort(
+    then recency. Lifecycle-aware: resolved/dismissed items leave the ranked
+    list; open + claimed stay (claimed carries its badge). Class counts
+    describe ACTIONABLE work; ``total`` and ``counts.by_state`` stay honest
+    log totals over everything ever recorded."""
+    records = _read_all(agency_id)
+    states = _derive_lifecycle(records)
+    items = [r for r in records if r.get("record_type", "item") == "item"]
+    annotated = []
+    for r in items:
+        rec = dict(r)
+        state = states.get(rec["item_id"], {"state": "open", "claimed_by": None})
+        rec["state"] = state["state"]
+        rec["claimed_by"] = state["claimed_by"]
+        annotated.append(rec)
+
+    actionable = [r for r in annotated if r["state"] in ("open", "claimed")]
+    actionable.sort(
         key=lambda r: (
             _URGENCY_RANK.get(r.get("urgency"), 1),
             0 if r.get("returning_customer") else 1,
@@ -424,19 +541,23 @@ def ranked_queue(agency_id: str, *, limit: int = 50) -> Dict[str, Any]:
         "by_origin": {o: 0 for o in WORK_ORIGINS},
         "by_intent": {i: 0 for i in WORK_INTENTS},
         "by_urgency": {u: 0 for u in URGENCY_CLASSES},
+        "by_state": {s: 0 for s in WORK_ITEM_STATES},
     }
-    for r in items:
+    for r in actionable:
         if r.get("origin") in counts["by_origin"]:
             counts["by_origin"][r["origin"]] += 1
         if r.get("intent") in counts["by_intent"]:
             counts["by_intent"][r["intent"]] += 1
         if r.get("urgency") in counts["by_urgency"]:
             counts["by_urgency"][r["urgency"]] += 1
-    duplicates = sum(1 for r in items if r.get("duplicate_of"))
-    returning = sum(1 for r in items if r.get("returning_customer"))
+    for r in annotated:
+        counts["by_state"][r["state"]] += 1
+    duplicates = sum(1 for r in actionable if r.get("duplicate_of"))
+    returning = sum(1 for r in actionable if r.get("returning_customer"))
     return {
-        "items": items[: max(1, limit)],
-        "total": len(items),
+        "items": actionable[: max(1, limit)],
+        "total": len(annotated),
+        "actionable": len(actionable),
         "duplicates_flagged": duplicates,
         "returning_customers": returning,
         "counts": counts,
