@@ -1724,6 +1724,10 @@ class TripQuotesResponse(BaseModel):
     branches: List[TripQuoteBranch] = Field(default_factory=list)
     budget_breakdown: Optional[Dict[str, Any]] = None
     missing: List[str] = Field(default_factory=list)
+    # FND-0169/0170 (CAS gap): the version token the client echoes back on
+    # retail approval (expected_updated_at). Present on every response so the
+    # optimistic-version binding is usable, not just test-visible.
+    trip_version: Optional[str] = None
 
 
 class ProposalLinkRequest(BaseModel):

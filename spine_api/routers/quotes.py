@@ -167,6 +167,7 @@ def get_trip_quotes(
         branches=_derive_branches(trip),
         budget_breakdown=budget_breakdown,
         missing=missing,
+        trip_version=trip.get("updated_at"),
     )
 
 
