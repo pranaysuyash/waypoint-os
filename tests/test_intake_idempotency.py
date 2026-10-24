@@ -196,7 +196,13 @@ def test_parse_retry_same_payload_replays_same_trip(session_client):
     assert TripStore.get_trip(first_trip_id) is not None
 
 
-def test_parse_different_payload_mints_new_trip(session_client):
+def test_parse_different_payload_same_traveler_attaches_to_lead(session_client):
+    """FND-0334 contract (supersedes the old 'different payload mints new trip'
+    expectation): a known traveler's second, DIFFERENT message follows their
+    existing lead instead of minting a duplicate — and both messages are
+    recorded on that lead."""
+    from spine_api.services.message_store import list_for_agency
+
     base = {
         "channel": "chrome_extension",
         "customer_name": "Distinct Dawn",
@@ -210,7 +216,37 @@ def test_parse_different_payload_mints_new_trip(session_client):
     )
     b = session_client.post(
         "/api/v1/inbound/parse",
+        json={**base, "raw_text": f"Trip to Porto in June, 3 adults. ID-{uuid.uuid4().hex[:8]}"},
+        headers=_headers(),
+    )
+    assert a.status_code == 200 and b.status_code == 200
+    # Same known traveler -> the lead is reused, not duplicated.
+    assert a.json()["trip_id"] == b.json()["trip_id"]
+    lead_id = a.json()["trip_id"]
+    messages = list_for_agency(AGENCY, trip_id=lead_id)
+    bodies = [m.get("body") or "" for m in messages]
+    assert sum("Lisbon" in b for b in bodies) >= 1
+    assert sum("Porto" in b for b in bodies) >= 1
+
+
+def test_parse_different_traveler_mints_new_trip(session_client):
+    """A genuinely different traveler (distinct contact identity) mints a NEW
+    lead — the FND-0334 matcher must not over-attach."""
+    base = {
+        "channel": "chrome_extension",
+        "customer_name": "Distinct Dawn",
+        "customer_contact": "+1-555-0178",
+        "strict_leakage": False,
+    }
+    a = session_client.post(
+        "/api/v1/inbound/parse",
         json={**base, "raw_text": f"Trip to Lisbon in May, 2 adults. ID-{uuid.uuid4().hex[:8]}"},
+        headers=_headers(),
+    )
+    other = dict(base, customer_name="Other Otis", customer_contact="+1-555-0199")
+    b = session_client.post(
+        "/api/v1/inbound/parse",
+        json={**other, "raw_text": f"Trip to Lisbon in May, 2 adults. ID-{uuid.uuid4().hex[:8]}"},
         headers=_headers(),
     )
     assert a.status_code == 200 and b.status_code == 200
