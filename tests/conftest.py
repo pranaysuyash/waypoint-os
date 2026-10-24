@@ -86,6 +86,40 @@ from tests import _data_safety_guard as _data_safety_guard_module  # noqa: E402
 _data_safety_guard_module.activate()
 _data_safety_guard_module.run_selfcheck()
 
+# ---------------------------------------------------------------------------
+# Ephemeral per-run test database (FND-0366 root-cause isolation, 2026-10-24)
+# ---------------------------------------------------------------------------
+# The canonical waypoint_os database is the developer's working environment and
+# was wiped twice by an unidentified deleter (see
+# Docs/architecture/TEST_DB_ISOLATION_FND0366_2026-10-24.md). Every pytest
+# session now runs against its own throwaway database provisioned from a
+# schema-sync template (alembic + public-checker bootstrap — CI-identical);
+# the canonical database is unreachable from test code via three layers:
+# env override (before any spine_api import), template/run namespace, and an
+# engine-construction refusal on the canonical database name. Opt out only to
+# debug the canonical DB itself: WAYPOINT_EPHEMERAL_DB=0.
+import atexit  # noqa: E402
+
+from tests import _test_db_provision as _test_db_provision_module  # noqa: E402
+
+_TEST_DB_PROVISION_RESULT = _test_db_provision_module.provision()
+if _TEST_DB_PROVISION_RESULT.run_database_url:
+    # Belt-and-braces for non-pytest entry points; under pytest the drop
+    # happens in pytest_unconfigure below — asyncio.run at interpreter-shutdown
+    # atexit is unreliable (pytest-asyncio's loop policy), and a silently
+    # failing drop would orphan run databases on every session.
+    atexit.register(_test_db_provision_module.teardown)
+    _test_db_provision_module.install_engine_creation_guard(
+        _TEST_DB_PROVISION_RESULT.canonical_db_name or "waypoint_os"
+    )
+
+
+def pytest_unconfigure(config):
+    """Drop this session's ephemeral run database while the interpreter is
+    still fully alive (atexit is too late for reliable asyncio)."""
+    if _TEST_DB_PROVISION_RESULT.run_database_url:
+        _test_db_provision_module.teardown()
+
 # Disable OpenTelemetry in tests — the BatchSpanProcessor background thread
 # outlives the TestClient event loop and corrupts the asyncpg pool. OTel would
 # try to export to localhost:4317 (the collector) which isn't running in tests.
@@ -152,6 +186,15 @@ async def _ensure_test_principal() -> None:
     engine = create_async_engine(DATABASE_URL)
     try:
         async with engine.begin() as conn:
+            # RLS contract (FND-0369 surfaced this): tenant tables are FORCE-RLS
+            # protected at alembic head, and seeding is a write scoped to the
+            # seeded agency — set the same GUC the app's request path sets so
+            # WITH CHECK passes on fresh databases (accumulated canonical rows
+            # made the WHERE NOT EXISTS path skip inserts there, hiding this).
+            await conn.execute(
+                text("SELECT set_config('app.current_agency_id', :agency_id, false)"),
+                {"agency_id": _TEST_AGENCY_ID},
+            )
             await conn.execute(
                 text(
                     """
@@ -313,6 +356,12 @@ def boundary_principal_factory():
             engine = create_async_engine(DATABASE_URL)
             try:
                 async with engine.begin() as conn:
+                    # RLS contract: seed writes are scoped to the seeded agency
+                    # (same GUC the app's request path sets — see FND-0369).
+                    await conn.execute(
+                        text("SELECT set_config('app.current_agency_id', :agency_id, false)"),
+                        {"agency_id": agency_id},
+                    )
                     await conn.execute(
                         text(
                             """

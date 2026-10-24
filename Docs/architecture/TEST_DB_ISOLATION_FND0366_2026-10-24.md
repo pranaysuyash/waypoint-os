@@ -158,14 +158,30 @@ hazard — forbidden).
 4. CI needs **no changes**: the same provisioning flow runs against the CI
    service database (whose role is superuser) and reaches the same end state.
 
-## 8. Verification (evidence appended as runs complete)
+## 8. Verification (evidence)
 
-- Provisioner unit tests: `tests/test_test_db_provision.py`
-  (`require_postgres` marked).
-- Full backend gate against the ephemeral run DB.
-- **Canonical-unchanged proof:** row counts of all canonical tables captured
-  before and after the full gate must be identical — the suite now physically
-  cannot touch them (this is the regression check for the entire architecture).
+- Provisioner unit tests: `tests/test_test_db_provision.py` — **10/10 green**
+  (template idempotency + stamp-drift rebuild, run-DB roundtrip, namespace
+  safety of drop/sweep, URL rewrite, engine-guard refuse/allow/restore).
+- **RLS surfacing (FND-0369, found BY this architecture):** the run DB is the
+  first environment where FORCE RLS actually binds the app role (canonical has
+  drifted behind alembic head — `relforcerowsecurity=false`; CI bypasses as
+  docker superuser). conftest's raw-SQL auth seeding was denied on fresh run
+  DBs; fixed by setting the app's own RLS GUC (`app.current_agency_id`) in
+  both seed blocks. Probe evidence (rolled-back transactions, zero
+  persistence): canonical no-GUC insert passes RLS and dies on FK; run-DB
+  no-GUC insert RLS-denied; run-DB with-GUC passes RLS. Slice after fix:
+  **25/25 green** (smoke, trips POST/follow-up, privacy parity, RAG mount,
+  drafts contract, provisioner).
+- **Teardown under pytest:** atexit is unreliable during pytest interpreter
+  shutdown (verified: every clean-exit session leaked its run DB); the drop
+  now runs in `pytest_unconfigure` — verified by before/after orphan counts.
+  atexit remains as the non-pytest fallback. SIGKILLed sessions (Bash
+  timeouts, parallel-session kills) leave orphans by design; the 6-hour epoch
+  sweep reaps them.
+- Full backend gate + **canonical-unchanged proof** (row counts of every
+  canonical table captured before and after the gate must be identical):
+  recorded in the session log of 2026-10-24 (`/tmp/full_suite_isolation_gate.log`).
 
 ## 9. Residuals and honest limits
 

@@ -1,5 +1,15 @@
 # Known: Test Data Accumulation Causes Dashboard Counts to Vary
 
+> **SUPERSEDED 2026-10-24 (FND-0366 root-cause isolation) — history preserved below.**
+> Test suites no longer write to the canonical database at all: every pytest
+> session runs against an ephemeral per-session database provisioned from a
+> schema-sync template and dropped at session end
+> (`Docs/architecture/TEST_DB_ISOLATION_FND0366_2026-10-24.md`). Dashboard
+> counts therefore change only from *deliberate* actions (dev-server use,
+> operator seed scripts) — never from running tests. This document remains as
+> the record of the old shared-DB behavior, whose "self-healing corpus" side
+> effect was the mechanism behind the FND-0366 wipes.
+
 ## What you will see
 
 After every few test runs or server restarts, the Overview dashboard shows different numbers:

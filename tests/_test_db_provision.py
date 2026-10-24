@@ -22,6 +22,11 @@ Layers (design record: Docs/architecture/TEST_DB_ISOLATION_FND0366_2026-10-24.md
 The canonical database is never opened by this module: reachability probes and
 all DDL target the ``postgres`` maintenance database or template/run names.
 
+Security note (Mimosa): DDL identifiers (database names, roles) cannot be
+parameter placeholders in Postgres. Every dynamic identifier in this module
+passes :func:`_safe_ident` (strict charset) and statements are assembled from
+token lists — the same discipline as ``tests/_data_safety_guard.py``.
+
 Escape hatch: ``WAYPOINT_EPHEMERAL_DB=0`` restores legacy shared-DB behavior.
 """
 
@@ -30,13 +35,14 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import os
+import re
 import subprocess
 import sys
 import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,6 +55,8 @@ STALE_RUN_DB_HOURS = 6
 # Advisory-lock keys (fixed so concurrent pytest sessions serialize).
 _TEMPLATE_LOCK_KEY = 8123471
 _RUN_CREATE_LOCK_KEY = 8123472
+
+_IDENT_RE = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
 class CanonicalTestDatabaseViolationError(RuntimeError):
@@ -68,8 +76,17 @@ class ProvisionResult:
 
 
 # ---------------------------------------------------------------------------
-# URL helpers (sqlalchemy make_url only — no engine construction)
+# Identifier + URL safety helpers
 # ---------------------------------------------------------------------------
+
+
+def _safe_ident(identifier: str) -> str:
+    """Validate a DDL identifier (DB name, role, table): strict charset only."""
+    if not _IDENT_RE.match(identifier or ""):
+        raise CanonicalTestDatabaseViolationError(
+            f"refusing unsafe DDL identifier: {identifier!r}"
+        )
+    return identifier
 
 
 def _make_url(url: str) -> Any:
@@ -114,12 +131,12 @@ async def _connect(url: str, database: Optional[str] = None):
     return await asyncpg.connect(**_connect_kwargs(url, database=database))
 
 
-def _database_exists(conn: Any, dbname: str) -> bool:
-    return conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", dbname) == 1
-
-
-def _quote_ident(identifier: str) -> str:
-    return '"' + identifier.replace('"', '""') + '"'
+async def _database_exists(conn: Any, dbname: str) -> bool:
+    _safe_ident(dbname)
+    found = await conn.fetchval(
+        "SELECT 1 FROM pg_database WHERE datname = $1", dbname
+    )
+    return found == 1
 
 
 # ---------------------------------------------------------------------------
@@ -151,11 +168,12 @@ def migration_stamp() -> str:
 # ---------------------------------------------------------------------------
 
 
-def _subprocess_env_for(template_db_name: str) -> dict:
+def _subprocess_env_for(base_url: str, template_db_name: str) -> dict:
     env = os.environ.copy()
-    url = resolve_canonical_url() or ""
-    template_url = _make_url(url).set(database=template_db_name).render_as_string(
-        hide_password=False
+    template_url = (
+        _make_url(base_url)
+        .set(database=template_db_name)
+        .render_as_string(hide_password=False)
     )
     env["DATABASE_URL"] = template_url
     env["TRIPSTORE_BACKEND"] = "sql"
@@ -169,9 +187,9 @@ def _subprocess_env_for(template_db_name: str) -> dict:
     return env
 
 
-def _build_template_via_subprocesses(template_db_name: str) -> None:
+def _build_template_via_subprocesses(base_url: str, template_db_name: str) -> None:
     """Schema + auth bootstrap — identical to the CI path, never canonical reads."""
-    env = _subprocess_env_for(template_db_name)
+    env = _subprocess_env_for(base_url, template_db_name)
     migrate = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=str(PROJECT_ROOT),
@@ -200,44 +218,71 @@ def _build_template_via_subprocesses(template_db_name: str) -> None:
         )
 
 
-def ensure_template(
-    conn: Any, app_user: str
-) -> bool:
+async def _template_meta_stamp(template_conn: Any) -> Optional[str]:
+    try:
+        return await template_conn.fetchval(
+            " ".join(
+                ["SELECT", "stamp", "FROM", _safe_ident(META_TABLE), "WHERE", "id", "=", "1"]
+            )
+        )
+    except Exception:
+        return None
+
+
+async def ensure_template(conn: Any, base_url: str, app_user: str) -> bool:
     """Create or refresh ``waypoint_test_template``. Returns True if rebuilt.
 
     Caller must hold ``_TEMPLATE_LOCK_KEY``. ``conn`` is an admin connection to
     the maintenance database (NOT the canonical database).
     """
     stamp = migration_stamp()
-    if _database_exists(conn, TEMPLATE_DB_NAME):
+    _safe_ident(app_user)
+    if await _database_exists(conn, TEMPLATE_DB_NAME):
+        # The stamp table lives in the TEMPLATE database — read it there, not
+        # through the maintenance connection (which has no such table and
+        # would make every check look stale).
+        template_probe = await _connect(base_url, TEMPLATE_DB_NAME)
         try:
-            existing = conn.fetchval(
-                f"SELECT stamp FROM {_quote_ident(META_TABLE)} WHERE id = 1"
-            )
-        except Exception:
-            existing = None
+            existing = await _template_meta_stamp(template_probe)
+        finally:
+            await template_probe.close()
         if existing == stamp:
             return False
 
-    conn.execute(f"DROP DATABASE IF EXISTS {_quote_ident(TEMPLATE_DB_NAME)} WITH (FORCE)")
-    conn.execute(
-        f"CREATE DATABASE {_quote_ident(TEMPLATE_DB_NAME)} OWNER {_quote_ident(app_user)}"
+    _safe_ident(TEMPLATE_DB_NAME)
+    drop_stmt = " ".join(
+        ["DROP", "DATABASE", "IF", "EXISTS", TEMPLATE_DB_NAME, "WITH", "(FORCE)"]
     )
-    _build_template_via_subprocesses(TEMPLATE_DB_NAME)
+    create_stmt = " ".join(
+        ["CREATE", "DATABASE", TEMPLATE_DB_NAME, "OWNER", app_user]
+    )
+    await conn.execute(drop_stmt)
+    await conn.execute(create_stmt)
+    _build_template_via_subprocesses(base_url, TEMPLATE_DB_NAME)
 
-    template_conn = asyncio.run(_connect(resolve_canonical_url() or "", TEMPLATE_DB_NAME))
+    template_conn = await _connect(base_url, TEMPLATE_DB_NAME)
     try:
-        template_conn.execute(
-            f"CREATE TABLE IF NOT EXISTS {_quote_ident(META_TABLE)} "
-            "(id int PRIMARY KEY, stamp text NOT NULL, built_at timestamptz DEFAULT now())"
+        await template_conn.execute(
+            " ".join(
+                [
+                    "CREATE", "TABLE", "IF", "NOT", "EXISTS", META_TABLE,
+                    "(id int PRIMARY KEY, stamp text NOT NULL,",
+                    "built_at timestamptz DEFAULT now())",
+                ]
+            )
         )
-        template_conn.execute(
-            f"INSERT INTO {_quote_ident(META_TABLE)} (id, stamp) VALUES (1, $1) "
-            "ON CONFLICT (id) DO UPDATE SET stamp = EXCLUDED.stamp, built_at = now()",
+        await template_conn.execute(
+            " ".join(
+                [
+                    "INSERT", "INTO", META_TABLE, "(id, stamp)", "VALUES", "(1, $1)",
+                    "ON", "CONFLICT", "(id)", "DO", "UPDATE",
+                    "SET", "stamp", "=", "EXCLUDED.stamp,", "built_at", "=", "now()",
+                ]
+            ),
             stamp,
         )
     finally:
-        asyncio.run(template_conn.close())
+        await template_conn.close()
     return True
 
 
@@ -246,47 +291,53 @@ def ensure_template(
 # ---------------------------------------------------------------------------
 
 
-def run_db_url_for(canonical_url: str, run_db_name: str) -> str:
+def run_db_url_for(base_url: str, run_db_name: str) -> str:
     return (
-        _make_url(canonical_url)
+        _make_url(base_url)
         .set(database=run_db_name)
         .render_as_string(hide_password=False)
     )
 
 
-def create_run_database(conn: Any, app_user: str) -> str:
+async def create_run_database(conn: Any, app_user: str) -> str:
     """Create a fresh run DB from the template. Returns its name.
 
     Caller must hold ``_RUN_CREATE_LOCK_KEY``: Postgres refuses concurrent
     ``CREATE DATABASE ... TEMPLATE`` from one template.
     """
-    name = f"{RUN_DB_PREFIX}{int(time.time())}_{uuid.uuid4().hex[:8]}"
-    conn.execute(
-        f"CREATE DATABASE {_quote_ident(name)} "
-        f"TEMPLATE {_quote_ident(TEMPLATE_DB_NAME)} OWNER {_quote_ident(app_user)}"
+    _safe_ident(app_user)
+    name = RUN_DB_PREFIX + str(int(time.time())) + "_" + uuid.uuid4().hex[:8]
+    _safe_ident(name)
+    stmt = " ".join(
+        ["CREATE", "DATABASE", name, "TEMPLATE", TEMPLATE_DB_NAME, "OWNER", app_user]
     )
+    await conn.execute(stmt)
     return name
 
 
-def drop_run_database(conn: Any, name: str) -> None:
+async def drop_run_database(conn: Any, name: str) -> None:
+    _safe_ident(name)
     if not name.startswith(RUN_DB_PREFIX):
         raise CanonicalTestDatabaseViolationError(
             f"refusing to drop {name!r}: not a {RUN_DB_PREFIX}* database"
         )
-    conn.execute(f"DROP DATABASE IF EXISTS {_quote_ident(name)} WITH (FORCE)")
+    stmt = " ".join(["DROP", "DATABASE", "IF", "EXISTS", name, "WITH", "(FORCE)"])
+    await conn.execute(stmt)
 
 
-def sweep_stale_run_databases(conn: Any, max_age_hours: float = STALE_RUN_DB_HOURS) -> list:
+async def sweep_stale_run_databases(
+    conn: Any, max_age_hours: float = STALE_RUN_DB_HOURS
+) -> List[str]:
     """Drop orphaned run DBs (epoch in the name older than the threshold).
 
     Only names under ``waypoint_test_run_*`` are ever considered; canonical and
     template names are structurally outside this namespace.
     """
     cutoff = time.time() - max_age_hours * 3600
-    rows = conn.fetch(
+    rows = await conn.fetch(
         "SELECT datname FROM pg_database WHERE datname LIKE $1", RUN_DB_PREFIX + "%"
     )
-    dropped = []
+    dropped: List[str] = []
     for row in rows:
         name = row["datname"]
         try:
@@ -294,7 +345,7 @@ def sweep_stale_run_databases(conn: Any, max_age_hours: float = STALE_RUN_DB_HOU
         except ValueError:
             continue
         if epoch < cutoff:
-            drop_run_database(conn, name)
+            await drop_run_database(conn, name)
             dropped.append(name)
     return dropped
 
@@ -376,39 +427,69 @@ def uninstall_engine_creation_guard() -> None:
 
 
 # ---------------------------------------------------------------------------
-# CREATEDB bootstrap (local trust superuser only — never password guessing)
+# CREATEDB bootstrap (idempotent privilege check on the URL's own role)
 # ---------------------------------------------------------------------------
 
 
-def _grant_createdb_if_needed(url: str) -> None:
-    """Ensure the URL's role may create databases (one-time, idempotent).
+async def _grant_createdb_if_needed(url: str) -> bool:
+    """Ensure the URL's role may create databases. Returns True if granted.
 
-    Local developer clusters run with trust auth (brew initdb), so a
-    passwordless local superuser connection is attempted WITHOUT host/network
-    credential guessing: host ``localhost``, the URL's user's needed privilege
-    is granted by ``postgres``. On CI the service role is already superuser and
-    this is a no-op check.
+    On CI the service role is already superuser (no-op). On local clusters the
+    URL role often lacks CREATEDB and may not alter itself, so the grant is
+    attempted via a local admin connection (trust auth, no password guessing —
+    loopback only). If no admin path exists, the error carries the exact
+    statement for the operator. Degrading to shared-DB mode is forbidden.
     """
-    u = _make_url(url)
-    probe_kwargs = _connect_kwargs(url, database="postgres")
-
-    async def _check_and_grant() -> bool:
-        import asyncpg
-
-        conn = await asyncpg.connect(**probe_kwargs)
+    role = _make_url(url).username or ""
+    _safe_ident(role)
+    conn = await _connect(url, database="postgres")
+    try:
+        has = await conn.fetchval(
+            "SELECT rolcreatedb FROM pg_roles WHERE rolname = $1", role
+        )
+        if has:
+            return False
         try:
-            role = u.username
-            has = await conn.fetchval(
-                "SELECT rolcreatedb FROM pg_roles WHERE rolname = $1", role
-            )
-            if has:
-                return False
-            await conn.execute("ALTER ROLE " + _quote_ident(role) + " CREATEDB")
+            await conn.execute(" ".join(["ALTER", "ROLE", role, "CREATEDB"]))
             return True
-        finally:
-            await conn.close()
+        except Exception:
+            pass
+    finally:
+        await conn.close()
 
-    asyncio.run(_check_and_grant())
+    # Fallback: local trust-auth superuser (host must be loopback).
+    host = (_make_url(url).host or "localhost").lower()
+    if host in ("localhost", "127.0.0.1", "::1"):
+        admin_kwargs = _connect_kwargs(url, database="postgres")
+        admin_kwargs.update({"user": "postgres", "password": None})
+        try:
+            admin = await _connect_raw_kwargs(admin_kwargs)
+            try:
+                await admin.execute(
+                    " ".join(["ALTER", "ROLE", role, "CREATEDB"])
+                )
+                return True
+            finally:
+                await admin.close()
+        except Exception as admin_exc:
+            raise RuntimeError(
+                "The DATABASE_URL role lacks CREATEDB and could not be granted "
+                "it automatically. Run this once as your Postgres superuser:\n"
+                f"  ALTER ROLE {role} CREATEDB;\n"
+                f"(local admin fallback failed: {admin_exc})"
+            ) from admin_exc
+
+    raise RuntimeError(
+        "The DATABASE_URL role lacks CREATEDB and the server is remote. Run "
+        "this once as a superuser:\n"
+        f"  ALTER ROLE {role} CREATEDB;"
+    )
+
+
+async def _connect_raw_kwargs(kwargs: dict):
+    import asyncpg
+
+    return await asyncpg.connect(**kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -416,28 +497,72 @@ def _grant_createdb_if_needed(url: str) -> None:
 # ---------------------------------------------------------------------------
 
 _ACTIVE_RUN_DB: Optional[str] = None
+LAST_CANONICAL_DB_NAME: Optional[str] = None
 
 
-def teardown() -> None:
-    """Drop the active run DB (atexit-registered; best-effort)."""
+async def _teardown_async() -> None:
     global _ACTIVE_RUN_DB
     if not _ACTIVE_RUN_DB:
         return
-    url = resolve_canonical_url() or ""
+    url = resolve_canonical_url()
     if not url:
         return
     try:
-        conn = asyncio.run(_connect(url, database="postgres"))
+        conn = await _connect(url, database="postgres")
         try:
-            drop_run_database(conn, _ACTIVE_RUN_DB)
+            await drop_run_database(conn, _ACTIVE_RUN_DB)
         finally:
-            asyncio.run(conn.close())
+            await conn.close()
     except Exception:
         # Orphans are swept by age on the next session; never mask the
         # suite's own exit status with teardown noise.
         pass
     finally:
         _ACTIVE_RUN_DB = None
+
+
+def teardown() -> None:
+    """Drop the active run DB (atexit-registered; best-effort)."""
+    asyncio.run(_teardown_async())
+
+
+async def _provision_async(result: ProvisionResult) -> ProvisionResult:
+    canonical_url = result.canonical_url or ""
+    app_user = _make_url(canonical_url).username or ""
+
+    await _grant_createdb_if_needed(canonical_url)
+
+    admin_conn = await _connect(canonical_url, database="postgres")
+    try:
+        # Serialize template work across concurrent pytest sessions.
+        await admin_conn.execute("SELECT pg_advisory_lock($1)", _TEMPLATE_LOCK_KEY)
+        try:
+            result.template_rebuilt = await ensure_template(
+                admin_conn, canonical_url, app_user
+            )
+        finally:
+            await admin_conn.execute(
+                "SELECT pg_advisory_unlock($1)", _TEMPLATE_LOCK_KEY
+            )
+
+        # Serialize template→run copies (Postgres refuses concurrent copies).
+        await admin_conn.execute("SELECT pg_advisory_lock($1)", _RUN_CREATE_LOCK_KEY)
+        try:
+            run_name = await create_run_database(admin_conn, app_user)
+        finally:
+            await admin_conn.execute(
+                "SELECT pg_advisory_unlock($1)", _RUN_CREATE_LOCK_KEY
+            )
+
+        await sweep_stale_run_databases(admin_conn)
+    finally:
+        await admin_conn.close()
+
+    global _ACTIVE_RUN_DB
+    _ACTIVE_RUN_DB = run_name
+    result.run_database_name = run_name
+    result.run_database_url = run_db_url_for(canonical_url, run_name)
+    return result
 
 
 def provision() -> ProvisionResult:
@@ -448,7 +573,7 @@ def provision() -> ProvisionResult:
     for anything that would otherwise silently degrade to shared-DB mode.
     """
     result = ProvisionResult()
-    if (os.environ.get(OPT_OUT_ENV, "").strip().lower() in ("0", "false", "no")):
+    if os.environ.get(OPT_OUT_ENV, "").strip().lower() in ("0", "false", "no"):
         result.skipped_reason = f"{OPT_OUT_ENV}=0 (legacy shared-DB mode)"
         return result
 
@@ -459,6 +584,8 @@ def provision() -> ProvisionResult:
 
     result.canonical_url = canonical_url
     result.canonical_db_name = _make_url(canonical_url).database or ""
+    global LAST_CANONICAL_DB_NAME
+    LAST_CANONICAL_DB_NAME = result.canonical_db_name
 
     # Reachability: TCP probe only. Same semantics as the pre-existing
     # require_postgres skip machinery; no canonical connection is opened.
@@ -480,34 +607,16 @@ def provision() -> ProvisionResult:
         )
         return result
 
-    _grant_createdb_if_needed(canonical_url)
-
-    app_user = _make_url(canonical_url).username or ""
-    admin_conn = asyncio.run(_connect(canonical_url, database="postgres"))
     try:
-        # Serialize template work across concurrent pytest sessions.
-        admin_conn.execute("SELECT pg_advisory_lock($1)", _TEMPLATE_LOCK_KEY)
-        try:
-            result.template_rebuilt = ensure_template(admin_conn, app_user)
-        finally:
-            admin_conn.execute("SELECT pg_advisory_unlock($1)", _TEMPLATE_LOCK_KEY)
+        result = asyncio.run(_provision_async(result))
+    except Exception as exc:
+        teardown()  # drop any run DB created before the failure
+        raise RuntimeError(
+            "Ephemeral test-database provisioning failed (FND-0366 isolation). "
+            "The suite refuses to fall back to the shared canonical database — "
+            f"fix the cause or set {OPT_OUT_ENV}=0 to opt out explicitly.\n"
+            f"Underlying error: {exc}"
+        ) from exc
 
-        # Serialize template→run copies (Postgres refuses concurrent copies).
-        admin_conn.execute("SELECT pg_advisory_lock($1)", _RUN_CREATE_LOCK_KEY)
-        try:
-            run_name = create_run_database(admin_conn, app_user)
-        finally:
-            admin_conn.execute("SELECT pg_advisory_unlock($1)", _RUN_CREATE_LOCK_KEY)
-
-        sweep_stale_run_databases(admin_conn)
-    finally:
-        asyncio.run(admin_conn.close())
-
-    global _ACTIVE_RUN_DB
-    _ACTIVE_RUN_DB = run_name
-    result.run_database_name = run_name
-    result.run_database_url = run_db_url_for(canonical_url, run_name)
-
-    os.environ["DATABASE_URL"] = result.run_database_url
-    result.skipped_reason = None
+    os.environ["DATABASE_URL"] = result.run_database_url or ""
     return result

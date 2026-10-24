@@ -2837,14 +2837,21 @@ def patch_trip(
         # Retain an explicit current statement, including intentional clears.
         # Removing a key loses the difference between "not supplied" and
         # "operator cleared it", allowing the original note to resurrect it.
+        #
+        # FND-0368: "budget" is handled by the dual-write branch above (raw
+        # text + parsed numeric, both explicit_user). Re-recording budget here
+        # from the raw incoming value would clobber the parsed fact via
+        # FACT_DEPENDENTS invalidation — the parsed numeric must win.
         for field, canonical in TRIP_FIELD_FACTS.items():
-            if field not in incoming_updates:
+            if field not in incoming_updates or field == "budget":
                 continue
             record_fact_override(
                 facts, canonical, incoming_updates[field],
                 source_ref=f"manual_{uuid.uuid4().hex}",
                 previous=original_facts.get(canonical),
             )
+            synced_updates["extracted"] = extracted
+        if "budget" in incoming_updates:
             synced_updates["extracted"] = extracted
 
         return synced_updates

@@ -956,6 +956,15 @@ degeneracy, G4 noise bound).
 - `reencrypt_trip_rows.py` — FND-0327 key-rotation tool. Dry-run by default;
   `--apply` writes. Requires `--agency` (RLS context + safety scope),
   `--from-key`/`--to-key` (or REENCRYPT_FROM_KEY/REENCRYPT_TO_KEY env).
+- `build_test_template.py` — FND-0366 test-database isolation control surface.
+  The pytest session provisions its own ephemeral database automatically
+  (`tests/_test_db_provision.py` via conftest); this CLI inspects and manages
+  the machinery manually: `status` (template freshness + orphaned run DBs),
+  `build [--force]` (create/refresh the schema-sync template), `sweep` (drop
+  orphaned `waypoint_test_run_*` databases older than 6h). All DDL targets the
+  template and run namespaces only — the canonical database is never opened.
+  `WAYPOINT_EPHEMERAL_DB=0` opts pytest out (legacy shared-DB mode).
+  Design record: `Docs/architecture/TEST_DB_ISOLATION_FND0366_2026-10-24.md`.
 
 Example — beta-posture lane:
 ```bash
