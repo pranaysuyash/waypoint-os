@@ -5,8 +5,10 @@ incoming work (C1 of the Incoming Work Classification Map, 2026-10-24).
 One read surface over the canonical work-intake store
 (spine_api/services/work_intake.py): urgency-ranked incoming items with
 per-class counts, duplicate flags (C3), and returning-guest annotations (C2).
-This is the seed of the unified operator queue (map §5 E3): W4 system-generated
-work and further doors join the same store as they get wired.
+This is the seed of the unified operator queue (map §5 E3): W4 system work is
+partially wired (ghost-concierge drafts → agency queue; requeue poison →
+SYSTEM_WORK_SCOPE), and further doors/loops join the same store as they get
+wired.
 """
 
 from __future__ import annotations

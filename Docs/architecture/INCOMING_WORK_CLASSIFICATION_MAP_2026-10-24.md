@@ -204,3 +204,31 @@ Owner directive "continue and do all" executed. **FND-0371 registered and closed
 - **E3** W4 unification (loops → same queue) — store + endpoint are the seam; loop writers not yet wired.
 - I2 generalization: `merge_facts` + projection (roadmap Phase 2) — the WorkItem contract is its intake-side counterpart, ready to fold in.
 
+---
+
+## 9. Independent verification pass + E3 implementation record (2026-10-24, later same day)
+
+Two read-only Explore agents (the ones that failed at session start; relaunched) independently verified §2 and the frontend surface inventory. Verdicts and deltas:
+
+### 9.1 Backend verification (Observed)
+
+- **94 router mounts** confirmed at `server.py:1576-1697` (93 at map time + the new `work_items` mount); 63 carry include-level `_auth_or_skip`, 31 rely on in-file agency auth; three modules mount twice (public + authed variants). The real public gate is the middleware allowlist at `core/middleware.py:31-53`.
+- **All four door wirings verified live**: `run` (`server.py` `_launch_spine_pipeline_thread`), `inbound_parse` (`inbound.py`), `channel_webhook` (`messaging.py`, per record), `ask_answers` (`public_asks.py`) + `triage_preview` classify-only. Store no-PII and `count_basis` honesty re-confirmed.
+- **Registered-but-unwired doors** (the next wiring tranche, in value order): `collection_submit` (`public_collection.py:146`+documents), `proposal_acceptance` (`public_proposals.py` calculate/accept + trust-scorecard 1-click at `:349`), `group_share` (`group_booking.py:214`), `public_checker` (`run` at `server.py:2144` — persists under the checker agency), `operator_action` (PATCH `/trips` auto-reassess), `knowledge_admin` (`rag` index/nodes/edges). Doors with NO registry entry yet: `inbox/parse_social` (`social_inbound.py:77`), `public_checker/route-request` (consented lead capture), multimodal voice/OCR, IVR status webhook (logs-only today).
+- **Corrections to §2.4**: the **perishable sentinel has no live callers** (dormant; `audit_perishables()` uninvoked) — it should not be counted as an active loop; **ghost concierge is event-driven, not a loop** (fires on `PATCH /trips` flight-status changes `server.py:2996-3006` and on webhook traveler messages `messaging_webhooks.py:101`). The IROPS watch loop is operator-started (`POST /irops/watch/start`), not lifespan-scheduled.
+
+### 9.2 Frontend verification (Observed)
+
+- 52 pages confirmed; the workbench tab set, traveler token surfaces (`/a /p /g`), and BFF deny-by-default allowlist (`route-map.ts`) all match §2.6.
+- **Finding: `GET /api/v1/work-items` was backend-only** (absent from `route-map.ts`) — the exact shipped-but-unreachable class invariant 4 exists to kill. **Fixed this pass**: `v1/work-items` added to `frontend/src/lib/route-map.ts`; `tests/test_bff_parity_gate.py` green. (No FE UI consumes it yet — reachable, not yet rendered; a queue panel is the natural next FE tranche.)
+- Additional structural gaps the pass surfaced for the E1 cleanup tranche: three **BFF bypasses** call the backend origin directly (`/intake/fast` → `inbox/parse_social`, `/corporate/offsites` → hardcoded sample IDs, `booking-collection` via `SPINE_API_URL` in `api-client`) — holes in the F-43 allowlist posture; `/bookings` page is self-described sample-preview; dev-session backdoor in `(agency)/layout.tsx` fabricates an admin session in non-prod.
+- **Pre-existing drift recorded, not touched**: HEAD fails `tsc` with 6 TS2322 errors in `overview/__tests__/EmptyStateOnboarding.outcomes.test.tsx` (parallel lane's committed wave `63e95b24`; noted on **FND-0359**). This session's only FE edit (`route-map.ts`) is clean.
+
+### 9.3 E3 shipped (W4 system work joins the queue)
+
+- New doors `ghost_concierge` and `requeue_poison` (origin=system, intent=exception, authority=system) in `DOOR_CONTRACTS`.
+- **Ghost concierge → agency queue**: `run_ghost_concierge_for_trip` records a high-urgency system item whenever draft interventions exist (`ghost_concierge_monitor.py`); healthy evaluations record nothing (noise guard, test-proven).
+- **Poison → `SYSTEM_WORK_SCOPE`**: `_emit_poisoned_side_effects` records under `__system__` — deliberately NOT on any tenant queue, preserving the agency-less ownership boundary the requeue store documents (`list_poisoned`). Error text never enters the record (context stays in audit + DLQ).
+- Tests: `tests/test_work_intake.py` now **17/17** (three new: system-door contracts, ghost-concierge closed loop + healthy-trip S3 guard, poison system-scope + tenant-isolation S3). Regression: requeue/poison/recovery/ghost suites **79 passed**; ruff clean.
+- Still unwired W4 sources (next tranche): recovery-agent escalations, supervisor agent events, IROPS watch detections, stale-run sweeps — the store and scope pattern are established.
+

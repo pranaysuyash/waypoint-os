@@ -448,9 +448,27 @@ function RecentTrips({
       );
     }
 
-    // First-run: no trips and no leads → full onboarding checklist
+    // First-run: no trips and no leads → full onboarding checklist.
+    // Activation facts are derived from the same live counts that gated this
+    // branch (empty workspace), so the checklist renders outcomes from current
+    // agency facts — never from localStorage click history.
     if (!hasLeadsWaiting && planningTripsTotal === 0 && !leadInboxLoading) {
-      return <EmptyStateOnboarding />;
+      return (
+        <EmptyStateOnboarding
+          activation={{
+            inquiryCount: leadInboxTotal,
+            needsDetailsCount: trips.filter((t) => (t.stage ?? '') === 'needs_information').length,
+            readyBriefCount: trips.filter(
+              (t) => t.stage === 'ready_to_quote' || t.stage === 'ready_to_book'
+            ).length,
+            reviewedBriefCount: trips.filter((t) => t.stage === 'ready_to_book').length,
+            planningStartedCount: planningTripsTotal,
+            firstValueAchieved: planningTripsTotal > 0,
+            nextAction: 'add_inquiry',
+            nextTripId: null,
+          }}
+        />
+      );
     }
 
     // Leads exist but no trips yet → simpler prompt to review the lead
