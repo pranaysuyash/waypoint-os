@@ -293,3 +293,94 @@ def test_triage_consumes_classifier_e2(session_client, boundary_principal_factor
         "/api/v1/work-items", headers={"X-Agency-ID": "agency_triage_e2"}
     ).json()
     assert queue["total"] == 0
+
+
+# ---------------------------------------------------------------------------
+# E3 — W4 system-generated work joins the queue
+# ---------------------------------------------------------------------------
+
+def test_system_doors_registered():
+    """Ghost-concierge and poison doors classify as system/exception/system."""
+    for door in ("ghost_concierge", "requeue_poison"):
+        item = work_intake.classify(door, agency_id=AGENCY, text=None)
+        assert item["origin"] == "system", door
+        assert item["intent"] == "exception", door
+        assert item["authority"] == "system", door
+
+
+def test_ghost_concierge_drafts_land_on_agency_queue():
+    """Closed loop: a disruption evaluation with draft interventions records
+    a high-urgency system item on THAT agency's queue."""
+    from spine_api.services import ghost_concierge_monitor as mon
+
+    agency = f"agency_gc_{uuid.uuid4().hex[:8]}"
+    trip = {
+        "id": f"trip_gc_{uuid.uuid4().hex[:8]}",
+        "flight_status_updates": [
+            {
+                "flight_number": "XY123",
+                "origin_iata": "BLR",
+                "destination_iata": "DXB",
+                "status": "cancelled",
+                "delay_minutes": 0,
+            }
+        ],
+    }
+    wf = mon.run_ghost_concierge_for_trip(trip, agency)
+    assert wf is not None
+    assert wf["drafted_interventions"], "fixture must produce drafts for the wiring to fire"
+
+    queue = work_intake.ranked_queue(agency)
+    assert queue["total"] == 1
+    item = queue["items"][0]
+    assert item["door"] == "ghost_concierge"
+    assert item["origin"] == "system"
+    assert item["urgency"] == "high"
+    assert item["trip_id"] == trip["id"]
+    assert queue["counts"]["by_origin"]["system"] == 1
+
+    # No interventions -> no queue spam (S3: healthy trip records nothing).
+    healthy_agency = f"agency_gc_ok_{uuid.uuid4().hex[:8]}"
+    ok_trip = {
+        "id": f"trip_gcok_{uuid.uuid4().hex[:8]}",
+        "flight_status_updates": [
+            {
+                "flight_number": "OK1",
+                "origin_iata": "BLR",
+                "destination_iata": "DXB",
+                "status": "scheduled",
+                "delay_minutes": 0,
+            }
+        ],
+    }
+    mon.run_ghost_concierge_for_trip(ok_trip, healthy_agency)
+    assert work_intake.ranked_queue(healthy_agency)["total"] == 0
+
+
+def test_poison_transition_records_system_scope_not_tenant_queue():
+    """Closed loop: poison side-effects record under SYSTEM_WORK_SCOPE and are
+    NOT visible on any tenant queue (the agency-less ownership boundary in
+    agent_requeue_jobs.list_poisoned is preserved)."""
+    from spine_api.services.agent_requeue_jobs import _emit_poisoned_side_effects
+    from spine_api.services.work_intake import SYSTEM_WORK_SCOPE
+
+    trip_id = f"trip_poison_{uuid.uuid4().hex[:8]}"
+    _emit_poisoned_side_effects(
+        job_id=f"job_{uuid.uuid4().hex[:8]}",
+        error="boom: synthetic test failure",
+        info={"trip_id": trip_id, "attempts": 3, "payload": "{}"},
+    )
+
+    system_queue = work_intake.ranked_queue(SYSTEM_WORK_SCOPE)
+    assert system_queue["total"] >= 1
+    item = next(i for i in system_queue["items"] if i["door"] == "requeue_poison")
+    assert item["origin"] == "system"
+    assert item["urgency"] == "high"
+    assert item["trip_id"] == trip_id
+    # the raw error string must not leak into the classified record
+    assert "boom" not in work_intake._agency_path(SYSTEM_WORK_SCOPE).read_text(encoding="utf-8")
+
+    # S3 boundary: an unrelated tenant queue never sees the poison item.
+    tenant = work_intake.ranked_queue(f"agency_never_{uuid.uuid4().hex[:8]}")
+    assert tenant["total"] == 0
+

@@ -250,4 +250,23 @@ def run_ghost_concierge_for_trip(
     except Exception:
         # Observability/persistence side-effect must never crash the caller.
         pass
+
+    # E3 (INCOMING_WORK_CLASSIFICATION_MAP §5): operator-gated draft
+    # interventions are system-generated WORK — record one classified item on
+    # the agency's queue so the operator sees it alongside inbound demand.
+    # Disruptions rank high by urgency default; text stays out (no PII).
+    if report.interventions:
+        try:
+            from spine_api.services.work_intake import classify_and_record
+
+            classify_and_record(
+                "ghost_concierge",
+                agency_id=agency_id,
+                text=None,
+                trip_id=str(trip.get("id") or "") or None,
+                actor="ghost_concierge_monitor",
+                urgency_override="high",
+            )
+        except Exception:
+            pass
     return wf

@@ -78,7 +78,17 @@ DOOR_CONTRACTS: Dict[str, Dict[str, str]] = {
     "whatsapp_channel": {"origin": "demand", "intent": "new_demand", "authority": "explicit_user"},
     "vendor_quote_inbox": {"origin": "supply", "intent": "info", "authority": "explicit_user"},
     "disruption_feed": {"origin": "world", "intent": "exception", "authority": "system"},
+    # W4 system-generated operator work (map §5 E3).
+    "ghost_concierge": {"origin": "system", "intent": "exception", "authority": "system"},
+    "requeue_poison": {"origin": "system", "intent": "exception", "authority": "system"},
 }
+
+# The requeue queue is deliberately agency-less (agent_requeue_jobs.py::
+# list_poisoned: "a tenant-facing route must not be inferred until an
+# ownership contract exists"). Poison work items record under this scope —
+# observable in the store, but NOT on the tenant queue endpoint; a platform-
+# scope reader can expose them once that ownership contract exists.
+SYSTEM_WORK_SCOPE = "__system__"
 
 DUPLICATE_WINDOW_HOURS = 24
 

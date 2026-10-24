@@ -774,6 +774,26 @@ def _emit_poisoned_side_effects(*, job_id: str, error: str, info: dict[str, Any]
     except Exception:
         logger.exception("Failed to mirror poisoned job to DLQInspector: %s", job_id)
 
+    # E3 (INCOMING_WORK_CLASSIFICATION_MAP §5): a poison transition is
+    # system-generated operator work. The requeue queue is deliberately
+    # agency-less (see list_poisoned), so this records under the SYSTEM scope —
+    # observable in the work-item store, NOT on any tenant queue until an
+    # ownership contract exists. No error text is passed: the classified record
+    # carries metadata only (context stays in audit + DLQ, which already exist).
+    try:
+        from spine_api.services.work_intake import SYSTEM_WORK_SCOPE, classify_and_record
+
+        classify_and_record(
+            "requeue_poison",
+            agency_id=SYSTEM_WORK_SCOPE,
+            text=None,
+            trip_id=trip_id or None,
+            actor="agent_requeue_jobs",
+            urgency_override="high",
+        )
+    except Exception:
+        logger.debug("work-item classification skipped for poisoned job %s", job_id)
+
 
 def _emit_replayed_side_effects(job_id: str, info: dict[str, Any]) -> None:
     from src.agents.dlq_inspector import DLQInspector
