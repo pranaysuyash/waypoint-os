@@ -241,6 +241,25 @@ def post_public_checker_route_request(
     record = AgencyMarketplaceStore.capture_route_lead(
         trip_id=trip_id, contact=contact, agency_id=agency_id, needs=needs
     )
+    # Work-intake classification (map §11 checker_route_request door): the
+    # consent moment is the highest-intent anonymous action (WOBS P2). A
+    # ROUTED lead (matched agency) is real operator work on that agency's
+    # queue; a CAPTURED one (no match) lands on the checker agency queue.
+    # Contact hashes into identity_key — C2/C3 ride; never stored raw.
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "checker_route_request",
+            agency_id=agency_id
+            or os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID),
+            text=None,
+            contact=contact,
+            trip_id=trip_id,
+            channel="public_checker_route_request",
+        )
+    except Exception:
+        pass
     _ = (request, response)
     return {"ok": True, "lead_id": record["lead_id"], "status": record["status"]}
 

@@ -145,6 +145,31 @@ async def _scan_trip(trip_id: str, trip: Dict[str, Any]) -> Optional[Dict[str, A
                     "reality_tier": "deterministic_preview",
                 },
             )
+
+            # Work-intake classification (map §13, W4 writer): a detected
+            # disruption creates an operator obligation to review the
+            # auto-healing plan, regardless of the plan's reality tier (the
+            # deterministic_preview badge lives on the plan itself). Recorded
+            # through the disruption_feed door — the same door a live
+            # flight-status feed will ride once it replaces the simulated
+            # signal. Best-effort: classification must never break the loop.
+            try:
+                from spine_api.services.work_intake import classify_and_record
+
+                agency_id = str(trip.get("agency_id") or current.get("agency_id") or "")
+                if agency_id:
+                    classify_and_record(
+                        "disruption_feed",
+                        agency_id=agency_id,
+                        text=None,
+                        trip_id=trip_id,
+                        actor="irops_watch",
+                        urgency_override="high",
+                    )
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "IROPS watch: work-item classification failed for trip %s", trip_id
+                )
             logger.info(
                 "IROPS watch: healing plan %s persisted for trip %s",
                 plan.incident_id,

@@ -831,6 +831,29 @@ class RunLedger:
                             stage=meta.get("stage"),
                         )
                         timed_out.append(run_id)
+                        # Work-intake classification (map §13, W4 writer): a
+                        # swept run died without an outcome — the note that
+                        # triggered it still obligates someone. Runs carry
+                        # their own agency_id in meta, so the item lands on
+                        # that agency's queue; agency-less runs fall to the
+                        # system scope. Best-effort: never break the sweep.
+                        try:
+                            from spine_api.services.work_intake import (
+                                SYSTEM_WORK_SCOPE,
+                                classify_and_record,
+                            )
+
+                            classify_and_record(
+                                "stale_run_timeout",
+                                agency_id=str(meta.get("agency_id") or "") or SYSTEM_WORK_SCOPE,
+                                text=None,
+                                trip_id=meta.get("trip_id") or None,
+                                run_id=run_id,
+                                actor="run_ledger_sweep",
+                                urgency_override="high",
+                            )
+                        except Exception:  # noqa: BLE001
+                            pass
                     except (ValueError, FileNotFoundError):
                         pass
             except (OSError, ValueError):

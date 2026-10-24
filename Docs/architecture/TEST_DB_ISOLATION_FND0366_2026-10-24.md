@@ -221,7 +221,27 @@ hazard — forbidden).
   tables** (`docs record 2026-10-24`; backup
   `Docs/backups/waypoint_os_pre_bc_component_identity_2026-10-24.sql.gz`).
 
-## 9. Residuals and honest limits
+## 9. File-store lane (FND-0370, fixed same day)
+
+The SQL lane's isolation immediately surfaced its file-lane sibling: the file
+backend's scratch root (`data/test_trips/`) was shared across every run and
+session — 17,953 accumulated files, including stale leads from the
+pre-ADR-008 era whose packets still carry memory facts. That contamination
+was the direct cause of the customer-memory lifecycle failure (FND-0334 lead
+resolution matched the test's fixed identity to a September stale lead).
+
+Fixed with the same pattern: each pytest session now gets a gitignored
+per-session scratch namespace (`data/test_runs/<session-uuid>/`),
+`reset_global_singletons` points `TRIPS_DIR` at it, and `pytest_unconfigure`
+drops it. Verified: lifecycle test 2× green at ~6s (was 5+ min of
+contended flailing against 18k stale files), scratch dropped after each
+session, file-lane regression batch 28/28. The legacy `data/test_trips/`
+(gitignored R-03-era scratch) is no longer read or written; its deletion is
+an owner-call. The audit file chain and overrides/public_checker scratch
+dirs still share the old pattern — noted for future isolation if
+contamination ever surfaces there.
+
+## 10. Residuals and honest limits
 
 - The engine-construction guard is a test-process monkeypatch. A *non-pytest*
   process run by an operator with the canonical URL can still touch canonical

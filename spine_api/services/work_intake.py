@@ -60,8 +60,10 @@ WORK_AUTHORITIES = ("explicit_user", "operator", "profile", "system")
 URGENCY_CLASSES = ("high", "normal", "low")
 
 # door -> (origin, default intent, default authority). Reserved doors
-# (whatsapp_channel, vendor_quote_inbox, disruption_feed) are registered so
-# future doors declare their class at the seam instead of inventing one.
+# (whatsapp_channel, vendor_quote_inbox) are registered so future doors
+# declare their class at the seam instead of inventing one. disruption_feed
+# is wired by the in-tree IROPS watch loop (deterministic-preview signal);
+# the live flight-status upgrade rides the same door unchanged.
 DOOR_CONTRACTS: Dict[str, Dict[str, str]] = {
     "run": {"origin": "demand", "intent": "new_demand", "authority": "operator"},
     "inbound_parse": {"origin": "demand", "intent": "new_demand", "authority": "explicit_user"},
@@ -74,13 +76,24 @@ DOOR_CONTRACTS: Dict[str, Dict[str, str]] = {
     "operator_action": {"origin": "operator", "intent": "meta", "authority": "operator"},
     "knowledge_admin": {"origin": "operator", "intent": "meta", "authority": "operator"},
     "triage_preview": {"origin": "demand", "intent": "info", "authority": "explicit_user"},
-    # Reserved seams — no live door wires these yet (map §5 B1/B2/B3).
+    # Reserved seams — no live door wires these yet (map §5 B1/B2).
     "whatsapp_channel": {"origin": "demand", "intent": "new_demand", "authority": "explicit_user"},
     "vendor_quote_inbox": {"origin": "supply", "intent": "info", "authority": "explicit_user"},
+    # Wired by the IROPS watch loop (map §13): world-side disruption →
+    # operator obligation to review the auto-healing plan.
     "disruption_feed": {"origin": "world", "intent": "exception", "authority": "system"},
     # W4 system-generated operator work (map §5 E3).
     "ghost_concierge": {"origin": "system", "intent": "exception", "authority": "system"},
     "requeue_poison": {"origin": "system", "intent": "exception", "authority": "system"},
+    # Third tranche (map §11): traveler words arriving via non-canonical doors.
+    "social_inbound": {"origin": "demand", "intent": "new_demand", "authority": "explicit_user"},
+    "checker_route_request": {"origin": "demand", "intent": "new_demand", "authority": "explicit_user"},
+    "multimodal": {"origin": "demand", "intent": "info", "authority": "explicit_user"},
+    # W4 writers (map §11): recovery-agent escalation → agency queue.
+    "recovery_escalation": {"origin": "system", "intent": "exception", "authority": "system"},
+    # W4 writers (map §13): supervisor terminal poison + stale-run sweep.
+    "supervisor_escalation": {"origin": "system", "intent": "exception", "authority": "system"},
+    "stale_run_timeout": {"origin": "system", "intent": "exception", "authority": "system"},
 }
 
 # The requeue queue is deliberately agency-less (agent_requeue_jobs.py::

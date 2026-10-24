@@ -165,6 +165,21 @@ def index_document(
             tags=req.tags,
             license_class=req.license_class,
         )
+        # Work-intake classification (map §2.3 knowledge_admin door): knowledge
+        # corpus ingestion is operator-originated meta work. Best-effort; the
+        # document text stays out of the classified record.
+        try:
+            from spine_api.services.work_intake import classify_and_record
+
+            classify_and_record(
+                "knowledge_admin",
+                agency_id=agency.id,
+                text=None,
+                channel="rag_index",
+                actor="operator",
+            )
+        except Exception:
+            pass
         # Cost visibility (FND-0361 sweep): when the semantic lane served, the
         # last batch forensics record carries the char-derived INR estimate.
         cost_estimate = getattr(rag.embedding_provider, "last_call_record", {}).get(

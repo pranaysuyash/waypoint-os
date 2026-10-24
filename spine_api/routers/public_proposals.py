@@ -1175,4 +1175,24 @@ def accept_proposal(token: str, req: AcceptProposalRequest) -> PublicProposalVie
         },
     )
     _PROPOSAL_VIEW_CACHE.set(token, proposal)
+
+    # Work-intake classification (map §2.1 proposal_acceptance door): a signed
+    # acceptance is a demand-side decision — the highest-authority traveler
+    # work item (PA-02 authorization artifact). Best-effort; no signer PII
+    # crosses into the classified record (identity stays hashed in the audit
+    # event above).
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "proposal_acceptance",
+            agency_id=str(agency_id or "") or "public-unattributed",
+            text=None,
+            trip_id=proposal.trip_id,
+            channel="proposal_link",
+            actor="traveler_proposal_link",
+            money_touch=True,
+        )
+    except Exception:
+        pass
     return proposal

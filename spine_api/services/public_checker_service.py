@@ -255,6 +255,24 @@ def run_public_checker_submission(
     session_id = str(source_payload.get("session_id") or request_dict.get("session_id") or f"sess_{uuid.uuid4()}")
     inquiry_id = str(source_payload.get("inquiry_id") or request_dict.get("inquiry_id") or run_id)
 
+    # Work-intake classification (map §2.1 public_checker door): an anonymous
+    # checker run is demand-side work recorded under the checker agency so the
+    # funnel is visible on its queue. The raw itinerary text never crosses
+    # into the classified record; consented contact (route-request) is the
+    # only identity-bearing surface and is NOT classified here.
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "public_checker",
+            agency_id=public_checker_agency_id,
+            text=None,
+            run_id=run_id,
+            channel="public_checker",
+        )
+    except Exception:
+        pass
+
     input_mode = "freeform_text"
     if source_payload.get("kind") == "file_upload":
         input_mode = "upload"

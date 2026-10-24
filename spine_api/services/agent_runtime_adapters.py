@@ -85,6 +85,23 @@ class TripStoreAdapter:
             )
             raise
 
+        # Work-intake classification (map §11, W4 writer): a recovery-agent
+        # escalation is system-generated operator work — record it on the
+        # agency queue next to inbound demand (map §5 E3). Best-effort.
+        try:
+            from spine_api.services.work_intake import classify_and_record
+
+            classify_and_record(
+                "recovery_escalation",
+                agency_id=str(agency_id),
+                text=None,
+                trip_id=trip_id,
+                actor="recovery_agent",
+                urgency_override="high",
+            )
+        except Exception:
+            pass
+
     def update_trip(self, trip_id: str, updates: dict) -> Optional[dict]:
         from spine_api.persistence import TripStore
         store = self._trip_store or TripStore

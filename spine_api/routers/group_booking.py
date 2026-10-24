@@ -263,6 +263,23 @@ def notify_passenger_pay_share(token: str, body: PassengerPayRequest):
         },
     )
 
+    # Work-intake classification (map §2.1 group_share door): a co-traveler's
+    # share decision is demand-side work (money tracked, never moved).
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "group_share",
+            agency_id=agency_id,
+            text=None,
+            trip_id=matched_trip["id"],
+            channel="group_share_link",
+            actor="group_passenger",
+            money_touch=True,
+        )
+    except Exception:
+        pass
+
     return {
         "ok": True,
         "message": "Payment notification and preferences received by agency.",

@@ -106,7 +106,9 @@ def test_visa_workflow_initialization_and_milestones():
         traveler_name="Alexander Wright",
         destination_country="SCHENGEN",
         departure_date_str=departure,
-        passport_expiry_str="2027-08-20",
+        # Both sides relative: a fixed expiry rotted once already (2027-08-20
+        # fell under 180 days past the +120d departure as the calendar moved).
+        passport_expiry_str=(date.today() + timedelta(days=520)).isoformat(),
     )
     assert state.current_stage == VisaStage.CHECKLIST_PENDING
     assert len(state.checklist) == 6

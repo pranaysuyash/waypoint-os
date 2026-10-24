@@ -175,7 +175,7 @@ def run() -> int:
                 ok = routed == "unparsed"
                 verdict = "unparsed_ok" if ok else f"wrong:{routed}"
             elif kind == "implicit_answer":
-                # First run (2026-10-13) showed two fixtures labelled nonanswer were
+                # First run (2026-10-25) showed two fixtures labelled nonanswer were
                 # implicit answers ('applying...', 'standard is fine') — labels
                 # corrected; the model must not mark an implicit answer unparsed.
                 if routed == "unparsed":

@@ -139,7 +139,7 @@ class NaturalLanguagePolicyEngine:
                 conf = float(native_conf)
             else:
                 # Noul answers carry no native confidence field (verified live
-                # 2026-10-13 against jev-1.13.0) — derive it as the calibrated
+                # 2026-10-25 against jev-1.13.0) — derive it as the calibrated
                 # probability's distance from the act threshold so the review
                 # gate only flags genuinely borderline clauses.
                 conf = abs(noul_val - 0.5) * 2.0

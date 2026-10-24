@@ -21,6 +21,7 @@ import { useOverviewSummary } from './useOverviewSummary';
 import { groupTripsByOverviewSignature } from '@/lib/trip-grouping';
 import { EmptyStateOnboarding } from '@/components/overview/EmptyStateOnboarding';
 import { ActionRequiredList } from '@/components/overview/ActionRequiredList';
+import { WorkQueuePanel } from '@/components/overview/WorkQueuePanel';
 import SystemCheckPanel from '@/components/system/SystemCheckPanel';
 
 // ── Severity grammar: color encodes state, not decoration ──────────────────
@@ -696,6 +697,10 @@ function OverviewPageContent() {
           </div>
         </section>
       ) : null}
+
+      {/* Classified incoming-work queue (INCOMING_WORK_CLASSIFICATION_MAP
+          2026-10-24 §5 C1): urgency-ranked items from every wired door. */}
+      <WorkQueuePanel />
 
       {/* Stat cards: metric-first instruments */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>

@@ -384,3 +384,131 @@ def test_poison_transition_records_system_scope_not_tenant_queue():
     tenant = work_intake.ranked_queue(f"agency_never_{uuid.uuid4().hex[:8]}")
     assert tenant["total"] == 0
 
+
+# ---------------------------------------------------------------------------
+# Second door tranche (map §9.1): collection_submit, proposal_acceptance,
+# group_share, public_checker, operator_action, knowledge_admin
+# ---------------------------------------------------------------------------
+
+def test_second_tranche_door_contracts():
+    """Each newly wired door classifies on the axes the map specifies."""
+    expectations = {
+        "collection_submit": ("demand", "info", "explicit_user"),
+        "proposal_acceptance": ("demand", "decision", "explicit_user"),
+        "group_share": ("demand", "decision", "explicit_user"),
+        "public_checker": ("demand", "new_demand", "explicit_user"),
+        "operator_action": ("operator", "meta", "operator"),
+        "knowledge_admin": ("operator", "meta", "operator"),
+    }
+    for door, (origin, intent, authority) in expectations.items():
+        item = work_intake.classify(door, agency_id=AGENCY, text=None)
+        assert item["origin"] == origin, door
+        assert item["intent"] == intent, door
+        assert item["authority"] == authority, door
+
+
+def test_operator_action_patch_closed_loop(session_client, boundary_principal_factory):
+    """Closed loop: an operator edit that triggers auto-reassessment records an
+    operator-classified work item on the agency queue."""
+    suffix = uuid.uuid4().hex[:8]
+    agency = f"agency_opact_{suffix}"
+    boundary_principal_factory(f"usr_opact_{suffix}", agency)
+
+    created = session_client.post(
+        "/api/v1/inbound/parse",
+        json={
+            "channel": "manual_paste",
+            "raw_text": "Couple to Kyoto in late March, budget 4000 USD total.",
+            "customer_name": f"Op Act {suffix}",
+            "strict_leakage": False,
+        },
+        headers={"X-Agency-ID": agency},
+    )
+    assert created.status_code == 200
+    trip_id = created.json()["trip_id"]
+
+    patched = session_client.patch(
+        f"/trips/{trip_id}",
+        json={"destination": "Osaka"},
+        headers={"X-Agency-ID": agency, "X-User-ID": f"usr_opact_{suffix}"},
+    )
+    assert patched.status_code == 200
+
+    queue = work_intake.ranked_queue(agency)
+    doors = {i["door"] for i in queue["items"]}
+    assert "inbound_parse" in doors  # first tranche (setup door)
+    assert "operator_action" in doors
+    op_item = next(i for i in queue["items"] if i["door"] == "operator_action")
+    assert op_item["origin"] == "operator"
+    assert op_item["authority"] == "operator"
+    assert op_item["trip_id"] == trip_id
+    assert op_item["run_id"]  # linked to the queued reassessment run
+
+
+# ---------------------------------------------------------------------------
+# Third tranche (map §11): social_inbound, checker_route_request, multimodal,
+# recovery_escalation
+# ---------------------------------------------------------------------------
+
+def test_third_tranche_door_contracts():
+    expectations = {
+        "social_inbound": ("demand", "new_demand", "explicit_user"),
+        "checker_route_request": ("demand", "new_demand", "explicit_user"),
+        "multimodal": ("demand", "info", "explicit_user"),
+        "recovery_escalation": ("system", "exception", "system"),
+    }
+    for door, (origin, intent, authority) in expectations.items():
+        item = work_intake.classify(door, agency_id=AGENCY, text=None)
+        assert item["origin"] == origin, door
+        assert item["intent"] == intent, door
+        assert item["authority"] == authority, door
+
+
+def test_multimodal_voice_note_door_closed_loop(session_client):
+    """Closed loop: a voice-note transcript records a demand/info item; the
+    transcript text itself never lands in the store."""
+    suffix = uuid.uuid4().hex[:8]
+    agency = f"agency_mm_{suffix}"
+    transcript = "Hi, this is Ravi, we need an urgent visa check for tomorrow's flight to Colombo"
+    res = session_client.post(
+        "/api/v1/multimodal/voice-note",
+        json={"transcript_text": transcript, "speaker_name": f"Ravi {suffix}"},
+        headers={"X-Agency-ID": agency},
+    )
+    assert res.status_code == 200
+
+    queue = work_intake.ranked_queue(agency)
+    assert queue["total"] == 1
+    item = queue["items"][0]
+    assert item["door"] == "multimodal"
+    assert item["channel"] == "voice_note"
+    assert item["urgency"] == "high"  # "urgent ... tomorrow" in the transcript
+    # the raw transcript (and speaker name) never persists
+    stored = work_intake._agency_path(agency).read_text(encoding="utf-8")
+    assert "Colombo" not in stored and "Ravi" not in stored
+
+
+def test_social_inbound_door_closed_loop(session_client):
+    """Closed loop: a social DM records a demand/new_demand item."""
+    suffix = uuid.uuid4().hex[:8]
+    agency = f"agency_soc_{suffix}"
+    res = session_client.post(
+        "/api/v1/inbox/parse_social",
+        json={
+            "raw_text": "Hey! Planning a Bali trip for 2 in June, no rush, what would it cost?",
+            "creator_id": f"creator_{suffix}",
+            "source": "instagram_dm",
+        },
+        headers={"X-Agency-ID": agency},
+    )
+    assert res.status_code == 200
+
+    queue = work_intake.ranked_queue(agency)
+    assert queue["total"] == 1
+    item = queue["items"][0]
+    assert item["door"] == "social_inbound"
+    assert item["origin"] == "demand"
+    assert item["intent"] == "new_demand"
+    assert item["urgency"] == "low"  # "no rush" in the DM
+    assert item["channel"] == "instagram_dm"
+

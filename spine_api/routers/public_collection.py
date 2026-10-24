@@ -176,6 +176,23 @@ async def submit_public_booking_data(request: Request, response: Response, agenc
         "has_passport_data": any(t.passport_number for t in booking_data.travelers),
     })
 
+    # Work-intake classification (map §2.1 collection_submit door): traveler-
+    # supplied booking data is demand-side info work for the operator queue.
+    # Best-effort; no payload content crosses into the classified record.
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "collection_submit",
+            agency_id=agency_id,
+            text=None,
+            trip_id=record.trip_id,
+            channel="booking_collection",
+            actor="traveler_collection_link",
+        )
+    except Exception:
+        pass
+
     _ = (request, response)
 
     return PublicSubmissionResponse(

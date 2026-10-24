@@ -38,10 +38,13 @@ class VisaCheckResult(BaseModel):
     visa_type_required: str  # NONE, ESTA, ETA, SCHENGEN, E_VISA, CONSULAR_VISA
     action_required: str
     warnings: List[str] = Field(default_factory=list)
-    # True when (passport_country, destination_country) hit the sample
-    # registry; False means the conservative fallback was applied and the
-    # visa determination is a heuristic, not data (VA-03).
-    registry_match: bool = True
+    # FND-0339 / roadmap invariant 3: this field is REQUIRED with no default —
+    # a writer who cannot say whether the corridor came from the registry or
+    # from the conservative default cannot construct the result. True when
+    # (passport_country, destination_country) hit the registry; False means
+    # the determination is a heuristic, not data (VA-03), and the visa type
+    # must be UNKNOWN_VERIFY with Timatic verification language.
+    registry_match: bool
 
 
 # Visa rules registry by (passport_country, destination_country)

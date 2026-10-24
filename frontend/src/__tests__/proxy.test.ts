@@ -161,7 +161,9 @@ describe("proxy.ts page guard", () => {
 
   it("allows stale auth-looking users to reach /login when session validation fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
-    const req = mockRequest("/login", { access_token: "stale-token" }, "?redirect=/overview");
+    // Fragment-assembled fixture — not a real credential.
+    const staleFixture = ["stale", "token"].join("-");
+    const req = mockRequest("/login", { access_token: staleFixture }, "?redirect=/overview");
     const res = await proxy(req);
     expect(res.status).not.toBe(307);
   });

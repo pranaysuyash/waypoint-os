@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "created": "2026-10-13",
+    "created": "2026-10-25",
     "purpose": "E2 Jev ask-loop probe fixtures (Docs/exploration/E2_JEV_ASK_LOOP_PROBE_2026-09-29.md)",
     "probe1_role": "Jev GRADES candidate question renderings (noul intent-preservation + no-new-facts, score naturalness). Jev cannot generate text (jaggedness #9) — the E2 doc's original 'Jev renders' framing was corrected to grader/selector; production renderings would come from the generative ladder, Jev grades/ranks them behind a flag.",
     "probe2_role": "Jev ROUTES free-text traveler replies to canonical packet fields (Choice over FIELD_REQUIRED_FOR vocabulary + explicit 'unparsed' marker). Proposed values stay proposal-only; deterministic extractor stack re-validates.",

@@ -172,7 +172,16 @@ def test_issue_access_roundtrip_and_response_shape_unchanged(monkeypatch):
     assert data["trip_id"] == trip_id
     assert data["destination"] == "Kyoto"
     assert data["title"] == "Kyoto Garden Villa"
-    assert data["base_price_usd"] == 7500
+    # T4 real-quote pricing: base_price_usd is the MarginPolicy retail price
+    # derived from the stubbed 7500 supplier cost (fee_matrix markup + planning
+    # fee) — travelers must never be shown raw cost, so assert the contract
+    # (priced, provenance-carrying, strictly above cost) rather than a magic
+    # number that rots whenever pricing policy legitimately changes.
+    assert data["base_price_usd"] > 7500
+    assert data["pricing_status"] == "priced"
+    # Stubbed option carries a preview cost only (no persisted modeled cost),
+    # so the honest provenance for this path is the preview basis.
+    assert data["pricing_basis"] == "computed_preview"
     assert data["reality_tier"] == "persisted_observed"
 
 

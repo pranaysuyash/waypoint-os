@@ -445,6 +445,8 @@ class AgentSupervisor:
                     self.coordinator.fail(item, status=status, reason=result.reason)
                     result.status = status
                     event_type = AgentEventType.AGENT_ESCALATED if terminal else AgentEventType.AGENT_RETRY
+                    if terminal:
+                        self._record_escalation_work_item(definition.name, item)
 
                 self._emit_agent_event(
                     definition.name,
@@ -503,6 +505,40 @@ class AgentSupervisor:
             self.audit.log(event_type="agent_event", trip_id=trip_id or "", payload=event.to_dict())
         except Exception:
             logger.exception("AgentSupervisor: audit log failed for %s", agent_name)
+
+    def _record_escalation_work_item(self, agent_name: str, item: Any) -> None:
+        """Work-intake classification (map §13, W4 writer): a terminally
+        poisoned supervisor work item is system-generated operator work.
+        Unlike the agency-less requeue queue, a supervisor item carries a
+        trip_id, so the obligation lands on the trip's agency queue; if the
+        trip or its agency cannot be resolved, it falls back to the system
+        scope (observable, never dropped). Best-effort: a classification
+        failure must never break the supervisor loop."""
+        try:
+            from spine_api.persistence import TripStore
+            from spine_api.services.work_intake import (
+                SYSTEM_WORK_SCOPE,
+                classify_and_record,
+            )
+
+            agency_id = SYSTEM_WORK_SCOPE
+            trip_id = getattr(item, "trip_id", None)
+            if trip_id:
+                trip = TripStore.get_trip(trip_id) or {}
+                agency_id = str(trip.get("agency_id") or "") or SYSTEM_WORK_SCOPE
+
+            classify_and_record(
+                "supervisor_escalation",
+                agency_id=agency_id,
+                text=None,
+                trip_id=trip_id or None,
+                actor=f"agent_supervisor:{agent_name}",
+                urgency_override="high",
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "AgentSupervisor: work-item classification failed for %s", agent_name
+            )
 
 
 def parse_dt(value: Any) -> Optional[datetime]:

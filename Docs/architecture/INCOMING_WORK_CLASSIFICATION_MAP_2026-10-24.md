@@ -232,3 +232,78 @@ Two read-only Explore agents (the ones that failed at session start; relaunched)
 - Tests: `tests/test_work_intake.py` now **17/17** (three new: system-door contracts, ghost-concierge closed loop + healthy-trip S3 guard, poison system-scope + tenant-isolation S3). Regression: requeue/poison/recovery/ghost suites **79 passed**; ruff clean.
 - Still unwired W4 sources (next tranche): recovery-agent escalations, supervisor agent events, IROPS watch detections, stale-run sweeps — the store and scope pattern are established.
 
+---
+
+## 10. Second door tranche + HEAD un-red (2026-10-24, third pass)
+
+### 10.1 All six §9.1 unwired doors are now WIRED
+
+`collection_submit` (`public_collection.py` submit), `proposal_acceptance` (`public_proposals.py` accept — `money_touch=True`, the PA-02 authorization artifact), `group_share` (`group_booking.py` pay-share, `money_touch=True`), `public_checker` (`public_checker_service.run_public_checker_submission` — funnel visible on the checker agency's queue), `operator_action` (PATCH `/trips` auto-reassess trigger in `server.py`), `knowledge_admin` (`rag.py` documents/index). All best-effort try/except; no payload/PII crosses into records. Remaining un-registered doors: social inbound, checker route-request, multimodal, IVR webhook (next tranche).
+
+**Door coverage now: 10 wired + triage preview + 3 reserved seams.** Tests: `tests/test_work_intake.py` **19/19** (new: six-door contract matrix; PATCH→operator_action closed loop with run linkage). Regression: collection/token-CAS/group/checker/proposal/rag/parity/route suites **167 passed**; ruff clean.
+
+### 10.2 HEAD tsc failures fixed in-pass (FND-0359 noted)
+
+Two committed drift instances, both fixed rather than deferred:
+1. `EmptyStateOnboarding` — the `63e95b24` wave landed the outcomes-test spec without its component. Implemented the facts-driven outcomes mode to the committed test contract (activation facts, "N of 3 outcomes complete", single next-action CTA, recovery deep-link, **zero localStorage** — current agency facts outrank browser history); legacy no-props render preserved (old tests green); overview call site wired to derive activation from live counts.
+2. `ConfirmationPanel` test fixture — `component_key: "primary"` added, matching the backend contract (always emitted, default `"primary"`).
+
+**FE `tsc` exit 0**; 24/24 tests across the three affected files. Evidence noted on **FND-0359**.
+
+---
+
+## 11. Third tranche — every real door now classified (2026-10-24, fourth pass)
+
+### 11.1 Wired
+
+- **`social_inbound`** — `POST /api/v1/inbox/parse_social` (`social_inbound.py`): a social DM / fast-intake text is the traveler's own words (envelope `actor="traveler"`); the raw text feeds urgency heuristics only, the scrubbed pipeline path is unchanged.
+- **`checker_route_request`** — `POST /api/public-checker/route-request` (`public_checker.py`): the WOBS P2 consent moment. ROUTED leads (matched agency) land on that agency's queue as real operator work; CAPTURED ones land on the checker agency queue. Contact hashes into `identity_key` (C2/C3 ride).
+- **`multimodal`** (both legs) — `voice-note` (transcript feeds urgency only, never stored — test-proven) and `image-ocr` (no text passed at all: OCR output can carry document PII, so the urgency heuristic is deliberately skipped).
+- **`recovery_escalation`** (W4 writer) — the PA-38 escalation mirror in `agent_runtime_adapters.py` records a high-urgency system item on the trip's agency queue right after the TripRoutingState mirror succeeds.
+
+### 11.2 Deliberately NOT wired (recorded reasoning, not omission)
+
+- **IVR status webhook** (`ivr_gateway.py:254`): logs-and-acknowledges only — no obligation attaches to the event, so per the map's own §1 definition (work = an event that obligates act) recording it would be noise, not classification. Revisit when the advisor push channel exists ("missing-for-upgrade" note in the router).
+
+### 11.3 State after this pass
+
+**Door coverage: 14 wired (run, inbound_parse, channel_webhook, ask_answers, collection_submit, proposal_acceptance, group_share, public_checker, operator_action, knowledge_admin, social_inbound, checker_route_request, multimodal×2) + triage preview + 2 W4 writers (ghost_concierge, requeue_poison, recovery_escalation = 3) + 3 reserved seams.** Every HTTP surface that accepts external input and creates an obligation now records exactly one classified WorkItem. Tests **22/22** (new: four-door contract matrix; multimodal closed loop incl. no-transcript-persistence; social closed loop incl. low-urgency detection); social suites 10 passed; ruff clean. Remaining W4 writers (supervisor agent events, IROPS watch, stale sweeps) and the FE queue panel (with full before/after visual protocol per doctrine §3) are the next tranches.
+
+---
+
+## 12. FE consumption tranche — the queue is now an operator surface (2026-10-24, fifth pass)
+
+Invariant 4 ("shipped = reachable AND consumed") closes for the work-item store: the classified queue is rendered in the product, not just queryable.
+
+### 12.1 Shipped
+
+- **Route parity**: `v1/work-items` added to the BFF `route-map.ts` allowlist (frontend path `/api/v1/work-items` → backend `api/v1/work-items`); parity gate green. Route snapshot 398→399 (only the new route).
+- **Client stack**: `frontend/src/lib/work-items-api.ts` (typed `WorkItemEntry`/`WorkItemQueueResponse`, `getWorkItems(limit=8)`) → `frontend/src/hooks/useWorkItems.ts` (TanStack Query, 30s staleTime) → `frontend/src/components/overview/WorkQueuePanel.tsx` mounted on `/overview` in `PageClient.tsx` (after the Start-Here card).
+- **Panel contract** (display honors the store's semantics, extends none of them):
+  - Ranked rows: urgency chip (HIGH=accent-red) + title; `returning` / `duplicate?` / `money` badges; subtitle `origin · intent · authority · channel · trip_id`.
+  - Header: "Incoming Work" + `CLASSIFIED` badge + honest counters (urgent / returning / dup? / total) computed from the response totals, not the visible page.
+  - Footer: "Showing N of M · totals count the append-only work log" — the `work_item_log_total` count-basis honesty rule surfaced verbatim in the UI.
+  - Empty / loading / error-degraded states (error never blanks the page).
+  - C2 boundary respected: `returning_guest` renders as annotation only; no slot/packet mutation anywhere in the FE stack.
+- **Tests**: `WorkQueuePanel.test.tsx` 3/3 (rows+badges+counters, empty state, error degradation) — mocked to the REAL backend response shape (contract-first rule). `tsc` exit 0; **ESLint clean** on all four new FE files.
+
+### 12.2 Visual evidence (doctrine §3 — inspected, not assumed)
+
+Files under `Docs/sims/assets/overview/`:
+
+- `work-queue-before-2026-10-24.png` — panel temporarily stubbed; no "Incoming Work" section anywhere on /overview (verified by inspection: nav rail, Action Required, Start Here, stat cards only).
+- `work-queue-after-2026-10-24.png` — full page with the panel live (below the fold: header + CLASSIFIED badge + "2 urgent" chip visible).
+- `work-queue-after-clean-2026-10-24.png` — element capture of the panel after dismissing the (pre-existing, unrelated) Welcome onboarding modal. Verified contents, top-down:
+  1. **Ghost Concierge** — HIGH — `system · exception · system` (+trip) — the seeded urgent system exception ranks first.
+  2. **Channel Webhook** — HIGH — `demand · new_demand · traveler · channel:web` — urgency heuristic fired on the message text.
+  3. **Proposal Acceptance** — NORMAL — `money` badge, `demand · confirmation · traveler`.
+  4. **Inbound Parse** — NORMAL — `duplicate?` badge (C3 dedup window flagged the re-send).
+  5–8. Remaining NORMAL rows (inbound parse, knowledge admin, social inbound×2) in recency order.
+  - Counts line `2 urgent · 1 dup? · 24 total` matches the seeding command output (`total 24 high 2 dupes 1`) exactly; footer `Showing 8 of 24 · totals count the append-only work log`. No undefined/blank/clipped rows; no error state.
+
+Seeding was additive (`classify_and_record` calls on the live dev backend for agency `d1e3b2b6-…bf5b`; no store resets). Both dev servers left running for live preview (backend :8000, frontend :3005).
+
+### 12.3 Remaining (unchanged gates)
+
+Remaining W4 writers (supervisor agent events, IROPS watch detections, stale-run sweeps); owner-gated E1 (route deletions + BFF bypass holes); provider-gated B1–B3 (WhatsApp / vendor quote inbox / live feeds); I2 `merge_facts` generalization (roadmap Phase 2). A natural follow-on now unblocked: an operator action surface on top of the queue (claim/dismiss per item) — deliberately NOT built here; it needs outcome-state semantics on WorkItem (`record_outcome` exists but there is no claimed/dismissed lifecycle state yet).
+

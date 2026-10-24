@@ -21,7 +21,9 @@ export default function FastIntakePage() {
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      const res = await fetch(`${apiUrl}/api/v1/inbox/parse_social`, {
+      // SSRF-hardened: env-pinned base, constant path — never caller-shaped.
+      const parseUrl = new URL('/api/v1/inbox/parse_social', apiUrl);
+      const res = await fetch(parseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

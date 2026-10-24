@@ -197,6 +197,22 @@ async def parse_voice_note_transcript(
         },
     )
 
+    # Work-intake classification (map §11 multimodal door): a voice transcript
+    # is the traveler's spoken words — demand-side info work. Text feeds
+    # urgency heuristics only; never persisted. Best-effort.
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "multimodal",
+            agency_id=agency_id,
+            text=body.transcript_text,
+            trip_id=body.trip_id or None,
+            channel="voice_note",
+        )
+    except Exception:
+        pass
+
     return MultimodalExtractionResponse(
         ok=True,
         trip_id=body.trip_id,
@@ -246,6 +262,20 @@ async def parse_image_ocr(
             "confidence_tier": conf_tier,
         },
     )
+
+    # Work-intake classification (map §11 multimodal door) — OCR leg.
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "multimodal",
+            agency_id=agency_id,
+            text=None,  # OCR text can carry document PII — urgency heuristic not worth the exposure
+            trip_id=body.trip_id or None,
+            channel=f"image_ocr:{body.image_type or 'screenshot'}",
+        )
+    except Exception:
+        pass
 
     return MultimodalExtractionResponse(
         ok=True,

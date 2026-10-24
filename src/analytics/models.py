@@ -80,6 +80,13 @@ class PipelineVelocity(BaseModel):
 
 
 class InsightsSummary(BaseModel):
+    # FND-0345 / roadmap invariant 3: counts must declare their basis —
+    # "paged_total" (canonical no-truncation pager) or "capped_sample" (the
+    # count came from a bounded page and is NOT a tenant-wide total).
+    count_basis: str = Field(
+        default="paged_total",
+        description='How the counts were computed: "paged_total" | "capped_sample"',
+    )
     totalInquiries: int = Field(default=0)
     convertedToBooked: int = Field(default=0)
     conversionRate: float = Field(default=0.0)

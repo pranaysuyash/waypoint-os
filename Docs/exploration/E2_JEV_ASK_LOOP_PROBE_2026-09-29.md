@@ -1,6 +1,6 @@
 # E2 — Jev Probe Design: Question Rendering + Answer Parsing (T1 companion)
 
-**Date:** 2026-09-29 · **Status:** EXECUTED 2026-10-13 — BOTH GATES PASS (see execution record at bottom; Probe 1 role corrected from "Jev renders" to "Jev grades" — Jev cannot generate text)
+**Date:** 2026-09-29 · **Status:** EXECUTED 2026-10-25 — BOTH GATES PASS (see execution record at bottom; Probe 1 role corrected from "Jev renders" to "Jev grades" — Jev cannot generate text)
 **Related:** `scripts/benchmark_colloquial_jev.py` (harness pattern); `Docs/exploration/KDD_MODEL_COMPARISON_2026-09-12.md`; 2026-09-18 G1 lesson (rubric-explicit or fail)
 
 ## Why
@@ -63,7 +63,7 @@ G1 precedent: full 24-fixture eval ≈ $0.005. Two probes ≈ **under $0.02 tota
 
 ---
 
-## Execution record — 2026-10-13 (BOTH GATES PASS)
+## Execution record — 2026-10-25 (BOTH GATES PASS)
 
 **Harness:** `scripts/benchmark_jev_ask_loop.py` (new, reusable; skips honestly without creds) over
 `data/fixtures/extraction/ask_loop_golden.json` (new; 12 engine questions from the canonical
@@ -111,7 +111,7 @@ expedition doc §7 v7.
 
 ---
 
-## Wiring addendum — 2026-10-13 (same day, post-execution)
+## Wiring addendum — 2026-10-25 (same day, post-execution)
 
 Both decision-tree outcomes landed as production services behind `JEV_ASK_LOOP_ENABLED`
 (**default off** per the ADR-008 prod posture — activation requires the flag AND G2):

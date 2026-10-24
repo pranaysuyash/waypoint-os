@@ -113,12 +113,31 @@ if _TEST_DB_PROVISION_RESULT.run_database_url:
         _TEST_DB_PROVISION_RESULT.canonical_db_name or "waypoint_os"
     )
 
+# ---------------------------------------------------------------------------
+# File-store lane isolation (FND-0370, 2026-10-24)
+# ---------------------------------------------------------------------------
+# The file lane previously shared ONE scratch root (data/test_trips/) across
+# every run and session — 17,953 accumulated files whose stale rows broke
+# tests (a fixed customer identity resolved to a September lead carrying
+# pre-ADR-008 packet mutations). Each pytest session now gets its own
+# gitignored scratch namespace; reset_global_singletons points TRIPS_DIR at
+# it, and pytest_unconfigure drops it. Kept inside the repo (not tempfile)
+# because system temp dirs are blocked in some sandboxed/CI setups.
+_SESSION_SCRATCH_ROOT = (
+    Path(__file__).parent.parent / "data" / "test_runs" / uuid.uuid4().hex[:12]
+)
+_SESSION_SCRATCH_ROOT.mkdir(parents=True, exist_ok=True)
+
 
 def pytest_unconfigure(config):
-    """Drop this session's ephemeral run database while the interpreter is
-    still fully alive (atexit is too late for reliable asyncio)."""
+    """Drop this session's ephemeral run database and file scratch namespace
+    while the interpreter is still fully alive (atexit is too late for
+    reliable asyncio)."""
     if _TEST_DB_PROVISION_RESULT.run_database_url:
         _test_db_provision_module.teardown()
+    import shutil
+
+    shutil.rmtree(_SESSION_SCRATCH_ROOT, ignore_errors=True)
 
 # Disable OpenTelemetry in tests — the BatchSpanProcessor background thread
 # outlives the TestClient event loop and corrupts the asyncpg pool. OTel would
@@ -601,14 +620,14 @@ def reset_global_singletons():
         # TRIPS_DIR is deliberately NOT pointed at the real data/trips.
         # The suite used to write ~1,600 throwaway trip JSON files into the
         # repo's data directory, which then looked like stale production data
-        # to anyone running the file backend (R-03). Tests now default to a
-        # gitignored scratch dir; tests needing their own location still
+        # to anyone running the file backend (R-03). Since FND-0370 the
+        # scratch is also PER-SESSION (see _SESSION_SCRATCH_ROOT above): the
+        # previous single shared scratch (data/test_trips/) accumulated
+        # 17,953 files across runs, and stale rows (e.g. a pre-ADR-008 lead
+        # still carrying packet memory mutations) resolved into tests via
+        # FND-0334 lead matching. Tests needing their own location still
         # monkeypatch TRIPS_DIR (usually to pytest's tmp_path).
-        #
-        # Kept inside the repo rather than tempfile.mkdtemp(): system temp dirs
-        # are blocked in some sandboxed/CI setups, which turns every trip
-        # write into a PermissionError.
-        _test_trips_dir = _default_data_dir / "test_trips"
+        _test_trips_dir = _SESSION_SCRATCH_ROOT / "trips"
         try:
             _test_trips_dir.mkdir(parents=True, exist_ok=True)
         except OSError:

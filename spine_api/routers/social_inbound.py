@@ -168,6 +168,23 @@ async def parse_social_inbound(req: SocialInboundParseRequest, agency_id: str = 
 
     teaser_url = f"/proposals/{trip_id}?token={token}"
 
+    # Work-intake classification (map §11 social_inbound door): a social DM /
+    # fast-intake text is the traveler's own words (envelope actor="traveler")
+    # — demand-side new work. Text feeds urgency heuristics only; the scrubbed
+    # pipeline path is unchanged. Best-effort.
+    try:
+        from spine_api.services.work_intake import classify_and_record
+
+        classify_and_record(
+            "social_inbound",
+            agency_id=agency_id,
+            text=req.raw_text,
+            trip_id=trip_id,
+            channel=str(req.source or "social"),
+        )
+    except Exception:
+        pass
+
     return SocialInboundParseResponse(
         ok=True,
         trip_id=trip_id,

@@ -2987,6 +2987,24 @@ def patch_trip(
             "run_id": run_id,
             "trigger": "auto_edit",
         }
+        # Work-intake classification (map §2.3 operator_action door): an
+        # operator edit that triggers reassessment is operator-originated work
+        # on the agency queue. Best-effort.
+        try:
+            from spine_api.services.work_intake import classify_and_record
+
+            classify_and_record(
+                "operator_action",
+                agency_id=agency.id,
+                text=None,
+                trip_id=trip_id,
+                run_id=run_id,
+                actor=user.id,
+            )
+        except Exception as _work_item_err:
+            logger.debug(
+                "work-item classification skipped for auto-edit %s: %s", trip_id, _work_item_err
+            )
 
     # T11b (2026-09-30): flight-fact changes are disruption telemetry — run the
     # ghost-concierge monitor (evaluate → persist truth-up → chain irops_healer

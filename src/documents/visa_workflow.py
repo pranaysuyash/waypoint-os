@@ -72,7 +72,7 @@ class VisaApplicationState:
     current_stage: VisaStage
     checklist: List[DocumentCheckItem] = field(default_factory=list)
     milestones: List[VisaMilestone] = field(default_factory=list)
-    delay_risk_level: str = "LOW"  # LOW, MODERATE, CRITICAL
+    delay_risk_level: str = "LOW"  # LOW, HIGH, CRITICAL
     delay_risk_rationale: str = ""
     appointment_date: Optional[str] = None
     vfs_tracking_number: Optional[str] = None

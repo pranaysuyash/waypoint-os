@@ -22,6 +22,9 @@ const mockSummary = (overrides: Partial<api.ConfirmationSummary> = {}): api.Conf
   trip_id: "trip-1",
   task_id: null,
   confirmation_type: "flight",
+  // Backend always emits component_key (default "primary" — confirmations.py
+  // request models); the fixture must match the real contract.
+  component_key: "primary",
   confirmation_status: "draft",
   has_supplier: false,
   has_confirmation_number: false,

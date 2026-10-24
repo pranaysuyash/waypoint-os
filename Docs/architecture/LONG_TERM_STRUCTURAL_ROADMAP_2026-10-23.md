@@ -115,7 +115,18 @@ is cleaner (facts slots gain basis fields once).
 > commercial_agreement.py/quotes.py) — a writer who cannot name where a
 > number came from cannot construct the response. Quotes suite matches HEAD's
 > pre-existing failure set exactly (the two trip_version tests — FND-0359
-> note); the enforcement added zero new failures. Remaining slices below.
+> note); the enforcement added zero new failures. **Phase 1 second slice landed (same day):** `VisaCheckResult.registry_match`
+is REQUIRED (no default) — a writer who cannot say whether the corridor came
+from the registry cannot construct the result, so the conservative default can
+never masquerade as a registry hit (tests/test_visa_basis_enforcement.py;
+visa suite green except one pre-existing HEAD failure, FND-0359 class).
+
+**Phase 1 third slice landed (same day):** `InsightsSummary.count_basis`
+("paged_total" | "capped_sample", default paged_total) — counts declare how
+they were computed; the pipeline/bottlenecks caps (FND-0345) now back the
+default honestly. Analytics suite 38/38.
+
+Remaining slices below.
 
 **Evidence:** FND-0337 (1240% take-rate "feasible"), 0339 (invented E_VISA on
 registry miss), 0338 (violation from an estimated baseline), 0345 (capped

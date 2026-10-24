@@ -258,6 +258,12 @@ def nearest_theme(hexes: list[str]) -> dict:
 
 def login(api: str):
     import urllib.request
+    # SSRF guard: this design-lab probe only ever talks to the local dev
+    # server. Any non-loopback target is a misconfiguration, not a feature.
+    from urllib.parse import urlparse
+    parsed_api = urlparse(api)
+    if parsed_api.hostname not in ("127.0.0.1", "localhost", "::1"):
+        raise ValueError(f"design-lab probe refuses non-loopback target: {api}")
     req = urllib.request.Request(
         api + "/api/auth/login",
         data=json.dumps({"email": USER, "password": PASSWORD}).encode(),
@@ -278,6 +284,11 @@ def login(api: str):
 def find_trip(api: str, cookies: list[dict]) -> str | None:
     """Resolve a real trip id so /trips/[id]/intake renders with data."""
     import urllib.request
+    # Same SSRF guard as login(): loopback targets only.
+    from urllib.parse import urlparse
+    parsed_api = urlparse(api)
+    if parsed_api.hostname not in ("127.0.0.1", "localhost", "::1"):
+        raise ValueError(f"design-lab probe refuses non-loopback target: {api}")
     jar = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
     for path in ("/trips", "/api/trips", "/api/dashboard/stats"):
         try:

@@ -169,6 +169,7 @@ data/trips/tc_roundtrip_*.json
 
 # Pytest scratch trip files (see tests/conftest.py; R-03)
 data/test_trips/
+data/test_runs/
 
 # Proposal token revocations (durable runtime state)
 data/proposals/
