@@ -2573,6 +2573,10 @@ def patch_trip(
                     "value": budget_text,
                     "confidence": 1.0,
                     "authority_level": "explicit_user",
+                    # FND-0368: reference-only. Without a non-correction mode the
+                    # canonical resolver picks this slot FIRST and the raw string
+                    # wins over the parsed numeric below.
+                    "extraction_mode": "raw_reference",
                 }
                 parsed_budget = _parse_budget_amount(budget_text)
                 if parsed_budget is not None:
@@ -2582,6 +2586,11 @@ def patch_trip(
                         "authority_level": "explicit_user",
                     }
                     _set_structured_overlay("budget", parsed_budget)
+                    # FND-0368: the top-level key rides in from incoming_updates as
+                    # the raw string; the dual-write contract stores the PARSED
+                    # numeric there too, or resolution prefers the raw text over
+                    # the fact and the parse is silently lost.
+                    synced_updates["budget"] = parsed_budget
                 else:
                     # Store raw text so extracted.facts.budget is always populated after PATCH.
                     # Downstream resolution via resolve_trip_field() will read this value;

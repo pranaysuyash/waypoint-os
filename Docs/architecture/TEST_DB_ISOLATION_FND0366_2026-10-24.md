@@ -163,16 +163,30 @@ hazard — forbidden).
 - Provisioner unit tests: `tests/test_test_db_provision.py` — **10/10 green**
   (template idempotency + stamp-drift rebuild, run-DB roundtrip, namespace
   safety of drop/sweep, URL rewrite, engine-guard refuse/allow/restore).
-- **RLS surfacing (FND-0369, found BY this architecture):** the run DB is the
-  first environment where FORCE RLS actually binds the app role (canonical has
-  drifted behind alembic head — `relforcerowsecurity=false`; CI bypasses as
-  docker superuser). conftest's raw-SQL auth seeding was denied on fresh run
-  DBs; fixed by setting the app's own RLS GUC (`app.current_agency_id`) in
-  both seed blocks. Probe evidence (rolled-back transactions, zero
-  persistence): canonical no-GUC insert passes RLS and dies on FK; run-DB
-  no-GUC insert RLS-denied; run-DB with-GUC passes RLS. Slice after fix:
-  **25/25 green** (smoke, trips POST/follow-up, privacy parity, RAG mount,
-  drafts contract, provisioner).
+- **RLS surfacing (initially misread as FND-0369, CLOSED-INVALID-PREMISE):**
+  the run DB denied conftest's raw-SQL auth seeding, which first looked like
+  "canonical drifted, FORCE RLS absent, isolation inert." Full verification
+  overturned that: all tenant tables on canonical are FORCE-protected;
+  `memberships`/`payment_mandates`/`workspace_codes` are force=False **by
+  design** — app startup strips FORCE from `RLS_FORCE_EXEMPT_TABLES`
+  (login/join/payment query before agency context exists). The run-DB denial
+  was an ordering artifact: fresh run DBs carry FORCE from alembic until the
+  app's exemption pass runs in-session. The shipped fix stands regardless:
+  conftest seed blocks set the app's own GUC
+  (`set_config('app.current_agency_id', ...)`) so seeding complies with the
+  RLS contract at any point in the exemption lifecycle. Probe evidence
+  (rolled-back transactions, zero persistence): template no-GUC insert
+  RLS-denied; with-GUC passes RLS. Slice after fix: **25/25 green** (smoke,
+  trips POST/follow-up, privacy parity, RAG mount, drafts contract,
+  provisioner).
+- **Canonical housekeeping (executed 2026-10-24, doctrine-applied judgment
+  per owner mandate):** canonical was one migration behind head. Backed up
+  first (`Docs/backups/waypoint_os_pre_bc_component_identity_2026-10-24.sql.gz`,
+  31 tables / 99,149 rows via asyncpg COPY), then applied
+  `bc_component_identity` (additive booking-confirmation identity migration —
+  read in full before applying: guarded column add, index create-before-drop,
+  zero destructive statements). Verified: `alembic_version = bc_component_identity`,
+  `uq_bc_component_active` present, zero data change.
 - **Teardown under pytest:** atexit is unreliable during pytest interpreter
   shutdown (verified: every clean-exit session leaked its run DB); the drop
   now runs in `pytest_unconfigure` — verified by before/after orphan counts.
