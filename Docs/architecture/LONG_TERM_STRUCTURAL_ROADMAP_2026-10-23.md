@@ -187,6 +187,19 @@ and still not change anything downstream.
 
 ## Invariant 5 — The failure flywheel, institutionalized
 
+> **Design recorded (2026-10-23), implementation next:** a `findings.py fixture`
+> subcommand that takes a finding id + verbatim reproducing input + expected
+> properties and appends a scenario to the adversarial seed corpus with
+> finding-id provenance, bumping the corpus summary counts atomically; corpus
+> consumers are the adversarial gate-lane and corpus tests. The seed corpus's
+> own schema is the contract the subcommand must preserve.
+
+> **LANDED (2026-10-23):** `tools/finding_to_fixture.py` — pure builder +
+> atomic apply, dry-run by default (`--apply` writes), same-id replacement,
+> finding-id provenance on every scenario. Tests:
+> `tests/test_finding_to_fixture.py` 3/3. Promotion into `findings.py` as a
+> `fixture` subcommand can follow; the tool is the canonical logic.
+
 **Evidence:** the sim-voice→fixture pattern (0329 destination fixtures,
 injection notes, party voices — all landed as tests); acceptance probes
 (Sim3/Sim4); the store's evidence-first registration. But fixtures live in

@@ -512,3 +512,196 @@ def test_social_inbound_door_closed_loop(session_client):
     assert item["urgency"] == "low"  # "no rush" in the DM
     assert item["channel"] == "instagram_dm"
 
+
+# ---------------------------------------------------------------------------
+# Fourth W4 tranche (map §13): disruption_feed (IROPS watch),
+# supervisor_escalation (AgentSupervisor terminal poison),
+# stale_run_timeout (RunLedger stale sweep)
+# ---------------------------------------------------------------------------
+
+def test_fourth_tranche_door_contracts():
+    """The three new W4 writers declare their class at the seam."""
+    expected = {
+        "disruption_feed": ("world", "exception", "system"),
+        "supervisor_escalation": ("system", "exception", "system"),
+        "stale_run_timeout": ("system", "exception", "system"),
+    }
+    for door, (origin, intent, authority) in expected.items():
+        item = work_intake.classify(door, agency_id=AGENCY, text=None)
+        assert (item["origin"], item["intent"], item["authority"]) == (origin, intent, authority), door
+
+
+def test_irops_watch_disruption_records_world_item(monkeypatch):
+    """Closed loop: an IROPS-watch detection records a high-urgency WORLD
+    item (origin=world — the disruption is an external-world event) on the
+    trip's agency queue."""
+    import asyncio
+    from types import SimpleNamespace
+
+    from spine_api.persistence import AuditStore, TripStore
+    from src.orchestration import irops_healer
+    from src.orchestration import irops_watch_service as watch
+
+    suffix = uuid.uuid4().hex[:8]
+    agency = f"agency_irops_{suffix}"
+    trip_id = f"trip_irops_{suffix}"
+
+    def fake_heal(**kwargs):
+        return SimpleNamespace(
+            incident_id=f"inc_{suffix}",
+            delay_minutes=180,
+            to_dict=lambda: {"incident_id": f"inc_{suffix}", "steps": []},
+        )
+
+    monkeypatch.setattr(
+        irops_healer.IROPSAutoHealerEngine, "execute_healing_protocol", staticmethod(fake_heal)
+    )
+    monkeypatch.setattr(
+        TripStore, "get_trip", lambda tid: {"id": tid, "agency_id": agency, "irops_incidents": []}
+    )
+    monkeypatch.setattr(TripStore, "update_trip", lambda tid, patch: None)
+    monkeypatch.setattr(AuditStore, "log_event", lambda *a, **k: None)
+
+    trip = {
+        "trip_id": trip_id,
+        "agency_id": agency,
+        "journey_graph_nodes": [
+            {
+                "node_id": f"fl_{suffix}",
+                "node_type": "FLIGHT",
+                "title": "XY123 BLR→DXB",
+                "metadata": {"disrupted": True},
+            }
+        ],
+        "journey_graph_edges": [],
+    }
+    result = asyncio.run(watch._scan_trip(trip_id, trip))
+    assert result is not None and result["healing_results"], "fixture must detect the disruption"
+
+    queue = work_intake.ranked_queue(agency)
+    item = next(i for i in queue["items"] if i["door"] == "disruption_feed")
+    assert item["origin"] == "world"
+    assert item["intent"] == "exception"
+    assert item["authority"] == "system"
+    assert item["urgency"] == "high"
+    assert item["trip_id"] == trip_id
+    assert item["actor"] == "irops_watch"
+
+
+def test_supervisor_terminal_poison_records_tenant_item(monkeypatch):
+    """Closed loop: an agent work item that terminally poisons under the
+    AgentSupervisor records a high-urgency system item on the TRIP's agency
+    queue (tenanted — unlike the agency-less requeue queue)."""
+    from types import SimpleNamespace
+
+    from spine_api.persistence import TripStore
+    from src.agents.runtime import (
+        AgentSupervisor,
+        InMemoryWorkCoordinator,
+        RetryPolicy,
+        WorkItem,
+    )
+
+    suffix = uuid.uuid4().hex[:8]
+    agency = f"agency_sup_{suffix}"
+    trip_id = f"trip_sup_{suffix}"
+    monkeypatch.setattr(TripStore, "get_trip", lambda tid: {"id": tid, "agency_id": agency})
+
+    item = WorkItem(
+        agent_name="test_agent",
+        trip_id=trip_id,
+        action="probe",
+        idempotency_key=f"idem_{suffix}",
+    )
+
+    def _boom(work, repo):
+        raise RuntimeError("synthetic agent failure")
+
+    failing_agent = SimpleNamespace(
+        definition=SimpleNamespace(
+            name="test_agent",
+            retry_policy=RetryPolicy(max_attempts=1),
+            failure_contract="test_failure",
+        ),
+        scan=lambda repo: [item],
+        execute=_boom,
+    )
+    supervisor = AgentSupervisor(
+        registry=SimpleNamespace(agents=lambda: [failing_agent], get=lambda n: failing_agent),
+        trip_repo=SimpleNamespace(),
+        audit=None,
+        coordinator=InMemoryWorkCoordinator(),
+    )
+
+    results = supervisor.run_once()
+    assert len(results) == 1
+    assert not results[0].success
+
+    queue = work_intake.ranked_queue(agency)
+    found = next(i for i in queue["items"] if i["door"] == "supervisor_escalation")
+    assert found["origin"] == "system"
+    assert found["urgency"] == "high"
+    assert found["trip_id"] == trip_id
+    assert found["actor"] == "agent_supervisor:test_agent"
+    # the synthetic failure reason never persists in the classified record
+    stored = work_intake._agency_path(agency).read_text(encoding="utf-8")
+    assert "synthetic agent failure" not in stored
+
+
+def test_stale_run_sweep_records_per_run_item(monkeypatch, tmp_path):
+    """Closed loop: the heartbeat-aware stale sweep records one work item per
+    timed-out run, on the run's OWN agency (tenanted), with agency-less runs
+    falling to the system scope."""
+    import datetime as dt
+    import json as _json
+
+    from spine_api import run_ledger as rl
+    from spine_api.services.work_intake import SYSTEM_WORK_SCOPE
+
+    runs_dir = tmp_path / "runs"
+    monkeypatch.setattr(rl, "RUNS_DIR", runs_dir)
+
+    suffix = uuid.uuid4().hex[:8]
+    run_id = f"run_stale_{suffix}"
+    trip_id = f"trip_stale_{suffix}"
+    rl.RunLedger.create(
+        run_id, trip_id, stage="intake", operating_mode="standard", agency_id=AGENCY
+    )
+
+    # S3: age the fixture run past the threshold by rewriting created_at
+    # (heartbeat stays absent → legacy created-age check applies).
+    meta_path = runs_dir / run_id / "meta.json"
+    meta = _json.loads(meta_path.read_text(encoding="utf-8"))
+    meta["created_at"] = (
+        dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=3600)
+    ).isoformat()
+    meta_path.write_text(_json.dumps(meta), encoding="utf-8")
+
+    timed_out = rl.RunLedger.timeout_stale_runs(max_age_seconds=300)
+    assert timed_out == [run_id]
+
+    queue = work_intake.ranked_queue(AGENCY)
+    item = next(i for i in queue["items"] if i["door"] == "stale_run_timeout")
+    assert item["origin"] == "system"
+    assert item["urgency"] == "high"
+    assert item["run_id"] == run_id
+    assert item["trip_id"] == trip_id
+    assert item["actor"] == "run_ledger_sweep"
+
+    # Agency-less run → system scope (observable, not on any tenant queue).
+    run2 = f"run_stale2_{suffix}"
+    rl.RunLedger.create(run2, None, stage="intake", operating_mode="standard")
+    meta2_path = runs_dir / run2 / "meta.json"
+    meta2 = _json.loads(meta2_path.read_text(encoding="utf-8"))
+    meta2["created_at"] = meta["created_at"]
+    meta2_path.write_text(_json.dumps(meta2), encoding="utf-8")
+
+    timed_out2 = rl.RunLedger.timeout_stale_runs(max_age_seconds=300)
+    assert timed_out2 == [run2]
+    system_queue = work_intake.ranked_queue(SYSTEM_WORK_SCOPE)
+    found2 = next(
+        i
+        for i in system_queue["items"]
+        if i["door"] == "stale_run_timeout" and i["run_id"] == run2
+    )
+    assert found2["trip_id"] is None

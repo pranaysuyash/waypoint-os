@@ -307,3 +307,26 @@ Seeding was additive (`classify_and_record` calls on the live dev backend for ag
 
 Remaining W4 writers (supervisor agent events, IROPS watch detections, stale-run sweeps); owner-gated E1 (route deletions + BFF bypass holes); provider-gated B1–B3 (WhatsApp / vendor quote inbox / live feeds); I2 `merge_facts` generalization (roadmap Phase 2). A natural follow-on now unblocked: an operator action surface on top of the queue (claim/dismiss per item) — deliberately NOT built here; it needs outcome-state semantics on WorkItem (`record_outcome` exists but there is no claimed/dismissed lifecycle state yet).
 
+---
+
+## 13. Final W4 tranche — every system obligation source is wired (2026-10-24, sixth pass)
+
+The last three W4 writers from the Should-Be register are wired; the W4 class is now fully covered with no unwired sources.
+
+### 13.1 Wired
+
+- **`disruption_feed`** (was a reserved seam; now wired by the in-tree producer) — `irops_watch_service._scan_trip` records one world-origin high-urgency item per detected disruption, right after the healing plan is persisted and audited. The reality tier (`deterministic_preview`) lives on the healing plan; the operator obligation to review the plan is real regardless, so it classifies now. The live flight-status upgrade (B3) rides the same door with zero further wiring.
+- **`supervisor_escalation`** — `AgentSupervisor.run_once` records a system/exception item when a work item terminally poisons (`AGENT_ESCALATED`). Unlike the agency-less requeue queue, supervisor items carry a `trip_id`, so the item lands on the trip's agency queue (tenanted); unresolvable trips fall back to `SYSTEM_WORK_SCOPE`. Failure reasons stay in audit/DLQ — never in the classified record.
+- **`stale_run_timeout`** — `RunLedger._timeout_scan` records one item per run it sweeps to FAILED, attributed from the run's own `meta.agency_id` (tenanted — the sweep is triggered opportunistically on the run-status GET but can time out ANY agency's run, so attribution must come from the run, not the caller). Agency-less runs fall to `SYSTEM_WORK_SCOPE`. Only fires on the queued/running→FAILED transition, so terminal runs never re-record.
+
+### 13.2 Deliberate boundaries kept
+
+- Supervisor escalation ≠ requeue poison: same exception class, different ownership contract — the requeue queue is agency-less by design (list_poisoned boundary), the supervisor's is trip-tenanted. Two doors, not one overloaded one.
+- No text/payload crosses into any of the three records (same metadata-only contract as every W4 writer).
+
+### 13.3 State after this pass
+
+**W4 coverage complete: 6 writers wired (ghost_concierge, requeue_poison, recovery_escalation, disruption_feed, supervisor_escalation, stale_run_timeout) + 14 demand/operator doors + triage preview + 2 reserved seams (whatsapp_channel, vendor_quote_inbox).** Tests **26/26** (new: three-door contract matrix; IROPS closed loop with world-origin assertion; supervisor full run_once loop with a failing agent incl. no-failure-text-persistence; stale-sweep closed loop incl. tenanted + agency-less fallback). Regression: supervisor/runtime/coordinator/requeue/irops/ghost suites **145 passed**; run_status 6; sweep-touching suites (pa_agentic_remediations, partial_intake_lifecycle) **57 passed**; ruff clean. Backend restarted on current code for the live preview.
+
+Remaining after this pass are only the gated items: owner-gated E1, provider-gated B1/B2 (+B3's live-feed upgrade, which now needs zero new wiring), I2 merge_facts (roadmap Phase 2), and the queue action surface (needs WorkItem outcome-state lifecycle first).
+
