@@ -196,3 +196,6 @@ data/llm_traces/
 
 # Runtime state: backend logs, audit dumps, agent-session debris (69MB class)
 .run/
+
+# DB backups: synthetic-data dumps, 60MB-class; never in git history going forward
+Docs/backups/
