@@ -145,11 +145,11 @@ async def _database_exists(conn: Any, dbname: str) -> bool:
 
 
 def migration_stamp() -> str:
-    """Deterministic hash of the alembic migration surface.
+    """Deterministic hash of the template's content inputs.
 
-    Any change to ``alembic/versions/*.py`` (added/edited/touched migration)
-    or ``alembic/env.py`` produces a new stamp; a matching stamp means the
-    template schema is current and no rebuild is needed.
+    Covers the alembic migration surface AND this module itself: the template
+    is built by more than alembic (it also applies the app's RLS exemption
+    strip), so any provisioner change must trigger a rebuild.
     """
     digest = hashlib.sha256()
     versions_dir = PROJECT_ROOT / "alembic" / "versions"
@@ -160,6 +160,10 @@ def migration_stamp() -> str:
     if env_py.exists():
         stat = env_py.stat()
         digest.update(f"env.py:{stat.st_size}:{stat.st_mtime_ns}".encode())
+    self_stat = Path(__file__).stat()
+    digest.update(
+        f"_test_db_provision.py:{self_stat.st_size}:{self_stat.st_mtime_ns}".encode()
+    )
     return digest.hexdigest()[:16]
 
 
@@ -187,8 +191,43 @@ def _subprocess_env_for(base_url: str, template_db_name: str) -> dict:
     return env
 
 
+_RLS_EXEMPT_STRIP_CODE = """
+import asyncio, os
+import asyncpg
+from sqlalchemy.engine import make_url
+from spine_api.core.rls import RLS_FORCE_EXEMPT_TABLES
+
+u = make_url(os.environ["DATABASE_URL"])
+
+async def main():
+    conn = await asyncpg.connect(
+        host=u.host, port=u.port or 5432,
+        user=u.username, password=u.password, database=u.database,
+    )
+    try:
+        for table in sorted(RLS_FORCE_EXEMPT_TABLES):
+            await conn.execute(
+                "ALTER TABLE " + table + " NO FORCE ROW LEVEL SECURITY"
+            )
+            print("rls-exempt:", table)
+    finally:
+        await conn.close()
+
+asyncio.run(main())
+"""
+
+
 def _build_template_via_subprocesses(base_url: str, template_db_name: str) -> None:
-    """Schema + auth bootstrap — identical to the CI path, never canonical reads."""
+    """Schema + auth bootstrap + RLS steady state — never canonical reads.
+
+    The third step applies the app's own startup exemption
+    (``RLS_FORCE_EXEMPT_TABLES`` — login/join query these before agency
+    context exists) so every run DB starts in the same steady state canonical
+    reaches after any server startup. Without it, auth-flow tests that run
+    before the in-session exemption strip see FORCE RLS on memberships and
+    fail (observed: login returned a backfilled agency instead of the
+    user's own).
+    """
     env = _subprocess_env_for(base_url, template_db_name)
     migrate = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
@@ -215,6 +254,19 @@ def _build_template_via_subprocesses(base_url: str, template_db_name: str) -> No
         raise RuntimeError(
             "test-template build failed at bootstrap_public_checker_agency:\n"
             f"{bootstrap.stdout[-2000:]}\n{bootstrap.stderr[-2000:]}"
+        )
+    exempt = subprocess.run(
+        [sys.executable, "-c", _RLS_EXEMPT_STRIP_CODE],
+        cwd=str(PROJECT_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if exempt.returncode != 0:
+        raise RuntimeError(
+            "test-template build failed at RLS exemption strip:\n"
+            f"{exempt.stdout[-2000:]}\n{exempt.stderr[-2000:]}"
         )
 
 
