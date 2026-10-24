@@ -4,6 +4,10 @@ All notable changes to Waypoint OS are documented in this file.
 
 ## [Unreleased]
 
+### FND-0367 fixed: sync/async TripStore bridge starvation (2026-10-24)
+- **`_SyncAsyncBridge` redesign** (`spine_api/persistence.py`): removed the process-wide lock that serialized every sync TripStore call and was held across `future.result()` with **no timeout** — one stuck sync-facade SQL call (DB lock wait, dead connection, client abort) deadlocked all sync endpoints until backend restart (reproduced live during the fare-drop visual pass). Now: no global serialization (`run_coroutine_threadsafe` is thread-safe; RLS context is transaction-local), every call bounded by `TRIPSTORE_BRIDGE_TIMEOUT_SECONDS` (default 30s) with best-effort cancellation and a raised, actionable error; the bridge loop survives repeated stuck calls (pinned by 6 new tests incl. the no-starvation regression).
+- **Defense-in-depth** (`spine_api/core/database.py`): asyncpg `command_timeout: 60` so DB-level lock waits self-clear instead of pinning pooled connections.
+
 ### LLM record/replay clients (topic 48, 2026-10-22)
 - **`src/llm/replay.py`**: `RecordingLLMClient` wraps any provider client and appends a hash-verifiable JSONL trace per `decide()` call; `ReplayLLMClient` serves the same run offline byte-identically at zero cost — hash-matched (prompt+schema), duplicate-safe in recorded order, fail-closed (`LLMError` on unknown prompts, exhausted duplicates, or tampered traces; no inner network client exists). Full `BaseLLMClient` protocol, so any client-injected consumer gains replay without a parallel pipeline. Fork-to-another-model stays owned by the KDD `--models` lane. Traces default to `data/llm_traces/` (gitignored — prompts may carry customer text).
 

@@ -23,6 +23,7 @@ from uuid import uuid4
 from dataclasses import asdict, is_dataclass
 import logging
 import threading
+import concurrent.futures
 from contextlib import asynccontextmanager, contextmanager
 import re
 
@@ -1828,11 +1829,31 @@ def _run_async_blocking(coro):
 
 
 class _SyncAsyncBridge:
-    def __init__(self) -> None:
+    """Background-loop bridge for sync TripStore calls over the async engine.
+
+    FND-0367 (2026-10-24): the original design held a process-wide lock across
+    ``future.result()`` with **no timeout** — one stuck coroutine (a DB-level
+    lock wait, a dead connection, anything) held the lock forever and
+    deadlocked every sync TripStore endpoint in the process until restart.
+    Reproduced live during the fare-drop visual pass.
+
+    The redesign removes the lock entirely (``run_coroutine_threadsafe`` is
+    already thread-safe, RLS context is transaction-local via ``set_config(…,
+    true)``, and the engine pool is built for concurrency) and bounds every
+    call: a coroutine that exceeds ``call_timeout_s`` is cancelled
+    best-effort and the caller gets a raised error instead of an eternal
+    wait. A single hung call now costs one failed request, not the process.
+    """
+
+    def __init__(self, call_timeout_s: Optional[float] = None) -> None:
         import threading
 
         self.loop = asyncio.new_event_loop()
-        self._run_lock = threading.Lock()
+        self.call_timeout_s = (
+            float(call_timeout_s)
+            if call_timeout_s is not None
+            else _bridge_call_timeout_default()
+        )
         self._thread = threading.Thread(target=self._run, name="tripstore-sql-sync-bridge", daemon=True)
         self._thread.start()
 
@@ -1841,18 +1862,40 @@ class _SyncAsyncBridge:
         self.loop.run_forever()
 
     def run(self, coro):
-        with self._run_lock:
-            try:
-                future = asyncio.run_coroutine_threadsafe(coro, self.loop)
-                return future.result()
-            except RuntimeError as exc:
-                if "cannot schedule new futures after shutdown" in str(exc):
-                    raise RuntimeError(
-                        "TripStore SQL bridge event loop was shut down "
-                        "(possible cause: app lifespan closed the connection pool). "
-                        "Ensure PostgreSQL is reachable or set TRIPSTORE_BACKEND=file."
-                    ) from exc
-                raise
+        future = asyncio.run_coroutine_threadsafe(coro, self.loop)
+        try:
+            return future.result(timeout=self.call_timeout_s)
+        except concurrent.futures.TimeoutError as exc:
+            # Best-effort cancel: succeeds for not-yet-started coroutines and
+            # delivers cancellation at the next yield point otherwise. Either
+            # way the caller stops waiting and the loop stays healthy.
+            future.cancel()
+            raise RuntimeError(
+                f"TripStore SQL bridge call exceeded {self.call_timeout_s}s and was "
+                "cancelled; the sync endpoint did not complete. If this recurs, "
+                "investigate DB-level lock waits (FND-0367) rather than raising "
+                "the timeout."
+            ) from exc
+        except RuntimeError as exc:
+            if "cannot schedule new futures after shutdown" in str(exc):
+                raise RuntimeError(
+                    "TripStore SQL bridge event loop was shut down "
+                    "(possible cause: app lifespan closed the connection pool). "
+                    "Ensure PostgreSQL is reachable or set TRIPSTORE_BACKEND=file."
+                ) from exc
+            raise
+
+
+def _bridge_call_timeout_default() -> float:
+    raw = os.getenv("TRIPSTORE_BRIDGE_TIMEOUT_SECONDS", "").strip()
+    if raw:
+        try:
+            value = float(raw)
+            if value > 0:
+                return value
+        except ValueError:
+            pass
+    return 30.0
 
 
 _SYNC_ASYNC_BRIDGE: _SyncAsyncBridge | None = None

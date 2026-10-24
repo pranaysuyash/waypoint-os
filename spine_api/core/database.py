@@ -52,6 +52,11 @@ engine = create_async_engine(
     max_overflow=20,
     pool_pre_ping=False,
     pool_recycle=3600,
+    # FND-0367 defense-in-depth: a query stuck on a DB-level lock wait must
+    # self-clear instead of pinning a pooled connection forever (the bridge
+    # timeout bounds the caller; this bounds the query itself). 60s is
+    # deliberately generous for export/accounting endpoints.
+    connect_args={"command_timeout": 60},
 )
 
 

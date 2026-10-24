@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 361,
+  "openapi_path_count": 362,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -288,6 +288,7 @@
     "/api/v1/trips/{trip_id}/pre-departure-bundle",
     "/api/v1/trips/{trip_id}/pre-departure-bundle.pdf",
     "/api/v1/trips/{trip_id}/quotes",
+    "/api/v1/trips/{trip_id}/quotes/retail",
     "/api/v1/trips/{trip_id}/stage",
     "/api/v1/visa-radar/check",
     "/api/v1/visa-radar/{trip_id}/requirements",

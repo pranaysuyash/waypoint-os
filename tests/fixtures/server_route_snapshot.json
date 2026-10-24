@@ -1,5 +1,5 @@
 {
-  "route_count": 397,
+  "route_count": 398,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -2526,6 +2526,14 @@
       "name": "get_trip_quotes",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/quotes/retail",
+      "name": "approve_trip_retail",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },
