@@ -591,6 +591,44 @@ class PaymentMandateLedger:
                         sync_conn, tables=[PaymentMandateModel.__table__], checkfirst=True
                     )
                 )
+                # Idempotent tenant RLS posture — matches the alembic revisions
+                # (add_payment_mandates, force_rls_payment_mandates) so
+                # lazily-created tables get the same isolation as
+                # migration-created ones, in either ordering. Without FORCE,
+                # the table owner bypasses the policies entirely.
+                from sqlalchemy import text
+
+                await conn.execute(text("ALTER TABLE payment_mandates ENABLE ROW LEVEL SECURITY"))
+                await conn.execute(text("ALTER TABLE payment_mandates FORCE ROW LEVEL SECURITY"))
+                await conn.execute(
+                    text(
+                        """
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (
+                                SELECT 1 FROM pg_policy
+                                WHERE polrelid = 'payment_mandates'::regclass
+                                  AND polname = 'waypoint_rls_select'
+                            ) THEN
+                                CREATE POLICY waypoint_rls_select ON payment_mandates
+                                    FOR SELECT USING (
+                                        agency_id = current_setting('app.current_agency_id', TRUE)
+                                    );
+                            END IF;
+                            IF NOT EXISTS (
+                                SELECT 1 FROM pg_policy
+                                WHERE polrelid = 'payment_mandates'::regclass
+                                  AND polname = 'waypoint_rls_all'
+                            ) THEN
+                                CREATE POLICY waypoint_rls_all ON payment_mandates
+                                    USING (agency_id = current_setting('app.current_agency_id', TRUE))
+                                    WITH CHECK (agency_id = current_setting('app.current_agency_id', TRUE));
+                            END IF;
+                        END
+                        $$;
+                        """
+                    )
+                )
 
         cls._run(_create_all())
         cls._ensure_table_done = True

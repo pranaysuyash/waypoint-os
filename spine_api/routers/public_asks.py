@@ -204,7 +204,10 @@ def submit_traveler_answers(token: str, body: TravelerAnswerSubmission) -> dict:
                 "respondent_name": (body.respondent_name or "").strip()[:120] or None,
                 "authority": "explicit_user",
                 "channel": "ask_link",
-                "token": token,
+                # FND-0308: embed a fingerprint, never the live token — the
+                # token is a capability credential and its long digit-runs
+                # also trip the PII scanner in dogfood mode.
+                "token_fingerprint": hashlib.sha256(token.encode()).hexdigest()[:12],
                 "answered_at": now,
             }
         )

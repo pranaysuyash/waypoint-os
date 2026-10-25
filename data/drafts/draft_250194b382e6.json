@@ -1,58 +1,6 @@
 {
-  "id": "draft_250194b382e6",
-  "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
-  "created_by": "323468de-ba3d-437b-aa10-35b281a0c6a6",
-  "assigned_to": "323468de-ba3d-437b-aa10-35b281a0c6a6",
-  "name": "Family of four wants 6 nights in Bali in July. Two adults...",
-  "name_source": "user",
-  "status": "blocked",
-  "stage": "discovery",
-  "operating_mode": "normal_intake",
-  "scenario_id": null,
-  "strict_leakage": false,
-  "source_channel": null,
-  "customer_id": null,
-  "customer_name_snapshot": null,
-  "customer_phone_hash": null,
-  "customer_email_hash": null,
-  "last_run_id": "9b47fe9f-747b-48d0-bfcb-15fa15f58789",
-  "last_run_state": "blocked",
-  "last_run_completed_at": "2026-05-11T17:14:07.534858+00:00",
-  "promoted_trip_id": null,
-  "promoted_at": null,
-  "merged_into_draft_id": null,
-  "discarded_at": null,
-  "discarded_by": null,
-  "version": 7,
-  "created_at": "2026-05-11T16:57:33.950913+00:00",
-  "updated_at": "2026-05-11T17:14:07.535940+00:00",
-  "customer_message": "Family of four wants 6 nights in Bali in July. Two adults, two kids age 6 and 9. Prefer beach resort with kids club, vegetarian food, and one villa or connecting rooms. Budget around INR 4L excluding flights. They can travel any week after July 10. Need something calm, safe, and not too far from the airport.",
-  "agent_notes": "Repeat customer, high intent. Keep premium but value-conscious options. Avoid properties with long transfers. Flag visa/timeline or family suitability concerns before quote.",
-  "structured_json": null,
-  "itinerary_text": null,
-  "last_validation": null,
-  "last_packet": null,
-  "run_snapshots": [
-    {
-      "run_id": "bb3f4c7b-0c41-4104-9563-380e38f65c4f",
-      "state": "blocked",
-      "snapshot": {
-        "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
-        "stage_at_block": "validation"
-      },
-      "timestamp": "2026-05-11T16:59:31.277456+00:00"
-    },
-    {
-      "run_id": "9b47fe9f-747b-48d0-bfcb-15fa15f58789",
-      "state": "blocked",
-      "snapshot": {
-        "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
-        "stage_at_block": "validation"
-      },
-      "timestamp": "2026-05-11T17:14:07.534868+00:00"
-    }
-  ],
-  "merge_history": [],
-  "linked_draft_ids": [],
-  "linked_trip_ids": []
+  "__encrypted_draft": true,
+  "v": 2,
+  "kid": "9a5b1fb90095ce2a",
+  "ciphertext": "gAAAAABq3iB2gREt8nejbQwDf-8-Vu-VkIsjR-j7qwm2Q5UWnTeLyUrt9uV_SAu1tAzNMiQj_oY9iJRbg4JxlikyoQOw3Kk9jdNWJMWS2P6pfU0isffbPN2XLOw4mCvH_itAIeMr201gBTeqvvEXA-s-LHXaoY5KCKkO14SEhAoe-ljnBdiYYvIQqN5EvppMhhgF-4dNCQr-x2oFpA-MaJ6wSisZJw3Cg1WM71JBbTK6ETleaFBRZVNGfl3e7vd6l4QXAvJCxyrOrquR1Xx6UyTqdp_H-eJGjQ4O8qICwma_C9PpjaxUlk093Fb8aJbtyEb4AjnF97jeBkStxejRI3UNfHK6XQUwaEGT8m-c_Nwh7BW7NvdwJeYqCelcmgm3HtYNVEt9z_9lFe3CC4zCXXaq2YvEpaVUcrh_l09ExxwLE7HwYdoFLe57CKL9PlLlWTJ-WB2AoWcA3eN_tIc1Abz_ydMIgw6YLMfQ4yFEm3HhnCES6JHPJMmqJBJQDyaAezV_6Qq4SOpUpgrnW2eKmUb2I3XAxJ9mDlEPy3HeguFvTXT1OKL4mFtro84OLpEpWphMFlWGNN-PGp0mMx3Slf_YqJca78ECKEj239czfbW9iQNWOWURARKuOvq6Py-8GJYyGzG8bTDxCiZoVVlqsAq-wfhySnx4uuMX_65uzZEZ3dOMjRLS--_6aMfrn1Uokc3kTEWKKYSKAW0G1jAqoRea_Dx2Va6uriFD_MB_0rdQC3ObE7w4orAWygcfuCKXvjuxYRHFfrcr96JxdRHYhHbXP0pBOjwiuAmPoCk399LTJrPdNk-53GoUKpObLUD_zyU2HQ4j9ja6s-uUurztz8JYtx9P5M1AXGM7N7WZcVAKDBQuvo2t-x6ONfOHDfK-2_gKOImvZc2G8N8MchNgdXikjgcNVKNKh7sSrNu_A8eIsvWN-1KbiQIWuxLYN4pGXPrVGOu63xWIRWD1J6R4Izdgv7ROsFcsD2fvJZSWW56FCQJhVF5f1bTeRkWwQGkIS-xEDrgMMuTFk9UsZE3FRIltBdXJo5sbSPNDhs-aO-LalScMgaDLkQThxvyOKBDO2y6OyYU10Sr_y5a9aRVYPH6xoFZ2pASQbFze-vbDvtSPTmdf7ywDz6tU_OElwak302d5VUkZLgZ_k0-PyuL-nioXepOhq-LJbU4obeeuPtnpouvZdpvAVh-tQE1Vda1FYuVTfn5-hMOoTJ7dolFCi5JL5HzoqB24VsfQY86sQYkQDdyOCj2XM8IEiQiA-R2Mk2BYNvmce_BIAWX3qB43V65rx-N8Vr-gz15gPfIiYwsGjm9bABUiQDJX7-ljnsYgK8RP_jN3sbZg_XKho7_VDAVz0AnE2FzVMIA2DDY3jY4WaL-qD-OIef78Yeu_mx3ujPO58gesomBejGpQqRQkdcZpODcd1fgmnBjV7T5hJQ9y2rJmYmKzpSGgxTGOGNbp_gWOkFNDzxuZqmEGZL8w_-Wb5NJq5n69tuEqsaAcmWmEGe8G_p_cTWggFIOFaIHP8vO5BKfdcUYOeMVwwVvOeBLmVRpSykJmlp9_6FFm_9Xt5XVf6xw-78cu1XGnihNNrIbveAm438P--w0PghftRonOPNpSt6MNX3CNhXWvt_zVZaf9OOFgEfq3NeR0WG5zF1ZrpG5CqCmJyvd_K2e0g8fD10vlF1TupQvYnHUr81J9TKcbtcmN9YRJ7RJ9ndA9hJ0pqFr6I6T4n0IgZKbzyuAPolUN-UcuyTeuMrBBtPh3sH0PKpSGqFadEdOwy0mXicvoUpEXUe4Hqj-qy8oDsRkmfyPWYzYynAdlajLAHvFhnoG5TkP6EjQc3djqHl5GEoA6wnr-lE8tn-qdQ8oZRs4EpOGuzeleo7d1mEXIRR2btkpBqzuK1fov-38kbzAp_uDLi9O3aq_hRdOhq_DsR4FTfCCBtXOHmD5hELVdOWLfSZgpeufcGEIfceVvuTLvaXRrPmi9euFQxmC89-nDWLWwf7hxL0OKY_DnAcNt808V2jVRApyLMHTZUH0gF7mFPGIJLDeywh9_s0GGX1k7NcWzYG7fVNBZatMCEeRwbQLH-WXsAJbjX9ZzM123nCwvYzOSbzDdEiLLrJZcYSsGELWU9JrzTh6rqf0f-4JtGckQAfSl0ODK-Rw_pfiMmxcc394MnyjvTZVGeAMgSW-7DMEqFGhzhj3o0kTI6JL5rFjDmaSqr4bw7pdwhaZzSOsWxUrD3-UUekIv4Sw4IzFBeUDbF7waz0y4_CgWYhe5xFtEjoHhwpcrJlxMgwJwJ8LxRhImnxvoepzpBOd1EWzC5rlXD-lNd4Ne1v68qQzxorP1q3NFlh7wxJmYMLcUwfilHk0pNWqrv-oScd2WXe0A9KW-mGatSWrlwF1sOKljObp17DWkRQvhNhvRLnIRcubnGpoe-ri44c6Wer7abmxhScH00vqsqVy8o1L3hHYWOSbeRaDuP0Llzc4pnnWLL-roDSMGrH96WgWbfM6RXMV_Fv1DW6VZJdlj_JCHlkLJSXXYJkpuin9cEFy-eA6y0T2_BQ7VBFNG8nfKS0mdLYb0Ps1nQM28z90Z13e2zPlSwOE3a5upUbavU6KckesUhJR1suMxmC79ZU30r5Mk6Zq2QcVr1R8Y2Rqvfx1G5xM1oYd-ljcTHsU0M6pecxqzcLzxLU3yyJeBeMJ6lJ1mpfXuNmE8C9c6JQydHNxUnR8fu4j-5Q67kxKTREqXv_Y4XnMgfeR_p2kSZvG2QQWVo8wE_39AtebKMExmcEuwlCPQXG_T2O3t6TiUhnjXBaCZ_FRqgGejl7Hz4D0nodeF1EXq1xbDN3UiCyjtH7sK74WE_sVamgftiXohddposmImErfAKVFwwY6iU-T_fuNNCxgal2dNVgJvE1wT4Svm1zsNPgGeUBufPWYsPKGCohdVH36N3NfNLo1LDwA9bsrxSVnjBxB24qKIgwNKAA=="
 }

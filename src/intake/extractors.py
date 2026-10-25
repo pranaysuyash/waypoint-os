@@ -2032,13 +2032,22 @@ def _extract_trip_duration(text: str) -> Optional[Dict[str, Any]]:
 # SECTION 3: BUDGET EXTRACTION
 # =============================================================================
 
-def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
+# FND-0341 (D1 RQ-01 supersession): an India-first product's unmarked amounts
+# are INR, not USD — "60k total max" must not become $60,000. This is the
+# PLATFORM default; an agency's locale override flows through
+# extract(default_currency=...) from AgencySettings.default_currency
+# (src/intake/config/agency_settings.py), wired in intake orchestration.
+# Precedence: explicit marker > lakh/crore unit signal > agency/platform default.
+PLATFORM_DEFAULT_CURRENCY = "INR"
+
+
+def _extract_budget(text: str, default_currency: str = PLATFORM_DEFAULT_CURRENCY) -> Optional[Dict[str, Any]]:
     """
     Returns structured budget dict or None.
     """
     text_lower = text.lower()
 
-    def _currency_code(token: Optional[str]) -> str:
+    def _currency_code(token: Optional[str]) -> Optional[str]:
         normalized = (token or "").strip().lower()
         currency_map = {
             "$": "USD",
@@ -2055,6 +2064,8 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             "gbp": "GBP",
             "₹": "INR",
             "rs": "INR",
+            "rupee": "INR",
+            "rupees": "INR",
             "inr": "INR",
             "₦": "NGN",
             "ngn": "NGN",
@@ -2080,15 +2091,29 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
         }
         if normalized in currency_map:
             return currency_map[normalized]
-        # D1 (RQ-01): unmarked amounts default to USD. Lakh/crore units are an
-        # Indian-market signal and resolve to INR via _defaulted_currency,
-        # which sees the matched region rather than the whole text.
-        return "USD"
+        # Unmarked: not a currency fact — the caller falls back to the
+        # lakh/crore unit signal, then the agency/platform default
+        # (FND-0341: INR for an India-first product, never bare USD).
+        return None
 
     def _defaulted_currency(unit_text: str) -> str:
         if re.search(r"\b(?:l|lac|lakh|lakhs|cr|crore|crores)\b", (unit_text or "").strip().lower()):
             return "INR"
-        return "USD"
+        return default_currency
+
+    def _currency_after(match: "re.Match[str]") -> Optional[str]:
+        """Currency word immediately AFTER the matched span ("5000 USD").
+        The in-pattern currency_after group loses the separating space to the
+        greedy \\s* before it and never captures for spaced words — this
+        deterministic peek is the real evidence path."""
+        if not match:
+            return None
+        rest = text_lower[match.end(): match.end() + 16]
+        # The match may have swallowed the separating space (greedy \s*), so
+        # only leading whitespace is skipped — the currency word must be
+        # immediately adjacent to the amount span.
+        follow = re.match(r"\s*(" + currency_word_pattern + r")\b", rest)
+        return follow.group(1) if follow else None
 
     def _looks_like_date_token(raw_val: str) -> bool:
         token = raw_val.strip()
@@ -2135,7 +2160,10 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
                 "raw_text": trailing_budget_match.group(0).strip(),
                 "min": int(parsed_value),
                 "max": int(parsed_value),
-                "currency": _currency_code(trailing_budget_match.group("currency")),
+                "currency": (
+                    _currency_code(trailing_budget_match.group("currency"))
+                    or _defaulted_currency(unit)
+                ),
             }
 
     range_budget_match = re.search(
@@ -2161,10 +2189,13 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             )
             if token
         ]
-        normalized_currencies = {_currency_code(token) for token in currency_tokens}
+        normalized_currencies = {
+            code for code in (_currency_code(token) for token in currency_tokens) if code
+        }
         # A range with conflicting currency evidence is ambiguous.  Abstain
         # rather than silently treating the low endpoint's currency as the
-        # whole range or inventing an exchange-rate conversion.
+        # whole range or inventing an exchange-rate conversion. Unmarked
+        # endpoints (no token) carry no evidence and never conflict.
         if len(normalized_currencies) > 1:
             return None
         low = range_budget_match.group("low").replace(",", "").strip()
@@ -2198,7 +2229,7 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
                 "min": int(low_value),
                 "max": int(high_value),
                 "currency": (
-                    _currency_code(currency_tokens[0])
+                    (_currency_code(currency_tokens[0]) or _defaulted_currency(unit))
                     if currency_tokens
                     else _defaulted_currency(unit)
                 ),
@@ -2226,14 +2257,17 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
                 parsed_value *= 10000000
             elif unit in ("b", "bn", "billion", "billions"):
                 parsed_value *= 1000000000
+            marker_token = (
+                explicit_label_match.group("currency")
+                or explicit_label_match.group("currency_after")
+                or _currency_after(explicit_label_match)
+            )
             return {
                 "raw_text": explicit_label_match.group(0).strip(),
                 "min": int(parsed_value),
                 "max": int(parsed_value),
                 "currency": (
-                    _currency_code(explicit_label_match.group("currency") or explicit_label_match.group("currency_after"))
-                    if (explicit_label_match.group("currency") or explicit_label_match.group("currency_after"))
-                    else _defaulted_currency(unit)
+                    _currency_code(marker_token) or _defaulted_currency(unit)
                 ),
             }
 
@@ -2290,12 +2324,14 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             if _looks_like_date_token(raw):
                 continue
             parsed = Normalizer.parse_budget(raw)
-            # D1 (RQ-01): parse_budget defaults INR; unmarked non-lakh amounts
-            # are USD. Lakh/crore-shaped raws keep INR (Indian-market signal).
+            # D1 (RQ-01, superseded FND-0341): parse_budget defaults INR;
+            # unmarked non-lakh amounts take the agency/platform default
+            # (INR — never bare USD). Lakh/crore-shaped raws keep INR
+            # (Indian-market signal, dominant over the default).
             if parsed.get("currency") == "INR" and not re.search(
                 r"\d(?:\.\d+)?\s*(?:l|lac|lakh|lakhs|crore|crores|cr)\b", raw
             ):
-                parsed["currency"] = "USD"
+                parsed["currency"] = default_currency
             parsed["raw_text"] = raw
             return parsed
 
@@ -2337,7 +2373,7 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             high = anchor_match.group("high")
             if high:
                 max_value = float(high.replace(",", "").strip())
-            cur_token = anchor_match.group("currency_after")
+            cur_token = anchor_match.group("currency_after") or _currency_after(anchor_match)
             return {
                 "raw_text": anchor_match.group(0).strip(),
                 "min": int(parsed_value),
@@ -2347,7 +2383,7 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
 
     # "flexible" budget
     if _FLEXIBLE_BUDGET_RE.search(text_lower):
-        return {"raw_text": "flexible", "min": None, "max": None, "currency": "USD"}
+        return {"raw_text": "flexible", "min": None, "max": None, "currency": default_currency}
 
     return None
 
@@ -3364,7 +3400,12 @@ class ExtractionPipeline:
     def __init__(self, model_client=None):
         self.model_client = model_client
 
-    def extract(self, envelopes: List[SourceEnvelope], stage: str = "discovery") -> CanonicalPacket:
+    def extract(
+        self,
+        envelopes: List[SourceEnvelope],
+        stage: str = "discovery",
+        default_currency: str = PLATFORM_DEFAULT_CURRENCY,
+    ) -> CanonicalPacket:
         packet = CanonicalPacket(
             packet_id=f"pkt_{uuid.uuid4().hex[:8]}",
         )
@@ -3391,11 +3432,11 @@ class ExtractionPipeline:
                 safety_meta["instruction_spans_removed"] += safety_counts["instruction_spans_removed"]
 
             if envelope.content_type == "freeform_text":
-                self._extract_from_freeform(envelope, packet, stage=stage)
+                self._extract_from_freeform(envelope, packet, stage=stage, default_currency=default_currency)
             elif envelope.content_type == "structured_json":
                 self._extract_from_structured(envelope, packet)
             elif envelope.content_type == "hybrid":
-                self._extract_from_hybrid(envelope, packet, stage=stage)
+                self._extract_from_hybrid(envelope, packet, stage=stage, default_currency=default_currency)
 
         # Trusted correction context is attached by the server executor after
         # tenant-scoped trip loading. HTTP structured_json never supplies
@@ -3622,7 +3663,13 @@ class ExtractionPipeline:
             epistemic_status=epistemic_status or self._epistemic_for_authority(authority),
         )
 
-    def _extract_from_freeform(self, envelope: SourceEnvelope, packet: CanonicalPacket, stage: str = "discovery") -> None:
+    def _extract_from_freeform(
+        self,
+        envelope: SourceEnvelope,
+        packet: CanonicalPacket,
+        stage: str = "discovery",
+        default_currency: str = PLATFORM_DEFAULT_CURRENCY,
+    ) -> None:
         text, _ = _prepare_extraction_text(envelope.content)
         text_lower = text.lower()
         eid = envelope.envelope_id
@@ -3875,7 +3922,7 @@ class ExtractionPipeline:
             ))
 
         # --- BUDGET ---
-        budget_result = _extract_budget(text)
+        budget_result = _extract_budget(text, default_currency=default_currency)
         if budget_result:
             packet.set_fact("budget_raw_text", self._make_slot(
                 budget_result.get("raw_text", text), 0.8,
@@ -4284,6 +4331,29 @@ class ExtractionPipeline:
                     value, eid,
                 ))
 
+        # --- P-3 (decision record
+        # Docs/adr/DECISION_REC_P3_OCCASION_WINDOW_2026-10-25.md): an occasion
+        # anchor is a hard coverage constraint the trip must satisfy, not the
+        # travel window itself. Seed date_window as a SOFT HYPOTHESIS (never a
+        # fact — the traveler must confirm exact dates, so the unknown stays
+        # blocking and the ask still fires) carrying the anchor text as the
+        # suggested window shape ("must cover november 18th"). Skipped when a
+        # real date_window was already extracted.
+        occasion_slot = intent.get("occasion")
+        if (
+            isinstance(occasion_slot, dict)
+            and occasion_slot.get("date")
+            and "date_window" not in packet.facts
+        ):
+            anchor = str(occasion_slot["date"]).strip()
+            o_type = str(occasion_slot.get("type") or "occasion")
+            packet.set_hypothesis("date_window", self._make_slot(
+                f"window covering {anchor} ({o_type})",
+                0.3, AuthorityLevel.SOFT_HYPOTHESIS,
+                anchor, eid,
+                extraction_mode=ExtractionMode.DERIVED,
+            ))
+
         # --- TRAVELERS (L2 attribution, Phase 3b / IDEA-134) ---
         # Per-speaker fact bundles from the delegation thread. Personal facts
         # stay bound to the speaker; group facts (budget/window/party) remain
@@ -4637,7 +4707,13 @@ class ExtractionPipeline:
                         str(child_ages), eid, extraction_mode=ExtractionMode.IMPORTED,
                     ))
 
-    def _extract_from_hybrid(self, envelope: SourceEnvelope, packet: CanonicalPacket, stage: str = "discovery") -> None:
+    def _extract_from_hybrid(
+        self,
+        envelope: SourceEnvelope,
+        packet: CanonicalPacket,
+        stage: str = "discovery",
+        default_currency: str = PLATFORM_DEFAULT_CURRENCY,
+    ) -> None:
         """Handle hybrid input: text + structured data."""
         if not isinstance(envelope.content, dict):
             self._extract_from_structured(
@@ -4664,7 +4740,7 @@ class ExtractionPipeline:
             content=text,
             content_type="freeform_text",
         )
-        self._extract_from_freeform(text_envelope, packet, stage=stage)
+        self._extract_from_freeform(text_envelope, packet, stage=stage, default_currency=default_currency)
 
         # Then overlay structured (higher authority for overlapping fields)
         struct_envelope = SourceEnvelope(

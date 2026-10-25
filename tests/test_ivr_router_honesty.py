@@ -67,3 +67,55 @@ def test_carrier_profiles_listing_is_static_config(client):
     data = resp.json()
     assert data["status"] == "success"  # config read, not a telephony action
     assert len(data["supported_carriers"]) >= 3
+
+
+# ---------------------------------------------------------------------------
+# FND-0375: carrier/client-supplied call_sid is format-validated BEFORE any
+# Twilio URL is constructed (FND-0372 class). A crafted sid ("../Accounts/
+# ACevil/Calls", "CA%00", shell metachars) must be rejected at the router
+# boundary and never reach provider URL interpolation.
+# ---------------------------------------------------------------------------
+
+def test_poll_rejects_malformed_call_sid(client):
+    for crafted in (
+        "CA%00",
+        "not-a-sid",
+        "CAshort",
+        "ZZ" + "a" * 32,
+    ):
+        resp = client.get(f"/api/v1/ivr/calls/{crafted}/status")
+        assert resp.status_code == 200, crafted
+        data = resp.json()
+        assert data["status"] == "INVALID_CALL_SID", crafted
+        assert data["provider_connected"] is False, crafted
+        assert data["reality_tier"] == "deterministic_preview", crafted
+    # Path-traversal shapes never reach the handler at all (route mismatch).
+    for crafted in ("CA../../Accounts/ACattacker/Calls", "CA%2e%2e%2fACattacker"):
+        resp = client.get(f"/api/v1/ivr/calls/{crafted}/status")
+        assert resp.status_code == 404, crafted
+
+
+def test_poll_preview_sentinel_still_short_circuits(client):
+    from spine_api.routers.ivr_gateway import _preview_call_sid
+
+    sid = _preview_call_sid("trip_x", "6E", "+911234567890")
+    resp = client.get(f"/api/v1/ivr/calls/{sid}/status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "PREVIEW_ONLY"
+    assert data["provider_connected"] is False
+
+
+def test_sid_format_helpers():
+    from spine_api.routers.ivr_gateway import (
+        _account_sid_is_wellformed,
+        _call_sid_is_wellformed,
+    )
+
+    assert _call_sid_is_wellformed("CA" + "a" * 32)
+    assert _call_sid_is_wellformed("CA-PREVIEW-0123456789ABCDEF")
+    assert not _call_sid_is_wellformed("CA" + "g" * 32)  # non-hex
+    assert not _call_sid_is_wellformed("CA" + "a" * 31)  # short
+    assert not _call_sid_is_wellformed("")
+    assert _account_sid_is_wellformed("AC" + "a" * 32)
+    assert not _account_sid_is_wellformed("CA" + "a" * 32)

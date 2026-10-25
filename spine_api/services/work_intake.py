@@ -96,6 +96,159 @@ DOOR_CONTRACTS: Dict[str, Dict[str, str]] = {
     "stale_run_timeout": {"origin": "system", "intent": "exception", "authority": "system"},
 }
 
+# ---------------------------------------------------------------------------
+# Operator display vocabulary (2026-10-25 supersession of map §12.1's raw
+# "origin · intent · authority" subtitle): the classification axes are machine
+# vocabulary for routing and gating; the queue is a read-model projection, so
+# the human sentence is COMPOSED AT READ TIME (work_intake.display_for) —
+# never stored on the append-only log. Read-time composition means label
+# evolution never rewrites history, pre-lifecycle rows are retroactively
+# labeled, and the FE can never drift from the door semantics because the
+# backend is the only composer. Exhaustiveness is enforced by test
+# (test_door_display_covers_every_door): a new door cannot ship jargon.
+# ---------------------------------------------------------------------------
+
+# Human headline per door. "{channel}" is substituted with the channel's
+# display name (CHANNEL_DISPLAY) when the item carries one; doors whose
+# headline does not reference {channel} keep the channel in the meta line.
+DOOR_DISPLAY: Dict[str, str] = {
+    "run": "Run request submitted",
+    "inbound_parse": "New trip request",
+    "channel_webhook": "{channel} message received",
+    "ask_answers": "Traveler answered pending questions",
+    "collection_submit": "Traveler submitted details",
+    "public_checker": "Public checker request routed in",
+    "proposal_acceptance": "Proposal decision received",
+    "group_share": "Group share received",
+    "operator_action": "Operator updated a trip",
+    "knowledge_admin": "Knowledge base updated",
+    "triage_preview": "Message triaged for review",
+    # Reserved seams (map §5 B1/B2).
+    "whatsapp_channel": "{channel} message received",
+    "vendor_quote_inbox": "Vendor quote received",
+    # World/system doors (map §11/§13).
+    "disruption_feed": "Disruption detected on a live trip",
+    "ghost_concierge": "Silent traveler detected — draft awaiting review",
+    "requeue_poison": "Poisoned job quarantined",
+    "social_inbound": "{channel} message received",
+    "checker_route_request": "Public checker lead routed in",
+    "multimodal": "Attachment received",
+    "recovery_escalation": "Recovery agent escalated a disruption",
+    "supervisor_escalation": "Supervisor escalation recorded",
+    "stale_run_timeout": "Run timed out",
+}
+
+CHANNEL_DISPLAY: Dict[str, str] = {
+    "whatsapp": "WhatsApp",
+    "email": "Email",
+    "sms": "SMS",
+    "web": "Web",
+    "phone": "Phone",
+    "voice": "Voice",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "telegram": "Telegram",
+    "booking_collection": "Collection form",
+    "public_checker": "Public checker",
+    "proposal_link": "Proposal link",
+    "group_pay": "Group payment",
+}
+
+# System/synthetic actor slugs → operator-facing labels. User-UUID actors are
+# resolved to display names by the router (batched query); anything not here
+# and not a UUID (e.g. an operator email) passes through as-is.
+ACTOR_DISPLAY: Dict[str, str] = {
+    "irops_watch": "the disruption watch",
+    "run_ledger_sweep": "the run watchdog",
+    "agent_requeue_jobs": "the requeue worker",
+    "ghost_concierge": "the concierge monitor",
+    "public_checker": "the public checker",
+    "system": "the system",
+    "traveler_collection_link": "the collection form",
+    "traveler_proposal_link": "the proposal link",
+    "public_asks": "the public ask form",
+}
+
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _display_channel(channel: Optional[str]) -> str:
+    """Human channel name; unknown channels degrade to title-case, never None.
+
+    Unknown channel slugs are identifiers ("pigeon_post") — underscores are
+    jargon in operator prose (map §15 display contract), so degrade to spaces
+    before title-casing, same rule as unknown door names in display_for.
+    """
+    if not channel:
+        return "Message"
+    raw = str(channel).strip()
+    return CHANNEL_DISPLAY.get(raw.lower(), raw.replace("_", " ").title())
+
+
+def display_for(
+    item: Dict[str, Any],
+    *,
+    trip_label: Optional[str] = None,
+    actor_label: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Compose the operator-facing projection of one classified WorkItem.
+
+    Pure and read-time (never persisted): ``headline`` is the row title an
+    operator can act on; ``meta`` is the human context line (channel when the
+    headline did not already carry it, the bound entity label, the actor).
+    Raw classification axes (origin/intent/authority, raw ids) stay on the
+    entry for tooling/tooltips — they are debug vocabulary, not display copy.
+    ``actor_label`` carries the user-display-name resolution done by the
+    router (batched per request); ``ACTOR_DISPLAY`` covers system/synthetic
+    actors here. Unknown doors degrade to a title-cased door name rather than
+    raising, so display can never fail a queue read.
+    """
+    door = str(item.get("door") or "")
+    template = DOOR_DISPLAY.get(door)
+    channel_name = _display_channel(item.get("channel"))
+    if template is None:
+        headline = door.replace("_", " ").strip().title() or "Work item"
+        headline_carried_channel = False
+    elif item.get("channel"):
+        headline_carried_channel = "{channel}" in template
+        headline = template.replace("{channel}", channel_name)
+    else:
+        # Channel-less degradation: "{channel} message received" composes to
+        # "Message received" (never "Message message received"); any other
+        # {channel} template degrades to a grammatical "Inbound …" form.
+        headline_carried_channel = True
+        headline = template.replace("{channel} message", "Message").replace(
+            "{channel}", "Inbound"
+        )
+    meta: List[str] = []
+    if item.get("channel") and not headline_carried_channel:
+        meta.append(channel_name)
+    if trip_label:
+        meta.append(f"Trip — {trip_label}")
+    elif item.get("trip_id"):
+        # Entity binding exists but the trip did not resolve: keep the raw id
+        # on the entry (tooltip/tooling) but do not put an opaque id in prose.
+        pass
+    actor = item.get("actor")
+    if actor:
+        # Actor display: the router resolves user-UUID actors to names
+        # (actor_label); system/synthetic actors fall to ACTOR_DISPLAY here.
+        # Raw ids never reach prose — an unresolved actor drops the "by" line
+        # entirely (the id stays on the entry for tooltips/tooling).
+        if actor_label:
+            meta.append(f"by {actor_label}")
+        else:
+            human_actor = ACTOR_DISPLAY.get(str(actor))
+            if human_actor:
+                meta.append(f"by {human_actor}")
+            elif not _UUID_RE.match(str(actor)):
+                meta.append(f"by {actor}")
+    return {"headline": headline, "meta": meta}
+
+
 # The requeue queue is deliberately agency-less (agent_requeue_jobs.py::
 # list_poisoned: "a tenant-facing route must not be inferred until an
 # ownership contract exists"). Poison work items record under this scope —
@@ -512,12 +665,16 @@ def duplicate_risk(agency_id: str, contact: Optional[str], *, intent: str = "new
 _URGENCY_RANK = {"high": 0, "normal": 1, "low": 2}
 
 
-def ranked_queue(agency_id: str, *, limit: int = 50) -> Dict[str, Any]:
+def ranked_queue(agency_id: str, *, limit: int = 50, include_done: bool = False) -> Dict[str, Any]:
     """C1: the operator work queue — urgency first, returning guests next,
     then recency. Lifecycle-aware: resolved/dismissed items leave the ranked
     list; open + claimed stay (claimed carries its badge). Class counts
     describe ACTIONABLE work; ``total`` and ``counts.by_state`` stay honest
-    log totals over everything ever recorded."""
+    log totals over everything ever recorded.
+
+    ``include_done=True`` is the history reader (map §14.4): resolved/dismissed
+    items appear AFTER the actionable list (same sort within each group), so
+    the top of the queue is always actionable even in history mode."""
     records = _read_all(agency_id)
     states = _derive_lifecycle(records)
     items = [r for r in records if r.get("record_type", "item") == "item"]
@@ -529,14 +686,42 @@ def ranked_queue(agency_id: str, *, limit: int = 50) -> Dict[str, Any]:
         rec["claimed_by"] = state["claimed_by"]
         annotated.append(rec)
 
-    actionable = [r for r in annotated if r["state"] in ("open", "claimed")]
-    actionable.sort(
-        key=lambda r: (
+    def _rank(r: Dict[str, Any]) -> tuple:
+        return (
             _URGENCY_RANK.get(r.get("urgency"), 1),
             0 if r.get("returning_customer") else 1,
             -(datetime.fromisoformat(r["received_at"]).timestamp() if r.get("received_at") else 0),
         )
-    )
+
+    actionable = [r for r in annotated if r["state"] in ("open", "claimed")]
+    actionable.sort(key=_rank)
+
+    # Run collapse (map §15.3): identical work on the SAME bound entity is one
+    # operator obligation, not N rows. Collapse only entity-bound OPEN items
+    # sharing (door, trip_id, channel, urgency) — the binding is what proves
+    # identity; unbound or claimed items never collapse. The representative
+    # (newest) carries group_count; collapsed members stay in every count
+    # (counts remain actionable-work totals; count_basis stays the log).
+    collapsed: Dict[str, Dict[str, Any]] = {}
+    visible_actionable: List[Dict[str, Any]] = []
+    for r in actionable:
+        if r["state"] == "open" and r.get("trip_id"):
+            key = f"{r.get('door')}|{r.get('trip_id')}|{r.get('channel') or ''}|{r.get('urgency')}"
+            if key in collapsed:
+                collapsed[key]["group_count"] += 1
+                continue
+            rep = dict(r)
+            rep["group_count"] = 1
+            collapsed[key] = rep
+            visible_actionable.append(rep)
+        else:
+            visible_actionable.append(dict(r))
+
+    visible = visible_actionable
+    if include_done:
+        done = [r for r in annotated if r["state"] in ("resolved", "dismissed")]
+        done.sort(key=_rank)
+        visible = visible_actionable + [dict(r) for r in done]
     counts: Dict[str, Dict[str, int]] = {
         "by_origin": {o: 0 for o in WORK_ORIGINS},
         "by_intent": {i: 0 for i in WORK_INTENTS},
@@ -555,7 +740,7 @@ def ranked_queue(agency_id: str, *, limit: int = 50) -> Dict[str, Any]:
     duplicates = sum(1 for r in actionable if r.get("duplicate_of"))
     returning = sum(1 for r in actionable if r.get("returning_customer"))
     return {
-        "items": actionable[: max(1, limit)],
+        "items": visible[: max(1, limit)],
         "total": len(annotated),
         "actionable": len(actionable),
         "duplicates_flagged": duplicates,

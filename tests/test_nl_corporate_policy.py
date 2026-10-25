@@ -150,3 +150,36 @@ def test_heuristic_numeric_lead_time_compliant():
     assert result.is_compliant is True
     assert result.all_clauses_evaluated is True
     assert result.unevaluated_clauses == []
+
+
+def test_audit_route_populates_violations_detail():
+    """FND-0338 / roadmap invariant 3 pin (2026-10-25 audit wave): the route
+    handler must populate the declared violations_detail field — machine-readable
+    provenance (sourced vs estimated) must travel with each violation, not sit
+    computed-but-unwired as the interrupted tranche left it."""
+    from unittest.mock import patch
+
+    from spine_api.persistence import TripStore
+    from spine_api.routers.corporate_policy import audit_trip_corporate_policy
+
+    trip = {
+        "id": "trip_vd",
+        "agency_id": "agency_vd",
+        "strategy": {"recommended_option": {"name": "Kyoto Villa", "cost": 9000, "currency": "USD"}},
+        "packet": {"destination": "Tokyo"},
+        "corporate_policy_override": {},
+    }
+    with patch.object(TripStore, "get_trip_for_agency", return_value=trip):
+        res = audit_trip_corporate_policy("trip_vd", "agency_vd")
+
+    # Every nightly-rate and duty-of-care violation must carry its basis.
+    for item in res.violations_detail:
+        assert item["rule"] in ("nightly_rate_cap", "duty_of_care_high_risk")
+        assert item["basis"] in ("sourced_trip_cost", "estimated_default", "sourced_destination")
+        assert isinstance(item["enforceable"], bool)
+
+    # A sourced cost must never be mislabeled as estimated (invariant 3).
+    nightly = [d for d in res.violations_detail if d["rule"] == "nightly_rate_cap"]
+    for d in nightly:
+        assert d["basis"] == "sourced_trip_cost"
+        assert d["enforceable"] is True

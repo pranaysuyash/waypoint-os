@@ -277,3 +277,134 @@ separate FE task), server-side wholesale trip overwrite in save_processed_trip
 (extractor-side merge shipped; the operator "clear destination" path needs
 design before touching the server merge — flagged by the extraction agent),
 D7 research (search quota resets 2026-10-06 17:07), T-map-1, T-impl-13.
+
+---
+
+## 6. Continuation receipt (2026-10-25 — post-wave review, re-baseline, hardening)
+
+**Independent review of the implementation wave: APPROVE (0 P0, 0 P1, 4×P3).**
+Applied from it:
+- P3-b: `refresh_or_reselect` agency pre-read switched to the IO-free
+  `sa_inspect(instance).dict.get("agency_id")` (getattr was a latent
+  MissingGreenlet trap on detached/expired instances).
+- P3-d: orchestration ESCALATE floor now uses `generate_question()` —
+  travelers see the same field-specific phrasing as the decision floor.
+- P3-c (critical-vocabulary split) recorded as note-only: the "critical"
+  priorities live in the contradiction table (decision.py:448+), a separate
+  surface from question floors which never sort combined lists — defensive
+  map addition declined on blast-radius grounds.
+- P3-e (background-context PrivacyGuardError) documented, no change —
+  current worker paths redact-and-continue by design.
+
+**Re-baseline corrections (start-from-live-truth):**
+- The wave described in §5 is **committed** (through `b474782c`); parallel
+  waves (Sim #4 eleven doors, work-intake classification, FND-0366..0372)
+  landed after it. The uncommitted tree belongs to those waves, not sim3.
+- **FND-0317 was closed by a parallel wave** (unlock in `planning-status.ts`
+  + `PlanningStageGate.tsx`, vitest-verified). This session's duplicate
+  PageClient edit was reverted the same hour — committed unlock wins.
+- **FND-0376 registered (P3, open):** the server-side
+  `save_processed_trip` wholesale-overwrite residual (0309 latent class) —
+  needs precedence design vs the operator clear-destination path.
+- **T-map-1 collapsed into Sim #4's U16** (already queued: eleven doors,
+  posture matrix, persistence doors, BFF parity) — a separate sim3 map
+  addendum would be a duplicate artifact.
+- **T-impl-13 done:** dead `submit_run` removed from `tools/sim3_runner.py`
+  (superseded by the draft-first flow; `sim4_runner` depends only on the
+  shared credential constants — import-verified) + real-data redaction note
+  in `tools/README.md`.
+
+**D7 research receipt (knowledge-based; web-search prime re-locked until
+2026-11-06):** Thailand's 2021 air passenger protection rules (BKK
+departures, THB bands), India DGCA CAR §3 Series M Part IV (India
+departures), and Montreal Convention 1999 Art. 19 (both states are
+signatories — BKK→BOM is squarely in scope) all corroborate the resolver's
+NONE+Montreal answer. Enrichment path when quota allows: encode
+departure-country statutory regimes (TH/IN first) as resolver extensions
+below the EU/UK/US tiers. Cite the regulation texts before shipping that
+extension — this receipt is Inferred-tier, not Verified-tier.
+
+**Verify note:** the rls.py + orchestration.py hardening edits are in-tree,
+ruff-clean, with `test_sim3_followup_wiring` + `test_refresh_after_commit`
+green (13 passed) after them.
+
+---
+
+## 7. Second continuation receipt (2026-10-25 — D7 seam + 0376 disposition)
+
+**D7-enrich shipped (structure now, cited amounts later):**
+`claim_framework.py` gains `_NATIONAL_DEPARTURE_REGIMES` (thailand → 2021
+OCPB air passenger protection rules; india → DGCA CAR §3 Series M Part IV).
+The resolver's NONE branch names the route's national regime alongside the
+Montreal Art. 19 path — with NO statutory figures until the regulation texts
+are cited (quota resets 2026-11-06; the comment block mandates amounts land
+in the same change as their citation). Verified: TH→IN names the Thai
+regime, unknown→IN names DGCA, BR→JP stays plain Montreal; 27/27 existing
+claim-framework tests green, ruff clean.
+
+**FND-0376 narrowed to an owner semantic call (noted in-store):** code-read
+shows Sim #4's `_preserve_authoritative_facts` (FND-0351) already prevents
+the operator/traveler-authoritative erase class on reprocess, and
+same-authority conflicts follow the canonical `field_merge` precedence
+(destination = preference class, customer > operator). The only open scope:
+merge-vs-precedence when an operator-authored destination list meets a
+same-authority re-extraction. No code change until the owner calls it.
+
+**Hardening edits from the review pass remain in-tree and green**
+(rls.py IO-free pre-read, orchestration `generate_question` parity —
+13 tests + 27 claim tests + ruff clean after this pass).
+
+**FND-0321 closed (2026-10-25):** resolved by FND-0367's bridge redesign
+(one process-wide background loop + `run_coroutine_threadsafe` — the exact
+single-loop policy this plan called for, landed by the 2026-10-24 wave).
+Measured on the current bridge: 12 parallel authenticated SQL-store loads,
+all 200, zero new teardown-noise events (the single baseline occurrence is
+startup-time, before any request). Canonical evidence in the findings store.
+
+---
+
+## 9. RETRACTION + MIGRATION receipt (2026-10-25 — FND-0377)
+
+**FND-0377 is RETRACTED as invalid-premise** (FND-0272 precedent): the
+DraftStore has encrypted drafts at rest since the FND-0326 residual
+(2026-10-23 — `__encrypted_draft` v2 envelope, verified live on today's
+files). My §8 evidence was legacy pre-fix draft files (2026-10-05), whose
+plaintext state is the documented migration behavior ("load transparently,
+re-encrypt on next save"). Closed invalid-premise in the store.
+
+**Legacy migration COMPLETED**: `tools/migrate_legacy_drafts.py` (canonical
+seam only — re-saves through `FileDraftStore._save_json`; no parallel
+crypto) migrated all **673** legacy plaintext drafts (40 already enveloped,
+0 unparseable, **0 plaintext remaining**, verified post-run). Honest note:
+encryption uses a static dev fallback key when `ENCRYPTION_KEY` is unset —
+production enforcement is the existing `startup_assertions._check_encryption_key`
+concern, not a new defect.
+
+**Map correction**: invariant #1 of the map addendum is corrected by this
+receipt — the draft store IS inside the encryption boundary; the §8 framing
+("outside the R-15 matrix") was wrong for post-2026-10-23 writes. The P-1
+privacy-posture decision pack is thereby DISSOLVED — no owner decision
+needed on the draft lane.
+
+**Process lesson recorded**: an O(n) legacy-file check against the CURRENT
+write path is mandatory before declaring a store-boundary defect — stale
+artifacts are not live behavior (same class as the FND-0272 retraction).
+
+---
+
+## 10. Delegated-authority implementation receipt (2026-10-25 evening)
+
+Under the owner's delegated-authority correction, both remaining design
+items were DECIDED + IMPLEMENTED + TESTED:
+
+- **FND-0376** → precedence + operator tombstones (decision record
+  `Docs/adr/DECISION_REC_FND0376_DESTINATION_TOMBSTONES_2026-10-25.md`;
+  tombstone capture at the PATCH destination sync; filter with
+  traveler-reassertion voiding at `_preserve_authoritative_facts`; 5/5 tests;
+  closed fixed).
+- **P-3/U4** → occasion anchor seeds a `date_window` SOFT_HYPOTHESIS
+  (decision record `Docs/adr/DECISION_REC_P3_OCCASION_WINDOW_2026-10-25.md`;
+  seeding block in extractors; unknown stays blocking; real windows win;
+  live-verified on the Sen note + 2 tests). Side-discovery registered:
+  **FND-0380 (P3)** — 'arriving X leaving Y' phrasing parses to None.
+- Test totals this pass: 35 sim3-family tests green; ruff clean throughout.

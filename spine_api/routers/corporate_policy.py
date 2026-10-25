@@ -6,7 +6,7 @@ and tracks duty-of-care traveler safety risk levels.
 """
 
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Any, List, Optional, Dict
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -46,6 +46,11 @@ class PolicyAuditResponse(BaseModel):
     nights_evaluated: int = 5
     nights_source: str = "itinerary_dates"
     authority: str = "corporate_policy_v1"
+    # FND-0338 / roadmap invariant 3: machine-readable basis per violation —
+    # the input provenance (sourced vs estimated) travels WITH each finding so
+    # consumers can never mistake an estimate-derived flag for sourced data.
+    # Values mix strings (rule/basis) and booleans (enforceable).
+    violations_detail: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class OverrideRequest(BaseModel):
@@ -205,12 +210,28 @@ def audit_trip_corporate_policy(
     is_comp = len(violations) == 0
     override_approved = trip.get("corporate_policy_override", {}).get("approved", False)
 
+    violations_detail = [
+        {
+            "rule": "nightly_rate_cap",
+            "description": v,
+            "basis": ("sourced_trip_cost" if cost_source != "estimated_default" else "estimated_default"),
+            "enforceable": cost_source != "estimated_default",
+        }
+        for v in violations
+        if v.startswith("Nightly hotel rate")
+    ] + [
+        {"rule": "duty_of_care_high_risk", "description": v, "basis": "sourced_destination", "enforceable": True}
+        for v in violations
+        if "High Risk Duty-of-Care" in v
+    ]
+
     return PolicyAuditResponse(
         ok=True,
         trip_id=trip_id,
         is_compliant=is_comp,
         violations=violations,
         warnings=warnings,
+        violations_detail=violations_detail,
         duty_of_care_risk_level=doc_risk,
         pre_approval_required=policy.require_pre_approval,
         override_approved=override_approved,

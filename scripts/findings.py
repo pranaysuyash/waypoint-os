@@ -208,6 +208,46 @@ def _mint_id(events: list[dict]) -> str:
     return f"FND-{max_num + 1:04d}"
 
 
+def cmd_fixture(args: argparse.Namespace) -> int:
+    """Invariant 5 flywheel: append a finding's reproducing input to the
+    adversarial corpus as a scenario with finding-id provenance. Delegates to
+    tools/finding_to_fixture.py (the canonical builder/apply logic)."""
+    import sys as _sys
+
+    repo_root = Path(__file__).resolve().parent.parent
+    if str(repo_root) not in _sys.path:
+        _sys.path.insert(0, str(repo_root))
+    from tools.finding_to_fixture import build_scenario
+
+    input_text = Path(args.input_file).read_text()
+    scenario = build_scenario(args.finding, input_text, args.expected, args.source)
+    print(json.dumps(scenario, indent=2, ensure_ascii=False))
+    if args.apply:
+        corpus_path = Path(args.corpus)
+        if corpus_path.exists():
+            corpus = json.loads(corpus_path.read_text())
+        else:
+            # fresh corpus document (same header contract as the seed corpus)
+            corpus = {
+                "corpus": corpus_path.stem,
+                "version": 1,
+                "created": dt.datetime.now(dt.timezone.utc).date().isoformat(),
+                "probe_method": "finding flywheel (scripts/findings.py fixture)",
+                "scenarios": [],
+                "summary": {"total": 0},
+            }
+        scenarios = corpus.setdefault("scenarios", [])
+        scenarios = [sc for sc in scenarios if sc.get("id") != scenario["id"]]
+        scenarios.append(scenario)
+        corpus["scenarios"] = scenarios
+        summary = corpus.setdefault("summary", {})
+        summary["total"] = len(scenarios)
+        corpus_path.write_text(json.dumps(corpus, indent=2, ensure_ascii=False))
+        print(f"applied to {corpus_path} (total: {len(scenarios)})")
+    return 0
+
+
+
 def cmd_open(args: argparse.Namespace) -> int:
     path = store_path()
     with _locked(path):
@@ -572,6 +612,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
 
+    p_fix = sub.add_parser(
+        "fixture",
+        help="append a finding's reproducing input to the adversarial corpus (invariant 5 flywheel)",
+    )
+    p_fix.add_argument("--finding", required=True, help="Finding id, e.g. FND-0329")
+    p_fix.add_argument("--input-file", required=True, help="File with the verbatim reproducing input")
+    p_fix.add_argument("--expected", required=True, help="Expected property expression")
+    p_fix.add_argument(
+        "--corpus",
+        default="data/fixtures/adversarial/adversarial_seed_v1.json",
+        help="Adversarial seed corpus path",
+    )
+    p_fix.add_argument(
+        "--source", default="registered", choices=["registered", "verified_fix"]
+    )
+    p_fix.add_argument("--apply", action="store_true", help="write (default: print the scenario)")
+    p_fix.set_defaults(fn=cmd_fixture)
     p_open = sub.add_parser("open", help="open a new finding (mints FND-NNNN)")
     p_open.add_argument("--title", required=True)
     p_open.add_argument("--priority", default="P2", choices=sorted(VALID_PRIORITIES))

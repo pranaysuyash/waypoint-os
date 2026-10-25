@@ -487,7 +487,9 @@ async def extract_confirmation_data(
     extracted_data = {
         "confirmation_type": conf_type,
         "confirmation_number": conf_num or "PENDING-CONF",
-        "supplier_name": supplier_name or "Direct Supplier",
+        # FND-0378: never fabricate a supplier the voucher didn't name —
+        # None means unresolved; consumers render their own fallback.
+        "supplier_name": supplier_name,
         "dates": " - ".join(dates) if dates else "Confirmed Schedule",
         "amount": amount,
         "currency": currency,
@@ -518,7 +520,9 @@ async def extract_confirmation_data(
             data={
                 "confirmation_type": durable_type,
                 "component_key": body.component_key,
-                "supplier_name": supplier_name or "Direct Supplier",
+                # FND-0378: honest None beats a fabricated constant (FE type is
+                # `string | null`; unresolved suppliers must stay unresolved).
+                "supplier_name": supplier_name,
                 "confirmation_number": conf_num,
                 "notes": (
                     f"{extracted_data['notes']}; extracted_type={conf_type}"

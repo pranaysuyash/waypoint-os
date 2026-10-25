@@ -531,6 +531,80 @@ def test_fourth_tranche_door_contracts():
         assert (item["origin"], item["intent"], item["authority"]) == (origin, intent, authority), door
 
 
+def test_door_display_covers_every_door():
+    """Operator-display exhaustiveness (map §15): every registered door has a
+    human headline, so a new door cannot ship jargon. Unknown doors degrade
+    to a title-cased name (never raw underscores, never a raise)."""
+    for door in work_intake.DOOR_CONTRACTS:
+        assert door in work_intake.DOOR_DISPLAY, f"door {door!r} has no DOOR_DISPLAY entry"
+        item = work_intake.classify(door, agency_id=AGENCY, text=None)
+        d = work_intake.display_for(item)
+        assert d["headline"], door
+        assert "_" not in d["headline"], door
+    # channel substitution composes into the headline for channel-template doors
+    d = work_intake.display_for(
+        {"door": "channel_webhook", "origin": "demand", "intent": "info", "authority": "explicit_user", "channel": "whatsapp"}
+    )
+    assert d["headline"] == "WhatsApp message received"
+    # unknown door degrades gracefully (no raise, no underscores)
+    d2 = work_intake.display_for({"door": "some_future_door", "origin": "system", "intent": "meta", "authority": "system"})
+    assert d2["headline"] == "Some Future Door"
+
+
+def test_actor_display_classes():
+    """Actor vocabulary (map §15.3): system slugs map to human labels; user
+    UUIDs resolve via the router-provided actor_label; raw UUIDs NEVER reach
+    prose (unresolved ones drop the 'by' line); emails pass through."""
+    item = {"door": "run", "origin": "demand", "intent": "new_demand", "authority": "operator"}
+    # system slug → ACTOR_DISPLAY
+    d = work_intake.display_for({**item, "actor": "irops_watch"})
+    assert d["meta"] == ["by the disruption watch"]
+    # router-resolved user name
+    d = work_intake.display_for({**item, "actor": "323468de-ba3d-437b-aa10-35b281a0c6a6"}, actor_label="New User")
+    assert d["meta"] == ["by New User"]
+    # unresolved UUID → no 'by' line (id stays on the entry, not in prose)
+    d = work_intake.display_for({**item, "actor": "323468de-ba3d-437b-aa10-35b281a0c6a6"})
+    assert not any("by " in m for m in d["meta"])
+    # email actor passes through
+    d = work_intake.display_for({**item, "actor": "op@agency.test"})
+    assert d["meta"] == ["by op@agency.test"]
+    # supervisor prefixed slug degrades to raw (not a UUID, not mapped) —
+    # acceptable: it is a named agent, and the map is the extension point
+    d = work_intake.display_for({**item, "actor": "agent_supervisor:test_agent"})
+    assert d["meta"] == ["by agent_supervisor:test_agent"]
+
+
+def test_ranked_queue_collapses_entity_bound_runs_honestly():
+    """Run collapse (map §15.3): identical OPEN entity-bound items share one
+    row (group_count=N, newest first); claimed/unbound items never collapse;
+    every count stays the uncollapsed actionable/log truth."""
+    agency = f"agency_collapse_{uuid.uuid4().hex[:8]}"
+    trip_id = f"trip_collapse_{uuid.uuid4().hex[:8]}"
+    for _ in range(3):
+        work_intake.classify_and_record(
+            "operator_action", agency_id=agency, trip_id=trip_id, text=None
+        )
+    # claimed sibling on the same trip must NOT collapse into the open group
+    claimed = work_intake.classify_and_record(
+        "operator_action", agency_id=agency, trip_id=trip_id, text=None
+    )
+    work_intake.record_lifecycle(agency, claimed["item_id"], "claim", actor="op@agency.test")
+    # unbound item with the same door must NOT collapse
+    work_intake.classify_and_record("operator_action", agency_id=agency, text=None)
+
+    queue = work_intake.ranked_queue(agency)
+    rows = [i for i in queue["items"] if i["door"] == "operator_action"]
+    grouped = [i for i in rows if i.get("group_count", 1) > 1]
+    assert len(grouped) == 1 and grouped[0]["group_count"] == 3
+    assert grouped[0]["trip_id"] == trip_id
+    # one claimed + one unbound remain separate rows
+    assert len(rows) == 3
+    # honesty: actionable counts ALL five items; log total = 5
+    assert queue["total"] == 5 and queue["actionable"] == 5
+    assert queue["counts"]["by_origin"]["operator"] == 5
+    assert queue["count_basis"] == "work_item_log_total"
+
+
 def test_irops_watch_disruption_records_world_item(monkeypatch):
     """Closed loop: an IROPS-watch detection records a high-urgency WORLD
     item (origin=world — the disruption is an external-world event) on the
@@ -705,3 +779,302 @@ def test_stale_run_sweep_records_per_run_item(monkeypatch, tmp_path):
         if i["door"] == "stale_run_timeout" and i["run_id"] == run2
     )
     assert found2["trip_id"] is None
+
+
+# ---------------------------------------------------------------------------
+# Outcome-state lifecycle (map §14): event-sourced claim/dismiss/resolve
+# ---------------------------------------------------------------------------
+
+def test_lifecycle_state_machine_unit():
+    """Unit: transitions validate; terminal states reject; unknown items raise;
+    events append without mutating the original item line."""
+    agency = f"agency_lc_{uuid.uuid4().hex[:8]}"
+    item = work_intake.classify_and_record(
+        "inbound_parse", agency_id=agency, text="lifecycle probe", contact=f"lc{uuid.uuid4().hex[:6]}@x.com"
+    )
+    iid = item["item_id"]
+
+    r1 = work_intake.record_lifecycle(agency, iid, "claim", actor="op@agency.test")
+    assert r1["previous_state"] == "open" and r1["state"] == "claimed"
+    assert r1["claimed_by"] == "op@agency.test"
+
+    r2 = work_intake.record_lifecycle(agency, iid, "unclaim", actor="op@agency.test")
+    assert r2["state"] == "open"
+
+    work_intake.record_lifecycle(agency, iid, "claim", actor="op2@agency.test")
+    r4 = work_intake.record_lifecycle(agency, iid, "resolve", actor="op2@agency.test", note="handled via call")
+    assert r4["previous_state"] == "claimed" and r4["state"] == "resolved"
+
+    # terminal: no further transitions
+    with pytest.raises(ValueError):
+        work_intake.record_lifecycle(agency, iid, "claim", actor="op@agency.test")
+    with pytest.raises(ValueError):
+        work_intake.record_lifecycle(agency, iid, "unclaim", actor="op@agency.test")
+
+    # unknown item / unknown action
+    with pytest.raises(KeyError):
+        work_intake.record_lifecycle(agency, "wi_missing", "claim", actor="op@agency.test")
+    with pytest.raises(ValueError):
+        work_intake.record_lifecycle(agency, iid, "explode", actor="op@agency.test")
+
+    # append-only discipline: the original item line is untouched; events are
+    # separate records (record_type=lifecycle_event) in the same log.
+    raw = [
+        json.loads(line)
+        for line in work_intake._agency_path(agency).read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    item_records = [r for r in raw if r.get("item_id") == iid]
+    assert len(item_records) == 1 and "state" not in item_records[0]
+    events = [r for r in raw if r.get("record_type") == "lifecycle_event"]
+    assert [e["action"] for e in events] == ["claim", "unclaim", "claim", "resolve"]
+    assert events[-1]["note"] == "handled via call"
+
+
+def test_ranked_queue_lifecycle_aware_and_honest():
+    """Resolved/dismissed leave the ranked list; totals stay log totals;
+    class counts describe actionable work only."""
+    agency = f"agency_lq_{uuid.uuid4().hex[:8]}"
+    open_item = work_intake.classify_and_record(
+        "inbound_parse", agency_id=agency, text="queue me", contact=f"lq{uuid.uuid4().hex[:6]}@x.com"
+    )
+    done_item = work_intake.classify_and_record(
+        "inbound_parse", agency_id=agency, text="finish me fast", contact=f"lq2{uuid.uuid4().hex[:6]}@x.com"
+    )
+    dismissed_item = work_intake.classify_and_record(
+        "inbound_parse", agency_id=agency, text="drop me", contact=f"lq3{uuid.uuid4().hex[:6]}@x.com"
+    )
+    claimed_item = work_intake.classify_and_record(
+        "inbound_parse", agency_id=agency, text="hold me", contact=f"lq4{uuid.uuid4().hex[:6]}@x.com"
+    )
+    work_intake.record_lifecycle(agency, done_item["item_id"], "resolve", actor="op@agency.test")
+    work_intake.record_lifecycle(agency, dismissed_item["item_id"], "dismiss", actor="op@agency.test")
+    work_intake.record_lifecycle(agency, claimed_item["item_id"], "claim", actor="op@agency.test")
+
+    queue = work_intake.ranked_queue(agency)
+    visible_ids = {i["item_id"] for i in queue["items"]}
+    assert visible_ids == {open_item["item_id"], claimed_item["item_id"]}
+    by_id = {i["item_id"]: i for i in queue["items"]}
+    assert by_id[claimed_item["item_id"]]["state"] == "claimed"
+    assert by_id[claimed_item["item_id"]]["claimed_by"] == "op@agency.test"
+
+    # honest counts: total = everything ever recorded; by_state covers all
+    assert queue["total"] == 4
+    assert queue["actionable"] == 2
+    assert queue["counts"]["by_state"] == {"open": 1, "claimed": 1, "resolved": 1, "dismissed": 1}
+    # class counts describe actionable work (2), not the log total (4)
+    assert sum(queue["counts"]["by_origin"].values()) == 2
+    assert queue["count_basis"] == "work_item_log_total"
+
+
+def test_work_item_action_endpoint_closed_loop(session_client):
+    """PATCH on the existing router: claim -> visible as claimed; resolve ->
+    leaves the ranked list while total stays honest; 404 unknown/other-tenant;
+    409 invalid transition; 422 bad action."""
+    suffix = uuid.uuid4().hex[:8]
+    agency = f"agency_act_{suffix}"
+    other = f"agency_act2_{suffix}"
+    item = work_intake.classify_and_record(
+        "channel_webhook", agency_id=agency, text="action surface probe"
+    )
+    iid = item["item_id"]
+    headers = {"X-Agency-ID": agency}
+
+    res = session_client.patch(f"/api/v1/work-items/{iid}", json={"action": "claim"}, headers=headers)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["state"] == "claimed" and body["previous_state"] == "open"
+
+    queue = session_client.get("/api/v1/work-items", headers=headers).json()
+    entry = next(i for i in queue["items"] if i["item_id"] == iid)
+    assert entry["state"] == "claimed"
+
+    # tenant isolation: the other agency cannot act on this item
+    cross = session_client.patch(
+        f"/api/v1/work-items/{iid}", json={"action": "resolve"}, headers={"X-Agency-ID": other}
+    )
+    assert cross.status_code == 404
+
+    res = session_client.patch(
+        f"/api/v1/work-items/{iid}", json={"action": "resolve", "note": "handled"}, headers=headers
+    )
+    assert res.status_code == 200
+    queue2 = session_client.get("/api/v1/work-items", headers=headers).json()
+    assert all(i["item_id"] != iid for i in queue2["items"]), "resolved item leaves the ranked list"
+    assert queue2["total"] == 1 and queue2["actionable"] == 0
+    assert queue2["counts"]["by_state"]["resolved"] == 1
+
+    # terminal state -> 409; unknown id -> 404; bad action -> 422
+    assert (
+        session_client.patch(f"/api/v1/work-items/{iid}", json={"action": "claim"}, headers=headers).status_code
+        == 409
+    )
+    assert (
+        session_client.patch(
+            "/api/v1/work-items/wi_nope", json={"action": "claim"}, headers=headers
+        ).status_code
+        == 404
+    )
+    assert (
+        session_client.patch(
+            f"/api/v1/work-items/{iid}", json={"action": "explode"}, headers=headers
+        ).status_code
+        == 422
+    )
+
+
+def test_include_done_history_reader(session_client):
+    """?include_done=true appends resolved/dismissed items (state-annotated)
+    AFTER the actionable list; the default view is unchanged."""
+    suffix = uuid.uuid4().hex[:8]
+    agency = f"agency_hist_{suffix}"
+    open_item = work_intake.classify_and_record(
+        "inbound_parse", agency_id=agency, text="history probe", contact=f"h{suffix}@x.com"
+    )
+    done_item = work_intake.classify_and_record(
+        "inbound_parse", agency_id=agency, text="already handled urgent", contact=f"h2{suffix}@x.com"
+    )
+    work_intake.record_lifecycle(agency, done_item["item_id"], "resolve", actor="op@agency.test")
+
+    headers = {"X-Agency-ID": agency}
+    default_view = session_client.get("/api/v1/work-items", headers=headers).json()
+    assert [i["item_id"] for i in default_view["items"]] == [open_item["item_id"]]
+    assert default_view["actionable"] == 1
+
+    history_view = session_client.get(
+        "/api/v1/work-items?include_done=true", headers=headers
+    ).json()
+    ids = [i["item_id"] for i in history_view["items"]]
+    # done item appended after the actionable one, state-annotated
+    assert ids == [open_item["item_id"], done_item["item_id"]]
+    done_entry = history_view["items"][1]
+    assert done_entry["state"] == "resolved"
+    # actionable count and totals identical in both views
+    assert history_view["actionable"] == 1
+    assert history_view["total"] == default_view["total"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Operator display projection (2026-10-25): read-time headline/meta composition
+# ---------------------------------------------------------------------------
+
+def test_display_for_channel_aware_headlines():
+    """Channel-sensitive doors name the channel in the headline and do not
+    repeat it in the meta line; channel-less items degrade honestly."""
+    item = work_intake.classify(
+        "channel_webhook", agency_id=AGENCY, channel="whatsapp"
+    )
+    out = work_intake.display_for(item)
+    assert out["headline"] == "WhatsApp message received"
+    assert out["meta"] == []
+
+    no_channel = work_intake.classify("channel_webhook", agency_id=AGENCY)
+    assert work_intake.display_for(no_channel)["headline"] == "Message received"
+
+    unknown_channel = work_intake.classify(
+        "channel_webhook", agency_id=AGENCY, channel="pigeon_post"
+    )
+    out_unknown = work_intake.display_for(unknown_channel)
+    assert out_unknown["headline"] == "Pigeon Post message received"
+
+
+def test_display_for_meta_composition():
+    """Meta carries channel (when the headline did not), the bound-entity
+    label, and the actor; unresolvable trips stay off the prose line."""
+    item = work_intake.classify(
+        "inbound_parse",
+        agency_id=AGENCY,
+        channel="email",
+        trip_id="trip_abc123",
+        actor=None,
+    )
+    out = work_intake.display_for(item, trip_label="Bali · 10 June 2027 to 17 June 2027")
+    assert out["headline"] == "New trip request"
+    assert out["meta"] == ["Email", "Trip — Bali · 10 June 2027 to 17 June 2027"]
+
+    unresolved = work_intake.display_for(item, trip_label=None)
+    assert unresolved["meta"] == ["Email"]  # raw trip id stays on the entry, not in prose
+
+    operator_item = work_intake.classify(
+        "operator_action", agency_id=AGENCY, trip_id="trip_abc123", actor="op-7f3a"
+    )
+    out_op = work_intake.display_for(operator_item, trip_label="Bali")
+    assert out_op["headline"] == "Operator updated a trip"
+    assert out_op["meta"] == ["Trip — Bali", "by op-7f3a"]
+
+
+def test_display_for_unknown_door_degrades_not_raises():
+    """Display can never fail a queue read: an unregistered door (only possible
+    via a hand-written legacy row) renders a title-cased fallback."""
+    legacy = {"door": "old_door_gone", "origin": "demand", "intent": "info",
+              "authority": "explicit_user"}
+    out = work_intake.display_for(legacy)
+    assert out["headline"] == "Old Door Gone"
+
+
+def test_display_projection_contains_no_raw_contact_text():
+    """PII honesty: the display projection derives from axes only — it can
+    never leak the traveler text or contact that classification stripped."""
+    item = work_intake.classify(
+        "inbound_parse",
+        agency_id=AGENCY,
+        text="urgent Bali trip, email me at secret.person@example.com or +1 555 010 9999",
+        contact="secret.person@example.com",
+    )
+    out = work_intake.display_for(item)
+    blob = json.dumps(out)
+    assert "secret.person@example.com" not in blob
+    assert "5550109999" not in blob and "555 010 9999" not in blob
+
+
+def test_work_items_router_serves_display_projection(session_client):
+    """The queue endpoint composes headline/meta at READ time: a row written
+    before the display vocabulary existed still renders a human headline, and
+    bound trips resolve through the canonical field resolver to
+    'Trip — destination · date window'."""
+    suffix = uuid.uuid4().hex[:8]
+    agency = f"agency_disp_{suffix}"
+    trip_id = f"trip_disp_{suffix}"
+    from spine_api.persistence import TripStore
+
+    TripStore.save_trip(
+        {
+            "id": trip_id,
+            "agency_id": agency,
+            "source": "pytest",
+            "status": "assigned",
+            "extracted": {
+                "facts": {
+                    "destination_candidates": {"value": ["Bali"], "authority_level": "explicit_user"},
+                    "date_window": {"value": "10 June 2027 to 17 June 2027", "authority_level": "explicit_user"},
+                }
+            },
+        }
+    )
+    work_intake.classify_and_record(
+        "inbound_parse",
+        agency_id=agency,
+        channel="email",
+        trip_id=trip_id,
+        contact=f"d{suffix}@x.com",
+    )
+
+    headers = {"X-Agency-ID": agency}
+    view = session_client.get("/api/v1/work-items", headers=headers).json()
+    entry = view["items"][0]
+    assert entry["headline"] == "New trip request"
+    assert entry["meta"][0] == "Email"
+    assert any(m.startswith("Trip — Bali") for m in entry["meta"]), entry["meta"]
+
+    # Missing trip: label degrades to nothing human — no opaque id in prose.
+    ghost = work_intake.classify_and_record(
+        "inbound_parse",
+        agency_id=agency,
+        channel="email",
+        trip_id="trip_never_existed",
+        contact=f"g{suffix}@x.com",
+    )
+    view2 = session_client.get("/api/v1/work-items", headers=headers).json()
+    ghost_entry = next(i for i in view2["items"] if i["item_id"] == ghost["item_id"])
+    assert not any(m.startswith("Trip —") for m in ghost_entry["meta"])
+    assert ghost_entry["trip_id"] == "trip_never_existed"  # raw id stays on the entry

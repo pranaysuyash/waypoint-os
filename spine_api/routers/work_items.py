@@ -51,6 +51,19 @@ class WorkItemEntry(BaseModel):
     money_touch: bool = False
     pii_present: bool = False
     payload_summary: Dict[str, Any] = Field(default_factory=dict)
+    # Read-time display projection (work_intake.display_for): the human
+    # sentence an operator acts on, composed from the door vocabulary —
+    # never stored on the append-only log. The raw classification axes above
+    # remain the tooling/debug surface.
+    headline: str = Field(default="", description="Operator-facing row title (door display vocabulary)")
+    meta: List[str] = Field(
+        default_factory=list,
+        description="Human context line: channel / bound-entity label / actor.",
+    )
+    group_count: int = Field(
+        default=1,
+        description="N identical entity-bound open items collapsed into this row (1 = uncollapsed).",
+    )
 
 
 class WorkItemQueueResponse(BaseModel):
@@ -84,20 +97,129 @@ class WorkItemActionResponse(BaseModel):
     at: str
 
 
+def _trip_display_label(trip: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Human label for the bound entity, via the canonical field resolver
+    (spine_api/services/inbox_projection.py::resolve_trip_field — the single
+    source of truth for trip field resolution). Tombstoned/unknown parts are
+    skipped; returns None when nothing human remains (caller falls back to
+    keeping the raw id off the prose line). Never raises."""
+    if not isinstance(trip, dict):
+        return None
+    try:
+        from spine_api.services.inbox_projection import resolve_trip_field
+
+        parts: List[str] = []
+        for field in ("destination", "date_window"):
+            value = resolve_trip_field(trip, field)
+            text = str(value).strip() if value is not None else ""
+            if text and text.lower() not in {"unknown", "tbd"} and text not in parts:
+                parts.append(text)
+        return " · ".join(parts) or None
+    except Exception as exc:  # display label is an annotation, never a blocker
+        logger.debug("trip display label skipped: %s", exc)
+        return None
+
+
+async def _resolve_actor_names(user_ids: List[str]) -> Dict[str, str]:
+    """User-UUID → display-name lookup (name, falling back to email), one
+    primary-key get per distinct actor on the page (bounded by the page
+    size). Empty map when nothing resolves — callers degrade to
+    ACTOR_DISPLAY/raw. Unknown UUIDs simply resolve to nothing."""
+    if not user_ids:
+        return {}
+    from spine_api.core.database import async_session_maker
+    from spine_api.models.tenant import User
+
+    resolved: Dict[str, str] = {}
+    async with async_session_maker() as session:
+        for uid in user_ids:
+            user = await session.get(User, uid)
+            if user is not None and (user.name or user.email):
+                resolved[uid] = user.name or user.email
+    return resolved
+
+
+def _actor_display_labels(items: List[Dict[str, Any]]) -> Dict[str, str]:
+    """One batched user lookup per queue read for every user-UUID actor on
+    the page. Best-effort: a failed lookup degrades to ACTOR_DISPLAY/raw,
+    never a failed queue read."""
+    import asyncio
+    import re as _re
+
+    uuid_re = _re.compile(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        _re.IGNORECASE,
+    )
+    user_ids = sorted(
+        {
+            str(item.get("actor"))
+            for item in items
+            if item.get("actor") and uuid_re.match(str(item.get("actor")))
+        }
+    )
+    if not user_ids:
+        return {}
+    try:
+        return asyncio.run(_resolve_actor_names(user_ids))
+    except Exception as exc:
+        logger.debug("actor name lookup skipped: %s", exc)
+        return {}
+
+
+def _annotate_display(
+    items: List[Dict[str, Any]], agency_id: str
+) -> List[Dict[str, Any]]:
+    """Compose headline/meta per item with per-request memoized trip-label
+    resolution (at most one TripStore read per distinct bound trip on the
+    page) and one batched actor-name lookup per read. Best-effort: a failed
+    entity lookup degrades to no label, never a failed queue read."""
+    labels: Dict[str, Optional[str]] = {}
+    actor_names = _actor_display_labels(items)
+    out: List[Dict[str, Any]] = []
+    for item in items:
+        trip_id = item.get("trip_id")
+        trip_label: Optional[str] = None
+        if trip_id:
+            if trip_id not in labels:
+                try:
+                    from spine_api.persistence import TripStore
+
+                    labels[trip_id] = _trip_display_label(
+                        TripStore.get_trip_for_agency(str(trip_id), agency_id)
+                    )
+                except Exception as exc:
+                    logger.debug("trip label lookup skipped for %s: %s", trip_id, exc)
+                    labels[trip_id] = None
+            trip_label = labels[trip_id]
+        actor_label = actor_names.get(str(item.get("actor"))) if item.get("actor") else None
+        annotated = dict(item)
+        annotated.update(
+            work_intake.display_for(item, trip_label=trip_label, actor_label=actor_label)
+        )
+        out.append(annotated)
+    return out
+
+
 @router.get("", response_model=WorkItemQueueResponse)
 def get_work_item_queue(
     agency_id: str = Depends(get_current_agency_id),
     limit: int = Query(default=50, ge=1, le=200),
+    include_done: bool = Query(
+        default=False,
+        description="History reader: append resolved/dismissed items after the actionable list.",
+    ),
 ) -> WorkItemQueueResponse:
     """Urgency-ranked queue of classified incoming work for this agency.
 
     Ranking: urgency (high > normal > low), then returning guests, then
     recency. Lifecycle-aware: resolved/dismissed items leave the ranked list;
     counts.by_state and total stay honest log totals (``count_basis``).
+    ``include_done=true`` appends done items (state-annotated) after the
+    actionable list — the history view over recorded lifecycle events.
     """
-    queue = work_intake.ranked_queue(agency_id, limit=limit)
+    queue = work_intake.ranked_queue(agency_id, limit=limit, include_done=include_done)
     return WorkItemQueueResponse(
-        items=[WorkItemEntry.model_validate(i) for i in queue["items"]],
+        items=[WorkItemEntry.model_validate(i) for i in _annotate_display(queue["items"], agency_id)],
         total=queue["total"],
         actionable=queue["actionable"],
         duplicates_flagged=queue["duplicates_flagged"],

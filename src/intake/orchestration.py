@@ -39,7 +39,7 @@ from opentelemetry import trace
 _otel_tracer = trace.get_tracer("orchestration.pipeline")
 
 from .packet_models import SourceEnvelope
-from .extractors import ExtractionPipeline
+from .extractors import ExtractionPipeline, PLATFORM_DEFAULT_CURRENCY
 from .validation import validate_packet, PacketValidationReport, blocking_unknowns
 from .decision import run_gap_and_decision, DecisionResult
 from .strategy import (
@@ -257,7 +257,15 @@ def run_spine_once(
     pipeline = ExtractionPipeline()
     try:
         with _otel_tracer.start_as_current_span("extraction") as span:
-            packet = pipeline.extract(envelopes, stage=stage)
+            packet = pipeline.extract(
+                envelopes,
+                stage=stage,
+                # FND-0341: the agency's locale default currency (INR platform
+                # default) governs unmarked budget amounts — an India-first
+                # product never reads bare "60k" as USD.
+                default_currency=getattr(actual_settings, "default_currency", None)
+                or PLATFORM_DEFAULT_CURRENCY,
+            )
             span.set_attribute("envelope_count", len(envelopes))
             span.set_attribute("trip_id", packet.packet_id)
             if not auto_intake_enabled:
@@ -343,21 +351,20 @@ def run_spine_once(
 
     if nb01_result.verdict == GateVerdict.ESCALATE:
         # If extraction is structurally broken, we must stop
-        from .decision import DecisionResult
+        from .decision import DecisionResult, generate_question
 
         # FND-0313: blocked leads still owe the operator their open
         # questions — the T1 ask loop (POST /followups/{trip_id}/send)
         # reads exactly this list, and an empty one 409s the loop before
-        # it can start. Data-only floor, same shape as the DEGRADE branch
-        # below; capped to keep a messy note from spamming the traveler.
+        # it can start. Data-only floor, same shape AND question phrasing
+        # as the decision-stage floor (generate_question parity — review
+        # FND-0310 P3); capped to keep a messy note from spamming the
+        # traveler.
         escalate_floor = [
             {
                 "field_name": b["field_name"],
                 "priority": b["priority"],
-                "question": (
-                    f"Please provide {b['field_name'].replace('_', ' ')} "
-                    f"to continue planning."
-                ),
+                "question": generate_question(b["field_name"]),
             }
             for b in blocking_unknowns(packet)[:6]
         ]

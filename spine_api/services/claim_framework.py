@@ -263,6 +263,25 @@ def resolve_framework(
             ),
         }
     # 7. Geography resolved, no rule fired (or unresolvable without geography).
+    #    D7 enrichment: name any known NATIONAL departure/arrival regime so the
+    #    operator sees the honest local avenue alongside the Montreal path.
+    #    Amounts stay unset until the regulation texts are cited (web-search
+    #    quota) — this registry NEVER fabricates statutory numbers.
+    national_regime = (
+        _NATIONAL_DEPARTURE_REGIMES.get(dep)
+        or _NATIONAL_DEPARTURE_REGIMES.get(arr)
+    )
+    if national_regime:
+        return {
+            "framework": "NONE",
+            "basis": "outside_regulated_jurisdictions",
+            "montreal_applies": True,
+            "reason": (
+                f"{_MONTREAL_REASON} National regime on the route: "
+                f"{national_regime} (amounts not encoded — verify the "
+                "regulation text before quoting statutory figures)."
+            ),
+        }
     return {
         "framework": "NONE",
         "basis": "outside_regulated_jurisdictions",
@@ -270,6 +289,24 @@ def resolve_framework(
         "reason": _MONTREAL_REASON,
     }
 
+
+# --- National departure regimes (D7, knowledge-based — amounts UNENCODED) ---
+# Each entry names the local statutory avenue a traveler on that route can
+# pursue IN ADDITION to the Montreal Convention claim. Entries carry no
+# compensation figures: adding numbers requires the regulation text cited
+# (web-search quota — SIM3 meta-audit D7). Add a country ONLY with its
+# statute name; extend to amounts in the same change as the citation.
+# --- National departure regimes (D7, knowledge-based — amounts UNENCODED) ---
+# Each entry names the local statutory avenue a traveler on that route can
+# pursue IN ADDITION to the Montreal Convention claim. Keys use the resolver's
+# canonical lowercase country names (normalize_country output). Entries carry
+# no compensation figures: adding numbers requires the regulation text cited
+# (web-search quota — SIM3 meta-audit D7). Add a country ONLY with its
+# statute name; extend to amounts in the same change as the citation.
+_NATIONAL_DEPARTURE_REGIMES = {
+    "thailand": "Thailand air passenger protection rules (2021, Office of the Consumer Protection Board)",
+    "india": "India DGCA CAR Section 3, Series M, Part IV (carriage by air — passenger entitlements)",
+}
 
 # --- Statutory amount tables (framework banding) ----------------------------
 

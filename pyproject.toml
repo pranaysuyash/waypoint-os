@@ -26,7 +26,9 @@ dependencies = [
     # --- LLM Usage Guard (P4-03) ---
     "redis>=5.0.0",
     "opentelemetry-distro>=0.62b1",
-    "opentelemetry-exporter-otlp-proto-grpc>=1.41.1",
+    # CVE-2026-114603 fixed in 1.45.1 (floor bumped 2026-10-25, FND-0374 wave)
+    "opentelemetry-api>=1.45.1",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.45.1",
     "opentelemetry-instrumentation-fastapi>=0.62b1",
     "slowapi>=0.1.9",
     "openai>=2.32.0",

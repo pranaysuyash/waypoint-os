@@ -274,24 +274,40 @@ PUBLIC_CHECKER_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 PUBLIC_CHECKER_MANIFESTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _make_json_serializable(obj: Any) -> Any:
+def _make_json_serializable(obj: Any, _path: tuple = ()) -> Any:
     """
     Convert an object to a JSON-serializable format.
     Handles dataclasses, nested objects, and primitive types.
+
+    ``_path`` carries the ids of objects on the current recursion path only
+    (ancestor-scoped), so reference cycles terminate with None while shared
+    references between siblings still serialize in full.
     """
     if obj is None:
         return None
     elif isinstance(obj, (str, int, float, bool)):
         return obj
     elif isinstance(obj, dict):
-        return {k: _make_json_serializable(v) for k, v in obj.items()}
+        if id(obj) in _path:
+            return None
+        _path = _path + (id(obj),)
+        return {k: _make_json_serializable(v, _path) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
-        return [_make_json_serializable(item) for item in obj]
+        if id(obj) in _path:
+            return None
+        _path = _path + (id(obj),)
+        return [_make_json_serializable(item, _path) for item in obj]
     elif is_dataclass(obj):
-        return _make_json_serializable(asdict(obj))  # type: ignore[arg-type]
+        if id(obj) in _path:
+            return None
+        _path = _path + (id(obj),)
+        return _make_json_serializable(asdict(obj), _path)  # type: ignore[arg-type]
     elif hasattr(obj, '__dict__'):
+        if id(obj) in _path:
+            return None
+        _path = _path + (id(obj),)
         # For regular objects with __dict__
-        return _make_json_serializable(obj.__dict__)
+        return _make_json_serializable(obj.__dict__, _path)
     else:
         # Fallback: convert to string
         return str(obj)
@@ -3988,9 +4004,57 @@ def _preserve_authoritative_facts(serializable_trip: dict, existing_trip: Option
     lower-authority value for it), the existing slot is carried forward so an
     answered question can never regress to unknown. Re-extracted values still
     win for plain system-authority fields.
+
+    FND-0376 (decision record
+    ``Docs/adr/DECISION_REC_FND0376_DESTINATION_TOMBSTONES_2026-10-25.md``):
+    precedence + operator tombstones. A fresh re-extracted
+    ``destination_candidates`` list is filtered through the trip's
+    ``destination_tombstones`` — candidates an operator removed or displaced
+    by a hand-set destination cannot be resurrected by a deterministic
+    re-extraction. A tombstone is VOIDED when the new traveler note names
+    that candidate explicitly (canonical customer>operator: their latest
+    words override the operator's removal).
     """
     if not isinstance(existing_trip, dict):
         return
+
+    # FND-0376 tombstone filter (before carry-forward so a voided tombstone
+    # is computed against the incoming note).
+    tombstones = [
+        str(t).strip().lower()
+        for t in (existing_trip.get("destination_tombstones") or [])
+        if str(t).strip()
+    ]
+    if tombstones:
+        new_extracted_pre = serializable_trip.get("extracted")
+        new_facts_pre = (
+            new_extracted_pre.get("facts")
+            if isinstance(new_extracted_pre, dict)
+            else None
+        )
+        cand_slot = (
+            new_facts_pre.get("destination_candidates")
+            if isinstance(new_facts_pre, dict)
+            else None
+        )
+        if isinstance(cand_slot, dict) and isinstance(cand_slot.get("value"), list):
+            submission = ((serializable_trip.get("raw_input") or {}).get("submission") or {})
+            note = str(submission.get("raw_note") or "").lower()
+            kept: list = []
+            for cand in cand_slot["value"]:
+                cand_name = str(cand).strip()
+                low = cand_name.lower()
+                if low in tombstones and low and low not in note:
+                    continue  # tombstoned and NOT re-asserted by the traveler
+                if low in tombstones and low in note:
+                    # Traveler re-asserted it — void the tombstone.
+                    existing_trip["destination_tombstones"] = [
+                        t for t in (existing_trip.get("destination_tombstones") or [])
+                        if str(t).strip().lower() != low
+                    ]
+                kept.append(cand)
+            cand_slot["value"] = kept
+
     _raw_extracted = existing_trip.get("extracted")
     existing_extracted: Dict[str, Any] = _raw_extracted if isinstance(_raw_extracted, dict) else {}
     old_facts = existing_extracted.get("facts") if isinstance(existing_extracted.get("facts"), dict) else None

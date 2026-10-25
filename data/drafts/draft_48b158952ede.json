@@ -1,49 +1,6 @@
 {
-  "id": "draft_48b158952ede",
-  "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
-  "created_by": "323468de-ba3d-437b-aa10-35b281a0c6a6",
-  "assigned_to": "323468de-ba3d-437b-aa10-35b281a0c6a6",
-  "name": "singapore trip in may end for 5 people 1 kid 3 years 2 el...",
-  "name_source": "user",
-  "status": "blocked",
-  "stage": "discovery",
-  "operating_mode": "normal_intake",
-  "scenario_id": null,
-  "strict_leakage": false,
-  "source_channel": null,
-  "customer_id": null,
-  "customer_name_snapshot": null,
-  "customer_phone_hash": null,
-  "customer_email_hash": null,
-  "last_run_id": "3ec9376e-b178-4e3e-9005-177d92f1caff",
-  "last_run_state": "blocked",
-  "last_run_completed_at": "2026-05-01T13:15:54.673977+00:00",
-  "promoted_trip_id": null,
-  "promoted_at": null,
-  "merged_into_draft_id": null,
-  "discarded_at": null,
-  "discarded_by": null,
-  "version": 4,
-  "created_at": "2026-05-01T12:52:02.766625+00:00",
-  "updated_at": "2026-05-01T13:15:54.674584+00:00",
-  "customer_message": "singapore trip in may end for 5 people 1 kid 3 years 2 elders",
-  "agent_notes": null,
-  "structured_json": null,
-  "itinerary_text": null,
-  "last_validation": null,
-  "last_packet": null,
-  "run_snapshots": [
-    {
-      "run_id": "3ec9376e-b178-4e3e-9005-177d92f1caff",
-      "state": "blocked",
-      "snapshot": {
-        "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
-        "stage_at_block": "validation"
-      },
-      "timestamp": "2026-05-01T13:15:54.673984+00:00"
-    }
-  ],
-  "merge_history": [],
-  "linked_draft_ids": [],
-  "linked_trip_ids": []
+  "__encrypted_draft": true,
+  "v": 2,
+  "kid": "9a5b1fb90095ce2a",
+  "ciphertext": "gAAAAABq3iB21s_ZXjmUhLNzVHhpT1dCFh5dVsnkFdos80IKA6bwJycSXZtPodWnVbAPjgNR-4B19U4yRHWnKgS7uhzI3W0RLGPH3yv5BQWoucRK4YOe1sNEGzihfnnW-wc4E6IXS4bNBl2-pvwHZpTgMCduyhWXr7b_qTag902ccqgV9I-m7YcK9PTtxtr3PRUwp-pj1pKqEvEMkdUv_gbxFjx2_1pfrFZw1ap_bWgf4aPvq3cGWdSiCZbrKYP5gdxLWS8D2m1QeXgEuzSx8_zXwJWD54L4WQNSDrK6oHtETSGwAKYXDkZPd36-4hL9IoclsGTfB85Lz0PtJUOMEpWJcJpPuZcyD0DIEtpJXNZshzJN_tn0CFqSYH_a8XTCOCWbU-FRSLTSKFzDQmZFD82QlDLJcma_Ys2VcAj_Kq7iNq_h3iVwheZ3WTac3m_886OMktYnKYZvPXuUlq4R6VdZj0PK8rfhUXAOc_-CyS_-56IB_Q5-szlxnioABtbRUPw1BuSLuWMt_RxkmZCTGYwZamf_RH-WD3_Xcru5olBISkwumpMOVGdcLE0uAqbW7HFdsOZ6zkkvyw459IWM3IchRvcvM3i4IO3kbBBtAvlD_fjKyWTB1Rys23efUC_4tQInRNSzYfTGXRCeThjq65VgO7Z5xdComt1IE4b2XdlbJTaVT9SyAzdeOg62sBN5I1afAYp5uzJ7FI2s_jhu5yom8wYE3dUhxBfHGSB4osiMcI0zhN1zLhyIKVDOUtw2u2p8Bk4rV1FcKjZaQZX3u2QIoF9E-CpuwML9zsTxxu_7KE_RaZzJcxm81xGYuCooyPB0mtFqw2aE7tshHn1Xo12MizJ9QOz-dG-3cU9NVXIowDfa7BHkprbgek811r-smXIcXgYUuTrzp1V8DnF3vHo-nyy6qIldkUo63cmBi3ocWXt0M61lFTiyxeEXa637tfwcn0Nr5TlLCucE3PhreVSRqpX76IM5JYoOp9pZKBMNu4IoAWOUQwAX01mYkNI2pyQxW1q9j69l0fjZrnf0StUPqExcvsXdsuXtvYaDxfTDJQd5ufdrWE5MIE6UQn_9vxMzEbL4VCYkx95OZ6uisw753H8GufrXSkliG0yeUkhsFBvwSWCSw_b3T0SDJNmBDY7cqK3RFpKgsGrE1fHDjbc31P2KxvDjUrICxtqdbGFz60JMsy7I_WTu0XMghw4wKwF_vvdDaJg3kr-EF-lhajwYVTtha5rHxPGaksGnj5h_yFHGPEn7fDxc365R0fXLjK0wdmgOrJbYnbqwjh1wpcj893b864tiX9V9Nj6-_g1JhGwKfXdqPc6bnzrJkX8l93lxFb_PrOTMmMSjcqgw-gGmNPVus4_-BVXrdOC45x6YgU4sDJJ0wjmNvebKKSDzD23W_D0Gu2wWtet1DFwEcMkZvqUAnX_HMiw31GDHEmii7W31Pn6StATkUTv77mNfseHx5BI09E7KtLxKmCwdYdFYVjMBaXoXDaQMNuGw5x_kWbFOngA5E4JWA89F_uMdyEHl2nb0HSgzT4trhYdjpujKVom7IyB-aFrNvJ18de8gQ7BOKedFQ15xFqhhu6x1ECLqZjaaHU9OczpUFEBcN42S_zWUF2oz_tngepB73YkBhybmP7jfzwIZFm4UKcOXcCLFhkASN64XJlRYJEBxqC-8_O5bUPdVLGsMtZboVrMZWGrlRV5uOHPL3uUOZs89CRoR1bmrSrZH8r-gNSBknzLgr4Iln_P69uigrboBeIDIfKoo6DIffOGWJqYg4fQx5Sn7B2by5STLaAG-HxxtMXjeG2CNWhswaS92Hix5bi4uhANoqP-UVXimxoMYRriSmG4fvw8UGDfhghZzn9MmcCUUONkmFiqqmHkOFFpAMCdcIcVAVYdH300YpmR0InurwPSYsI6j57Z9FoMT_DOy-qsCtG-KH0UsA48i1_W1tloKU3uQdF90pGhMjtuhTH5msQyc1UUmQ06tRxFXhuWabcxHG0ndcSsb70tchKMo_crD2Sl4gVmCi1SCDewGH0ytOiFS4oL_dRy0"
 }

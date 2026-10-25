@@ -5,15 +5,18 @@
  * queue (INCOMING_WORK_CLASSIFICATION_MAP_2026-10-24 §5 C1; the queue is the
  * one read surface over the canonical work-intake store).
  *
- * Renders urgency-ranked items with per-class counts. Honesty rules carried
- * over from the backend contract: counts are log totals (count_basis), the
+ * Renders urgency-ranked items with per-class counts and the outcome-state
+ * lifecycle actions (map §14: claim / release / dismiss / resolve — event-
+ * sourced on the backend's append-only log). Honesty rules carried over
+ * from the backend contract: counts are log totals (count_basis), the
  * returning-guest badge is an on-file annotation (never confirmed trip data),
  * and the duplicate badge is a flag for operators, not an auto-merge.
  */
 
-import { AlertTriangle, ArrowUpRight, Repeat, RotateCw } from 'lucide-react';
-import { useWorkItems } from '@/hooks/useWorkItems';
-import type { WorkItemEntry } from '@/lib/work-items-api';
+import { AlertTriangle, ArrowUpRight, Check, Repeat, RotateCw, X } from 'lucide-react';
+import { useState } from 'react';
+import { useWorkItemAction, useWorkItems } from '@/hooks/useWorkItems';
+import type { WorkItemEntry, WorkItemAction } from '@/lib/work-items-api';
 
 const URGENCY_STYLE: Record<WorkItemEntry['urgency'], { color: string; bg: string }> = {
   high: { color: 'var(--accent-red)', bg: 'rgba(248,113,113,0.10)' },
@@ -36,12 +39,75 @@ function timeOfDay(iso: string): string {
   }
 }
 
-function WorkQueueRow({ item }: { item: WorkItemEntry }) {
+function ActionButton({
+  label,
+  title,
+  onClick,
+  disabled,
+  icon,
+  hoverColor,
+}: {
+  label: string;
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  icon: React.ReactNode;
+  hoverColor: string;
+}) {
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      className='inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 shrink-0'
+      style={{ borderColor: 'var(--border-default)', color: 'var(--text-tertiary)' }}
+      onMouseEnter={(e) => {
+        if (!disabled) e.currentTarget.style.color = hoverColor;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = 'var(--text-tertiary)';
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function WorkQueueRow({
+  item,
+  onAction,
+  pending,
+  noteEditor,
+  onOpenNoteEditor,
+  onCloseNoteEditor,
+  onSubmitNote,
+  noteDraft,
+  onNoteDraftChange,
+}: {
+  item: WorkItemEntry;
+  onAction: (itemId: string, action: WorkItemAction) => void;
+  pending: boolean;
+  noteEditor: { itemId: string; action: WorkItemAction } | null;
+  onOpenNoteEditor: (itemId: string, action: WorkItemAction) => void;
+  onCloseNoteEditor: () => void;
+  onSubmitNote: (itemId: string, action: WorkItemAction, note: string) => void;
+  noteDraft: string;
+  onNoteDraftChange: (value: string) => void;
+}) {
   const urgency = URGENCY_STYLE[item.urgency] ?? URGENCY_STYLE.normal;
+  const claimed = item.state === 'claimed';
+  const done = item.state === 'resolved' || item.state === 'dismissed';
+  const editorOpen = noteEditor?.itemId === item.item_id;
   return (
     <li
       className='flex items-center gap-3 px-3 py-2 rounded-lg'
-      style={{ background: 'var(--bg-elevated)' }}
+      style={{
+        background: 'var(--bg-elevated)',
+        opacity: done ? 0.7 : 1,
+      }}
     >
       <span
         className='inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider shrink-0'
@@ -57,8 +123,34 @@ function WorkQueueRow({ item }: { item: WorkItemEntry }) {
       <div className='flex-1 min-w-0'>
         <div className='flex items-center gap-2'>
           <span className='text-[13px] font-medium truncate' style={{ color: 'var(--text-primary)' }}>
-            {humanizeDoor(item.door)}
+            {item.headline || humanizeDoor(item.door)}
           </span>
+          {(item.group_count ?? 1) > 1 && (
+            <span
+              className='inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold shrink-0'
+              style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-default)' }}
+              title={`${item.group_count} identical items on this entity collapsed into one obligation — resolving this resolves them all`}
+            >
+              ×{item.group_count}
+            </span>
+          )}
+          {done && (
+            <span
+              className='inline-flex items-center text-[10px] font-semibold uppercase tracking-wider shrink-0'
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              {item.state}
+            </span>
+          )}
+          {claimed && (
+            <span
+              className='inline-flex items-center gap-1 text-[10px] font-semibold shrink-0'
+              style={{ color: 'var(--accent-blue)' }}
+              title={item.claimed_by ? `Claimed by ${item.claimed_by}` : 'Claimed'}
+            >
+              claimed
+            </span>
+          )}
           {item.returning_customer && (
             <span
               className='inline-flex items-center gap-1 text-[10px] font-semibold shrink-0'
@@ -89,12 +181,104 @@ function WorkQueueRow({ item }: { item: WorkItemEntry }) {
             </span>
           )}
         </div>
-        <div className='text-[11px] mt-0.5 truncate' style={{ color: 'var(--text-muted)' }}>
-          {item.origin} · {item.intent} · {item.authority}
-          {item.channel ? ` · ${item.channel}` : ''}
-          {item.trip_id ? ` · ${item.trip_id}` : ''}
-        </div>
+        {item.meta.length > 0 ? (
+          <div
+            className='text-[11px] mt-0.5 truncate'
+            style={{ color: 'var(--text-muted)' }}
+            title={`Classification: ${item.origin} · ${item.intent} · ${item.authority}${item.channel ? ` · ${item.channel}` : ''}${item.trip_id ? ` · trip ${item.trip_id}` : ''}`}
+          >
+            {item.meta.join(' · ')}
+          </div>
+        ) : (
+          <div
+            className='text-[11px] mt-0.5 truncate'
+            style={{ color: 'var(--text-muted)' }}
+            title={`Classification: ${item.origin} · ${item.intent} · ${item.authority}${item.trip_id ? ` · trip ${item.trip_id}` : ''}`}
+          >
+            {humanizeDoor(item.door)}
+          </div>
+        )}
       </div>
+      {editorOpen && noteEditor ? (
+        <form
+          className='flex items-center gap-1 shrink-0'
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmitNote(item.item_id, noteEditor.action, noteDraft);
+          }}
+        >
+          <input
+            type='text'
+            value={noteDraft}
+            onChange={(e) => onNoteDraftChange(e.target.value)}
+            placeholder='why? (optional)'
+            aria-label={`Outcome note for ${noteEditor.action}`}
+            maxLength={200}
+            className='w-40 rounded-md border px-2 py-0.5 text-[11px]'
+            style={{ borderColor: 'var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+          />
+          <button
+            type='submit'
+            disabled={pending}
+            title={`Confirm ${noteEditor.action} with this note`}
+            aria-label={`Confirm ${noteEditor.action} with this note`}
+            className='inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50'
+            style={{ borderColor: 'var(--border-default)', color: 'var(--accent-green)' }}
+          >
+            Confirm
+          </button>
+          <ActionButton
+            label='Cancel'
+            title='Close the note editor'
+            onClick={onCloseNoteEditor}
+            disabled={pending}
+            icon={<X className='size-3' aria-hidden='true' />}
+            hoverColor='var(--text-secondary)'
+          />
+        </form>
+      ) : (
+        <div className='flex items-center gap-1 shrink-0'>
+          {done ? null : claimed ? (
+            <>
+              <ActionButton
+                label='Resolve'
+                title='Mark resolved — handled, outcome recorded (add a note)'
+                onClick={() => onOpenNoteEditor(item.item_id, 'resolve')}
+                disabled={pending}
+                icon={<Check className='size-3' aria-hidden='true' />}
+                hoverColor='var(--accent-green)'
+              />
+              <ActionButton
+                label='Release'
+                title='Release the claim back to the open queue'
+                onClick={() => onAction(item.item_id, 'unclaim')}
+                disabled={pending}
+                icon={<RotateCw className='size-3' aria-hidden='true' />}
+                hoverColor='var(--text-secondary)'
+              />
+            </>
+          ) : (
+            <>
+              <ActionButton
+                label='Claim'
+                title='Claim this item — it stays on your queue until resolved'
+                onClick={() => onAction(item.item_id, 'claim')}
+                disabled={pending}
+                icon={<Check className='size-3' aria-hidden='true' />}
+                hoverColor='var(--accent-blue)'
+              />
+              <ActionButton
+                label='Dismiss'
+                title='Dismiss — no action needed; leaves the ranked queue (add a note)'
+                onClick={() => onOpenNoteEditor(item.item_id, 'dismiss')}
+                disabled={pending}
+                icon={<X className='size-3' aria-hidden='true' />}
+                hoverColor='var(--accent-red)'
+              />
+            </>
+          )}
+        </div>
+      )}
       <span className='text-[11px] shrink-0' style={{ color: 'var(--text-tertiary)' }}>
         {timeOfDay(item.received_at)}
       </span>
@@ -103,7 +287,32 @@ function WorkQueueRow({ item }: { item: WorkItemEntry }) {
 }
 
 export function WorkQueuePanel() {
-  const { data, isLoading, error } = useWorkItems(8);
+  const [includeDone, setIncludeDone] = useState(false);
+  const { data, isLoading, error } = useWorkItems(8, includeDone);
+  const action = useWorkItemAction();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [noteEditor, setNoteEditor] = useState<{ itemId: string; action: WorkItemAction } | null>(
+    null
+  );
+  const [noteDraft, setNoteDraft] = useState('');
+
+  const closeNoteEditor = () => {
+    setNoteEditor(null);
+    setNoteDraft('');
+  };
+
+  const handleAction = (itemId: string, act: WorkItemAction, note?: string) => {
+    setActionError(null);
+    closeNoteEditor();
+    action.mutate(
+      { itemId, action: act, note },
+      { onError: () => setActionError(act) }
+    );
+  };
+
+  const doneCount = data
+    ? (data.counts.by_state.resolved ?? 0) + (data.counts.by_state.dismissed ?? 0)
+    : 0;
 
   return (
     <section
@@ -139,6 +348,17 @@ export function WorkQueuePanel() {
               <span style={{ color: 'var(--accent-amber)' }}>{data.duplicates_flagged} dup?</span>
             )}
             <span aria-label='total work items'>{data.total} total</span>
+            {doneCount > 0 && (
+              <button
+                type='button'
+                onClick={() => setIncludeDone((v) => !v)}
+                className='underline underline-offset-2'
+                style={{ color: 'var(--accent-blue)' }}
+                aria-pressed={includeDone}
+              >
+                {includeDone ? 'hide done' : `show ${doneCount} done`}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -146,6 +366,11 @@ export function WorkQueuePanel() {
       {error && (
         <p className='text-[12px] mt-3' style={{ color: 'var(--text-muted)' }}>
           Work queue unavailable.
+        </p>
+      )}
+      {actionError && (
+        <p className='text-[12px] mt-3' style={{ color: 'var(--accent-amber)' }} role='alert'>
+          Could not {actionError} that item — it may have just changed state. The queue will refresh.
         </p>
       )}
       {isLoading && (
@@ -164,7 +389,21 @@ export function WorkQueuePanel() {
       {data && data.items.length > 0 && (
         <ol className='mt-3 space-y-2'>
           {data.items.map((item) => (
-            <WorkQueueRow key={item.item_id} item={item} />
+            <WorkQueueRow
+              key={item.item_id}
+              item={item}
+              onAction={handleAction}
+              pending={action.isPending}
+              noteEditor={noteEditor}
+              onOpenNoteEditor={(itemId, act) => {
+                setNoteEditor({ itemId, action: act });
+                setNoteDraft('');
+              }}
+              onCloseNoteEditor={closeNoteEditor}
+              onSubmitNote={handleAction}
+              noteDraft={noteDraft}
+              onNoteDraftChange={setNoteDraft}
+            />
           ))}
         </ol>
       )}

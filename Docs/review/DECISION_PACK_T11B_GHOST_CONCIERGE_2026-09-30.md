@@ -208,3 +208,25 @@ Ops lesson recorded: the `trips` table has FORCE RLS — raw DB probes without
 `set_config('app.current_agency_id', …)` inside a transaction are RLS-blind
 and will report zero rows. The earlier "zero trips in SQL" observations were
 probe artifacts, not data loss.
+
+## 12. Council falsifier — browser leg COMPLETE (2026-10-05, Tier 4)
+
+The browser leg caught TWO more live defects the API journey couldn't:
+1. **FND-0308a — FE/BE contract 422:** the ask form's submission was refused
+   422 by the dogfood PII guard — each recorded answer embedded the full live
+   ask token, whose digit-runs pattern-match as a phone number. Beyond the
+   guard trip, embedding a live capability credential in persisted,
+   API-surfaced trip data was wrong by design. Fixed: answers now carry a
+   sha256 fingerprint (12 chars); supersession check confirmed zero consumers
+   of the raw field; regression pin in tests/test_claim_disposition.py.
+2. **FND-0308b — structured-error crash:** the FE rendered the backend's
+   actionable-error object {reason, remediation} as a React child → full
+   error-boundary crash. Fixed: safe rendering (string → text; object →
+   reason + remediation text).
+
+**Browser S2:** fresh link → 390×844 render (2 questions) → UI submission →
+"Thank you" confirmation → GET /trips round-trip shows 2/2 answers with
+token_fingerprint and ZERO token leak. Tier 4 complete.
+
+Bonus: this leg doubled as exploration 46 sweep 1 — ask page clean at phone
+width; PWA manifest exists but is unlinked (E46 doc written).

@@ -23,3 +23,52 @@
 - **DP-04a (Producer rail vendor, topics 48/50):** which externally-licensed producer supplies the sandbox lane (B6/B7, ADR-008 posture: sandbox = preview, never live). Evidence from the 2026-10-20 trvl probe (`data/experiments/trvl_probe_2026-10-20/`): trvl v1.27.0 is **PolyForm Noncommercial** — reference design only; honest typed provider statuses match our doctrine, but 30% of rows were unpriced, 27 were currency-converted estimates, and one hotel set mixed five currencies, so any ingestion needs the unpriced/converted/FX clamp gate at the boundary. Options: A. **Dida-Hotel-MCP** (official commercial wholesale MCP, 2M+ hotels — recommended first sandbox lane); B. **LetsFG** (MIT code, but the hosted letsfg.co API has its own ToS — requires a ToS review before any wiring); C. hold and keep the Amadeus sandbox as the only lane. Recommendation: A with the clamp gate, B pending ToS review, trvl never in production.
 - **DP-04b (E1 WhatsApp direct channel, topic 36):** Meta business verification + 2-3 message templates for direct WhatsApp dispatch (the fare-drop draft and ask-loop currently stop at the link-only floor / DRAFT_AWAITING_OPERATOR). Real-world account action + per-message India rates (unverified until quota refresh); owner account gate, not a code choice.
 - **Blocked:** producer adapter implementation (decision-free clamp layer can be built against any vendor's row shape once A/B is chosen); traveler-message dispatch beyond draft.
+
+
+---
+
+## TRV-DP-05 (decided 2026-10-25 by delegated authority — Sim #4 door-wave agent; revisit triggers noted per item)
+
+Under the delegated-decision-authority correction (2026-10-25): reversible
+design decisions are the agent's to make, document, and implement; a decision
+record is revisable, a parked question is not. Each decision carries its
+rationale, falsifier, and rollback.
+
+- **DP-03a DECIDED: Option B — encrypt ledger/drafts/messages; encryption is
+  the boundary.** Rationale: the Sim #4 P0 (FND-0326) proved guard-all-doors
+  cannot work (three stores receive the same note; checks-on-doors leak by
+  construction), while encryption composes with every posture and the FND-0327
+  kid/rotation machinery already exists. Dogfood keeps its synthetic-data
+  tripwire; beta becomes the dev default once ledger/draft/message encryption
+  ships. Implementation: invariant-1 phase (multi-session, sequenced in the
+  structural roadmap). Falsifier: if encrypted-ledger writes break the
+  run-ledger replay contract in the first integration pass, fall back to
+  guard-all-doors and re-decide. Rollback: decrypt-in-place via the rotation
+  tool's inverse.
+
+- **DP-03b DECIDED: PAN redact-at-ingest in all modes (Luhn-validated).**
+  Rationale: card numbers are never product-needed (the money boundary is
+  tracking-only, ADR-008), and storing them is pure PCI liability — redaction
+  weakens no ratified matrix row. Implementation: queued (guard seam, S
+  effort); flag R15_PAN_REDACTION default-on at ship so the owner can veto
+  with a one-line env change. Falsifier: any legitimate workflow needing a
+  raw PAN reopens this.
+
+- **DP-03c DECIDED: DSR (Art.15/17) is compliance-mandatory — map its doors
+  first; the other gap routes are ship-or-document per door, tracked in the
+  parity snapshot.** Rationale: a data-subject request with no product surface
+  is a regulatory failure regardless of API completeness. Falsifier: a
+  compliance review ruling the API-only surface sufficient.
+
+- **DP-03d DECIDED: AgencySettings.default_currency (INR default for this
+  India-first deployment), replacing the D1-RQ-01 unmarked-USD convention;
+  unmarked amounts fall back to USD only when the agency has no setting
+  (backward compatible). Implementation: queued (S effort). Falsifier: an
+  agency whose unmarked amounts are genuinely USD-dominated.
+
+- **DP-03e DECIDED:** occasion-to-date-window inference implemented as a
+  LABELED HYPOTHESIS (authority derived, epistemic hypothesis — never FACT;
+  the truth taxonomy already supports this). LLM-lane destination-resolver sim
+  stays gated on X-09 spend authorization (the only true owner-gate left).
+  Commit authorization remains explicitly owner-only (git safety rule) — the
+  Sim #3+4 artifact set stays uncommitted until you say so.

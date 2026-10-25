@@ -260,8 +260,10 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["v1/rag/documents", { backendPath: "api/v1/rag/documents" }],
   ["v1/rag/documents/index", { backendPath: "api/v1/rag/documents/index" }],
   // Work-intake classification queue (INCOMING_WORK_CLASSIFICATION_MAP
-  // 2026-10-24 §5 C1; backend spine_api/routers/work_items.py).
+  // 2026-10-24 §5 C1; backend spine_api/routers/work_items.py). {id} entry =
+  // the outcome-state lifecycle PATCH (map §14: claim/unclaim/dismiss/resolve).
   ["v1/work-items", { backendPath: "api/v1/work-items" }],
+  ["v1/work-items/{id}", { backendPath: "api/v1/work-items/{id}" }],
   ["v1/financial-ops/convert-currency", { backendPath: "api/v1/financial-ops/convert-currency" }],
   ["v1/counterfactual/replan-disruption", { backendPath: "api/v1/counterfactual/replan-disruption" }],
   ["v1/counterfactual/group-consensus", { backendPath: "api/v1/counterfactual/group-consensus" }],

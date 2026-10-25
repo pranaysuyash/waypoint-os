@@ -68,6 +68,11 @@ RLS_TENANT_TABLES: tuple[str, ...] = (
     # FND-0060 residual: durable customer preference profiles (PII identity
     # surface; GDPR Art. 17 erasure target — RLS is load-bearing here).
     "customer_memory_profiles",
+    # F-04 payment authorization mandate ledger: RLS enabled + select/all
+    # policies applied in migration add_payment_mandates (this registry
+    # constant was never updated, so the sweep only caught the gap under
+    # full-suite model-import ordering).
+    "payment_mandates",
 )
 
 RLS_EXCLUDED_AGENCY_TABLES: dict[str, str] = {
@@ -82,6 +87,12 @@ RLS_EXCLUDED_AGENCY_TABLES: dict[str, str] = {
     # metadata (same precedent as idempotency_keys, which carries no
     # agency_id column and is likewise excluded by omission).
     "proposal_access_tokens": "public capability credentials; lookup is by credential hash only, never by tenant; verification runs unauthenticated by design",
+    # PA-17/Wave-A pipeline run lifecycle ledger (spine_api/models/run_checkpoint.py).
+    # Platform operations telemetry, not tenant business data: agency_id is
+    # nullable (runs exist before intake binds an agency) and the table is
+    # read cross-tenant by the startup orphan sweep and the stale-run reaper,
+    # so agency-scoped RLS would break those platform paths by design.
+    "run_checkpoints": "platform run-lifecycle ledger; nullable agency_id; cross-tenant startup orphan sweep / stale-run reaper access by design",
 }
 
 # Tables with ENABLE RLS but intentionally WITHOUT FORCE RLS.
@@ -323,8 +334,12 @@ async def refresh_or_reselect(db: AsyncSession, instance: Any) -> None:
     # The tenant GUC must be read BEFORE refreshing: a failed refresh() leaves
     # the instance's state expired, and touching expired mapped attributes
     # afterwards would attempt synchronous IO (MissingGreenlet) under
-    # AsyncSession. This one loaded-attribute read is the only happy-path cost.
-    agency_id = getattr(instance, "agency_id", None)
+    # AsyncSession. The IO-free identity-dict read (review FND-0310 hardening)
+    # returns only already-loaded values — None when the attribute was never
+    # loaded or is expired, which then skips the GUC restore and lets the
+    # fallback fail loud. getattr() here would be a greenlet trap on
+    # detached/expired instances.
+    agency_id = sa_inspect(instance).dict.get("agency_id")
 
     # Fast path: a bare refresh, exactly like the call sites this helper
     # replaces. All recovery machinery only runs after a failure.

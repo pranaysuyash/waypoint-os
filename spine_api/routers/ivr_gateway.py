@@ -26,6 +26,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import re
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Request
@@ -65,6 +66,25 @@ def _twilio_credentials() -> Optional[tuple[str, str, str]]:
     if sid and token and from_num:
         return sid, token, from_num
     return None
+
+
+# FND-0375 (FND-0372 SSRF-hardening class): Twilio resource SIDs are
+# format-checked before they may appear in an API URL path. A carrier- or
+# client-supplied call_sid that is not a genuine Twilio SID (CA + 32 hex)
+# — or the in-tree preview sentinel (_preview_call_sid: CA-PREVIEW- + 16
+# uppercase hex) — never reaches URL interpolation, so a crafted sid cannot
+# address arbitrary subresources inside the authenticated Twilio account.
+# The account sid (server config) gets the same check at both URL builds.
+_CALL_SID_RE = re.compile(r"^(?:CA-PREVIEW-[0-9A-F]{16}|CA[0-9a-fA-F]{32})$")
+_ACCOUNT_SID_RE = re.compile(r"^AC[0-9a-fA-F]{32}$")
+
+
+def _call_sid_is_wellformed(call_sid: str) -> bool:
+    return bool(_CALL_SID_RE.match(str(call_sid or "")))
+
+
+def _account_sid_is_wellformed(account_sid: str) -> bool:
+    return bool(_ACCOUNT_SID_RE.match(str(account_sid or "")))
 
 
 def _preview_call_sid(trip_id: str, carrier_code: str, phone_number: str) -> str:
@@ -142,6 +162,8 @@ def initiate_ivr_call(payload: InitiateCallRequest) -> Dict[str, Any]:
         }).encode("utf-8")
 
         credentials = base64.b64encode(f"{account_sid}:{auth_token}".encode()).decode()
+        if not _account_sid_is_wellformed(account_sid):
+            raise ValueError("TWILIO_ACCOUNT_SID is not a well-formed Twilio account SID")
         url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Calls.json"
         req = urllib.request.Request(
             url,
@@ -198,7 +220,17 @@ def get_call_status(call_sid: str) -> Dict[str, Any]:
     """Poll the current status of an outbound Twilio IVR call.
 
     Returns provider_connected=False for preview call SIDs.
+    FND-0375: a call_sid that is not a well-formed Twilio SID (or the
+    in-tree preview sentinel) is rejected before any provider URL is built.
     """
+    if not _call_sid_is_wellformed(call_sid):
+        return {
+            "call_sid": call_sid,
+            "status": "INVALID_CALL_SID",
+            "reality_tier": RealityTier.DETERMINISTIC_PREVIEW.value,
+            "provider_connected": False,
+            "reason": "call_sid is not a well-formed Twilio call SID",
+        }
     if call_sid.startswith("CA-PREVIEW-"):
         return {
             "call_sid": call_sid,
@@ -225,6 +257,10 @@ def get_call_status(call_sid: str) -> Dict[str, Any]:
         import json
 
         credentials = base64.b64encode(f"{account_sid}:{auth_token}".encode()).decode()
+        if not (
+            _account_sid_is_wellformed(account_sid) and _call_sid_is_wellformed(call_sid)
+        ):
+            raise ValueError("Twilio SID failed format validation before URL construction")
         url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Calls/{call_sid}.json"
         req = urllib.request.Request(
             url,

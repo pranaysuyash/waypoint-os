@@ -82,7 +82,16 @@ export default function TravelerAskPage({ params }: { params: { token: string } 
         setSubmitState('done');
       } else {
         const detail = await res.json().catch(() => null);
-        setSubmitError(detail?.detail ?? 'Your answers could not be saved. Please try again.');
+        // Backend errors carry either a plain string or a structured
+        // {reason, remediation} object — never render the object itself.
+        const d = detail?.detail;
+        const message =
+          typeof d === 'string'
+            ? d
+            : d && typeof d === 'object' && typeof d.reason === 'string'
+              ? `${d.reason}${d.remediation ? ` — ${d.remediation}` : ''}`
+              : 'Your answers could not be saved. Please try again.';
+        setSubmitError(message);
         setSubmitState('error');
       }
     } catch {

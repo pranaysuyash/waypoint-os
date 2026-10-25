@@ -172,3 +172,24 @@ def test_router_wires_the_disposition_module():
         "the tranche has been unwired or bypassed"
     )
     assert "disposition" in router_src.lower()
+
+
+# ---------------------------------------------------------------------------
+# T11b/FND-0308: recorded ask answers carry a token fingerprint, never the
+# live token
+# ---------------------------------------------------------------------------
+
+
+def test_public_asks_record_fingerprint_not_live_token():
+    """The ask token is a capability credential: embedding it in persisted
+    answer rows (a) leaks a live credential through TripResponse surfaces and
+    (b) trips the dogfood PII scanner (long digit-runs read as phone numbers)
+    — FND-0308. The recorded answers must carry a fingerprint only."""
+    src = pathlib.Path("spine_api/routers/public_asks.py").read_text()
+    assert '"token_fingerprint"' in src, (
+        "recorded answers no longer fingerprint the ask token — the live "
+        "credential must never be persisted into trip data"
+    )
+    assert '"token": token' not in src, (
+        "raw live ask token still embedded in persisted answers"
+    )

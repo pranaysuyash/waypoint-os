@@ -134,9 +134,10 @@ class SimClient:
             body = {"raw": r.text[:500]}
         return self._record(step, {"method": method, "path": path, **({"json": kw.get("json")} if kw.get("json") else {})}, r, body)
 
-    def submit_run(self, step: str, raw_note: str) -> dict:
-        e = self.call(step, "POST", "/run", json={"raw_note": raw_note})
-        return e["response"]
+    # (submit_run removed 2026-10-25 — superseded by the draft-first flow in
+    # sim3_sims._submit_and_poll; a bare /run POST without a draft_id creates
+    # an orphan run with no draft trail. sim4_runner imports only the shared
+    # credential constants from this module.)
 
     def poll_run(self, step: str, run_id: str, timeout_s: int = 240) -> dict:
         deadline = time.time() + timeout_s

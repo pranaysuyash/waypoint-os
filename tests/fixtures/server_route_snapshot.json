@@ -1,5 +1,5 @@
 {
-  "route_count": 399,
+  "route_count": 400,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -2566,6 +2566,14 @@
       "name": "get_work_item_queue",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/work-items/{item_id}",
+      "name": "act_on_work_item",
+      "methods": [
+        "PATCH"
       ],
       "operation_id": null
     },

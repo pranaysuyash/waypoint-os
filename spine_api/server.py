@@ -2790,6 +2790,28 @@ def patch_trip(
         if "destination" in incoming_updates:
             dest_raw = incoming_updates.get("destination")
             dest_value = _trimmed_string(dest_raw)
+            # FND-0376 (decision record: precedence + operator tombstones):
+            # whatever destination candidates this operator edit displaces or
+            # clears are recorded as tombstones, so a later reprocess's fresh
+            # re-extraction cannot resurrect them. The traveler's own new
+            # note can still void a tombstone by naming the candidate (see
+            # _preserve_authoritative_facts).
+            displaced: list[str] = []
+            for src_slot in (
+                (current_trip.get("extracted") or {}).get("facts", {}).get("destination_candidates"),
+                *([{"value": [current_trip.get("destination")]}] if _trimmed_string(current_trip.get("destination")) else []),
+            ):
+                if not isinstance(src_slot, dict):
+                    continue
+                for cand in src_slot.get("value") or []:
+                    cand_name = str(cand).strip()
+                    if cand_name and cand_name.lower() != (dest_value or "").lower():
+                        displaced.append(cand_name)
+            if displaced:
+                prior = list(current_trip.get("destination_tombstones") or [])
+                synced_updates["destination_tombstones"] = prior + [
+                    d for d in displaced if d.lower() not in {p.lower() for p in prior}
+                ]
             if dest_value is not None:
                 facts["destination_candidates"] = {
                     "value": [dest_value],
@@ -3635,12 +3657,6 @@ async def create_collection_link(
         )
 
     async with rls_session(agency.id) as db:
-        # DEBUG
-        _ctx = await db.execute(text("SELECT current_setting('app.current_agency_id', TRUE)"))
-        _trip_row = await db.execute(text("SELECT id, agency_id FROM trips WHERE id = :trip_id"), {"trip_id": trip_id})
-        _trip_data = _trip_row.fetchone()
-        print(f"DEBUG collection-link: trip_id={trip_id} agency.id={agency.id} rls_ctx={_ctx.scalar()} trip_row={_trip_data}")
-        # END DEBUG
         plain_token, record = await generate_token(
             db,
             trip_id=trip_id,

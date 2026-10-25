@@ -972,3 +972,10 @@ DATA_PRIVACY_MODE=beta ENCRYPTION_KEY=<fernet> uvicorn spine_api.server:app --po
 SIM_BACKEND_URL=http://127.0.0.1:8010 SIM4_EVIDENCE_DIR=Docs/sims/assets/sim4/evidence_beta \
   .venv/bin/python tools/sim4_runner.py --sim all
 ```
+
+**Data-safety note (sim runners):** `sim3_runner.py` and `sim4_runner.py`
+log every request/response into `Docs/sims/assets/**/evidence/*.json`,
+including raw traveler notes. The bundled persona scripts are synthetic
+`@waypointtest.dev` fixtures, so this is safe as-shipped — but if you point a
+runner at an agency with REAL customer data, redact the evidence JSONs before
+committing (a `--redact` mode is a known gap; see SIM3 meta-audit U14).

@@ -330,3 +330,70 @@ The last three W4 writers from the Should-Be register are wired; the W4 class is
 
 Remaining after this pass are only the gated items: owner-gated E1, provider-gated B1/B2 (+B3's live-feed upgrade, which now needs zero new wiring), I2 merge_facts (roadmap Phase 2), and the queue action surface (needs WorkItem outcome-state lifecycle first).
 
+---
+
+## 14. Outcome-state lifecycle + operator action surface (2026-10-24, seventh pass)
+
+The queue becomes actionable: operators can claim, release, dismiss, and resolve items — the outcome-state semantics §12.3 identified as the missing prerequisite.
+
+### 14.1 Design — event-sourced on the append-only log
+
+Lifecycle transitions do NOT mutate item records. `record_lifecycle()` appends `{"record_type": "lifecycle_event", "target_item_id", "action", "actor", "note?", "at"}` to the same agency JSONL, and `_derive_lifecycle()` folds events (in append order) into per-item state at read time. The log stays append-only; the event trail IS the audit trail (who claimed, when, with what note — no second audit system needed). Stale/duplicated events are ignored by the fold, so a replayed event can never corrupt state.
+
+State machine: `open →(claim) claimed →(resolve|dismiss) resolved|dismissed`; `claimed →(unclaim) open`; `open →(resolve|dismiss)` direct. **resolved/dismissed are terminal** — done work never re-enters the queue through the same item.
+
+### 14.2 Surfaces
+
+- **API**: `PATCH /api/v1/work-items/{item_id}` on the EXISTING router (no new route file) — body `{action: claim|unclaim|dismiss|resolve, note?≤200}`; 404 unknown/other-tenant item (tenant isolation is inherent — each agency folds only its own log), 409 invalid transition, 422 bad action. Actor = the authenticated user (email), from `get_current_user`.
+- **Queue semantics**: `ranked_queue` is lifecycle-aware — resolved/dismissed leave the ranked list; open + claimed stay (claimed carries `claimed_by`). Honesty preserved: `total` and new `counts.by_state` cover the FULL log; class counts (by_origin/by_intent/by_urgency, duplicates, returning) describe ACTIONABLE work only; new `actionable` count; `count_basis` stays `work_item_log_total`.
+- **FE**: `v1/work-items/{id}` route-map entry (BFF `{id}` substitution, same pattern as trips); `actOnWorkItem()` client + `useWorkItemAction()` mutation (invalidates all work-items queries); panel rows get Claim/Dismiss (open) or Resolve/Release (claimed) + a `claimed` badge with the claimer in its tooltip; honest action-failure alert line (suggests refresh — a 409 means the item changed under you).
+
+### 14.3 Verification
+
+- **BE**: `tests/test_work_intake.py` **29/29** (new: state-machine unit incl. terminal rejection + append-only proof — the original item line is untouched and events are separate records; lifecycle-aware ranked_queue with honest by_state/total vs actionable class counts; PATCH closed loop incl. cross-tenant 404, terminal 409, bad-action 422). Route snapshot 399→400 (only the PATCH path); parity gate 2/2; ruff clean.
+- **FE**: panel tests **6/6** (badge render, both action clusters, claim-mutation→refetch, action-failure alert, empty, unavailable); `tsc` exit 0; ESLint clean on all five touched files.
+- **Live E2E (real session, real store, 295-item log)**: claim → badge "Claimed by newuser@test.com" with Resolve/Release swapped in; release → back to open; claim → resolve → **row leaves the ranked list** while the footer stays honest ("Showing 8 of 295" — total still counts the log). Suspected right-edge clip in the first capture disproven by DOM measurement (every row scrollWidth == clientWidth; no overflow; modal absent). Evidence: `Docs/sims/assets/overview/work-queue-lifecycle-claimed-2026-10-24.png` (claimed row + Resolve/Release, modal-free).
+
+### 14.4 History reader + note capture SHIPPED (2026-10-25 addendum)
+
+Both follow-ons from §14 landed:
+
+- **History reader**: `GET /api/v1/work-items?include_done=true` (same route, new query param — no new route file). `ranked_queue(include_done=True)` appends resolved/dismissed items AFTER the actionable list (same sort within each group), so the top of the queue is always actionable even in history mode. Default view unchanged (test-pinned). Done rows render with a `resolved`/`dismissed` state badge, dimmed, with NO action buttons (terminal).
+- **Note capture**: Resolve/Dismiss open an inline note editor on the row (optional, ≤200 chars — the API cap); Confirm submits the note with the action, Cancel closes. The note persists on the lifecycle EVENT (not the item), so the trail reads "who dismissed, why, when".
+- **FE**: `getWorkItems(limit, includeDone)`, `useWorkItems` query key gains the flag, header toggle `show N done / hide done` (only when done > 0, aria-pressed), per-row editor with confirm/cancel. Tests 8/8 (added: note-editor submit flow incl. note payload assertion; history toggle incl. done-row-no-actions render); tsc 0; eslint 0.
+- **Live E2E (browser, real 585-item log)**: toggle `show 1 done` → `hide done` [pressed] with include_done refetch; dismissed a Channel Webhook item WITH a note ("duplicate of an existing whatsapp lead") → row left the ranked list, footer stayed "Showing 8 of 585"; the event log holds `{record_type: lifecycle_event, action: dismiss, target_item_id: wi_f59de45f5f05, actor: newuser@test.com, note: "duplicate of an existing whatsapp lead"}`. Authenticated contract check: `total: 585, actionable: 583, by_state: {open: 583, resolved: 1, dismissed: 1}`. Evidence: `Docs/sims/assets/overview/work-queue-history-notes-2026-10-25.png`.
+
+Operational note: during this pass the Data volume hit 100% (853Mi free), which broke tooling mid-verification. Freed rebuildable `CACHEDIR.TAG`-marked caches only (`~/.cache/waypoint/models`, 8G — the offline SLM lane re-downloads on demand); `uv cache clean` was skipped because another process held the uv lock. ~12Gi free after. No user data touched.
+
+### 14.5 Remaining
+
+The same gated set: E1 (owner), B1/B2 (providers), B3 live-feed upgrade (door already wired), I2 merge_facts (roadmap Phase 2).
+
+---
+
+## 15. Operator display vocabulary — the queue speaks human (2026-10-25, eighth pass)
+
+Owner feedback: "why are all these technical jargon on user facing frontend?" — rows read `Channel Webhook / demand · info · explicit_user · whatsapp`. Root cause: a category error in §12.1's own panel contract, which specified the raw subtitle. The W1–W5 × 9-axis enums are machine routing vocabulary; the queue is a read-model projection and needed its own display layer. This § SUPERSEDES §12.1's subtitle contract.
+
+### 15.1 Shipped (backend by the parallel session, FE + tests this pass — one tranche, split across sessions)
+
+- **Choke-point display composer** (`work_intake.py`): `DOOR_DISPLAY` (per-door headline templates, `{channel}` substitution via `CHANNEL_DISPLAY`) + `display_for()` composing `headline` + `meta` (channel / entity label / actor) **at read time — never persisted**, so label evolution never rewrites history and pre-lifecycle rows are retroactively labeled. Unknown doors degrade to title-case, never raise.
+- **Entity labels** (router `_annotate_display`): bound trips resolve to human labels ("Trip — Tokyo · August 10-17, 2026") with per-request memoization (≤1 TripStore read per distinct trip on the page); unresolved trips keep the raw id off the prose (tooltip/tooling only).
+- **FE**: row title = `headline` (fallback: humanized door); subtitle = `meta.join(' · ')`; the raw classification axes moved into the subtitle tooltip ("Classification: demand · new_demand · explicit_user …"). No FE vocabulary fork — the backend is the only composer.
+- **Exhaustiveness test** (`test_door_display_covers_every_door`): every DOOR_CONTRACTS door must have a DOOR_DISPLAY entry and produce an underscore-free headline — a new door cannot ship jargon. (The composer comment promised this test; it was missing — closed in-pass.) Channel fix in-pass: `public_checker`/`proposal_link`/`group_pay` added to CHANNEL_DISPLAY (was rendering "Public_Checker" title-case fallback).
+
+### 15.2 Verification
+
+BE suite **31/31** (incl. exhaustiveness + channel composition); FE panel tests **8/8** (human headline/meta assertions, raw-enum-absence assertion, tooltip presence); tsc 0; eslint 0; ruff clean. **Live E2E** on the 585-item log: rows now read "Run request submitted / by …", "Public checker request routed in / Public checker", "New trip request / Email", "Traveler submitted details / Collection form · by traveler_collection_link", "Operator updated a trip / Trip — Tokyo · August 10-17, 2026 · by …" — zero raw enums in prose. Evidence: `Docs/sims/assets/overview/work-queue-human-display-final-2026-10-25.png`.
+
+### 15.3 Actor display names + run collapse — SHIPPED same day (owner correction applied)
+
+The two gaps below were initially written up as "deferred by design"; the owner corrected that framing — deferred things are things *in time* (needed by the long-term design), so they were implemented in the same pass:
+
+- **Actor display names**: user-UUID actors resolve to display names via one batched lookup per queue read (`_resolve_actor_names` — primary-key `session.get` per distinct actor, bounded by page size; the first attempt used `IN (...)` and was blocked by the Mimosa pre-commit scanner, so the safer PK-get form ships). System/synthetic actors map through `ACTOR_DISPLAY` ("irops_watch" → "the disruption watch", "traveler_collection_link" → "the collection form", …). Operator emails pass through as-is. Unresolved UUIDs drop the `by` line entirely — an opaque id never reaches prose.
+- **Run collapse**: identical OPEN entity-bound items sharing (door, trip_id, channel, urgency) collapse into one row with `group_count=N` (newest is the representative). The entity binding is what proves identity — unbound and claimed items never collapse. Honesty preserved: every count (`total`, `actionable`, `counts.*`) is computed over the UNCOLLAPSED actionable list; `count_basis` stays `work_item_log_total`. FE shows a `×N` chip with the meaning in its tooltip.
+- **Live E2E**: the dev log's 30 identical "Operator updated a trip" items on one trip now render as one row with `×30` and "Trip — Tokyo · August 10-17, 2026 · by New User" (the actor UUID resolved through the real users table); "Traveler submitted details / Collection form · by the collection form". Evidence: `Docs/sims/assets/overview/work-queue-actors-collapse-2026-10-25.png`.
+- **Tests**: BE **33/33** (actor display classes incl. unresolved-UUID-drops-line; collapse honesty incl. claimed/unbound never collapse and uncollapsed counts); FE **9/9** (×N chip + tooltip). tsc/eslint/ruff clean.
+
+Nothing in §15 remains deferred: the only open display thread is new doors/channels declaring their vocabulary at the seam as they ship (enforced by the exhaustiveness test).
+
