@@ -501,6 +501,12 @@ def update_fare_drop_disposition(
             "detection_marker": marker,
             "new_state": body.new_state,
             "idempotency_key": body.idempotency_key,
+            # Causal linkage (topic 51a gap 2): the marker IS the causal
+            # identity of the detection that caused this decision — resolvable
+            # via the trip's fare_drop_signal/price_observations records.
+            # (The detection agent's own audit event id will be added when
+            # signal attachment emits one; the marker remains stable either way.)
+            "caused_by_marker": marker,
         },
     )
     return _fare_drop_response(trip_id, trip, signal, disposition)
