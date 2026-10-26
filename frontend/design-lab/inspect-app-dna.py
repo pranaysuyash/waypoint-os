@@ -256,23 +256,34 @@ def nearest_theme(hexes: list[str]) -> dict:
     return {"themeA_score": a, "themeB_score": b, "verdict": "A dark" if a > b else "B light"}
 
 
-def login(api: str):
+def _loopback_open(api: str, path: str, *, data: bytes | None = None, headers: dict | None = None, timeout: int = 30):
+    """SSRF-guarded urlopen: loopback targets only (this probe's documented design).
+
+    Centralizes the allowlist check + raw-socket http call so the scanner sees
+    one guarded site instead of per-function urlopen calls.
+    """
     import urllib.request
-    # SSRF guard: this design-lab probe only ever talks to the local dev
-    # server. Any non-loopback target is a misconfiguration, not a feature.
     from urllib.parse import urlparse
-    parsed_api = urlparse(api)
-    if parsed_api.hostname not in ("127.0.0.1", "localhost", "::1"):
-        raise ValueError(f"design-lab probe refuses non-loopback target: {api}")
-    req = urllib.request.Request(
-        api + "/api/auth/login",
+
+    parsed = urlparse(api)
+    if parsed.scheme != "http" or parsed.hostname not in ("127.0.0.1", "localhost", "::1"):
+        raise ValueError(f"design-lab probe refuses non-loopback or non-http target: {api}")
+    req = urllib.request.Request(api + path, data=data, headers=headers or {})
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
+def login(api: str):
+    resp_body, cookies = None, []
+    with _loopback_open(
+        api,
+        "/api/auth/login",
         data=json.dumps({"email": USER, "password": PASSWORD}).encode(),
         headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=30) as f:
-        resp = f.read().decode()
+        timeout=30,
+    ) as f:
+        resp_body = f.read().decode()
         cookies = f.headers.get_all("Set-Cookie") or []
-    data = json.loads(resp)
+    data = json.loads(resp_body)
     parsed = []
     for c in cookies:
         name, _, rest = c.partition("=")
@@ -283,17 +294,10 @@ def login(api: str):
 
 def find_trip(api: str, cookies: list[dict]) -> str | None:
     """Resolve a real trip id so /trips/[id]/intake renders with data."""
-    import urllib.request
-    # Same SSRF guard as login(): loopback targets only.
-    from urllib.parse import urlparse
-    parsed_api = urlparse(api)
-    if parsed_api.hostname not in ("127.0.0.1", "localhost", "::1"):
-        raise ValueError(f"design-lab probe refuses non-loopback target: {api}")
     jar = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
     for path in ("/trips", "/api/trips", "/api/dashboard/stats"):
         try:
-            req = urllib.request.Request(api + path, headers={"Cookie": jar, "Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=25) as f:
+            with _loopback_open(api, path, headers={"Cookie": jar, "Accept": "application/json"}, timeout=25) as f:
                 body = f.read().decode()
             try:
                 d = json.loads(body)
