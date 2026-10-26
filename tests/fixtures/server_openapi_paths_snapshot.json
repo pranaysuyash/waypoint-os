@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 364,
+  "openapi_path_count": 367,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -255,6 +255,8 @@
     "/api/v1/rag/nodes",
     "/api/v1/rag/query",
     "/api/v1/rag/status",
+    "/api/v1/recoveries",
+    "/api/v1/recoveries/{recovery_id}/transition",
     "/api/v1/resilience/circuits",
     "/api/v1/resilience/circuits/{circuit_name}/reset",
     "/api/v1/resilience/compensate",
@@ -289,6 +291,7 @@
     "/api/v1/trips/{trip_id}/pre-departure-bundle.pdf",
     "/api/v1/trips/{trip_id}/quotes",
     "/api/v1/trips/{trip_id}/quotes/retail",
+    "/api/v1/trips/{trip_id}/recoveries",
     "/api/v1/trips/{trip_id}/stage",
     "/api/v1/visa-radar/check",
     "/api/v1/visa-radar/{trip_id}/requirements",

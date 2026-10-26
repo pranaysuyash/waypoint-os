@@ -1,5 +1,14 @@
 # DECIDE-Queue Packet — 2026-10-25
 
+> **DECISION RECORD (2026-10-25, delegated authority per owner directive).** The owner corrected
+> the framing mid-wave: doctrine-decidable items are the agent's to DECIDE + document + implement,
+> with a revisit trigger — not to park on the owner ("stop pinning up on me"; delegated-authority
+> memory: reversible design decisions are the agent's; only money/irreversible/git/ADR-posture
+> escalate). Applied below: items 2–4 are **DECIDED** (doctrine dictates each); item 1 (E1) is
+> **DECIDED B+D** on the evidence (channel choice is reversible — adapters are flag-gated, link
+> fallback permanent). Every decision carries its revisit trigger. Owner ratification is no longer
+> requested; dissent amends the record.
+
 **Provenance:** compiled from the launch-readiness product council
 ([LAUNCH_READINESS_TASK_INVENTORY_2026-09-29.md](LAUNCH_READINESS_TASK_INVENTORY_2026-09-29.md)),
 the 2026-09-30 wave-2 tranche, the E1 channel research

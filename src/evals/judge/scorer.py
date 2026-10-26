@@ -71,6 +71,10 @@ class JudgeScore:
     shadow_disagreement: float | None = None
     shadow_metrics: dict[str, Any] | None = None
     discrepancy_alert: bool = False
+    # PA-34 / FND-0165: measured operational dimensions — accuracy alone is
+    # not an eval. Extracted from run facts when present; every field is
+    # honestly None when the run didn't record it (never fabricated).
+    operational_metrics: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {
@@ -92,6 +96,8 @@ class JudgeScore:
             data["discrepancy_alert"] = self.discrepancy_alert
         if self.shadow_metrics is not None:
             data["shadow_metrics"] = self.shadow_metrics
+        if self.operational_metrics is not None:
+            data["operational_metrics"] = self.operational_metrics
         return data
 
 
@@ -488,6 +494,60 @@ def _score_with_jev(
         return None
 
 
+def _extract_operational_metrics(
+    agent_output: dict[str, Any],
+    verdict: str,
+) -> dict[str, Any]:
+    """PA-34 / FND-0165: measure the operational dimensions of one run.
+
+    Sources (verified against the real run shapes):
+    - latency: ``meta.execution_ms`` (RunMeta, spine run outputs)
+    - LLM telemetry: ``meta.llm_calls`` when the run recorded call forensics
+      (count + cost_estimate_inr sum); absent in most outputs today — None
+    - human intervention: the run needed a human because it could not proceed
+      autonomously — ESCALATE/STOP decision states, ESCALATED validation, or
+      a needs_review verdict
+
+    Every field is None when the run didn't record it — absence is reported
+    as absence, never fabricated.
+    """
+    meta = agent_output.get("meta") if isinstance(agent_output.get("meta"), dict) else {}
+    latency_ms = meta.get("execution_ms")
+    llm_calls = meta.get("llm_calls") if isinstance(meta.get("llm_calls"), (list, dict)) else None
+    llm_call_count: int | None = None
+    total_cost_inr: float | None = None
+    if isinstance(llm_calls, list):
+        llm_call_count = len(llm_calls)
+        costs = [
+            c.get("cost_estimate_inr")
+            for c in llm_calls
+            if isinstance(c, dict) and isinstance(c.get("cost_estimate_inr"), (int, float))
+        ]
+        total_cost_inr = round(sum(costs), 6) if costs else None
+    elif isinstance(llm_calls, dict):
+        llm_call_count = len(llm_calls)
+
+    decision = agent_output.get("decision") if isinstance(agent_output.get("decision"), dict) else {}
+    validation = agent_output.get("validation") if isinstance(agent_output.get("validation"), dict) else {}
+
+    reasons: list[str] = []
+    state = str(decision.get("decision_state", "") or "")
+    if state in ("ESCALATE", "STOP_NEEDS_REVIEW"):
+        reasons.append(f"decision_state={state}")
+    if str(validation.get("status", "") or "") == "ESCALATED":
+        reasons.append("validation_status=ESCALATED")
+    if verdict == "needs_review":
+        reasons.append("judge_verdict=needs_review")
+
+    return {
+        "latency_ms": latency_ms if isinstance(latency_ms, (int, float)) else None,
+        "llm_call_count": llm_call_count,
+        "total_cost_inr": total_cost_inr,
+        "human_intervention_required": bool(reasons),
+        "human_intervention_reasons": reasons,
+    }
+
+
 def judge_agent_output(
     agent_name: str,
     trip_id: str,
@@ -600,6 +660,9 @@ def judge_agent_output(
     else:
         verdict = "fail"
 
+    # PA-34 / FND-0165: measured operational dimensions ride with every score.
+    operational_metrics = _extract_operational_metrics(agent_output, verdict)
+
     primary_score = JudgeScore(
         agent_name=agent_name,
         trip_id=trip_id,
@@ -610,6 +673,7 @@ def judge_agent_output(
         scored_at=datetime.now(timezone.utc).isoformat(),
         verdict=verdict,
         scoring_method=scoring_method,
+        operational_metrics=operational_metrics,
     )
 
     # If shadow judge client is provided, evaluate via Jev shadow lane
@@ -655,6 +719,14 @@ def build_judge_report(
             "average_score": 0.0,
             "agents": {},
             "discrepant_evals": [],
+            "operational_summary": {
+                "runs_with_latency": 0,
+                "mean_latency_ms": None,
+                "runs_with_cost": 0,
+                "total_cost_inr": None,
+                "human_intervention_count": 0,
+                "human_intervention_rate": 0.0,
+            },
         }
 
     by_agent: dict[str, list[JudgeScore]] = {}
@@ -694,6 +766,33 @@ def build_judge_report(
     ]
 
     total_passed = sum(1 for s in scores if s.passed)
+
+    # PA-34 / FND-0165: operational aggregation — cost, latency, and the
+    # human-intervention rate across the scored runs. Runs without recorded
+    # telemetry are excluded from the mean, never zero-filled.
+    latencies = [
+        s.operational_metrics["latency_ms"]
+        for s in scores
+        if s.operational_metrics and isinstance(s.operational_metrics.get("latency_ms"), (int, float))
+    ]
+    costs = [
+        s.operational_metrics["total_cost_inr"]
+        for s in scores
+        if s.operational_metrics and isinstance(s.operational_metrics.get("total_cost_inr"), (int, float))
+    ]
+    interventions = [
+        s for s in scores
+        if s.operational_metrics and s.operational_metrics.get("human_intervention_required")
+    ]
+    operational_summary: dict[str, Any] = {
+        "runs_with_latency": len(latencies),
+        "mean_latency_ms": round(sum(latencies) / len(latencies), 1) if latencies else None,
+        "runs_with_cost": len(costs),
+        "total_cost_inr": round(sum(costs), 6) if costs else None,
+        "human_intervention_count": len(interventions),
+        "human_intervention_rate": round(len(interventions) / len(scores), 4) if scores else 0.0,
+    }
+
     return {
         "total_scored": len(scores),
         "total_passed": total_passed,
@@ -701,6 +800,7 @@ def build_judge_report(
         "average_score": round(sum(s.overall_score for s in scores) / len(scores), 2),
         "agents": agent_summaries,
         "discrepant_evals": discrepant_evals,
+        "operational_summary": operational_summary,
     }
 
 

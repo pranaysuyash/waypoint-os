@@ -389,6 +389,7 @@ try:
     from spine_api.routers import messages as messages_router
     from spine_api.routers import accounting_export as accounting_export_router
     from spine_api.routers import dsr as dsr_router
+    from spine_api.routers import recoveries as recoveries_router
     from spine_api.routers import distribution as distribution_router
     from spine_api.routers import negotiation as negotiation_router
     from spine_api.routers import crisis_ops as crisis_ops_router
@@ -1414,6 +1415,11 @@ async def lifespan(app: FastAPI):
         try:
             from spine_api.services.public_checker_access import start_retention_sweep_loop
             start_retention_sweep_loop()
+            # T12: D-7/D-3/D-1 pre-departure briefing triggers (feature-gated,
+            # off by default — PRE_DEPARTURE_SCHEDULER=1).
+            from spine_api.services.pre_departure_scheduler import start_scheduler
+
+            start_scheduler()
         except Exception:
             logger.exception("checker retention sweep loop failed to start")
 
@@ -1467,6 +1473,9 @@ async def lifespan(app: FastAPI):
         try:
             from spine_api.services.public_checker_access import stop_retention_sweep_loop
             stop_retention_sweep_loop()
+            from spine_api.services.pre_departure_scheduler import stop_scheduler
+
+            stop_scheduler()
         except Exception:
             pass
         try:
@@ -1640,6 +1649,7 @@ app.include_router(quotes_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(messages_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(accounting_export_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(dsr_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(recoveries_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(journey_graph_router.public_router)
 from spine_api.routers import ivr_gateway as ivr_gateway_router  # noqa: E402
 app.include_router(ivr_gateway_router.public_router)

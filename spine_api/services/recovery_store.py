@@ -31,6 +31,10 @@ from spine_api.models.recovery import (
     SOURCE_TYPES,
     RecoveryModel,
 )
+# Boundary note: disruption claims (EU261/UK261/DOT) are NOT recorded here —
+# their lifecycle is the purpose-built ``claim_disposition`` machine on the
+# passenger-rights router (shipped 2026-09-30). This ledger covers every
+# OTHER entitlement class; a cross-source rollup bridge is future work.
 
 _TRANSITIONS: Dict[str, set] = {
     "detected": {"filed", "withdrawn"},

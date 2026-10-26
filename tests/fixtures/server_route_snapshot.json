@@ -1,5 +1,5 @@
 {
-  "route_count": 400,
+  "route_count": 404,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -2266,6 +2266,22 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/recoveries",
+      "name": "list_recoveries",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/recoveries/{recovery_id}/transition",
+      "name": "transition_recovery",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/resilience/circuits",
       "name": "list_circuits",
       "methods": [
@@ -2532,6 +2548,22 @@
     {
       "path": "/api/v1/trips/{trip_id}/quotes/retail",
       "name": "approve_trip_retail",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/recoveries",
+      "name": "list_trip_recoveries",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/recoveries",
+      "name": "create_trip_recovery",
       "methods": [
         "POST"
       ],

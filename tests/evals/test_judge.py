@@ -557,3 +557,75 @@ class TestJudgeShadowAgreement:
         assert res["interpretation"] in ("substantial", "almost_perfect")
         assert "confusion_matrix" in res
 
+
+class TestOperationalMetrics:
+    """PA-34 / FND-0165: evals measure cost, latency, and human-intervention
+    alongside accuracy — measured from run facts, honestly None when absent."""
+
+    def test_metrics_extracted_from_run_facts(self):
+        output = {
+            "meta": {
+                "execution_ms": 3120.5,
+                "llm_calls": [
+                    {"cost_estimate_inr": 0.012},
+                    {"cost_estimate_inr": 0.008},
+                    {},  # a call with no cost still counts toward call_count
+                ],
+            },
+            "decision": {"decision_state": "ASK_FOLLOWUP"},
+            "validation": {"status": "OK"},
+        }
+        res = judge_agent_output("front_door_agent", "trip_op1", output)
+        om = res.operational_metrics
+        assert om["latency_ms"] == 3120.5
+        assert om["llm_call_count"] == 3
+        assert om["total_cost_inr"] == 0.02
+        assert om["human_intervention_required"] is False
+        assert om["human_intervention_reasons"] == []
+
+    def test_metrics_honest_absence(self):
+        res = judge_agent_output("front_door_agent", "trip_op2", {})
+        om = res.operational_metrics
+        assert om["latency_ms"] is None
+        assert om["llm_call_count"] is None
+        assert om["total_cost_inr"] is None
+
+    def test_escalation_counts_as_human_intervention(self):
+        output = {
+            "decision": {"decision_state": "ESCALATE"},
+            "validation": {"status": "ESCALATED"},
+        }
+        res = judge_agent_output("front_door_agent", "trip_op3", output)
+        om = res.operational_metrics
+        assert om["human_intervention_required"] is True
+        assert "decision_state=ESCALATE" in om["human_intervention_reasons"]
+        assert "validation_status=ESCALATED" in om["human_intervention_reasons"]
+
+    def test_report_aggregates_operationally_without_zero_fill(self):
+        scored_with = judge_agent_output(
+            "front_door_agent", "t1",
+            {"meta": {"execution_ms": 1000.0}, "decision": {"decision_state": "OK"}},
+        )
+        scored_with_cost = judge_agent_output(
+            "front_door_agent", "t2",
+            {
+                "meta": {"execution_ms": 3000.0, "llm_calls": [{"cost_estimate_inr": 0.05}]},
+                "decision": {"decision_state": "ESCALATE"},
+            },
+        )
+        scored_without = judge_agent_output("front_door_agent", "t3", {})
+        report = build_judge_report([scored_with, scored_with_cost, scored_without])
+        ops = report["operational_summary"]
+        # Only the 2 runs that recorded latency enter the mean — no zero-fill.
+        assert ops["runs_with_latency"] == 2
+        assert ops["mean_latency_ms"] == 2000.0
+        assert ops["runs_with_cost"] == 1
+        assert ops["total_cost_inr"] == 0.05
+        assert ops["human_intervention_count"] == 1
+        assert ops["human_intervention_rate"] == round(1 / 3, 4)
+
+    def test_report_empty_scores_carry_operational_summary(self):
+        report = build_judge_report([])
+        assert report["operational_summary"]["human_intervention_rate"] == 0.0
+        assert report["operational_summary"]["mean_latency_ms"] is None
+

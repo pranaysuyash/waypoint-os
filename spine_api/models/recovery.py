@@ -8,13 +8,16 @@ counterparty (airline, supplier, insurer) — with its lifecycle through to
 settlement.
 
 Design (first principles):
-- **General primitive, not a claims table**: disruption claims are producer
-  #1; every future entitlement type (price-drop re-lock, supplier fault,
-  insurance payout) is a new ``source_type`` producer, not a new subsystem.
+- **General primitive**: one ledger for every entitlement class — price-drop
+  re-locks, supplier-fault compensation, insurance payouts, manual entries.
+  Disruption claims are NOT recorded here: their lifecycle is owned by the
+  purpose-built ``claim_disposition`` machine (8 legal states, overdue
+  nudge, airline→traveler outcome recording — shipped 2026-09-30, FND-0233).
+  The two layers are complementary; a rollup bridge is future work.
 - **Tracking-only**: the ledger NEVER moves money (permanent boundary,
   ``test_no_payment_code_paths``). It records what is owed, from whom, and
   the operator-recorded lifecycle state.
-- **Honesty basis on every amount**: statutory/modeled amounts are labeled
+- **Honesty basis on every amount**: modeled estimates are labeled
   ``modeled``; only counterparty-confirmed amounts may be labeled
   ``confirmed``.
 
@@ -48,11 +51,13 @@ RECOVERY_TERMINAL_STATUSES = ("paid", "credited", "withdrawn")
 AMOUNT_BASES = ("modeled", "confirmed")
 
 SOURCE_TYPES = (
-    "disruption_claim",   # EU261 / UK261 / US-DOT statutory claim (producer #1)
     "price_drop",         # re-lock at lower rate
     "supplier_fault",     # supplier compensation / penalty recovery
     "insurance_payout",   # insurance entitlement
     "manual",             # operator-recorded, no system producer yet
+    # NOTE: disruption claims are deliberately absent — their lifecycle lives
+    # in claim_disposition (8 legal states, overdue nudge). Recording them
+    # here too would double-track one entitlement.
 )
 
 

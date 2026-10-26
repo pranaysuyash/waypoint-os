@@ -529,10 +529,28 @@ _DAY_RANGE_TEXT_RE = re.compile(
 # Month-day range patterns like "July 10 to July 16" or "July 10-16".
 _MONTH_DAY_RANGE_RE = re.compile(
     r"\b((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)\s+"
-    r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|-|–|—|\bto\b)\s*"
+    r"(\d{1,2})(?:st|nd|rd|th)?\s*,?\s*(?:to|-|–|—|\bto\b|\bleaving\b|\breaching\b)\s*"
     r"(?:(?:((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)\s+))?"
     r"(\d{1,2})(?:st|nd|rd|th)?"
     r"(?:\s+(\d{4}))?",
+    re.IGNORECASE,
+)
+
+# Arrive/depart phrasing (FND-0380): "arriving november 15 leaving
+# november 21", "arriving nov 16 evening, leaving nov 19 morning" — the
+# dominant REPLY shape when a traveler answers exact dates, unsupported by
+# the range patterns above (probe: parses to None while "november 15 to
+# november 21" parses). Two keyed month-day hits: earlier = start.
+_ARRIVE_DEPART_RE = re.compile(
+    r"\b(?:arriv\w+|check(?:ing)?[\s-]*in)\b[^.,;()\n]{0,40}?"
+    r"\b(?P<sm>january|february|march|april|may|june|july|august|september|"
+    r"october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)\w*\s+"
+    r"(?P<sd>\d{1,2})(?:st|nd|rd|th)?\b"
+    r"[^.,;()\n]{0,60}?"
+    r"\b(?:leav\w+|check(?:ing)?[\s-]*out)\b[^.,;()\n]{0,40}?"
+    r"\b(?P<em>january|february|march|april|may|june|july|august|september|"
+    r"october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)\w*\s+"
+    r"(?P<ed>\d{1,2})(?:st|nd|rd|th)?\b",
     re.IGNORECASE,
 )
 
@@ -542,7 +560,7 @@ _MONTH_DAY_RANGE_RE = re.compile(
 # it; without this the whole date lane silently extracts nothing.
 _DAY_MONTH_RANGE_RE = re.compile(
     r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(" + _MONTH_ABBR + r")\b(?:\s*,?\s*(\d{4}))?"
-    r"\s*(?:to|-|–|—)\s*"
+    r"\s*,?\s*(?:to|-|–|—|\bleaving\b|\breaching\b)\s*"
     r"(\d{1,2})(?:st|nd|rd|th)?(?:\s+(" + _MONTH_ABBR + r")\b)?(?:\s*,?\s*(\d{4}))?",
     re.IGNORECASE,
 )
@@ -864,7 +882,8 @@ def _structured_budget_is_safe(value: Any) -> bool:
 
 @lru_cache(maxsize=32)
 def _month_to_num(month_str: str) -> Optional[int]:
-    return _MONTH_MAP.get(month_str.lower()[:3].rstrip("e")) or _MONTH_MAP.get(month_str.lower())
+    m = month_str.lower()
+    return _MONTH_MAP.get(m[:3]) or _MONTH_MAP.get(m[:3].rstrip("e")) or _MONTH_MAP.get(m)
 
 
 def _count_token_to_int(raw: str | None) -> Optional[int]:
@@ -1872,6 +1891,26 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
             raw = month_day_range.group(0).strip()
             return raw, start_iso, end_iso, "tentative"
 
+    # Arrive/depart reply phrasing (FND-0380): "arriving november 15 leaving
+    # november 21", "arriving nov 16 evening, leaving nov 19 morning".
+    # Calendar-ordered so a note listing departure first still yields
+    # start <= end. Abbreviated months reuse the month map (same tolerance
+    # as every other lane).
+    arrive_depart = _ARRIVE_DEPART_RE.search(text)
+    if arrive_depart:
+        sm = _month_to_num(arrive_depart.group("sm"))
+        em = _month_to_num(arrive_depart.group("em"))
+        if sm and em:
+            year = _infer_year_from_context(text)
+            start_iso = f"{year}-{sm:02d}-{int(arrive_depart.group('sd')):02d}"
+            end_iso = f"{year}-{em:02d}-{int(arrive_depart.group('ed')):02d}"
+            # Travelers sometimes list departure first; the trip window is
+            # the calendar-ordered pair regardless of mention order.
+            if start_iso > end_iso:
+                start_iso, end_iso = end_iso, start_iso
+            raw = arrive_depart.group(0).strip()
+            return raw, start_iso, end_iso, "tentative"
+
     # Day-first range: "10 June 2027 to 17 June 2027", "1 May to 5 May".
     day_month_range = _DAY_MONTH_RANGE_RE.search(text)
     if day_month_range:
@@ -2048,53 +2087,12 @@ def _extract_budget(text: str, default_currency: str = PLATFORM_DEFAULT_CURRENCY
     text_lower = text.lower()
 
     def _currency_code(token: Optional[str]) -> Optional[str]:
-        normalized = (token or "").strip().lower()
-        currency_map = {
-            "$": "USD",
-            "usd": "USD",
-            "dollar": "USD",
-            "dollars": "USD",
-            "buck": "USD",
-            "bucks": "USD",
-            "€": "EUR",
-            "eur": "EUR",
-            "euro": "EUR",
-            "euros": "EUR",
-            "£": "GBP",
-            "gbp": "GBP",
-            "₹": "INR",
-            "rs": "INR",
-            "rupee": "INR",
-            "rupees": "INR",
-            "inr": "INR",
-            "₦": "NGN",
-            "ngn": "NGN",
-            "r": "ZAR",
-            "zar": "ZAR",
-            "kes": "KES",
-            "ghs": "GHS",
-            "aed": "AED",
-            "sar": "SAR",
-            "jpy": "JPY",
-            "cny": "CNY",
-            "npr": "NPR",
-            "lkr": "LKR",
-            "php": "PHP",
-            "myr": "MYR",
-            "thb": "THB",
-            "idr": "IDR",
-            "mxn": "MXN",
-            "brl": "BRL",
-            "aud": "AUD",
-            "cad": "CAD",
-            "sgd": "SGD",
-        }
-        if normalized in currency_map:
-            return currency_map[normalized]
-        # Unmarked: not a currency fact — the caller falls back to the
-        # lakh/crore unit signal, then the agency/platform default
-        # (FND-0341: INR for an India-first product, never bare USD).
-        return None
+        # Canonical token→code data lives in the currency registry (geography
+        # precedent: one table, one API, shared consumers). Unmarked amounts
+        # are a POLICY decision (FND-0341: agency default) — never made here.
+        from src.intake.currency_registry import resolve_currency_token
+
+        return resolve_currency_token(token)
 
     def _defaulted_currency(unit_text: str) -> str:
         if re.search(r"\b(?:l|lac|lakh|lakhs|cr|crore|crores)\b", (unit_text or "").strip().lower()):
@@ -4353,6 +4351,60 @@ class ExtractionPipeline:
                 anchor, eid,
                 extraction_mode=ExtractionMode.DERIVED,
             ))
+
+        # --- Festival references (holiday registry, geography precedent) ---
+        # "during Diwali" / "after Dasara" / "plan by Christmas" — travelers
+        # reference festivals, not calendars. Names resolve via the curated
+        # alias registry; DATES resolve via the `holidays` package (lunar/
+        # movable holidays computed, never hand-rolled). Same P-3 seam as the
+        # occasion anchor: a soft date_window hypothesis (the traveler must
+        # confirm exact dates), carrying the resolved festival date.
+        try:
+            from src.intake.holiday_registry import (
+                find_holiday_references,
+                resolve_holiday_window,
+            )
+
+            holiday_refs = find_holiday_references(text)
+        except Exception:
+            holiday_refs = []
+        if holiday_refs:
+            canonical_names = list(dict.fromkeys(r["canonical"] for r in holiday_refs))
+            packet.set_derived_signal("holiday_reference", self._make_slot(
+                canonical_names[0] if len(canonical_names) == 1 else canonical_names,
+                0.9, AuthorityLevel.DERIVED_SIGNAL,
+                f'Festival reference: "{holiday_refs[0]["matched"]}"', eid,
+                extraction_mode="derived", maturity="verified",
+            ))
+            if len(canonical_names) > 1:
+                packet.metadata["holiday_references"] = canonical_names
+            has_window = (
+                "date_window" in packet.facts
+                or getattr(packet, "hypotheses", {}).get("date_window") is not None
+            )
+            if not has_window:
+                resolved = resolve_holiday_window(canonical_names[0])
+                if resolved:
+                    approx_note = (
+                        " (approximate — festival shifts with the lunar calendar)"
+                        if resolved.get("approximate") else ""
+                    )
+                    # Preposition semantics (owner: "during this or after
+                    # this"): the relation shapes the window hypothesis.
+                    relation = holiday_refs[0].get("relation", "during")
+                    if relation == "after":
+                        shape = f"window starting after {resolved['date_iso']}"
+                    elif relation == "before":
+                        shape = f"window ending by {resolved['date_iso']}"
+                    else:
+                        shape = f"window covering {resolved['date_iso']}"
+                    packet.set_hypothesis("date_window", self._make_slot(
+                        f"{shape} ({canonical_names[0]}{approx_note})",
+                        0.3 if not resolved.get("approximate") else 0.2,
+                        AuthorityLevel.SOFT_HYPOTHESIS,
+                        resolved["label"], eid,
+                        extraction_mode=ExtractionMode.DERIVED,
+                    ))
 
         # --- TRAVELERS (L2 attribution, Phase 3b / IDEA-134) ---
         # Per-speaker fact bundles from the delegation thread. Personal facts

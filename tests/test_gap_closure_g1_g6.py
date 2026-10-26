@@ -355,7 +355,8 @@ class TestIVRGatewayPreviewMode:
         assert data["dtmf_sequence"] == "1w1w0"
 
     def test_get_call_status_preview_sid(self, client):
-        resp = client.get("/api/v1/ivr/calls/CA-PREVIEW-ABCDEF123456/status")
+        # FND-0375 well-formedness: preview SIDs are CA-PREVIEW- + 16 hex.
+        resp = client.get("/api/v1/ivr/calls/CA-PREVIEW-ABCDEF1234567890/status")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "PREVIEW_ONLY"

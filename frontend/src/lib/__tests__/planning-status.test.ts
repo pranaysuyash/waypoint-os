@@ -23,6 +23,7 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
     id: "trip_4b9e0d894872",
     destination: "Singapore",
     type: "family leisure",
+    tripPurpose: "family leisure",
     state: "amber",
     age: "Today",
     createdAt: "2026-04-29T20:02:40.764703+00:00",

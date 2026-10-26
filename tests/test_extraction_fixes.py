@@ -449,6 +449,53 @@ class TestExtractDates:
         assert end.endswith("-07-16"), end
         assert confidence == "tentative"
 
+    def test_arriving_leaving_day_month_range_fnd0380(self):
+        """FND-0380: 'arriving 10 June leaving 17 June' — the common reply
+        shape must parse to a full window, not None."""
+        result = _extract_dates("arriving 10 June leaving 17 June")
+        assert result is not None, "arriving/leaving window must extract"
+        window, start, end, confidence = result
+        assert start.endswith("-06-10"), start
+        assert end.endswith("-06-17"), end
+        assert confidence == "tentative"
+        assert "june" in window.lower()
+
+    def test_arriving_leaving_month_day_range_fnd0380(self):
+        """FND-0380: month-first variant 'arriving June 10, leaving June 17'
+        (comma before the verb is legal prose)."""
+        result = _extract_dates("arriving June 10, leaving June 17")
+        assert result is not None, "arriving/leaving month-first must extract"
+        window, start, end, _ = result
+        assert start.endswith("-06-10"), start
+        assert end.endswith("-06-17"), end
+
+    def test_reaching_connector_fnd0380(self):
+        """FND-0380: 'reaching' composes the same two-anchor window."""
+        result = _extract_dates("reaching 10 June reaching 17 June")
+        assert result is not None
+        _, start, end, _ = result
+        assert start.endswith("-06-10") and end.endswith("-06-17")
+
+    def test_arriving_leaving_with_year_fnd0380(self):
+        result = _extract_dates("arriving 10 June 2027 leaving 17 June 2027")
+        assert result is not None
+        _, start, end, _ = result
+        assert start.startswith("2027-06-10"), start
+        assert end.startswith("2027-06-17"), end
+
+    def test_single_leaving_does_not_fabricate_window(self):
+        """One anchor + the verb alone is not a window — no match, no
+        fabricated second date."""
+        result = _extract_dates("leaving 10 June")
+        assert result is None
+
+    def test_destination_leaving_prose_does_not_false_positive(self):
+        """'leaving <city>' prose with no second date anchor must not create
+        a RANGE (the connector is only legal BETWEEN two explicit anchors);
+        falling through to a flexible month window is correct behavior."""
+        result = _extract_dates("leaving Delhi sometime in June")
+        assert result is None or (result[1] is None and result[2] is None), result
+
     def test_month_day_range_without_repeated_month(self):
         result = _extract_dates("Travel dates: July 10-16")
         assert result is not None
@@ -2751,7 +2798,9 @@ class TestOriginCityHinglishAndRoutePatterns:
         # Note with pattern-derived destination status and unmarked budget
         p1 = pipeline.extract([SourceEnvelope.from_freeform("planning a trip with budget around 3500 to japan")])
         assert p1.facts["destination_status"].epistemic_status == "INFERRED"
-        assert p1.facts["budget_currency"].value == "USD"
+        # FND-0341: unmarked currency resolves to PLATFORM_DEFAULT_CURRENCY (INR),
+        # not USD — "60k total max must not become $60,000".
+        assert p1.facts["budget_currency"].value == "INR"
         assert p1.facts["budget_currency"].epistemic_status == "ASSUMED"
 
         # Note with explicit currency

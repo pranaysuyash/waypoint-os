@@ -24,6 +24,7 @@ FE_LABEL_TO_FIELD = {
     "Destination": "destination_candidates",
     "Travel window": "date_window",
     "Traveler count": "party_size",
+    "Trip purpose": "trip_purpose",
 }
 
 

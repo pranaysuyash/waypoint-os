@@ -178,6 +178,14 @@ export function getRequiredPlanningFields(trip?: Trip | null): string[] {
     requiredFields.push("Traveler count");
   }
 
+  // FND-0379: trip_purpose blocks fare_quote backend-side (FIELD_REQUIRED_FOR)
+  // but the gate never asked for it — operators saw the stage unlocked while
+  // the pipeline escalated. Pinned by tests/test_planning_gate_parity.py.
+  const purpose = (trip as { tripPurpose?: string }).tripPurpose?.trim();
+  if (!purpose && !hasUsableFact(facts.trip_purpose)) {
+    requiredFields.push("Trip purpose");
+  }
+
   return [...new Set(requiredFields)];
 }
 

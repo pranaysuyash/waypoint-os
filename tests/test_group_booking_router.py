@@ -174,3 +174,56 @@ def test_pay_share_fails_closed_for_legacy_trip_without_agency_id(session_client
     stored = TripStore.get_trip(legacy_trip["id"])
     assert stored["group_booking"]["invites"][0]["status"] == "UNPAID"
     assert not stored.get("agency_id")
+
+
+def test_invite_creation_stores_hash_only_never_raw_token(session_client):
+    """FND-0382 pin: the capability credential (raw invite token) is shown once
+    in the creation response and must never be persisted in stored trip JSON —
+    only its sha256 hash + prefix (FND-0219 discipline). The raw_token matcher
+    fallback in the routers/persistence stays for legacy records (exercised by
+    test_pay_share_fails_closed_for_legacy_trip_without_agency_id), but NEW
+    invites must not create that shape."""
+    inbound_res = session_client.post(
+        "/api/v1/inbound/parse",
+        json={
+            "channel": "email",
+            "raw_text": "Cabo group deposit collection for 2 travelers. Total budget $2,000.",
+            "customer_name": "Jessica Miller",
+        },
+        headers={"X-Agency-ID": "agency_group_test"},
+    ).json()
+    trip_id = inbound_res["trip_id"]
+
+    invite_res = session_client.post(
+        f"/api/v1/group/{trip_id}/invites",
+        json={
+            "trip_id": trip_id,
+            "total_deposit_cents": 50000,
+            "passengers": [
+                {"name": "Jessica Miller", "email": "jessica@example.com"},
+                {"name": "Chloe Bennett", "email": "chloe@example.com"},
+            ],
+        },
+        headers={"X-Agency-ID": "agency_group_test"},
+    )
+    assert invite_res.status_code == 200, invite_res.text
+    invite_data = invite_res.json()
+
+    # Raw material appears exactly once — in the creation response.
+    raw_tokens = [p["token"] for p in invite_data["passenger_invites"]]
+    assert len(raw_tokens) == 2 and all(t.startswith("grp_") for t in raw_tokens)
+
+    stored = TripStore.get_trip(trip_id)
+    invites = stored["group_booking"]["invites"]
+    assert len(invites) == 2
+    for inv in invites:
+        assert "raw_token" not in inv, (
+            "invite persisted the raw capability credential (FND-0382)"
+        )
+        assert inv["token_hash"]
+        assert inv["token_hash_prefix"] == inv["token_hash"][:8]
+        # Hash matches the response's raw material — link works via hash alone.
+        import hashlib
+
+        matching_raw = next(t for t in raw_tokens if hashlib.sha256(t.encode()).hexdigest() == inv["token_hash"])
+        assert matching_raw

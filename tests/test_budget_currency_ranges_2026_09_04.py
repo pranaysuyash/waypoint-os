@@ -1,6 +1,24 @@
 """Currency agreement and repeated-symbol range contracts for budget extraction."""
 
 from src.intake.extractors import PLATFORM_DEFAULT_CURRENCY, _extract_budget
+from src.intake.currency_registry import CURRENCY_TOKENS, resolve_currency_token
+
+
+def test_currency_registry_is_single_source_of_truth():
+    """Every token in the registry resolves; the registry carries the full
+    legacy table (FND-0341 map extraction — no consumer forked the data)."""
+    for token, code in CURRENCY_TOKENS.items():
+        assert resolve_currency_token(token) == code, token
+        assert resolve_currency_token(token.upper()) == code, token
+        assert resolve_currency_token(f"  {token}  ") == code, token
+    assert resolve_currency_token("not-a-currency") is None
+    assert resolve_currency_token(None) is None
+    assert resolve_currency_token("") is None
+    # the geography-parity members that must never regress
+    for token, code in (
+        ("rupees", "INR"), ("₹", "INR"), ("$", "USD"), ("euro", "EUR"), ("gbp", "GBP")
+    ):
+        assert CURRENCY_TOKENS[token] == code
 
 
 def test_repeated_currency_symbol_is_preserved_across_range():
