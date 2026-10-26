@@ -97,6 +97,46 @@ async def send_outbound_message(
     )
 
 
+@router.get("/channel-status")
+async def messaging_channel_status(agency_id: str = Depends(get_current_agency_id)):
+    """Operator flip-check for channel readiness (the unconfigured-vs-failed
+    lane vocabulary): per-channel provider config state with the exact missing
+    env names, plus the webhook binding block. Read-only; performs no network
+    I/O and never echoes secret values. This is how an operator verifies B1 is
+    ready BEFORE and AFTER the credentials arrive — no live send required."""
+    wa_missing = [
+        name
+        for name in ("WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID")
+        if not os.getenv(name, "").strip()
+    ]
+    sg_missing = ["SENDGRID_API_KEY"] if not os.getenv("SENDGRID_API_KEY", "").strip() else []
+    return {
+        "ok": True,
+        "channels": [
+            {
+                "channel": "whatsapp",
+                "provider": "whatsapp_cloud_api",
+                "status": "NOT_CONFIGURED" if wa_missing else "CONFIGURED",
+                "missing_env": wa_missing,
+            },
+            {
+                "channel": "email",
+                "provider": "sendgrid_email",
+                "status": "NOT_CONFIGURED" if sg_missing else "CONFIGURED",
+                "missing_env": sg_missing,
+            },
+        ],
+        "webhook": {
+            "provider": "whatsapp_cloud_api",
+            "verify_token_set": bool(os.getenv("WHATSAPP_VERIFY_TOKEN", "").strip()),
+            "app_secret_set": bool(os.getenv("WHATSAPP_APP_SECRET", "").strip()),
+            "agency_binding": os.getenv("MESSAGING_WEBHOOK_AGENCY_ID", "").strip() or None,
+            "agency_binding_note": "MESSAGING_WEBHOOK_AGENCY_ID names the agency that owns this WhatsApp number; unset webhooks record under 'webhook-unattributed'",
+        },
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @router.get("/webhook/{provider}")
 async def verify_messaging_webhook(
     provider: str,
@@ -173,6 +213,8 @@ async def process_messaging_webhook(
     # configured this webhook; unconfigured -> messages are stored under the
     # webhook-scope agency id rather than dropped.
     stored = 0
+    duplicates_skipped = 0
+    statuses_applied = 0
     inbound_records: List[Dict[str, Any]] = []
     for value in _extract_meta_message_values(payload):
         for m in value.get("messages") or []:
@@ -218,13 +260,21 @@ async def process_messaging_webhook(
             }
         )
 
+    webhook_agency = os.getenv("MESSAGING_WEBHOOK_AGENCY_ID", "").strip() or "webhook-unattributed"
     if inbound_records:
         from spine_api.services import message_store
         from spine_api.services.messaging_webhooks import InboundMessage, process_inbound_traveler_message
         from spine_api.services.message_dispatch import dispatch_outbound_message
 
-        webhook_agency = os.getenv("MESSAGING_WEBHOOK_AGENCY_ID", "").strip() or "webhook-unattributed"
         for rec in inbound_records:
+            # B1 idempotency: Meta redelivers webhooks at-least-once. One
+            # provider-message-id lookup guards the store row, the work item,
+            # AND the concierge reply from duplicate processing.
+            if rec["provider_message_id"] and message_store.find_by_provider_message_id(
+                webhook_agency, rec["provider_message_id"]
+            ):
+                duplicates_skipped += 1
+                continue
             trip_id = message_store.match_trip_by_phone(webhook_agency, rec["from_party"])
             message_store.append_message(
                 agency_id=webhook_agency,
@@ -279,7 +329,7 @@ async def process_messaging_webhook(
                     active_trip_lookup=({rec["from_party"]: trip_id} if trip_id else None),
                 )
                 if reply.reply_text:
-                    dispatch_outbound_message(
+                    dispatch_result = dispatch_outbound_message(
                         recipient=reply.to_phone,
                         channel=reply.channel,
                         content=reply.reply_text,
@@ -292,7 +342,11 @@ async def process_messaging_webhook(
                         to_party=reply.to_phone,
                         body=reply.reply_text,
                         trip_id=reply.trip_id,
-                        provider_message_id=reply.reply_to_message_id,
+                        # The provider-assigned id is the delivery-status key;
+                        # threading to the inbound message rides the separate
+                        # reply_to field so the two pmids never collide.
+                        provider_message_id=dispatch_result.get("provider_message_id"),
+                        reply_to_provider_message_id=reply.reply_to_message_id,
                     )
 
         if stored:
@@ -301,6 +355,26 @@ async def process_messaging_webhook(
                 user_id=webhook_agency,
                 details={"provider": provider, "stored": stored},
             )
+
+    # Meta delivery statuses (statuses[]: sent/delivered/read/failed). These
+    # are delivery TRUTH, not obligations — they update the matching outbound
+    # row and never create work items (intake doctrine: only obligation-
+    # creating surfaces record WorkItems). An unmatched id is honest: logged,
+    # counted, never fabricated into a row.
+    from spine_api.services import message_store as _message_store
+
+    for st in _extract_meta_statuses(payload):
+        try:
+            result = _message_store.apply_provider_status(
+                webhook_agency,
+                st["provider_message_id"],
+                st["status"],
+                error=st.get("error"),
+            )
+            if result.get("updated"):
+                statuses_applied += 1
+        except Exception as status_err:
+            logger.debug("Provider status apply skipped: %s", status_err)
 
     logger.info(f"Received {provider} webhook event {event_type} for message {message_id}: status={status}")
 
@@ -311,6 +385,8 @@ async def process_messaging_webhook(
         "status": status,
         "signature_verified": bool(app_secret and sig_header),
         "inbound_messages_stored": stored,
+        "duplicates_skipped": duplicates_skipped,
+        "statuses_applied": statuses_applied,
         "processed_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -322,10 +398,43 @@ def _extract_meta_message_values(payload: Dict[str, Any]) -> List[Dict[str, Any]
         if not isinstance(entry, dict):
             continue
         for change in entry.get("changes") or []:
-            if not isinstance(change, dict):
-                continue
-            value = change.get("value")
-            if isinstance(value, dict) and value.get("messages"):
-                values.append(value)
+            if isinstance(change, dict):
+                value = change.get("value")
+                if isinstance(value, dict) and (value.get("messages") or value.get("statuses")):
+                    values.append(value)
     return values
+
+
+def _extract_meta_statuses(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Pull delivery-status entries (Meta Cloud API statuses[] shape, plus the
+    flat adapter shape) out of one webhook payload."""
+    statuses: List[Dict[str, Any]] = []
+    for value in _extract_meta_message_values(payload):
+        for st in value.get("statuses") or []:
+            if not isinstance(st, dict) or not st.get("id") or not st.get("status"):
+                continue
+            errors_raw = st.get("errors")
+            errors: List[Dict[str, Any]] = errors_raw if isinstance(errors_raw, list) else []
+            error_text = "; ".join(
+                str(e.get("title") or e.get("message") or "")
+                for e in errors
+                if isinstance(e, dict) and (e.get("title") or e.get("message"))
+            ).strip("; ") or None
+            statuses.append(
+                {
+                    "provider_message_id": str(st["id"]),
+                    "status": str(st["status"]),
+                    "error": error_text,
+                }
+            )
+    if not statuses and payload.get("message_id") and payload.get("status") and str(payload.get("event", "")).startswith("message_"):
+        # Flat adapter/test shape: {event: "message_delivered", message_id, status}
+        statuses.append(
+            {
+                "provider_message_id": str(payload["message_id"]),
+                "status": str(payload["status"]),
+                "error": None,
+            }
+        )
+    return statuses
 

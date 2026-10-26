@@ -28,6 +28,9 @@ logger = logging.getLogger("spine_api.message_dispatch")
 WHATSAPP_GRAPH_URL = "https://graph.facebook.com/v21.0"
 SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
 DISPATCH_TIMEOUT_SECONDS = 10.0
+# Meta Cloud API rejects text bodies over 4096 chars — fail before the network
+# call so the operator sees the real reason, not a provider 400.
+WHATSAPP_MAX_BODY_CHARS = 4096
 
 
 def _whatsapp_credentials() -> Optional[tuple[str, str]]:
@@ -57,6 +60,21 @@ def dispatch_outbound_message(*, recipient: str, channel: str, content: str) -> 
 
     if channel_key == "whatsapp":
         provider = "whatsapp_cloud_api"
+        # Pre-flight guards: invalid content is invalid regardless of creds,
+        # and Meta's `to` is digits-only (no '+', spaces, or dashes).
+        if len(content or "") > WHATSAPP_MAX_BODY_CHARS:
+            return {
+                "dispatch_status": "FAILED",
+                "provider": provider,
+                "detail": f"body exceeds WhatsApp {WHATSAPP_MAX_BODY_CHARS}-char limit",
+            }
+        recipient_digits = "".join(ch for ch in (recipient or "") if ch.isdigit())
+        if not recipient_digits:
+            return {
+                "dispatch_status": "FAILED",
+                "provider": provider,
+                "detail": "recipient has no phone digits",
+            }
         creds = _whatsapp_credentials()
         if creds is None:
             return {
@@ -67,7 +85,7 @@ def dispatch_outbound_message(*, recipient: str, channel: str, content: str) -> 
         token, phone_number_id = creds
         payload = {
             "messaging_product": "whatsapp",
-            "to": recipient,
+            "to": recipient_digits,
             "type": "text",
             "text": {"preview_url": False, "body": content},
         }
@@ -82,7 +100,23 @@ def dispatch_outbound_message(*, recipient: str, channel: str, content: str) -> 
             logger.warning("WhatsApp dispatch error: %s", exc)
             return {"dispatch_status": "FAILED", "provider": provider, "detail": f"{type(exc).__name__}"}
         if response.status_code < 300:
-            return {"dispatch_status": "SENT", "provider": provider, "detail": "accepted by Cloud API"}
+            # Capture Meta's provider-assigned message id: delivery statuses
+            # arrive keyed by THIS id, so the caller stores outbound rows with
+            # it (reply threading rides a separate reply_to field).
+            provider_message_id = None
+            try:
+                body = response.json()
+                messages = body.get("messages") if isinstance(body, dict) else None
+                if isinstance(messages, list) and messages and isinstance(messages[0], dict):
+                    provider_message_id = str(messages[0].get("id") or "") or None
+            except Exception:
+                provider_message_id = None
+            return {
+                "dispatch_status": "SENT",
+                "provider": provider,
+                "detail": "accepted by Cloud API",
+                "provider_message_id": provider_message_id,
+            }
         return {
             "dispatch_status": "FAILED",
             "provider": provider,

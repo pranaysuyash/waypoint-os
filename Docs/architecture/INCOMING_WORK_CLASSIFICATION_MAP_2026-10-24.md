@@ -397,3 +397,32 @@ The two gaps below were initially written up as "deferred by design"; the owner 
 
 Nothing in §15 remains deferred: the only open display thread is new doors/channels declaring their vocabulary at the seam as they ship (enforced by the exhaustiveness test).
 
+
+## 16. B1 readiness — the WhatsApp system is key-ready (2026-10-26)
+
+Owner directive: "do all that can be done without the API key — get the systems ready." Ground truth found §5 B1's "MISSING / seam reserved" note **stale**: the parallel waves since 2026-09-29 had already built nearly the whole channel — `POST /api/v1/messaging/webhook/{provider}` (Meta challenge handshake fail-closed on unset `WHATSAPP_VERIFY_TOKEN`; default-deny `X-Hub-Signature-256` HMAC verification), Cloud API `entry[].changes[].value.messages[]` parsing + flat adapter shape, `message_store` persistence with digit-normalized trip matching, work-intake classification (`channel_webhook` door, C3 identity + C2 returning-guest riding), the FND-0126 concierge reply loop, and a REAL env-gated outbound dispatch (`message_dispatch.py`: Cloud API + SendGrid, honest `SENT`/`FAILED`/`NOT_CONFIGURED`, never fabricated). This section records the readiness-closing pass and supersedes the "B1 = provider-gated, not started" framing.
+
+### 16.1 Gaps closed this pass (all key-free)
+
+- **Inbound idempotency (at-least-once safety)**: Meta redelivers webhooks; the orchestrator now checks `message_store.find_by_provider_message_id()` before storing, classifying, or replying — one lookup guards all three consumers. Response carries `duplicates_skipped`. (`spine_api/routers/messaging.py`, `spine_api/services/message_store.py`)
+- **Delivery-truth persistence**: Meta `statuses[]` callbacks (sent/delivered/read/failed + error titles) now attach to the matching OUTBOUND stored row via `apply_provider_status` (bounded one-line rewrite under the store lock). Statuses are delivery truth, not obligations — they never create work items (intake doctrine). Unmatched ids are honest non-applies. Response carries `statuses_applied`.
+- **FND-0384 (found by the new idempotency test, fixed in-pass)**: outbound dispatch discarded the provider-assigned message id, so delivery statuses could never match stored outbound rows, and outbound reply rows collided with inbound pmids via reply threading. Fix: dispatch captures `messages[0].id` on `SENT`; outbound rows store it as `provider_message_id`; threading moved to a new `reply_to_provider_message_id` field; status application pinned to `direction="outbound"`.
+- **Dispatch pre-flight guards**: body > 4096 chars (Meta's limit) and digit-less recipients fail BEFORE the network call with the real reason — the operator sees why, creds or not; `to` is digit-normalized for the Cloud API.
+- **Operator flip-check**: `GET /api/v1/messaging/channel-status` (JWT-scoped) reports per-channel `CONFIGURED`/`NOT_CONFIGURED` with the exact missing env names, plus the webhook binding block (`WHATSAPP_VERIFY_TOKEN`/`WHATSAPP_APP_SECRET` set, `MESSAGING_WEBHOOK_AGENCY_ID`) — no secret echo, no network I/O. Verified once here, re-verified after the key lands.
+
+### 16.2 The flip checklist (when credentials arrive)
+
+1. Set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` (outbound), `WHATSAPP_VERIFY_TOKEN` + `WHATSAPP_APP_SECRET` (webhook auth), `MESSAGING_WEBHOOK_AGENCY_ID` (which agency owns this number — unset records under `webhook-unattributed`).
+2. Point the Meta app webhook to `POST /api/v1/messaging/webhook/whatsapp` (GET handshake verifies against the token).
+3. `GET /api/v1/messaging/channel-status` must show whatsapp `CONFIGURED` with empty `missing_env`.
+4. Send one live traveler message; verify: row in `data/messages/{agency}.jsonl`, one work item on the queue (headline "WhatsApp message received"), concierge reply stored with a provider-assigned id, and the inbound `statuses[]` attaching `delivery_status` to it.
+
+### 16.3 What genuinely remains (provider/owner-gated, none buildable key-free)
+
+- Live E2E against real Meta servers (needs the key; everything up to the network boundary is test-covered with signed fixtures).
+- WhatsApp template approval for business-initiated (outside-24h-window) messages — a Meta-side approval, not code; free-form replies inside the window are unblocked.
+- Multi-tenant number→agency mapping (today: one number per deployment via `MESSAGING_WEBHOOK_AGENCY_ID`); the phone-id→agency table is the Phase-2 follow-on.
+- Inbound media DOWNLOAD (metadata is stored honestly; the bytes need a token-gated GET — natural first slice after the flip).
+- **B2 vendor quote inbox** build plan (not built this pass — completion over partial work): mirror this exact shape — IMAP/webhook receiver → `vendor_quote_inbox` door (reserved seam already in `DOOR_CONTRACTS`) → `message_store` row → work item; the only B2-specific logic is the quote-attachment parser, which should reuse the multimodal door's document lane.
+
+Tests this pass: `tests/test_messaging_router.py` **6/6** (idempotent redelivery → 1 row / 1 work item / 1 reply with `reply_to` threading; `statuses[]` → outbound row incl. error detail; unmatched id honest; pre-flight guards; flip-check endpoint). Regression: concierge ×3 + followups + work-intake suites **57/57**; ruff clean. Findings: **FND-0384** opened+closed with evidence.

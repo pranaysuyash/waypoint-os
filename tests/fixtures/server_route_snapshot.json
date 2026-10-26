@@ -1,5 +1,5 @@
 {
-  "route_count": 404,
+  "route_count": 405,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1980,6 +1980,14 @@
     {
       "path": "/api/v1/messages",
       "name": "list_agency_messages",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/messaging/channel-status",
+      "name": "messaging_channel_status",
       "methods": [
         "GET"
       ],

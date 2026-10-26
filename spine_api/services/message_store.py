@@ -63,12 +63,14 @@ def append_message(
     mime: Optional[str] = None,
     filename: Optional[str] = None,
     provider_message_id: Optional[str] = None,
+    reply_to_provider_message_id: Optional[str] = None,
     received_at: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Persist one channel message. Returns the stored record."""
     record: Dict[str, Any] = {
         "message_id": f"msg_{uuid4().hex[:12]}",
         "provider_message_id": provider_message_id,
+        "reply_to_provider_message_id": reply_to_provider_message_id,
         "agency_id": agency_id,
         "trip_id": trip_id,
         "channel": channel,
@@ -115,6 +117,82 @@ def list_for_agency(
             out.append(rec)
     out.sort(key=lambda r: r.get("received_at") or "", reverse=True)
     return out[: max(1, limit)]
+
+
+def find_by_provider_message_id(agency_id: str, provider_message_id: str) -> Optional[Dict[str, Any]]:
+    """Most recent stored message row for a provider message id, or None.
+
+    The B1 idempotency anchor: Meta redelivers webhooks at-least-once, so the
+    webhook orchestration checks here before storing, classifying, or replying
+    — one lookup protects all three downstream consumers from duplicates.
+    """
+    if not provider_message_id:
+        return None
+    path = _agency_path(agency_id)
+    if not path.exists():
+        return None
+    found: Optional[Dict[str, Any]] = None
+    with path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if rec.get("provider_message_id") == provider_message_id:
+                found = rec  # appends are chronological; last write wins
+    return found
+
+
+def apply_provider_status(
+    agency_id: str,
+    provider_message_id: str,
+    status: str,
+    *,
+    error: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Attach provider delivery truth (sent/delivered/read/failed) to the
+    stored OUTBOUND row for ``provider_message_id``. Statuses describe messages
+    the business sent, so matching is pinned to direction="outbound" — reply
+    rows that thread via reply_to_provider_message_id never collide. Rewrites
+    that one line under the store lock (bounded, same durability pattern as
+    work_intake.record_outcome). Returns ``{"updated": bool}`` — an unmatched
+    id is honest (the outbound went through another path); callers log and
+    move on, never fabricate a row."""
+    if not provider_message_id or not status:
+        return {"updated": False}
+    path = _agency_path(agency_id)
+    if not path.exists():
+        return {"updated": False}
+    updated = False
+    with _WRITE_LOCK:
+        lines: List[str] = []
+        with path.open("r", encoding="utf-8") as fh:
+            for line in fh:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    rec = json.loads(stripped)
+                except json.JSONDecodeError:
+                    lines.append(stripped)
+                    continue
+                if (
+                    rec.get("provider_message_id") == provider_message_id
+                    and rec.get("direction") == "outbound"
+                ):
+                    rec["delivery_status"] = status
+                    rec["delivery_detail"] = error
+                    rec["delivery_status_at"] = datetime.now(timezone.utc).isoformat()
+                    updated = True
+                lines.append(json.dumps(rec, ensure_ascii=False))
+        if updated:
+            with path.open("w", encoding="utf-8") as fh:
+                for line in lines:
+                    fh.write(line + "\n")
+    return {"updated": updated}
 
 
 def match_trip_by_phone(agency_id: str, phone: str) -> Optional[str]:
