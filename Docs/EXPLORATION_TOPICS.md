@@ -1821,6 +1821,11 @@ These are **blocking** for moving from notebooks to real implementation.
 - Owner DECIDE: adopt the zero-out rule (suppress suitability scores on HARD-failed plans)? **→ RESOLVED 2026-10-22: adopted.** Implemented on the two live scoring surfaces: `GroupConsensusOptimizer` (hard budget breach ⇒ composite 0, tier INFEASIBLE, never Pareto-optimal, never dominates a valid option; member numbers remain diagnostics) and `CompiledProposalPackage` (`preference_scoring_suppressed` + `feasibility_hard_violations` on the compile contract; previously the feasibility verdict was computed and orphaned). Route-structure candidates are pre-costing and unaffected. Valid-path tests pin the no-regression side.
 - Gate position: after options/strategy only, or also re-run at proposal time when producer data refreshes?
 
+### 51c. src/ Bounded-Context Consolidation — Sequencing (FND-0387) 🟡
+**Status**: SEQUENCED (2026-10-26, owner discussion confirmed the deferral basis). See FND-0387 finding thread.
+
+**Overview**: FND-0387 (40+ top-level src/ modules) is an ARCHITECTURE DECISION, not a code change — the owner deferred it pending boundary definition. Recorded sequencing: (1) mechanical coupling map of src/ (imports, shared data, call frequency — no decision needed); (2) draft candidate bounded contexts from the map; (3) **owner ADR on boundaries** (the gate); (4) only then mechanical moves. Step 1-2 are safe next-session work; no src/ restructuring starts before the ADR.
+
 ### 51b. Group Proxy Negotiation — Scope & Design Sketch ⚪ (DEFERRED on demand signal)
 **Status**: SCOPED (2026-10-26). See [GROUP_PROXY_NEGOTIATION_SCOPE_2026-10-26.md](exploration/GROUP_PROXY_NEGOTIATION_SCOPE_2026-10-26.md).
 
