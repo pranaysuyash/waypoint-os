@@ -31,10 +31,18 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Inspector guard: DBs the service's lazy _ensure_table reached first
+    # already carry this table (created from the same Base.metadata,
+    # indexes included) — skip rather than collide. Fresh/ephemeral DBs
+    # get the table here.
+    bind = op.get_bind()
+    if sa.inspect(bind).has_table("recoveries"):
+        return
+
     op.create_table(
         "recoveries",
         sa.Column("recovery_id", sa.String(length=64), primary_key=True),
-        sa.Column("agency_id", sa.String(length=64), nullable=False, index=True),
+        sa.Column("agency_id", sa.String(length=64), nullable=False),
         sa.Column("trip_id", sa.String(length=255), nullable=True),
         sa.Column("traveler_ref", sa.String(length=255), nullable=True),
         sa.Column("source_type", sa.String(length=40), nullable=False),
@@ -49,10 +57,14 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
-    op.create_index("ix_recoveries_agency_id", "recoveries", ["agency_id"])
-    op.create_index("ix_recoveries_trip_id", "recoveries", ["trip_id"])
-    op.create_index("ix_recoveries_status", "recoveries", ["status"])
+    # NOTE: no explicit op.create_index calls — the three Column(..., index=True)
+    # flags above already generate ix_recoveries_agency_id / _trip_id / _status
+    # during create_table; explicit duplicates collided on fresh ephemeral DBs
+    # (DuplicateTableError at alembic upgrade head, FND-0366 template build).
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    if not sa.inspect(bind).has_table("recoveries"):
+        return
     op.drop_table("recoveries")

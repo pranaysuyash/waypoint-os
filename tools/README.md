@@ -979,3 +979,8 @@ including raw traveler notes. The bundled persona scripts are synthetic
 `@waypointtest.dev` fixtures, so this is safe as-shipped — but if you point a
 runner at an agency with REAL customer data, redact the evidence JSONs before
 committing (a `--redact` mode is a known gap; see SIM3 meta-audit U14).
+
+### mimosa_triage.py
+Classifies Mimosa business-logic-risk findings by authorization surface (route decorator + signature dependencies + body token verification) into a TSV ledger with posture histogram.
+Usage: `python3 tools/mimosa_triage.py <scan-dir>/findings.json`
+Knows limitation: single-line signature matching — guards on continuation lines surface as UNGUARDED and require the mandatory eyes-on pass.

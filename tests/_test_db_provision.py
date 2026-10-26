@@ -213,6 +213,15 @@ async def main():
     finally:
         await conn.close()
 
+    # Recovery ledger RLS steady state (T10): the migration creates the
+    # table; RecoveryStore._ensure_table applies ENABLE/FORCE + select/all
+    # policies (idempotent — the same lazy-ensure convention
+    # advisor_payouts uses at server startup).
+    from spine_api.services.recovery_store import RecoveryStore
+
+    RecoveryStore._ensure_table()
+    print("rls-ensure: recoveries")
+
 asyncio.run(main())
 """
 

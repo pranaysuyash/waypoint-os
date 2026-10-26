@@ -546,7 +546,7 @@ _ARRIVE_DEPART_RE = re.compile(
     r"\b(?P<sm>january|february|march|april|may|june|july|august|september|"
     r"october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)\w*\s+"
     r"(?P<sd>\d{1,2})(?:st|nd|rd|th)?\b"
-    r"[^.,;()\n]{0,60}?"
+    r"[^()\n]{0,60}?"
     r"\b(?:leav\w+|check(?:ing)?[\s-]*out)\b[^.,;()\n]{0,40}?"
     r"\b(?P<em>january|february|march|april|may|june|july|august|september|"
     r"october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)\w*\s+"
@@ -1874,23 +1874,6 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
         raw = iso_match.group(0)
         return raw, iso_match.group(1), iso_match.group(2), "exact"
 
-    # Month/day range: "July 10 to July 16", "July 10-16", "July 10 to 16"
-    month_day_range = _MONTH_DAY_RANGE_RE.search(text)
-    if month_day_range:
-        start_month = month_day_range.group(1)
-        start_day = month_day_range.group(2)
-        end_month = month_day_range.group(3) or start_month
-        end_day = month_day_range.group(4)
-        explicit_year = month_day_range.group(5)
-        year = explicit_year or _infer_year_from_context(text)
-        start_month_num = _month_to_num(start_month)
-        end_month_num = _month_to_num(end_month)
-        if start_month_num and end_month_num:
-            start_iso = f"{year}-{start_month_num:02d}-{int(start_day):02d}"
-            end_iso = f"{year}-{end_month_num:02d}-{int(end_day):02d}"
-            raw = month_day_range.group(0).strip()
-            return raw, start_iso, end_iso, "tentative"
-
     # Arrive/depart reply phrasing (FND-0380): "arriving november 15 leaving
     # november 21", "arriving nov 16 evening, leaving nov 19 morning".
     # Calendar-ordered so a note listing departure first still yields
@@ -1910,6 +1893,24 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
                 start_iso, end_iso = end_iso, start_iso
             raw = arrive_depart.group(0).strip()
             return raw, start_iso, end_iso, "tentative"
+
+    # Month/day range: "July 10 to July 16", "July 10-16", "July 10 to 16"
+    month_day_range = _MONTH_DAY_RANGE_RE.search(text)
+    if month_day_range:
+        start_month = month_day_range.group(1)
+        start_day = month_day_range.group(2)
+        end_month = month_day_range.group(3) or start_month
+        end_day = month_day_range.group(4)
+        explicit_year = month_day_range.group(5)
+        year = explicit_year or _infer_year_from_context(text)
+        start_month_num = _month_to_num(start_month)
+        end_month_num = _month_to_num(end_month)
+        if start_month_num and end_month_num:
+            start_iso = f"{year}-{start_month_num:02d}-{int(start_day):02d}"
+            end_iso = f"{year}-{end_month_num:02d}-{int(end_day):02d}"
+            raw = month_day_range.group(0).strip()
+            return raw, start_iso, end_iso, "tentative"
+
 
     # Day-first range: "10 June 2027 to 17 June 2027", "1 May to 5 May".
     day_month_range = _DAY_MONTH_RANGE_RE.search(text)

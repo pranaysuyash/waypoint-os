@@ -58,3 +58,33 @@ with file:line evidence; static "inconclusive" verdicts resolved by code reading
 
 **Verification:** backend suites touched this wave all green (corporate policy 18/18,
 confirmations 28/28, parity 2/2, IVR 6/6); FE planning-status 15/15; tsc clean; pip-audit clean.
+
+---
+
+## Rescan wave (same day, later) — FND-0383: sealed scan da07a4d8, 45 business-logic candidates
+
+**Scan:** `scan-2026-10-25T17-39-34.028Z-269ce8e4797f`, digest `sha256:da07a4d8…cea4c` (128 findings;
+45 `business-logic-risk` — this wave's subject; the dep/CVE/insecure-random classes were the earlier
+waves'). **Method upgrade:** the per-site classification is now a reusable tool —
+`tools/mimosa_triage.py` reads the sealed findings and classifies each candidate's authorization
+surface from real code (decorator + signature dependencies, body token verification), so the
+human pass only eyes the residuals it flags.
+
+**Ledger (45/45 adjudicated, 0 real defects):**
+
+| Bucket | n | Disposition |
+|---|---|---|
+| AGENCY-DI in decorator/signature | 30 | MITIGATED — handler window carries `get_current_agency`/`get_current_agency_id`/`get_current_user`/`get_current_membership`; sinks tenant-scoped (`drafts` ×8, `financial_ops` payment-mandates ×4, `passenger_rights` claims ×2, `quotes` retail, `corporate_policy` approve (PA-26 dual control), `boundaries` ×4, `trip_observability` timeline) |
+| Public-by-design, token verified in body | 7 | MITIGATED — `public_proposals` ×3 (opaque token → `get_trip_for_agency` + 403 on mismatch), `public_asks` ×2 (HMAC gate), `group_booking` ×2 (invite token, 404 invalid) |
+| Capability | 1 | MITIGATED — `boundaries.py:216` `verify_capability_token` |
+| Tool-flagged UNGUARDED (5) → eyes-on FALSE | 5 | Guards sit on multiline signature lines the tool's single-line regex missed: `customer_memory.py:698 /memory/forget` = `Depends(get_current_agency_id)` + S-08 agency-scoped erasure; `dsr.py:147 erasure` = `get_current_agency` + `require_permission("trips:write")` + explicit `confirm: true`; `product_b_analytics.py:43` = `require_platform_role("super_admin")` + 60/min + audit; `social_inbound.py:203 unmask` = agency-DI + tenant lookup + token match + 403; `team.py:62 invite` = agency + user + `require_permission("team:manage")` + RLS session |
+| NEEDS-EYE (9) → all verified | 9 | `trust_scorecard /generate-link` = agency-DI + tenant-scoped trip + `secrets.token_urlsafe(32)` signed link; `auth /test-token` = `ENABLE_TEST_TOKEN!=1 → 404` (re-verified); `auth /confirm-password-reset` = public-by-design (reset token IS the credential) + 5/min limiter + parameterized ORM; `public_collection` ×3 = `validate_token(db, token)` + `rls_session` + stage-gated + traveler-safe projection |
+| NON-ROUTE (2) → enclosing routes checked | 2 | `server.py:3434` (`PATCH /trips/{id}/booking-data`) and `:3684` (`POST /trips/{id}/collection-link`) both agency-DI + user-DI |
+
+**Tool limitation recorded** (for wave 3): single-line signature matching misses guards on
+continuation lines — 5/5 "UNGUARDED" rows were false; the eyes-on pass is mandatory for that
+bucket until the tool joins signature lines.
+
+**Verdict:** zero real defects in the rescan's business-logic class; the authorization architecture
+(agent-DI + capability tokens + RLS sessions) held at every flagged sink. FND-0383 closed with this
+ledger as evidence.
