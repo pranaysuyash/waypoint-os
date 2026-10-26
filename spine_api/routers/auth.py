@@ -38,6 +38,8 @@ from spine_api.services.auth_service import (
     refresh_access_token,
     request_password_reset,
     confirm_password_reset,
+    request_email_verification,
+    confirm_email_verification,
     validate_workspace_code,
     join_with_code,
 )
@@ -113,6 +115,9 @@ class SignupRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     name: str | None = Field(default=None, max_length=255)
     agency_name: str | None = Field(default=None, max_length=255)
+    # B-05: Terms of service and privacy policy acceptance. Required for
+    # new signups. The timestamp is recorded on the User record.
+    terms_accepted: bool = Field(default=False)
 
 
 class LoginRequest(BaseModel):
@@ -145,6 +150,10 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=256)
 
 
 class JoinRequest(BaseModel):
@@ -181,6 +190,14 @@ async def post_signup(
         and signup_req.email.lower().endswith("@test.com")
     )
 
+    # B-05: Require explicit terms acceptance for non-test signups.
+    # Test accounts (dev only) are exempt to avoid breaking test fixtures.
+    if not is_test and not signup_req.terms_accepted:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="You must accept the terms of service and privacy policy to create an account.",
+        )
+
     try:
         result = await signup_service(
             db=db,
@@ -189,6 +206,7 @@ async def post_signup(
             name=signup_req.name,
             agency_name=signup_req.agency_name,
             is_test=is_test,
+            terms_accepted=signup_req.terms_accepted or is_test,
         )
     except ValueError as e:
         await audit.log(AuditAction.LOGIN_FAILED, resource_type="user", changes={"email": signup_req.email, "reason": str(e)})
@@ -240,10 +258,26 @@ async def post_login(
 
 @router.post("/logout")
 async def post_logout(
+    request: Request,
     response: Response,
+    db: AsyncSession = Depends(get_db),
     membership: Membership = Depends(get_current_membership),
     audit: AuditContext = Depends(audit_logger()),
 ):
+    # B-03: Revoke the refresh token on logout
+    refresh_token_str = request.cookies.get("refresh_token")
+    if refresh_token_str:
+        try:
+            from spine_api.core.security import decode_token
+            from spine_api.services.auth_service import revoke_refresh_token
+            payload = decode_token(refresh_token_str)
+            jti = payload.get("jti")
+            user_id = payload.get("sub")
+            if jti and user_id:
+                await revoke_refresh_token(db=db, jti=jti, user_id=user_id)
+        except Exception:
+            pass  # Best-effort revocation; cookie clearing is the primary action
+
     _clear_auth_cookies(response)
     await audit.log(AuditAction.LOGOUT, resource_type="session")
     return {"ok": True}
@@ -368,6 +402,54 @@ async def post_confirm_password_reset(
             changes={"success": False, "reason": str(e)},
         )
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/verify-email", status_code=status.HTTP_200_OK)
+@limiter.limit(_rate_limit("10/minute"))
+async def post_verify_email(
+    request: Request,
+    verify_req: EmailVerificationRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Verify a user's email using a verification token.
+
+    B-04: Email verification (audit 2026-10-26).
+    The token is provided in the request body. On success, the user's
+    email_verified_at is set and the token is marked as used.
+    """
+    token = verify_req.token
+    if not token:
+        raise HTTPException(status_code=400, detail="Verification token is required.")
+
+    success = await confirm_email_verification(db=db, token=token)
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired verification token.",
+        )
+    return {"ok": True, "message": "Email verified successfully."}
+
+
+@router.post("/request-email-verification", status_code=status.HTTP_200_OK)
+@limiter.limit(_rate_limit("3/minute"))
+async def post_request_email_verification(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Request a new email verification token for the current user.
+
+    B-04: Email verification (audit 2026-10-26).
+    The token is returned in the response for development/testing.
+    In production, it should be sent via email (provider TBD).
+    """
+    token = await request_email_verification(db=db, user_id=user.id)
+    # NOTE: In production, send this token via email instead of returning it.
+    # Email provider integration is pending user decision.
+    env = os.environ.get("ENVIRONMENT", "development").lower()
+    if env in ("development", "test"):
+        return {"ok": True, "token": token, "message": "Verification token generated (dev mode)."}
+    return {"ok": True, "message": "Verification email sent."}
+
 
 
 # ---------------------------------------------------------------------------

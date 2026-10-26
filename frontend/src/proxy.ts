@@ -17,10 +17,6 @@ import type { NextRequest } from 'next/server';
 
 const PUBLIC_PAGES = new Set([
   '/',
-  '/v2',
-  '/v3',
-  '/v4',
-  '/v5',
   '/itinerary-checker',
   '/login',
   '/signup',

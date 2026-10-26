@@ -1,0 +1,15 @@
+{
+ "artifact": "waypoint_os_20261026T121137Z.dump",
+ "sha256": "241992ceb66614bd0044683014665c8e1e9d7d27a7f455e01633a2c4e495fd13",
+ "bytes": 36891756,
+ "source_database": "waypoint_os",
+ "created_at": "20261026T121137Z",
+ "core_table_rows_at_backup": {
+  "trips": 50341,
+  "users": 1361,
+  "agencies": 1359,
+  "audit_logs": 93065,
+  "execution_events": 40021
+ },
+ "tables_in_dump": 66
+}

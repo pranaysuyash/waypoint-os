@@ -273,13 +273,38 @@ def test_dlq_inspector_redaction_and_replay():
     poisoned_list = DLQInspector.list_poisoned_jobs()
     assert any(j.job_id == job_id for j in poisoned_list)
 
-    # Replay job with patched payload
-    replay_result = DLQInspector.replay_job(
+    # FND-0161: without a wired executor, replay REFUSES honestly — no
+    # fabricated REPLAYED status, record stays actionable.
+    refusal = DLQInspector.replay_job(
         job_id=job_id,
         patched_payload={"destination": "London", "retry_channel": "NDC"},
     )
+    assert refusal["ok"] is False
+    assert refusal["status"] == "NOT_EXECUTED"
+    assert "replay requires a wired executor" in refusal["reason"]
+    assert any(j.job_id == job_id for j in DLQInspector.list_poisoned_jobs())
+
+    # With the durable requeue store wired, replay re-dispatches for real.
+    class _FakeRequeueStore:
+        def __init__(self):
+            self.enqueued = []
+
+        def enqueue(self, trip_id, idempotency_key, reason, payload=None, max_attempts=3):
+            self.enqueued.append((trip_id, idempotency_key, reason, payload))
+            return True, f"durable_{len(self.enqueued)}"
+
+    store = _FakeRequeueStore()
+    replay_result = DLQInspector.replay_job(
+        job_id=job_id,
+        patched_payload={"destination": "London", "retry_channel": "NDC"},
+        requeue_store=store,
+    )
     assert replay_result["ok"] is True
-    assert replay_result["status"] == "REPLAYED"
+    assert replay_result["status"] == "RE-DISPATCHED"
+    assert replay_result["requeue_job_id"] == "durable_1"
+    # the durable enqueue carries the patched payload for real execution
+    assert store.enqueued[0][1] == f"dlq_replay:{job_id}"
+    assert store.enqueued[0][3]["retry_channel"] == "NDC"
 
     # Job is no longer in active DLQ queue
     assert not any(j.job_id == job_id for j in DLQInspector.list_poisoned_jobs())

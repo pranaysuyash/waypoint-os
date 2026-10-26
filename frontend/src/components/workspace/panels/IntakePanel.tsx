@@ -816,7 +816,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     } finally {
       setIsSendingAsk(false);
     }
-  }, [trip?.id, trip?.contactName, askRecipient]);
+  }, [trip, askRecipient]);
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;

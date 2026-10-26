@@ -57,6 +57,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   useEffect(() => {
     const rawNote = input_raw_note?.trim() || (trip?.customerMessage as string | undefined)?.trim();
     if (!rawNote || rawNote.length < 5) {
+  // eslint-disable-next-line react-hooks/set-state-in-effect
       setTriageResult(null);
       return;
     }

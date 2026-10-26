@@ -51,7 +51,7 @@ class SocialInboundParseResponse(BaseModel):
     teaser_url: str
     stage: str
     destination: str
-    suitability_score: int
+    suitability_score: Optional[int]
     price_lock_expires_at: str
     is_masked: bool
     scrubbed_text: str
@@ -61,7 +61,7 @@ class SocialInboundParseResponse(BaseModel):
 class UnmaskTeaserRequest(BaseModel):
     trip_id: str
     token: str
-    deposit_payment_ref: str = "pay_simulated_25"
+    deposit_payment_ref: str = Field(..., min_length=1, description="Payment reference from the deposit transaction. Must be a real payment ID, not a simulated value.")
 
 
 class UnmaskTeaserResponse(BaseModel):
@@ -114,9 +114,12 @@ async def parse_social_inbound(req: SocialInboundParseRequest, agency_id: str = 
         # Use real suitability score if available on the decision result
         suitability_score = getattr(decision_res, "suitability_score", None)
         if suitability_score is None:
-            suitability_score = 96 if decision_res.decision_state not in ("REJECTED", "STOP_NEEDS_REVIEW") else 50
+            # No real suitability score available — do not fabricate.
+            # Use a sentinel that downstream surfaces can render as
+            # "not computed" rather than a misleading 96.
+            suitability_score = None
     except Exception:
-        suitability_score = 96
+        suitability_score = None
 
     trip_id = f"trip_{uuid4().hex[:8]}"
     token = f"tok_{uuid4().hex[:12]}"

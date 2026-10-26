@@ -323,6 +323,17 @@
 
 - **[Exploration Roadmap](EXPLORATION_ROADMAP_WHILE_BUILDING.md)** — 12 strategic areas to explore in parallel: legal, competitive, metrics, infrastructure, risks.
 
+### Research & Destination Intelligence (2026-04-26)
+
+> Pointer recovered from `memory/MEMORY.md` (FND-0395 supersession sweep) — was
+> only referenced there. **READ `DESTINATION_INTELLIGENCE_VISION` FIRST before any
+> research, content, SEO, or product-feature work** — it is the strategic thesis:
+> every data point (weather, crime, AQI, costs, laws, food safety, connectivity…)
+> becomes a product feature + SEO content + free tool + programmatic page.
+
+- **[⚠️ Destination Intelligence Vision (2026-04-26)](research/DESTINATION_INTELLIGENCE_VISION_2026-04-26.md)** — the strategic thesis: real-time destination intelligence as product surface + content moat.
+- **[Research Opportunity Master List (2026-04-25)](research/RESEARCH_OPPORTUNITY_MASTER_LIST_2026-04-25.md)** — 1,897 research items across 56 categories (A–BD); per the April count only 211 done, **1,686 open** — treat as a living program inventory.
+
 ### Product Management
 
 - **[Product Gaps and Unknowns](PM_PRODUCT_GAPS_AND_UNKNOWN.md)** — What we haven't thought through: roadmap, assumptions, metrics, moat, experiments, unknown unknowns.

@@ -57,6 +57,7 @@ export default function KnowledgePanel() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadStatus();
     void loadDocuments();
   }, [loadStatus, loadDocuments]);

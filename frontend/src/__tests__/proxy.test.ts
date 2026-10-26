@@ -48,7 +48,7 @@ describe("proxy.ts page guard", () => {
   });
 
   it("passes through public pages without redirect", async () => {
-    const pages = ["/", "/v2", "/itinerary-checker", "/login", "/signup", "/forgot-password", "/reset-password"];
+    const pages = ["/", "/itinerary-checker", "/login", "/signup", "/forgot-password", "/reset-password"];
     const results = await Promise.all(
       pages.map(async (page) => {
         const req = mockRequest(page);

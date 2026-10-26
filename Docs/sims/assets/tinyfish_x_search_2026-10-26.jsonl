@@ -1,0 +1,355 @@
+[
+ {
+  "type": "STARTED",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "timestamp": "2026-10-26T14:12:46.667Z"
+ },
+ {
+  "type": "STREAMING_URL",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "streaming_url": "https://ip-54-151-42-95.tetra-data.production.tinyfish.io/tf-e11b9d3d-3701-4c64-9304-0ce358f29855/stream/0",
+  "timestamp": "2026-10-26T14:12:48.064Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Navigate to X search results for AI travel agent",
+  "timestamp": "2026-10-26T14:12:55.001Z"
+ },
+ {
+  "type": "HEARTBEAT",
+  "timestamp": "2026-10-26T14:13:10.012Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Find recent posts about AI travel agents tools launches",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:13:14.812Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "tinyfish_api": "search",
+  "result": [],
+  "timestamp": "2026-10-26T14:13:18.169Z"
+ },
+ {
+  "type": "HEARTBEAT",
+  "timestamp": "2026-10-26T14:13:33.172Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Find recent posts and news about AI travel agent tools and launches",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:13:37.177Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "6 days ago",
+    "position": 1,
+    "site_name": "gravity.fast",
+    "snippet": "An AI travel agent is software that plans a trip from a plain-language request, and sometimes books it too. Most of the ones below are free ...",
+    "title": "AI Travel Agent: 9 Tools, Which Ones Actually Book (2026)",
+    "url": "https://gravity.fast/blog/ai-travel-agent/"
+   },
+   {
+    "date": "Sep 30, 2026",
+    "position": 2,
+    "site_name": "monkeytravel.app",
+    "snippet": "Search for \"AI travel agent\" in 2026 and you get three unrelated products wearing the same label: chat planners that build an itinerary and ...",
+    "title": "Best AI Travel Agents 2026 - MonkeyTravel",
+    "url": "https://monkeytravel.app/blog/best-ai-travel-agents-2026"
+   },
+   {
+    "date": "Sep 11, 2025",
+    "position": 3,
+    "site_name": "www.altexsoft.com",
+    "snippet": "For example, in August 2025, India's Yatra Online introduced DIYA, an AI travel agent that offers trip planning, search and comparison of travel ...",
+    "title": "LATAM Joins the AI Agent Trend, Launches Trip Planning ...",
+    "url": "https://www.altexsoft.com/travel-industry-news/latam-joins-the-ai-agent-trend-launches-trip-planning-tool/"
+   },
+   {
+    "date": "Aug 13, 2026",
+    "position": 4,
+    "site_name": "thunderbit.com",
+    "snippet": "An AI travel agent is software that uses large language models, real-time travel data, and workflow automation to help plan, book, and manage ...",
+    "title": "8 Leading AI Agents That Are Redefining Travel in 2026",
+    "url": "https://thunderbit.com/blog/ai-travel-agent"
+   },
+   {
+    "date": "8 months ago",
+    "position": 5,
+    "site_name": "www.facebook.com",
+    "snippet": "AI Suggestion: An AI travel agent could suggest the perfect flight for a creative retreat, filtering through airfares while intertwining ...",
+    "title": "New travel opportunity with AI technology",
+    "url": "https://www.facebook.com/groups/180837768789806/posts/3395274874012730/"
+   },
+   {
+    "date": "11 months ago",
+    "position": 6,
+    "site_name": "www.threads.com",
+    "snippet": "October 4, 2026 at 7:54 PM. Give us your wildest travel prompt! We're going to feed it to our AI travel agent with access to real time ...",
+    "title": "New AI-powered features in Search help you build ...",
+    "url": "https://www.threads.com/@google/post/DRKzgRbgZr8/new-ai-powered-features-in-search-help-you-build-the-perfect-travel-itinerary?hl=en"
+   },
+   {
+    "position": 7,
+    "site_name": "www.voiceflow.com",
+    "snippet": "In this guide, I'm going to walk you through creating your own AI travel agent using: Voiceflow (for building the actual chatbot); Make (for connecting it ...",
+    "title": "How to Build an AI Travel Agency Bot in 2026 (No Code)",
+    "url": "https://www.voiceflow.com/blog/ai-travel-agency"
+   },
+   {
+    "date": "11 months ago",
+    "position": 8,
+    "site_name": "www.linkedin.com",
+    "snippet": "Report this post; Close menu. AI Travel Agent Data Scraping for Smarter Tourism Intelligence in 2025 In today's rapidly evolving travel ...",
+    "title": "How AI is transforming the travel purchase cycle",
+    "url": "https://www.linkedin.com/posts/lizwardoz_ai-search-is-transforming-tourism-marketing-activity-7391334893156319232-f1nX"
+   },
+   {
+    "date": "1 year ago",
+    "position": 9,
+    "site_name": "www.youtube.com",
+    "snippet": "... Launch Pad 2025. Go from zero to pro, learning by building ... Build an AI Travel Agent from Scratch | Step-by-Step Python Tutorial ...",
+    "title": "Build an AI Travel Agent from Scratch",
+    "url": "https://www.youtube.com/watch?v=ofcXb_UMerg"
+   },
+   {
+    "date": "Jun 4, 2026",
+    "position": 10,
+    "site_name": "navan.com",
+    "snippet": "An AI travel agent searches, compares, and books flights, hotels, and restaurants through a conversational interface.",
+    "title": "What an AI travel agent actually does, and how to pick one",
+    "url": "https://navan.com/blog/edge/what-is-ai-travel-agent"
+   }
+  ],
+  "timestamp": "2026-10-26T14:13:38.487Z"
+ },
+ {
+  "type": "HEARTBEAT",
+  "timestamp": "2026-10-26T14:13:53.489Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Find recent X/Twitter posts about AI travel agents tools launches",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:14:03.227Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "11 months ago",
+    "position": 1,
+    "site_name": "x.com",
+    "snippet": "New AI-powered features in Search help you build the perfect travel itinerary, find the best deals and turn your plans into bookings. 2026 X ...",
+    "title": "Google",
+    "url": "https://x.com/Google/status/1990495970795413938?lang=en"
+   },
+   {
+    "date": "Feb 19, 2026",
+    "position": 2,
+    "site_name": "opentweet.io",
+    "snippet": "Five AI agents that actually post to Twitter/X on their own, not just draft. What each costs, how to set each up, and which to pick in 2026.",
+    "title": "AI Agents That Post to Twitter: 5 That Actually Work in 2026",
+    "url": "https://opentweet.io/blog/ai-agents-that-post-to-twitter-2026"
+   },
+   {
+    "date": "Sep 27, 2026",
+    "position": 3,
+    "site_name": "noimosai.com",
+    "snippet": "This article explores the top five AI agents that are defining the social media frontier in 2026, with a focus on how autonomous systems like ...",
+    "title": "Top 5 AI Agents for X (Twitter) in 2026",
+    "url": "https://noimosai.com/en/blog/top-5-ai-agents-for-x-twitter-in-2026-revolutionizing-your-social-strategy"
+   },
+   {
+    "date": "10 months ago",
+    "position": 4,
+    "site_name": "www.reddit.com",
+    "snippet": "How to automate Twitter posts with AI agents. Best AI automation tools for content creators. Top AI agent developers to follow on Twitter.",
+    "title": "Built an AI agent that auto-posts to X/Twitter every 2 hours",
+    "url": "https://www.reddit.com/r/n8n/comments/1prxv82/built_an_ai_agent_that_autoposts_to_xtwitter/"
+   },
+   {
+    "position": 5,
+    "site_name": "x.com",
+    "snippet": "From breaking news and entertainment to sports and politics, get the full story with all the live commentary. 2026 X Corp.",
+    "title": "X. It's what's happening / X",
+    "url": "https://x.com/?lang=en"
+   },
+   {
+    "date": "Mar 9, 2026",
+    "position": 6,
+    "site_name": "www.buildmvpfast.com",
+    "snippet": "A practical breakdown of the best AI agents for autonomous X/Twitter growth in 2026, including NoimosAI, TweetHunter, Typefully, Hypefury, and ...",
+    "title": "Top AI Agents for X/Twitter Growth That Scale Autonomously",
+    "url": "https://www.buildmvpfast.com/blog/ai-agents-x-twitter-growth-automation-2026"
+   },
+   {
+    "date": "9 months ago",
+    "position": 7,
+    "site_name": "www.youtube.com",
+    "snippet": "Grow your Twitter X account fast in 2026 using the best AI tools for Twitter growth, content creation, scheduling, engagement, and analytics.",
+    "title": "Best AI Tools to Grow Your Twitter X Account FAST in 2026",
+    "url": "https://www.youtube.com/watch?v=DdsrDJUFV9c"
+   },
+   {
+    "date": "May 30, 2026",
+    "position": 8,
+    "site_name": "climbx.so",
+    "snippet": "ClimbX wins the #1 spot in 2026. Entry-level AI tools for Twitter growth start at $12.50/month",
+    "title": "Best AI Tools to Grow on Twitter in 2026 - ClimbX",
+    "url": "https://climbx.so/blog/best-ai-tools-grow-twitter-2026"
+   },
+   {
+    "position": 9,
+    "site_name": "x.com",
+    "snippet": "AI trip planners completely changed how we travel in 2025. From chatting with travel bots to instant itineraries, here's how smart tech reshaped travel—and ...",
+    "title": "iMean AI (@iMean_AI) / X",
+    "url": "https://x.com/iMean_AI"
+   },
+   {
+    "position": 10,
+    "site_name": "medium.com",
+    "snippet": "This tool works best for enterprises and agencies managing multiple brands who need deep audience intelligence and cross-platform coordination.",
+    "title": "10 Best X (Twitter) Tools for Successful Growth in 2026",
+    "url": "https://medium.com/@muktharvortegix/10-best-x-twitter-tools-for-successful-growth-in-2026-a6a8cce8ae94"
+   }
+  ],
+  "timestamp": "2026-10-26T14:14:04.184Z"
+ },
+ {
+  "type": "HEARTBEAT",
+  "timestamp": "2026-10-26T14:14:19.187Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Visit X.com search page for AI travel agent",
+  "timestamp": "2026-10-26T14:14:25.122Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Find recent X posts about AI travel agent tools launches",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:14:40.083Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "position": 1,
+    "site_name": "www.facebook.com",
+    "snippet": "This post introduces MUSE, an AI travel agent and wellness management tool by Meta, promoted as a versatile solution for travel professionals.",
+    "title": "Get help with flight bookings and travel changes from your free ...",
+    "url": "https://www.facebook.com/muse/videos/meet-your-ai-travel-agent/1777269216916406/"
+   },
+   {
+    "position": 2,
+    "site_name": "x.com",
+    "snippet": "” @travalacom CEO @joterovila explains how its new AI travel agent lets users find hotels, compare rooms and book directly through a connected ... Read more",
+    "title": "AVA Foundation",
+    "url": "https://x.com/AVAFoundation/status/2111002191595270293"
+   },
+   {
+    "date": "Aug 13, 2026",
+    "position": 3,
+    "site_name": "thunderbit.com",
+    "snippet": "Aug 13, 2026 — Scrape web data in just 2 clicks. That is the real lens for evaluating an AI travel agent in 2026 . The best tools are not just good at ... Read more",
+    "title": "8 Leading AI Agents That Are Redefining Travel in 2026",
+    "url": "https://thunderbit.com/blog/ai-travel-agent"
+   },
+   {
+    "date": "Aug 20, 2025",
+    "position": 4,
+    "site_name": "www.jploft.com",
+    "snippet": "Aug 20, 2025 — Use AI tools for travel agents to suggest destinations, restaurants, and attractions based on user behavior. Over time, your AI travel agent app ... Read more",
+    "title": "How to Build an AI Travel Agent?",
+    "url": "https://www.jploft.com/blog/how-to-build-an-ai-travel-agent"
+   },
+   {
+    "position": 5,
+    "site_name": "cryptopotato.com",
+    "snippet": "Travala Launches Native AI Travel Agent with BNB Chain & Binance Pay · [PRESS RELEASE – Singapore, Singapore, October 6th, 2026 ] · About Travala. Read more",
+    "title": "Travala Launches Native AI Travel Agent with BNB Chain ...",
+    "url": "https://cryptopotato.com/travala-launches-native-ai-travel-agent-with-bnb-chain-binance-pay/"
+   },
+   {
+    "date": "May 20, 2025",
+    "position": 6,
+    "site_name": "www.tredence.com",
+    "snippet": "May 20, 2025 — Autonomous Decision-Making: An AI travel agent should go beyond suggestion-making and handle tasks like booking, rescheduling, and ... Read more",
+    "title": "AI Agents for Travel: Use Cases, Tools & Future in 2026",
+    "url": "https://www.tredence.com/blog/ai-agents-for-travel"
+   },
+   {
+    "position": 7,
+    "site_name": "x.com",
+    "snippet": "Travala Launches Native AI Travel Agent with BNB Chain & Binance Pay. From tradingview.com · 8:00 AM · Oct 16, 2026 ·. 1,816. Views. 2. 11 ... Read more",
+    "title": "Travala",
+    "url": "https://x.com/travalacom/status/2111004239572992143"
+   }
+  ],
+  "timestamp": "2026-10-26T14:14:42.072Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Visit Google X post about AI travel agent",
+  "timestamp": "2026-10-26T14:14:51.551Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Extract info about AI travel agent tools and capabilities",
+  "timestamp": "2026-10-26T14:15:06.121Z"
+ },
+ {
+  "type": "HEARTBEAT",
+  "timestamp": "2026-10-26T14:15:21.148Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Extract AI travel agent tools list from article",
+  "timestamp": "2026-10-26T14:15:26.470Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Get details on Travala AI travel agent launch",
+  "timestamp": "2026-10-26T14:15:33.688Z"
+ },
+ {
+  "type": "HEARTBEAT",
+  "timestamp": "2026-10-26T14:15:48.690Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "purpose": "Present final list of top AI travel agent posts",
+  "timestamp": "2026-10-26T14:15:58.624Z"
+ },
+ {
+  "type": "COMPLETE",
+  "run_id": "f84cee4b-4dcc-475e-88b7-6686943da810",
+  "status": "COMPLETED",
+  "timestamp": "2026-10-26T14:16:01.285Z",
+  "result": {
+   "result": "Here are the top recent posts and announcements about AI travel agents:\n\n1. **@Google** (Nov 17, 2025)\n   - Google rolled out AI-powered travel features in Search, including **Canvas** (a planning workspace), **AI Flight Deals**, and AI-assisted booking for restaurants and events.\n\n2. **@travalacom / @joterovila** (Oct 6, 2026)\n   - **Travala** launched a native AI travel agent powered by BNB Chain & Binance Pay, letting users find hotels, compare rooms, and book directly on-chain.\n\n3. **@AVAFoundation** (Oct 6, 2026)\n   - Travel AI (AVA) revealed its new AI travel agent that helps users find hotels, compare rooms, and book directly.\n\n4. **@iMean_AI** (Recently)\n   - AI trip planners \"completely changed how we travel in 2025\" — highlighting the shift from chat-based bots to instant itinerary generation.\n\n5. **@Google** (Sep 30, 2026 via Threads)\n   - Google announced new AI-powered Search features for travel: build itineraries, find deals, and turn plans into bookings.\n\n6. **Thunderbit Blog** (Aug 13, 2026)\n   - Reviewed 8 leading AI travel agents redefining travel: **Navan** (corporate travel), **Expedia/Romie** (leisure), **Booking.com AI Trip Planner** (hotel-first), **Google Gemini** (research-heavy), **Trip.com Trip.Planner** (multi-leg trips), **Hopper** (price-sensitive), **Mindtrip** (visual/collaborative), **GuideGeek** (messaging-based).\n\n7. **Meta / MUSE** (2026)\n   - Meta introduced **MUSE**, an AI travel agent and wellness management tool for travel professionals, promoting versatile planning and booking capabilities.\n\n8. **Navan Blog** (Jun 2026)\n   - Explained what an AI travel agent actually does: search, compare, and book flights, hotels, and restaurants via conversational interface — and how to pick one."
+  }
+ }
+]

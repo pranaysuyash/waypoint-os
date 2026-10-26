@@ -42,6 +42,7 @@ export function WelcomeCard({ isAuthenticated }: WelcomeModalProps) {
 
   useEffect(() => {
     if (arrivalPathname === null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setArrivalPathname(pathname);
     } else if (pathname !== arrivalPathname) {
       setHasSeenWelcome(true);

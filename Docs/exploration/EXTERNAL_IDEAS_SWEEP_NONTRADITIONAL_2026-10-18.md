@@ -149,3 +149,40 @@ Executed next step #1 (sandbox-probe the producer rails). Evidence and reproduct
 **Bonus — design patterns for the fare-drop card.** trvl's `watch` module models exactly the workflow: `watch add ORIGIN DEST --depart … --below <price>` → `watch check` → `watch history <id>` → optional webhook POST, with room-level availability watches by keyword; its `forecast` command gives a buy-now-vs-wait verdict (commit-now confidence 0–100, P(lower price within horizon), expected savings) but explicitly returns a neutral verdict under 30 observations. Both the threshold-watch model and the "insufficient data → neutral" honesty rule carry over to the task package.
 
 **Verdict:** DECIDE #1 reframed — *not* "adopt trvl" but **"adopt the provenance+honesty contract, pick a commercially-licensed producer for the sandbox lane, and gate it with unpriced/converted/multi-currency clamps."**
+
+---
+
+## Round-2 source queue (2026-10-26 — captured, not yet swept)
+
+The Oct-18 sweep covered GitHub/HN/Reddit/Medium (+trvl probe). These sources remain unswept, ranked by expected yield:
+
+1. **In-repo: Research Opportunity Master List** — `Docs/research/RESEARCH_OPPORTUNITY_MASTER_LIST_2026-04-25.md`: **1,686 open items across 56 categories (A–BD)**, 211 done per the April count. The largest uncaptured source; needs triage (stale/done/superseded/duplicate-vs-exploration-topics) before anything external.
+2. **In-repo: shared IDEA_PAD** — `/Users/pranay/Projects/idea_pad/IDEA_PAD.md` (2,374 lines, 56 open markers). Cross-check against shipped reality (FND-0205 pattern: mark done items, re-date WIP).
+3. **AI-travel competitor set** — Mindtrip, Layla, GuideGeek, Expedia Romie, Kayak Ask, Mindful Travel: ship-side patterns worth a teardown pass (app-store reviews = user pain points goldmine).
+4. **Agency-CRM review mining** — G2/Capterra reviews for TravelJoy/Tern/ClientBase: the same practitioner pain class as r/travelagents, at review scale.
+5. **Academic thread** — ChinaTravel opened it: TPC@IJCAI proceedings, arXiv travel-planning-agent papers (constraint DSLs, benchmark design) — benchmark-protocol ideas ahead of product ideas.
+6. **Facebook travel-agent groups + Discord travel-tech servers** — practitioner communities not reachable via API; manual pass or browser-automation session.
+7. **App-store reviews** — AI travel apps' 1-star reviews = the same pain class the fare-drop card came from.
+8. **YouTube TBEX/travel-agent conference talks** — practitioner workflows.
+9. **Regulatory feeds** — FTC/EU travel rule changes → compliance-driven feature ideas.
+10. **X re-scan** — after the Nov-6 quota reset (already queued).
+
+### Round-2 tooling note (2026-10-26)
+
+**TinyFish** (owner-supplied key in `/Users/pranay/Projects/.env.local` as `TINYFISH_API_KEY`; endpoint `https://agent.tinyfish.ai/v1/automation/run-sse`) is the designated tool for the browser-automation sources this sweep could not reach via APIs: **#6 Facebook travel-agent groups + Discord servers, #10 X re-scan, #8 YouTube talks**. Pattern reference: `/Users/pranay/Projects/TinyFish-Experiments/run_first_test.py` (stdlib SSE runner, key never logged). TinyFish runs agentic browser automations — a scripted session can traverse login-walled practitioner communities and return structured extracts, exactly the classes the REST sweep missed. Integration is a next-session task (needs an automation-workflow script per source, not a one-line query).
+
+### Round-2 live run: TinyFish on r/travelagents (2026-10-26 — tool VERIFIED)
+
+First TinyFish automation (SSE, 43 events, COMPLETED — evidence `Docs/sims/assets/tinyfish_rta_month_2026-10-26.jsonl`): top-of-month r/travelagents on AI/price-drop topics. Headlines:
+1. **"Hotel Prices Drop After You Book and Nobody Tells You"** — an automated price-drop alert tool emailing agents on >5% client-booking drops: **direct practitioner validation of the shipped fare-drop decision card** (they built it by hand; we ship it as a feature).
+2. "Price Drops – Commission Losses" — agents repricing only when clients notice: the manual pain the decision card automates.
+3. AI content/marketing threads (Claude/GPT for advisor content) — advisor-side AI adoption is mainstream on this board.
+4. 2026 tech-stack thread — itinerary builders, CRM, AI tooling demand.
+
+Verdict: TinyFish unblocks the login-walled sources (Reddit search API, X, Facebook groups, YouTube). Round-2 sweep can now run these as scripted automations. Cost/control note: one automation per source; results arrive as structured SSE events.
+
+### Round-2 live run 2: TinyFish on X (2026-10-26 — Nov-6 quota wait BYPASSED)
+
+Second automation (X search "AI travel agent", top results — evidence `Docs/sims/assets/tinyfish_x_search_2026-10-26.jsonl`). The X gap the REST sweep couldn't reach is closed. Competitor set for the teardown (source #3) is now concrete: **Navan** (corporate), **Expedia/Romie** (leisure), **Booking.com AI Trip Planner** (hotel-first), **Google Gemini/Search travel** (research-heavy, Canvas + AI Flight Deals), **Trip.com Trip.Planner** (multi-leg), **Hopper** (price-sensitive), **Mindtrip** (visual/collaborative), **GuideGeek** (messaging-based), **Travala** (on-chain), **AVA**, **Meta MUSE** (advisor wellness+planning). Also: Google shipped Canvas + AI Flight Deals + booking-assist (Nov 2025–Sep 2026) — the consumer-direct pressure the agencies feel is real and current.
+
+TinyFish verdict after two runs: reliable (both COMPLETED), structured results, browser-automation reach into login-walled surfaces. The remaining round-2 sources (Facebook groups, YouTube) can run as scripted automations on demand.

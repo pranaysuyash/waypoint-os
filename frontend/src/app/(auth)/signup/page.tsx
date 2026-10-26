@@ -8,7 +8,7 @@ import { api, ApiException } from '@/lib/api-client';
 import { DEFAULT_AUTH_REDIRECT, resolveSafeRedirect } from '@/lib/auth-redirect';
 import { getPasswordStrength } from '@/lib/password-strength';
 
-type SignupFormState = { name: string; email: string; password: string; confirmPassword: string; showPassword: boolean; showConfirmPassword: boolean; agencyName: string; showAgency: boolean };
+type SignupFormState = { name: string; email: string; password: string; confirmPassword: string; showPassword: boolean; showConfirmPassword: boolean; agencyName: string; showAgency: boolean; termsAccepted: boolean };
 type SignupFormAction = { type: 'SET_FIELD'; field: keyof SignupFormState; value: string | boolean };
 function signupFormReducer(state: SignupFormState, action: SignupFormAction): SignupFormState {
   switch (action.type) {
@@ -22,7 +22,7 @@ function SignupPageInner() {
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
   const hydrate = useAuthStore((s) => s.hydrate);
-  const [formState, dispatch] = useReducer(signupFormReducer, { name: '', email: '', password: '', confirmPassword: '', showPassword: false, showConfirmPassword: false, agencyName: '', showAgency: false });
+  const [formState, dispatch] = useReducer(signupFormReducer, { name: '', email: '', password: '', confirmPassword: '', showPassword: false, showConfirmPassword: false, agencyName: '', showAgency: false, termsAccepted: false });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const redirectPath = resolveSafeRedirect(
@@ -44,7 +44,7 @@ function SignupPageInner() {
     }
 
     try {
-      const body: Record<string, string> = { email: formState.email, password: formState.password };
+      const body: Record<string, string | boolean> = { email: formState.email, password: formState.password, terms_accepted: formState.termsAccepted };
       if (formState.name) body.name = formState.name;
       if (formState.agencyName) body.agency_name = formState.agencyName;
 
@@ -195,7 +195,22 @@ function SignupPageInner() {
           </div>
         )}
 
-        <button className='auth-button' type='submit' disabled={loading}>
+        <div className='auth-field' style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+          <input
+            id='terms'
+            type='checkbox'
+            checked={formState.termsAccepted}
+            onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'termsAccepted', value: e.target.checked })}
+            required
+          />
+          <label htmlFor='terms' style={{ fontSize: '0.85rem' }}>
+            I agree to the{' '}
+            <Link href='/terms'>Terms of Service</Link> and{' '}
+            <Link href='/privacy'>Privacy Policy</Link>
+          </label>
+        </div>
+
+        <button className='auth-button' type='submit' disabled={loading || !formState.termsAccepted}>
           {loading ? 'Creating workspace…' : 'Create workspace'}
         </button>
       </form>

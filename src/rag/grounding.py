@@ -116,7 +116,18 @@ class GroundednessEvaluator:
         for source in source_texts:
             chunk_words.update(w.lower() for w in source.split() if len(w) > 3)
 
-        overlap_ratio = len(answer_words.intersection(chunk_words)) / max(1, len(answer_words))
+        # Echo-hallucination guard (FND-0164): if the answer's words are
+        # mostly from the query (not from retrieved sources), the LLM may be
+        # echoing the user's input rather than grounding in documents. Penalize
+        # the overlap ratio to reflect this risk.
+        query_words = set(w.lower() for w in query.split() if len(w) > 3)
+        echo_ratio = len(answer_words.intersection(query_words)) / max(1, len(answer_words))
+        # If >60% of answer words come from the query, reduce groundedness
+        if echo_ratio > 0.6:
+            overlap_ratio = len(answer_words.intersection(chunk_words)) / max(1, len(answer_words))
+            overlap_ratio = overlap_ratio * (1.0 - (echo_ratio - 0.6) * 0.5)
+        else:
+            overlap_ratio = len(answer_words.intersection(chunk_words)) / max(1, len(answer_words))
         
         # Groundedness score combines retrieval confidence + overlap ratio
         groundedness_score = min(1.0, round((retrieval_confidence * 0.4) + (overlap_ratio * 0.6), 2))

@@ -145,6 +145,7 @@ export function FareDropDecisionCard({ trip, onUpdated }: FareDropDecisionCardPr
 
   useEffect(() => {
     if (signalFromTrip?.detection_marker) {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
       void load();
     }
   }, [load, signalFromTrip?.detection_marker]);

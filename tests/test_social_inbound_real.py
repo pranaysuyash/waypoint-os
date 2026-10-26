@@ -46,7 +46,7 @@ class TestSocialInboundEndpoints:
             assert mock_save.called
 
     async def test_unmask_cross_agency_returns_404(self):
-        req = UnmaskTeaserRequest(trip_id="trip_other", token="tok_123")
+        req = UnmaskTeaserRequest(trip_id="trip_other", token="tok_123", deposit_payment_ref="pay_real_123")
         with patch.object(TripStore, "get_trip_for_agency", return_value=None):
             with pytest.raises(HTTPException) as exc_info:
                 await unmask_teaser_proposal(req, agency_id="agency_1")
@@ -59,7 +59,7 @@ class TestSocialInboundEndpoints:
             "token": "tok_correct",
             "is_masked": True,
         }
-        req = UnmaskTeaserRequest(trip_id="trip_123", token="tok_wrong")
+        req = UnmaskTeaserRequest(trip_id="trip_123", token="tok_wrong", deposit_payment_ref="pay_real_123")
         with patch.object(TripStore, "get_trip_for_agency", return_value=trip_record):
             with pytest.raises(HTTPException) as exc_info:
                 await unmask_teaser_proposal(req, agency_id="agency_1")

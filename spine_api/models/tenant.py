@@ -91,6 +91,16 @@ class User(Base):
     last_login_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Consent capture (B-05): timestamp when user accepted terms of service
+    # and privacy policy during signup. NULL means consent not yet recorded.
+    terms_accepted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Email verification (B-04): timestamp when email was verified.
+    # NULL means email not yet verified.
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     memberships: Mapped[List["Membership"]] = relationship(
         "Membership", back_populates="user", cascade="all, delete-orphan"
@@ -197,6 +207,66 @@ class PasswordResetToken(Base):
     __table_args__ = (
         Index("ix_password_reset_tokens_user_id", "user_id"),
         Index("ix_password_reset_tokens_expires_at", "expires_at"),
+    )
+
+
+class EmailVerificationToken(Base):
+    """Email verification tokens — short-lived, single-use tokens sent via email.
+
+    B-04: Email verification (audit 2026-10-26). Reuses the PasswordResetToken
+    pattern. The plain token is sent to the user; only the SHA-256 hash is
+    stored. Tokens expire after 24 hours and are single-use.
+    """
+    __tablename__ = "email_verification_tokens"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    user: Mapped["User"] = relationship("User")
+
+    __table_args__ = (
+        Index("ix_email_verification_tokens_user_id", "user_id"),
+        Index("ix_email_verification_tokens_expires_at", "expires_at"),
+    )
+
+
+class RevokedToken(Base):
+    """Revoked JWT tokens — for session revocation (B-03).
+
+    Stores the JTI (JWT ID) of revoked refresh tokens. Access tokens are
+    short-lived (15 min) and not individually revoked; revocation only
+    affects refresh tokens. Expired entries are cleaned up periodically.
+    """
+    __tablename__ = "revoked_tokens"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    jti: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    revoked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_revoked_tokens_jti", "jti"),
+        Index("ix_revoked_tokens_user_id", "user_id"),
+        Index("ix_revoked_tokens_expires_at", "expires_at"),
     )
 
 

@@ -45,7 +45,12 @@ export default function RootLayout({
           />
         </head>
       ) : null}
-      <body className={`${sora.variable} ${rubik.variable}`}>{children}</body>
+      <body className={`${sora.variable} ${rubik.variable}`}>
+        <a href='#main-content' className='sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-black focus:rounded'>
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

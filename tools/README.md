@@ -2,6 +2,28 @@
 
 This directory stores reusable helper utilities for this project.
 
+## Lifecycle & ownership (FND-0392)
+
+Every tool here is **agent-authored and agent-maintained** — created during a
+finding/audit/simulation pass, kept because the operation recurs. The rules:
+
+1. **Entry requirement:** a tool lands only with a section in this README
+   (purpose + usage). A script without a README section is a sweep leftover —
+   fold it in or delete it.
+2. **Ownership:** no human owns these; the acting agent owns the tool it adds,
+   including its docs and its removal when superseded (supersession workflow
+   applies to tools same as code).
+3. **Categories** (keep new tools under one): `verification/` (drills, probes,
+   receipts), `triage/` (scanner/finding analysis), `generation/` (fixtures,
+   seeds), `ops/` (backup/restore, DB drills).
+4. **Deprecation:** when a tool is superseded, delete it in the same pass that
+   lands its replacement and note the supersession in the README entry history
+   (same rule as code — no dead parallel tools).
+
+Current inventory (2026-10-26): 58 Python scripts + subdirectories
+(`sim4/`, `rendered-design-system-audit/`, `workflow_audit/`, …). The
+per-tool reference sections below are the authoritative catalog.
+
 ## Test Inventory Receipt: `test_inventory.py`
 
 Purpose:
@@ -984,3 +1006,11 @@ committing (a `--redact` mode is a known gap; see SIM3 meta-audit U14).
 Classifies Mimosa business-logic-risk findings by authorization surface (route decorator + signature dependencies + body token verification) into a TSV ledger with posture histogram.
 Usage: `python3 tools/mimosa_triage.py <scan-dir>/findings.json`
 Knows limitation: single-line signature matching — guards on continuation lines surface as UNGUARDED and require the mandatory eyes-on pass.
+
+### db_backup.py / db_restore.py
+Postgres backup + verified-restore pair (FND-0388). Backup: pg_dump -Fc with
+post-write verification (pg_restore --list) and a sha256+row-count manifest.
+Restore: explicit `--target` only — the live DB name is refused unconditionally;
+verifies restored row counts against the manifest. Connection via standard PG*
+env parsed from DATABASE_URL. Requires a BYPASSRLS role for FORCE-RLS tables.
+Procedure + drills: Docs/runbooks/DATABASE_BACKUP_RESTORE_2026-10-26.md

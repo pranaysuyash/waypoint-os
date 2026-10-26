@@ -1,0 +1,866 @@
+[
+ {
+  "type": "STARTED",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "timestamp": "2026-10-26T14:01:09.972Z"
+ },
+ {
+  "type": "STREAMING_URL",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "streaming_url": "https://ip-52-53-152-131.tetra-data.production.tinyfish.io/tf-f8b70cf3-f97b-44b7-b66b-967c0f2eb60d/stream/0",
+  "timestamp": "2026-10-26T14:01:11.973Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Visit top posts from r/travelagents subreddit",
+  "timestamp": "2026-10-26T14:01:14.306Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Check page content visibility",
+  "timestamp": "2026-10-26T14:01:17.165Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find top Reddit posts about travel agents using AI tools",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:01:21.042Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "7 months ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "I've found it helps to use AI tools like Claude to turn one idea into a few posts at once, then design graphics quickly in Canva or use AI ...",
+    "title": "Creating Content : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1s7yick/creating_content/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 2,
+    "site_name": "www.reddit.com",
+    "snippet": "APIs and automation tools. Any tools or workflows you recommend for automating price quotes via email or WhatsApp",
+    "title": "Starting a small online B2B travel agency – looking for ...",
+    "url": "https://www.reddit.com/r/travelagents/comments/1llu6dm/starting_a_small_online_b2b_travel_agency_looking/"
+   },
+   {
+    "date": "9 months ago",
+    "position": 3,
+    "site_name": "www.reddit.com",
+    "snippet": "Hey all, I'm trying to pick a host agency to start off with and I'm getting hung up on my 3 conditionals. 80/20 split or better.",
+    "title": "Backend tech of host agencies : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1qeyqqj/backend_tech_of_host_agencies/"
+   },
+   {
+    "date": "5 months ago",
+    "position": 4,
+    "site_name": "www.reddit.com",
+    "snippet": "Is the current economy affecting your sales? Friend encouraging me to sign with her \"company\". A host agency that does some sort of MLM? I am guessing ...",
+    "title": "Sales down? : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1thuehj/sales_down/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 5,
+    "site_name": "www.reddit.com",
+    "snippet": "It seems like there are several things that could be more automated. the most time consuming. Having to enter your bookings is common. They ...",
+    "title": "Finally pulled the trigger : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1l09blo/finally_pulled_the_trigger/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 6,
+    "site_name": "www.reddit.com",
+    "snippet": "Hi everyone, I'm considering switching to Tern because I really like the idea of a complete CRM like TravelJoy coupled with an itinerary builder like ...",
+    "title": "Updated review on Tern? : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1islidr/updated_review_on_tern/"
+   }
+  ],
+  "timestamp": "2026-10-26T14:01:23.035Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Read post about AI tools for content creation",
+  "timestamp": "2026-10-26T14:01:24.858Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find Reddit r/travelagents posts about AI, automation, pricing",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:01:28.484Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "2 years ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "I am looking for any side-by-side comparison or reviews of Travel Joy vs. Tern vs. Travefy as a CRM/automation tool. The AI for inputting an ...",
+    "title": "CRM Comparison : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1fc5fzj/crm_comparison/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 2,
+    "site_name": "www.reddit.com",
+    "snippet": "Any tools or workflows you recommend for automating price quotes via email or WhatsApp",
+    "title": "Starting a small online B2B travel agency – looking for ...",
+    "url": "https://www.reddit.com/r/travelagents/comments/1llu6dm/starting_a_small_online_b2b_travel_agency_looking/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 3,
+    "site_name": "www.reddit.com",
+    "snippet": "It seems like there are several things that could be more automated. It seems like I can book someone, then I have to manually go in and create ...",
+    "title": "Finally pulled the trigger : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1l09blo/finally_pulled_the_trigger/"
+   },
+   {
+    "date": "9 months ago",
+    "position": 4,
+    "site_name": "www.reddit.com",
+    "snippet": "Hey all, I'm trying to pick a host agency to start off with and I'm getting hung up on my 3 conditionals. 80/20 split or better.",
+    "title": "Backend tech of host agencies : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1qeyqqj/backend_tech_of_host_agencies/"
+   },
+   {
+    "date": "5 months ago",
+    "position": 5,
+    "site_name": "www.reddit.com",
+    "snippet": "Is the current economy affecting your sales? Friend encouraging me to sign with her \"company\". A host agency that does some sort of MLM? I am guessing ...",
+    "title": "Sales down? : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1thuehj/sales_down/"
+   },
+   {
+    "date": "7 months ago",
+    "position": 6,
+    "site_name": "www.reddit.com",
+    "snippet": "I've found it helps to use AI tools like Claude to turn one idea into a few posts at once, then design graphics quickly in Canva or use AI ...",
+    "title": "Creating Content : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1s7yick/creating_content/"
+   },
+   {
+    "date": "2 years ago",
+    "position": 7,
+    "site_name": "www.reddit.com",
+    "snippet": "I'm currently with OA, but I see people talk about the other one quite often. I was just curious which one you guys think is really better?",
+    "title": "Which host agency is better Outside Agents or Travel Quest ...",
+    "url": "https://www.reddit.com/r/travelagents/comments/1ak3sft/which_host_agency_is_better_outside_agents_or/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 8,
+    "site_name": "www.reddit.com",
+    "snippet": "Hi everyone, I'm considering switching to Tern because I really like the idea of a complete CRM like TravelJoy coupled with an itinerary builder like ...",
+    "title": "Updated review on Tern? : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1islidr/updated_review_on_tern/"
+   }
+  ],
+  "timestamp": "2026-10-26T14:01:30.302Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find Reddit r/travelagents posts about AI automation pain points",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:01:33.707Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [],
+  "timestamp": "2026-10-26T14:01:34.580Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find recent Reddit r/travelagents AI tool and automation discussions",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:01:37.108Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "2 years ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "I am a new TA with experience in France, Italy, & Spain. I would like to work on multiple destinations using AI itinerary builders. In your experience ...",
+    "title": "How much should I pay for an automated itinerary builder ...",
+    "url": "https://www.reddit.com/r/travelagents/comments/1fpaiyc/how_much_should_i_pay_for_an_automated_itinerary/"
+   },
+   {
+    "date": "Jul 24, 2026",
+    "position": 2,
+    "site_name": "coursiv.io",
+    "snippet": "Travel agents can use AI to organize client preferences, build research checklists, compare supplied options, draft itinerary narratives, ...",
+    "title": "AI for Travel Agents 2026: Research & Itinerary Workflows",
+    "url": "https://coursiv.io/blog/ai-for-travel-agents"
+   },
+   {
+    "date": "Sep 23, 2024",
+    "position": 3,
+    "site_name": "salescloser.ai",
+    "snippet": "AI helps travel agents by automating data-heavy work. It analyzes client preferences and past trips to suggest personalized itineraries, ...",
+    "title": "AI for Travel Agents: How It Helps With Travel Booking",
+    "url": "https://salescloser.ai/blog/leveraging-ai-for-travel-booking-a-new-era-for-travel-agents/"
+   },
+   {
+    "position": 4,
+    "site_name": "mytrip.ai",
+    "snippet": "How your Agent Team works with your team & systems. 1Build the dream tripAI itinerary builder. 2Follow upautomated email. 3Modify the itineraryto their wishes.",
+    "title": "MyTrip.AI Agent Team – A team of AI agents for your travel ...",
+    "url": "https://mytrip.ai/"
+   },
+   {
+    "date": "3 months ago",
+    "position": 5,
+    "site_name": "www.youtube.com",
+    "snippet": "Struggling to keep up with manual itinerary planning and PNR management? In this video, we explore the best AI for travel agents, ...",
+    "title": "AI for Travel Agents: 5 Tools to Save Hours of Work",
+    "url": "https://www.youtube.com/watch?v=bfDCUoQOvsQ"
+   },
+   {
+    "position": 6,
+    "site_name": "www.mtrip.com",
+    "snippet": "The right AI tools for travel agencies depend on the job: writing, itinerary delivery, visuals, social media, enquiries, call notes, video or email.",
+    "title": "Best AI Tools for Travel Agencies in 2026",
+    "url": "https://www.mtrip.com/best-ai-tools-travel-agencies/"
+   },
+   {
+    "date": "Jun 3, 2025",
+    "position": 7,
+    "site_name": "www.kumohq.co",
+    "snippet": "A 7-stage travel agency automation plan for enquiries, itineraries, approvals, booking verification, disruption handoff, and follow-up.",
+    "title": "Guide: Travel Agency Workflow Automation Plan 2026",
+    "url": "https://www.kumohq.co/blog/ai-travel-agent"
+   },
+   {
+    "date": "Oct 6, 2025",
+    "position": 8,
+    "site_name": "coaxsoft.com",
+    "snippet": "An AI travel agent is a conversational, multi-step automation layer built on large language models and connected to live travel APIs",
+    "title": "We tested the 10 best AI travel agents: What actually worked?",
+    "url": "https://coaxsoft.com/blog/ai-agents-and-the-future-of-online-travel-agencies"
+   },
+   {
+    "date": "Feb 11, 2026",
+    "position": 9,
+    "site_name": "community.retool.com",
+    "snippet": "I'll show you how I built a system where I simply click \"Capture\" on a website, and a Retool-powered agent goes to work—researching the location ...",
+    "title": "Build Your Own AI Travel Agent with Retool Workflows",
+    "url": "https://community.retool.com/t/build-your-own-ai-travel-agent-with-retool-workflows-feb-17/64499"
+   },
+   {
+    "position": 10,
+    "site_name": "www.hellogtx.com",
+    "snippet": "AI for travel agents helps automate enquiries, follow-ups, itineraries, vouchers and customer communication while keeping control with the agency. Is this an AI ...",
+    "title": "AI for Travel Agents | AI Powered Travel CRM Software",
+    "url": "https://www.hellogtx.com/ai-for-travel-agents-crm"
+   }
+  ],
+  "timestamp": "2026-10-26T14:01:38.515Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find r/travelagents posts about price drops and AI pricing",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:01:41.774Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "6 months ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "My agency has an automated price drop tool so I get an email if any of my clients bookings drop by more than 5%. My clients love it and I ...",
+    "title": "Hotel prices drop after you book and nobody tells you",
+    "url": "https://www.reddit.com/r/travelagents/comments/1sss357/hotel_prices_drop_after_you_book_and_nobody_tells/"
+   },
+   {
+    "date": "11 months ago",
+    "position": 2,
+    "site_name": "www.reddit.com",
+    "snippet": "... price drop monitoring software, which I think is such a nice bonus ... Price drop on cruise. 25. 47. This shipping cost is ridiculous. r ...",
+    "title": "Price Monitoring Software: Cruises : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1oouftu/price_monitoring_software_cruises/"
+   },
+   {
+    "date": "6 months ago",
+    "position": 3,
+    "site_name": "www.reddit.com",
+    "snippet": "So I'm going to let the group leader know that they will save the price drop, and I'll keep the TC, which was minimal. It makes me feel better ...",
+    "title": "Price drops- Commission losses : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1seoh9d/price_drops_commission_losses/"
+   },
+   {
+    "date": "7 months ago",
+    "position": 4,
+    "site_name": "www.reddit.com",
+    "snippet": "Ticket prices dropping hard · r/redclaystrays. • 2mo ago. Ticket prices dropping hard. 7. 12. Ukfpo 2026 spots · r/UKFP_applicants. • ...",
+    "title": "DTA Disneyland Comp Tickets 2026 : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1rsmm6f/dta_disneyland_comp_tickets_2026/"
+   },
+   {
+    "date": "2 years ago",
+    "position": 5,
+    "site_name": "www.reddit.com",
+    "snippet": "15 minutes later, I checked the same hotel same check in and out date, the price drop to 473. Then I found hotel official website shows only ...",
+    "title": "TAAP is stealing our customers' trust : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1fk1avc/taap_is_stealing_our_customers_trust/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 6,
+    "site_name": "www.reddit.com",
+    "snippet": "For CRM take a look at Tern. But I second NOPE. If a client notices a price drop and lets me know I will reprice, but I do not go out of my way ...",
+    "title": "Software to Track Price Changes : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1n0r66m/software_to_track_price_changes/"
+   },
+   {
+    "date": "2 years ago",
+    "position": 7,
+    "site_name": "www.reddit.com",
+    "snippet": "r/discovereu - Am I eligible for a plane ticket? 145. 24. prices dropping on tickets · r/SombrOfficial. • 1mo ago. prices dropping on tickets.",
+    "title": "Air tickets and packages : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1dt82sy/air_tickets_and_packages/"
+   },
+   {
+    "date": "6 months ago",
+    "position": 8,
+    "site_name": "www.reddit.com",
+    "snippet": "Price drop on cruise · r/royalcaribbean. • 6mo ago. Price drop on cruise. 25 upvotes · 47 comments. American Cruise Lines · r/merchantmarine.",
+    "title": "Polar Codes for Princess Cruises : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1sd9fyz/polar_codes_for_princess_cruises/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 9,
+    "site_name": "www.reddit.com",
+    "snippet": "Major price drop at the travel agency, but not at NCL itself. Any thoughts or suggestions? 2. 42. Regarding obc-ncl · r/upsc_discussions. • 2y ...",
+    "title": "NCL Commission : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1jknpc4/ncl_commission/"
+   },
+   {
+    "date": "2 years ago",
+    "position": 10,
+    "site_name": "www.reddit.com",
+    "snippet": "Price Drop and Future Cruise Credit · r/NCL. • 1y ago. Price Drop and Future Cruise Credit. 9. 9. Credit card optimization · r/ ...",
+    "title": "Credit Card Not Present Transaction requirements and ...",
+    "url": "https://www.reddit.com/r/travelagents/comments/1bwk6b0/credit_card_not_present_transaction_requirements/"
+   }
+  ],
+  "timestamp": "2026-10-26T14:01:44.253Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Read post about hotel price drops after booking",
+  "timestamp": "2026-10-26T14:01:48.026Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Read post about AI tools for content",
+  "timestamp": "2026-10-26T14:01:54.849Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find cached content of the hotel price drop Reddit post",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:02:01.417Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "6 months ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "Hotel prices drop after you book all the time. Most people never check. If your booking has free cancellation you can just rebook at the ...",
+    "title": "Hotel prices drop after you book and nobody tells you",
+    "url": "https://www.reddit.com/r/travelagents/comments/1sss357/hotel_prices_drop_after_you_book_and_nobody_tells/"
+   }
+  ],
+  "timestamp": "2026-10-26T14:02:02.471Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Read post about price drops and commission losses",
+  "timestamp": "2026-10-26T14:02:09.986Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find r/travelagents posts about automation pain points and manual work struggles",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:02:15.292Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [],
+  "timestamp": "2026-10-26T14:02:17.261Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find r/travelagents posts about AI tools like chatbots, AI assistants, AI CRM",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:02:26.100Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [],
+  "timestamp": "2026-10-26T14:02:28.708Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find r/travelagents posts about AI content creation, Claude, Canva AI",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:02:31.020Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "7 months ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "I'm a fairly new advisor and curious to know what other travel advisors are using today for different areas of business and WHY?\n\n-Itinerary builders\n\n-Marketin ...",
+    "title": "What's your current tech stack as a travel advisor in 2026?",
+    "url": "https://www.reddit.com/r/travelagents/comments/1rsezop/whats_your_current_tech_stack_as_a_travel_advisor/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 2,
+    "site_name": "www.reddit.com",
+    "snippet": "GPT, Claude. You can certainly use AI LLMs to help with content creation. will help make content creation faster. Think of AI as more of an ...",
+    "title": "AI marketing : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1oddmmx/ai_marketing/"
+   },
+   {
+    "date": "7 months ago",
+    "position": 3,
+    "site_name": "www.reddit.com",
+    "snippet": "I've found it helps to use AI tools like Claude to turn one idea into a few posts at once, then design graphics quickly in Canva or use AI image ...",
+    "title": "Creating Content : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1s7yick/creating_content/"
+   },
+   {
+    "date": "4 months ago",
+    "position": 4,
+    "site_name": "www.reddit.com",
+    "snippet": "AI specifically Claude Code. Canva may not be the most comprehensive website builder on the market, and customize things exactly the way I want ...",
+    "title": "Custom websites vs host agency supplied websites",
+    "url": "https://www.reddit.com/r/travelagents/comments/1tr2gx9/custom_websites_vs_host_agency_supplied_websites/"
+   },
+   {
+    "position": 5,
+    "site_name": "www.reddit.com",
+    "snippet": "Heeft iemand hier al een AI-tool gebruikt om content te maken en te posten voor z'n reis-socialmedia-accounts? Post gearchiveerd. Je kunt geen nieuwe ...",
+    "title": "AI-marketing : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1oddmmx/ai_marketing/?tl=nl"
+   },
+   {
+    "date": "1 year ago",
+    "position": 6,
+    "site_name": "www.reddit.com",
+    "snippet": "Ngunit ngayon, pinaka ginagamit ko ang GPT dahil nagbibigay-daan ito sa iyo na lumikha ng mga proyekto at alaala. Kahit na inihayag ni Claude ...",
+    "title": "Marketing ng AI : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1oddmmx/ai_marketing/?tl=fil"
+   },
+   {
+    "position": 7,
+    "site_name": "www.reddit.com",
+    "snippet": "Mais maintenant, j'utilise surtout GPT car cela te permet de créer des projets et des souvenirs. Bien que Claude vient juste d'annoncer cela maintenant.",
+    "title": "Marketing AI : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1oddmmx/ai_marketing/?tl=fr"
+   }
+  ],
+  "timestamp": "2026-10-26T14:02:31.968Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find more r/travelagents AI CRM automation posts",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:02:34.701Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "2 years ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "I am a new TA with experience in France, Italy, & Spain. I would like to work on multiple destinations using AI itinerary builders. In your experience ...",
+    "title": "How much should I pay for an automated itinerary builder ...",
+    "url": "https://www.reddit.com/r/travelagents/comments/1fpaiyc/how_much_should_i_pay_for_an_automated_itinerary/"
+   },
+   {
+    "date": "2 years ago",
+    "position": 2,
+    "site_name": "www.reddit.com",
+    "snippet": "Hi everyone!\n\nExcited to post my first question here, although I always ask it at all travel conferences that I go (lol)\n\nWhich itinerary builder do ...",
+    "title": "Which Itinerary Builder you use and why? : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1fpjqjm/which_itinerary_builder_you_use_and_why/"
+   },
+   {
+    "date": "3 years ago",
+    "position": 3,
+    "site_name": "www.reddit.com",
+    "snippet": "Travefy, Axus, or UMapped. Instead of one chatbot, I built five AI agents that plan trips together … for an automated itinerary builder ...",
+    "title": "Itinerary Builder : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/126tnrz/itinerary_builder/"
+   },
+   {
+    "date": "7 months ago",
+    "position": 4,
+    "site_name": "www.reddit.com",
+    "snippet": "I'm a fairly new advisor and curious to know what other travel advisors are using today for different areas of business and WHY?\n\n-Itinerary builders\n\n-Marketin ...",
+    "title": "What's your current tech stack as a travel advisor in 2026?",
+    "url": "https://www.reddit.com/r/travelagents/comments/1rsezop/whats_your_current_tech_stack_as_a_travel_advisor/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 5,
+    "site_name": "www.reddit.com",
+    "snippet": "Hi everyone, I'm considering switching to Tern because I really like the idea of a complete CRM like TravelJoy coupled with an itinerary builder like ...",
+    "title": "Updated review on Tern? : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1islidr/updated_review_on_tern/"
+   },
+   {
+    "date": "2 months ago",
+    "position": 6,
+    "site_name": "www.reddit.com",
+    "snippet": "CRM like TravelJoy, Tern, or Travefy. TravelJoy introduced their CoPilot AI and redesigned their client proposal and itinerary interface... ...",
+    "title": "CRM/All-in-One System : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1ve0bk8/crmallinone_system/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 7,
+    "site_name": "www.reddit.com",
+    "snippet": "Hi everyone,\n\nI’m working now as a travel professional for one of the biggest cruise companies. My plan is to stay here for about a year or two more. ...",
+    "title": "Which Host Agency has the most updated systems?",
+    "url": "https://www.reddit.com/r/travelagents/comments/1nxvd0m/which_host_agency_has_the_most_updated_systems/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 8,
+    "site_name": "www.reddit.com",
+    "snippet": "If you end up making an itinerary builder in Notion, please share it! Love Notion and never found something that worked for me.",
+    "title": "Business “stack” : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1gsrrm6/business_stack/"
+   },
+   {
+    "date": "2 years ago",
+    "position": 9,
+    "site_name": "www.reddit.com",
+    "snippet": "The drag-and-drop itinerary builder is great, the cruise library is ... The AI for inputting an itinerary is still in beta but works decently well ...",
+    "title": "CRM Comparison : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1fc5fzj/crm_comparison/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 10,
+    "site_name": "www.reddit.com",
+    "snippet": "We use an outdated Itinerary Builder that exports the trip in a table format in a Word Doc. The truth is, we do not need much more, because ...",
+    "title": "Apps for Incoming Travel Agency : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1hzvh6k/apps_for_incoming_travel_agency/"
+   }
+  ],
+  "timestamp": "2026-10-26T14:02:36.697Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Read post about tech stack and AI tools",
+  "timestamp": "2026-10-26T14:02:39.341Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Visit old.reddit version for top monthly posts",
+  "timestamp": "2026-10-26T14:02:43.778Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Find recent top posts r/travelagents AI tools automation 2025 2026",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:02:49.540Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "7 months ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "I'm a fairly new advisor and curious to know what other travel advisors are using today for different areas of business and WHY?\n\n-Itinerary builders\n\n-Marketin ...",
+    "title": "What's your current tech stack as a travel advisor in 2026?",
+    "url": "https://www.reddit.com/r/travelagents/comments/1rsezop/whats_your_current_tech_stack_as_a_travel_advisor/"
+   },
+   {
+    "date": "2 months ago",
+    "position": 2,
+    "site_name": "www.reddit.com",
+    "snippet": "GHL is great, but you're better off with a travel agency-focused CRM like TravelJoy, Tern, or Travefy. The built-in itinerary features and setup ...",
+    "title": "CRM/All-in-One System : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1ve0bk8/crmallinone_system/"
+   },
+   {
+    "date": "10 months ago",
+    "position": 3,
+    "site_name": "www.reddit.com",
+    "snippet": "I have automations in the CRM will schedule automated emails out to the clients. Things like payment reminders or dining reservations. it is ...",
+    "title": "SquareSpace : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1pgl0fw/squarespace/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 4,
+    "site_name": "www.reddit.com",
+    "snippet": "Hi everyone, I'm considering switching to Tern because I really like the idea of a complete CRM like TravelJoy coupled with an itinerary builder like ...",
+    "title": "Updated review on Tern? : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1islidr/updated_review_on_tern/"
+   },
+   {
+    "date": "9 months ago",
+    "position": 5,
+    "site_name": "www.reddit.com",
+    "snippet": "Travefy CRM is coming along. can ask any AI how to use. Our CRM is fully integrated into our booking system … for all trip types. Air, Hotel, ...",
+    "title": "Backend tech of host agencies : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1qeyqqj/backend_tech_of_host_agencies/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 6,
+    "site_name": "www.reddit.com",
+    "snippet": "My hosts crm does allow me to add automation emails and tasks. I was thinking of adding those to that. I do like trello for the flow and ...",
+    "title": "Tools & Organization : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1m12jff/tools_organization/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 7,
+    "site_name": "www.reddit.com",
+    "snippet": "Based on the training, it seems like the CRM is pretty thorough and customizable. It might not be the most intuitive, but that happens when ...",
+    "title": "Finally pulled the trigger : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1l09blo/finally_pulled_the_trigger/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 8,
+    "site_name": "www.reddit.com",
+    "snippet": "Need to know what platform to use to build a travel agency website for automated bookings? enables hotel bookings and flight bookings in real ...",
+    "title": "Need to know what platform to use to build a travel agency ...",
+    "url": "https://www.reddit.com/r/travelagents/comments/1imid44/need_to_know_what_platform_to_use_to_build_a/"
+   },
+   {
+    "date": "5 months ago",
+    "position": 9,
+    "site_name": "www.reddit.com",
+    "snippet": "Is the current economy affecting your sales? Friend encouraging me to sign with her \"company\". A host agency that does some sort of MLM? I am guessing ...",
+    "title": "Sales down? : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1thuehj/sales_down/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 10,
+    "site_name": "www.reddit.com",
+    "snippet": "These days, I use Travefy for just about everything. It keeps me organized and much more productive than the folders did thanks to tasks and ...",
+    "title": "Organization : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1m8hi0n/organization/"
+   }
+  ],
+  "timestamp": "2026-10-26T14:02:51.515Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Read AI marketing post about GPT and Claude",
+  "timestamp": "2026-10-26T14:02:54.709Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Visit old.reddit top posts",
+  "timestamp": "2026-10-26T14:02:57.514Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Extract content of r/travelagents tech stack 2026 post",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:03:01.457Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "7 months ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "I'm a fairly new advisor and curious to know what other travel advisors are using today for different areas of business and WHY?\n\n-Itinerary builders\n\n-Marketin ...",
+    "title": "What's your current tech stack as a travel advisor in 2026?",
+    "url": "https://www.reddit.com/r/travelagents/comments/1rsezop/whats_your_current_tech_stack_as_a_travel_advisor/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 2,
+    "site_name": "www.reddit.com",
+    "snippet": "What's your current tech stack as a travel advisor in 2026? r/travelagents. • 7mo ago. What's your current tech stack as a travel advisor in ...",
+    "title": "r/travelagents Monthly Host Agency Q&A - December 2024",
+    "url": "https://www.reddit.com/r/travelagents/comments/1h44gs7/rtravelagents_monthly_host_agency_qa_december_2024/"
+   },
+   {
+    "date": "1 year ago",
+    "position": 3,
+    "site_name": "www.reddit.com",
+    "snippet": "What's your current tech stack as a travel advisor in 2026? r/travelagents. • 7mo ago. What's your current tech stack as a travel advisor in ...",
+    "title": "Thinking about beginning a career in travel advising and I ...",
+    "url": "https://www.reddit.com/r/travelagents/comments/1js6f9m/thinking_about_beginning_a_career_in_travel/"
+   },
+   {
+    "date": "2 years ago",
+    "position": 4,
+    "site_name": "www.reddit.com",
+    "snippet": "What's your current tech stack as a travel advisor in 2026? Host agency help/advice for beginners",
+    "title": "Seeking Info on Becoming Travel Agent for Disney",
+    "url": "https://www.reddit.com/r/travelagents/comments/1av6vzu/seeking_info_on_becoming_travel_agent_for_disney/"
+   },
+   {
+    "date": "3 years ago",
+    "position": 5,
+    "site_name": "www.reddit.com",
+    "snippet": "Basically the title.\n\nJoined a host agency and they gave a simple website as a booking portal. The problem is, the booking portal they use seems to be ...",
+    "title": "Use the premade site or build one? : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1560ajk/use_the_premade_site_or_build_one/"
+   },
+   {
+    "position": 6,
+    "site_name": "www.reddit.com",
+    "snippet": "What's your current tech stack as a travel advisor in 2026? r/travelagents. • 6mo ago. What's your current tech stack as a travel advisor in 2026? 8 ...",
+    "title": "Adding travel services to event business : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/14cttvn/adding_travel_services_to_event_business/"
+   },
+   {
+    "date": "3 years ago",
+    "position": 7,
+    "site_name": "www.reddit.com",
+    "snippet": "I'm already making up group packages as well. What's your current tech stack as a travel advisor in 2026?",
+    "title": "Host Agencies for booking Corporate Travel : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/17fj2dt/host_agencies_for_booking_corporate_travel/"
+   },
+   {
+    "date": "6 months ago",
+    "position": 8,
+    "site_name": "www.reddit.com",
+    "snippet": "I'm a big fan of technology, and they use technology in a good way in order to make the life of an advisor easier and to have things be ...",
+    "title": "Current and Past Fora Advisors: Live Forum Question",
+    "url": "https://www.reddit.com/r/travelagents/comments/1sjp7fs/current_and_past_fora_advisors_live_forum_question/"
+   },
+   {
+    "date": "9 months ago",
+    "position": 9,
+    "site_name": "www.reddit.com",
+    "snippet": "Next, scrutinize their software stack. CRM, invoicing, commission tracking, supplier access, and reporting all matter way more than hype or ...",
+    "title": "Seeking advice on host agency : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1q7hh9d/seeking_advice_on_host_agency/"
+   }
+  ],
+  "timestamp": "2026-10-26T14:03:03.294Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Get cached snippets of AI marketing Reddit post",
+  "tinyfish_api": "search",
+  "timestamp": "2026-10-26T14:03:05.762Z"
+ },
+ {
+  "type": "TF_API_RESULT",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "tinyfish_api": "search",
+  "result": [
+   {
+    "date": "1 year ago",
+    "position": 1,
+    "site_name": "www.reddit.com",
+    "snippet": "GPT, Claude. You can certainly use AI LLMs to help with content creation. You'll up with your marketing strategy, and at least a first draft of ...",
+    "title": "AI marketing : r/travelagents",
+    "url": "https://www.reddit.com/r/travelagents/comments/1oddmmx/ai_marketing/"
+   }
+  ],
+  "timestamp": "2026-10-26T14:03:06.637Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Read CRM comparison post about AI features",
+  "timestamp": "2026-10-26T14:03:08.704Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Extract top posts info",
+  "timestamp": "2026-10-26T14:03:18.335Z"
+ },
+ {
+  "type": "HEARTBEAT",
+  "timestamp": "2026-10-26T14:03:33.337Z"
+ },
+ {
+  "type": "PROGRESS",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "purpose": "Submit final list of top posts",
+  "timestamp": "2026-10-26T14:03:34.335Z"
+ },
+ {
+  "type": "COMPLETE",
+  "run_id": "7b0bce6a-017d-4bce-b124-0a63fbebc8ed",
+  "status": "COMPLETED",
+  "timestamp": "2026-10-26T14:03:40.054Z",
+  "result": {
+   "result": "Based on search results from r/travelagents (Reddit blocked direct page access), here are the top relevant posts about AI tools, price drops, and automation:\n\n1. **Creating Content** (r/travelagents)\n   Summary: A travel advisor shares using AI tools like Claude to turn one idea into multiple social media posts at once, then designing graphics in Canva or using AI image generators.\n\n2. **Hotel Prices Drop After You Book and Nobody Tells You** (r/travelagents)\n   Summary: A travel agent describes using an automated price-drop tool that emails them when any client booking drops by more than 5%, which clients love.\n\n3. **AI Marketing** (r/travelagents)\n   Summary: Discussion on using AI LLMs like GPT and Claude for faster content creation and marketing strategy drafting, emphasizing AI as a content-creation accelerator.\n\n4. **Price Drops – Commission Losses** (r/travelagents)\n   Summary: Agents discuss the challenge of price drops and how they impact commission, with some noting they only reprice if the client notices and contacts them.\n\n5. **What's Your Current Tech Stack as a Travel Advisor in 2026?** (r/travelagents)\n   Summary: A new advisor asks about recommended tools for itinerary builders, marketing platforms, CRM, and AI-driven solutions to streamline travel agency operations.\n\n6. **How Much Should I Pay for an Automated Itinerary Builder?** (r/travelagents)\n   Summary: A new TA with France/Italy/Spain expertise asks about pricing for AI itinerary builders that can handle multiple destinations and client preferences.\n\n7. **CRM Comparison** (r/travelagents)\n   Summary: Side-by-side comparison discussion of TravelJoy (with CoPilot AI), Tern, and Travefy as CRM/automation tools; note: AI itinerary input feature still in beta but functional.\n\n8. **CRM/All-in-One System** (r/travelagents)\n   Summary: Recommendation to use travel-specific CRMs like TravelJoy, Tern, or Travefy over generic platforms like GHL, due to built-in itinerary features and AI capabilities (TravelJoy's CoPilot AI redesign).\n\nNote: The Reddit page could not be accessed directly due to network security blocks, so post engagement metrics (upvotes, comments) are unavailable. All posts and summaries are sourced from search snippets."
+  }
+ }
+]

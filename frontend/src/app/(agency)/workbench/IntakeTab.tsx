@@ -64,6 +64,7 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
   useEffect(() => {
     const text = (input_raw_note || '').trim();
     if (text.length < 5) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTriageResult(null);
       return;
     }

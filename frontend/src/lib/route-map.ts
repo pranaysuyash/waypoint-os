@@ -100,6 +100,11 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["public-checker/disputes", { backendPath: "api/public-checker/disputes" }],
   ["public-checker/{id}", { backendPath: "api/public-checker/{id}" }],
   ["public-checker/{id}/export", { backendPath: "api/public-checker/{id}/export" }],
+  // Public booking-collection (traveler-facing, token-addressed; E1: was a
+  // direct-to-origin bypass in api-client, now rides the same allowlist).
+  ["public/booking-collection/{agency_id}/{token}", { backendPath: "api/public/booking-collection/{agency_id}/{token}" }],
+  ["public/booking-collection/{agency_id}/{token}/submit", { backendPath: "api/public/booking-collection/{agency_id}/{token}/submit" }],
+  ["public/booking-collection/{agency_id}/{token}/documents", { backendPath: "api/public/booking-collection/{agency_id}/{token}/documents" }],
   ["assignments", { backendPath: "assignments" }],
   ["health", { backendPath: "health", timeoutMs: DEFAULT_ROUTE_TIMEOUT_MS }],
 
@@ -267,6 +272,9 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   // 2026-10-24 §5 C1; backend spine_api/routers/work_items.py). {id} entry =
   // the outcome-state lifecycle PATCH (map §14: claim/unclaim/dismiss/resolve).
   ["v1/work-items", { backendPath: "api/v1/work-items" }],
+  // B1 WhatsApp channel-status flip-check (commit 418f42ae landed the backend
+  // route; this mapping closes the FND-0340 parity gap the gate caught).
+  ["v1/messaging/channel-status", { backendPath: "api/v1/messaging/channel-status" }],
   ["v1/work-items/{id}", { backendPath: "api/v1/work-items/{id}" }],
   ["v1/financial-ops/convert-currency", { backendPath: "api/v1/financial-ops/convert-currency" }],
   ["v1/counterfactual/replan-disruption", { backendPath: "api/v1/counterfactual/replan-disruption" }],

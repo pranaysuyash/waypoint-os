@@ -30,7 +30,7 @@ def test_parse_social_inbound_success(session_client):
     assert data["stage"] == "STAGE_1_TEASER"
     assert data["destination"] == "Marrakech"
     assert data["is_masked"] is True
-    assert data["suitability_score"] == 96
+    assert data["suitability_score"] is None  # no fabricated score (E-05 fix)
     assert "/proposals/trip_" in data["teaser_url"]
 
 

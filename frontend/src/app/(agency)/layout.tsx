@@ -56,7 +56,15 @@ export default async function AgencyLayout({
     }
   }
 
-  if (!initialSession && process.env.NODE_ENV !== "production") {
+  // E1: the fabricated dev session used to activate for ANY non-production
+  // build; now it requires the explicit opt-in env flag, so staging that
+  // merely forgets NODE_ENV=production no longer renders an admin session.
+  // The session shell only — backend calls stay unauthenticated (no token).
+  if (
+    !initialSession &&
+    process.env.NODE_ENV !== "production" &&
+    process.env.NEXT_PUBLIC_WAYPOINT_DEV_SESSION === "1"
+  ) {
     initialSession = {
       user: { id: "usr_dev_1", email: "agent@waypoint.com", name: "Agent Dev" },
       agency: { id: "agency_dev_1", name: "Waypoint Global Expeditions", slug: "waypoint-global" },

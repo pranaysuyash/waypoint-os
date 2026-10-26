@@ -207,5 +207,17 @@ jobs:
         run: npx tsc -p tsconfig.json --noEmit
       - name: ESLint
         run: npm run lint
+      - name: Bundle size check
+        run: |
+          npm run build
+          # Check shared JS bundle size (budget: 100KB)
+          SHARED_JS=$(find .next -name "*.js" -path "*/chunks/*" -exec du -b {} + 2>/dev/null | awk '{s+=$1} END {print s}')
+          echo "Shared JS: ${SHARED_JS} bytes"
+          if [ "${SHARED_JS}" -gt 102400 ]; then
+            echo "ERROR: Shared JS bundle exceeds 100KB budget"
+            exit 1
+          fi
+      - name: Color contrast check
+        run: npx tsx ../tools/frontend-validate-contrast.ts
       - name: Frontend Vitest test suite
         run: npm test -- --run

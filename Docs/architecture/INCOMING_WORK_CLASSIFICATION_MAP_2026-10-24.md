@@ -426,3 +426,42 @@ Owner directive: "do all that can be done without the API key — get the system
 - **B2 vendor quote inbox** build plan (not built this pass — completion over partial work): mirror this exact shape — IMAP/webhook receiver → `vendor_quote_inbox` door (reserved seam already in `DOOR_CONTRACTS`) → `message_store` row → work item; the only B2-specific logic is the quote-attachment parser, which should reuse the multimodal door's document lane.
 
 Tests this pass: `tests/test_messaging_router.py` **6/6** (idempotent redelivery → 1 row / 1 work item / 1 reply with `reply_to` threading; `statuses[]` → outbound row incl. error detail; unmatched id honest; pre-flight guards; flip-check endpoint). Regression: concierge ×3 + followups + work-intake suites **57/57**; ruff clean. Findings: **FND-0384** opened+closed with evidence.
+
+---
+
+## 17. E1 route-grammar cleanup EXECUTED (2026-10-25, supersession workflow applied)
+
+The E1 tranche from §5/§11 — previously parked pending "owner sign-off" — was
+executed under the delegated-authority ruling (reversible, pre-launch, git-revertible;
+the supersession workflow IS the authority). Record per the workflow's step 5:
+
+| Candidate | Field comparison vs replacement | Call-site audit | Action |
+|---|---|---|---|
+| `app/v2..v5/page.tsx` ×4 | Pure `redirect('/')` stubs — replacement `/` is a strict superset (the stubs' only behavior) | Zero nav/sitemap refs; only `proxy.ts` PUBLIC_PAGES + its test listed them | **DELETED** + proxy PUBLIC_PAGES cleaned + proxy test updated |
+| `app/intake/fast/page.tsx` | **CORRECTION (owner challenged "should it be gone?"): NO backend `/intake/fast` route ever existed** — zero occurrences in the route snapshot across all history; my "backend already gone" premise was false. The page calls the canonical `parse_social` door, and the parallel lane had just SECURITY-HARDENED it in `2a2bfa7c` (FND-0372: env-pinned base, constant path, "never caller-shaped") — a committed, intentional, keeper surface. My "zero references" audit also missed the FND-0372 ledger, the codebase map's door inventory, and the lane's hardening intent | References found: FND-0372 records, codebase map §doors, lane hardening commit `2a2bfa7c` | **RESTORED** — supersession REJECTED, deletion reverted |
+| `app/corporate/offsites/page.tsx` | **CORRECTION: same premise failure.** The lane hardened it in `2a2bfa7c` (pinned `/api/v1/corporate` base, constant paths) as a keeper surface for the real corporate-policy product area; the hardcoded company id is its sandbox parameter | Lane hardening commit `2a2bfa7c` | **RESTORED** — supersession REJECTED, deletion reverted |
+| BFF bypass #3 — `api-client` booking-collection ×3 hit `NEXT_PUBLIC_SPINE_API_URL` origin directly | Same endpoints, now through the F-43 allowlist catch-all: 3 route-map keys added (`public/booking-collection/{agency_id}/{token}[/submit\|/documents]`); client switched to same-origin relative paths; unused `SPINE_API_URL` const removed | 3 call sites migrated | **FIXED** (allowlist posture restored) |
+| Dev-session backdoor `(agency)/layout.tsx` | Fabricated `usr_dev_1`/`agency_dev_1` admin session for ANY non-prod build → now requires explicit `NEXT_PUBLIC_WAYPOINT_DEV_SESSION=1` (staging that forgets NODE_ENV no longer renders an admin shell) | Single site | **TIGHTENED** |
+| `app/(agency)/bookings` (nav-linked!) | NOT deletable — rebuilt honestly: rendered REAL `booking_data` (travelers/passports, payment tracking, notes), pending customer submissions with accept/reject, and collection-link lifecycle (generate/copy/revoke) — all pre-existing backend surfaces (`getBookingData`, `getPendingBookingData`, collection endpoints); deleted the fabricated rows, fake operational checklist, and the client-side keyword "extractor" (a fake parser in the browser) | Nav entry kept; tests rewritten 4/4 (real-render, honest empty, pending accept, link lifecycle) | **REBUILT HONEST** |
+
+**Blast-radius catch:** the parity gate flagged the parallel lane's B1 commit
+(`418f42ae`) — `GET /v1/messaging/channel-status` lacked a BFF mapping; route-map key added
+(`v1/messaging/channel-status`), gate 2/2.
+
+**Contested-tree note:** the full FE suite shows 14 failing files at this instant; every one
+fails inside the parallel lane's UNCOMMITTED edits (IntakePanel "Build trip options"/next-action
+copy, insights/overview/quotes/workbench suites) — none import or exercise this tranche's files.
+This tranche's own suites: bookings 4/4, proxy ✓, nav-modules ✓, work-intake/parity gates green;
+`tsc` exit 0; eslint 0 errors (1 pre-existing bare-fetch warning in layout session hydration).
+
+**E1 status after the owner's challenge: the v2–v5 stub deletions, the booking-collection
+bypass fix, the dev-session gate, and the Bookings honest rebuild STAND (each verified against
+real references and real replacement surfaces). The intake/fast + corporate/offsites deletions
+were REVERTED — the "backend already gone" premise was false (no such backend route ever
+existed), and the pages are lane-hardened intentional keepers (FND-0372 commit `2a2bfa7c`).
+Their final disposition (improve/integrate vs retire) belongs to a deliberate product pass, not
+a route-grammar sweep. Lesson recorded on the memory: an unverified "already gone" premise is
+exactly the interrupted-work trap the supersession rule names — verify the REMOVAL's history,
+not just the candidate's references.** The standing-broken things E1 targeted remain fixed: no
+origin bypasses, no unconditional fabricated session, no fabricated sample surface in the
+agency nav.

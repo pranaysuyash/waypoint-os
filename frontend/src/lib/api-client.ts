@@ -1606,8 +1606,6 @@ export interface PublicCollectionContext {
   expires_at?: string;
 }
 
-const SPINE_API_URL = process.env.NEXT_PUBLIC_SPINE_API_URL || '';
-
 // Agent endpoints (proxied through BFF)
 export async function generateCollectionLink(
   tripId: string,
@@ -1645,9 +1643,10 @@ export async function rejectPendingBookingData(
   });
 }
 
-// Public endpoints (direct to backend, no auth)
+// Public endpoints (same-origin via the BFF catch-all allowlist — E1 closed
+// the direct-to-origin bypass; the collection endpoints are in route-map).
 export async function getPublicCollectionForm(agencyId: string, token: string): Promise<PublicCollectionContext> {
-  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(agencyId)}/${encodeURIComponent(token)}`;
+  const url = `/api/public/booking-collection/${encodeURIComponent(agencyId)}/${encodeURIComponent(token)}`;
   const res = await fetch(url, { credentials: 'omit' });
   if (!res.ok) throw new Error(`Failed to load collection form (${res.status})`);
   return res.json();
@@ -1658,7 +1657,7 @@ export async function submitPublicBookingData(
   token: string,
   data: BookingData,
 ): Promise<{ ok: boolean; message: string }> {
-  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(agencyId)}/${encodeURIComponent(token)}/submit`;
+  const url = `/api/public/booking-collection/${encodeURIComponent(agencyId)}/${encodeURIComponent(token)}/submit`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1914,7 +1913,7 @@ export async function uploadPublicDocument(
   formData.append('file', file);
   formData.append('document_type', documentType);
 
-  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(agencyId)}/${encodeURIComponent(token)}/documents`;
+  const url = `/api/public/booking-collection/${encodeURIComponent(agencyId)}/${encodeURIComponent(token)}/documents`;
   const res = await fetch(url, {
     method: 'POST',
     credentials: 'omit',

@@ -5,6 +5,11 @@ import HomePage from '@/app/page';
 import ItineraryCheckerPage from '@/app/(traveler)/itinerary-checker/page';
 import { api } from '@/lib/api-client';
 
+// FND-0386: the departure-board landing now ships behind
+// NEXT_PUBLIC_LANDING_VARIANT (default = committed V5). These tests exercise
+// the board explicitly, so opt in regardless of ambient env.
+process.env.NEXT_PUBLIC_LANDING_VARIANT = 'departure-board';
+
 // Mock gsap — animations are irrelevant in JSDOM and cause timeouts
 vi.mock('gsap', () => ({
   default: {
@@ -89,19 +94,19 @@ vi.mock('@/lib/api-client', () => {
 });
 
 describe('public marketing pages', () => {
-  it('renders the B2B landing page copy and CTA surfaces', () => {
+  it('renders the B2B landing page copy, interactive departure board, and CTA surfaces', () => {
     render(<HomePage />);
 
-    expect(screen.getAllByText('Waypoint OS').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/WAYPOINT/i).length).toBeGreaterThan(0);
     expect(
       screen.getByRole('heading', {
-        name: /Turn raw trip notes into quote-ready briefs/i,
+        name: /Every inquiry\.\s*Under control\./i,
         level: 1,
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
-        name: /Not a prettier CRM\. A faster intake and quoting surface/i,
+        name: /Turn raw trip notes into quote-ready briefs/i,
         level: 2,
       }),
     ).toBeInTheDocument();
@@ -111,8 +116,36 @@ describe('public marketing pages', () => {
         .every((link) => link.getAttribute('href') === '/signup'),
     ).toBe(true);
     expect(
-      screen.getByRole('img', { name: /Waypoint OS workspace preview showing a boutique travel operations desk/i }),
+      screen.getByRole('img', { name: /Waypoint Brushed Steel Departure Board Monument/i }),
     ).toBeInTheDocument();
+    expect(screen.getByTestId('see-it-work-cta')).toBeInTheDocument();
+    expect(screen.getByTestId('inquiry-switcher-dock')).toBeInTheDocument();
+  });
+
+  it('supports interactive departure board modes and destination switching', () => {
+    render(<HomePage />);
+
+    // Switch inquiry from Italy -> Japan -> Morocco
+    fireEvent.click(screen.getByTestId('inquiry-pill-japan'));
+    expect(screen.getByRole('img', { name: /JPN luggage tag/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('inquiry-pill-morocco'));
+    expect(screen.getByRole('img', { name: /MAR luggage tag/i })).toBeInTheDocument();
+
+    // Trigger Frame 2 Voice Ingest state
+    fireEvent.click(screen.getByTestId('mode-toggle-voice-ingest'));
+    expect(
+      screen.getByRole('heading', { name: /From inquiry\s*to itinerary\./i, level: 1 }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('incoming-request-voice-card')).toBeInTheDocument();
+
+    // Trigger Frame 3 Provenance & Brief X-Ray state
+    fireEvent.click(screen.getByTestId('mode-toggle-provenance'));
+    expect(
+      screen.getByRole('heading', { name: /See how it\s*organizes\s*the request\./i, level: 1 }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('provenance-svg-wires')).toBeInTheDocument();
+    expect(screen.getByTestId('structured-brief-drawer')).toBeInTheDocument();
   });
 
   it('homepage makes the agency workflow benefits explicit', () => {

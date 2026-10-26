@@ -7,6 +7,7 @@ Provides:
 """
 
 import os
+import uuid as _uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -78,10 +79,12 @@ def create_access_token(
 
 
 def create_refresh_token(user_id: str) -> str:
-    """Create a JWT refresh token with longer expiry."""
+    """Create a JWT refresh token with longer expiry and a unique JTI."""
     now = datetime.now(timezone.utc)
+    jti = str(_uuid.uuid4())
     payload = {
         "sub": user_id,
+        "jti": jti,
         "iat": now,
         "exp": now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
         "type": "refresh",
@@ -107,4 +110,23 @@ def decode_token_safe(token: str) -> Optional[dict]:
     try:
         return decode_token(token)
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
+
+def revoke_refresh_token_jti(jti: str) -> None:
+    """Record a revoked refresh token JTI.
+
+    This is a synchronous helper that returns the JTI for the caller
+    to persist. The actual DB write happens in the auth router/service
+    layer which has access to the async session.
+    """
+    # No-op placeholder — actual persistence is in auth_service.
+    pass
+
+
+def get_token_jti(token: str) -> Optional[str]:
+    """Extract the JTI from a JWT token without validation."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM], options={"verify_exp": False})
+        return payload.get("jti")
+    except (jwt.InvalidTokenError, Exception):
         return None

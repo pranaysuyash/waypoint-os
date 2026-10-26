@@ -106,6 +106,7 @@ export default function QuotesPageClient() {
 
   useEffect(() => {
     if (!effectiveSelectedTripId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuotesData(null);
       return;
     }

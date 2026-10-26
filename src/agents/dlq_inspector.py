@@ -83,22 +83,66 @@ class DLQInspector:
         cls,
         job_id: str,
         patched_payload: Optional[Dict[str, Any]] = None,
+        *,
+        requeue_store: Optional[Any] = None,
     ) -> Dict[str, Any]:
+        """Re-dispatch a poisoned job through the DURABLE requeue system.
+
+        FND-0161 honesty fix: this method previously flipped the record to
+        REPLAYED_SUCCESSFULLY and reported "REPLAYED" WITHOUT executing
+        anything — fabricated success. The re-dispatch now goes through the
+        durable RequeueJobStore (the same store the RequeueWorkerService
+        drains and executes), and without a wired executor the method REFUSES
+        instead of claiming success.
+
+        Returns:
+          ok=True,  status="RE-DISPATCHED", requeue_job_id=<durable job>  — enqueued
+          ok=False, status="NOT_EXECUTED", reason=...                    — no executor
+        Raises KeyError for an unknown job_id (unchanged).
+        """
         job = cls._POISON_STORE.get(job_id)
         if not job:
             raise KeyError(f"Poisoned job {job_id} not found in DLQ")
 
-        payload_to_run = patched_payload or job.failed_payload
-        job.status = PoisonResolutionStatus.REPLAYED_SUCCESSFULLY
-        job.resolution_note = f"Replayed with {len(payload_to_run)} payload fields at {datetime.now(timezone.utc).isoformat()}"
+        if requeue_store is None:
+            return {
+                "ok": False,
+                "job_id": job_id,
+                "status": "NOT_EXECUTED",
+                "reason": (
+                    "replay requires a wired executor — pass the durable RequeueJobStore "
+                    "(configure_runtime) so the job is actually re-run; this tool refuses "
+                    "to mark a job REPLAYED without execution"
+                ),
+            }
 
+        payload_to_run = patched_payload or job.failed_payload
+        accepted, durable_job_id = requeue_store.enqueue(
+            trip_id=job.trip_id,
+            idempotency_key=f"dlq_replay:{job_id}",
+            reason=f"DLQ replay of poisoned job {job_id}",
+            payload=payload_to_run,
+        )
+        if not accepted:
+            return {
+                "ok": False,
+                "job_id": job_id,
+                "status": "NOT_EXECUTED",
+                "reason": f"duplicate re-dispatch: durable job {durable_job_id} already exists",
+            }
+
+        job.status = PoisonResolutionStatus.REPLAYED_SUCCESSFULLY
+        job.resolution_note = (
+            f"Re-dispatched as durable requeue job {durable_job_id} "
+            f"with {len(payload_to_run)} payload fields at {datetime.now(timezone.utc).isoformat()}"
+        )
         return {
             "ok": True,
             "job_id": job_id,
             "agent_name": job.agent_name,
             "trip_id": job.trip_id,
-            "status": "REPLAYED",
-            "execution_payload": payload_to_run,
+            "status": "RE-DISPATCHED",
+            "requeue_job_id": durable_job_id,
         }
 
     @classmethod
