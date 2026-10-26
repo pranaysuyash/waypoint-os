@@ -1821,6 +1821,11 @@ These are **blocking** for moving from notebooks to real implementation.
 - Owner DECIDE: adopt the zero-out rule (suppress suitability scores on HARD-failed plans)? **→ RESOLVED 2026-10-22: adopted.** Implemented on the two live scoring surfaces: `GroupConsensusOptimizer` (hard budget breach ⇒ composite 0, tier INFEASIBLE, never Pareto-optimal, never dominates a valid option; member numbers remain diagnostics) and `CompiledProposalPackage` (`preference_scoring_suppressed` + `feasibility_hard_violations` on the compile contract; previously the feasibility verdict was computed and orphaned). Route-structure candidates are pre-costing and unaffected. Valid-path tests pin the no-regression side.
 - Gate position: after options/strategy only, or also re-run at proposal time when producer data refreshes?
 
+### 51b. Group Proxy Negotiation — Scope & Design Sketch ⚪ (DEFERRED on demand signal)
+**Status**: SCOPED (2026-10-26). See [GROUP_PROXY_NEGOTIATION_SCOPE_2026-10-26.md](exploration/GROUP_PROXY_NEGOTIATION_SCOPE_2026-10-26.md).
+
+**Overview**: Topic-48 next-step #6 executed as a scope pass. The NTT persona-agent pattern maps onto existing machinery (per-traveler profiles, GroupConsensusOptimizer with zero-out, T1 ask loop) — the single genuine gap is a deterministic candidate generator (profiles → 3-5 option proposals). Explicitly NOT multi-agent chat; the negotiation is scored arithmetic + advisor judgment per concierge doctrine. DEFERRED until a group-travel demand signal arrives (E15's reopen condition).
+
 ### 51a. Tamper-Evident Audit Chain — Gap Audit & Closure Map 🟢
 **Status**: AUDIT COMPLETE (2026-10-26). See [AUDIT_CHAIN_GAP_AUDIT_2026-10-26.md](exploration/AUDIT_CHAIN_GAP_AUDIT_2026-10-26.md).
 
