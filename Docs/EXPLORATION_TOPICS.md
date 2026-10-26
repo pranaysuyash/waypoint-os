@@ -1821,6 +1821,14 @@ These are **blocking** for moving from notebooks to real implementation.
 - Owner DECIDE: adopt the zero-out rule (suppress suitability scores on HARD-failed plans)? **→ RESOLVED 2026-10-22: adopted.** Implemented on the two live scoring surfaces: `GroupConsensusOptimizer` (hard budget breach ⇒ composite 0, tier INFEASIBLE, never Pareto-optimal, never dominates a valid option; member numbers remain diagnostics) and `CompiledProposalPackage` (`preference_scoring_suppressed` + `feasibility_hard_violations` on the compile contract; previously the feasibility verdict was computed and orphaned). Route-structure candidates are pre-costing and unaffected. Valid-path tests pin the no-regression side.
 - Gate position: after options/strategy only, or also re-run at proposal time when producer data refreshes?
 
+### 51a. Tamper-Evident Audit Chain — Gap Audit & Closure Map 🟢
+**Status**: AUDIT COMPLETE (2026-10-26). See [AUDIT_CHAIN_GAP_AUDIT_2026-10-26.md](exploration/AUDIT_CHAIN_GAP_AUDIT_2026-10-26.md).
+
+**Overview**: Topic-48 next-step #5 executed as an audit-first pass — and found FND-0043 materially stale. The tamper-evident chain the finding proposed largely EXISTS: RULE_015 hash-chained SQL audit events with transaction-scoped advisory-lock serialization (fork-proof, FND-0367-aware), dual-chain `verify_chain()` (SQL + legacy file, formula-aware), centralized hash math in `audit_chain_hash.py`, a second prev-hash chain in execution events, and 16 green chain tests. Genuine gaps are three small ones: no external head-hash anchoring, no causal `why()` linkage (`caused_by` parent event ids), and an unproven trim-safety edge on file compaction. Closure is a hardening pass (trim test -> anchoring -> caused_by at high-value call sites), NOT a build — adopting ZizkaDB itself would duplicate the existing chain and violate one-canonical-store. FND-0043 needs reverify/close against this doc.
+
+**Key Questions**:
+- Owner: adopt the hardening sequence (trim test, anchoring, caused_by linkage) as a tranche?
+
 ### 51. Production Durability, Multi-Instance State & Disaster Recovery Drill 🟡
 **Status**: New — from Launch Readiness Council (2026-10-21). See `Docs/review/COUNCIL_LAUNCH_READINESS_2026-10-21.md` and `Docs/review/POST_COUNCIL_AUDIT_FINDINGS_AND_IMPLEMENTATION_PLAN_2026-10-21.md`.
 
