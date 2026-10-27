@@ -54,6 +54,36 @@ def compute_audit_entry_hash(
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()
 
 
+def compute_file_entry_hash(
+    event_id: Optional[str],
+    event_type: Optional[str],
+    user_id: Optional[str],
+    previous_hash: Optional[str],
+    timestamp: Optional[str],
+    details: Optional[dict],
+) -> str:
+    """Legacy file-chain entry hash — the writer/verifier agreement helper.
+
+    Mirrors the legacy branch of ``AuditStore.verify_chain`` (and the
+    degraded-mode writer in ``AuditStore.log_event``) exactly: sha256 over
+    "id:type:user:previous_hash:timestamp:details-json" with sorted-keys JSON.
+    Callers must pass ``details`` exactly as the verifier reads it
+    (``event.get("details", {})``) — no None-to-{} coercion here, so an
+    explicit ``None`` details dict hashes as ``"null"`` on both sides, the
+    same discipline as the SQL formula above.
+    """
+    parts = [
+        str(event_id),
+        str(event_type),
+        str(user_id),
+        str(previous_hash),
+        str(timestamp),
+        json.dumps(details, sort_keys=True),
+    ]
+    joined = chr(58).join(parts)
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+
+
 def verify_audit_entries(entries: Sequence[AuditHashEntry]) -> dict:
     """Verify a complete global snapshot supplied in writer order.
 

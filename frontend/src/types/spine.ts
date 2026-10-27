@@ -158,18 +158,21 @@ export interface FollowUpQuestion {
   suggested_values: unknown[];
 }
 
+// FND-0280: null = not measured (JSON-safe; NaN poisoned serialization and
+// comparisons). Consumers must null-check — the workbench panels render
+// "Confidence unavailable" for null/non-finite.
 export interface ConfidenceScorecard {
-  data_quality: number;
-  judgment_confidence: number;
-  commercial_confidence: number;
-  overall: number;
+  data_quality: number | null;
+  judgment_confidence: number | null;
+  commercial_confidence: number | null;
+  overall: number | null;
 }
 
 export interface Rationale {
   hard_blockers: string[];
   soft_blockers: string[];
   contradictions: string[];
-  confidence: number;
+  confidence: number | null;
   confidence_scorecard: {
     data: number;
     judgment: number;

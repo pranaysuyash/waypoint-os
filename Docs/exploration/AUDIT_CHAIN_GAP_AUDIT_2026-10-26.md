@@ -50,3 +50,50 @@ FND-0043 claimed "file hash-chain unsigned/unanchored; run-ledger outside chain;
 - Live code: `spine_api/persistence.py` (AuditStore, `_persist_sql_event`, `verify_chain`), `spine_api/services/audit_chain_hash.py`, `spine_api/services/execution_event_service.py`
 - Tests: `tests/test_cryptographic_audit_ledger.py` (16/16), `tests/test_audit_log_chain_verify.py`
 - Pattern source: ZizkaDB (topic 48 sweep, commit `90d3ec9d` record)
+
+## Closure record (2026-10-27)
+
+All four gaps in the closure map above are now landed:
+
+| Gap | Resolution | Evidence |
+|---|---|---|
+| 1. No external anchoring | `record_head_anchor()` / `detect_anchor_divergence()` — head snapshot + witness divergence check | commit `b4d66c88`, `tests/test_audit_head_anchor.py` |
+| 2. No causal `why()` | `caused_by` ancestry in audit payloads + `why(event_id)` reader (`spine_api/services/audit_causality.py`) | commit `8d32ef1d`, `tests/test_audit_causality.py` |
+| 3. Trim-safety unproven | PROVEN then FIXED — see refinement below | proof commit `5c367b35`; fix: `_append_event` chaining + shared `compute_file_entry_hash` (this pass) |
+| 4. FND-0043 staleness | closed/verified in FINDINGS_STORE (2026-10-26) | store row FND-0043 (alias F-06) |
+
+### Gap 3 refinement (honest deviation from the original plan)
+
+The original closure ("compact, then `verify_chain()`, assert pass") assumed the
+gap was trim itself. The proof test (5c367b35) falsified that: `log_event`'s
+degraded path already chains before appending, and `verify_chain`'s SUBCHAIN
+anchor (first event's recorded predecessor is the trusted anchor) already
+tolerates a trimmed-away front by design. The real defect was narrower and
+worse in kind: the `_append_event` primitive itself could emit unchained
+archive lines (its only production caller pre-chains, so the defect was
+reachable only by direct use — exactly how the proof test tripped it).
+
+Fix (this pass):
+- `_append_event` chains any event arriving without chain fields off the
+  current file head (defense-in-depth; head read happens inside the existing
+  file-lock critical section, head default GENESIS).
+- `log_event`'s degraded writer and `verify_chain`'s legacy branch now share
+  `compute_file_entry_hash` (`audit_chain_hash.py`) — three formula copies
+  collapsed to one helper + one SQL branch, same pattern as the SQL side.
+- `log_event` head read fixed from `.get("current_hash", GENESIS)` (returns
+  None when the key is present-but-None → silent chain break) to truthy
+  semantics matching the verifier's anchor.
+- Trim still rewrites nothing: the head event is untouched across a trim, so a
+  head-hash witness stays valid. Pinned by test.
+- `tests/test_audit_trim_safety.py` tightened per its own pre-registered
+  contract: chained archive verifies VALID; post-trim suffix verifies VALID
+  with the head hash unchanged; pre-hardening unchained archives still yield
+  an explicit invalid verdict (never a silent pass). Fixture now pins
+  `_write_count = 0` — the trim trigger was order-dependent on other tests'
+  write counts (latent flake found during the fix).
+
+Verification: 33/33 audit-set tests (`test_audit_trim_safety`,
+`test_audit_log_chain_verify`, `test_audit_head_anchor`,
+`test_audit_causality`, `test_cryptographic_audit_ledger`,
+`test_sync_async_bridge`) + 141/141 wider blast radius (all tests touching
+`log_event`/`verify_chain`), ruff clean.

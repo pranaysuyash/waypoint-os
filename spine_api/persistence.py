@@ -39,6 +39,7 @@ from spine_api.core.trip_status import (
     record_status_transition,
 )
 from spine_api.core import trip_lifecycle
+from spine_api.services.audit_chain_hash import compute_file_entry_hash
 from spine_api.models.trips import Trip
 from cryptography.fernet import InvalidToken
 
@@ -2722,10 +2723,37 @@ class AuditStore:
         ``lock_held`` is used by ``log_event`` so the cross-process lock can
         cover the entire read-hash-append critical section without attempting
         to acquire the non-reentrant directory lock twice.
+
+        Defense-in-depth (topic 51a trim-safety closure): an event arriving
+        without RULE_015 chain fields is chained here off the current file
+        head, so this primitive can never emit an unchained archive line.
+        ``log_event`` normally pre-chains; the guard covers direct callers,
+        which is what made post-trim legacy archives permanently unverifiable.
         """
         AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        line = json.dumps(event) + "\n"
+        from spine_api.core.audit import GENESIS_BLOCK_HASH
+        from spine_api.services.audit_chain_hash import compute_file_entry_hash
+
         def write_line() -> None:
+            payload = event
+            if "previous_hash" not in event or "current_hash" not in event:
+                payload = dict(event)
+                events = AuditStore._read_events()
+                previous_hash = (
+                    str(events[-1]["current_hash"])
+                    if events and events[-1].get("current_hash")
+                    else GENESIS_BLOCK_HASH
+                )
+                payload["previous_hash"] = previous_hash
+                payload["current_hash"] = compute_file_entry_hash(
+                    payload.get("id"),
+                    payload.get("event_type", payload.get("type")),
+                    payload.get("user_id"),
+                    previous_hash,
+                    payload.get("timestamp"),
+                    payload.get("details", {}),
+                )
+            line = json.dumps(payload) + "\n"
             with open(AuditStore.AUDIT_FILE, "a") as f:
                 f.write(line)
                 f.flush()
@@ -2815,16 +2843,14 @@ class AuditStore:
                     events = AuditStore._read_events()
                     last_event = events[-1] if events else None
                     previous_hash = (
-                        last_event.get("current_hash", "GENESIS_BLOCK_HASH")
-                        if last_event
+                        str(last_event["current_hash"])
+                        if last_event and last_event.get("current_hash")
                         else "GENESIS_BLOCK_HASH"
                     )
-                    hash_payload = (
-                        f"{event_id}:{event_type}:{user_id}:{previous_hash}:{timestamp}:"
-                        f"{json.dumps(details, sort_keys=True)}"
-                    )
                     event["previous_hash"] = previous_hash
-                    event["current_hash"] = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
+                    event["current_hash"] = compute_file_entry_hash(
+                        event_id, event_type, user_id, previous_hash, timestamp, details
+                    )
                     AuditStore._append_event(event, lock_held=True)
                 AuditStore._write_count += 1
         return event
@@ -3023,13 +3049,13 @@ class AuditStore:
                     f"{event_id}:{event['agency_id']}:{user_id or ''}:{event_type}:"
                     f"{recorded_previous}:{created_at}:{json.dumps(details, sort_keys=True)}"
                 )
+                expected_current = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
             else:
-                # Legacy file-chain formula
-                hash_payload = (
-                    f"{event_id}:{event_type}:{user_id}:{recorded_previous}:"
-                    f"{timestamp}:{json.dumps(details, sort_keys=True)}"
+                # Legacy file-chain formula — shared writer/verifier helper so
+                # the degraded-mode writer and this verifier cannot drift.
+                expected_current = compute_file_entry_hash(
+                    event_id, event_type, user_id, recorded_previous, timestamp, details
                 )
-            expected_current = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
             if recorded_current != expected_current:
                 errors.append(
                     f"event {index} ({event_id or 'missing-id'}) hash mismatch: "

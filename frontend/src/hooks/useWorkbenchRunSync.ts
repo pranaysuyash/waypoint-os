@@ -94,10 +94,12 @@ export function useWorkbenchRunSync({
           feasibility: '',
         },
         confidence: {
-          overall: NaN,
-          data_quality: NaN,
-          judgment_confidence: NaN,
-          commercial_confidence: NaN,
+          // FND-0280: null = not measured. NaN was JSON-unsafe (serialized as
+          // null downstream anyway, poisoning comparisons) and lied as a number.
+          overall: null,
+          data_quality: null,
+          judgment_confidence: null,
+          commercial_confidence: null,
         },
         branch_options: normalizedBranchOptions,
         commercial_decision: 'NONE',
