@@ -227,3 +227,38 @@ Evidence: `Docs/sims/assets/appstore_reviews_{hopper,expedia,booking}_2026-10-27
 
 Hopper's 5★ dominance (38/50) despite FTC settlement shows price-protection features still drive love — consumers want the watching; the agency-grade version (transparent decision desk) is the defensible form.
 
+
+---
+
+## TinyFish deep-dive (2026-10-28 — second pass on the four API sources)
+
+Four more automations (all COMPLETED; `tools/tinyfish_sweep.py`; evidence `Docs/sims/assets/tinyfish_{x_rescan,gplay_hopper,gplay_expedia,facebook_mobile}_2026-10-28.jsonl`).
+
+### X re-scan (fresh, Oct 2026)
+
+- **Odessia** (launched Oct 14 2026) — free AI travel concierge: plans AND books flights/hotels/restaurants by text, checks live prices, and **keeps monitoring for openings and better options after quoting** — the consumer twin of our watcher pattern, validated as the viral shape (22.5K/30K view posts; community benchmarks it against Meta MUSE: "ready to check out in seconds" vs "minutes and an unavailable option"). Competitor set addition; teardown-worthy.
+- **DiscoverAxel** — fast-growing AI flight/hotel deal agent (Render-backed). Second new name for the set.
+- **Widgety + AirnodeHub (Api3)** — agent-facing **travel data API** (cruise/tour datasets, "every response signed at the source") — direct market validation for R2-A: agent-callable data surfaces with provenance are being built and marketed as the missing layer for travel agents.
+- Meta-narrative post (Oct 28): "Agentic AI is quietly reshaping how we book travel as Google, Meta and Expedia race ahead."
+
+### Google Play reviews (Android side — RSS covered Apple only)
+
+- **Hopper**: same bait-price theme cross-platform ("advertised 150, at booking double the price"), plus **$15 charge to reach support** (paywalled support — new), connectivity-error double-charges, overbooking refund dead-ends.
+- **Expedia**: cancellation-policy opacity at the moment of canceling, "breakfast included" listing inaccuracy, rental-car counter fees tripling the reservation price, fights over 24-hour-window cancels, "airline credit is an absolute joke."
+- Confirms: the iOS themes are platform-independent, not Apple-artifacts. Guard list from §Source 7 stands unchanged.
+
+### Facebook (m.facebook retry — PARTIAL BREAKTHROUGH)
+
+The mobile search URL returned "Not Found", but public search snippets and group previews were accessible logged-out — **the previous hard-wall verdict is downgraded to partial**:
+
+- Practitioner sentiment from "Facebook For Travel Agents" group (public snippets): "using AI cautiously... curious what's working for you" (Oct 19); the contrarian: "made a personal decision not to use it — I believe it's created more trust with my clients." **Trust, not capability, is the adoption wedge.**
+- **Voice-agent-as-agency-tool is a live practitioner discussion** (the "AI agent phoned a Holiday Inn for event space and reported back" post: 74 reactions, 616 comments) — an intake/channel surface candidate beyond text.
+- "Claude just killed travel agents" engagement-bait (1,236 reactions, 5,168 comments) — displacement anxiety is the content genre; Waypoint's positioning is the antidote framing.
+- TravelJoy advocacy posts recur (consistent with source #4's table-stakes read).
+
+Full group content still requires an authenticated session — but the snippet layer is reachable, so this source can be mined incrementally without credentials.
+
+### Delta to the round-2 register
+
+- **R2-I (new)**: post-quote continuous monitoring as user-facing product (Odessia's shape) — our fare-drop watcher is internal-first; Odessia proves consumers reward *visible* ongoing monitoring. Owner-gate: whether the traveler-facing side of watching (not just operator cards) becomes a surface.
+- R2-A strengthened twice in one week (Widgety/AirnodeHub market signal + Odessia booking-loop).
