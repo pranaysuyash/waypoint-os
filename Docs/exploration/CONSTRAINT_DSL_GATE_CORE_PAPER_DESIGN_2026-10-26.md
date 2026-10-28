@@ -1,0 +1,12 @@
+
+## Round-2 academic sweep feed (2026-10-27)
+
+Source: `EXTERNAL_IDEAS_SWEEP_ROUND2_RESULTS_2026-10-27.md` §Source 5 (2025-26 benchmark + constraint-DSL sweep, ~20 papers digested). Five adoptable protocol ideas, ranked, with the papers that motivate each:
+
+1. **Two-tier lexicographic scoring with explicit zero-out** — report HARD-gate pass rate *before* preference scoring alongside per-constraint micro pass rates. Fills ChinaTravel's aggregate-CSR gap (it does not score pure zero-out); baseline-comparable to TravelPlanner's Final Pass Rate and TREK's feasibility criterion. Motivated by ChinaTravel (arXiv:2412.13682), TREK (2607.26977), CM-DPO's lexicographic objective (2610.09219).
+2. **Violation-severity margins** — graded violation magnitude (over-budget delta, time-window overflow) next to binary pass; distinguishes near-miss from catastrophic and doubles as user-facing explanation. Motivated by CM-DPO (severity-scaled training signal) and Solver-Aided Policy Compliance (Z3 counterexamples: arXiv:2603.20449).
+3. **Multi-turn gate-stability + priority-resolution split** — introduce constraints mid-planning with stated priorities (Flex-TravelPlanner protocol, arXiv:2506.04649) and score whether gates keep REVISED plans feasible (TripTide's disruption-revision finding: arXiv:2510.21329 — silent hard-violations creep in on revision). Maps directly to our reassessment/recompute paths.
+4. **Reusable ledger + pinned-version audit** — freeze plan-state ledgers once, re-audit across DSL versions; LLM-judge confined to a measured ambiguous-residue set. Controls the Policy-Loopholes (2609.14400) and Frozen-Judges (2609.34198) validity threats in one design. Our append-only audit-chain infrastructure is a natural fit.
+5. **Multi-traveler extension lane** — first constraint-validated group-trip benchmark: per-traveler budget satisfaction + Pareto/fairness vs utilitarian-sum (the LLM-default aggregation) and Choquet/Borda baselines, with aggregation-authority disclosure. The open gap: AI Tour Meeting (2607.18806) is the only multi-traveler travel work found and it validates no constraints. GroupConsensusOptimizer + FINANCIAL_BOUND budget bounds are the existing substrate.
+
+Threats-to-validity obligations adopted into this design: audit the constraint query set for ambiguity before gold-verdict collection (Policy Loopholes); deterministic gates preferred over LLM judges; if judges are used at all, pin versions + paired audit.

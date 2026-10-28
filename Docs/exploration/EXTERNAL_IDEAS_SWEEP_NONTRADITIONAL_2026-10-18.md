@@ -186,3 +186,21 @@ Verdict: TinyFish unblocks the login-walled sources (Reddit search API, X, Faceb
 Second automation (X search "AI travel agent", top results — evidence `Docs/sims/assets/tinyfish_x_search_2026-10-26.jsonl`). The X gap the REST sweep couldn't reach is closed. Competitor set for the teardown (source #3) is now concrete: **Navan** (corporate), **Expedia/Romie** (leisure), **Booking.com AI Trip Planner** (hotel-first), **Google Gemini/Search travel** (research-heavy, Canvas + AI Flight Deals), **Trip.com Trip.Planner** (multi-leg), **Hopper** (price-sensitive), **Mindtrip** (visual/collaborative), **GuideGeek** (messaging-based), **Travala** (on-chain), **AVA**, **Meta MUSE** (advisor wellness+planning). Also: Google shipped Canvas + AI Flight Deals + booking-assist (Nov 2025–Sep 2026) — the consumer-direct pressure the agencies feel is real and current.
 
 TinyFish verdict after two runs: reliable (both COMPLETED), structured results, browser-automation reach into login-walled surfaces. The remaining round-2 sources (Facebook groups, YouTube) can run as scripted automations on demand.
+
+## Round-2 EXECUTION COMPLETE (2026-10-27)
+
+**All round-2 sources swept — results in `EXTERNAL_IDEAS_SWEEP_ROUND2_RESULTS_2026-10-27.md`** (new companion doc; this file remains the master queue).
+
+Headline outcomes:
+- **Source 1 (master-list re-audit)**: counts were wrong three ways — true done ≈282 (not 211), total ≈1,942 (not 1,897); six shipped workstreams invisible to the inventory; README stale-count caveat updated with the corrected numbers + refresh requirement.
+- **Source 3 (competitors)**: Navan Cognition (S-1) is the closest analog; Layla is dead (domain now a Shopify store); no startup serves the agency back office — white space confirmed structurally.
+- **Source 4 (CRM reviews)**: commission reconciliation is the #1 practitioner pain at review scale (Tern markets an engine on it; Travefy shipped AI Smart Reconcile Sep 2026); WeTravel fund-hold distrust; group-payment gaps recur.
+- **Source 5 (academic)**: zero-out semantics validated in the TravelPlanner FPR lineage but NOT on ChinaTravel (aggregate CSR) — claimable gap; multi-traveler constraint-validated benchmark does not exist — open publication lane; 5 ranked protocol ideas for the constraint-gate paper.
+- **Source 9 (regulatory)**: India TCS + GST 2.0 = top obligations; jurisdiction-aware compliance layer on the quote/booking object = the architectural fix.
+- **Source 7 (app-store, 150 reviews)**: checkout price-mismatch, refund-after-cancelled-confirmation, date-mismatch classes map to concrete guards (quote-total re-verification, cancellation→refund SLA timers, cross-artifact date consistency).
+- **Source 8 (YouTube, TinyFish)**: advisor AI adoption mainstream + education-driven; hand-built automation tutorials corroborate the shipped surfaces.
+- **Source 6 (Facebook, TinyFish)**: hard login wall, zero content logged-out — honest negative, evidence recorded; requires owner decision on authenticated session.
+
+TinyFish tooling: `tools/tinyfish_sweep.py` (reusable, SSRF-guarded: https-only + research-host allowlist + DNS-pinning + no-redirect). Evidence files: `Docs/sims/assets/tinyfish_{youtube,facebook}_2026-10-27.jsonl`.
+
+New ideas register (R2-A…R2-H, owner-gated): recorded in the results doc §Consolidation.

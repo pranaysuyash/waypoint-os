@@ -17,11 +17,17 @@ in this repo:**
    intelligence, everyday practical knowledge, programmatic SEO, scoring
    indices, free tools, and data-acquisition strategy.
 
-3. **⚠️ Stale-count caveat:** the "211 done / 1,686 open" split is the APRIL
-   2026 count. A year of work has landed since (the P3 sweep, ops-readiness
-   wave, and parallel lanes closed or advanced many items). Re-audit the
-   actual completion state against current Docs/ + code before quoting the
-   number — and update the counts in the master list as you verify.
+3. **⚠️ Stale-count caveat (re-audited 2026-10-27):** the file's own numbers
+   disagree with each other and with reality: prose says 1,897 items, its
+   summary table says 1,903, and a line count finds ~1,942 bullets
+   (1,732 status-marked + 210 Content-Prism topics). The body actually marks
+   282 ✅ (+4 🟡), not 211. Do NOT quote "211 done / 1,686 open". Six
+   post-April workstreams (fare-drop decision card, constraint-engine
+   FINANCIAL_BOUND family, RAG semantic egress, work-intake classification,
+   WhatsApp/SMS messaging ingress, data-registry + customer-memory store +
+   ops runbooks) are shipped in code but have NO corresponding list items;
+   a one-pass inventory refresh must add them before any done/open total is
+   trustworthy. Full audit: `Docs/exploration/EXTERNAL_IDEAS_SWEEP_ROUND2_RESULTS_2026-10-27.md` §Source 1.
 
 **Provenance:** this README was created 2026-10-26 during the FND-0395
 supersession sweep — the READ-FIRST directive and master-list pointers
