@@ -17,17 +17,18 @@ in this repo:**
    intelligence, everyday practical knowledge, programmatic SEO, scoring
    indices, free tools, and data-acquisition strategy.
 
-3. **⚠️ Stale-count caveat (re-audited 2026-10-27):** the file's own numbers
-   disagree with each other and with reality: prose says 1,897 items, its
-   summary table says 1,903, and a line count finds ~1,942 bullets
-   (1,732 status-marked + 210 Content-Prism topics). The body actually marks
-   282 ✅ (+4 🟡), not 211. Do NOT quote "211 done / 1,686 open". Six
-   post-April workstreams (fare-drop decision card, constraint-engine
-   FINANCIAL_BOUND family, RAG semantic egress, work-intake classification,
-   WhatsApp/SMS messaging ingress, data-registry + customer-memory store +
-   ops runbooks) are shipped in code but have NO corresponding list items;
-   a one-pass inventory refresh must add them before any done/open total is
-   trustworthy. Full audit: `Docs/exploration/EXTERNAL_IDEAS_SWEEP_ROUND2_RESULTS_2026-10-27.md` §Source 1.
+3. **Count status (refreshed 2026-10-27):** the April numbers (1,897 / 1,903 /
+   211 done) were all wrong and have been REPLACED by a script recount:
+   `tools/master_list_recount.py` counts the actual file — **55 categories,
+   1,982 items, 291 ✅ done / 4 🟡 / 765 ❌ / 681 🔵 / 241 Content-Prism
+   topics** (both summary tables + Key Insights now regenerated from that
+   count; the six post-April shipped workstreams — fare-drop decision card,
+   constraint-engine FINANCIAL_BOUND family + zero-out, RAG semantic egress,
+   work-intake classification, WhatsApp/SMS messaging ingress, data-registry +
+   customer-memory store + ops runbooks — now have ✅ list items with artifact
+   paths). Re-run the recount tool after any edit to the master list instead
+   of hand-maintaining the tables. Audit trail:
+   `Docs/exploration/EXTERNAL_IDEAS_SWEEP_ROUND2_RESULTS_2026-10-27.md` §Source 1.
 
 **Provenance:** this README was created 2026-10-26 during the FND-0395
 supersession sweep — the READ-FIRST directive and master-list pointers

@@ -242,6 +242,8 @@ Each section lists specific research tasks that could be executed as standalone 
 
 ---
 
+- ✅ **Fare-drop decision card** (2026-10-21): post-booking fare-drop detection → operator decision card (refund vs upgrade w/ commission impact), 7-state disposition ledger, tracking-only invariant (never reprices/moves money). `Docs/exploration/FARE_DROP_DECISION_CARD_TASK_PACKAGE_2026-10-21.md`, `spine_api/services/fare_drop_disposition.py`, `spine_api/routers/price_lock.py`, `frontend/src/components/workspace/FareDropDecisionCard.tsx`
+- ✅ **Durable agency-scoped customer memory store** (2026-10-27): migrated from in-memory to SQL; FND-0060 closed. `spine_api/routers/customer_memory.py`, `Docs/exploration/CUSTOMER_MEMORY_DURABLE_STORE_EXPLORATION_2026-09-15.md`
 ## D. INDUSTRY DOMAIN DEEP DIVES
 
 ### D1. Already Deep-Dived ✅
@@ -375,6 +377,7 @@ Each section lists specific research tasks that could be executed as standalone 
 
 ---
 
+- ✅ **RAG semantic egress (default-ON)** (2026-10-22): mounted + hardened retrieval (embedding contract, FTS5, rag_runs lineage, PII-strip+forensics); failure semantics = raise-on-index / sparse-only-on-query. `src/rag/grounding.py`, `src/rag/indexer.py`, `src/memory/retriever.py`, router `/api/v1/rag`
 ## F. BUSINESS MODEL & GROWTH
 
 ### F1. Pricing & Monetization ✅/🟡
@@ -547,6 +550,7 @@ Each section lists specific research tasks that could be executed as standalone 
 
 ---
 
+- ✅ **Data-registry layer: currency + holidays** (2026-10-25): shared currency token table (`_currency_code` delegates) + holiday registry (curated aliases + `holidays` pkg lunar dates; "during Diwali" → soft date_window hypothesis via P-3 seasonality). `src/intake/currency_registry.py`, `src/intake/holiday_registry.py`
 ## L. GEOGRAPHIC & CULTURAL RESEARCH
 
 ### L1. India ❌ (Priority Market)
@@ -837,6 +841,7 @@ Each section lists specific research tasks that could be executed as standalone 
 
 ---
 
+- ✅ **Work-intake classification (W1–W5 × 9 axes)** (2026-10-25): choke point `work_intake.py`, `/api/v1/work-items` queue + event-sourced PATCH lifecycle, 14 doors + all 6 W4 writers, FE workbench surface. `spine_api/services/work_intake.py`
 ## T. DOCUMENT & CONTENT MANAGEMENT RESEARCH
 
 ### T1. Travel Documents ❌
@@ -967,6 +972,7 @@ Each section lists specific research tasks that could be executed as standalone 
 
 ---
 
+- ✅ **Messaging ingress (WhatsApp/SMS) SYSTEM-READY** (2026-10-26): webhook/store/concierge/dispatch live; pmid idempotency, statuses[] delivery truth, pre-flight guards, /channel-status flip-check; key flip = operator step. `spine_api/services/messaging_webhooks.py` (Twilio/Meta Cloud ingress + idempotency)
 ## X. REPORTING, ANALYTICS & BUSINESS INTELLIGENCE RESEARCH
 
 ### X1. Agency Reporting Needs ❌
@@ -1678,50 +1684,50 @@ Every topic below follows this structure:
 
 | Category | Total Items | ✅ Done | ❌ Open | 🔵 New |
 |----------|------------|---------|--------|--------|
-| A. Market & Competitive | 25 | 3 | 16 | 6 |
-| B. Customer & User | 38 | 5 | 25 | 8 |
-| C. Product & Features | 52 | 6 | 33 | 13 |
-| D. Industry Domain | 40 | 8 | 21 | 11 |
-| E. Technology | 22 | 5 | 13 | 4 |
-| F. Business Model | 28 | 4 | 16 | 8 |
-| G. UX & Design | 13 | 3 | 8 | 2 |
-| H. Operations | 9 | 1 | 7 | 1 |
-| I. Legal & Regulatory | 15 | 2 | 10 | 3 |
-| J. Experimental & Frontier | 25 | 2 | 0 | 23 |
-| K. Data & Analytics | 11 | 2 | 4 | 5 |
-| L. Geographic & Cultural | 36 | 0 | 27 | 9 |
-| M. Partnerships & Ecosystem | 18 | 0 | 11 | 7 |
-| N. Sustainability & Social Impact | 10 | 0 | 0 | 10 |
-| O. Workforce & Talent | 9 | 0 | 0 | 9 |
-| P. Behavioral Economics & Psychology | 10 | 0 | 0 | 10 |
-| Q. Vendor & Supplier Operations | 50 | 2 | 38 | 10 |
-| R. Booking Lifecycle | 42 | 0 | 33 | 9 |
-| S. Agent Workflow & Productivity | 23 | 0 | 16 | 7 |
-| T. Document & Content Management | 27 | 0 | 22 | 5 |
-| U. Sales, Revenue & CRM | 26 | 0 | 20 | 6 |
-| V. Services & Service Design | 21 | 2 | 13 | 6 |
-| W. Notifications, Alerting & Automation | 13 | 0 | 0 | 13 |
-| X. Reporting & Business Intelligence | 15 | 0 | 11 | 4 |
-| Y. Branding, Marketing & Agency Growth | 19 | 0 | 14 | 5 |
-| Z. Scenario & Edge Case | 20 | 3 | 12 | 5 |
-| AA. Inventory & Availability | 8 | 0 | 6 | 2 |
-| AB. Migration & Onboarding | 9 | 0 | 7 | 2 |
-| AC. Quality Assurance & Testing | 8 | 0 | 6 | 2 |
-| AD. Travel-Specific Knowledge Domains | 37 | 0 | 26 | 11 |
-| AE. SEO, Content & Pre-Launch Ranking | 147 | 0 | 68 | 79 |
-| AF. Content Topics from Research (A–AD) | 73 | 0 | 0 | 73 |
-| AG. Content Prism (3-Audience Strategy) | 165 | 0 | 0 | 165 |
-| **TOTAL** | **1,153** | **48** | **523** | **582** |
+| A. MARKET & COMPETITIVE INTELLIGENCE | 52 | 3 | 26 | 10 |
+| B. CUSTOMER & USER RESEARCH | 45 | 7 | 27 | 11 |
+| C. PRODUCT & FEATURE RESEARCH | 90 | 12 | 51 | 16 |
+| D. INDUSTRY DOMAIN DEEP DIVES | 67 | 12 | 40 | 15 |
+| E. TECHNOLOGY & ARCHITECTURE RESEARCH | 35 | 8 | 22 | 5 |
+| F. BUSINESS MODEL & GROWTH | 40 | 6 | 23 | 11 |
+| G. UX & DESIGN RESEARCH | 14 | 3 | 8 | 3 |
+| H. OPERATIONAL & ORGANIZATIONAL RESEARCH | 11 | 1 | 9 | 1 |
+| I. LEGAL & REGULATORY RESEARCH (GLOBAL) | 21 | 3 | 8 | 3 |
+| J. EXPERIMENTAL & FRONTIER RESEARCH | 26 | 3 | 0 | 23 |
+| K. DATA & ANALYTICS RESEARCH | 13 | 3 | 5 | 5 |
+| L. GEOGRAPHIC & CULTURAL RESEARCH | 43 | 0 | 36 | 7 |
+| M. PARTNERSHIPS & ECOSYSTEM RESEARCH (GLOBAL) | 19 | 0 | 13 | 6 |
+| N. SUSTAINABILITY & SOCIAL IMPACT RESEARCH 🔵 | 10 | 0 | 0 | 10 |
+| O. WORKFORCE & TALENT RESEARCH 🔵 | 9 | 0 | 0 | 9 |
+| P. BEHAVIORAL ECONOMICS & PSYCHOLOGY RESEARCH 🔵 | 10 | 0 | 0 | 10 |
+| Q. VENDOR & SUPPLIER OPERATIONS RESEARCH | 54 | 2 | 40 | 10 |
+| R. BOOKING LIFECYCLE RESEARCH | 40 | 0 | 31 | 9 |
+| S. AGENT WORKFLOW & PRODUCTIVITY RESEARCH | 25 | 1 | 18 | 6 |
+| T. DOCUMENT & CONTENT MANAGEMENT RESEARCH | 28 | 0 | 23 | 5 |
+| U. SALES, REVENUE & CRM RESEARCH | 26 | 0 | 20 | 6 |
+| V. SERVICES & SERVICE DESIGN RESEARCH | 23 | 1 | 17 | 5 |
+| W. NOTIFICATION, ALERTING & AUTOMATION RESEARCH | 14 | 1 | 0 | 13 |
+| X. REPORTING, ANALYTICS & BUSINESS INTELLIGENCE RESEARCH | 15 | 0 | 11 | 4 |
+| Y. BRANDING, MARKETING & AGENCY GROWTH RESEARCH | 20 | 0 | 16 | 4 |
+| Z. SCENARIO & EDGE CASE RESEARCH | 22 | 3 | 16 | 3 |
+| AA. INVENTORY & AVAILABILITY RESEARCH | 8 | 0 | 6 | 2 |
+| AB. MIGRATION & ONBOARDING RESEARCH | 12 | 0 | 10 | 2 |
+| AC. QUALITY ASSURANCE & TESTING RESEARCH | 8 | 0 | 6 | 2 |
+| AD. TRAVEL-SPECIFIC KNOWLEDGE DOMAINS | 43 | 0 | 32 | 11 |
+| AE. SEO, CONTENT & PRE-LAUNCH RANKING RESEARCH | 144 | 0 | 92 | 52 |
+| AF. CONTENT TOPICS DERIVED FROM RESEARCH AREAS (A–AD) | 71 | 0 | 0 | 71 |
+| AG. CONTENT PRISM STRATEGY: ONE TOPIC → THREE AUDIENCES | 151 | 0 | 0 | 13 |
+| **TOTAL** | **1209** | **69** | **606** | **363** |
 
 ---
 
 ## Key Insights
 
-**1,105 research items are open or completely new** (out of 1,153 total).
+**969 research items are open or completely new** (out of 1209 counted in A–AG; figures regenerated 2026-10-27 from actual file content via tools/master_list_recount.py).
 
-The existing research (48 items) is deep on **internal product architecture, industry domain theory, and scenario documentation**, but the project has massive gaps across every operational, customer-facing, and market-facing dimension.
+The existing research (69 items) is deep on **internal product architecture, industry domain theory, and scenario documentation**, but the project has massive gaps across every operational, customer-facing, and market-facing dimension.
 
-**The SEO + Content Prism opportunity is enormous**: Sections AE, AF, and AG contain **385 content-ready research angles** that can be turned into blog posts, guides, free tools, templates, and programmatic pages — all ranking BEFORE launch. The **Content Prism** (AG) means every single topic generates **3 pieces of content** (traveler + agent + vendor), tripling surface area. The programmatic SEO angles (AE5) alone could generate **40,000+ pages** from destination×nationality visa content. The vendor flywheel (AG3) creates a self-reinforcing loop: vendor content → shared with agencies → agencies discover us.
+**The SEO + Content Prism opportunity is enormous**: Sections AE, AF, and AG contain **the content-ready research angles** that can be turned into blog posts, guides, free tools, templates, and programmatic pages — all ranking BEFORE launch. The **Content Prism** (AG) means every single topic generates **3 pieces of content** (traveler + agent + vendor), tripling surface area. The programmatic SEO angles (AE5) alone could generate **40,000+ pages** from destination×nationality visa content. The vendor flywheel (AG3) creates a self-reinforcing loop: vendor content → shared with agencies → agencies discover us.
 
 ### Top 15 Highest-Leverage Research Gaps
 
@@ -2149,6 +2155,8 @@ The existing research (48 items) is deep on **internal product architecture, ind
 
 ---
 
+- ✅ **Ops-readiness wave** (2026-10-26): backup/restore tools + VERIFIED drill (36.9MB, counts match); rollback drill on restored scratch; FORCE-RLS vs pg_dump BYPASSRLS backup-role finding; incident runbook from 5 recorded failure classes; departure-board flag-gated. `Docs/runbooks/DATABASE_BACKUP_RESTORE_2026-10-26.md`, `Docs/runbooks/INCIDENT_RESPONSE_2026-10-26.md`
+- ✅ **Constraint-engine FINANCIAL_BOUND family + zero-out rule** (2026-10-27): cost arithmetic (HARD), mixed currencies (HARD), provenance (SOFT), partial-costing advisory, budget bound gated on budget_currency; hard violations zero the consensus composite → INFEASIBLE (TravelPlanner-FPR semantics). `src/decision/constraint_engine.py`, `src/decision/group_consensus.py`, `spine_api/routers/constraints.py`, `Docs/exploration/CONSTRAINT_DSL_GATE_CORE_PAPER_DESIGN_2026-10-26.md`
 ## AP. OPERATIONAL CONTINUITY & RESILIENCE RESEARCH
 
 > **Source**: DR_SPEC docs, crisis specs, operational continuity research tracks, and operational logic specs on bankruptcy, temporal drift, supplier dark patterns — not well-captured in the master list.
@@ -2177,6 +2185,7 @@ The existing research (48 items) is deep on **internal product architecture, ind
 
 ---
 
+- ✅ **Audit-chain hardening (topic 51a, all 4 gaps)** (2026-10-27): head-hash anchoring + witness divergence check; caused_by causal linkage + why() reader; trim-safety closure (chaining primitive + shared writer/verifier hash). `spine_api/services/audit_head_anchor.py`, `spine_api/services/audit_causality.py`, `spine_api/services/audit_chain_hash.py`, `Docs/exploration/AUDIT_CHAIN_GAP_AUDIT_2026-10-26.md`
 ## AQ. COMMUNICATION & SENTIMENT RESEARCH
 
 > **Source**: COMM_SPEC docs on mass notification, sentiment recovery, stakeholder escalation — plus omnichannel docs. Goes deeper than section C2 of the master list.
@@ -2855,17 +2864,17 @@ The existing research (48 items) is deep on **internal product architecture, ind
 
 | Category | Total Items | ✅ Done | ❌ Open | 🔵 New |
 |----------|------------|---------|--------|--------|
-| A–AG (Original) | 1,153 | 48 | 523 | 582 |
-| AH–AV (Cross-Reference Expansion) | 317 | 158 | 83 | 76 |
-| AW–AX (Destination Intelligence Layer) | 113 | 5 | 52 | 56 |
-| AY (Everyday Practical Intelligence) | 175 | 0 | 0 | 175 |
-| AZ (Programmatic Content at Scale) | 45 | 0 | 0 | 45 |
+| A–AG (Original) | 1209 | 69 | 606 | 363 |
+| AH–AV (Cross-Reference Expansion) | 403 | 214 | 110 | 49 |
+| AW–AX (Destination Intelligence Layer) | 106 | 8 | 43 | 41 |
+| AY (Everyday Practical Intelligence) | 127 | 0 | 0 | 127 |
+| AZ (Programmatic Content at Scale) | 34 | 0 | 0 | 34 |
 | BA (Destination Scoring & Indices) | 26 | 0 | 0 | 26 |
 | BB (Mega Free Tools) | 18 | 0 | 0 | 18 |
-| BC (Content Prism — Everyday Topics) | 30 | 0 | 0 | 30 |
-| BD (Data Acquisition Strategy) | 20 | 0 | 0 | 20 |
-| BE (Multi-Tier Extraction Architecture) | 6 | 0 | 0 | 6 |
-| **GRAND TOTAL** | **1,903** | **211** | **658** | **1,034** |
+| BC (Content Prism — Everyday Topics) | 30 | 0 | 0 | 0 |
+| BD (Data Acquisition Strategy) | 23 | 0 | 0 | 23 |
+| BE (Multi-Tier Extraction Architecture) | 6 | 0 | 6 | 0 |
+| **GRAND TOTAL** | **1982** | **291** | **765** | **681** |
 
 ### The Flywheel Effect
 
@@ -2877,9 +2886,9 @@ Every destination data point creates **5 assets simultaneously**:
 4. **Programmatic page**: Destination × topic → thousands of indexed pages → search dominance
 5. **Content Prism triple**: Traveler + Agent + Vendor angle → 3x content surface area
 
-At 1,897 research items, with programmatic SEO potential of 40,000+ pages (visa nationality×country, destination×topic), and Content Prism tripling every topic — the total content surface area approaches **120,000+ unique publishable assets**.
+At 1982 research items (2026-10-27 recount), with programmatic SEO potential of 40,000+ pages (visa nationality×country, destination×topic), and Content Prism tripling every topic — the total content surface area approaches **120,000+ unique publishable assets**.
 
-### BE. MULTI-TIER EXTRACTION ARCHITECTURE (P0 — Blocks Real-World Usage) ❌
+## BE. MULTI-TIER EXTRACTION ARCHITECTURE (P0 — Blocks Real-World Usage) ❌
 
 > **Full spec**: `Docs/research/EXTRACTION_MULTI_TIER_ARCHITECTURE_2026-04-27.md`
 > **Live evidence**: Singapore scenario (2026-04-27) — regex extraction produced garbage, NB01 escalated, pipeline hung
