@@ -1653,6 +1653,12 @@ app.include_router(recoveries_router.router, dependencies=[Depends(_auth_or_skip
 app.include_router(journey_graph_router.public_router)
 from spine_api.routers import ivr_gateway as ivr_gateway_router  # noqa: E402
 app.include_router(ivr_gateway_router.public_router)
+# B2 (map §18): vendor quote inbox — the webhook is public BUT default-deny
+# (401 unless VENDOR_INBOX_WEBHOOK_SECRET is set and X-Webhook-Token matches);
+# the operator GET surface is JWT-gated. Same posture as the B1 messaging split.
+from spine_api.routers import vendor_inbox as vendor_inbox_router  # noqa: E402
+app.include_router(vendor_inbox_router.public_router)
+app.include_router(vendor_inbox_router.router, dependencies=[Depends(_auth_or_skip)])
 # PA-09 (2026-09-06): distribution / negotiation / crisis_ops / subagent_payouts
 # were mounted with NO include-level auth dependency — subagent_payouts in
 # particular is the advisor-payout (money-adjacent) surface. All four now use

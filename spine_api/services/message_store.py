@@ -65,8 +65,14 @@ def append_message(
     provider_message_id: Optional[str] = None,
     reply_to_provider_message_id: Optional[str] = None,
     received_at: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Persist one channel message. Returns the stored record."""
+    """Persist one channel message. Returns the stored record.
+
+    ``metadata`` (B2, FND-0397): optional channel-specific structured signals
+    (e.g. the vendor-inbox quote extraction) stored verbatim on the row —
+    display/annotation data only, never consumed as authoritative facts.
+    """
     record: Dict[str, Any] = {
         "message_id": f"msg_{uuid4().hex[:12]}",
         "provider_message_id": provider_message_id,
@@ -82,6 +88,8 @@ def append_message(
         "filename": filename,
         "received_at": received_at or datetime.now(timezone.utc).isoformat(),
     }
+    if metadata:
+        record["metadata"] = metadata
     path = _agency_path(agency_id)
     with _WRITE_LOCK:
         with path.open("a", encoding="utf-8") as fh:
