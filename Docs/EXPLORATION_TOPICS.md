@@ -1848,6 +1848,15 @@ These are **blocking** for moving from notebooks to real implementation.
 - Target hosted database provider (Fly Postgres vs AWS RDS vs Supabase) and connection pool sizing.
 - Backup RTO/RPO SLA definitions and verification protocol for Art. 17 GDPR tombstones during point-in-time recovery.
 
+### 52. Spatial Visual "Aha!" Paradigms — Isometric 2.5D, 3D Geodesic Cartography & Chrono-Spatial Time Geography 🟢
+**Status**: Researched & Shipped (2026-10-30). See [E47_SPATIAL_AHA_MOMENTS_ISOMETRIC_3D_CARTOGRAPHY_2026-10-30.md](exploration/E47_SPATIAL_AHA_MOMENTS_ISOMETRIC_3D_CARTOGRAPHY_2026-10-30.md).
+
+**Overview**: Moving beyond flat diagnostic checklist cards to tactile, spatial, and physics-driven interactive artifacts on the B2C GTM wedge (`/itinerary-checker`). Spans four core spatial visual paradigms: (1) True 2.5D Isometric Terminal Cutaway (`IsometricAirportCutaway`) with animated passenger/baggage particle physics proving physical connection infeasibility at Heathrow/CDG under holding delays; (2) 3D Geodesic Spherical Cartography (`Interactive3DGlobeFlightArc`) with rotatable orthographic globe, day/night solar terminator, atmospheric scattering glow, and parabolic Great-Circle altitude arcs; (3) 2.5D Chrono-Spatial Space-Time Prisms (Hägerstrand time geography) demonstrating stamina exhaustion cones for multi-gen/elderly parties; (4) Isometric Architectural Hotel Sanctuary (`IsometricHotelSanctuary`) illustrating room tier arbitrage (standard OTA courtyard vs. Virtuoso Eiffel view terrace suite with annotated complimentary VIP amenities).
+
+**Key Questions**:
+- Performance & bundle impact: zero-dependency Canvas and CSS 3D matrix math (`preserve-3d`, `rotateX(60deg) rotateZ(-45deg)`) achieving 60fps on mobile without WebGL context overhead.
+- Conversion telemetry: tracked via Product B event store (`spatial_visual_engaged`, `particle_delay_simulated`, `globe_rotated`, `perk_claimed`).
+
 - 49 (2026-10-21, Sim #4): LLM-lane destination resolver vs epithet homonyms ('Solo'/'Young') — does the agentic context resolver (f2b14aef) correct them with the LLM lane on? Owner-gated posture sim (X-09).
 - 50 (2026-10-21, Sim #4): Jev triage intent taxonomy — passport-expiry panic triaged `general_inquiry` with confidence 0.28 yet routed SENIOR_AGENT_DISPATCH; calibration/threshold review on the live jev lane (FND-0322 lineage).
 - 51 (2026-10-21, Sim #4): Suite-composition pollution (FND-0359) — bisection harness for order-dependent doc-extraction failures (dual-store/env class).

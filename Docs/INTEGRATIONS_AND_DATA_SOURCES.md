@@ -1,3 +1,8 @@
+> **SUPERSEDED (destination-intelligence dimension) 2026-10-30:** reference data graduated from
+> "maybe integrate later" to a governed platform layer — see `Docs/research/BD_DATA_GOVERNANCE_FRAMEWORK_2026-10-30.md`
+> and `Docs/research/DESTINATION_INTELLIGENCE_VISION_2026-04-26.md`. This doc's booking/GDS/CRM/WhatsApp
+> "don't integrate" verdicts REMAIN VALID. Historical MVP context only; its P1/P2 API table is not current scope.
+
 # Integrations and Data Sources
 
 **Date**: 2026-04-14

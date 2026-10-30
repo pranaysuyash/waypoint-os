@@ -1,5 +1,5 @@
 {
-  "route_count": 405,
+  "route_count": 409,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -306,6 +306,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/auth/request-email-verification",
+      "name": "post_request_email_verification",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/auth/request-password-reset",
       "name": "post_request_password_reset",
       "methods": [
@@ -334,6 +342,14 @@
       "name": "get_validate_code",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/verify-email",
+      "name": "post_verify_email",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },
@@ -2582,6 +2598,22 @@
       "name": "transition_trip_stage",
       "methods": [
         "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/vendor-inbox",
+      "name": "list_vendor_quotes",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/vendor-inbox/webhook",
+      "name": "vendor_inbox_webhook",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },

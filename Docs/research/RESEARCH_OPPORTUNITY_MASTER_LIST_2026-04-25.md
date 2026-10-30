@@ -4,6 +4,16 @@
 
 ---
 
+## Related Registries (cross-reference layer, 2026-10-30)
+
+This master list is ONE of three research registries. They are peers, not duplicates:
+
+1. **This file** — the program inventory (1,982 items, 55 categories; canonical counts via `tools/master_list_recount.py`).
+2. **`Docs/exploration/`** — executed exploration docs (115+); each cluster verdict in this file cites the doc that closed it (e.g., `AW3_SAFETY_CRIME_SOURCE_EVALUATION_2026-10-30.md`).
+3. **`Docs/review/EXPLORATION_RESEARCH_BACKLOG_2026-08-29.md`** — the exploration-idea backlog feeding future EXPLORE passes.
+
+Round-2 external sweep results: `Docs/exploration/EXTERNAL_IDEAS_SWEEP_ROUND2_RESULTS_2026-10-27.md`. Program README (READ-FIRST order): `Docs/research/README.md`.
+
 ## How to Read This Document
 
 - ✅ = Researched (docs exist, logic specs drafted)
@@ -2366,9 +2376,9 @@ The existing research (69 items) is deep on **internal product architecture, ind
 - ✅ Climate-adaptive itinerary engineering (feature spec exists — weather rerouting, AQI, wet-bulb monitoring)
 - ✅ Hyper-local weather pivot for events (OPS_SPEC exists — micro-climate at venue coordinates)
 - ✅ Weather data sources listed in AD6 (APIs, seasonal patterns)
-- ❌ **Weather API landscape evaluation**: Tomorrow.io, OpenWeather, Visual Crossing, Weatherbit, Copernicus, IBM Weather — cost, accuracy, coverage, granularity comparison
-- ❌ **Micro-climate data resolution**: City-level vs neighborhood-level vs venue-level — what granularity do agencies actually need?
-- ❌ **Historical weather pattern database**: 10-year weather profiles for top 500 destinations — structured data for trip planning
+- ✅ **[source eval: Docs/research/AW12_WEATHER_AQI_SOURCE_EVALUATION_2026-10-30.md]****Weather API landscape evaluation**: Tomorrow.io, OpenWeather, Visual Crossing, Weatherbit, Copernicus, IBM Weather — cost, accuracy, coverage, granularity comparison
+- ✅ **[eval: Docs/research/AW12_WEATHER_AQI_SOURCE_EVALUATION_2026-10-30.md — 11km sufficient for city pages; venue-level = paid tier]****Micro-climate data resolution**: City-level vs neighborhood-level vs venue-level — what granularity do agencies actually need?
+- ✅ **[build plan: Docs/research/AW12_WEATHER_AQI_SOURCE_EVALUATION_2026-10-30.md — ERA5 via Open-Meteo, ~1,500 calls/month refresh]****Historical weather pattern database**: 10-year weather profiles for top 500 destinations — structured data for trip planning
 - ❌ **Weather impact on trip satisfaction**: Quantified — how much does weather affect trip ratings? By trip type (beach vs city vs adventure)
 - 🔵 **Weather-aware pricing intelligence**: "Prices drop 30% when monsoon hits Bali" — correlating weather windows with fare/rate trends
 - 🔵 **Climate change trajectory by destination**: 10-year outlook — which destinations are getting hotter, wetter, more unpredictable?
@@ -2387,12 +2397,12 @@ The existing research (69 items) is deep on **internal product architecture, ind
 
 ### AW3. Crime & Safety Intelligence ❌
 - 🟡 Destination safety and risk data mentioned (AD1 — one line, no depth)
-- ❌ **Crime data sources by market**: Numbeo, OSAC (US State Dept), local police APIs, crowd-sourced safety apps — reliability and coverage
-- ❌ **Crime type mapping for travelers**: Petty theft hotspots, scam zones, pickpocket areas, no-go neighborhoods — structured by destination
+- ✅ **[source eval: Docs/research/AW3_SAFETY_CRIME_SOURCE_EVALUATION_2026-10-30.md]****Crime data sources by market**: Numbeo, OSAC (US State Dept), local police APIs, crowd-sourced safety apps — reliability and coverage
+- ✅ **[source eval: Docs/research/AW3_SAFETY_CRIME_SOURCE_EVALUATION_2026-10-30.md]****Crime type mapping for travelers**: Petty theft hotspots, scam zones, pickpocket areas, no-go neighborhoods — structured by destination
 - ❌ **Safety scoring methodology**: How to create a traveler-relevant safety score (not just crime rate — tourist-specific crime matters more)
 - ❌ **Time-of-day safety variation**: "Safe during day, avoid after dark" zones — temporal safety data
 - ❌ **Safety data by traveler type**: Solo female, LGBTQ+, visible minority, elderly — different risk profiles by destination
-- ❌ **Real-time safety alerts integration**: Government travel advisories (FCDO, State Dept, DFAT, MEA) — API access and freshness
+- ✅ **[source eval: Docs/research/AW3_SAFETY_CRIME_SOURCE_EVALUATION_2026-10-30.md — caveat: MEA/India machine-feed absent → page-monitoring only]****Real-time safety alerts integration**: Government travel advisories (FCDO, State Dept, DFAT, MEA) — API access and freshness
 - ❌ **Historical incident mapping**: "A tourist was robbed here 3 months ago" — crowdsourced + official data fusion
 - 🔵 **Safe route recommendation**: "Walk this way from your hotel to the restaurant — avoid that alley" — Google Maps + crime overlay
 - 🔵 **Safety briefing auto-generation**: Destination-specific safety briefings from crime data + cultural norms + current events
@@ -2842,7 +2852,7 @@ The existing research (69 items) is deep on **internal product architecture, ind
 - 🔵 **Academic data sources**: University tourism research, climate studies, public health data — for depth and credibility
 
 ### BD2. Data Processing & Quality 🔵
-- 🔵 **Data freshness requirements by type**: Weather = hourly, crime = monthly, cost = quarterly, visa = on-change — defining update cadences
+- ✅ **[governance matrix: Docs/research/BD_DATA_GOVERNANCE_FRAMEWORK_2026-10-30.md]****Data freshness requirements by type**: Weather = hourly, crime = monthly, cost = quarterly, visa = on-change — defining update cadences
 - 🔵 **Data normalization across sources**: Different scales, methodologies, currencies — standardization framework
 - 🔵 **Data accuracy verification**: How to validate crowdsourced vs official data — confidence scoring
 - 🔵 **Missing data interpolation**: What to do when data doesn't exist for a destination — proxy methods

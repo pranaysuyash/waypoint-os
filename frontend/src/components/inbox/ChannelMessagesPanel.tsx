@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MessageSquare, Phone, Mail } from 'lucide-react';
+import { Building2, MessageSquare, Phone, Mail } from 'lucide-react';
 
 // T6 (FND-0305): real channel-message feed for the inbox. Renders what the
 // messaging webhook persisted (spine_api/services/message_store.py) — the
@@ -25,11 +25,13 @@ const CHANNEL_ICON: Record<string, typeof MessageSquare> = {
   whatsapp: MessageSquare,
   sms: Phone,
   email: Mail,
+  vendor_email: Building2,
 };
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: 'WhatsApp',
   sms: 'SMS',
+  vendor_email: 'Vendor quote',
   email: 'Email',
 };
 
@@ -83,7 +85,7 @@ export default function ChannelMessagesPanel() {
 
       {messages.length === 0 ? (
         <p className='p-4 text-ui-sm text-[#8b949e]'>
-          No channel messages have arrived yet. Inbound WhatsApp/SMS messages received through the
+          No channel messages have arrived yet. Inbound WhatsApp/SMS messages and vendor quote emails received through the
           messaging webhook appear here for triage.
         </p>
       ) : (

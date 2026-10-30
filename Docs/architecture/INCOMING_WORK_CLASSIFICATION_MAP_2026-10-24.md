@@ -465,3 +465,54 @@ exactly the interrupted-work trap the supersession rule names — verify the REM
 not just the candidate's references.** The standing-broken things E1 targeted remain fixed: no
 origin bypasses, no unconditional fabricated session, no fabricated sample surface in the
 agency nav.
+
+---
+
+## 18. B2 vendor quote inbox SHIPPED (2026-10-26) — the reserved-door set is now empty
+
+The B2 build plan (§16) executed: vendors (DMCs, hotels, operators) email quotes to the
+agency; before this router those lived in operators' inboxes, invisible to the system.
+The B1 messaging-webhook pattern is mirrored exactly:
+
+- **`POST /api/v1/vendor-inbox/webhook`** (public_router, JWT-less): default-deny —
+  401 unless `VENDOR_INBOX_WEBHOOK_SECRET` is configured AND `X-Webhook-Token` matches
+  (constant-time). Accepts SendGrid Inbound Parse (multipart form) AND a plain JSON
+  envelope; providers and tests need not care which.
+- **Deterministic trip binding only**: explicit `trip_id` field, or a whole-token
+  `trip_*` id in subject/body, VALIDATED against the trip store. Destination-text
+  matching is deliberately absent (the origin-fabrication class). Nothing verifiable
+  → unbound row; the operator binds later.
+- **Honest extraction**: amounts/currency signals parsed deterministically into
+  message `metadata.extraction` (new optional `metadata` field on
+  `message_store.append_message`, additive) — labeled `unverified: True`; bare
+  numbers after a currency anchor inherit it with `inherited: True`; sub-1000 bare
+  numbers stay out ("Valid 14 days" never becomes an amount). Extraction NEVER
+  touches facts, packets, or the quotes read model — the money boundary holds;
+  quotes enter the read model exclusively through operator action.
+- **Idempotency**: Message-ID lookup guards the store row AND the work item (B1
+  contract).
+- **`vendor_quote_inbox` door retired from reserved → wired**: classification with
+  `text=None` (a quote email is a document, not an urgent message — urgency/PII
+  heuristics would misfire; same reasoning as the multimodal OCR leg),
+  `contact=vendor_email`, `channel=vendor_email`, origin=supply.
+- **Attachment content NOT parsed**: recorded (filename/mime) for the operator; the
+  multimodal document lane owns binary parsing — no parallel system.
+- **`GET /api/v1/vendor-inbox`** (auth router): operator view, channel-filtered,
+  route-map key added (`v1/vendor-inbox`). The channel-messages feed renders
+  `vendor_email` rows via the panel's new icon/label.
+
+**Config (key-ready)**: `VENDOR_INBOX_WEBHOOK_SECRET` (unset → webhook 401s, default-
+deny), `VENDOR_INBOX_AGENCY_ID` (falls back to `MESSAGING_WEBHOOK_AGENCY_ID`, then
+`webhook-unattributed`). SendGrid Inbound Parse setup is pure config once credentials
+exist — the same shape as B1's flip checklist.
+
+**Verification**: `tests/test_vendor_inbox.py` 7/7 (default-deny unconfigured +
+wrong-token, ingest+classify w/ lakh-grouping parse, Message-ID idempotency,
+deterministic binding incl. the no-fabrication case, extraction-stays-out-of-facts
+money-boundary pin, empty-payload ack). Regression: messaging 6/6 + work-intake 26/26
++ parity 2/2; FE inbox suites 56/56; tsc 0; eslint 0; route snapshots written.
+
+**DOOR LEDGER FINAL**: 14 wired doors + ALL reserved seams now wired (B1
+whatsapp_channel §16, B2 vendor_quote_inbox here) + 6 W4 writers + triage preview.
+The classification map's door universe is complete: every surface that accepts
+external input and creates an obligation records exactly one classified WorkItem.

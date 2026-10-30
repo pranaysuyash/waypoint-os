@@ -1014,3 +1014,9 @@ Restore: explicit `--target` only — the live DB name is refused unconditionall
 verifies restored row counts against the manifest. Connection via standard PG*
 env parsed from DATABASE_URL. Requires a BYPASSRLS role for FORCE-RLS tables.
 Procedure + drills: Docs/runbooks/DATABASE_BACKUP_RESTORE_2026-10-26.md
+
+### check_bundle_budget.py
+Shared-JS bundle budget guard (FND-0390): runs `next build`, parses the
+"First Load JS shared by all" total, fails over budget (default 200 kB,
+env-overridable via WAYPOINT_BUNDLE_BUDGET_KB). Run before merging
+landing/marketing changes. Measured 2026-10-26: 88.1 kB.

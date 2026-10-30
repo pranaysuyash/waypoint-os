@@ -1,3 +1,8 @@
+> **Cross-reference (2026-10-30):** this backlog feeds `Docs/exploration/` (executed docs) and peers with the
+> Destination Intelligence program inventory (`Docs/research/RESEARCH_OPPORTUNITY_MASTER_LIST_2026-04-25.md`,
+> 1,982 items / 55 categories). Before promoting any backlog item, check the master list for a matching
+> category item and the exploration dir for prior art.
+
 # Exploration & Research Backlog — Waypoint OS Persona Council Audit
 
 **Date:** 2026-08-29 · **Companion to:** `PERSONA_COUNCIL_MASTER_AUDIT_2026-08-29.md`,

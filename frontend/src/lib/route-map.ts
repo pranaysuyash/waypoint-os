@@ -275,6 +275,8 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   // B1 WhatsApp channel-status flip-check (commit 418f42ae landed the backend
   // route; this mapping closes the FND-0340 parity gap the gate caught).
   ["v1/messaging/channel-status", { backendPath: "api/v1/messaging/channel-status" }],
+  // B2 vendor quote inbox (map §18): operator GET over ingested vendor quotes.
+  ["v1/vendor-inbox", { backendPath: "api/v1/vendor-inbox" }],
   ["v1/work-items/{id}", { backendPath: "api/v1/work-items/{id}" }],
   ["v1/financial-ops/convert-currency", { backendPath: "api/v1/financial-ops/convert-currency" }],
   ["v1/counterfactual/replan-disruption", { backendPath: "api/v1/counterfactual/replan-disruption" }],

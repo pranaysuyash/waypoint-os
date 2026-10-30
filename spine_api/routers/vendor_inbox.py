@@ -69,6 +69,8 @@ _CURRENCY_MAP = {"₹": "INR", "rs": "INR", "inr": "INR", "$": "USD", "usd": "US
                  "€": "EUR", "eur": "EUR", "£": "GBP", "gbp": "GBP"}
 _UNIT_MULT = {"k": 1_000, "thousand": 1_000, "lakh": 100_000, "lac": 100_000,
               "crore": 10_000_000, "cr": 10_000_000}
+# Bare (currency-less) large numbers AFTER a currency anchor inherit it.
+_BARE_AMOUNT_RE = re.compile(r"\b(?P<amt>\d[\d,]{3,}(?:\.\d+)?)\b")
 
 
 def _verify_webhook_token(presented: Optional[str]) -> bool:
@@ -95,8 +97,14 @@ def _extract_email_address(raw: str) -> str:
 
 def _extract_amounts(text: str) -> List[Dict[str, Any]]:
     """Deterministic amount signals from the quote text. Stored as UNVERIFIED
-    metadata — never written to facts, packets, or the quotes read model."""
+    metadata — never written to facts, packets, or the quotes read model.
+
+    Currency-prefixed amounts anchor the running currency; bare large numbers
+    later in the same text inherit it (vendors write "INR 4,50,000 total,
+    extra 25000"). Inherited entries carry `inherited: True` so the operator
+    sees which signals are currency-explicit vs contextual."""
     signals: List[Dict[str, Any]] = []
+    last_currency: Optional[str] = None
     for m in _AMOUNT_RE.finditer(text or ""):
         cur_raw = m.group("cur").lower().rstrip(".")
         currency = _CURRENCY_MAP.get(cur_raw, cur_raw.upper())
@@ -112,6 +120,28 @@ def _extract_amounts(text: str) -> List[Dict[str, Any]]:
             "amount": amount,
             "raw": m.group(0).strip(),
         })
+        last_currency = currency
+
+    if last_currency:
+        # Second pass: bare amounts (≥4 digits, so "3 nights" stays out)
+        # inherit the running currency, flagged inherited for the operator.
+        anchored = [m for m in _AMOUNT_RE.finditer(text or "")]
+        last_end = anchored[-1].end() if anchored else 0
+        for m in _BARE_AMOUNT_RE.finditer(text or ""):
+            if m.start() < last_end:
+                continue  # already captured by a currency-prefixed match
+            try:
+                amount = float(m.group("amt").replace(",", ""))
+            except ValueError:
+                continue
+            if amount < 1000:
+                continue
+            signals.append({
+                "currency": last_currency,
+                "amount": amount,
+                "raw": m.group(0).strip(),
+                "inherited": True,
+            })
     return signals[:20]  # bounded: a quote email does not carry 20 amounts
 
 

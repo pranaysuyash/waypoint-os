@@ -72,3 +72,15 @@ rationale, falsifier, and rollback.
   stays gated on X-09 spend authorization (the only true owner-gate left).
   Commit authorization remains explicitly owner-only (git safety rule) — the
   Sim #3+4 artifact set stays uncommitted until you say so.
+
+## TRV-DP-06 (decided 2026-10-30, DELEGATED per TRV-DP-05 ruling — reversible design/ops decisions are the agent's)
+
+Decision records for items previously listed as owner-gated that the delegated-authority ruling places under agent authority (reversible, no money movement, no credentials, no ADR-posture change). Owner revisit triggers stated per item.
+
+- **D1 — Dependency advisories fixed (DONE):** networked `pip-audit` on the exported lock (554 requirements) found the true advisory set behind the scanner's offline "6 pkgs/41 advisories" over-match: **dnspython 2.8.0 → 2.9.1 (CVE-2026-114605)** and **tornado 6.5.10 → 6.6 (CVE-2026-115927/116577/116578)**. Upgraded via `uv lock --upgrade-package` + `uv sync`; verified `tests/test_auth_security.py` + `test_auth_integration.py` + `test_public_proposals.py` 81/81 (dnspython sits under email-validator → auth path). Revisit: none needed; CI advisory gate should re-run pip-audit monthly.
+- **D2 — `vm.test` companion flag: CLOSED as stale pointer.** No referent exists anywhere in the tree (swept src/, spine_api/, tests/, tools/, frontend/, Docs/). The queue item predates renames; nothing to suppress or restructure. Revisit: only if a future FE test-infra flag of that name reappears.
+- **D3 — Backup history scrub: KEEP (no scrub).** `Docs/backups/*.sql.gz` re-verified against the 2026-10-24 assessment (store event 746): synthetic/test data only, untracked, `Docs/backups/` gitignored, never pushed. Deleting history violates the documentation-preservation rule for zero risk reduction. Revisit trigger: if backups are ever pushed or acquire real data → scrub + rotate immediately.
+- **D4 — Registry cross-references added (DONE):** master list ↔ exploration backlog ↔ exploration docs now cross-point (additive headers); `Docs/INTEGRATIONS_AND_DATA_SOURCES.md` carries the BD-framework supersedence header. Revisit: none.
+- **D5 — Research clusters #1-#3 EXECUTED (DONE):** AW3 safety/crime source eval, AW1/AW2 weather+AQI source eval, BD data-governance framework — three dated docs under `Docs/research/`, 7 master-list items flipped to ✅ with citations, canonical counts refreshed (298 done / 1,982). Revisit: the remaining open sub-items are recorded in each doc.
+
+Still owner-only (unchanged): DP-04a (vendor contract = money), DP-04b (Meta credentials), 51c ADR (doctrine posture — pointer to existing Draft A/B docs), disk recovery menu (protected paths), Facebook authenticated session (credentials).

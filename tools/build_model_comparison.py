@@ -377,6 +377,31 @@ def main() -> int:
         status, why = RUNS_STATUS.get(f.name, ("unclassified", ""))
         lines.append(f"| {f.name} | {n} | {status} | {why} |")
 
+    # Sheet 4b: pre-graded ladder arms (FND-0295 resolution) — grades file
+    # carries its own P/R/F1 per arm (whitespace-separated); surfaced verbatim
+    # so the 284-model std_all2 ladder is in the sheet, not orphaned in a txt.
+    ladder_file = RUNS / "grades_std_all2_integrity.txt"
+    if ladder_file.exists():
+        ladder_rows: list[tuple[str, str, str, str]] = []
+        for line in ladder_file.read_text(encoding="utf-8").splitlines():
+            parts = line.split()
+            if len(parts) != 6 or parts[0].startswith("run::arm"):
+                continue
+            arm = parts[0].replace("records_or_std_all2.jsonl::", "")
+            ladder_rows.append((arm, parts[1], parts[3], parts[4]))
+        if ladder_rows:
+            lines += [
+                "",
+                "## Sheet 4b — std_all2 integrity ladder (284-model expansion, pre-graded)",
+                "",
+                "Parsed verbatim from `grades_std_all2_integrity.txt` (P, F1, sev✓ per arm).",
+                "",
+                "| Arm | P | F1 | sev✓ |",
+                "|---|---|---|---|",
+            ]
+            for arm, p_, f1, sev in ladder_rows:
+                lines.append(f"| {arm} | {p_} | {f1} | {sev} |")
+
     lines += [
         "",
         "## Failure / ops log (all documented, nothing hidden)",

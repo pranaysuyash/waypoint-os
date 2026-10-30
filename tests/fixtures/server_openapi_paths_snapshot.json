@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 368,
+  "openapi_path_count": 372,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -39,10 +39,12 @@
     "/api/auth/logout",
     "/api/auth/me",
     "/api/auth/refresh",
+    "/api/auth/request-email-verification",
     "/api/auth/request-password-reset",
     "/api/auth/signup",
     "/api/auth/test-token",
     "/api/auth/validate-code/{code}",
+    "/api/auth/verify-email",
     "/api/booking-tasks/{trip_id}",
     "/api/booking-tasks/{trip_id}/generate",
     "/api/booking-tasks/{trip_id}/{task_id}",
@@ -294,6 +296,8 @@
     "/api/v1/trips/{trip_id}/quotes/retail",
     "/api/v1/trips/{trip_id}/recoveries",
     "/api/v1/trips/{trip_id}/stage",
+    "/api/v1/vendor-inbox",
+    "/api/v1/vendor-inbox/webhook",
     "/api/v1/visa-radar/check",
     "/api/v1/visa-radar/{trip_id}/requirements",
     "/api/v1/work-items",

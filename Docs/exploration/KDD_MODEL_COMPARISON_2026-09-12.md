@@ -82,6 +82,7 @@ re-pull via `ollama pull <id>`.
 |---|---|---|---|
 | records.jsonl | 175 | superseded | v1 full matrix pre-fix (175 rows; incl. fabricated default-flags) |
 | records_envloader_smoke.jsonl | 6 | unclassified |  |
+| records_final.jsonl | 144 | unclassified |  |
 | records_final_patterns.jsonl | 350 | valid-reference | post-fix pattern matrix — pattern grades of record |
 | records_final_single.jsonl | 280 | valid-reference | post-fix variance run: 3 passes × mini+luna |
 | records_hf1_gptoss_cheapest.jsonl | 70 | unclassified |  |
@@ -98,6 +99,9 @@ re-pull via `ollama pull <id>`.
 | records_hf2_llama70b.jsonl | 70 | unclassified |  |
 | records_hf2_qwen235b.jsonl | 70 | unclassified |  |
 | records_hf2_qwen35_9b.jsonl | 70 | unclassified |  |
+| records_jev.jsonl | 108 | unclassified |  |
+| records_jev2.jsonl | 108 | unclassified |  |
+| records_jevsmoke.jsonl | 24 | unclassified |  |
 | records_ladder.jsonl | 1225 | superseded | pre-fix 19-model ladder (replaced by ladder2 post-fix; kept for lineage) |
 | records_ladder2.jsonl | 1190 | valid-reference | post-fix 17-model ladder — the API grades of record |
 | records_loc_aya_8b.jsonl | 70 | valid-reference | deleted model, grade preserved |
@@ -109,93 +113,323 @@ re-pull via `ollama pull <id>`.
 | records_loc_qwen35_4b.jsonl | 70 | valid-reference | new-gen deleted model, grade preserved |
 | records_loc_qwen3_4b.jsonl | 15 | partial-killed | 15/70 rows — run killed per owner load directive |
 | records_local_ladder.jsonl | 140 | superseded | overwritten twice by tag reuse (retains 12b+mistral grades) |
+| records_nano_ctl.jsonl | 108 | unclassified |  |
 | records_ollama.jsonl | 105 | valid-reference | qwen2.5vl:7b 2-pass run (vision-coupled keeper) |
 | records_ollamasmoke.jsonl | 6 | smoke | 3-record ollama provider smoke |
 | records_or1_gptoss.jsonl | 70 | unclassified |  |
 | records_or1_llama8b.jsonl | 70 | unclassified |  |
 | records_or2_gptoss_nitro.jsonl | 70 | unclassified |  |
 | records_or2_variants.jsonl | 140 | unclassified |  |
+| records_or_frontier.jsonl | 105 | unclassified |  |
+| records_or_frontier2.jsonl | 65 | unclassified |  |
 | records_or_newcheap.jsonl | 350 | unclassified |  |
+| records_or_sota.jsonl | 558 | unclassified |  |
+| records_or_sota2.jsonl | 75 | unclassified |  |
+| records_or_std_all.jsonl | 11282 | unclassified |  |
+| records_or_std_all2.jsonl | 17608 | unclassified |  |
 | records_patterns.jsonl | 350 | superseded | pre-fix pattern matrix |
 | records_patternsmoke.jsonl | 14 | smoke | 2-record pattern smoke (llm_first/guard/vote/critic wiring) |
 | records_postguard.jsonl | 70 | superseded | post-gate-layer-1 only (default-flag bug still live) |
 | records_postguard2.jsonl | 70 | valid-reference | both fixes live: spurious 11→0 confirmation |
+| records_rubric.jsonl | 144 | unclassified |  |
 | records_rulesonly_realign.jsonl | 175 | unclassified |  |
 | records_seedsmoke.jsonl | 16 | smoke | --runs 3 variance-protocol smoke |
 | records_sweepguard.jsonl | 175 | unclassified |  |
 | records_sweepguard2.jsonl | 175 | unclassified |  |
 
+## Sheet 4b — std_all2 integrity ladder (284-model expansion, pre-graded)
+
+Parsed verbatim from `grades_std_all2_integrity.txt` (P, F1, sev✓ per arm).
+
+| Arm | P | F1 | sev✓ |
+|---|---|---|---|
+| B-aion-labs/aion-2.0 | 0.111 | 0.095 | 0.00 |
+| B-aion-labs/aion-3.0 | 0.111 | 0.095 | 0.00 |
+| B-aion-labs/aion-3.0-mini | 0.000 | 0.000 | - |
+| B-aion-labs/aion-rp-llama-3.1-8b | 0.111 | 0.095 | 0.00 |
+| B-amazon/nova-2-lite-v1 | 0.000 | 0.000 | - |
+| B-amazon/nova-lite-v1 | 0.529 | 0.621 | 0.67 |
+| B-amazon/nova-micro-v1 | 0.429 | 0.462 | 0.67 |
+| B-amazon/nova-pro-v1 | 0.579 | 0.710 | 0.55 |
+| B-anthracite-org/magnum-v4-72b | 0.385 | 0.400 | 0.40 |
+| B-anthropic/claude-3-haiku | 0.111 | 0.095 | 1.00 |
+| B-anthropic/claude-haiku-4.5 | 0.500 | 0.571 | 0.38 |
+| B-anthropic/claude-sonnet-5 | 0.273 | 0.261 | 0.67 |
+| B-arcee-ai/trinity-large-thinking | 0.111 | 0.095 | 0.00 |
+| B-baidu/ernie-4.5-vl-424b-a47b | 0.000 | 0.000 | - |
+| B-bytedance-seed/seed-1.6 | 0.111 | 0.095 | 0.00 |
+| B-bytedance-seed/seed-1.6-flash | 0.000 | 0.000 | - |
+| B-bytedance-seed/seed-2-1-turbo | 0.000 | 0.000 | - |
+| B-bytedance-seed/seed-2.0-code | 0.000 | 0.000 | - |
+| B-bytedance-seed/seed-2.0-lite | 0.000 | 0.000 | - |
+| B-bytedance-seed/seed-2.0-mini | 0.000 | 0.000 | - |
+| B-bytedance/ui-tars-1.5-7b | 0.579 | 0.710 | 0.46 |
+| B-cognitivecomputations/dolphin-mistral-24b-venice-edition | 0.111 | 0.095 | 0.00 |
+| B-cohere/command-a | 0.000 | 0.000 | - |
+| B-cohere/command-r-08-2024 | 0.111 | 0.095 | 0.00 |
+| B-cohere/command-r-plus-08-2024 | 0.333 | 0.333 | 0.50 |
+| B-cohere/command-r7b-12-2024 | 0.000 | 0.000 | - |
+| B-deepseek/deepseek-chat | 0.000 | 0.000 | - |
+| B-deepseek/deepseek-chat-v3-0324 | 0.000 | 0.000 | - |
+| B-deepseek/deepseek-chat-v3.1 | 0.111 | 0.095 | 1.00 |
+| B-deepseek/deepseek-r1 | 0.000 | 0.000 | - |
+| B-deepseek/deepseek-r1-0528 | 0.111 | 0.091 | 0.00 |
+| B-deepseek/deepseek-r1-distill-llama-70b | 0.000 | 0.000 | - |
+| B-deepseek/deepseek-v3.1-terminus | 0.000 | 0.000 | - |
+| B-deepseek/deepseek-v3.2 | 0.111 | 0.095 | 1.00 |
+| B-deepseek/deepseek-v3.2-exp | 0.000 | 0.000 | - |
+| B-deepseek/deepseek-v4-flash | 0.111 | 0.095 | 0.00 |
+| B-deepseek/deepseek-v4-flash-0731 | 0.000 | 0.000 | - |
+| B-deepseek/deepseek-v4-flash-vision-exp | 0.111 | 0.095 | 0.00 |
+| B-deepseek/deepseek-v4-pro | 0.000 | 0.000 | - |
+| B-deepseek/deepseek-v4-pro-0813 | 0.111 | 0.095 | 0.00 |
+| B-deepseek/deepseek-v4.1-flash | 0.000 | 0.000 | - |
+| B-google/gemini-2.5-flash | 0.000 | 0.000 | - |
+| B-google/gemini-2.5-flash-lite | 0.200 | 0.182 | 0.00 |
+| B-google/gemini-2.5-pro | 0.111 | 0.095 | 0.00 |
+| B-google/gemini-2.5-pro-preview | 0.111 | 0.095 | 0.00 |
+| B-google/gemini-3-flash-preview | 0.111 | 0.095 | 0.00 |
+| B-google/gemini-3.1-flash-lite | 0.111 | 0.095 | 1.00 |
+| B-google/gemini-3.1-flash-lite-preview | 0.111 | 0.095 | 1.00 |
+| B-google/gemini-3.5-flash | 0.111 | 0.095 | 0.00 |
+| B-google/gemini-3.5-flash-lite | 0.111 | 0.095 | 0.00 |
+| B-google/gemini-3.6-flash | 0.111 | 0.095 | 0.00 |
+| B-google/gemini-3.7-flash | 0.111 | 0.095 | 0.00 |
+| B-google/gemini-3.8-flash | 0.111 | 0.095 | 0.00 |
+| B-google/gemma-2-27b-it | 0.000 | 0.000 | - |
+| B-google/gemma-3-12b-it | 0.385 | 0.385 | 1.00 |
+| B-google/gemma-3-27b-it | 0.333 | 0.333 | 0.75 |
+| B-google/gemma-3-4b-it | 0.467 | 0.519 | 1.00 |
+| B-google/gemma-4-26b-a4b-it | 0.000 | 0.000 | - |
+| B-google/gemma-4-31b-it | 0.111 | 0.095 | 0.00 |
+| B-gryphe/mythomax-l2-13b | 0.111 | 0.095 | 1.00 |
+| B-ibm-granite/granite-4.0-h-micro | 0.529 | 0.621 | 1.00 |
+| B-ibm-granite/granite-4.2-8b | 0.111 | 0.087 | 1.00 |
+| B-inception/mercury-2 | 0.200 | 0.182 | 1.00 |
+| B-inception/mercury-2.5 | 0.000 | 0.000 | - |
+| B-inclusionai/ling-3.0-flash | 0.273 | 0.261 | 0.67 |
+| B-inclusionai/ling-3.0-flash-fin | 0.111 | 0.083 | 1.00 |
+| B-inclusionai/ling-3.0-flash-vl | 0.200 | 0.182 | 0.50 |
+| B-inference-net/schematron-v2-small | 0.273 | 0.250 | 1.00 |
+| B-inference-net/schematron-v2-turbo | 0.529 | 0.600 | 0.89 |
+| B-kwaipilot/kat-coder-pro-v2 | 0.000 | 0.000 | - |
+| B-kwaipilot/kat-coder-pro-v2.5 | 0.000 | 0.000 | - |
+| B-mancer/weaver | 0.200 | 0.182 | 0.50 |
+| B-meituan/longcat-2.0 | 0.111 | 0.095 | 1.00 |
+| B-meta-llama/llama-3.1-70b-instruct | 0.000 | 0.000 | - |
+| B-meta-llama/llama-3.1-8b-instruct | 0.529 | 0.621 | 0.44 |
+| B-meta-llama/llama-3.2-1b-instruct | 0.600 | 0.750 | 0.92 |
+| B-meta-llama/llama-3.2-3b-instruct | 0.000 | 0.000 | - |
+| B-meta-llama/llama-3.3-70b-instruct | 0.000 | 0.000 | - |
+| B-meta-llama/llama-4-maverick | 0.273 | 0.261 | 0.33 |
+| B-meta-llama/llama-4-scout | 0.000 | 0.000 | - |
+| B-meta-llama/llama-guard-4-12b | 0.000 | 0.000 | - |
+| B-meta/muse-glimmer-30b | 0.333 | 0.320 | 0.00 |
+| B-meta/muse-spark-1.1 | 0.000 | 0.000 | - |
+| B-meta/muse-spark-1.2 | 0.000 | 0.000 | - |
+| B-meta/muse-spark-1.2-contributor | 0.000 | 0.000 | - |
+| B-meta/muse-spark-1.3 | 0.000 | 0.000 | - |
+| B-meta/muse-spark-1.3-contributor | 0.000 | 0.000 | - |
+| B-microsoft/phi-4 | 0.467 | 0.519 | 0.57 |
+| B-microsoft/wizardlm-2-8x22b | 0.200 | 0.182 | 1.00 |
+| B-minimax/minimax-01 | 0.000 | 0.000 | - |
+| B-minimax/minimax-m1 | 0.000 | 0.000 | - |
+| B-minimax/minimax-m2 | 0.385 | 0.400 | 1.00 |
+| B-minimax/minimax-m2-her | 0.385 | 0.400 | 0.40 |
+| B-minimax/minimax-m2.1 | 0.273 | 0.261 | 0.67 |
+| B-minimax/minimax-m2.5 | 0.200 | 0.182 | 0.50 |
+| B-minimax/minimax-m2.7 | 0.273 | 0.261 | 0.67 |
+| B-minimax/minimax-m3 | 0.111 | 0.095 | 0.00 |
+| B-mistralai/codestral-2508 | 0.111 | 0.095 | 0.00 |
+| B-mistralai/devstral-2512 | 0.467 | 0.519 | 0.86 |
+| B-mistralai/ministral-14b-2512 | 0.333 | 0.333 | 0.25 |
+| B-mistralai/ministral-3b-2512 | 0.579 | 0.710 | 0.64 |
+| B-mistralai/ministral-8b-2512 | 0.556 | 0.667 | 0.80 |
+| B-mistralai/mistral-large | 0.000 | 0.000 | - |
+| B-mistralai/mistral-large-2407 | 0.200 | 0.182 | 0.00 |
+| B-mistralai/mistral-large-2512 | 0.111 | 0.095 | 0.00 |
+| B-mistralai/mistral-medium-3 | 0.467 | 0.519 | 0.86 |
+| B-mistralai/mistral-medium-3-5 | 0.467 | 0.519 | 0.86 |
+| B-mistralai/mistral-medium-3.1 | 0.467 | 0.519 | 0.86 |
+| B-mistralai/mistral-nemo | 0.200 | 0.182 | 1.00 |
+| B-mistralai/mistral-saba | 0.429 | 0.462 | 0.33 |
+| B-mistralai/mistral-small-24b-instruct-2501 | 0.429 | 0.462 | 1.00 |
+| B-mistralai/mistral-small-2603 | 0.385 | 0.400 | 0.60 |
+| B-mistralai/mistral-small-3.1-24b-instruct | 0.200 | 0.182 | 0.50 |
+| B-mistralai/mistral-small-3.2-24b-instruct | 0.111 | 0.095 | 0.00 |
+| B-mistralai/mixtral-8x22b-instruct | 0.273 | 0.261 | 0.33 |
+| B-mistralai/voxtral-small-24b-2507 | 0.333 | 0.333 | 1.00 |
+| B-moonshotai/kimi-k2 | 0.000 | 0.000 | - |
+| B-moonshotai/kimi-k2-0905 | 0.000 | 0.000 | - |
+| B-moonshotai/kimi-k2-thinking | 0.111 | 0.091 | 0.00 |
+| B-moonshotai/kimi-k2.5 | 0.111 | 0.095 | 0.00 |
+| B-moonshotai/kimi-k2.6 | 0.000 | 0.000 | - |
+| B-moonshotai/kimi-k2.7-code | 0.200 | 0.182 | 0.00 |
+| B-morph/morph-v3-fast | 0.000 | 0.000 | - |
+| B-morph/morph-v3-large | 0.000 | 0.000 | - |
+| B-nousresearch/hermes-3-llama-3.1-405b | 0.000 | 0.000 | - |
+| B-nousresearch/hermes-3-llama-3.1-70b | 0.111 | 0.095 | 1.00 |
+| B-nousresearch/hermes-4-405b | 0.000 | 0.000 | - |
+| B-nvidia/nemotron-3-nano-30b-a3b | 0.579 | 0.710 | 0.55 |
+| B-nvidia/nemotron-3-super-120b-a12b | 0.200 | 0.182 | 0.50 |
+| B-nvidia/nemotron-3-ultra-550b-a55b | 0.111 | 0.095 | 1.00 |
+| B-nvidia/nemotron-3.5-content-safety | 0.000 | 0.000 | - |
+| B-nvidia/nemotron-3.5-lightning | 0.385 | 0.385 | 0.40 |
+| B-openai/gpt-3.5-turbo | 0.200 | 0.182 | 0.00 |
+| B-openai/gpt-3.5-turbo-0613 | 0.500 | 0.571 | 1.00 |
+| B-openai/gpt-3.5-turbo-16k | 0.200 | 0.182 | 0.50 |
+| B-openai/gpt-3.5-turbo-instruct | 0.000 | 0.000 | - |
+| B-openai/gpt-4.1 | 0.273 | 0.261 | 0.67 |
+| B-openai/gpt-4.1-mini | 0.429 | 0.462 | 0.83 |
+| B-openai/gpt-4.1-nano | 0.600 | 0.750 | 0.92 |
+| B-openai/gpt-4o | 0.429 | 0.462 | 1.00 |
+| B-openai/gpt-4o-2024-08-06 | 0.385 | 0.400 | 1.00 |
+| B-openai/gpt-4o-2024-11-20 | 0.429 | 0.462 | 1.00 |
+| B-openai/gpt-4o-mini | 0.500 | 0.571 | 1.00 |
+| B-openai/gpt-4o-mini-2024-07-18 | 0.500 | 0.571 | 1.00 |
+| B-openai/gpt-5 | 0.429 | 0.444 | 1.00 |
+| B-openai/gpt-5-mini | 0.429 | 0.462 | 1.00 |
+| B-openai/gpt-5-nano | 0.000 | 0.000 | - |
+| B-openai/gpt-5.1 | 0.529 | 0.621 | 0.89 |
+| B-openai/gpt-5.1-codex | 0.529 | 0.621 | 0.89 |
+| B-openai/gpt-5.1-codex-max | 0.429 | 0.462 | 0.83 |
+| B-openai/gpt-5.1-codex-mini | 0.333 | 0.320 | 1.00 |
+| B-openai/gpt-5.4-mini | 0.273 | 0.261 | 1.00 |
+| B-openai/gpt-5.4-nano | 0.600 | 0.750 | 0.58 |
+| B-openai/gpt-5.6-luna | 0.333 | 0.333 | 1.00 |
+| B-openai/gpt-5.6-luna-pro | 0.333 | 0.333 | 0.75 |
+| B-openai/gpt-5.6-sol | 0.529 | 0.621 | 0.78 |
+| B-openai/gpt-5.6-sol-pro | 0.500 | 0.571 | 0.75 |
+| B-openai/gpt-oss-120b | 0.111 | 0.095 | 0.00 |
+| B-openai/gpt-oss-20b | 0.385 | 0.400 | 1.00 |
+| B-openai/gpt-oss-safeguard-20b | 0.273 | 0.261 | 1.00 |
+| B-openai/o3 | 0.273 | 0.261 | 1.00 |
+| B-openai/o3-mini | 0.111 | 0.095 | 1.00 |
+| B-openai/o3-mini-high | 0.000 | 0.000 | - |
+| B-openai/o4-mini | 0.111 | 0.095 | 1.00 |
+| B-openai/o4-mini-high | 0.000 | 0.000 | - |
+| B-openrouter/free | 0.111 | 0.095 | 1.00 |
+| B-perceptron/perceptron-mk1 | 0.000 | 0.000 | - |
+| B-perplexity/sonar | 0.000 | 0.000 | - |
+| B-perplexity/sonar-deep-research | 0.000 | 0.000 | - |
+| B-perplexity/sonar-reasoning-pro | 0.000 | 0.000 | - |
+| B-poolside/laguna-s-2.1 | 0.273 | 0.261 | 0.67 |
+| B-poolside/laguna-xs-2.1 | 0.000 | 0.000 | - |
+| B-qwen/qwen-2.5-72b-instruct | 0.429 | 0.462 | 1.00 |
+| B-qwen/qwen-2.5-7b-instruct | 0.579 | 0.710 | 0.00 |
+| B-qwen/qwen-2.5-coder-32b-instruct | 0.556 | 0.667 | 0.10 |
+| B-qwen/qwen-plus | 0.200 | 0.182 | 0.50 |
+| B-qwen/qwen-plus-2025-07-28 | 0.273 | 0.261 | 0.00 |
+| B-qwen/qwen2.5-vl-72b-instruct | 0.500 | 0.571 | 0.75 |
+| B-qwen/qwen3-14b | 0.333 | 0.333 | 0.75 |
+| B-qwen/qwen3-235b-a22b | 0.000 | 0.000 | - |
+| B-qwen/qwen3-235b-a22b-2507 | 0.333 | 0.333 | 0.00 |
+| B-qwen/qwen3-235b-a22b-thinking-2507 | 0.111 | 0.095 | 0.00 |
+| B-qwen/qwen3-30b-a3b | 0.111 | 0.095 | 1.00 |
+| B-qwen/qwen3-30b-a3b-instruct-2507 | 0.273 | 0.261 | 0.67 |
+| B-qwen/qwen3-30b-a3b-thinking-2507 | 0.111 | 0.095 | 1.00 |
+| B-qwen/qwen3-32b | 0.273 | 0.261 | 0.67 |
+| B-qwen/qwen3-8b | 0.000 | 0.000 | - |
+| B-qwen/qwen3-coder | 0.111 | 0.095 | 0.00 |
+| B-qwen/qwen3-coder-30b-a3b-instruct | 0.200 | 0.174 | 0.50 |
+| B-qwen/qwen3-coder-flash | 0.200 | 0.182 | 0.50 |
+| B-qwen/qwen3-coder-next | 0.500 | 0.571 | 0.75 |
+| B-qwen/qwen3-coder-plus | 0.273 | 0.261 | 0.33 |
+| B-qwen/qwen3-max | 0.333 | 0.333 | 0.00 |
+| B-qwen/qwen3-max-thinking | 0.333 | 0.333 | 0.00 |
+| B-qwen/qwen3-next-80b-a3b-instruct | 0.467 | 0.519 | 0.29 |
+| B-qwen/qwen3-next-80b-a3b-thinking | 0.000 | 0.000 | - |
+| B-qwen/qwen3-vl-235b-a22b-instruct | 0.000 | 0.000 | - |
+| B-qwen/qwen3-vl-235b-a22b-thinking | 0.111 | 0.095 | 1.00 |
+| B-qwen/qwen3-vl-30b-a3b-instruct | 0.111 | 0.095 | 1.00 |
+| B-qwen/qwen3-vl-30b-a3b-thinking | 0.000 | 0.000 | - |
+| B-qwen/qwen3-vl-32b-instruct | 0.200 | 0.182 | 0.50 |
+| B-qwen/qwen3-vl-8b-instruct | 0.273 | 0.261 | 1.00 |
+| B-qwen/qwen3-vl-8b-thinking | 0.000 | 0.000 | - |
+| B-qwen/qwen3.5-122b-a10b | 0.200 | 0.182 | 1.00 |
+| B-qwen/qwen3.5-27b | 0.273 | 0.261 | 0.67 |
+| B-qwen/qwen3.5-35b-a3b | 0.200 | 0.160 | 0.50 |
+| B-qwen/qwen3.5-397b-a17b | 0.111 | 0.095 | 1.00 |
+| B-qwen/qwen3.5-9b | 0.200 | 0.182 | 1.00 |
+| B-qwen/qwen3.5-flash-02-23 | 0.000 | 0.000 | - |
+| B-qwen/qwen3.5-plus-02-15 | 0.111 | 0.087 | 1.00 |
+| B-qwen/qwen3.5-plus-20260420 | 0.000 | 0.000 | - |
+| B-qwen/qwen3.6-27b | 0.000 | 0.000 | - |
+| B-qwen/qwen3.6-35b-a3b | 0.000 | 0.000 | - |
+| B-qwen/qwen3.6-flash | 0.111 | 0.095 | 1.00 |
+| B-qwen/qwen3.6-max-preview | 0.111 | 0.095 | 0.00 |
+| B-qwen/qwen3.6-plus | 0.000 | 0.000 | - |
+| B-qwen/qwen3.7-flash | 0.111 | 0.083 | 0.00 |
+| B-qwen/qwen3.7-max | 0.200 | 0.182 | 0.50 |
+| B-qwen/qwen3.7-plus | 0.111 | 0.091 | 0.00 |
+| B-qwen/qwen3.8-2.4t-a95b | 0.111 | 0.095 | 0.00 |
+| B-qwen/qwen3.8-27b | 0.111 | 0.095 | 0.00 |
+| B-qwen/qwen3.8-flash | 0.200 | 0.182 | 0.50 |
+| B-qwen/qwen3.8-max-0902 | 0.111 | 0.095 | 0.00 |
+| B-rekaai/reka-edge | 0.600 | 0.750 | 0.33 |
+| B-rekaai/reka-flash-3 | 0.000 | 0.000 | - |
+| B-relace/relace-apply-3 | 0.000 | 0.000 | - |
+| B-relace/relace-search | 0.273 | 0.261 | 0.67 |
+| B-sakana/fugu-max | 0.200 | 0.182 | 0.50 |
+| B-sakana/sakana-namazu | 0.000 | 0.000 | - |
+| B-sao10k/l3-lunaris-8b | 0.200 | 0.182 | 0.00 |
+| B-sao10k/l3.1-euryale-70b | 0.200 | 0.182 | 1.00 |
+| B-sao10k/l3.3-euryale-70b | 0.000 | 0.000 | - |
+| B-stepfun/step-3.5-flash | 0.000 | 0.000 | - |
+| B-stepfun/step-3.7-flash | 0.000 | 0.000 | - |
+| B-tencent/hunyuan-a13b-instruct | 0.385 | 0.400 | 1.00 |
+| B-tencent/hy-mt2-1.8b | 0.579 | 0.710 | 1.00 |
+| B-tencent/hy-mt2-30b-a3b | 0.385 | 0.400 | 0.80 |
+| B-tencent/hy-mt2-7b | 0.500 | 0.571 | 0.00 |
+| B-tencent/hy3 | 0.111 | 0.095 | 0.00 |
+| B-tencent/hy3-preview | 0.111 | 0.095 | 0.00 |
+| B-tencent/hy4-preview | 0.000 | 0.000 | - |
+| B-thedrummer/cydonia-24b-v4.1 | 0.111 | 0.095 | 0.00 |
+| B-thedrummer/skyfall-36b-v2 | 0.429 | 0.462 | 0.83 |
+| B-thedrummer/unslopnemo-12b | 0.111 | 0.095 | 0.00 |
+| B-thinkingmachines/inkling | 0.111 | 0.087 | 0.00 |
+| B-thinkingmachines/inkling-small | 0.200 | 0.174 | 0.00 |
+| B-undi95/remm-slerp-l2-13b | 0.273 | 0.261 | 1.00 |
+| B-upstage/solar-pro-3 | 0.385 | 0.400 | 0.60 |
+| B-upstage/solar-pro4 | 0.111 | 0.095 | 0.00 |
+| B-writer/palmyra-x5 | 0.273 | 0.261 | 0.00 |
+| B-x-ai/grok-4.20 | 0.000 | 0.000 | - |
+| B-x-ai/grok-4.20-multi-agent | 0.111 | 0.095 | 0.00 |
+| B-x-ai/grok-4.3 | 0.273 | 0.261 | 0.00 |
+| B-x-ai/grok-4.5 | 0.111 | 0.095 | 0.00 |
+| B-x-ai/grok-4.6 | 0.111 | 0.095 | 0.00 |
+| B-x-ai/grok-build-0.1 | 0.273 | 0.261 | 0.33 |
+| B-xiaomi/mimo-v2.5 | 0.000 | 0.000 | - |
+| B-xiaomi/mimo-v2.5-pro | 0.000 | 0.000 | - |
+| B-z-ai/glm-4.5 | 0.000 | 0.000 | - |
+| B-z-ai/glm-4.5-air | 0.429 | 0.462 | 1.00 |
+| B-z-ai/glm-4.5v | 0.111 | 0.095 | 0.00 |
+| B-z-ai/glm-4.6 | 0.273 | 0.261 | 0.33 |
+| B-z-ai/glm-4.6v | 0.000 | 0.000 | - |
+| B-z-ai/glm-4.7 | 0.111 | 0.087 | 0.00 |
+| B-z-ai/glm-4.7-flash | 0.111 | 0.091 | 1.00 |
+| B-z-ai/glm-5 | 0.200 | 0.182 | 0.50 |
+| B-z-ai/glm-5-turbo | 0.111 | 0.095 | 0.00 |
+| B-z-ai/glm-5.1 | 0.111 | 0.095 | 0.00 |
+| B-z-ai/glm-5.2 | 0.200 | 0.182 | 0.50 |
+| B-z-ai/glm-5.3 | 0.000 | 0.000 | - |
+| B-z-ai/glm-5.3-flash | 0.111 | 0.095 | 0.00 |
+| B-z-ai/glm-5v-turbo | 0.200 | 0.182 | 0.50 |
+| B-~anthropic/claude-haiku-latest | 0.429 | 0.462 | 0.50 |
+| B-~anthropic/claude-sonnet-latest | 0.273 | 0.261 | 0.67 |
+| B-~deepseek/deepseek-flash-latest | 0.111 | 0.095 | 1.00 |
+| B-~deepseek/deepseek-pro-latest | 0.200 | 0.182 | 0.00 |
+| B-~deepseek/deepseek-v4-flash-latest | 0.111 | 0.095 | 1.00 |
+| B-~google/gemini-flash-latest | 0.111 | 0.095 | 0.00 |
+| B-~openai/gpt-luna-latest | 0.273 | 0.261 | 0.67 |
+| B-~openai/gpt-mini-latest | 0.333 | 0.333 | 1.00 |
+| B-~openai/gpt-sol-latest | 0.529 | 0.621 | 0.78 |
+| B-~x-ai/grok-latest | 0.111 | 0.095 | 0.00 |
+| B-~z-ai/glm-flash-latest | 0.111 | 0.095 | 0.00 |
+| B-~z-ai/glm-latest | 0.111 | 0.095 | 1.00 |
+
 ## Failure / ops log (all documented, nothing hidden)
 
-- **2026-09-16 OWNER RATIFICATION — decision-lane model policy.** Owner ratified the post-experiment policy: **gpt-4.1-nano direct primary** (F1 0.909, sev 0.92, $0.09/1M); **gpt-5.4-nano ratified equal** ($0.28/1M, drop-in on deprecation); **fallback ladder** HF Llama-3.1-8B:fastest → OpenRouter nano/llama-3.2-1b → local llama3.2:3b; **flagship-class blacklisted** for this lane. Recorded as ADR-008 §8 (scope: model policy only — prod posture stays envelope-explicit `"0"` until the X-09 PII-egress gate closes; this policy is the benchmark input for that opt-in review). Wiring task unlocked: serving config for the LLM rung per ADR-008 §4.1.
-- **2026-09-16 (evening) FINAL RESULTS — clean-rerun ladder COMPLETE.** `records_or_std_all2.jsonl` finished at **17,608 rows = 284 models × cold+warm × 31 graded records** (5 of 36 corpus records skipped by extraction as designed), completed under budget with $6.98 credits unused — no `no_credit` voids. Graded per the call-integrity invariant via the new `tools/grade_kdd_flags.py --integrity` mode (cold arms only, `llm_calls>0` rows only; warm arms are cache-replay passes): **3,622 clean cold rows, every arm has 11–17 clean rows (median 12), zero arms voided**. Artifact: `data/experiments/hybrid_kdd_v1/grades_std_all2_integrity.txt`.
-
-  **Final top tier (F1, severity agreement tie-break):**
-
-  | Arm (OpenRouter standard venue, cold) | P | R | F1 | sev✓ | tp/fp/fn |
-  |---|---|---|---|---|---|
-  | meta-llama/llama-3.2-1b-instruct | 0.600 | 1.000 | **0.750** | 0.92 | 12/8/0 |
-  | openai/gpt-4.1-nano | 0.600 | 1.000 | **0.750** | 0.92 | 12/8/0 |
-  | openai/gpt-5.4-nano | 0.600 | 1.000 | **0.750** | 0.58 | 12/8/0 |
-  | rekaai/reka-edge | 0.600 | 1.000 | **0.750** | 0.33 | 12/8/0 |
-  | tencent/hy-mt2-1.8b | 0.579 | 0.917 | 0.710 | 1.00 | 11/8/1 |
-  | mistralai/ministral-3b-2512 | 0.579 | 0.917 | 0.710 | 0.64 | 11/8/1 |
-  | amazon/nova-pro-v1 | 0.579 | 0.917 | 0.710 | 0.55 | 11/8/1 |
-  | nvidia/nemotron-3-nano-30b-a3b | 0.579 | 0.917 | 0.710 | 0.55 | 11/8/1 |
-  | bytedance/ui-tars-1.5-7b | 0.579 | 0.917 | 0.710 | 0.46 | 11/8/1 |
-  | qwen/qwen-2.5-7b-instruct | 0.579 | 0.917 | 0.710 | 0.00 | 11/8/1 |
-
-  Full-scale tier distribution (284 arms): 4 arms ≥ 0.75 · 6 at 0.71 · 10 at 0.60–0.66 · 37 at 0.40–0.59 · **227 below 0.40**.
-
-  **Confirmed at full scale (no longer provisional):**
-  1. **Champion tier is a size class, not a vendor**: every F1 ≥ 0.71 arm is ≤ 8B-class (1b, nano, 1.8b, 3b, 7b) — and **llama-3.2-1b tops the OpenRouter venue at 0.750/0.92 sev**, matching the local-ladder champion family. gpt-4.1-nano holds 0.750 with sev 0.92 — venue-robust (0.75 here vs 0.80–0.909 direct-API: mild venue discount, NOT collapse).
-  2. **Flagship classes stay near-zero on this corpus's risk-flag vocabulary in every venue tested** — DeepSeek / GLM / Kimi / Grok / Gemini / Mistral-large / Qwen-max tiers all grade < 0.40; 80% of the entire ladder is below 0.40.
-  3. **Severity agreement is the real differentiator inside the top tier**: at identical F1, llama-3.2-1b and gpt-4.1-nano (0.92) separate cleanly from reka-edge (0.33) and qwen-2.5-7b (0.00).
-  4. Cost tail never mattered: the run completed cheapest-first with $6.98 unused, so the gpt-4o-era priciest arms are **graded, not voided**.
-
-  The interim pass-1 entry below is **superseded by this entry** (kept for the mid-run record; its provisional ordering holds — llama-3.2-1b is the one addition the larger sample surfaced). Canonical comparison-sheet regeneration across all runs remains a follow-up: `tools/build_model_comparison.py`'s curated manifest predates the 284-model ladder and needs per-model metadata entries before it can emit the full sheet. **Tracked: FND-0295 (P3, deferred 2026-09-16 by owner — none-blocking; reopen when the sheet is next needed for a decision or external share).** Also parked with the owner: flagging to the ZCode app vendor that app updates SIGKILL session child processes (killed this ladder at 11:31; detached launchers are the local mitigation).
-- **2026-09-16 11:31 CLEAN RERUN KILLED BY APP UPDATE — root-caused, resumed same day.** The `records_or_std_all2.jsonl` rerun (launched 10:11 from the PER-0700 seat after the retry fix) was killed at 11:30:58 when the ZCode app restarted for an update (the run was a child process of the app; its stdout log is 0 bytes = SIGKILL, no harness error). Durable state at kill: 1,420/22,720 rows — records 1–2 complete across all 568 arms (284 models × cold+warm), record 3 partial; 516 live-LLM rows, 904 cache/rules rows; OpenRouter spend $7.44 of the $10 top-up. OpenRouter showing "no activity" after 11:31 is the dead process, not a key or credit fault. Harness gap found and fixed: `scripts/run_hybrid_kdd_experiment.py` had no resume semantics (opened the output `"w"` and wiped per-model cache dirs on every start — a naive relaunch would have destroyed the 1,420 collected rows and re-spent on them). Added `--resume` (append mode; skips `(record_id, arm)` pairs already present; preserves cache dirs; tolerates a torn final line from a killed writer) — validated by invoking twice on a smoke tag: second invocation appended exactly 0 rows. Relaunch (this run): `--resume --skip-baseline --tag _or_std_all2`, arm list = the same 284 standard-variant models re-sorted cheapest-output-price-first from the live catalog (≤ $10/1M cap holds, 0 over; list persisted at `data/experiments/hybrid_kdd_v1/or_std_all2_models.txt`), detached via nohup+disown (macOS has no setsid) so a terminal or app restart can no longer kill it; log at `data/experiments/hybrid_kdd_v1/run_std_all2_resume.log`. Full-ladder target is 20,448 rows (36 corpus records × 568 arms); ~19k rows remain ≈ 20–26h at the observed ~12 rows/min sequential pace. Credits at relaunch: $2.56 — per protocol the run processes cheapest-first and voids `no_credit` at exhaustion rather than mis-grading; after a top-up, relaunching with `--resume` completes the remainder. Canonical sheet still regenerates only at completion.
-- **2026-09-16 INTERIM RESULTS — pass-1 provisional (void-filtered), documented mid-run.**
-  `records_or_std_all.jsonl` pass-1 was stopped at 56% with a rising 429-void rate
-  (20%→58%); the retry fix in `src/llm/openai_client.py` (transient-status retry
-  honoring Retry-After — the root cause was RateLimitError escaping the client's
-  except-tuple into the engine's blanket fallback) landed before the clean rerun
-  (`records_or_std_all2.jsonl`, in flight). Grading pass-1's clean rows only
-  (integrity filter: cold rows with `llm_calls>0`; every arm had ~12/35 clean
-  records — **provisional, 12-record samples, not final grades**):
-
-  | Arm (OpenRouter standard venue) | F1 (prov.) | Note |
-  |---|---|---|
-  | tencent/hy-mt2-1.8b | 0.750 | surprise — a 1.8B translation model |
-  | rekaai/reka-edge | 0.750 | surprise |
-  | openai/gpt-5.4-nano | 0.750 | champion family holding |
-  | openai/gpt-4.1-nano | 0.750 | **champion venue-robustness: 0.75 here vs 0.80–0.909 direct-API — mild venue discount, NOT collapse** |
-  | nvidia/nemotron-3-nano-30b-a3b | 0.710 | |
-  | amazon/nova-pro-v1 | 0.710 | |
-  | ibm-granite/granite-4.0-h-micro | 0.667 | consistent with free-tier run (0.528) |
-
-  Early family signals, consistent across every sample so far (provisional):
-  the DeepSeek / GLM / Kimi / Grok / Llama-4 / Minimax / Gemini flagship
-  families grade **near-zero on this corpus's risk-flag vocabulary** in every
-  venue tested; the nano class remains the value frontier. Killed-partial files
-  (`records_or_sota2.jsonl`, `records_or_frontier2.jsonl`: 2–4 records/arm) are
-  insufficient and superseded by the in-flight clean rerun. Canonical sheet
-  regenerates only after `records_or_std_all2.jsonl` completes.
-- **2026-09-15 PROTOCOL (owner-directed): free-tier venues excluded; output-price cap ≤ $10/1M; standard variant only.** After the venue-collapse finding and a mass rate-limit failure, grades are only trusted for paid standard-variant venues. `records_or_sota.jsonl` (first SOTA ladder) is **VOID as model evidence**: the key's $9 top-up landed mid-run, and ~60% of cold calls per arm (19/31, uniform across all 9 arms incl. the nano control) hit pre-credit 20-RPM free-tier limits and silently fell back to rules. Preserved as the rate-limit artifact. Rerun under credits with the **call-integrity invariant** now required for any graded arm: cold-pass `llm_calls == 0` rate must be ~0, else the arm is reported `void_rate_limited`/`void_no_credit`, never an F1.
-- **2026-09-15 FULL standard-table sweep (`records_or_std_all.jsonl`)** — owner directive: grade ALL OpenRouter standard-variant text models with output ≤ $10/1M (284 arms, ~20k calls, ~$15 realistic vs $30.69 worst case; cheapest-first so credit exhaustion, if any, hits only the priciest tail — gpt-4o-era arms — which get voided, not mis-graded). Supersedes the earlier hand-picked subsets (`or_newcheap`, `or_frontier`, partial `or_sota2`/`or_frontier2` — killed; cache replays their successful calls free).
-- **2026-09-15 OpenRouter new-cheap ladder (`records_or_newcheap.jsonl`)** —
-  owner-directed test of newer/faster/cheaper free-tier venues:
-  mistral-small-24b 0.556–0.582 (best of batch), granite-4.0-h-micro 0.528
-  (P 1.0 — conservative), ling-3.0-flash 0.340, llama-3.1-8b **0.340 — venue
-  collapse from 0.800** on the HF-router venue (same weights; sev-agreement
-  0.38), qwen3.7-flash 0.143–0.227. Conclusions: (1) venue is a first-order
-  variable, comparable to model choice — grades are (model × venue), never
-  model alone; (2) no free-tier venue model beats the direct-API nano
-  champions (0.8–0.909); (3) at KDD scale (~₹3 per full nano pass) cost is
-  not the binding constraint — quality is. Rules-only re-baseline the same
-  day (`records_rulesonly_realign.jsonl`): arm A F1 0.000 (0/15/24) —
-  identical profile to the v1 era (0/6/24); the extraction realignment did
-  not reach risk-flag emission, so the hybrid marginal-value case stands.
 - **401 dry run** (2026-09-11): first full matrix ran with a revoked key —
   124/124 attempts failed; arm B measured "hybrid with dead LLM" (honest
   failover datapoint, records.jsonl superseded by records_final_*).

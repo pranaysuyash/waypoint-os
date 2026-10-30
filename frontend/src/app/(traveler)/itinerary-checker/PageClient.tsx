@@ -6,6 +6,7 @@ import gsap from 'gsap';
 import { api } from '@/lib/api-client';
 import { safeWriteClipboardText } from '@/lib/clipboard';
 import type { RunStatusResponse } from '@/types/spine';
+import { WedgeVisualShowcase } from '@/components/traveler/WedgeVisualShowcase';
 import {
   Activity, ArrowRight, Check, Clock, DollarSign,
   Camera, Compass, FileCheck, Globe, MapPin, PlaneTakeoff, Route,
@@ -2893,6 +2894,7 @@ function ResultsView({
           </span>
         </div>
         <ResultsFindingsSection blockerItems={blockerItems} analysis={analysis} />
+        <WedgeVisualShowcase analysis={analysis} />
         <ResultsHeaderGrid
           score={SCORE}
           circumference={circumference}
