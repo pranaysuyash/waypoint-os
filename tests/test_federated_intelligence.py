@@ -128,6 +128,25 @@ def test_demo_fixture_suppressed_by_live_data(service):
     assert all(h.get("demo") is not True for h in hits)
 
 
+def test_collect_expired_returns_aged_keeps_live(service):
+    service.report_incident("agency-A", _incident())  # fresh
+    old = {
+        "record_id": "fi_old",
+        "type": "scam_zone",
+        "location": "Hanoi",
+        "severity": 2,
+        "details": {},
+        "source_hash": "z" * 64,
+        "timestamp": (datetime.now(timezone.utc) - timedelta(days=200)).isoformat(),
+    }
+    with open(service._resolve_path(), "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(old) + "\n")
+    aged = service.collect_expired(retention_days=180)
+    assert [r["record_id"] for r in aged] == ["fi_old"]
+    # live store untouched — archive persistence is the caller's explicit step
+    assert len(service.query_risks("Tokyo")) == 1
+
+
 def test_singleton_honors_module_redirect(monkeypatch, tmp_path):
     """The module-level singleton must resolve STORE_PATH lazily so
     test/ops redirects (monkeypatch, env-driven relocation) take effect."""

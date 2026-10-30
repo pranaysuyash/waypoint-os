@@ -1,0 +1,11 @@
+{"type": "STARTED", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "timestamp": "2026-10-30T14:12:28.183Z"}
+{"type": "STREAMING_URL", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "streaming_url": "https://ip-13-52-239-152.tetra-data.production.tinyfish.io/tf-6779d454-cc7c-4c5e-b36e-1324ed8c2cd9/stream/0", "timestamp": "2026-10-30T14:12:29.670Z"}
+{"type": "PROGRESS", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "purpose": "Visit Bing search results page", "timestamp": "2026-10-30T14:12:30.957Z"}
+{"type": "PROGRESS", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "purpose": "Extract People Also Ask questions and top 8 result titles", "timestamp": "2026-10-30T14:12:37.102Z"}
+{"type": "PROGRESS", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "purpose": "Visually inspect search results and People Also Ask boxes", "timestamp": "2026-10-30T14:12:44.807Z"}
+{"type": "PROGRESS", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "purpose": "Extract search result titles and PAA questions", "timestamp": "2026-10-30T14:12:54.894Z"}
+{"type": "PROGRESS", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "purpose": "Scroll to bottom of page to find PAA boxes", "timestamp": "2026-10-30T14:13:05.412Z"}
+{"type": "PROGRESS", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "purpose": "Visit Bing search results page", "timestamp": "2026-10-30T14:13:09.828Z"}
+{"type": "PROGRESS", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "purpose": "Extract all search result titles and PAA questions from page", "timestamp": "2026-10-30T14:13:16.337Z"}
+{"type": "PROGRESS", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "purpose": "Return extracted PAA questions and top 8 search result titles", "timestamp": "2026-10-30T14:13:23.463Z"}
+{"type": "COMPLETE", "run_id": "930d37fa-5fd7-491b-8ee1-53051c5839d4", "status": "COMPLETED", "timestamp": "2026-10-30T14:13:25.630Z", "result": {"questions": [], "titles": ["Framework - Scaled Agile Framework", "Safes - The Home Depot", "SAFE Definition & Meaning - Merriam-Webster", "Amazon.com: Home Safes & Safe Accessories - Home Safes & Safe ...", "What is SAFe - Framework For Business Agility | Scaled Agile", "HOME SAFES - The Home Depot", "Security & Safes - Harbor Freight Tools", "Safes for Secure Storage Solutions | Lowe's"]}}

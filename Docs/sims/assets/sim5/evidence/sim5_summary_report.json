@@ -1,6 +1,6 @@
 {
   "simulation_id": "SIM-5-TIER2-INDIA-01",
-  "timestamp": "2026-10-30T13:58:38.879375+00:00",
+  "timestamp": "2026-10-30T14:21:06.362662+00:00",
   "operator": {
     "persona_id": "P-TIER2-INDIA-01",
     "name": "Rajesh Khandelwal",
@@ -79,19 +79,20 @@
       "mobility_constraints": "wheelchair assistance compulsory chahiye",
       "meal_preferences": "vegetarian",
       "trip_purpose": "family leisure",
-      "origin_city": "Hai",
+      "origin_city": "Indore",
       "destination_candidates": [
-        "Hum",
-        "Hume",
-        "Dubai",
-        "Khana"
+        "Dubai"
       ],
-      "party_size": 1,
+      "party_size": 9,
       "party_composition": {
-        "adults": 1
+        "adults": 6,
+        "children": 2,
+        "infants": 1
       },
       "child_ages": [
-        72
+        0.58,
+        8,
+        3
       ]
     }
   },

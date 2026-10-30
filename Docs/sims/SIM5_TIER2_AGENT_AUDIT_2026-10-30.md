@@ -40,9 +40,10 @@ All **11 execution steps** completed with HTTP 200 responses. The simulation tes
 | **TCS Statutory Tax Engine** | Section 206C(1G) LRS rules: 5% under ₹7L, 20% above | ₹450,000 evaluated at exactly 5% (₹22,500.00 TCS liability) | **PASS (A+)** |
 | **GST Tax Engine** | Tour Package 5% GST scheme with state split (MP) | 5% total (₹22,500.00) split into CGST (2.5%) & SGST (2.5%) | **PASS (A+)** |
 | **Honest Outbound Dispatch** | No fake "SENT" progress without real provider acceptance | Returned `status="NOT_CONFIGURED"`, logged to `AuditStore` | **PASS (A+)** |
-| **Hinglish Count Noun Parsing** | Parse "6 bade, 2 bacche, 1 infant" into party composition | Extracted `party_size=1`, `adults=1`, `child_ages=[72]` | **FAIL (GAP)** |
-| **Hinglish Origin City Parsing** | Parse "Indore se" as origin airport/city | Extracted `origin_city="Hai"` from "dikkat hai to airport" | **FAIL (GAP)** |
-| **Destination Gazetteer Hygiene** | Isolate "Dubai" as sole destination | Candidates included sentence-initial words "Hum", "Hume", "Khana" | **FAIL (GAP)** |
+| **Hinglish Count Noun Parsing** | Parse "6 bade, 2 bacche, 1 infant" into party composition | Extracted `party_size=9`, `adults=6, children=2, infants=1`, `child_ages=[0.58, 8, 3]` (senior 72 excluded) | **PASS (A+)** (Remediated) |
+| **Hinglish Origin City Parsing** | Parse "Indore se" as origin airport/city | Extracted `origin_city="Indore"`, blocked auxiliary verb "Hai" | **PASS (A+)** (Remediated) |
+| **Destination Gazetteer Hygiene** | Isolate "Dubai" as sole destination | `destination_candidates=["Dubai"]`, blocked stopwords "Hum", "Hume", "Khana" | **PASS (A+)** (Remediated) |
+| **Hinglish Date Window Parsing** | Parse "December 22 se 28 tak" into structured date window | Extracted `date_window="December 22 se 28 tak"` | **PASS (A+)** (Remediated) |
 
 ---
 
@@ -119,46 +120,70 @@ All **11 execution steps** completed with HTTP 200 responses. The simulation tes
 
 ---
 
-## 4. Key Gaps & Defect Discoveries (The Hinglish Frontier)
+## 4. Key Gaps, Defect Discoveries & Remediations (The Hinglish Frontier)
 
-The simulation surfaced three concrete extraction gaps in the deterministic pipeline when handling mixed Hindi-English (Hinglish) text:
+The initial simulation surfaced four concrete extraction gaps in the deterministic intake pipeline when handling mixed Hindi-English (Hinglish) text. All four gaps have been **remediated in `src/intake/extractors.py`** and verified via dedicated regression tests in `tests/test_sim5_tier2_agent_suite.py` and end-to-end runner re-execution (`tools/sim5_tier2_runner.py`).
+
+### Verification & Remediation Summary
+
+| Defect ID | Gap Description | Initial Extraction (Broken) | Remediated Extraction (Verified) | Status |
+|---|---|---|---|:---:|
+| **GAP-01** | Hindi count nouns & infant miss | `party_size=1`, `child_ages=[72]` | `party_size=9`, `adults=6, children=2, infants=1`, `child_ages=[0.58, 8, 3]` | **RESOLVED & VERIFIED** |
+| **GAP-02** | Origin city collision on auxiliary verb "hai" | `origin_city="Hai"` | `origin_city="Indore"` | **RESOLVED & VERIFIED** |
+| **GAP-03** | Gazetteer false positives on Hindi pronouns | `["Hum", "Hume", "Dubai", "Khana"]` | `["Dubai"]` | **RESOLVED & VERIFIED** |
+| **GAP-04** | Hinglish date range delimiter miss (`"se ... tak"`) | `date_window=None` | `date_window="December 22 se 28 tak"` | **RESOLVED & VERIFIED** |
+
+---
 
 ### GAP-01: Vernacular Hindi Count Noun Miss & Senior Age Cross-Contamination
 - **Input Text**: `"Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant... Mummy ji (age 72)"`
-- **Expected**: Party size 9 (6 adults, 2 kids [ages 8, 3], 1 infant [age 7 months]).
-- **Actual Extraction**:
+- **Expected**: Party size 9 (6 adults, 2 kids [ages 8, 3], 1 infant [age 7 months = 0.58 years]). Senior citizen age 72 excluded from child ages.
+- **Initial Extraction (Broken)**:
   - `party_size`: `1`
   - `party_composition`: `{'adults': 1}`
   - `child_ages`: `[72]`
 - **Root Cause**:
-  1. The deterministic extractor in `src/intake/extractors.py` searches for English count nouns (`adults`, `people`, `pax`, `kids`, `children`). The Hindi terms `bade` (adults) and `bacche` (children) are unmapped, causing the count to fall back to default `1`.
-  2. The age pattern regex detected `age 72` from `"Mummy ji (age 72)"` and, lacking an adult context guard, inserted `72` into `child_ages`.
-- **Remediation**:
-  1. Add standard Hinglish count nouns to the count-noun mapping dictionary in `extractors.py`:
-     - Adults: `bade`, `bada`, `elders`, `adult`
-     - Children: `bacche`, `bacha`, `kids`, `child`
-     - Infants: `infant`, `navjaat`, `chota baby`
-  2. Guard `child_ages` extraction by capping child ages at 17 (`age <= 17`), preventing senior ages (`72`) from being cataloged as children.
+  1. The deterministic extractor in `src/intake/extractors.py` previously only matched English count nouns (`adults`, `people`, `pax`, `kids`, `children`). The Hindi terms `bade` (adults) and `bacche` (children) were unmapped, causing the count to fall back to default `1`.
+  2. Infant mentions ("1 infant", "7 mahine ka infant") had no dedicated extractor in `_extract_party`.
+  3. The age pattern regex detected `age 72` from `"Mummy ji (age 72)"` and, lacking an age threshold guard, inserted `72` into `child_ages`.
+- **Remediation Implemented**:
+  1. Added `_ADULTS_RE` support for `bade|bada`.
+  2. Added `_CHILDREN_RE` support for `bacche|bachhe|bache|baccha|bacha` with named group `(?P<count>...)`.
+  3. Added `_INFANTS_RE` (`r"(?P<count>\d+|ek|one|two|do)\s*(?:infants?|navjaat|chota\s+baby)"`) and extracted months converted to decimal years (`round(months / 12.0, 2)`).
+  4. Added `_SAAL_AGE_RE` to parse Hindi years (`"8 saal"`, `"3 saal"`).
+  5. Enforced strict upper bound: only ages `<= 17` are admitted into `child_ages`, completely eliminating senior citizen cross-contamination.
 
-### GAP-02: Prepositional Origin Extraction Conflict
+### GAP-02: Prepositional Origin Extraction Conflict with Auxiliary Verbs
 - **Input Text**: `"Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe..."`
 - **Expected**: `origin_city = "Indore"`
-- **Actual Extraction**: `origin_city = "Hai"`
+- **Initial Extraction (Broken)**: `origin_city = "Hai"`
 - **Root Cause**:
-  - The sentence structure `"dikkat hai to airport"` matched the greedy pattern `"<word> to airport"` where `<word>` was captured as `"Hai"` (the Hindi copula verb).
+  - The sentence structure `"dikkat hai to airport"` matched the greedy pattern `"<word> to airport"` where `<word>` was captured as `"Hai"` (the Hindi copula verb). Because "Hai" is an existing populated place in the GeoNames gazetteer, it passed validation.
   - The legitimate origin marker `"Indore se"` (Hindi postposition `"se"` = "from") was not prioritized over the English `"to airport"` heuristic.
-- **Remediation**:
-  - Add Hindi ablative marker support (`"<city> se"` / `"<city> se flight"`) to the origin extractor in `extractors.py` and normalize against known Indian airports/cities (Indore / `IDR`).
-  - Blacklist auxiliary verbs (`hai`, `tha`, `hoga`, `is`, `was`) from the origin city candidate pool.
+- **Remediation Implemented**:
+  1. Added `_ROUTE_INVALID_CITIES = {"airport", "terminal", "hotel", "city", "hai", "tha", "is", "was", "to", "from", "and", "the"}` to route pattern matching in `extractors.py`.
+  2. Implemented postpositional matching using `re.finditer(r"\b([A-Za-z]+)\s+se\b", ...)` that scans all occurrences and normalizes against known valid cities/airports.
+  3. Added stopword collision check in `_extract_leading_origin_city`: words in `_SWEEP_STOP_WORDS` or `_STOP_WORDS` are rejected from candidate origins.
 
 ### GAP-03: Gazetteer False Positives from Sentence-Initial Capitalization
 - **Input Text**: `"Hum 6 bade hain aur 2 bacche... Hume December 22 se... Khana pure vegetarian/Jain chahiye..."`
 - **Expected Destination**: `["Dubai"]`
-- **Actual Extraction**: `["Hum", "Hume", "Dubai", "Khana"]`
+- **Initial Extraction (Broken)**: `["Hum", "Hume", "Dubai", "Khana"]`
 - **Root Cause**:
-  - Sentence-initial capitalized words ("Hum" = We, "Hume" = To us, "Khana" = Food) matched broad title-case extraction rules when Jev was in fallback mode.
-- **Remediation**:
-  - Filter destination candidates through the verified global gazetteer and known stopword list (`Hum`, `Hume`, `Khana`, `Aap`, `Kripya`).
+  - Sentence-initial capitalized words ("Hum" = We, "Hume" = To us, "Khana" = Food) matched broad title-case extraction rules because real geographic entities named "Hum", "Hume", and "Khana" exist in global gazetteers.
+- **Remediation Implemented**:
+  - Expanded `_SWEEP_STOP_WORDS` in `extractors.py` with Hindi/Hinglish pronouns, discourse markers, and common verbs (`hum`, `hume`, `humko`, `humein`, `khana`, `bhaiya`, `namaste`, `dikkat`, `chahiye`, `batao`, `milakar`, `banwana`, `aap`, `aapko`, `sabko`, `bade`, `bacche`, `bache`, `bachhe`, `baccha`, `saal`, `mahine`, `infant`).
+  - Added filter in `_extract_destination_candidates_unfiltered`: candidates whose lowercased title is in `_SWEEP_STOP_WORDS` are discarded before reaching candidate ranking.
+
+### GAP-04: Hinglish Date Range Delimiter Miss
+- **Input Text**: `"December 22 se 28 tak Dubai ka family trip karna hai"`
+- **Expected**: `date_window = "December 22 se 28 tak"`
+- **Initial Extraction (Broken)**: `date_window = None`
+- **Root Cause**:
+  - Date window regexes only recognized English range conjunctions (`to`, `through`, `until`, `till`, `-`). The Hindi postpositional bracket `se ... tak` was unhandled.
+- **Remediation Implemented**:
+  - Updated `_DAY_RANGE_TEXT_RE` and `_MONTH_DAY_RANGE_RE` to admit `\bse\b` as a range delimiter alongside `to|through|until|till|-` and an optional trailing `(?:\s*tak\b)?`.
+  - Date windows like `"December 22 se 28 tak"` now parse reliably into structured windows.
 
 ---
 

@@ -52,6 +52,9 @@ ALLOWED_HOST_SUFFIXES = (
     "twitter.com",
     "apps.apple.com",
     "play.google.com",
+    "bing.com",
+    "google.com",
+    "duckduckgo.com",
 )
 
 

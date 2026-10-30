@@ -400,6 +400,12 @@ _SWEEP_STOP_WORDS = {
     # via Phuket), never as a bare prose mention inside a sentence about
     # people.
     "sen", "rao", "sim", "kamala", "sharma", "verma",
+    # FND-0359 (Sim #5): Hinglish pronouns, conjunctions, food, and discourse
+    # markers that collide with obscure GeoNames settlements ("Hume", "Hum",
+    # "Khana", "Bhaiya", "Namaste", "Dikkat", "Chahiye", "Batao").
+    "hume", "humko", "humein", "khana", "bhaiya", "namaste", "dikkat",
+    "chahiye", "batao", "milakar", "banwana", "aap", "aapko", "sabko",
+    "bade", "bacche", "bache", "bachhe", "baccha", "saal", "mahine", "infant",
 }
 # Common-English-word toponyms: real GeoNames places whose names are
 # ordinary words. Unlike _SWEEP_STOP_WORDS (never a candidate), a single
@@ -518,20 +524,20 @@ _TOTAL_GROUP_RE = re.compile(
 # Month abbreviations for day range patterns
 _MONTH_ABBR = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*"
 
-# Day range patterns (module level)
+# Day range patterns (module level) — supports English ("9th to 14th Feb") and Hinglish ("9 se 14 Feb tak")
 _DAY_RANGE_TEXT_RE = re.compile(
     r"\b(?:around|tentative(?:ly)?|dates?\s+around)?\s*"
-    r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|-|–|—|\bto\b)\s*(\d{1,2})(?:st|nd|rd|th)?\s+"
+    r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|-|–|—|\bto\b|\bse\b)\s*(\d{1,2})(?:st|nd|rd|th)?(?:\s*tak\b)?\s+"
     r"(" + _MONTH_ABBR + r")\b"
     r"(?:\s+(\d{4}))?",
 )
 
-# Month-day range patterns like "July 10 to July 16" or "July 10-16".
+# Month-day range patterns like "July 10 to July 16", "July 10-16", and Hinglish "December 22 se 28 tak".
 _MONTH_DAY_RANGE_RE = re.compile(
     r"\b((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)\s+"
-    r"(\d{1,2})(?:st|nd|rd|th)?\s*,?\s*(?:to|-|–|—|\bto\b|\bleaving\b|\breaching\b)\s*"
+    r"(\d{1,2})(?:st|nd|rd|th)?\s*,?\s*(?:to|-|–|—|\bto\b|\bse\b|\bleaving\b|\breaching\b)\s*"
     r"(?:(?:((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)\s+))?"
-    r"(\d{1,2})(?:st|nd|rd|th)?"
+    r"(\d{1,2})(?:st|nd|rd|th)?(?:\s*tak\b)?"
     r"(?:\s+(\d{4}))?",
     re.IGNORECASE,
 )
@@ -615,8 +621,14 @@ _NUMBER_WORDS = {
 _COUNT_TOKEN_RE = r"(?:\d+(?!(?:st|nd|rd|th)\b)|one|two|three|four|five|six|seven|eight|nine|ten|ek|do|teen|cha{1,2}r|pa{1,2}nch|chhe|saat|aath|nau|das)"
 
 # People count patterns
-_ADULTS_RE = re.compile(rf"({_COUNT_TOKEN_RE})\s+adults?", re.IGNORECASE)
-_CHILDREN_RE = re.compile(rf"(?:(({_COUNT_TOKEN_RE})\s+))?(?:kids?|children?|child|bachhe|baccha)", re.IGNORECASE)
+_ADULTS_RE = re.compile(rf"({_COUNT_TOKEN_RE})\s+(?:adults?|bade|bada)\b", re.IGNORECASE)
+_CHILDREN_RE = re.compile(rf"(?:(?P<count>{_COUNT_TOKEN_RE})\s+)?(?:kids?|children?|child|bacche|bachhe|bache|baccha|bacha)\b", re.IGNORECASE)
+_INFANTS_RE = re.compile(
+    rf"(?:(?P<count>{_COUNT_TOKEN_RE})\s+)?"
+    rf"(?:(?P<months>\d+)\s*(?:mahine?|months?)\s*(?:ka|ki|old)?\s*)?"
+    rf"(?:infants?|navjaat)\b",
+    re.IGNORECASE,
+)
 _TODDLER_RE = re.compile(r"\b(?:a\s+)?(?:toddler|toddlers?)\b", re.IGNORECASE)
 _TODDLER_AGE_RE = re.compile(r"toddler\s+(?:age\s+)?(\d+)", re.IGNORECASE)
 _ELDERLY_RE = re.compile(rf"(?:(({_COUNT_TOKEN_RE})\s+))?(?:elderly|seniors?|grandparents?|grandma|grandpa|grandmother|grandfather)", re.IGNORECASE)
@@ -1157,6 +1169,9 @@ def _extract_leading_origin_city(text: str) -> Optional[str]:
 
     for prefix_size in range(min(3, len(tokens)), 0, -1):
         prefix = " ".join(tokens[:prefix_size]).strip()
+        prefix_lower = prefix.lower()
+        if prefix_lower in _SWEEP_STOP_WORDS or prefix_lower in _STOP_WORDS:
+            continue
         city, _ = Normalizer.normalize_city(prefix)
         if not is_known_city(city):
             continue
@@ -1569,7 +1584,8 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
                     if (is_known_destination(title)
                         and _is_valid_destination_candidate(title, destination_text)
                         and title.lower() not in _MONTH_NAMES
-                        and title.lower() not in _DESTINATION_STOP_WORDS):
+                        and title.lower() not in _DESTINATION_STOP_WORDS
+                        and title.lower() not in _SWEEP_STOP_WORDS):
                         best = (candidate, title, end)
                         break
                 if best is None:
@@ -2759,27 +2775,56 @@ def _extract_party(text: str) -> Dict[str, Any]:
                 else:
                     child_ages.append(5.0)
 
-    # Adults
+    # Adults — English ("2 adults") and Hinglish ("6 bade")
     adult_match = _ADULTS_RE.search(text_lower)
     if adult_match:
         adult_count = _count_token_to_int(adult_match.group(1))
         if adult_count:
             composition["adults"] = adult_count
 
-    # Children — match "2 children" or bare "child/kid" or Hinglish "bachhe"/"bache"/"baccha"
-    child_match = re.search(rf"(?:(?P<count>{_COUNT_TOKEN_RE})\s+)?(?:kids?|children?|child|bachhe|bache|baccha)", text_lower)
+    # Children — match "2 children" or bare "child/kid" or Hinglish "bacche"/"bachhe"/"bache"/"baccha"
+    child_match = _CHILDREN_RE.search(text_lower)
     if child_match and child_match.group("count"):
         child_count = _count_token_to_int(child_match.group("count"))
         if child_count:
             composition["children"] = child_count
+
+    # Infants — "1 infant", "plus ek 7 mahine ka infant", "infant age 6 months"
+    infant_match = _INFANTS_RE.search(text_lower)
+    if infant_match:
+        infant_count_raw = infant_match.group("count")
+        infant_count = _count_token_to_int(infant_count_raw) if infant_count_raw else 1
+        if infant_count:
+            composition["infants"] = infant_count
+            if infant_match.group("months"):
+                child_ages.append(round(int(infant_match.group("months")) / 12.0, 2))
+            elif not any(a < 2 for a in child_ages):
+                child_ages.append(0.5)
+
+    # Hinglish saal ages: "ek 8 saal aur ek 3 saal" or "8 saal ka"
+    saal_matches = re.finditer(r"\b(\d+)\s*(?:saal|years?|yrs?)\b", text_lower)
+    for sm in saal_matches:
+        age_val = int(sm.group(1))
+        if age_val <= 17 and age_val not in child_ages:
+            child_ages.append(age_val)
+        elif age_val >= 60 and "elderly" not in composition and not named_senior_hits:
+            composition["elderly"] = 1
+
     # Try to extract ages: "kids ages 8 and 12", "children aged 5, 7", "child age 3"
     ages_match = re.search(
-        r"(?:kids?|children?|child|ages?|bachhe|bache|baccha)\s+(?:ages?\s+)?(\d+(?:\s*,\s*\d+)*(?:\s*,?\s*and\s*\d+)?)",
+        r"(?:kids?|children?|child|bachhe|bacche|bache|baccha|bacha)\s+(?:ages?\s+)?(\d+(?:\s*,\s*\d+)*(?:\s*,?\s*and\s*\d+)?)",
         text_lower,
     )
     if ages_match:
         found_ages = [int(a) for a in re.findall(r"\d+", ages_match.group(1))]
-        child_ages.extend(found_ages)
+        for fa in found_ages:
+            if fa <= 17 and fa not in child_ages:
+                child_ages.append(fa)
+            elif fa >= 60 and "elderly" not in composition and not named_senior_hits:
+                composition["elderly"] = 1
+
+    # Guard child_ages from senior mentions
+    child_ages = [a for a in child_ages if a <= 17]
 
     # Toddler — "toddler age 2", "a toddler", "toddlers"
     has_toddler = bool(_TODDLER_RE.search(text_lower))
@@ -4210,6 +4255,12 @@ class ExtractionPipeline:
 
         # Route pattern: "blr to goa", "mumbai to bali", "sfo to tokyo", "delhi -> manali"
         if not packet.facts.get("origin_city"):
+            _ROUTE_INVALID_CITIES = {
+                "hai", "tha", "thi", "the", "hoga", "hogi", "hoge", "is", "are", "was", "were", "be", "been",
+                "airport", "station", "hotel", "resort", "terminal", "harbor", "port", "beach",
+                "sightseeing", "dikkat", "plane", "flight", "flights", "transfer", "cab", "taxi", "car",
+                "bus", "train", "ticket", "tickets", "booking", "bookings", "room", "rooms", "villa", "villas",
+            }
             route_match = re.search(
                 r"\b([A-Za-z]{3,})\s+(?:to|->|-->)\s+([A-Za-z]{3,})\b",
                 text,
@@ -4218,21 +4269,27 @@ class ExtractionPipeline:
             if route_match:
                 city1_raw = route_match.group(1).strip()
                 city2_raw = route_match.group(2).strip()
-                city1, norm1 = Normalizer.normalize_city(city1_raw)
-                city2, norm2 = Normalizer.normalize_city(city2_raw)
-                if not norm1:
-                    city1 = city1.title()
-                if not norm2:
-                    city2 = city2.title()
-                if (is_known_city(city1) or is_known_destination(city1) or len(city1_raw) == 3) and (
-                    is_known_city(city2) or is_known_destination(city2) or len(city2_raw) == 3
+                if (
+                    city1_raw.lower() not in _ROUTE_INVALID_CITIES
+                    and city2_raw.lower() not in _ROUTE_INVALID_CITIES
+                    and city1_raw.lower() not in _SWEEP_STOP_WORDS
+                    and city2_raw.lower() not in _SWEEP_STOP_WORDS
                 ):
-                    packet.set_fact("origin_city", self._make_slot(
-                        city1, 0.90, AuthorityLevel.EXPLICIT_USER,
-                        route_match.group(0), eid, extraction_mode=ExtractionMode.NORMALIZED if norm1 else ExtractionMode.DIRECT_EXTRACT,
-                    ))
+                    city1, norm1 = Normalizer.normalize_city(city1_raw)
+                    city2, norm2 = Normalizer.normalize_city(city2_raw)
+                    if not norm1:
+                        city1 = city1.title()
+                    if not norm2:
+                        city2 = city2.title()
+                    if (is_known_city(city1) or is_known_destination(city1) or len(city1_raw) == 3) and (
+                        is_known_city(city2) or is_known_destination(city2) or len(city2_raw) == 3
+                    ):
+                        packet.set_fact("origin_city", self._make_slot(
+                            city1, 0.90, AuthorityLevel.EXPLICIT_USER,
+                            route_match.group(0), eid, extraction_mode=ExtractionMode.NORMALIZED if norm1 else ExtractionMode.DIRECT_EXTRACT,
+                        ))
 
-        # Hinglish/Odia origin: "Bangalore se", "Bangalore ru", "mumbai se goa"
+        # Hinglish/Odia origin: "Bangalore se", "Bangalore ru", "mumbai se goa", "Indore se"
         # Only try if origin not already set.
         # Single-word city only (multi-word like "New York se" is unlikely in Hinglish).
         #
@@ -4246,43 +4303,50 @@ class ExtractionPipeline:
         # "okinawa side trip?" is a noun compound (proposed destination),
         # not the Hinglish origin postposition (FND-0284-family, Sim #2).
         if not packet.facts.get("origin_city"):
-            postposition_match = re.search(
+            for postposition_match in re.finditer(
                 r"\b([A-Za-z]+)\s+(se|ru|side)\b",
                 text,
                 re.IGNORECASE,
-            )
-            if postposition_match and not (
-                postposition_match.group(2).lower() == "side"
-                and _side_is_trip_compound(text[postposition_match.end():])
             ):
+                if (
+                    postposition_match.group(2).lower() == "side"
+                    and _side_is_trip_compound(text[postposition_match.end():])
+                ):
+                    continue
                 city_raw = postposition_match.group(1).strip()
                 postposition = postposition_match.group(2).lower()
                 # Deictic origins like "yahan se" / "wahan se" mean "from here/there", not a city named Yahan
-                if city_raw.lower() not in ("yahan", "wahan", "idhar", "udhar", "here", "there"):
-                    city, was_normalized = Normalizer.normalize_city(city_raw)
-                    if not was_normalized:
-                        city = city.title()
-                    mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
-                    if is_known_city(city) or len(city_raw.split()) > 1 or len(city_raw) == 3:
-                        if postposition in ("se", "ru") or (
-                            postposition == "side"
-                            and re.match(
-                                r"^\s+(?:se|ru)\b",
-                                text[postposition_match.end():],
-                                re.IGNORECASE,
-                            )
-                        ):
-                            # Explicit "from" marker (also "X side se") → fact.
-                            packet.set_fact("origin_city", self._make_slot(
-                                city, 0.85, AuthorityLevel.EXPLICIT_USER,
-                                postposition_match.group(0), eid, extraction_mode=mode,
-                            ))
-                        else:
-                            # Bare "X side": directional — hypothesis, not fact.
-                            packet.set_hypothesis("origin_city", self._make_slot(
-                                city, 0.55, AuthorityLevel.SOFT_HYPOTHESIS,
-                                postposition_match.group(0), eid, extraction_mode=mode,
-                            ))
+                if (
+                    city_raw.lower() in ("yahan", "wahan", "idhar", "udhar", "here", "there", "ghar")
+                    or city_raw.lower() in _SWEEP_STOP_WORDS
+                ):
+                    continue
+                city, was_normalized = Normalizer.normalize_city(city_raw)
+                if not was_normalized:
+                    city = city.title()
+                mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
+                if is_known_city(city) or len(city_raw.split()) > 1 or len(city_raw) == 3:
+                    if postposition in ("se", "ru") or (
+                        postposition == "side"
+                        and re.match(
+                            r"^\s+(?:se|ru)\b",
+                            text[postposition_match.end():],
+                            re.IGNORECASE,
+                        )
+                    ):
+                        # Explicit "from" marker (also "X side se") → fact.
+                        packet.set_fact("origin_city", self._make_slot(
+                            city, 0.85, AuthorityLevel.EXPLICIT_USER,
+                            postposition_match.group(0), eid, extraction_mode=mode,
+                        ))
+                        break
+                    else:
+                        # Bare "X side": directional — hypothesis, not fact.
+                        packet.set_hypothesis("origin_city", self._make_slot(
+                            city, 0.55, AuthorityLevel.SOFT_HYPOTHESIS,
+                            postposition_match.group(0), eid, extraction_mode=mode,
+                        ))
+                        break
 
         # Ensure origin city is never erroneously retained in destination candidates
         if packet.facts.get("origin_city") and packet.facts.get("destination_candidates"):

@@ -148,6 +148,23 @@ class FederatedIntelligenceService:
         except Exception as exc:  # pragma: no cover - degraded-audit path
             logger.warning("Federated-incident audit mirror failed (incident retained): %s", exc)
 
+    def collect_expired(self, retention_days: int = 180) -> List[Dict[str, Any]]:
+        """BD2.6 retention (pure read): return records older than
+        ``retention_days`` for the caller to hand to cold storage. Undated
+        records are included (already excluded from active queries). Nothing
+        is deleted here — the append-only live store is untouched; archiving
+        persistence is the caller's explicit step (ops/CLI), keeping this
+        service read+policy only.
+        """
+        now = datetime.now(timezone.utc)
+        cutoff = retention_days * 86400
+        aged: List[Dict[str, Any]] = []
+        for r in self._load_records():
+            retrieved = _parse_utc(str(r.get("timestamp", "")))
+            if retrieved is None or (now - retrieved).total_seconds() > cutoff:
+                aged.append(r)
+        return aged
+
     def query_risks(self, location: str) -> List[Dict[str, Any]]:
         """Queries the pool for ACTIVE risks in a location (freshness-windowed)."""
         now = datetime.now(timezone.utc)

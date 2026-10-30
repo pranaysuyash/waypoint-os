@@ -83,3 +83,5 @@ now durable) is the moat path for per-type scores.
   merge (BD matrix rule).
 - Bands recomputed on fetch; no cached band older than its stalest component's
   TTL — else the page renders the stale-notice variant.
+
+**Differentiation sharpening (2026-10-30, post SERP mining —** `AE_KEYWORD_CLUSTERS_MINING_2026-10-30.md`**):** the safety-SERP is already crowded with scored tools (isitsafetotravel.org — 248 countries daily; travelriskcalculator.com; warmonit.com multi-gov consensus). The defensible angles are narrower than "nobody does trust": (a) per-datapoint provenance display (source+date on every component via `ExternalFactReference`), (b) operator/agency duty-of-care framing, (c) coverage-gap honesty per city, (d) the group/agent integration no consumer tool has. Band semantics unchanged; the FCDO normalizer in `src/intake/external_sources.py` implements C1 against the real `details.alert_status` slug list (live-verified: Japan=[]→1, Russia=[avoid_all_travel_to_whole_country]→4, Israel=parts-variants→3).

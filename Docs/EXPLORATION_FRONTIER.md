@@ -12,6 +12,7 @@
 - **[Concept] Automatic 'Next-Action' Nudging**: AI detects when a trip has been idle in a stage for X hours and suggests an "Internal Note" to nudge the process forward.
 - **[Concept] Visual State Replay**: Rather than just logs, create a "Video-Game Style Replay" button that iterates through the `TimelinePanel` steps at 0.5s intervals, allowing the operator to see the AI's "thought" progression visually.
 - **[Concept & Engineering] KDD v0.1: Fuzzy Feature Vector Clustering (`HDBSCAN` / Gower Distance) & Automated Rule Promotion Loop**: Upgrade the `exact-match-v1` override clustering algorithm (`src/analytics/kdd/clustering.py`) to a density-based fuzzy distance metric over `(flag, action, destination, party_size, duration_days)`. Prevents high-value domain overrides from dropping into the noise floor and implements a closed-loop `POST /kdd/clusters/{id}/promote` endpoint to convert verified operator patterns into automated suitability policy overrides. See `Docs/audit/KDD_OVERRIDE_MINING_AND_FEEDBACK_LOOP_AUDIT_2026-07-13.md`.
+- **[Intake / Vernacular AI] Hinglish Vernacular Extraction & GeoNames Gazetteer Collision Neutralization**: Discovery and architectural remediation of false positive colliders ("Hai", "Hum", "Khana") in 590k-city GeoNames gazetteers when processing mixed Hindi-English WhatsApp travel inquiries. Formalized Hindi ablative postpositional markers (`"<city> se"`), vernacular count nouns (`bade`, `bacche`, `infant`, `navjaat`), Hindi date range brackets (`"se ... tak"`), and senior citizen age ceiling guards (`<= 17`). Tested and verified in Sim #5 (`SIM-5-TIER2-INDIA-01`). See `Docs/sims/SIM5_TIER2_AGENT_AUDIT_2026-10-30.md`.
 
 ---
 
@@ -25,6 +26,7 @@
 | **Visual State Replay** | Experimental | Needs exploration of `PacketPanel` state rehydration (the "Time Travel" feature). |
 | **Collaborative Agents** | Raw | Requires multi-agent orchestration infrastructure. |
 | **KDD v0.1: Fuzzy Clustering & Rule Promotion** | Explored & Audited | Implement tenant isolation in `spine_api/routers/kdd.py` and benchmark agglomerative Gower clustering across historical overrides (`OverrideStore`). |
+| **Hinglish Vernacular Intake & Gazetteer Hygiene** | Implemented & Verified | Tested in Sim #5 (`SIM-5-TIER2-INDIA-01`); remediated count nouns, Hindi postpositions, date brackets, and stopword sweeps in `src/intake/extractors.py`. Next: explore regional dialects (Gujarati / Marwari business idioms). |
 
 ---
 

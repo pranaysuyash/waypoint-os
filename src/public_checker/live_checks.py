@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 import requests
 from src.agents.risk_contracts import to_structured_risk
+from src.intake.external_reference import DataCategory, ExternalFactReference, LicenseTier
 
 logger = logging.getLogger(__name__)
 
@@ -302,6 +303,11 @@ def _climate_summary(location: ClimateLocation, month: int, year: int) -> Option
             "soft_blockers": soft_blockers,
             "score_penalty": min(30, score_penalty),
             "source": "open-meteo-climate-api",
+            "provenance": ExternalFactReference.capture(
+                "open-meteo-climate-api",
+                license_tier=LicenseTier.ATTRIBUTION,
+                approximate=True,
+            ).to_metadata() | {"category": str(DataCategory.WEATHER.value)},
         }
     except Exception as exc:
         logger.debug(
@@ -397,6 +403,10 @@ def _current_conditions(location: ClimateLocation) -> Optional[dict[str, Any]]:
             "soft_blockers": soft_blockers,
             "score_penalty": min(15, score_penalty),
             "source": "open-meteo-current-conditions",
+            "provenance": ExternalFactReference.capture(
+                "open-meteo-forecast",
+                license_tier=LicenseTier.ATTRIBUTION,
+            ).to_metadata() | {"category": str(DataCategory.WEATHER.value)},
         }
     except Exception as exc:
         logger.debug("Public checker current weather lookup failed for %s: %s", location.name, exc)
