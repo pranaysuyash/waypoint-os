@@ -39,12 +39,15 @@ def assess_safety_band(
     advisory_provenance: Dict[str, Any],
     homicide: Optional[Dict[str, Any]] = None,
     events_pulse: bool = False,
+    neighborhood: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Combine components into a banded verdict with an honest coverage map.
 
     ``advisory_band``: C1 output ("1".."4" from normalize_fcdo_status).
     ``homicide``: C2 output from fetch_worldbank_homicide (or None = gap).
     ``events_pulse``: C4 boolean from the events fetcher (False = gap).
+    ``neighborhood``: C3 output from fetch_uk_street_crime (or None = gap).
+    C3 ANNOTATES ONLY — it never moves the band (spec: within-band text).
     """
     band = str(advisory_band)
     if band not in BAND_LABELS:
@@ -66,6 +69,16 @@ def assess_safety_band(
         components["c2_violent_crime"] = c2
         coverage.append("c2_violent_crime")
 
+    if neighborhood is not None:
+        components["c3_neighborhood"] = {
+            "total_crimes": neighborhood.get("total_crimes"),
+            "month": neighborhood.get("month"),
+            "traveler_relevance": neighborhood.get("traveler_relevance"),
+            "granularity": "point-radius",
+            "source": neighborhood.get("provenance", {}).get("source_id"),
+        }
+        coverage.append("c3_neighborhood")
+
     events_active = bool(events_pulse)
     if events_pulse:
         coverage.append("c4_events")
@@ -77,10 +90,7 @@ def assess_safety_band(
     elif band == "2" and c2 and c2["rate_per_100k"] >= TOP_DECILE_HOMICIDES_PER_100K and events_active:
         band = "3"
 
-    gaps = [name for name in ("c2_violent_crime", "c4_events") if name not in coverage]
-    # c3 (neighborhood incident density) is UK/US-first; surfaced as a gap here
-    # until the data.police.uk fetcher lands.
-    gaps.insert(0, "c3_neighborhood")
+    gaps = [name for name in ("c2_violent_crime", "c3_neighborhood", "c4_events") if name not in coverage]
 
     return {
         "band": band,
@@ -89,5 +99,6 @@ def assess_safety_band(
         "coverage": coverage,
         "coverage_gaps": gaps,
         "provenance": [advisory_provenance]
-        + ([homicide["provenance"]] if homicide else []),
+        + ([homicide["provenance"]] if homicide else [])
+        + ([neighborhood["provenance"]] if neighborhood else []),
     }

@@ -94,3 +94,7 @@ in `src/intake/external_sources.py` (C2 source; live-verified: India 2023 =
 `assess_safety_band` → Japan = band 1 "Normal precautions" with explicit gaps.
 C3 (data.police.uk) and C4 (GDELT/ACLED) fetchers are the remaining build
 before the free tool frontend can render all four components.
+
+**C3+C4 shipped (2026-10-30, evening):** `fetch_uk_street_crime` (data.police.uk — live-verified 5,024 category-tagged crimes central London 2025-09; UK categories mapped to traveler-relevance classes theft/pickpocket/violent/disorder — the "crime type mapping" master-list item implemented) and `fetch_gdelt_protest_pulse` (pacing contract documented: 1 req/5s hard limit, verified 429; callers degrade to events_pulse=False — honest gap). Band engine extended: C3 annotates and never moves the band. Live UK full-chain ran with C2 (GBR 1.2/100k-class) + C3 (London point).
+
+**C1 consensus is REQUIRED, not optional (live finding):** FCDO has no page for the UK itself — no government advises about its own country. Every destination is some traveler's home market, so single-source C1 structurally cannot cover them; the 4-gov consensus (or travel-advisory.info free tier as mirror) is the correct first-principles shape, now recorded as a spec requirement rather than redundancy.

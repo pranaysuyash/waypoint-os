@@ -46,6 +46,24 @@ def test_gaps_honest_when_c2_missing():
     assert "c2_violent_crime" not in out["components"]
 
 
+def test_neighborhood_annotates_but_never_moves_band():
+    hood = {
+        "total_crimes": 5024,
+        "month": "2025-09",
+        "traveler_relevance": {"theft": 1664, "theft_pickpocket": 1254},
+        "provenance": {"source_id": "data.police.uk", "retrieved_at": "2026-10-30T00:00:00+00:00"},
+    }
+    # Even a very high-crime neighborhood cannot raise the band (C3 annotates)
+    out = assess_safety_band(
+        advisory_band="1", advisory_provenance=_ADVISORY_PROV, neighborhood=hood
+    )
+    assert out["band"] == "1"
+    assert out["components"]["c3_neighborhood"]["total_crimes"] == 5024
+    assert "c3_neighborhood" in out["coverage"]
+    assert "c3_neighborhood" not in out["coverage_gaps"]
+    assert out["provenance"][-1]["source_id"] == "data.police.uk"
+
+
 def test_provenance_always_carried():
     out = assess_safety_band(advisory_band="3", advisory_provenance=_ADVISORY_PROV, homicide=_HOMICIDE)
     assert out["provenance"][0]["source_id"] == "fcdo-content-api"

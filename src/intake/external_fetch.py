@@ -43,6 +43,7 @@ ALLOWED_HOST_SUFFIXES = (
     "api.openaq.org",
     "suggestqueries.google.com",
     "gdeltproject.org",
+    "data.police.uk",
 )
 
 DEFAULT_TIMEOUT_SECONDS = 20.0
@@ -114,6 +115,7 @@ def fetch_json(
         reference=ExternalFactReference.capture(
             source_id,
             license_tier=license_tier,
+            as_of=as_of,
             approximate=approximate,
             url=url,
         ),

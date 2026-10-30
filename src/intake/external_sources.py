@@ -118,3 +118,98 @@ def fetch_fcdo_country(country_slug: str) -> Dict[str, Any]:
         "provenance": result.reference.to_metadata()
         | {"category": result.category.value},
     }
+
+
+# ---- C3: neighborhood street crime (data.police.uk — England/Wales) ----
+
+DATA_POLICE_BASE = "https://data.police.uk/api/crimes-street"
+
+# UK police category → traveler-relevance class (master-list item "crime type
+# mapping for travelers"): what a visitor actually needs to weight.
+_TRAVELER_RELEVANCE = {
+    "theft-from-the-person": "theft_pickpocket",
+    "other-theft": "theft",
+    "burglary": "theft",
+    "shoplifting": "theft",
+    "bicycle-theft": "theft",
+    "violent-crime": "violent",
+    "robbery": "violent",
+    "public-order": "disorder",
+    "anti-social-behaviour": "disorder",
+    "criminal-damage-arson": "disorder",
+    "drugs": "other",
+    "possession-of-weapons": "violent",
+    "vehicle-crime": "other",
+    "other-crime": "other",
+}
+
+
+def fetch_uk_street_crime(lat: float, lng: float, year_month: str) -> Dict[str, Any]:
+    """C3 component source: street-level crime around a point (data.police.uk,
+    England/Wales only — the granularity gold standard per the AW3 source
+    evaluation). Live-verified 2026-10-30: 5,024 category-tagged crimes for
+    central London in one month.
+
+    ``year_month``: "YYYY-MM" (data.police.uk requires the month parameter).
+    Returns totals, category breakdown, traveler-relevance classes, and
+    provenance with the data month as ``as_of``. OGL — attribution required
+    on display.
+    """
+    if not (len(year_month) == 7 and year_month[4] == "-" and year_month[:4].isdigit()):
+        raise ExternalFetchError(f"year_month must be YYYY-MM: {year_month!r}")
+    result: FetchResult = fetch_json(
+        f"{DATA_POLICE_BASE}/all-crime?lat={lat}&lng={lng}&date={year_month}",
+        source_id="data.police.uk",
+        category=DataCategory.SAFETY_ADVISORY,
+        license_tier=LicenseTier.ATTRIBUTION,  # OGL
+        approximate=False,
+        as_of=year_month,
+    )
+    crimes = result.payload if isinstance(result.payload, list) else []
+    categories: Dict[str, int] = {}
+    relevance: Dict[str, int] = {}
+    for crime in crimes:
+        cat = str(crime.get("category", "unknown"))
+        categories[cat] = categories.get(cat, 0) + 1
+        rel = _TRAVELER_RELEVANCE.get(cat, "other")
+        relevance[rel] = relevance.get(rel, 0) + 1
+    return {
+        "point": {"lat": lat, "lng": lng},
+        "month": year_month,
+        "total_crimes": len(crimes),
+        "categories": dict(sorted(categories.items(), key=lambda kv: -kv[1])),
+        "traveler_relevance": relevance,
+        "provenance": result.reference.to_metadata()
+        | {"category": result.category.value},
+    }
+
+
+# ---- C4: current-events pulse (GDELT) ----
+
+GDELT_DOC_BASE = "https://api.gdeltproject.org/api/v2/doc/doc"
+
+
+def fetch_gdelt_protest_pulse(location_query: str, timespan: str = "1w") -> Dict[str, Any]:
+    """C4 component source: protest/unrest article pulse via the GDELT DOC
+    API. PACING CONTRACT: GDELT hard-limits 1 request / 5 seconds (verified
+    429 body) — callers must pace; the governed pipeline does NOT retry, so
+    a 429 surfaces as ``ExternalFetchError`` and callers degrade to
+    ``events_pulse=False`` (honest coverage gap, never a fabricated calm).
+    """
+    result: FetchResult = fetch_json(
+        f"{GDELT_DOC_BASE}/doc?query=%28protest%20OR%20demonstration%20OR%20unrest%29%20{location_query.strip()}&mode=artlist&format=json&maxrecords=10&timespan={timespan}&sort=datedesc",
+        source_id="gdelt-doc-api",
+        category=DataCategory.EVENTS,
+        license_tier=LicenseTier.UNKNOWN,  # resolve GDELT usage terms before product display
+        approximate=True,
+    )
+    payload = result.payload
+    articles = payload.get("articles", []) if isinstance(payload, dict) else []
+    return {
+        "location_query": location_query,
+        "timespan": timespan,
+        "article_count": len(articles),
+        "sample_titles": [a.get("title") for a in articles[:5] if a.get("title")],
+        "provenance": result.reference.to_metadata()
+        | {"category": result.category.value},
+    }
