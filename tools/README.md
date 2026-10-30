@@ -1020,3 +1020,23 @@ Shared-JS bundle budget guard (FND-0390): runs `next build`, parses the
 "First Load JS shared by all" total, fails over budget (default 200 kB,
 env-overridable via WAYPOINT_BUNDLE_BUDGET_KB). Run before merging
 landing/marketing changes. Measured 2026-10-26: 88.1 kB.
+
+### check_dependency_advisories.py
+Dependency-advisory gate analyzer (pure Python, no subprocess): parse a
+pip-audit JSON report, list package/version/CVE/fix, exit 0 clean / 1
+findings / 2 unreadable. The authoritative check behind the Mimosa scanner's
+offline-DB over-match. Pipeline (shell):
+`uv export --no-hashes --no-emit-project -q -o /tmp/reqs.txt && uvx pip-audit -r /tmp/reqs.txt --no-deps -f json -o /tmp/audit.json && python3 tools/check_dependency_advisories.py /tmp/audit.json`.
+Monthly cadence per TRV-DP-06 D1. Measured 2026-10-30: PASS (171 pinned, 0 vulns).
+
+### tinyfish_sweep.py
+Reusable TinyFish research-sweep runner (SSRF-guarded: https-only, research-host
+allowlist, DNS pinning, no redirects; API key never logged). For login-walled
+source sweeps (X, Google Play, YouTube, Facebook snippets). Evidence JSONL per run.
+
+### master_list_recount.py
+Canonical counter for the Destination Intelligence master list
+(Docs/research/RESEARCH_OPPORTUNITY_MASTER_LIST_2026-04-25.md): counts actual
+bullets per category (prism topics counted unmarked, not force-bucketed);
+idempotent. Re-run after ANY master-list edit instead of hand-maintaining the
+summary tables.

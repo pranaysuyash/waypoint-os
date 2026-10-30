@@ -1,0 +1,1383 @@
+[
+  {
+    "step": "01_live_message_triage",
+    "method": "POST",
+    "endpoint": "/api/triage/message",
+    "request": {
+      "text": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+      "channel": "whatsapp"
+    },
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "intent": "general_inquiry",
+      "is_urgent": false,
+      "urgency_probability": 0.1,
+      "frustration_level": "calm",
+      "sentiment": "CALM",
+      "has_policy_risk": false,
+      "policy_risk_probability": 0.1,
+      "confidence": 0.8,
+      "routing_recommendation": "PLANNING_QUEUE",
+      "advisory": "Standard inquiry - normal processing",
+      "source": "heuristic_fallback",
+      "advisory_chips": [],
+      "latency_ms": 13.14,
+      "raw_probabilities": {},
+      "work_origin": "demand",
+      "work_authority": "explicit_user",
+      "urgency_class": "normal",
+      "identity_known": false,
+      "returning_customer": false,
+      "duplicate_risk": false
+    },
+    "timestamp": "2026-10-30T13:58:38.898898+00:00"
+  },
+  {
+    "step": "02_inbound_whatsapp_webhook",
+    "method": "POST",
+    "endpoint": "/api/v1/messaging/webhook/whatsapp",
+    "request": {
+      "event": "message",
+      "from": "+919826012345",
+      "to": "+919826099999",
+      "text": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+      "message_id": "wa_msg_sunil_001"
+    },
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "provider": "whatsapp",
+      "message_id": "wa_msg_sunil_001",
+      "status": "DELIVERED",
+      "signature_verified": true,
+      "inbound_messages_stored": 1,
+      "duplicates_skipped": 0,
+      "statuses_applied": 0,
+      "processed_at": "2026-10-30T13:58:39.035345+00:00"
+    },
+    "timestamp": "2026-10-30T13:58:39.036202+00:00"
+  },
+  {
+    "step": "03_agency_message_feed",
+    "method": "GET",
+    "endpoint": "/api/v1/messages",
+    "request": {},
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "messages": [
+        {
+          "message_id": "msg_62db5b3e4a2f",
+          "provider_message_id": null,
+          "reply_to_provider_message_id": "wa_msg_sunil_001",
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp",
+          "direction": "outbound",
+          "from_party": "+919826099999",
+          "to_party": "+919826012345",
+          "body": "Thanks — your message about your trip (trip_bdf495cc3c06) has been logged for your travel advisor. Live flight and hotel status are not connected on this channel yet, so your advisor will confirm the details personally.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:58:38.995518+00:00"
+        },
+        {
+          "message_id": "msg_67ca12882b18",
+          "provider_message_id": "wa_msg_sunil_001",
+          "reply_to_provider_message_id": null,
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp",
+          "direction": "inbound",
+          "from_party": "+919826012345",
+          "to_party": "+919826099999",
+          "body": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:58:38.992570+00:00"
+        },
+        {
+          "message_id": "msg_d07670d4a39b",
+          "provider_message_id": null,
+          "reply_to_provider_message_id": null,
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp_web",
+          "direction": "inbound",
+          "from_party": "Sunil Agrawal",
+          "to_party": "agency",
+          "body": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:57:11.905134+00:00"
+        },
+        {
+          "message_id": "msg_ecd1fe6198ae",
+          "provider_message_id": null,
+          "reply_to_provider_message_id": null,
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp_web",
+          "direction": "inbound",
+          "from_party": "Sunil Agrawal",
+          "to_party": "agency",
+          "body": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:55:11.455228+00:00"
+        },
+        {
+          "message_id": "msg_c5cd0ea6dc7c",
+          "provider_message_id": null,
+          "reply_to_provider_message_id": null,
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_dd98552bdf6c",
+          "channel": "whatsapp_web",
+          "direction": "inbound",
+          "from_party": "Sunil Agrawal",
+          "to_party": "agency",
+          "body": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:54:58.697464+00:00"
+        }
+      ],
+      "count": 5
+    },
+    "timestamp": "2026-10-30T13:58:39.038785+00:00"
+  },
+  {
+    "step": "04_inbound_intake_parse",
+    "method": "POST",
+    "endpoint": "/api/v1/inbound/parse",
+    "request": {
+      "channel": "whatsapp_web",
+      "raw_text": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+      "customer_name": "Sunil Agrawal",
+      "customer_contact": "+919826012345",
+      "agent_notes": "Urgent quote requested for joint family Dubai trip. High-value merchant client from Sitlamata Bazar."
+    },
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_bdf495cc3c06",
+      "channel": "whatsapp_web",
+      "decision_state": "STOP_NEEDS_REVIEW",
+      "packet": {
+        "packet_id": "pkt_7ea2919f",
+        "schema_version": "0.3",
+        "stage": "discovery",
+        "operating_mode": "normal_intake",
+        "decision_state": null,
+        "facts": {
+          "destination_candidates": {
+            "value": [
+              "Hum",
+              "Hume",
+              "Dubai",
+              "Khana"
+            ],
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "Hum, Hume, Dubai, Khana",
+                "ref_id": "ref_648e87",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.765954",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "destination_status": {
+            "value": "semi_open",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "Derived from destination text",
+                "ref_id": "ref_ccd09a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.765989",
+            "notes": null,
+            "epistemic_status": "INFERRED"
+          },
+          "budget_raw_text": {
+            "value": "budget around 4.5 lakh",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "budget around 4.5 lakh",
+                "ref_id": "ref_ecb2f0",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.769148",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_min": {
+            "value": 450000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "budget around 4.5 lakh",
+                "ref_id": "ref_4abd5a",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.769165",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_max": {
+            "value": 450000,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "budget around 4.5 lakh",
+                "ref_id": "ref_ccf323",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.769171",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "budget_currency": {
+            "value": "INR",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "budget around 4.5 lakh",
+                "ref_id": "ref_46698c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.769378",
+            "notes": null,
+            "epistemic_status": "ASSUMED"
+          },
+          "budget_flexibility": {
+            "value": "soft",
+            "confidence": 0.7,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "soft",
+                "ref_id": "ref_44cfc0",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.769489",
+            "notes": null,
+            "epistemic_status": "ASSUMED"
+          },
+          "budget_scope": {
+            "value": "total",
+            "confidence": 0.95,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "total",
+                "ref_id": "ref_afa366",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.769809",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "party_size": {
+            "value": 1,
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "1",
+                "ref_id": "ref_6119bf",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.772286",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "party_composition": {
+            "value": {
+              "adults": 1
+            },
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "{'adults': 1}",
+                "ref_id": "ref_0110a8",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.772302",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "child_ages": {
+            "value": [
+              72
+            ],
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "[72]",
+                "ref_id": "ref_5365c5",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.772309",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "origin_city": {
+            "value": "Hai",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "hai to airport",
+                "ref_id": "ref_e62ba3",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.773156",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "mobility_constraints": {
+            "value": "wheelchair assistance compulsory chahiye",
+            "confidence": 0.9,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "wheelchair assistance compulsory chahiye",
+                "ref_id": "ref_3caf92",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.773292",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "trip_purpose": {
+            "value": "family leisure",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "family leisure",
+                "ref_id": "ref_04b0f2",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.776972",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "activity_interests": {
+            "value": [
+              "sightseeing"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "['sightseeing']",
+                "ref_id": "ref_5d4ebf",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.776990",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "meal_preferences": {
+            "value": "vegetarian",
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "vegetarian",
+                "ref_id": "ref_bfd023",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.777000",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "trip_priorities": {
+            "value": [
+              "vegetarian food"
+            ],
+            "confidence": 0.8,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "['vegetarian food']",
+                "ref_id": "ref_bec25c",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.777012",
+            "notes": null,
+            "epistemic_status": "FACT"
+          },
+          "traveler_plan": {
+            "value": "nothing_booked",
+            "confidence": 0.85,
+            "authority_level": "explicit_user",
+            "extraction_mode": "direct_extract",
+            "evidence_refs": [
+              {
+                "envelope_id": "env_042200a9",
+                "evidence_type": "text_span",
+                "excerpt": "nothing_booked",
+                "ref_id": "ref_af9075",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.779564",
+            "notes": null,
+            "epistemic_status": "FACT"
+          }
+        },
+        "derived_signals": {
+          "domestic_or_international": {
+            "value": "unknown",
+            "confidence": 0.3,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Computed from destination_candidates=['Hum', 'Hume', 'Dubai', 'Khana'], origin=Hai, origin_country=None",
+                "ref_id": "ref_838eb6",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.779775",
+            "notes": null,
+            "maturity": "heuristic",
+            "epistemic_status": "INFERRED"
+          },
+          "internal_data_present": {
+            "value": true,
+            "confidence": 1.0,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                "ref_id": "ref_581fbc",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.779784",
+            "notes": null,
+            "maturity": "verified",
+            "epistemic_status": "INFERRED"
+          },
+          "sourcing_path": {
+            "value": "open_market",
+            "confidence": 0.7,
+            "authority_level": "derived_signal",
+            "extraction_mode": "derived",
+            "evidence_refs": [
+              {
+                "envelope_id": "derived",
+                "evidence_type": "text_span",
+                "excerpt": "Sourcing tier resolved via SourcingPathResolver: No internal or preferred supplier data available — defaulting to open market",
+                "ref_id": "ref_f4c140",
+                "field_path": null,
+                "offset": null,
+                "confidence": 1.0,
+                "metadata": {}
+              }
+            ],
+            "derived_from": [],
+            "updated_at": "2026-10-30T19:28:39.780340",
+            "notes": "No internal or preferred supplier data available — defaulting to open market",
+            "maturity": "stub",
+            "epistemic_status": "INFERRED"
+          }
+        },
+        "hypotheses": {},
+        "lifecycle": null,
+        "ambiguities": [
+          {
+            "field_name": "destination_candidates",
+            "ambiguity_type": "unresolved_alternatives",
+            "raw_value": "derived from extracted candidates: Hum, Hume, Dubai, Khana",
+            "normalized_value": null,
+            "confidence": 0.8,
+            "evidence_refs": [],
+            "notes": null
+          }
+        ],
+        "unknowns": [
+          {
+            "field_name": "date_window",
+            "reason": "not_present_in_source",
+            "attempted_at": null,
+            "notes": "required_for: planning, fare_quote, booking [BLOCKING_FOR_planning]"
+          }
+        ],
+        "assumptions": [
+          {
+            "slot_name": "budget_currency",
+            "assumed_value": "INR",
+            "rationale": "Value defaulted by system business rules — no explicit traveler input for 'budget_currency'. Epistemic status: ASSUMED. Operator confirmation recommended.",
+            "criticality": "critical",
+            "created_at": "2026-10-30T19:28:39.780374",
+            "acknowledged_by_operator": false,
+            "operator_notes": null,
+            "source_field": "budget"
+          },
+          {
+            "slot_name": "budget_flexibility",
+            "assumed_value": "soft",
+            "rationale": "Value defaulted by system business rules — no explicit traveler input for 'budget_flexibility'. Epistemic status: ASSUMED. Operator confirmation recommended.",
+            "criticality": "advisory",
+            "created_at": "2026-10-30T19:28:39.780377",
+            "acknowledged_by_operator": false,
+            "operator_notes": null,
+            "source_field": "budget"
+          }
+        ],
+        "contradictions": [],
+        "source_envelope_ids": [
+          "env_042200a9"
+        ],
+        "revision_count": 0,
+        "event_cursor": 23,
+        "events": [
+          {
+            "event_id": 1,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.765978",
+            "details": {
+              "field_name": "destination_candidates",
+              "old_value": null,
+              "new_value": [
+                "Hum",
+                "Hume",
+                "Dubai",
+                "Khana"
+              ]
+            }
+          },
+          {
+            "event_id": 2,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.765994",
+            "details": {
+              "field_name": "destination_status",
+              "old_value": null,
+              "new_value": "semi_open"
+            }
+          },
+          {
+            "event_id": 3,
+            "event_type": "ambiguity_added",
+            "timestamp": "2026-10-30T19:28:39.766857",
+            "details": {
+              "field_name": "destination_candidates",
+              "ambiguity_type": "unresolved_alternatives"
+            }
+          },
+          {
+            "event_id": 4,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.769159",
+            "details": {
+              "field_name": "budget_raw_text",
+              "old_value": null,
+              "new_value": "budget around 4.5 lakh"
+            }
+          },
+          {
+            "event_id": 5,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.769167",
+            "details": {
+              "field_name": "budget_min",
+              "old_value": null,
+              "new_value": 450000
+            }
+          },
+          {
+            "event_id": 6,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.769173",
+            "details": {
+              "field_name": "budget_max",
+              "old_value": null,
+              "new_value": 450000
+            }
+          },
+          {
+            "event_id": 7,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.769381",
+            "details": {
+              "field_name": "budget_currency",
+              "old_value": null,
+              "new_value": "INR"
+            }
+          },
+          {
+            "event_id": 8,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.769492",
+            "details": {
+              "field_name": "budget_flexibility",
+              "old_value": null,
+              "new_value": "soft"
+            }
+          },
+          {
+            "event_id": 9,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.769811",
+            "details": {
+              "field_name": "budget_scope",
+              "old_value": null,
+              "new_value": "total"
+            }
+          },
+          {
+            "event_id": 10,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.772294",
+            "details": {
+              "field_name": "party_size",
+              "old_value": null,
+              "new_value": 1
+            }
+          },
+          {
+            "event_id": 11,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.772304",
+            "details": {
+              "field_name": "party_composition",
+              "old_value": null,
+              "new_value": {
+                "adults": 1
+              }
+            }
+          },
+          {
+            "event_id": 12,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.772311",
+            "details": {
+              "field_name": "child_ages",
+              "old_value": null,
+              "new_value": [
+                72
+              ]
+            }
+          },
+          {
+            "event_id": 13,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.773160",
+            "details": {
+              "field_name": "origin_city",
+              "old_value": null,
+              "new_value": "Hai"
+            }
+          },
+          {
+            "event_id": 14,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.773299",
+            "details": {
+              "field_name": "mobility_constraints",
+              "old_value": null,
+              "new_value": "wheelchair assistance compulsory chahiye"
+            }
+          },
+          {
+            "event_id": 15,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.776982",
+            "details": {
+              "field_name": "trip_purpose",
+              "old_value": null,
+              "new_value": "family leisure"
+            }
+          },
+          {
+            "event_id": 16,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.776992",
+            "details": {
+              "field_name": "activity_interests",
+              "old_value": null,
+              "new_value": [
+                "sightseeing"
+              ]
+            }
+          },
+          {
+            "event_id": 17,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.777003",
+            "details": {
+              "field_name": "meal_preferences",
+              "old_value": null,
+              "new_value": "vegetarian"
+            }
+          },
+          {
+            "event_id": 18,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.777014",
+            "details": {
+              "field_name": "trip_priorities",
+              "old_value": null,
+              "new_value": [
+                "vegetarian food"
+              ]
+            }
+          },
+          {
+            "event_id": 19,
+            "event_type": "fact_set",
+            "timestamp": "2026-10-30T19:28:39.779568",
+            "details": {
+              "field_name": "traveler_plan",
+              "old_value": null,
+              "new_value": "nothing_booked"
+            }
+          },
+          {
+            "event_id": 20,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-30T19:28:39.779778",
+            "details": {
+              "field_name": "domestic_or_international",
+              "old_value": null,
+              "new_value": "unknown"
+            }
+          },
+          {
+            "event_id": 21,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-30T19:28:39.779786",
+            "details": {
+              "field_name": "internal_data_present",
+              "old_value": null,
+              "new_value": true
+            }
+          },
+          {
+            "event_id": 22,
+            "event_type": "derived_signal_set",
+            "timestamp": "2026-10-30T19:28:39.780343",
+            "details": {
+              "field_name": "sourcing_path",
+              "old_value": null,
+              "new_value": "open_market"
+            }
+          },
+          {
+            "event_id": 23,
+            "event_type": "unknown_added",
+            "timestamp": "2026-10-30T19:28:39.780366",
+            "details": {
+              "field_name": "date_window",
+              "reason": "not_present_in_source"
+            }
+          }
+        ],
+        "metadata": {
+          "semantic_ambiguity": {
+            "action": "PROCEED_WITH_ASKS",
+            "confidence": null,
+            "confidence_method": "rule_heuristic",
+            "fallback_reason": "model_call_failed",
+            "missing_dimensions": [],
+            "source": "deterministic_fallback",
+            "reasoning": "[rule] deterministic indicator scan; coherence_override=blocking_unknowns:[date_window]",
+            "dimensions": {
+              "destination": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "dates": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "party": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              },
+              "budget": {
+                "is_clear": true,
+                "probability": 1.0,
+                "notes": ""
+              }
+            }
+          }
+        },
+        "customer_name": "Sunil Agrawal",
+        "customer_contact": "+919826012345"
+      },
+      "missing_fields": [],
+      "draft_followup_prompt": null,
+      "traveler_bundle": {
+        "system_context": "",
+        "user_message": "",
+        "follow_up_sequence": [],
+        "branch_prompts": [],
+        "internal_notes": "",
+        "constraints": [],
+        "audience": "traveler"
+      },
+      "internal_bundle": {
+        "system_context": "",
+        "user_message": "",
+        "follow_up_sequence": [],
+        "branch_prompts": [],
+        "internal_notes": "",
+        "constraints": [],
+        "audience": "traveler"
+      },
+      "safety": {
+        "strict_leakage": false,
+        "leakage_passed": true,
+        "leakage_errors": []
+      },
+      "created_at": "2026-10-30T13:58:39.949009+00:00",
+      "attachments_accepted": 0
+    },
+    "timestamp": "2026-10-30T13:58:40.028016+00:00"
+  },
+  {
+    "step": "05_tax_compliance_tcs",
+    "method": "POST",
+    "endpoint": "/api/v1/tax-compliance/calculate-tcs",
+    "request": {
+      "current_amount_inr": 450000.0,
+      "is_overseas_trip": true,
+      "pan_number": "AAACA1234F",
+      "cumulative_fy_spend_inr": 0.0
+    },
+    "status_code": 200,
+    "response": {
+      "is_applicable": true,
+      "pan_provided": true,
+      "pan_number": "AAACA1234F",
+      "cumulative_spend_prior_inr": 0.0,
+      "current_tx_amount_inr": 450000.0,
+      "tier_5pct_taxable_amount_inr": 450000.0,
+      "tier_5pct_tcs_amount_inr": 22500.0,
+      "tier_20pct_taxable_amount_inr": 0.0,
+      "tier_20pct_tcs_amount_inr": 0.0,
+      "total_tcs_amount_inr": 22500.0,
+      "effective_tcs_rate_pct": 5.0,
+      "rationale": "LRS Overseas Package: ₹450,000.00 @ 5% = ₹22,500.00; ₹0.00 @ 20% = ₹0.00."
+    },
+    "timestamp": "2026-10-30T13:58:40.030841+00:00"
+  },
+  {
+    "step": "06_tax_compliance_gst_package",
+    "method": "POST",
+    "endpoint": "/api/v1/tax-compliance/calculate-gst",
+    "request": {
+      "taxable_base_inr": 450000.0,
+      "scheme": "TOUR_PACKAGE_5PCT",
+      "is_inter_state": false
+    },
+    "status_code": 200,
+    "response": {
+      "tax_scheme": "TOUR_PACKAGE_5PCT",
+      "taxable_base_inr": 450000.0,
+      "gst_rate_pct": 5.0,
+      "is_inter_state": false,
+      "cgst_rate_pct": 2.5,
+      "cgst_amount_inr": 11250.0,
+      "sgst_rate_pct": 2.5,
+      "sgst_amount_inr": 11250.0,
+      "igst_rate_pct": 0.0,
+      "igst_amount_inr": 0.0,
+      "total_gst_amount_inr": 22500.0,
+      "itc_eligible": false
+    },
+    "timestamp": "2026-10-30T13:58:40.032582+00:00"
+  },
+  {
+    "step": "07_followup_message_webhook",
+    "method": "POST",
+    "endpoint": "/api/v1/messaging/webhook/whatsapp",
+    "request": {
+      "event": "message",
+      "from": "+919826012345",
+      "to": "+919826099999",
+      "text": "Sunil Agrawal here again — bhaiya hotel Bur Dubai ya Deira taraf nahi chahiye, kids ko Burj Khalifa aur Dubai Mall paas chahiye so Downtown ya Sheikh Zayed Road taraf batao. Aur kya TCS 5% lagega ya 20%? Sabke passport valid hain till 2028.",
+      "message_id": "wa_msg_sunil_002"
+    },
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "provider": "whatsapp",
+      "message_id": "wa_msg_sunil_002",
+      "status": "DELIVERED",
+      "signature_verified": true,
+      "inbound_messages_stored": 1,
+      "duplicates_skipped": 0,
+      "statuses_applied": 0,
+      "processed_at": "2026-10-30T13:58:40.367104+00:00"
+    },
+    "timestamp": "2026-10-30T13:58:40.367985+00:00"
+  },
+  {
+    "step": "08_followup_message_triage",
+    "method": "POST",
+    "endpoint": "/api/triage/message",
+    "request": {
+      "text": "Sunil Agrawal here again — bhaiya hotel Bur Dubai ya Deira taraf nahi chahiye, kids ko Burj Khalifa aur Dubai Mall paas chahiye so Downtown ya Sheikh Zayed Road taraf batao. Aur kya TCS 5% lagega ya 20%? Sabke passport valid hain till 2028.",
+      "channel": "whatsapp"
+    },
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "intent": "general_inquiry",
+      "is_urgent": false,
+      "urgency_probability": 0.1,
+      "frustration_level": "calm",
+      "sentiment": "CALM",
+      "has_policy_risk": false,
+      "policy_risk_probability": 0.1,
+      "confidence": 0.8,
+      "routing_recommendation": "PLANNING_QUEUE",
+      "advisory": "Standard inquiry - normal processing",
+      "source": "heuristic_fallback",
+      "advisory_chips": [],
+      "latency_ms": 2.99,
+      "raw_probabilities": {},
+      "work_origin": "demand",
+      "work_authority": "explicit_user",
+      "urgency_class": "normal",
+      "identity_known": false,
+      "returning_customer": false,
+      "duplicate_risk": false
+    },
+    "timestamp": "2026-10-30T13:58:40.374047+00:00"
+  },
+  {
+    "step": "09_outbound_whatsapp_dispatch",
+    "method": "POST",
+    "endpoint": "/api/v1/messaging/send",
+    "request": {
+      "trip_id": "trip_bdf495cc3c06",
+      "recipient": "+919826012345",
+      "channel": "whatsapp",
+      "content": "Namaste Sunil ji! Thank you for contacting Shubh Yatra Holidays, Indore. We have registered your Dubai family vacation (Dec 22-28, 6 adults, 2 children, 1 infant). All special requirements are locked: 100% pure Jain catering, airport & sightseeing wheelchair assistance for Mataji, and premium Downtown / Sheikh Zayed Road 4-star family suites. Tax breakdown: For ₹4,50,000 package, statutory TCS is 5% (₹22,500, fully adjustable against your advance tax), and B2B GST invoice with your firm's GSTIN will be provided. Detailed itinerary options are ready for your review."
+    },
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "message_id": "msg_32b695f0a6e4",
+      "trip_id": "trip_bdf495cc3c06",
+      "channel": "whatsapp",
+      "status": "NOT_CONFIGURED",
+      "provider": "whatsapp_cloud_api",
+      "dispatched_at": "2026-10-30T13:58:40.415540+00:00",
+      "dispatch_status": "NOT_CONFIGURED"
+    },
+    "timestamp": "2026-10-30T13:58:40.416400+00:00"
+  },
+  {
+    "step": "10_trip_messages_thread",
+    "method": "GET",
+    "endpoint": "/api/v1/trips/trip_bdf495cc3c06/messages",
+    "request": {},
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "trip_id": "trip_bdf495cc3c06",
+      "messages": [
+        {
+          "message_id": "msg_7c8f226a2785",
+          "provider_message_id": null,
+          "reply_to_provider_message_id": "wa_msg_sunil_002",
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp",
+          "direction": "outbound",
+          "from_party": "+919826099999",
+          "to_party": "+919826012345",
+          "body": "Thanks — your message about your trip (trip_bdf495cc3c06) has been logged for your travel advisor. Live flight and hotel status are not connected on this channel yet, so your advisor will confirm the details personally.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:58:40.122183+00:00"
+        },
+        {
+          "message_id": "msg_d62904c8e983",
+          "provider_message_id": "wa_msg_sunil_002",
+          "reply_to_provider_message_id": null,
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp",
+          "direction": "inbound",
+          "from_party": "+919826012345",
+          "to_party": "+919826099999",
+          "body": "Sunil Agrawal here again — bhaiya hotel Bur Dubai ya Deira taraf nahi chahiye, kids ko Burj Khalifa aur Dubai Mall paas chahiye so Downtown ya Sheikh Zayed Road taraf batao. Aur kya TCS 5% lagega ya 20%? Sabke passport valid hain till 2028.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:58:40.121432+00:00"
+        },
+        {
+          "message_id": "msg_6c918b95a3af",
+          "provider_message_id": null,
+          "reply_to_provider_message_id": null,
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp_web",
+          "direction": "inbound",
+          "from_party": "Sunil Agrawal",
+          "to_party": "agency",
+          "body": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:58:39.949009+00:00"
+        },
+        {
+          "message_id": "msg_62db5b3e4a2f",
+          "provider_message_id": null,
+          "reply_to_provider_message_id": "wa_msg_sunil_001",
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp",
+          "direction": "outbound",
+          "from_party": "+919826099999",
+          "to_party": "+919826012345",
+          "body": "Thanks — your message about your trip (trip_bdf495cc3c06) has been logged for your travel advisor. Live flight and hotel status are not connected on this channel yet, so your advisor will confirm the details personally.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:58:38.995518+00:00"
+        },
+        {
+          "message_id": "msg_67ca12882b18",
+          "provider_message_id": "wa_msg_sunil_001",
+          "reply_to_provider_message_id": null,
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp",
+          "direction": "inbound",
+          "from_party": "+919826012345",
+          "to_party": "+919826099999",
+          "body": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:58:38.992570+00:00"
+        },
+        {
+          "message_id": "msg_d07670d4a39b",
+          "provider_message_id": null,
+          "reply_to_provider_message_id": null,
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp_web",
+          "direction": "inbound",
+          "from_party": "Sunil Agrawal",
+          "to_party": "agency",
+          "body": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:57:11.905134+00:00"
+        },
+        {
+          "message_id": "msg_ecd1fe6198ae",
+          "provider_message_id": null,
+          "reply_to_provider_message_id": null,
+          "agency_id": "agency_rajesh_indore",
+          "trip_id": "trip_bdf495cc3c06",
+          "channel": "whatsapp_web",
+          "direction": "inbound",
+          "from_party": "Sunil Agrawal",
+          "to_party": "agency",
+          "body": "Bhaiya namaste. Hum 6 bade hain aur 2 bacche (ek 8 saal aur ek 3 saal) plus ek 7 mahine ka infant. Hume December 22 se 28 tak Dubai ka family trip karna hai Indore se. Mummy ji (age 72) ko chalne me dikkat hai to airport aur sightseeing pe wheelchair assistance compulsory chahiye. Khana pure vegetarian/Jain chahiye hotel aur sightseeing me. Budget around 4.5 lakh total sab milakar. Aur humare textile firm ke naam par GST invoice banwana hai. Jaldi batao options.",
+          "mime": null,
+          "filename": null,
+          "received_at": "2026-10-30T13:55:11.455228+00:00"
+        }
+      ],
+      "count": 7
+    },
+    "timestamp": "2026-10-30T13:58:40.419618+00:00"
+  },
+  {
+    "step": "11_audit_store_events",
+    "method": "INTERNAL",
+    "endpoint": "AuditStore.get_events",
+    "request": {
+      "limit": 50
+    },
+    "status_code": 200,
+    "response": {
+      "events_count": 50,
+      "events": [
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T12:57:01.395069+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected freeform user input in field: 'agent_notes'",
+            "blocked": false
+          }
+        },
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T13:09:39.148046+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected freeform user input in field: 'agent_notes'",
+            "blocked": false
+          }
+        },
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T13:09:39.274234+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected phone number: 'tok_f5160258567b...'",
+            "blocked": false
+          }
+        },
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T13:09:39.351013+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected phone number: 'tok_f5160258567b...'",
+            "blocked": false
+          }
+        },
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T13:17:11.650525+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected freeform user input in field: 'agent_notes'",
+            "blocked": false
+          }
+        },
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T13:17:11.799184+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected freeform user input in field: 'agent_notes'",
+            "blocked": false
+          }
+        },
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T13:17:11.897613+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected freeform user input in field: 'agent_notes'",
+            "blocked": false
+          }
+        },
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T13:21:19.240582+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected freeform user input in field: 'agent_notes'",
+            "blocked": false
+          }
+        },
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T13:21:19.403534+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected freeform user input in field: 'agent_notes'",
+            "blocked": false
+          }
+        },
+        {
+          "event_type": "privacy_guard_admitted_pii_shape",
+          "timestamp": "2026-10-26T13:21:19.507441+00:00",
+          "user_id": "system",
+          "details": {
+            "mode": "beta",
+            "findings": "Detected freeform user input in field: 'agent_notes'",
+            "blocked": false
+          }
+        }
+      ]
+    },
+    "timestamp": "2026-10-30T13:58:40.457681+00:00"
+  }
+]

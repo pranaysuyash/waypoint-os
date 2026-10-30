@@ -46,3 +46,28 @@ READY-TO-MARK: BD1.1 (open-data APIs), BD1.4 (governance half — Numbeo = secon
 
 wikidata.org/wiki/Help:Sources · wiki.openstreetmap.org/wiki/Key:source · w3.org/TR/vocab-dcat/ · resources.data.gov/resources/dcat-us/ · iatatravelcentre.com · numbeo.com/common/about.jsp
 In-repo evidence: src/intake/{packet_models,fact_overrides,extractors,currency_registry,holiday_registry,federated_intelligence,attribution}.py · spine_api/core/audit.py · spine_api/services/audit_chain_hash.py
+
+---
+
+## Implementation addendum (2026-10-30, same day) — gap #3 CLOSED, #1/#2 contracts shipped
+
+- **Gap #3 (federated store is a mock) — FIXED.** `src/intake/federated_intelligence.py`
+  rewritten: append-only JSONL store (`data/intelligence_pool/incidents.jsonl`,
+  fsync'd, corrupted-line-tolerant), survives restarts, every report mirrored
+  into the canonical RULE_015 audit chain (`federated_intelligence_incident`
+  events; degraded audit sinks log-and-retain, never lose the incident),
+  freshness-windowed active queries (14-day TTL, undated = stale-by-default),
+  source anonymization preserved (hash-only), and the Singapore demo fixture
+  now labeled `demo: true` + "DEMO" message prefix (fabrication class retired).
+  Public API unchanged — `frontier_orchestrator` untouched. Tests:
+  `tests/test_federated_intelligence.py` (10 tests incl. restart-persistence,
+  audit mirror, degraded-audit retention, multiline-guard class).
+- **Gaps #1/#2 (provenance envelope + TTL contract) — contracts SHIPPED** as
+  `src/intake/external_reference.py`: `LicenseTier`, `DataCategory` (12 types),
+  `FRESHNESS_TTL_SECONDS` (the matrix above, as code), `ExternalFactReference`
+  (capture/is_stale/to_metadata; undated provenance is stale by default).
+  These are the canonical shapes future fetchers attach to facts — no parallel
+  envelope systems. Tests: `tests/test_external_reference.py` (7 tests).
+- Remaining open from this framework: fetcher wiring itself (the platform
+  still has zero external fetchers — that is the AW/AZ build tranches),
+  normalization enums for the 7 unregistried types, retention policy (BD2.6).

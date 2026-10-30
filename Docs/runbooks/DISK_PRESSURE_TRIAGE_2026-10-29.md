@@ -88,3 +88,29 @@ code-level findings are fully adjudicated above.
 **Deep scan remains disk-blocked** until the owner-gated recovery menu above
 executes (deep runs the business-logic research pass and is what hit ENOSPC
 previously). Standing rule at ≥95% full volume unchanged.
+
+## Deep scan verdict (2026-10-30) — ADVISORY FULLY CLEARED
+
+Deep scan `scan-2026-10-30T13-42-35.404Z-0bc8f0ec942c` **completed and sealed**
+(`sha256:028cea40ad2aaf77ebc243a301b2d877190e3b74554b5dcb4877149dc2c7bb56`, ~67s)
+at 3.7GiB free — the previous ENOSPC bar no longer applies. 128 findings:
+**zero real defects**, every class matches prior adjudications:
+
+- 46 business-logic-risk (the RLS-invisible class) — `tools/mimosa_triage.py`
+  posture histogram: 21 AGENCY-DI-guarded, 10 PUBLIC-BY-DESIGN (7 token-verified
+  + 3 needs-eye re-verified), 1 capability-token, 2 NON-ROUTE, **5 UNGUARDED-LEAD
+  all FALSE on eyes-on** (multiline-signature guards: customer_memory.py:698
+  `get_current_agency_id` DI; dsr.py:147 `get_current_agency` +
+  `require_permission("trips:write")`; product_b_analytics.py:43
+  `require_platform_role("super_admin")`; social_inbound.py:206 agency-DI +
+  RLS-scoped store; team.py:62 agency+user+`require_permission("team:manage")`
+  + RLS db) — the classifier's documented multiline limitation.
+- 40 path-traversal / 8 ssrf / 23 insecure-randomness / 1 hardcoded-credential —
+  same script-family + fixture classes adjudicated in FND-0374/0383 and the
+  normal-scan verdict above.
+
+Offline advisory DB again over-matched (8 pkgs/37 advisories); the networked
+pip-audit truth is 0 (post-fix, see TRV-DP-06 D1 + `tools/check_dependency_
+advisories.py` gate). **Standing advisory status: CLEARED at both depths.**
+Note: Data volume consumed +24G between 2026-10-29 and 2026-10-30 (899→923G) —
+growth source unidentified; the owner menu remains the structural fix.

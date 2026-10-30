@@ -1,0 +1,99 @@
+{
+  "simulation_id": "SIM-5-TIER2-INDIA-01",
+  "timestamp": "2026-10-30T13:58:38.879375+00:00",
+  "operator": {
+    "persona_id": "P-TIER2-INDIA-01",
+    "name": "Rajesh Khandelwal",
+    "agency": "Shubh Yatra Holidays (Indore)",
+    "city": "Indore, Madhya Pradesh"
+  },
+  "customer": {
+    "name": "Sunil Agrawal",
+    "company": "Agrawal Textiles, Indore",
+    "contact": "+919826012345",
+    "channel": "WhatsApp"
+  },
+  "steps": [
+    {
+      "step": "01_live_message_triage",
+      "endpoint": "POST /api/triage/message",
+      "status": 200
+    },
+    {
+      "step": "02_inbound_whatsapp_webhook",
+      "endpoint": "POST /api/v1/messaging/webhook/whatsapp",
+      "status": 200
+    },
+    {
+      "step": "03_agency_message_feed",
+      "endpoint": "GET /api/v1/messages",
+      "status": 200
+    },
+    {
+      "step": "04_inbound_intake_parse",
+      "endpoint": "POST /api/v1/inbound/parse",
+      "status": 200
+    },
+    {
+      "step": "05_tax_compliance_tcs",
+      "endpoint": "POST /api/v1/tax-compliance/calculate-tcs",
+      "status": 200
+    },
+    {
+      "step": "06_tax_compliance_gst_package",
+      "endpoint": "POST /api/v1/tax-compliance/calculate-gst",
+      "status": 200
+    },
+    {
+      "step": "07_followup_message_webhook",
+      "endpoint": "POST /api/v1/messaging/webhook/whatsapp",
+      "status": 200
+    },
+    {
+      "step": "08_followup_message_triage",
+      "endpoint": "POST /api/triage/message",
+      "status": 200
+    },
+    {
+      "step": "09_outbound_whatsapp_dispatch",
+      "endpoint": "POST /api/v1/messaging/send",
+      "status": 200
+    },
+    {
+      "step": "10_trip_messages_thread",
+      "endpoint": "GET /api/v1/trips/trip_bdf495cc3c06/messages",
+      "status": 200
+    },
+    {
+      "step": "11_audit_store_events",
+      "endpoint": "INTERNAL AuditStore.get_events",
+      "status": 200
+    }
+  ],
+  "findings": {
+    "extracted_facts": {
+      "budget_raw": "budget around 4.5 lakh",
+      "budget_min": 450000,
+      "budget_max": 450000,
+      "budget_currency": "INR",
+      "mobility_constraints": "wheelchair assistance compulsory chahiye",
+      "meal_preferences": "vegetarian",
+      "trip_purpose": "family leisure",
+      "origin_city": "Hai",
+      "destination_candidates": [
+        "Hum",
+        "Hume",
+        "Dubai",
+        "Khana"
+      ],
+      "party_size": 1,
+      "party_composition": {
+        "adults": 1
+      },
+      "child_ages": [
+        72
+      ]
+    }
+  },
+  "verdict": "COMPLETED"
+}

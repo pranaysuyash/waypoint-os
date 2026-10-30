@@ -60,5 +60,5 @@ Nontraditional: webcams as accuracy ground truth (Windy webcams — proprietary 
 
 ## Caveats + sources
 
-IQAir/Tomorrow.io figures from training knowledge (pages 429'd) — marked verify. Open-Meteo historical free-tier scope re-test advised before mass backfill (current wired calls succeed, so non-commercial access confirmed at today's volumes).
+Verify-marks update (2026-10-30 PM): tomorrow.io/weather-api reachable (HTTP 200) — free-tier figure (~500 calls/day) remains training-knowledge pending a console signup; iqair.com still 429 (bot-walled). Open-Meteo historical free-tier scope re-test advised before mass backfill (current wired calls succeed, so non-commercial access confirmed at today's volumes).
 Sources: open-meteo.com/en/pricing · open-meteo.com/en/docs/air-quality-api · openweathermap.org/price · visualcrossing.com/weather-api · weatherapi.com/pricing.aspx · tomorrow.io/weather-api · aqicn.org/api · docs.openaq.org · stormglass.io/pricing · cds.climate.copernicus.eu · mausam.imd.gov.in
