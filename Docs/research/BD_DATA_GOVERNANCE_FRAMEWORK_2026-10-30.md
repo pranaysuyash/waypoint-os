@@ -71,3 +71,5 @@ In-repo evidence: src/intake/{packet_models,fact_overrides,extractors,currency_r
 - Remaining open from this framework: fetcher wiring itself (the platform
   still has zero external fetchers — that is the AW/AZ build tranches),
   normalization enums for the 7 unregistried types, retention policy (BD2.6).
+
+**Traveler-contributed ratings SHIPPED (2026-10-30, night):** `FederatedIntelligenceService.report_rating/query_ratings` (BD1.7 unblocked — was gated on the durable store, now closed). Same append-only ledger (`type: destination_rating`), same hash anonymization + audit mirror, dimension enum (`RATING_DIMENSIONS`: safety/value/family_fit/food/transport/connectivity), 1-5 validated. Ratings aggregate and do NOT expire (attribution, not alerting — unlike incidents' 14d window). Zero contributions ⇒ empty result, never a fabricated score. Remaining before product display: consent flow (caller's duty, BD matrix) + contribution-terms license tier resolution.

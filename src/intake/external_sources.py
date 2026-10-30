@@ -213,3 +213,47 @@ def fetch_gdelt_protest_pulse(location_query: str, timespan: str = "1w") -> Dict
         "provenance": result.reference.to_metadata()
         | {"category": result.category.value},
     }
+
+
+# ---- Weather: Open-Meteo trip-window daily forecast (AW12 stack) ----
+
+OPEN_METEO_FORECAST_BASE = "https://api.open-meteo.com"
+
+
+def fetch_open_meteo_trip_weather(
+    lat: float,
+    lng: float,
+    start_date: str,
+    end_date: str,
+) -> Dict[str, Any]:
+    """Daily forecast slice for a trip window via the governed pipeline
+    (Open-Meteo — the AW12 standardized stack's primary; CC BY 4.0,
+    attribution required).
+
+    ``start_date``/``end_date``: ISO "YYYY-MM-DD". Open-Meteo's live horizon
+    is ~16 days — the suitability gate treats dates beyond it honestly
+    (see ``weather_suitability.assess_trip_date_suitability``).
+    """
+    for name, value in (("start_date", start_date), ("end_date", end_date)):
+        if not (len(value) == 10 and value[4] == "-" and value[7] == "-"):
+            raise ExternalFetchError(f"{name} must be ISO YYYY-MM-DD: {value!r}")
+    daily = "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,uv_index_max"
+    result: FetchResult = fetch_json(
+        f"{OPEN_METEO_FORECAST_BASE}/v1/forecast?latitude={lat}&longitude={lng}"
+        f"&daily={daily}&timezone=auto&start_date={start_date}&end_date={end_date}",
+        source_id="open-meteo-forecast",
+        category=DataCategory.WEATHER,
+        license_tier=LicenseTier.ATTRIBUTION,  # CC BY 4.0 — display provider + fetch time
+        approximate=True,  # forecast, not observation
+    )
+    payload = result.payload
+    daily_payload = payload.get("daily", {}) if isinstance(payload, dict) else {}
+    return {
+        "point": {"lat": lat, "lng": lng},
+        "start_date": start_date,
+        "end_date": end_date,
+        "timezone": payload.get("timezone"),
+        "daily": daily_payload,
+        "provenance": result.reference.to_metadata()
+        | {"category": result.category.value},
+    }

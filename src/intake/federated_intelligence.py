@@ -36,6 +36,22 @@ STORE_PATH = Path("data/intelligence_pool/incidents.jsonl")
 # excluded from query_risks (BD matrix: events/incidents ≤14d).
 ACTIVE_INCIDENT_TTL_SECONDS = 14 * 86400
 
+# Traveler-rating dimensions (vision doc: "tourists in Bali rated safety
+# 8.5/10" — the Year-1 proprietary moat layer; consent-gated per BD matrix
+# connectivity/traveler-contributed row).
+RATING_DIMENSIONS = ("safety", "value", "family_fit", "food", "transport", "connectivity")
+
+
+@dataclass(slots=True)
+class DestinationRating:
+    """Anonymized traveler rating for a destination dimension (1-5)."""
+
+    location: str
+    dimension: str  # one of RATING_DIMENSIONS
+    score: int  # 1-5
+    trip_month: Optional[str] = None  # "YYYY-MM" when the traveler supplies it
+    note: str = ""
+
 
 @dataclass(slots=True)
 class IntelligenceIncident:
@@ -147,6 +163,82 @@ class FederatedIntelligenceService:
             )
         except Exception as exc:  # pragma: no cover - degraded-audit path
             logger.warning("Federated-incident audit mirror failed (incident retained): %s", exc)
+
+    def report_rating(self, agency_id: str, rating: DestinationRating) -> Dict[str, Any]:
+        """Adds an anonymized traveler rating to the pool (same append-only
+        store, ``type: destination_rating`` — one ledger, not a parallel one).
+
+        Consent is the caller's duty (BD matrix: own contributions owned w/
+        consent); this layer anonymizes the source like incidents. Ratings do
+        NOT expire — they aggregate (unlike incidents, they are attribution,
+        not alerting). Audit-mirrored like incidents.
+        """
+        if rating.dimension not in RATING_DIMENSIONS:
+            raise ValueError(f"unknown rating dimension: {rating.dimension!r}")
+        if not (1 <= int(rating.score) <= 5):
+            raise ValueError(f"rating score must be 1-5: {rating.score!r}")
+        source_hash = hashlib.sha256(agency_id.encode()).hexdigest()
+        retrieved_at = datetime.now(timezone.utc).isoformat()
+        record = {
+            "record_id": f"fr_{hashlib.sha256(f'{source_hash}:{retrieved_at}:{rating.location}'.encode()).hexdigest()[:12]}",
+            "type": "destination_rating",
+            "location": rating.location,
+            "dimension": rating.dimension,
+            "score": int(rating.score),
+            "trip_month": rating.trip_month,
+            "note": rating.note,
+            "source_hash": source_hash,
+            "license_tier": "unknown",  # contribution terms = platform ToS decision
+            "timestamp": retrieved_at,
+        }
+        self._append_record(record)
+        try:
+            from spine_api.persistence import AuditStore
+
+            AuditStore.log_event(
+                "federated_intelligence_rating",
+                "system",
+                {
+                    "record_id": record["record_id"],
+                    "location": record["location"],
+                    "dimension": record["dimension"],
+                    "score": record["score"],
+                    "source_hash": source_hash,
+                    "retrieved_at": retrieved_at,
+                },
+            )
+        except Exception as exc:  # pragma: no cover - degraded-audit path
+            logger.warning("Federated-rating audit mirror failed (rating retained): %s", exc)
+        return record
+
+    def query_ratings(self, location: str, dimension: Optional[str] = None) -> Dict[str, Any]:
+        """Aggregated traveler ratings for a location (optionally one
+        dimension). Returns raw counts + honest aggregates — never a
+        fabricated score when there are no contributions.
+        """
+        by_dim: Dict[str, List[int]] = {}
+        for r in self._load_records():
+            if r.get("type") != "destination_rating":
+                continue
+            if r.get("location", "").lower() != location.lower().strip():
+                continue
+            dim = r.get("dimension", "unknown")
+            if dimension and dim != dimension:
+                continue
+            by_dim.setdefault(dim, []).append(int(r.get("score", 0)))
+        dimensions_out = {}
+        for dim, scores in sorted(by_dim.items()):
+            dimensions_out[dim] = {
+                "count": len(scores),
+                "mean": round(sum(scores) / len(scores), 2),
+                "min": min(scores),
+                "max": max(scores),
+            }
+        return {
+            "location": location,
+            "dimensions": dimensions_out,
+            "total_ratings": sum(len(s) for s in by_dim.values()),
+        }
 
     def collect_expired(self, retention_days: int = 180) -> List[Dict[str, Any]]:
         """BD2.6 retention (pure read): return records older than
