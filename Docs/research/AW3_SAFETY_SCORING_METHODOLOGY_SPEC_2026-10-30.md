@@ -85,3 +85,12 @@ now durable) is the moat path for per-type scores.
   TTL — else the page renders the stale-notice variant.
 
 **Differentiation sharpening (2026-10-30, post SERP mining —** `AE_KEYWORD_CLUSTERS_MINING_2026-10-30.md`**):** the safety-SERP is already crowded with scored tools (isitsafetotravel.org — 248 countries daily; travelriskcalculator.com; warmonit.com multi-gov consensus). The defensible angles are narrower than "nobody does trust": (a) per-datapoint provenance display (source+date on every component via `ExternalFactReference`), (b) operator/agency duty-of-care framing, (c) coverage-gap honesty per city, (d) the group/agent integration no consumer tool has. Band semantics unchanged; the FCDO normalizer in `src/intake/external_sources.py` implements C1 against the real `details.alert_status` slug list (live-verified: Japan=[]→1, Russia=[avoid_all_travel_to_whole_country]→4, Israel=parts-variants→3).
+
+**C1+C2 implementation note (2026-10-30, later):** the band engine is SHIPPED —
+`src/intake/safety_band.py` (C1 gates, C2 raises 2→3 only with active events,
+honest coverage map incl. c3 as a standing gap) and `fetch_worldbank_homicide`
+in `src/intake/external_sources.py` (C2 source; live-verified: India 2023 =
+0.229/100k). End-to-end live chain verified: FCDO band + WB rate →
+`assess_safety_band` → Japan = band 1 "Normal precautions" with explicit gaps.
+C3 (data.police.uk) and C4 (GDELT/ACLED) fetchers are the remaining build
+before the free tool frontend can render all four components.

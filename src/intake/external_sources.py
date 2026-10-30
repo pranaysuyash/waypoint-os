@@ -13,10 +13,47 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from src.intake.external_fetch import FetchResult, fetch_json
+from src.intake.external_fetch import ExternalFetchError, FetchResult, fetch_json
 from src.intake.external_reference import DataCategory, LicenseTier
 
 FCDO_CONTENT_BASE = "https://www.gov.uk/api/content/foreign-travel-advice"
+WORLDBANK_INDICATOR_BASE = "https://api.worldbank.org/v2/country"
+
+
+def fetch_worldbank_homicide(country_iso3: str) -> Dict[str, Any]:
+    """C2 component source (safety-scoring spec): homicides per 100k from the
+    World Bank indicator ``VC.IHR.PSRC.P5`` — live-verified 2026-10-30
+    (entries are newest-first; years with no data carry ``value: null``).
+
+    Returns the most recent non-null observation with provenance. National
+    granularity, ~2yr publication lag — consumers must label it as such
+    (BD governance matrix: national context, never presented as city truth).
+    Raises ``ExternalFetchError`` per pipeline semantics.
+    """
+    iso3 = country_iso3.strip().upper()
+    if len(iso3) != 3 or not iso3.isalpha():
+        raise ExternalFetchError(f"invalid ISO-3 code: {country_iso3!r}")
+    result: FetchResult = fetch_json(
+        f"{WORLDBANK_INDICATOR_BASE}/{iso3}/indicator/VC.IHR.PSRC.P5?format=json&per_page=10",
+        source_id="worldbank-api",
+        category=DataCategory.SAFETY_ADVISORY,  # national safety context (C2)
+        license_tier=LicenseTier.PUBLIC_DOMAIN,  # CC BY 4.0 / World Bank open terms
+        approximate=True,  # statistical estimate, lagged
+    )
+    payload = result.payload
+    entries = payload[1] if isinstance(payload, list) and len(payload) > 1 else []
+    for entry in entries:
+        value = entry.get("value")
+        if value is not None:
+            return {
+                "country_iso3": iso3,
+                "rate_per_100k": round(float(value), 3),
+                "year": entry.get("date"),
+                "indicator": "VC.IHR.PSRC.P5",
+                "provenance": result.reference.to_metadata()
+                | {"category": result.category.value},
+            }
+    raise ExternalFetchError(f"no non-null homicide observations for {iso3}")
 
 
 # FCDO alert_status slug → severity rank (live-verified 2026-10-30:

@@ -45,11 +45,19 @@ trip-date suitability (booking-aware, not just content).
 
 Autosuggest (from seeds): `do i need a visa for` fans to specific
 destination-nationality pairs (bali, dubai, japan, vietnam, thailand, schengen).
-SERP mining run returned empty (DDG rate-limit on back-to-back automation);
-retriable via TinyFish with a delay. Known giants own the head terms (iVisa,
-Sherpa, official portals) — the agency-angle wedge is **per-client passport ×
-itinerary checking inside the workflow** (Timatic-backed — license = DP-04a
-family), not public SEO head terms.
+SERP mining (evidence `ae_paa_visa_2026-10-30.jsonl` — **correction 2026-10-30
+PM: the run was never empty; the agent returned a `position/site_name/url`
+extraction shape my first digest didn't parse. Lesson recorded: verify the
+extraction shape, not just run status**). The SERP is AUTHORITY-dominated:
+travel.state.gov (advisory + entry docs), Wikipedia's structured
+"Visa requirements for Indian citizens" table, **Passport Index** (India
+Mobility Score 70, visa-free 25), official portals (indianvisaonline.gov.in,
+mea.gov.in, cgisf.gov.in), airlines (Air India, IndiGo) — and **Sherpa**
+charging **$79.89 for an India eVisa assist**: the commercial-assist margin is
+visible in the SERP itself. The agency-angle wedge stands and is sharpened:
+**per-client passport × itinerary visa checking inside the workflow**
+(Timatic-backed — license = DP-04a family), plus e-visa-fee transparency vs
+the $80 assist class — not public SEO head terms.
 
 ## Cross-cluster tool patterns observed
 
