@@ -114,3 +114,21 @@ pip-audit truth is 0 (post-fix, see TRV-DP-06 D1 + `tools/check_dependency_
 advisories.py` gate). **Standing advisory status: CLEARED at both depths.**
 Note: Data volume consumed +24G between 2026-10-29 and 2026-10-30 (899→923G) —
 growth source unidentified; the owner menu remains the structural fix.
+
+## +24G/day growth SOLVED (2026-10-30 night): Chrome code-sign clones
+
+`/private/var/folders/fc/<hash>/X/com.google.Chrome.code_sign_clone/` had
+**154 full Chrome.app clones (du 219G)** — Chrome spawns one per relaunch and
+macOS wasn't reclaiming them (the earlier `*/X/*code_sign_clone*` glob missed
+the extra hash path level). Cleaned 149 stale ones (kept the lsof-active
+clone + any <60min old) per the AGENTS.md code-sign-clone provision.
+
+**Honest outcome:** free space barely moved (3.7→3.0G) — APFS clonefile
+shares blocks with the installed Chrome, so du's 219G was mostly phantom
+(the du≠df lesson at system scale; var/folders du dropped 50G→8.5G). The
+924G-used volume is genuinely full; remaining identified consumers:
+Projects 330G, /Applications 77G, ~/Library 50G, **/Library/Developer/
+CoreSimulator 53G (NEW owner-menu item — iOS simulator runtimes,
+rebuildable)**, Downloads 26G, /Library 27G, /opt 22G. ~270G of df usage
+remains unaccounted by du (likely further clone-sharing distortion + system
+dirs) — the structural fix is still the owner menu, with CoreSimulator added.

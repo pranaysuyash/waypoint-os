@@ -33,28 +33,76 @@ BAND_LABELS = {
 TOP_DECILE_HOMICIDES_PER_100K = 10.0
 
 
+def advisory_consensus(advisories: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """C1 consensus across N issuing governments (BD matrix rule: divergence
+    is a confidence flag, never a silent merge; spec rule: worst band wins —
+    sovereign "do not travel" gates regardless of other issuers).
+
+    Each entry: ``{"issuer": str, "band": "1".."4", "provenance": dict}``.
+    Returns ``{"band", "divergence", "issuers", "provenance"}``.
+    Single-entry input = that band, no divergence (the 1-source case is
+    valid — coverage-honest, per the live finding that no single
+    government advises about its own country).
+    """
+    if not advisories:
+        raise ValueError("advisory_consensus requires at least one advisory")
+    bands: List[str] = []
+    issuers: List[str] = []
+    provenance: List[Dict[str, Any]] = []
+    for a in advisories:
+        b = str(a["band"])
+        if b not in BAND_LABELS:
+            raise ValueError(f"invalid advisory band from {a.get('issuer')!r}: {b!r}")
+        bands.append(b)
+        issuers.append(str(a.get("issuer", "unknown")))
+        provenance.append(a.get("provenance", {}))
+    worst = max(bands)
+    return {
+        "band": worst,
+        "divergence": len(set(bands)) > 1,
+        "issuers": issuers,
+        "provenance": provenance,
+    }
+
+
 def assess_safety_band(
     *,
-    advisory_band: str,
-    advisory_provenance: Dict[str, Any],
+    advisory_band: Optional[str] = None,
+    advisory_provenance: Optional[Dict[str, Any]] = None,
+    advisories: Optional[List[Dict[str, Any]]] = None,
     homicide: Optional[Dict[str, Any]] = None,
+    events: Optional[Dict[str, Any]] = None,
     events_pulse: bool = False,
     neighborhood: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Combine components into a banded verdict with an honest coverage map.
 
-    ``advisory_band``: C1 output ("1".."4" from normalize_fcdo_status).
+    C1 input, two forms (consensus form preferred):
+      - ``advisories``: list for ``advisory_consensus`` (multi-government).
+      - legacy ``advisory_band`` + ``advisory_provenance`` (single source).
     ``homicide``: C2 output from fetch_worldbank_homicide (or None = gap).
-    ``events_pulse``: C4 boolean from the events fetcher (False = gap).
+    ``events``: C4 GDELT result dict from fetch_gdelt_protest_pulse — pulse =
+    ``article_count > 0`` derived at this one seam (or None = gap).
+    ``events_pulse``: legacy boolean form of C4.
     ``neighborhood``: C3 output from fetch_uk_street_crime (or None = gap).
     C3 ANNOTATES ONLY — it never moves the band (spec: within-band text).
     """
-    band = str(advisory_band)
+    if advisories:
+        consensus = advisory_consensus(advisories)
+        band = consensus["band"]
+        c1_prov = {"source_id": "+".join(consensus["issuers"]), "divergence": consensus["divergence"], **{"sources": consensus["provenance"]}}
+        if consensus["divergence"]:
+            c1_prov["confidence_flag"] = "issuing-governments-diverge"
+    elif advisory_band is not None and advisory_provenance is not None:
+        band = str(advisory_band)
+        c1_prov = advisory_provenance
+    else:
+        raise ValueError("provide either advisories= or advisory_band+advisory_provenance")
     if band not in BAND_LABELS:
-        raise ValueError(f"invalid advisory band: {advisory_band!r}")
+        raise ValueError(f"invalid advisory band: {band!r}")
 
     components: Dict[str, Any] = {
-        "c1_advisory": {"band": band, **{"source": advisory_provenance.get("source_id")}},
+        "c1_advisory": {"band": band, **{"source": c1_prov.get("source_id")}},
     }
     coverage: List[str] = ["c1_advisory"]
 
@@ -80,7 +128,17 @@ def assess_safety_band(
         coverage.append("c3_neighborhood")
 
     events_active = bool(events_pulse)
-    if events_pulse:
+    if events is not None:
+        # Canonical C4 seam: derive the pulse from the GDELT result dict.
+        events_active = int(events.get("article_count") or 0) > 0
+        components["c4_events"] = {
+            "active": events_active,
+            "article_count": events.get("article_count"),
+            "sample_titles": (events.get("sample_titles") or [])[:3],
+            "source": events.get("provenance", {}).get("source_id"),
+        }
+        coverage.append("c4_events")
+    elif events_pulse:
         coverage.append("c4_events")
         components["c4_events"] = {"active": True}
 
@@ -98,7 +156,8 @@ def assess_safety_band(
         "components": components,
         "coverage": coverage,
         "coverage_gaps": gaps,
-        "provenance": [advisory_provenance]
+        "provenance": [c1_prov]
         + ([homicide["provenance"]] if homicide else [])
-        + ([neighborhood["provenance"]] if neighborhood else []),
+        + ([neighborhood["provenance"]] if neighborhood else [])
+        + ([events["provenance"]] if events is not None else []),
     }
