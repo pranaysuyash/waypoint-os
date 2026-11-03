@@ -128,3 +128,98 @@ def assess_trip_date_suitability(
         "timezone": weather.get("timezone"),
         "provenance": provenance,
     }
+
+
+# ---- Climate-baseline grading + the horizon-dispatching orchestrator ----
+
+
+def assess_climate_suitability(climate: Dict[str, Any], *, activity: str) -> Dict[str, Any]:
+    """Grade a trip window from ERA5 climate normals (for trips beyond the
+    forecast horizon). Same activity thresholds as the forecast gate; the
+    verdict is ``mode: climate_baseline`` — historically-derived, honest
+    about what it is (a normal, not a prediction).
+    """
+    if activity not in THRESHOLDS:
+        raise ValueError(f"unknown activity {activity!r}; use one of {sorted(THRESHOLDS)}")
+    t = THRESHOLDS[activity]
+    normals = climate.get("normals", {})
+    mean_tmax = normals.get("mean_tmax_c")
+    mean_precip = normals.get("mean_precip_mm")
+    if mean_tmax is None or mean_precip is None:
+        return {
+            "activity": activity,
+            "mode": "climate_baseline",
+            "status": "unverifiable",
+            "provenance": climate.get("provenance"),
+        }
+
+    if activity == "beach":
+        if mean_tmax < t["min_tmax_c"]:
+            verdict = "red"
+        elif mean_tmax < t["yellow_tmax_c"] or mean_precip > t["yellow_precip_mm"]:
+            verdict = "yellow"
+        else:
+            verdict = "green"
+    else:
+        if mean_precip > t["red_precip_mm"]:
+            verdict = "red"
+        elif mean_precip > t["yellow_precip_mm"]:
+            verdict = "yellow"
+        else:
+            verdict = "green"
+
+    return {
+        "activity": activity,
+        "mode": "climate_baseline",
+        "status": "graded",
+        "verdict": verdict,
+        "normals": normals,
+        "rain_day_fraction": climate.get("normals", {}).get("rain_day_fraction"),
+        "years_used": climate.get("years_used", []),
+        "years_skipped": climate.get("years_skipped", []),
+        "confidence_note": (
+            f"historical normal over {len(climate.get('years_used', []))} years — "
+            "a climate expectation, not a forecast"
+        ),
+        "provenance": climate.get("provenance"),
+    }
+
+
+def grade_trip_conditions(
+    lat: float,
+    lng: float,
+    start_date: str,
+    end_date: str,
+    *,
+    activity: str,
+    climate_years: int = 5,
+) -> Dict[str, Any]:
+    """Single entry point for trip-condition grading: within the live
+    forecast horizon → forecast path; beyond → ERA5 climate-baseline path.
+    Both branches are governed fetches with provenance; the response
+    declares which mode produced the verdict.
+    """
+    from src.intake.external_sources import (
+        fetch_open_meteo_climate_normals,
+        fetch_open_meteo_trip_weather,
+    )
+
+    today = date.today()
+    start = date.fromisoformat(start_date)
+    within_horizon = start <= today + timedelta(days=FORECAST_HORIZON_DAYS)
+
+    if within_horizon:
+        weather = fetch_open_meteo_trip_weather(lat, lng, start_date, end_date)
+        out = assess_trip_date_suitability(weather, activity=activity)
+        out["mode"] = "forecast"
+        return out
+    climate = fetch_open_meteo_climate_normals(
+        lat,
+        lng,
+        start_date[5:],  # MM-DD
+        end_date[5:],
+        years=climate_years,
+    )
+    out = assess_climate_suitability(climate, activity=activity)
+    out["mode"] = "climate_baseline"
+    return out

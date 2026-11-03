@@ -11,7 +11,8 @@ sections), which is why it is source #1.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from datetime import datetime, timezone
+from typing import Any, Dict, List
 
 from src.intake.external_fetch import ExternalFetchError, FetchResult, fetch_json
 from src.intake.external_reference import DataCategory, LicenseTier
@@ -256,4 +257,93 @@ def fetch_open_meteo_trip_weather(
         "daily": daily_payload,
         "provenance": result.reference.to_metadata()
         | {"category": result.category.value},
+    }
+
+
+# ---- Climate normals: ERA5 archive (beyond-forecast-horizon trips) ----
+
+OPEN_METEO_ARCHIVE_BASE = "https://archive-api.open-meteo.com"
+
+
+def fetch_open_meteo_climate_normals(
+    lat: float,
+    lng: float,
+    start_mmdd: str,
+    end_mmdd: str,
+    years: int = 5,
+) -> Dict[str, Any]:
+    """Historical climate normals for a calendar window (month-day to
+    month-day) over the last ``years`` years, via the ERA5 archive
+    (same AW12 stack; archive-api.open-meteo.com is allowlist-covered).
+
+    This is what makes trips planned beyond the ~16-day forecast horizon
+    gradeable — the COMMON real-planning case — with honestly-labeled
+    historical data instead of invented numbers.
+
+    Returns per-year samples + aggregated normals. Years that fail (e.g.,
+    a Feb-29 window in a non-leap year) are skipped and disclosed in
+    ``years_used`` — sample size is part of the provenance contract.
+    """
+    for name, value in (("start_mmdd", start_mmdd), ("end_mmdd", end_mmdd)):
+        if not (len(value) == 5 and value[2] == "-"):
+            raise ExternalFetchError(f"{name} must be MM-DD: {value!r}")
+    if years < 1 or years > 20:
+        raise ExternalFetchError(f"years must be 1-20: {years!r}")
+
+    current_year = datetime.now(timezone.utc).year
+    daily = "temperature_2m_max,precipitation_sum,weather_code"
+    year_samples: List[Dict[str, Any]] = []
+    provenances: List[Dict[str, Any]] = []
+    skipped_years: List[str] = []
+    # Year-crossing windows (e.g., 12-29 → 01-04: New Year trips) end in the
+    # FOLLOWING calendar year — the common far-future planning case.
+    crosses_year = end_mmdd < start_mmdd
+
+    for offset in range(1, years + 1):
+        y = current_year - offset
+        end_y = y + 1 if crosses_year else y
+        result: FetchResult = fetch_json(
+            f"{OPEN_METEO_ARCHIVE_BASE}/v1/archive?latitude={lat}&longitude={lng}"
+            f"&start_date={y}-{start_mmdd}&end_date={end_y}-{end_mmdd}&daily={daily}&timezone=auto",
+            source_id="open-meteo-archive-era5",
+            category=DataCategory.WEATHER,
+            license_tier=LicenseTier.ATTRIBUTION,
+            approximate=True,  # reanalysis model output, not observation
+            as_of=f"{y}",
+        )
+        payload = result.payload
+        daily_payload = payload.get("daily", {}) if isinstance(payload, dict) else {}
+        tmaxs = daily_payload.get("temperature_2m_max") or []
+        precips = daily_payload.get("precipitation_sum") or []
+        if not tmaxs:
+            skipped_years.append(str(y))
+            continue
+        year_samples.append({
+            "year": y,
+            "mean_tmax_c": round(sum(float(t) for t in tmaxs) / len(tmaxs), 2),
+            "mean_precip_mm": round(sum(float(p) for p in precips) / len(precips), 3),
+            "rain_days": sum(1 for p in precips if float(p) > 1.0),
+            "days": len(tmaxs),
+        })
+        provenances.append(result.reference.to_metadata())
+
+    if not year_samples:
+        raise ExternalFetchError(f"no archive samples for {start_mmdd}..{end_mmdd} @ {lat},{lng}")
+
+    n = len(year_samples)
+    normals = {
+        "mean_tmax_c": round(sum(s["mean_tmax_c"] for s in year_samples) / n, 2),
+        "mean_precip_mm": round(sum(s["mean_precip_mm"] for s in year_samples) / n, 3),
+        "rain_day_fraction": round(
+            sum(s["rain_days"] for s in year_samples) / max(1, sum(s["days"] for s in year_samples)), 3
+        ),
+    }
+    return {
+        "point": {"lat": lat, "lng": lng},
+        "window": {"start_mmdd": start_mmdd, "end_mmdd": end_mmdd},
+        "years_used": [s["year"] for s in year_samples],
+        "years_skipped": skipped_years,
+        "year_samples": year_samples,
+        "normals": normals,
+        "provenance": provenances,
     }
