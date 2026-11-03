@@ -1,16 +1,21 @@
 'use client';
 
 import React, { useState } from 'react';
-import { DollarSign, CreditCard, Calendar } from 'lucide-react';
+import { DollarSign, CreditCard, Calendar, FileSpreadsheet } from 'lucide-react';
 import SimulatedBadge from '@/components/ui/SimulatedBadge';
+import CommissionStatementsTab from './CommissionStatementsTab';
 
 /**
- * GM-01 honesty fix: this panel is a local arithmetic and workflow preview.
- * It never calls a settlement/VCC issuance endpoint, creates card-like
- * identifiers, or represents payment, authorization, or supplier effects.
+ * GM-01 honesty fix: the fx/vcc/schedules tabs are local arithmetic and
+ * workflow previews — they never call a settlement/VCC issuance endpoint,
+ * create card-like identifiers, or represent payment, authorization, or
+ * supplier effects. The commission-statements tab (R2-B, 2026-11-03) is a
+ * different class: it calls the real ingest API, but its candidates are
+ * preview-grade working matches — money truth only moves through the
+ * durable payout store.
  */
 
-type FinSubTab = 'fx_buffer' | 'vcc' | 'schedules';
+type FinSubTab = 'fx_buffer' | 'vcc' | 'schedules' | 'statements';
 
 export default function FinancialSettlementPanel() {
   const [activeTab, setActiveTab] = useState<FinSubTab>('fx_buffer');

@@ -25,6 +25,7 @@ import {
   Briefcase,
   Search,
   BookOpen,
+  Globe,
   Send,
   CalendarDays,
   MoreHorizontal,
@@ -53,6 +54,7 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   CalendarDays,
   BarChart2,
   BookOpen,
+  Globe,
   Send,
   Settings,
 };

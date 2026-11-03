@@ -2213,6 +2213,59 @@ export async function sendFollowupQuestions(
   return api.post(`/api/followups/${tripId}/send`, req);
 }
 
+// ── Commission statement ingest (R2-B / Travefy bar, 2026-11-03) ──────────
+
+export interface CommissionIngestRow {
+  row_index: number;
+  supplier_name: string;
+  booking_ref: string;
+  amount: number | null;
+  currency: string;
+  date: string;
+  raw_text: string;
+  match_status: "matched" | "manual_candidate" | "unmatched";
+  match_trip_id: string | null;
+  match_method: string | null;
+  match_confidence: number | null;
+}
+
+export interface CommissionIngestBatch {
+  batch_id: string;
+  source_format: "csv" | "email" | "image_ocr";
+  source_label: string;
+  created_at: string;
+  durable: boolean;
+  row_count: number;
+  matched_count: number;
+  manual_candidate_count: number;
+  unmatched_count: number;
+  rows: CommissionIngestRow[];
+  linked: Record<string, string>;
+}
+
+export async function ingestCommissionStatement(
+  format: "csv" | "email" | "image_ocr",
+  content: string,
+  sourceLabel?: string
+): Promise<CommissionIngestBatch> {
+  return api.post("/api/commission/ingest", {
+    format,
+    content,
+    source_label: sourceLabel ?? "",
+  });
+}
+
+export async function linkCommissionStatementRow(
+  batchId: string,
+  rowIndex: number,
+  tripId: string
+): Promise<CommissionIngestBatch> {
+  return api.post(`/api/commission/ingest/${encodeURIComponent(batchId)}/link`, {
+    row_index: rowIndex,
+    trip_id: tripId,
+  });
+}
+
 // ── Destination intelligence (2026-10-30 tranche) ─────────────────────
 
 export interface SafetyVerdict {
@@ -2278,4 +2331,11 @@ export async function getDestinationRatings(location: string): Promise<Destinati
   return api.get<DestinationRatings>(
     `/api/destination-intelligence/ratings/${encodeURIComponent(location)}`
   );
+}
+
+export async function submitDestinationRating(
+  location: string,
+  req: { dimension: string; score: number; consent: boolean; trip_month?: string; note?: string }
+): Promise<{ ok: boolean; record_id: string; location: string; dimension: string; score: number }> {
+  return api.post(`/api/destination-intelligence/ratings/${encodeURIComponent(location)}`, req);
 }

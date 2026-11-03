@@ -1,5 +1,5 @@
 {
-  "route_count": 413,
+  "route_count": 417,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1202,6 +1202,30 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/commission/ingest",
+      "name": "ingest_statement",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/commission/ingest/{batch_id}",
+      "name": "get_ingest_batch",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/commission/ingest/{batch_id}/link",
+      "name": "manually_link_statement_row",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/commission/reconcile",
       "name": "reconcile_supplier_commission",
       "methods": [
@@ -1470,6 +1494,14 @@
       "name": "get_destination_ratings",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/destination-intelligence/ratings/{location}",
+      "name": "submit_destination_rating",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },

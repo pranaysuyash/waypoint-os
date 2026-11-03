@@ -2399,15 +2399,15 @@ The existing research (69 items) is deep on **internal product architecture, ind
 - 🟡 Destination safety and risk data mentioned (AD1 — one line, no depth)
 - ✅ **[source eval: Docs/research/AW3_SAFETY_CRIME_SOURCE_EVALUATION_2026-10-30.md]****Crime data sources by market**: Numbeo, OSAC (US State Dept), local police APIs, crowd-sourced safety apps — reliability and coverage
 - ✅ **[source eval: Docs/research/AW3_SAFETY_CRIME_SOURCE_EVALUATION_2026-10-30.md]****Crime type mapping for travelers**: Petty theft hotspots, scam zones, pickpocket areas, no-go neighborhoods — structured by destination
-- ❌ **Safety scoring methodology**: How to create a traveler-relevant safety score (not just crime rate — tourist-specific crime matters more)
-- ❌ **Time-of-day safety variation**: "Safe during day, avoid after dark" zones — temporal safety data
+- ✅ **[methodology spec: Docs/research/AW3_SAFETY_SCORING_METHODOLOGY_SPEC_2026-10-30.md — band engine live in src/intake/safety_band.py]****Safety scoring methodology**: How to create a traveler-relevant safety score (not just crime rate — tourist-specific crime matters more)
+- ✅ **[temporal proxies: AW3 methodology spec — hour-binned street crime + GTFS transit gaps; no public temporal source exists, proxies documented]****Time-of-day safety variation**: "Safe during day, avoid after dark" zones — temporal safety data
 - ❌ **Safety data by traveler type**: Solo female, LGBTQ+, visible minority, elderly — different risk profiles by destination
 - ✅ **[source eval: Docs/research/AW3_SAFETY_CRIME_SOURCE_EVALUATION_2026-10-30.md — caveat: MEA/India machine-feed absent → page-monitoring only]****Real-time safety alerts integration**: Government travel advisories (FCDO, State Dept, DFAT, MEA) — API access and freshness
 - ❌ **Historical incident mapping**: "A tourist was robbed here 3 months ago" — crowdsourced + official data fusion
-- 🔵 **Safe route recommendation**: "Walk this way from your hotel to the restaurant — avoid that alley" — Google Maps + crime overlay
+- ✅ **[partially — C3 neighborhood crime fetcher live (data.police.uk); routing overlay = map-integration tranche]****Safe route recommendation**: "Walk this way from your hotel to the restaurant — avoid that alley" — Google Maps + crime overlay
 - 🔵 **Safety briefing auto-generation**: Destination-specific safety briefings from crime data + cultural norms + current events
-- 🔵 **Real-time protest/demonstration tracking**: Social media monitoring → "Avoid central square today, demonstration expected"
-- 🔵 **Neighborhood safety ratings for accommodation**: "This hotel is in a safe neighborhood" vs "great hotel, sketchy area" — decision-relevant
+- ✅ **[C4 fetcher live: fetch_gdelt_protest_pulse]****Real-time protest/demonstration tracking**: Social media monitoring → "Avoid central square today, demonstration expected"
+- ✅ **[C3 live: fetch_uk_street_crime — street crime by lat/lng w/ traveler-relevance classes]****Neighborhood safety ratings for accommodation**: "This hotel is in a safe neighborhood" vs "great hotel, sketchy area" — decision-relevant
 
 ### AW4. Flight & Transport Real-Time Intelligence ✅/🟡
 - ✅ Predictive disruption forecasting — The Oracle spec (weather correlation, labor sentiment, tail-number reliability)

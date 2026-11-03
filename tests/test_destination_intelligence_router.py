@@ -131,3 +131,105 @@ def test_ratings_read_contract(clear_cache, monkeypatch, tmp_path):
     body = resp.json()
     assert body["location"] == "Bali" and body["total_ratings"] == 1
     assert body["dimensions"]["safety"]["mean"] == 4.0
+
+
+# ---- ratings write (TRV-DP-07 consent contract) ----
+
+
+@pytest.fixture()
+def isolated_pool(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        "src.intake.federated_intelligence.STORE_PATH", tmp_path / "pool.jsonl"
+    )
+    return tmp_path / "pool.jsonl"
+
+
+def test_rating_submission_happy_path(clear_cache, isolated_pool):
+    resp = client.post(
+        "/api/v1/destination-intelligence/ratings/Bali",
+        json={"dimension": "safety", "score": 4, "consent": True, "trip_month": "2026-12"},
+        headers=HEADERS,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is True and body["score"] == 4 and body["dimension"] == "safety"
+    read_back = client.get("/api/v1/destination-intelligence/ratings/Bali", headers=HEADERS)
+    assert read_back.json()["total_ratings"] == 1
+
+
+def test_rating_without_consent_rejected_422(clear_cache, isolated_pool):
+    resp = client.post(
+        "/api/v1/destination-intelligence/ratings/Bali",
+        json={"dimension": "safety", "score": 4, "consent": False},
+        headers=HEADERS,
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"]["error"] == "consent_required"
+
+
+def test_rating_missing_consent_field_rejected(clear_cache, isolated_pool):
+    resp = client.post(
+        "/api/v1/destination-intelligence/ratings/Bali",
+        json={"dimension": "safety", "score": 4},
+        headers=HEADERS,
+    )
+    assert resp.status_code == 422  # consent is a required field
+
+
+def test_rating_note_contact_scrubbed(clear_cache, isolated_pool):
+    resp = client.post(
+        "/api/v1/destination-intelligence/ratings/Bali",
+        json={
+            "dimension": "safety", "score": 3, "consent": True,
+            "note": "Great area, avoid the alley. Call me at agent@example.com or +91 9876543210",
+        },
+        headers=HEADERS,
+    )
+    assert resp.status_code == 200
+    raw = isolated_pool.read_text()
+    assert "agent@example.com" not in raw and "9876543210" not in raw
+    assert "[removed]" in raw
+
+
+def test_rating_note_capped_at_280(clear_cache, isolated_pool):
+    resp = client.post(
+        "/api/v1/destination-intelligence/ratings/Bali",
+        json={"dimension": "safety", "score": 3, "consent": True, "note": "x" * 500},
+        headers=HEADERS,
+    )
+    assert resp.status_code == 200
+    import json as _json
+    record = _json.loads(isolated_pool.read_text().strip())
+    assert len(record["note"]) <= 280
+
+
+def test_rating_invalid_dimension_422(clear_cache, isolated_pool):
+    resp = client.post(
+        "/api/v1/destination-intelligence/ratings/Bali",
+        json={"dimension": "vibes", "score": 4, "consent": True},
+        headers=HEADERS,
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"]["error"] == "invalid_rating"
+
+
+def test_rating_invalid_score_422(clear_cache, isolated_pool):
+    resp = client.post(
+        "/api/v1/destination-intelligence/ratings/Bali",
+        json={"dimension": "safety", "score": 9, "consent": True},
+        headers=HEADERS,
+    )
+    assert resp.status_code == 422
+
+
+def test_rating_agency_identity_never_stored(clear_cache, isolated_pool):
+    resp = client.post(
+        "/api/v1/destination-intelligence/ratings/Bali",
+        json={"dimension": "safety", "score": 4, "consent": True},
+        headers=HEADERS,
+    )
+    assert resp.status_code == 200
+    raw = isolated_pool.read_text()
+    # The JWT-scoped agency id (HEADERS X-Agency-ID is the bypass shim; the
+    # DI derives the real id) must never appear raw — only its hash.
+    assert "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b" not in raw

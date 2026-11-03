@@ -251,3 +251,108 @@ async def reconcile_supplier_commission(
     )
 
     return rec
+
+
+# ---------------------------------------------------------------------------
+# Statement ingest breadth (R2-B / Travefy bar, 2026-11-03)
+# ---------------------------------------------------------------------------
+
+
+class IngestStatementRequest(BaseModel):
+    """Paste-in statement content: CSV export, email body, or screenshot OCR text."""
+
+    format: str  # csv | email | image_ocr
+    content: str
+    source_label: Optional[str] = None
+
+
+class ManualLinkRequest(BaseModel):
+    row_index: int
+    trip_id: str
+
+
+@router.post("/ingest")
+async def ingest_statement(
+    body: IngestStatementRequest,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Ingest a supplier commission statement (R2-B ingest breadth).
+
+    CSV/email/image-OCR text is parsed into candidate rows and matched to the
+    agency's trips: booking-ref exact, then amount-tolerance + fuzzy supplier
+    (difflib); the rest come back as manual-link candidates. The batch is
+    preview-grade working state (``durable=false``) — money truth moves only
+    when an operator records the payout through the durable payout store.
+    """
+    from spine_api.services.commission_ingest import create_ingest_batch
+
+    trips = TripStore.list_trips(limit=500, agency_id=agency_id)
+    try:
+        batch = create_ingest_batch(
+            source_format=body.format,
+            content=body.content,
+            agency_id=agency_id,
+            trips=trips,
+            source_label=body.source_label or "",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    AuditStore.log_event(
+        event_type="commission_statement_ingested",
+        user_id=agency_id,
+        details={
+            "batch_id": batch.batch_id,
+            "format": batch.source_format,
+            "row_count": len(batch.rows),
+            "matched": sum(1 for r in batch.rows if r.match_status == "matched"),
+            "manual_candidates": sum(1 for r in batch.rows if r.match_status == "manual_candidate"),
+        },
+    )
+    return batch.to_dict()
+
+
+@router.get("/ingest/{batch_id}")
+async def get_ingest_batch(
+    batch_id: str,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    from spine_api.services.commission_ingest import get_batch
+
+    batch = get_batch(batch_id, agency_id)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Ingest batch not found")
+    return batch.to_dict()
+
+
+@router.post("/ingest/{batch_id}/link")
+async def manually_link_statement_row(
+    batch_id: str,
+    body: ManualLinkRequest,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Manual-link fallback: operator asserts a statement row ↔ trip binding."""
+    from spine_api.services.commission_ingest import link_row
+
+    trip = TripStore.get_trip_for_agency(body.trip_id, agency_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    try:
+        batch = link_row(batch_id, agency_id, body.row_index, body.trip_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Ingest batch not found")
+
+    AuditStore.log_event(
+        event_type="commission_statement_row_linked",
+        user_id=agency_id,
+        details={
+            "batch_id": batch_id,
+            "row_index": body.row_index,
+            "trip_id": body.trip_id,
+            "method": "manual_link",
+        },
+    )
+    return batch.to_dict()

@@ -13,9 +13,14 @@
  */
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert, CloudSun, Star } from 'lucide-react';
-import { getSafetyVerdict, getWeatherSuitability, getDestinationRatings } from '@/lib/api-client';
+import {
+  getSafetyVerdict,
+  getWeatherSuitability,
+  getDestinationRatings,
+  submitDestinationRating,
+} from '@/lib/api-client';
 
 const BAND_STYLE: Record<string, { color: string; emoji: string }> = {
   '1': { color: 'var(--accent-green, #3fb950)', emoji: '🟢' },
@@ -81,6 +86,27 @@ export default function DestinationIntelligencePageClient() {
     queryFn: () => getDestinationRatings(submittedCountry),
     enabled: submittedCountry.length > 0,
     staleTime: 10 * 60 * 1000,
+  });
+
+  // Contribution form (TRV-DP-07: consent is explicit per submission)
+  const [ratingDim, setRatingDim] = useState('safety');
+  const [ratingScore, setRatingScore] = useState(5);
+  const [ratingNote, setRatingNote] = useState('');
+  const [ratingConsent, setRatingConsent] = useState(false);
+  const queryClient = useQueryClient();
+  const contribution = useMutation({
+    mutationFn: () =>
+      submitDestinationRating(submittedCountry, {
+        dimension: ratingDim,
+        score: ratingScore,
+        consent: ratingConsent,
+        note: ratingNote || undefined,
+      }),
+    onSuccess: () => {
+      setRatingNote('');
+      setRatingConsent(false);
+      queryClient.invalidateQueries({ queryKey: ['destination-ratings', submittedCountry] });
+    },
   });
 
   const bandStyle = safety.data ? BAND_STYLE[safety.data.band] ?? BAND_STYLE['2'] : null;
@@ -149,6 +175,69 @@ export default function DestinationIntelligencePageClient() {
                   .map(([dim, d]) => `${dim} ${d.mean}/5 (${d.count})`)
                   .join(', ')}
           </p>
+        )}
+        {submittedCountry && (
+          <div className='flex flex-col gap-2 border-t pt-3' style={{ borderColor: 'var(--border-subtle, #30363d)' }}>
+            <span className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
+              Add a client's rating (anonymized)
+            </span>
+            <div className='flex flex-wrap gap-2 items-center'>
+              <select
+                value={ratingDim}
+                onChange={(e) => setRatingDim(e.target.value)}
+                className='rounded-md border bg-transparent px-2 py-1.5 text-[13px]'
+                style={{ color: 'var(--text-primary)', borderColor: 'var(--border-subtle, #30363d)' }}
+              >
+                <option value='safety'>safety</option>
+                <option value='value'>value</option>
+                <option value='family_fit'>family fit</option>
+                <option value='food'>food</option>
+                <option value='transport'>transport</option>
+                <option value='connectivity'>connectivity</option>
+              </select>
+              <select
+                value={ratingScore}
+                onChange={(e) => setRatingScore(Number(e.target.value))}
+                className='rounded-md border bg-transparent px-2 py-1.5 text-[13px]'
+                style={{ color: 'var(--text-primary)', borderColor: 'var(--border-subtle, #30363d)' }}
+              >
+                {[5, 4, 3, 2, 1].map((s) => (
+                  <option key={s} value={s}>{s}/5</option>
+                ))}
+              </select>
+              <input
+                value={ratingNote}
+                onChange={(e) => setRatingNote(e.target.value)}
+                maxLength={280}
+                placeholder='Optional note — no personal details (contacts auto-removed)'
+                className='flex-1 min-w-[200px] rounded-md border bg-transparent px-3 py-1.5 text-[13px]'
+                style={{ color: 'var(--text-primary)', borderColor: 'var(--border-subtle, #30363d)' }}
+              />
+              <button
+                type='button'
+                disabled={!ratingConsent || contribution.isPending}
+                className='rounded-md border px-3 py-1.5 text-[13px] font-medium disabled:opacity-40'
+                style={{ color: 'var(--text-primary)' }}
+                onClick={() => contribution.mutate()}
+              >
+                {contribution.isPending ? 'Submitting…' : 'Submit'}
+              </button>
+            </div>
+            <label className='flex items-center gap-2 text-[12px]' style={{ color: 'var(--text-tertiary)' }}>
+              <input type='checkbox' checked={ratingConsent} onChange={(e) => setRatingConsent(e.target.checked)} />
+              Traveler consented to an anonymous contribution (stored without agency identity; contacts auto-removed).
+            </label>
+            {contribution.isError && (
+              <p className='text-[12px]' style={{ color: 'var(--accent-red, #f85149)' }}>
+                {contribution.error instanceof Error ? contribution.error.message : 'Submission failed.'}
+              </p>
+            )}
+            {contribution.isSuccess && (
+              <p className='text-[12px]' style={{ color: 'var(--accent-green, #3fb950)' }}>
+                Contribution recorded anonymously — thank you.
+              </p>
+            )}
+          </div>
         )}
       </Card>
 

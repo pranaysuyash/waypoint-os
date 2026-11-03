@@ -188,3 +188,83 @@ def get_destination_ratings(
     Write surface ships with the consent flow (TRV-DP-06 lineage)."""
     out = intelligence_service.query_ratings(location, dimension=dimension)
     return RatingsResponse(**out)
+
+
+# ---- Ratings write surface (TRV-DP-07 consent contract) ----
+
+_NOTE_MAX_CHARS = 280
+
+# v1 contact-pattern scrub: the classic contact vectors, redacted before a
+# note enters the pool. Known limit (documented in TRV-DP-07): pattern-based
+# scrubbing cannot catch free-form personal references — the pool's
+# non-reversible anonymization + operator review remain the backstops.
+_CONTACT_PATTERNS = [
+    r"[\w.+-]+@[\w-]+\.[\w.]+",  # emails
+    r"(?:\+?\d[\d\s().-]{7,}\d)",  # phone-like sequences
+    r"https?://\S+|www\.\S+",  # URLs
+]
+
+
+def _scrub_note(note: str) -> str:
+    import re
+
+    scrubbed = note
+    for pattern in _CONTACT_PATTERNS:
+        scrubbed = re.sub(pattern, "[removed]", scrubbed)
+    return scrubbed[:_NOTE_MAX_CHARS]
+
+
+class RatingSubmission(BaseModel):
+    dimension: str
+    score: int
+    consent: bool  # per-act explicit consent — TRV-DP-07
+    trip_month: Optional[str] = None  # "YYYY-MM"
+    note: Optional[str] = None
+
+
+class RatingSubmissionResponse(BaseModel):
+    ok: bool
+    record_id: str
+    location: str
+    dimension: str
+    score: int
+
+
+@router.post("/ratings/{location}", response_model=RatingSubmissionResponse)
+def submit_destination_rating(
+    location: str,
+    submission: RatingSubmission,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Record a consented traveler rating in the federated pool.
+
+    TRV-DP-07 contract: consent is explicit per submission (rejected 422
+    otherwise — no server-side remembered consent); identity is never
+    accepted or stored (agency source hash-anonymized in the service);
+    notes are contact-scrubbed and capped at 280 chars.
+    """
+    from src.intake.federated_intelligence import DestinationRating
+
+    if submission.consent is not True:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "consent_required", "detail": "Traveler consent must be explicit per submission."},
+        )
+    note = submission.note or ""
+    try:
+        record = intelligence_service.report_rating(
+            agency_id,
+            DestinationRating(
+                location=location,
+                dimension=submission.dimension,
+                score=submission.score,
+                trip_month=submission.trip_month,
+                note=_scrub_note(note),
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"error": "invalid_rating", "detail": str(exc)})
+    return RatingSubmissionResponse(
+        ok=True, record_id=record["record_id"], location=record["location"],
+        dimension=record["dimension"], score=record["score"],
+    )

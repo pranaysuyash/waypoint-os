@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 376,
+  "openapi_path_count": 379,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -127,6 +127,9 @@
     "/api/v1/boundaries/tokens/{token}/verify",
     "/api/v1/charter-aviation/empty-legs/available",
     "/api/v1/charter-aviation/quotes/calculate",
+    "/api/v1/commission/ingest",
+    "/api/v1/commission/ingest/{batch_id}",
+    "/api/v1/commission/ingest/{batch_id}/link",
     "/api/v1/commission/reconcile",
     "/api/v1/commission/record",
     "/api/v1/commission/summary",
