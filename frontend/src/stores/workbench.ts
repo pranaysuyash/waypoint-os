@@ -26,10 +26,16 @@ interface WorkbenchInputState {
   input_owner_note: string;
   input_structured_json: string;
   input_itinerary_text: string;
+  // Cross-page hand-off: an inbox channel message the operator chose to run
+  // intake on ("Use for intake" in the inbox ChannelMessagesPanel). Consumed
+  // once by IntakeTab on mount, then cleared — never persisted in the draft.
+  pending_intake_prefill: string | null;
   setInputRawNote: (value: string) => void;
   setInputOwnerNote: (value: string) => void;
   setInputStructuredJson: (value: string) => void;
   setInputItineraryText: (value: string) => void;
+  setPendingIntakePrefill: (value: string | null) => void;
+  consumePendingIntakePrefill: () => string | null;
 }
 
 // Draft metadata - source-of-truth is the backend draft; Zustand is the editing buffer.
@@ -119,7 +125,7 @@ type WorkbenchStore = WorkbenchInputState &
 // STORE
 // ============================================================================
 
-export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
+export const useWorkbenchStore = create<WorkbenchStore>((set, get) => ({
   // Draft metadata
   draft_id: null,
   draft_name: '',
@@ -172,10 +178,17 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   input_owner_note: "",
   input_structured_json: "",
   input_itinerary_text: "",
+  pending_intake_prefill: null,
   setInputRawNote: (value) => set({ input_raw_note: value, save_state: 'dirty' }),
   setInputOwnerNote: (value) => set({ input_owner_note: value, save_state: 'dirty' }),
   setInputStructuredJson: (value) => set({ input_structured_json: value, save_state: 'dirty' }),
   setInputItineraryText: (value) => set({ input_itinerary_text: value, save_state: 'dirty' }),
+  setPendingIntakePrefill: (value) => set({ pending_intake_prefill: value }),
+  consumePendingIntakePrefill: () => {
+    const value = get().pending_intake_prefill;
+    if (value !== null) set({ pending_intake_prefill: null });
+    return value;
+  },
 
   // Config state
   operating_mode: "normal_intake",
@@ -256,6 +269,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
     input_owner_note: "",
     input_structured_json: "",
     input_itinerary_text: "",
+    pending_intake_prefill: null,
     result_packet: null,
     result_validation: null,
     result_decision: null,

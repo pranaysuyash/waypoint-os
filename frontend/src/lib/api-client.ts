@@ -2212,3 +2212,70 @@ export async function sendFollowupQuestions(
 ): Promise<SendFollowupQuestionsResponse> {
   return api.post(`/api/followups/${tripId}/send`, req);
 }
+
+// ── Destination intelligence (2026-10-30 tranche) ─────────────────────
+
+export interface SafetyVerdict {
+  destination_slug: string;
+  band: string;
+  label: string;
+  components: Record<string, unknown>;
+  coverage: string[];
+  coverage_gaps: string[];
+  provenance: Array<Record<string, unknown>>;
+  cached: boolean;
+}
+
+export interface WeatherSuitability {
+  mode: string;
+  activity: string;
+  status: string;
+  verdict?: string;
+  days?: Array<Record<string, unknown>>;
+  summary?: Record<string, number>;
+  normals?: Record<string, number>;
+  confidence_note?: string;
+  coverage?: string[];
+  coverage_gaps?: string[];
+  provenance?: Array<Record<string, unknown>>;
+  timezone?: string;
+}
+
+export interface DestinationRatings {
+  location: string;
+  dimensions: Record<string, { count: number; mean: number; min: number; max: number }>;
+  total_ratings: number;
+}
+
+export async function getSafetyVerdict(
+  countrySlug: string,
+  opts?: { iso3?: string }
+): Promise<SafetyVerdict> {
+  const q = opts?.iso3 ? `?iso3=${encodeURIComponent(opts.iso3)}` : "";
+  return api.get<SafetyVerdict>(
+    `/api/destination-intelligence/safety/${encodeURIComponent(countrySlug)}${q}`
+  );
+}
+
+export async function getWeatherSuitability(params: {
+  lat: number;
+  lng: number;
+  start_date: string;
+  end_date: string;
+  activity: string;
+}): Promise<WeatherSuitability> {
+  const q = new URLSearchParams({
+    lat: params.lat.toString(),
+    lng: params.lng.toString(),
+    start_date: params.start_date,
+    end_date: params.end_date,
+    activity: params.activity,
+  });
+  return api.get<WeatherSuitability>(`/api/destination-intelligence/weather-suitability?${q}`);
+}
+
+export async function getDestinationRatings(location: string): Promise<DestinationRatings> {
+  return api.get<DestinationRatings>(
+    `/api/destination-intelligence/ratings/${encodeURIComponent(location)}`
+  );
+}

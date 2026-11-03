@@ -124,6 +124,28 @@ def _check_tripstore_backend() -> Tuple[bool, str]:
     return True, f"TRIPSTORE_BACKEND is '{backend or 'not set (ok for dev)'}'"
 
 
+def _check_advisor_payout_backend() -> Tuple[bool, str]:
+    """Advisor payout (money-adjacent) ledger must run the SQL backend in production.
+
+    The payout store selects ``sql`` automatically in production with a
+    ``DATABASE_URL`` (advisor_payout_store.backend() precedence), but an
+    explicit ``SPINE_API_ADVISOR_PAYOUT_BACKEND=memory`` override would
+    otherwise silently downgrade money durability past the generic
+    DATABASE_URL check. Money-adjacent state on an in-process dict cannot
+    survive a restart or back a commercial claim. Staging is held to the same
+    bar because it rehearses production money flows.
+    """
+    env = os.environ.get("ENVIRONMENT", "development").strip().lower()
+    raw = os.environ.get("SPINE_API_ADVISOR_PAYOUT_BACKEND", "").strip().lower()
+    if env in ("production", "prod", "staging") and raw == "memory":
+        return False, (
+            f"SPINE_API_ADVISOR_PAYOUT_BACKEND='memory' in ENVIRONMENT='{env}'. "
+            "Advisor payout ledgers are money-adjacent and must be durable; "
+            "remove the override or set it to 'sql'."
+        )
+    return True, f"Advisor payout backend override is '{raw or 'not set (backend precedence applies)'}'"
+
+
 def _check_redis_url() -> Tuple[bool, str]:
     """Production-like multi-worker deployments must declare shared Redis.
 
@@ -344,6 +366,7 @@ _ASSERTIONS = [
     ("PUBLIC_PROPOSAL_DEMO_MODE", _check_public_proposal_demo_mode),
     ("AUTH_SAFETY", _check_auth_not_disabled_in_production),
     ("TRIPSTORE_BACKEND", _check_tripstore_backend),
+    ("ADVISOR_PAYOUT_BACKEND", _check_advisor_payout_backend),
     ("LOCKING_BACKEND", _check_locking_backend),
     ("IDEMPOTENCY_BACKEND", _check_idempotency_backend),
     ("REDIS_URL", _check_redis_url),

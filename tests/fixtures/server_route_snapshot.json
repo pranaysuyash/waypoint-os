@@ -1,5 +1,5 @@
 {
-  "route_count": 409,
+  "route_count": 413,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1410,6 +1410,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/customers/hydrate-trip/{trip_id}/adopt",
+      "name": "adopt_memory_facts",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/customers/memory",
       "name": "get_customer_memory",
       "methods": [
@@ -1454,6 +1462,30 @@
       "name": "remember_customer_preference",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/destination-intelligence/ratings/{location}",
+      "name": "get_destination_ratings",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/destination-intelligence/safety/{country_slug}",
+      "name": "get_safety_verdict",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/destination-intelligence/weather-suitability",
+      "name": "get_weather_suitability",
+      "methods": [
+        "GET"
       ],
       "operation_id": null
     },

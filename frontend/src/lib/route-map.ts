@@ -20,6 +20,11 @@ const DEFAULT_ROUTE_TIMEOUT_MS = 10_000;
 const LONG_RUNNING_COMMAND_TIMEOUT_MS = 60_000;
 
 const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
+  // ── Destination intelligence (2026-10-30 tranche) ────────────
+  ["destination-intelligence/safety/{country_slug}", { backendPath: "api/v1/destination-intelligence/safety/{country_slug}" }],
+  ["destination-intelligence/weather-suitability", { backendPath: "api/v1/destination-intelligence/weather-suitability" }],
+  ["destination-intelligence/ratings/{location}", { backendPath: "api/v1/destination-intelligence/ratings/{location}" }],
+
   // ── Settings ───────────────────────────────────────────────
   ["settings", { backendPath: "api/settings" }],
   ["settings/pipeline", { backendPath: "api/settings/pipeline" }],

@@ -11,8 +11,11 @@ const mockStore = vi.hoisted(() => ({
   input_raw_note: '',
   input_owner_note: '',
   draft_status: 'open',
+  pending_intake_prefill: null as string | null,
   setInputRawNote: vi.fn(),
   setInputOwnerNote: vi.fn(),
+  setPendingIntakePrefill: vi.fn(),
+  consumePendingIntakePrefill: vi.fn((): string | null => null),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -44,6 +47,15 @@ describe('IntakeTab', () => {
     mockStore.input_raw_note = '';
     mockStore.input_owner_note = '';
     mockStore.draft_status = 'open';
+    mockStore.pending_intake_prefill = null;
+    mockStore.setInputRawNote.mockReset();
+    mockStore.setInputRawNote.mockImplementation(() => {});
+    mockStore.setInputOwnerNote.mockReset();
+    mockStore.setInputOwnerNote.mockImplementation(() => {});
+    mockStore.setPendingIntakePrefill.mockReset();
+    mockStore.setPendingIntakePrefill.mockImplementation(() => {});
+    mockStore.consumePendingIntakePrefill.mockReset();
+    mockStore.consumePendingIntakePrefill.mockImplementation(() => null);
   });
 
   it('shows the canonical trip purpose prompt in the intake helper copy', () => {
@@ -103,5 +115,28 @@ describe('IntakeTab', () => {
 
     expect(screen.queryByTestId('sample-data-badge')).not.toBeInTheDocument();
     expect(screen.getByText('Bali')).toBeInTheDocument();
+  });
+
+  // Message→intake hand-off (operator-surface tranche 2026-11-03): a channel
+  // message handed over from the inbox fills the empty note exactly once.
+  it('applies a pending intake prefill to the empty note on mount', () => {
+    mockStore.consumePendingIntakePrefill.mockImplementationOnce(
+      () => 'Family of 4 from Delhi to Bali in December, villa preferred.',
+    );
+
+    render(<IntakeTab trip={null} />);
+
+    expect(mockStore.setInputRawNote).toHaveBeenCalledWith(
+      'Family of 4 from Delhi to Bali in December, villa preferred.',
+    );
+  });
+
+  it('never lets a prefill clobber a note the operator already typed', () => {
+    mockStore.input_raw_note = 'Operator draft already in progress.';
+    mockStore.consumePendingIntakePrefill.mockImplementationOnce(() => 'Different message.');
+
+    render(<IntakeTab trip={null} />);
+
+    expect(mockStore.setInputRawNote).not.toHaveBeenCalledWith('Different message.');
   });
 });

@@ -84,3 +84,7 @@ Decision records for items previously listed as owner-gated that the delegated-a
 - **D5 — Research clusters #1-#3 EXECUTED (DONE):** AW3 safety/crime source eval, AW1/AW2 weather+AQI source eval, BD data-governance framework — three dated docs under `Docs/research/`, 7 master-list items flipped to ✅ with citations, canonical counts refreshed (298 done / 1,982). Revisit: the remaining open sub-items are recorded in each doc.
 
 Still owner-only (unchanged): DP-04a (vendor contract = money), DP-04b (Meta credentials), 51c ADR (doctrine posture — pointer to existing Draft A/B docs), disk recovery menu (protected paths), Facebook authenticated session (credentials).
+
+## TRV-DP-07 (decided 2026-11-03, DELEGATED — ratings consent design)
+
+Ratings write-surface consent contract ratified (reversible design): explicit per-submission consent flag (server rejects without it), zero PII in the pool (hash-anonymized + note scrubber), anonymity non-reversible at the surface, audit mirror already live. Full design: Docs/audits/RATINGS_CONSENT_FLOW_DESIGN_2026-11-03.md. Implementation = next half-day tranche. Revisit: DPDP counsel review or verified-traveler-badges feature.

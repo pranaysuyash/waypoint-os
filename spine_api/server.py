@@ -1704,6 +1704,11 @@ app.include_router(message_triage_router.router, dependencies=[Depends(_auth_or_
 from spine_api.routers import pre_departure as pre_departure_router  # noqa: E402
 app.include_router(pre_departure_router.router, dependencies=[Depends(_auth_or_skip)])
 
+# Destination-intelligence operator reads (safety band / weather suitability /
+# ratings) over the governed external-fetch stack (2026-10-30 tranche).
+from spine_api.routers import destination_intelligence as destination_intelligence_router  # noqa: E402
+app.include_router(destination_intelligence_router.router, dependencies=[Depends(_auth_or_skip)])
+
 # Work-intake classification queue (A1/C1, INCOMING_WORK_CLASSIFICATION_MAP_2026-10-24)
 from spine_api.routers import work_items as work_items_mount_router  # noqa: E402
 app.include_router(work_items_mount_router.router, dependencies=[Depends(_auth_or_skip)])
@@ -2914,10 +2919,16 @@ def patch_trip(
         for field, canonical in TRIP_FIELD_FACTS.items():
             if field not in incoming_updates or field == "budget":
                 continue
+            # Authority-ranked fact store (inv-2 tranche 2026-11-03): an
+            # operator's deliberate correction writes manual_override — the
+            # canonical class for operator-authored fact values. Traveler
+            # answers (explicit_user) can never regress these slots, while
+            # the operator correction itself supersedes extracted facts.
             record_fact_override(
                 facts, canonical, incoming_updates[field],
                 source_ref=f"manual_{uuid.uuid4().hex}",
                 previous=original_facts.get(canonical),
+                authority_level="manual_override",
             )
             synced_updates["extracted"] = extracted
         if "budget" in incoming_updates:
@@ -2931,11 +2942,13 @@ def patch_trip(
     ) -> Dict[str, Any]:
         """FND-0291: apply operator confirm/correct resolutions to the packet's
         assumption register. Confirm marks the entry reviewed; correct also
-        writes the true value into extracted.facts with explicit_user authority,
-        mirroring _sync_manual_trip_fields. slot_name is whitelisted against the
-        existing register — this resolves a known assumption, it is not
-        arbitrary fact injection. ``actions`` are dumped AssumptionAction
-        payloads (model_dump flattens nested models to dicts)."""
+        writes the true value into extracted.facts with manual_override
+        authority (the canonical class for operator-authored fact values —
+        inv-2 tranche 2026-11-03), mirroring _sync_manual_trip_fields.
+        slot_name is whitelisted against the existing register — this resolves
+        a known assumption, it is not arbitrary fact injection. ``actions``
+        are dumped AssumptionAction payloads (model_dump flattens nested
+        models to dicts)."""
         from src.intake.fact_overrides import record_fact_override
 
         extracted = _clone_json(current_trip.get("extracted"), {}) or {}
@@ -2962,7 +2975,11 @@ def patch_trip(
             entry["acknowledged_by_operator"] = True
             corrected_value = action.get("corrected_value")
             if corrected_value is not None:
-                record_fact_override(facts, slot_name, corrected_value, source_ref=f"assumption_{uuid.uuid4().hex}")
+                record_fact_override(
+                    facts, slot_name, corrected_value,
+                    source_ref=f"assumption_{uuid.uuid4().hex}",
+                    authority_level="manual_override",
+                )
                 entry["operator_notes"] = action.get("operator_notes") or (
                     f"Corrected by operator — assumed "
                     f"{entry.get('assumed_value')!r} replaced with "

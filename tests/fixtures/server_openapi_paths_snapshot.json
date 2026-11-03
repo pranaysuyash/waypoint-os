@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 372,
+  "openapi_path_count": 376,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -153,12 +153,16 @@
     "/api/v1/crisis/ground/dispatch",
     "/api/v1/crisis/incidents/declare",
     "/api/v1/customers/hydrate-trip/{trip_id}",
+    "/api/v1/customers/hydrate-trip/{trip_id}/adopt",
     "/api/v1/customers/memory",
     "/api/v1/customers/memory/entity/{entity_id}",
     "/api/v1/customers/memory/forget",
     "/api/v1/customers/memory/ingest",
     "/api/v1/customers/memory/query",
     "/api/v1/customers/remember",
+    "/api/v1/destination-intelligence/ratings/{location}",
+    "/api/v1/destination-intelligence/safety/{country_slug}",
+    "/api/v1/destination-intelligence/weather-suitability",
     "/api/v1/disruptions/alerts",
     "/api/v1/disruptions/{trip_id}/rebook",
     "/api/v1/disruptions/{trip_id}/rebook-options",

@@ -20,6 +20,7 @@ from spine_api.core.startup_assertions import (
     _check_secret_key,
     _check_environment_declared,
     _check_tripstore_backend,
+    _check_advisor_payout_backend,
     _check_redis_url,
     _check_public_proposal_demo_mode,
     _check_encryption_key,
@@ -323,6 +324,62 @@ class TestEncryptionKeyCheck:
             passed, msg = _check_encryption_key()
             assert passed
             assert "valid" in msg
+
+
+class TestAdvisorPayoutBackendCheck:
+    """Money-adjacent payout ledgers must never run the memory backend in
+    production-like environments (money-durability tranche 2026-11-03).
+
+    An explicit SPINE_API_ADVISOR_PAYOUT_BACKEND=memory override would
+    otherwise silently downgrade money durability past the generic
+    DATABASE_URL check — an in-process dict cannot survive a restart or
+    back a commercial claim.
+    """
+
+    def test_memory_override_rejected_in_production(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "SPINE_API_ADVISOR_PAYOUT_BACKEND": "memory",
+        }, clear=True):
+            passed, msg = _check_advisor_payout_backend()
+            assert not passed
+            assert "money-adjacent" in msg
+
+    def test_memory_override_rejected_in_staging(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "staging",
+            "SPINE_API_ADVISOR_PAYOUT_BACKEND": "memory",
+        }, clear=True):
+            passed, msg = _check_advisor_payout_backend()
+            assert not passed
+
+    def test_memory_override_allowed_in_development(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "development",
+            "SPINE_API_ADVISOR_PAYOUT_BACKEND": "memory",
+        }, clear=True):
+            passed, msg = _check_advisor_payout_backend()
+            assert passed
+
+    def test_sql_override_and_unset_pass_in_production(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "SPINE_API_ADVISOR_PAYOUT_BACKEND": "sql",
+        }, clear=True):
+            passed, _ = _check_advisor_payout_backend()
+            assert passed
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+        }, clear=True):
+            # Unset → backend precedence applies (production+DATABASE_URL → sql).
+            passed, msg = _check_advisor_payout_backend()
+            assert passed
+            assert "precedence" in msg
+
+    def test_advisor_payout_backend_registered_in_boot_checks(self):
+        from spine_api.core.startup_assertions import _ASSERTIONS
+
+        assert any(name == "ADVISOR_PAYOUT_BACKEND" for name, _ in _ASSERTIONS)
 
 class TestStartupAssertionRunner:
     """Integration test for the full assertion runner."""

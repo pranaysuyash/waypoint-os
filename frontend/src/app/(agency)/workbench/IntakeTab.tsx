@@ -52,7 +52,7 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
   const getSearchParam = searchParams.get.bind(searchParams);
   const { replace } = useRouter();
   const pathname = usePathname();
-  const { input_raw_note, input_owner_note, draft_status, setInputRawNote, setInputOwnerNote } = useWorkbenchStore();
+  const { input_raw_note, input_owner_note, draft_status, setInputRawNote, setInputOwnerNote, consumePendingIntakePrefill } = useWorkbenchStore();
   const id1 = useId();
   const id2 = useId();
   const id3 = useId();
@@ -60,6 +60,18 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
 
   const [triageResult, setTriageResult] = useState<LiveMessageTriageResponse | null>(null);
   const [isTriaging, setIsTriaging] = useState<boolean>(false);
+
+  // Message→intake hand-off (operator-surface tranche 2026-11-03): consume a
+  // channel message handed over from the inbox ("Use for intake") exactly once
+  // on mount. The operator clicked the action explicitly, so the prefill
+  // replaces an empty note; the mounted triage effect then picks it up.
+  useEffect(() => {
+    const prefill = consumePendingIntakePrefill();
+    if (prefill && !input_raw_note.trim()) {
+      setInputRawNote(prefill);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const text = (input_raw_note || '').trim();

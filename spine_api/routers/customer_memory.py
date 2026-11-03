@@ -31,6 +31,7 @@ from src.memory.models import (
 )
 from src.memory.slot_candidates import memory_on_file_facts
 from src.memory.store import get_memory_store
+from src.intake.fact_overrides import try_record_fact_override
 
 logger = logging.getLogger(__name__)
 
@@ -391,6 +392,38 @@ async def remember_customer_preference(
     )
 
 
+def _resolve_trip_contact_identity(trip: dict, req_email=None, req_phone=None) -> tuple:
+    """Resolve the customer identity for memory lookups.
+
+    Request body overrides, then the trip's structured customer fields, then
+    the canonical free-form ``customer_contact`` probe ("@" marks an email).
+    Returns (trip_email, trip_phone, trip_name).
+    """
+    packet = trip.get("packet", {}) or {}
+    trip_email = (
+        req_email
+        or packet.get("customer_email")
+        or trip.get("customer_email")
+        or trip.get("email")
+        or trip.get("client_email")
+    )
+    trip_phone = (
+        req_phone
+        or packet.get("customer_phone")
+        or trip.get("customer_phone")
+        or trip.get("phone")
+        or trip.get("client_phone")
+    )
+    trip_name = packet.get("customer_name") or trip.get("customer_name") or trip.get("client_name")
+
+    trip_contact = str(trip.get("customer_contact") or packet.get("customer_contact") or "").strip()
+    if trip_contact and not trip_email and "@" in trip_contact:
+        trip_email = trip_contact
+    if trip_contact and not trip_phone and "@" not in trip_contact:
+        trip_phone = trip_contact
+    return trip_email, trip_phone, trip_name
+
+
 @router.post("/hydrate-trip/{trip_id}", response_model=HydrateTripResponse)
 async def hydrate_trip_with_customer_memory(
     trip_id: str,
@@ -403,7 +436,9 @@ async def hydrate_trip_with_customer_memory(
     facts come back labeled with provenance for "On file from <date>" chips.
     They are never written into the trip packet, never rendered as confirmed
     trip data, and never satisfy a gate — the former packet-mutating
-    behavior was the memory→packet influence path E-D forbids.
+    behavior was the memory→packet influence path E-D forbids. The operator
+    opt-in path is :func:`adopt_memory_facts` (explicit adoption, inv-2
+    tranche 2026-11-03) — memory never enters the packet silently.
 
     Durable store is the canonical source (survives restarts; one freshness
     policy shared with the slot-1 read via ``memory_on_file_facts``); the
@@ -416,34 +451,9 @@ async def hydrate_trip_with_customer_memory(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    # Resolve the customer identity from the request body if provided, else from
-    # the trip's customer fields. This lets a body-less hydrate still match the
-    # remembered profile for the trip's customer.
-    packet = trip.get("packet", {}) or {}
-    trip_email = (
-        req.email
-        or packet.get("customer_email")
-        or trip.get("customer_email")
-        or trip.get("email")
-        or trip.get("client_email")
+    trip_email, trip_phone, trip_name = _resolve_trip_contact_identity(
+        trip, req_email=req.email, req_phone=req.phone
     )
-    trip_phone = (
-        req.phone
-        or packet.get("customer_phone")
-        or trip.get("customer_phone")
-        or trip.get("phone")
-        or trip.get("client_phone")
-    )
-    trip_name = packet.get("customer_name") or trip.get("customer_name") or trip.get("client_name")
-
-    # The canonical contact field on an inbound trip is `customer_contact`
-    # (free-form string — email or phone). Probe it after the structured
-    # fields; "@" marks an email, otherwise treat it as a phone reference.
-    trip_contact = str(trip.get("customer_contact") or packet.get("customer_contact") or "").strip()
-    if trip_contact and not trip_email and "@" in trip_contact:
-        trip_email = trip_contact
-    if trip_contact and not trip_phone and "@" not in trip_contact:
-        trip_phone = trip_contact
 
     # _find_customer_profile_db matches by email, then phone, then normalized name,
     # so passing all three makes a body-less hydrate robust to whichever field
@@ -535,6 +545,119 @@ async def hydrate_trip_with_customer_memory(
         hydrated_fields=hydrated,
         preferences=prefs,
         facts=facts,
+    )
+
+
+# Memory-adoption contract (inv-2 fact-store tranche, 2026-11-03): only these
+# canonical preference slots may be adopted from an on-file profile. Anything
+# else would be arbitrary memory→packet injection, which ADR-008 §7 row 4
+# forbids; the operator-adopt path composes with that ruling by requiring an
+# explicit operator action and writing operator-attributed (explicit_owner)
+# slots — below explicit_user in the AuthorityLevel order, above derived.
+_MEMORY_ADOPTABLE_SLOTS = {
+    "dietary_requirements": "dietary_requirements",
+    "seating_preference": "seat_preference",
+    "room_preference": "room_preference",
+}
+
+
+class AdoptMemoryRequest(BaseModel):
+    """Operator opt-in: write the displayed on-file facts into the trip."""
+    fields: Optional[List[str]] = Field(
+        default=None,
+        description="Memory field names to adopt; default = all adoptable ones.",
+    )
+
+
+class AdoptMemoryResponse(BaseModel):
+    ok: bool
+    trip_id: str
+    adopted: List[str] = Field(default_factory=list)
+    skipped: List[Dict[str, str]] = Field(default_factory=list)
+
+
+@router.post("/hydrate-trip/{trip_id}/adopt", response_model=AdoptMemoryResponse)
+async def adopt_memory_facts(
+    trip_id: str,
+    req: AdoptMemoryRequest | None = None,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Operator opt-in adoption of on-file memory facts into the trip packet.
+
+    Composes with the ADR-008 §7 row 4 display-only ruling: the silent
+    memory→packet influence path stays forbidden; this endpoint is the
+    explicit, audited operator action. Each adopted value is written through
+    the authority-ranked fact store (``try_record_fact_override``) as an
+    ``explicit_owner`` slot with ``extraction_mode="adopted_from_memory"``
+    provenance — the traveler's explicit answers (explicit_user) still
+    outrank them, and a higher-authority slot is reported as skipped, never
+    clobbered.
+    """
+    req = req or AdoptMemoryRequest()
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    trip_email, trip_phone, trip_name = _resolve_trip_contact_identity(trip)
+    await _ensure_profiles_table()
+    async with rls_session(agency_id) as db:
+        profile_row = await _find_customer_profile_db(
+            db, agency_id, email=trip_email, phone=trip_phone, name=trip_name
+        )
+    if profile_row is None:
+        raise HTTPException(status_code=404, detail="No customer memory profile on file for this trip")
+
+    profile_values = {
+        "dietary_requirements": profile_row.dietary_requirements,
+        "seating_preference": profile_row.seating_preference,
+        "room_preference": profile_row.room_preference,
+    }
+    wanted = set(req.fields) if req.fields else set(_MEMORY_ADOPTABLE_SLOTS)
+
+    extracted = dict(trip.get("extracted") or {})
+    facts = extracted.setdefault("facts", {})
+    adopted: List[str] = []
+    skipped: List[Dict[str, str]] = []
+    for mem_field, canonical in _MEMORY_ADOPTABLE_SLOTS.items():
+        if mem_field not in wanted:
+            continue
+        value = profile_values.get(mem_field)
+        if not value:
+            skipped.append({"field_name": mem_field, "reason": "no on-file value"})
+            continue
+        slot, conflict = try_record_fact_override(
+            facts, canonical, value,
+            source_ref=f"memory_adopt_{uuid.uuid4().hex[:12]}",
+            mode="adopted_from_memory",
+            authority_level="explicit_owner",
+        )
+        if slot is None:
+            skipped.append({"field_name": mem_field, "reason": conflict or "write rejected"})
+        else:
+            adopted.append(canonical)
+
+    if adopted:
+        AuditStore.log_event(
+            event_type="memory_facts_adopted",
+            user_id=agency_id,
+            details={
+                "trip_id": trip_id,
+                "customer_id": profile_row.customer_id,
+                "adopted": adopted,
+                "skipped": len(skipped),
+            },
+        )
+
+    if adopted:
+        updated = TripStore.update_trip_for_agency(trip_id, agency_id, {"extracted": extracted})
+        if updated is None:
+            raise HTTPException(status_code=404, detail="Trip not found")
+
+    return AdoptMemoryResponse(
+        ok=True,
+        trip_id=trip_id,
+        adopted=adopted,
+        skipped=skipped,
     )
 
 

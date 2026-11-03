@@ -31,7 +31,7 @@ from spine_api.routers.public_proposals import (
     _verified_agency_for_token,
     verify_proposal_token,
 )
-from src.intake.fact_overrides import canonical_fact_name, record_fact_override
+from src.intake.fact_overrides import canonical_fact_name, try_record_fact_override
 
 logger = logging.getLogger("spine_api.public_asks")
 
@@ -75,6 +75,7 @@ def _apply_answers_to_facts(
         extracted["facts"] = facts
 
     alias_updates: Dict[str, Any] = {}
+    rejected: List[Dict[str, str]] = []
     for entry in answers:
         field_name = str(entry.get("field_name") or "").strip()
         answer = str(entry.get("answer") or "").strip()
@@ -82,10 +83,18 @@ def _apply_answers_to_facts(
             continue
         canonical = canonical_fact_name(field_name)
         source_ref = "ask_" + hashlib.sha256(f"{token}:{now}:{field_name}".encode()).hexdigest()[:24]
-        slot = record_fact_override(
+        # Authority-ranked fact store (inv-2 tranche 2026-11-03): a traveler
+        # answer is explicit_user; when the slot is held by higher authority
+        # (e.g. an operator's manual_override correction) the write is
+        # rejected and reported honestly — the answer is still recorded on
+        # the trip's traveler_answers log, but the fact slot is preserved.
+        slot, conflict = try_record_fact_override(
             facts, canonical, answer, source_ref=source_ref,
             mode="traveler_ask_link", updated_at=now,
         )
+        if conflict or slot is None:
+            rejected.append({"field_name": field_name, "reason": conflict or "write rejected"})
+            continue
         slot["evidence_refs"][0]["metadata"]["original_question_field"] = field_name
 
         if field_name in ("destination", "destinations"):
@@ -103,7 +112,7 @@ def _apply_answers_to_facts(
             alias_updates["dateWindow"] = answer
         elif canonical == "trip_purpose":
             alias_updates["tripPurpose"] = answer
-    return alias_updates
+    return alias_updates, rejected
 
 
 def _verify(token: str) -> tuple[str, str]:
@@ -220,7 +229,7 @@ def submit_traveler_answers(token: str, body: TravelerAnswerSubmission) -> dict:
         "traveler_answers": answers,
     }
     extracted = dict(trip.get("extracted") or {})
-    alias_updates = _apply_answers_to_facts(extracted, body.answers, token, now)
+    alias_updates, rejected_facts = _apply_answers_to_facts(extracted, body.answers, token, now)
     updates.update(alias_updates)
     updates["extracted"] = extracted
 
@@ -231,6 +240,13 @@ def submit_traveler_answers(token: str, body: TravelerAnswerSubmission) -> dict:
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="Ask link resource not found")
+
+    if rejected_facts:
+        logger.info(
+            "traveler answers: %d fact write(s) rejected by authority precedence on trip %s: %s",
+            len(rejected_facts), trip_id,
+            [r["field_name"] for r in rejected_facts],
+        )
 
     AuditStore.log_event(
         event_type="traveler_answers_recorded",
@@ -277,4 +293,12 @@ def submit_traveler_answers(token: str, body: TravelerAnswerSubmission) -> dict:
     except Exception as exc:
         logger.warning("Auto-reassessment after traveler answers skipped or failed: %s", exc)
 
-    return {"ok": True, "recorded": recorded, "answered_at": now}
+    return {
+        "ok": True,
+        "recorded": recorded,
+        "answered_at": now,
+        # Honest precedence reporting (inv-2 tranche 2026-11-03): answers are
+        # always recorded on the trip log; these were not applied to the
+        # canonical fact slots because a higher-authority value holds them.
+        "rejected_facts": rejected_facts,
+    }

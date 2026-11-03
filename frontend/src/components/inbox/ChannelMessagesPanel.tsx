@@ -1,12 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, MessageSquare, Phone, Mail } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, Building2, MessageSquare, Paperclip, Phone, Mail } from 'lucide-react';
+import { useWorkbenchStore } from '@/stores/workbench';
 
 // T6 (FND-0305): real channel-message feed for the inbox. Renders what the
 // messaging webhook persisted (spine_api/services/message_store.py) — the
 // traveler messages the system ingests but operators could never see. Honest
 // empty state when no channel messages have arrived yet.
+//
+// Message→intake hand-off (operator-surface tranche 2026-11-03): inbound
+// messages carry a "Use for intake" action that hands the message body to the
+// workbench intake tab via the workbench store's pending_intake_prefill —
+// closing the paste-only intake gap without a second intake door. Media-only
+// messages (a filename with no extractable text) honestly disable the action.
 
 export interface ChannelMessage {
   message_id: string;
@@ -38,6 +46,13 @@ const CHANNEL_LABEL: Record<string, string> = {
 export default function ChannelMessagesPanel() {
   const [messages, setMessages] = useState<ChannelMessage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const setPendingIntakePrefill = useWorkbenchStore((s) => s.setPendingIntakePrefill);
+
+  const handleUseForIntake = (body: string) => {
+    setPendingIntakePrefill(body);
+    router.push('/inquiries/new?draft=new&tab=intake');
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +121,16 @@ export default function ChannelMessagesPanel() {
                   <p className='text-ui-sm text-[#e6edf3] break-words'>
                     {m.body || <span className='text-[#484f58] italic'>media message{m.filename ? `: ${m.filename}` : ''}</span>}
                   </p>
+                  {m.filename && (
+                    <span
+                      className='inline-flex items-center gap-1 mt-1 rounded-full bg-[#21262d] px-2 py-0.5 text-[10px] font-medium text-[#8b949e]'
+                      data-testid='channel-message-attachment'
+                      title={m.mime ?? undefined}
+                    >
+                      <Paperclip className='size-3' />
+                      {m.filename}
+                    </span>
+                  )}
                   <p className='text-ui-xs text-[#484f58] mt-0.5'>
                     {m.from_party || 'unknown sender'}
                     {' · '}
@@ -122,6 +147,18 @@ export default function ChannelMessagesPanel() {
                     )}
                   </p>
                 </div>
+                {m.direction === 'inbound' && m.body.trim() && (
+                  <button
+                    type='button'
+                    onClick={() => handleUseForIntake(m.body)}
+                    className='mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#30363d] bg-[#161b22] px-2 py-1 text-[11px] font-medium text-[#58a6ff] transition-colors hover:bg-[#1c2431]'
+                    data-testid='channel-message-use-for-intake'
+                    aria-label='Use this message for intake'
+                  >
+                    Use for intake
+                    <ArrowRight className='size-3' />
+                  </button>
+                )}
               </li>
             );
           })}
