@@ -78,7 +78,21 @@ export default function FinancialSettlementPanel() {
           <Calendar className="h-3.5 w-3.5" />
           Payment Timing Preview
         </button>
+        <button
+          type="button"
+          aria-pressed={activeTab === 'statements'}
+          onClick={() => setActiveTab('statements')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+            activeTab === 'statements' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground hover:bg-accent'
+          }`}
+          data-testid="commission-statements-tab-button"
+        >
+          <FileSpreadsheet className="h-3.5 w-3.5" />
+          Commission Statements
+        </button>
       </div>
+
+      {activeTab === 'statements' && <CommissionStatementsTab />}
 
       {activeTab === 'fx_buffer' && (
         <div className="p-4 rounded-xl border border-border bg-card space-y-4">

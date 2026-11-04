@@ -2270,6 +2270,9 @@ export async function linkCommissionStatementRow(
 
 export interface SafetyVerdict {
   destination_slug: string;
+  requested_slug?: string;
+  country_slug?: string;
+  alias_note?: string;
   band: string;
   label: string;
   components: Record<string, unknown>;

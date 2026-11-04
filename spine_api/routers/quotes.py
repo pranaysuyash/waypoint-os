@@ -59,6 +59,50 @@ def _finite_positive(value: Any) -> Optional[float]:
     return finite_money(value)
 
 
+def _statutory_tax_preview(trip: dict, agency_id: str) -> Optional[tuple]:
+    """R2-C (2026-11-03): the statutory TCS rate preview for the quote.
+
+    Applies only when the agency is India-based (default currency INR) and
+    the trip's destination country is known and not India. The rate is the
+    effective-dated regime's standard tour-package rate (pan-independent);
+    the traveler-specific no-PAN provisions are not guessed here. Returns
+    ``(rate_pct, basis)`` or None — never a number without its basis."""
+    try:
+        from src.intake.config.agency_settings import AgencySettingsStore
+
+        settings = AgencySettingsStore.load(agency_id)
+        if (getattr(settings, "default_currency", "") or "").upper() != "INR":
+            return None
+    except Exception:
+        logger.debug("statutory tax preview: agency settings unavailable for %s", agency_id)
+        return None
+
+    facts = (trip.get("extracted") or {}).get("facts") or {}
+    slot = facts.get("destination_country")
+    dest_country = str(slot.get("value") or "").strip() if isinstance(slot, dict) else ""
+    if not dest_country:
+        # Fallback: an explicit "India" destination string also classifies;
+        # anything else stays unknown and no tax is shown (never guessed).
+        destination = str(trip.get("destination") or "").strip().lower()
+        if destination == "india":
+            return None
+        return None
+    if dest_country.lower() == "india":
+        return None
+
+    from datetime import date as _date
+
+    from src.fees.tax_compliance import TaxComplianceEngine
+
+    breakdown = TaxComplianceEngine.calculate_tcs(
+        current_amount_inr=100_000.0,
+        is_overseas_trip=True,
+        pan_number=None,
+        as_of=_date.today(),
+    )
+    return round(breakdown.effective_tcs_rate_pct, 2), "india_tcs_statutory_preview"
+
+
 def _review_status(trip: dict) -> str:
     analytics = trip.get("analytics") or {}
     return str(analytics.get("review_status") or "pending")
@@ -88,6 +132,8 @@ def _derive_quote(trip: dict, agency_id: str) -> Optional[TripQuoteView]:
         if isinstance(h, (str, int, float)) and str(h).strip()
     ]
 
+    tax_preview = _statutory_tax_preview(trip, agency_id)
+
     return TripQuoteView(
         trip_id=trip.get("id") or "",
         title=str(recommendation.get("name") or "Proposed itinerary"),
@@ -97,7 +143,8 @@ def _derive_quote(trip: dict, agency_id: str) -> Optional[TripQuoteView]:
         margin_percent=commercial.margin_percent,
         margin_basis=commercial.margin_basis,
         margin_provenance=commercial.provenance,
-        tax_percent=None,
+        tax_percent=tax_preview[0] if tax_preview else None,
+        tax_basis=tax_preview[1] if tax_preview else None,
         rack_price=commercial.retail_price,
         rack_price_basis=commercial.retail_basis,
         status=status if commercial.ready else "pricing_review",

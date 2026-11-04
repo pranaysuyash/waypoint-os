@@ -36,6 +36,7 @@ interface QuoteView {
   margin_basis: string;
   margin_provenance: QuoteProvenance;
   tax_percent: number | null;
+  tax_basis?: string | null;
   rack_price: number;
   rack_price_basis: string;
   status: string;
@@ -209,7 +210,7 @@ export default function QuotesPageClient() {
         </div>
       )}
 
-      {!quotesLoading && !quotesError && quotesData && !quotesData.quote_ready && (
+      {!quotesLoading && !quotesError && quotesData && !quotesData.quote_ready && !activeQuote && (
         <div data-testid='quotes-not-ready' className='rounded-lg border border-[#30363d] bg-[#0d1117] p-6'>
           <div className='flex items-center gap-2 mb-3'>
             <AlertTriangle className='size-5 text-[#d29922]' />
@@ -247,8 +248,14 @@ export default function QuotesPageClient() {
                 <DollarSign className='size-4 text-[#3fb950]' />
               </div>
               <div className='text-2xl font-bold text-[#3fb950]' data-testid='quote-rack-price'>
-                {activeQuote.currency === 'USD' ? '$' : `${activeQuote.currency} `}
-                {activeQuote.rack_price.toLocaleString()}
+                {activeQuote.rack_price == null ? (
+                  'Pricing review'
+                ) : (
+                  <>
+                    {activeQuote.currency === 'USD' ? '$' : `${activeQuote.currency} `}
+                    {activeQuote.rack_price.toLocaleString()}
+                  </>
+                )}
               </div>
               <div className='text-xs text-[#484f58]'>Computed preview — net cost + policy margin</div>
             </div>
@@ -265,7 +272,7 @@ export default function QuotesPageClient() {
             <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
               <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider'>Margin</div>
               <div className='text-2xl font-bold text-[#d29922]' data-testid='quote-margin'>
-                {activeQuote.margin_percent}%
+                {activeQuote.margin_percent == null ? 'Awaiting retail' : `${activeQuote.margin_percent}%`}
               </div>
               <div className='text-xs text-[#484f58] truncate' title={activeQuote.margin_provenance.applied_rule_id}>
                 {activeQuote.margin_provenance.applied_rule_id ?? 'policy'}
@@ -307,6 +314,21 @@ export default function QuotesPageClient() {
                   {activeQuote.summary && (
                     <p className='text-ui-sm text-[#8b949e]'>{activeQuote.summary}</p>
                   )}
+                  {/* Honest missing-inputs diagnosis travels with the quote card —
+                      known costs survive an unpriced retail, and the operator sees
+                      WHY it is in pricing review even when a quote row exists. */}
+                  {!quotesData?.quote_ready && (quotesData?.missing.length ?? 0) > 0 && (
+                    <div className='rounded-lg border border-[#d29922]/30 bg-[#d29922]/10 p-3' data-testid='quote-missing-inputs'>
+                      <p className='text-xs font-semibold text-[#d29922] mb-1.5'>Pricing review — missing persisted inputs:</p>
+                      <ul className='space-y-1'>
+                        {quotesData!.missing.map((m) => (
+                          <li key={m} className='text-xs text-[#8b949e] flex items-start gap-1.5'>
+                            <span className='text-[#d29922] mt-0.5'>•</span> {m}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {activeQuote.highlights.length > 0 && (
                     <ul className='space-y-1.5'>
                       {activeQuote.highlights.map((h) => (
@@ -326,6 +348,14 @@ export default function QuotesPageClient() {
                         ` · markup $${activeQuote.margin_provenance.markup_amount_usd}`}
                     </p>
                     {activeQuote.tax_percent == null && <p>Tax: no persisted tax producer yet — not estimated.</p>}
+                    {activeQuote.tax_percent != null && (
+                      <p data-testid='quote-tax-statutory'>
+                        Tax: ≈{activeQuote.tax_percent}% statutory TCS (preview)
+                        {activeQuote.tax_basis === 'india_tcs_statutory_preview'
+                          ? ' · effective-dated regime rate, traveler-specific no-PAN provisions not applied'
+                          : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

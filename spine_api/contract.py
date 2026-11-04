@@ -1672,6 +1672,10 @@ class TripQuoteView(BaseModel):
     margin_basis: str  # policy_preview | live_wholesale_margin (future)
     margin_provenance: Dict[str, Any] = Field(default_factory=dict)
     tax_percent: Optional[float] = None  # None = no persisted tax producer; never a default
+    # Paired basis (inv-3, R2-C tranche 2026-11-03): required whenever
+    # tax_percent is set — a statutory percentage without its source named is
+    # a fabricated number.
+    tax_basis: Optional[str] = None
     rack_price: Optional[float] = None
     rack_price_basis: str  # computed_preview | live_priced (future)
     pricing_status: str = "priced"  # priced | pricing_review; known costs survive an unpriced retail
@@ -1696,6 +1700,11 @@ class TripQuoteView(BaseModel):
         "rack_price_basis": {"computed_preview", "live_priced", "unpriced", "operator_approved_retail"},
     }
 
+    # Conditional pairs: the basis is required only when its number is set.
+    _CONDITIONAL_BASIS_VOCABULARY = {
+        "tax_basis": {"india_tcs_statutory_preview"},
+    }
+
     from pydantic import model_validator
 
     @model_validator(mode="after")
@@ -1711,6 +1720,26 @@ class TripQuoteView(BaseModel):
                 raise ValueError(
                     f"{field}={value!r} is not a known basis {sorted(allowed)} — "
                     "extend the vocabulary only when a real producer lands"
+                )
+        for field, allowed in self._CONDITIONAL_BASIS_VOCABULARY.items():
+            value = (getattr(self, field) or "").strip()
+            number_set = getattr(self, field.replace("_basis", "_percent")) is not None
+            if number_set:
+                if not value:
+                    raise ValueError(
+                        f"{field} is required when {field.replace('_basis', '_percent')} "
+                        "is set — a statutory rate without its source is a fabricated "
+                        "number (roadmap invariant 3)"
+                    )
+                if value not in allowed:
+                    raise ValueError(
+                        f"{field}={value!r} is not a known basis {sorted(allowed)} — "
+                        "extend the vocabulary only when a real producer lands"
+                    )
+            elif value:
+                raise ValueError(
+                    f"{field}={value!r} set without the paired number — drop the basis "
+                    "or produce the number"
                 )
         return self
 

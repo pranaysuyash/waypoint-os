@@ -5,6 +5,7 @@ endpoint was verified separately in the AW3 research pass (2026-10-30).
 """
 
 import pytest
+from unittest.mock import patch
 
 from src.intake.external_fetch import ExternalFetchError, fetch_json
 from src.intake.external_reference import DataCategory, LicenseTier
@@ -125,6 +126,39 @@ def test_fcdo_status_normalization_full_ladder():
     assert normalize_fcdo_status(["some_new_status_slug"]) == "3"
     assert normalize_fcdo_status(["no_advisory"]) == "1"
     assert normalize_fcdo_status(None) == "1"
+
+
+def test_fcdo_slug_alias_bali():
+    """bali was the original live-404 — FCDO advises at country level."""
+    with patch("spine_api.routers.destination_intelligence.fetch_fcdo_country"):
+        pass  # (no-op; keep patch import used)
+    with patch("src.intake.external_sources.fetch_json") as fj:
+        fj.return_value = type("R", (), {"payload": {"details": {"alert_status": []}, "public_updated_at": "x"},
+                                          "reference": None, "category": None})()
+        # reference is only used via to_metadata; stub it properly
+        class _Ref:
+            def to_metadata(self):
+                return {"source_id": "fcdo-content-api", "retrieved_at": "t", "license_tier": "share_alike"}
+        r = type("R2", (), {"payload": {"details": {"alert_status": []}, "public_updated_at": "x"},
+                             "reference": _Ref(), "category": DataCategory.SAFETY_ADVISORY})()
+        fj.return_value = r
+        out = fetch_fcdo_country("bali")
+    assert out["requested_slug"] == "bali"
+    assert out["country_slug"] == "indonesia"
+    assert "alias_note" in out
+
+
+def test_fcdo_direct_country_no_alias_note():
+    with patch("src.intake.external_sources.fetch_json") as fj:
+        class _Ref:
+            def to_metadata(self):
+                return {"source_id": "fcdo-content-api"}
+        r = type("R2", (), {"payload": {"details": {"alert_status": []}, "public_updated_at": "x"},
+                             "reference": _Ref(), "category": DataCategory.SAFETY_ADVISORY})()
+        fj.return_value = r
+        out = fetch_fcdo_country("japan")
+    assert "alias_note" not in out
+    assert out["requested_slug"] == "japan"
 
 
 def test_fetch_fcdo_country_shape(allowlisted_http, monkeypatch):

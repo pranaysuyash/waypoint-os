@@ -96,10 +96,15 @@ def normalize_fcdo_status(status_entries) -> str:
 def fetch_fcdo_country(country_slug: str) -> Dict[str, Any]:
     """Fetch one country's FCDO foreign-travel-advice payload, governed.
 
-    Returns a dict with the raw content payload + provenance + the normalized
-    advisory band. Raises ``ExternalFetchError`` per pipeline semantics.
+    FCDO advises on COUNTRIES — island/city destinations (bali, phuket,
+    canary-islands) alias to their governing country's page via
+    ``_FCDO_SLUG_ALIASES`` (the alias is carried in the result as
+    ``requested_slug`` + ``fcdo_slug`` so the UI can say "advice for
+    Indonesia" honestly). Raises ``ExternalFetchError`` per pipeline
+    semantics.
     """
-    slug = country_slug.strip().lower().replace(" ", "-")
+    requested = country_slug.strip().lower().replace(" ", "-")
+    slug = _FCDO_SLUG_ALIASES.get(requested, requested)
     result: FetchResult = fetch_json(
         f"{FCDO_CONTENT_BASE}/{slug}",
         source_id="fcdo-content-api",
@@ -110,7 +115,8 @@ def fetch_fcdo_country(country_slug: str) -> Dict[str, Any]:
     payload = result.payload
     details = payload.get("details", {}) if isinstance(payload, dict) else {}
     alert_status = details.get("alert_status") or []
-    return {
+    out = {
+        "requested_slug": requested,
         "country_slug": slug,
         "content_payload": payload,
         "advisory_band": normalize_fcdo_status(alert_status),
@@ -119,6 +125,37 @@ def fetch_fcdo_country(country_slug: str) -> Dict[str, Any]:
         "provenance": result.reference.to_metadata()
         | {"category": result.category.value},
     }
+    if slug != requested:
+        out["alias_note"] = f"FCDO advises at country level — showing advice for {slug.replace('-', ' ')}"
+    return out
+
+
+# Island/city/region destinations that have no FCDO page of their own —
+# they inherit the governing country's advice. Extend deliberately as the
+# intake vocabulary grows; bali (the original live-404) is the seed.
+_FCDO_SLUG_ALIASES = {
+    "bali": "indonesia",
+    "phuket": "thailand",
+    "canary-islands": "spain",
+    "mallorca": "spain",
+    "ibiza": "spain",
+    "tenerife": "spain",
+    "sicily": "italy",
+    "sardinia": "italy",
+    "crete": "greece",
+    "santorini": "greece",
+    "rhodes": "greece",
+    "zanzibar": "tanzania",
+    "bora-bora": "france",  # French Polynesia
+    "tahiti": "france",
+    "madeira": "portugal",
+    "azores": "portugal",
+    "hawaii": "usa",
+    "puerto-vallarta": "mexico",
+    "cancun": "mexico",
+    "tulum": "mexico",
+    "los-cabos": "mexico",
+}
 
 
 # ---- C3: neighborhood street crime (data.police.uk — England/Wales) ----

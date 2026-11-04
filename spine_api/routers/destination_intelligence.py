@@ -68,6 +68,8 @@ def _cached(key: str, ttl: float, build):
 
 class SafetyVerdictResponse(BaseModel):
     destination_slug: str
+    requested_slug: Optional[str] = None
+    alias_note: Optional[str] = None
     band: str
     label: str
     components: Dict[str, Any]
@@ -114,13 +116,16 @@ def _build_safety_verdict(country_slug: str, iso3: Optional[str], lat: Optional[
             time.sleep(5.0)  # GDELT pacing contract: 1 req / 5 s
         except ExternalFetchError as exc:
             logger.info("events pulse unavailable for %s (honest gap): %s", country_slug, exc)
-    return assess_safety_band(
+    verdict = assess_safety_band(
         advisory_band=advisory["advisory_band"],
         advisory_provenance=advisory["provenance"],
         homicide=homicide,
         neighborhood=neighborhood,
         events=events,
     )
+    if advisory.get("alias_note"):
+        verdict["alias_note"] = advisory["alias_note"]
+    return verdict
 
 
 @router.get("/safety/{country_slug}", response_model=SafetyVerdictResponse)

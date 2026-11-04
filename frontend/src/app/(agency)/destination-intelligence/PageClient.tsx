@@ -91,6 +91,7 @@ export default function DestinationIntelligencePageClient() {
   // Contribution form (TRV-DP-07: consent is explicit per submission)
   const [ratingDim, setRatingDim] = useState('safety');
   const [ratingScore, setRatingScore] = useState(5);
+  const [ratingTripMonth, setRatingTripMonth] = useState('');
   const [ratingNote, setRatingNote] = useState('');
   const [ratingConsent, setRatingConsent] = useState(false);
   const queryClient = useQueryClient();
@@ -100,6 +101,7 @@ export default function DestinationIntelligencePageClient() {
         dimension: ratingDim,
         score: ratingScore,
         consent: ratingConsent,
+        trip_month: ratingTripMonth || undefined,
         note: ratingNote || undefined,
       }),
     onSuccess: () => {
@@ -143,7 +145,12 @@ export default function DestinationIntelligencePageClient() {
           </button>
         </form>
 
-        {safety.isFetching && <p className='text-[13px]' style={{ color: 'var(--text-tertiary)' }}>Fetching advisory…</p>}
+        {safety.isFetching && (
+          <div className='flex flex-col gap-2' aria-busy='true'>
+            <div className='h-6 w-48 rounded animate-pulse' style={{ background: 'var(--bg-subtle, #21262d)' }} />
+            <div className='h-3 w-full rounded animate-pulse' style={{ background: 'var(--bg-subtle, #21262d)' }} />
+          </div>
+        )}
         {safety.isError && (
           <p className='text-[13px]' style={{ color: 'var(--accent-red, #f85149)' }}>
             Advisory source unavailable right now — shown as a gap, not guessed.
@@ -160,6 +167,11 @@ export default function DestinationIntelligencePageClient() {
                 band {safety.data.band} {safety.data.cached ? '· cached' : ''}
               </span>
             </div>
+            {(safety.data.alias_note ?? '').length > 0 && (
+              <p className='text-[12px] italic' style={{ color: 'var(--text-tertiary)' }}>
+                {safety.data.alias_note}
+              </p>
+            )}
             <p className='text-[12px]' style={{ color: 'var(--text-tertiary)' }}>
               Covered: {safety.data.coverage.join(', ')}
               {safety.data.coverage_gaps.length > 0 && <> · gaps: {safety.data.coverage_gaps.join(', ')}</>}
@@ -211,6 +223,14 @@ export default function DestinationIntelligencePageClient() {
                 maxLength={280}
                 placeholder='Optional note — no personal details (contacts auto-removed)'
                 className='flex-1 min-w-[200px] rounded-md border bg-transparent px-3 py-1.5 text-[13px]'
+                style={{ color: 'var(--text-primary)', borderColor: 'var(--border-subtle, #30363d)' }}
+              />
+              <input
+                type='month'
+                value={ratingTripMonth}
+                onChange={(e) => setRatingTripMonth(e.target.value)}
+                title='Month of travel (optional)'
+                className='rounded-md border bg-transparent px-2 py-1.5 text-[13px]'
                 style={{ color: 'var(--text-primary)', borderColor: 'var(--border-subtle, #30363d)' }}
               />
               <button
