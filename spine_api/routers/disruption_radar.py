@@ -198,3 +198,143 @@ def execute_rebook(
             missing_for_upgrade=["connected booking provider", "supplier confirmation", "idempotency key", "external booking reference"],
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Operator-reported IRROPS signal ingestion (R2-H tranche, 2026-11-04)
+# ---------------------------------------------------------------------------
+
+
+class ReportDisruptionRequest(BaseModel):
+    trigger_kind: str  # cancellation | delay | schedule_change | diversion | denial_of_boarding
+    flight_ref: str
+    notes: str = ""
+    delay_minutes: Optional[int] = None
+
+
+@router.post("/{trip_id}/report")
+def report_disruption(
+    trip_id: str,
+    body: ReportDisruptionRequest,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Operator-reported disruption → stored ``active_disruption`` (R2-H).
+
+    The honest interim signal source until provider feeds land (DP-04a):
+    deterministic severity per the IRROPS semantics doc, operator_reported
+    basis, idempotency marker. The existing /alerts surface renders stored
+    rows and never fabricates on empty (F-38). Provider-observed rows will
+    supersede by authority precedence when a feed lands.
+    """
+    from spine_api.services.irrops import IrropsReportError, evaluate_irrops_report
+    from spine_api.persistence import AuditStore
+
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    try:
+        alert = evaluate_irrops_report(
+            trip,
+            trigger_kind=body.trigger_kind,
+            flight_ref=body.flight_ref,
+            notes=body.notes,
+            delay_minutes=body.delay_minutes,
+            operator_id=agency_id,
+        )
+    except IrropsReportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    # Storage shape = the radar's DisruptionAlert contract (superset): the
+    # report initially stored the raw IRROPS payload, whose keys
+    # (flight_ref/trigger_kind/severity) don't match the alert model
+    # (flight_number/disruption_type/urgency_level) — the /alerts surface
+    # silently skipped every reported row (runtime-walk finding, 2026-11-06).
+    # Write the alert-model keys PLUS the IRROPS provenance keys so both the
+    # radar and the audit trail read one row.
+    destination_name = str(trip.get("destination") or "Unknown")
+    disruption_type = alert["trigger_kind"].upper()  # DELAY / CANCELLATION / ...
+    radar_alert = {
+        "disruption_id": f"irrops_{alert['idempotency_marker'].split(':')[-1]}_{abs(hash(alert['idempotency_marker'])) % 100000:05d}",
+        "trip_id": trip_id,
+        "destination": destination_name,
+        "flight_number": alert["flight_ref"],
+        "disruption_type": disruption_type,
+        "urgency_level": alert["severity"].upper(),
+        "delay_minutes": int(alert["delay_minutes"] or 0),
+        "impact_summary": alert["notes"] or (
+            f"Operator-reported {alert['trigger_kind'].replace('_', ' ')} on {alert['flight_ref']} "
+            f"(source: operator_reported)"
+        ),
+        "status": "ACTIVE",
+        "created_at": alert["created_at"],
+        # IRROPS provenance superset (tolerated by the alert model filter):
+        "trigger_kind": alert["trigger_kind"],
+        "comp_relevant": alert["comp_relevant"],
+        "source": alert["source"],
+        "source_basis": alert["source_basis"],
+        "reported_by": alert["reported_by"],
+        "idempotency_marker": alert["idempotency_marker"],
+    }
+    updated = TripStore.update_trip_for_agency(trip_id, agency_id, {"active_disruption": radar_alert})
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    AuditStore.log_event(
+        event_type="irrops_disruption_reported",
+        user_id=agency_id,
+        details={
+            "trip_id": trip_id,
+            "trigger_kind": alert["trigger_kind"],
+            "flight_ref": alert["flight_ref"],
+            "severity": alert["severity"],
+            "source": alert["source"],
+            "idempotency_marker": alert["idempotency_marker"],
+        },
+    )
+    return {"ok": True, "trip_id": trip_id, "disruption": alert}
+
+
+@router.post("/{trip_id}/resolve")
+def resolve_disruption(
+    trip_id: str,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Resolve the trip's active disruption (FND-0405): archive it to
+    ``disruption_history`` and clear ``active_disruption`` so the radar
+    reflects reality. The full IRROPS provenance row is preserved in the
+    history entry — nothing is deleted."""
+    from datetime import datetime as _dt
+    from spine_api.persistence import AuditStore as _AuditStore
+
+    trip = TripStore.get_trip_for_agency(trip_id, agency_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    active = trip.get("active_disruption")
+    if not active:
+        raise HTTPException(status_code=409, detail="Trip has no active disruption to resolve")
+
+    resolved = dict(active)
+    resolved["status"] = "RESOLVED"
+    resolved["resolved_at"] = _dt.now(timezone.utc).isoformat()
+    resolved["resolved_by"] = agency_id
+
+    history = trip.get("disruption_history")
+    if not isinstance(history, list):
+        history = []
+    history.append(resolved)
+
+    updated = TripStore.update_trip_for_agency(
+        trip_id, agency_id,
+        {"active_disruption": None, "disruption_history": history},
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    _AuditStore.log_event(
+        event_type="irrops_disruption_resolved",
+        user_id=agency_id,
+        details={"trip_id": trip_id, "idempotency_marker": active.get("idempotency_marker")},
+    )
+    return {"ok": True, "trip_id": trip_id, "resolved": resolved.get("disruption_type") or resolved.get("trigger_kind")}

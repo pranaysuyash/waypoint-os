@@ -271,6 +271,17 @@ class ManualLinkRequest(BaseModel):
     trip_id: str
 
 
+class RecordRowPayoutRequest(BaseModel):
+    """Operator action: record a matched statement row as a durable payout.
+
+    ``advisor_id`` attributes the commission to the advisor whose split tier
+    applies — the statement row cannot know this, so it is operator-supplied
+    and never inferred."""
+
+    row_index: int
+    advisor_id: str
+
+
 @router.post("/ingest")
 async def ingest_statement(
     body: IngestStatementRequest,
@@ -310,6 +321,16 @@ async def ingest_statement(
         },
     )
     return batch.to_dict()
+
+
+@router.get("/ingest")
+async def list_ingest_batches(
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """List this agency's ingest batches, newest first (FND-0404 reopen UI)."""
+    from spine_api.services.commission_ingest import list_batches
+
+    return {"items": list_batches(agency_id)}
 
 
 @router.get("/ingest/{batch_id}")
@@ -356,3 +377,52 @@ async def manually_link_statement_row(
         },
     )
     return batch.to_dict()
+
+
+@router.post("/ingest/{batch_id}/record")
+async def record_statement_row_payout(
+    batch_id: str,
+    body: RecordRowPayoutRequest,
+    agency_id: str = Depends(get_current_agency_id),
+):
+    """Record a matched statement row as a DURABLE payout (R2-B closure).
+
+    The only path from ingest candidates to money truth: the row must be
+    matched to a trip, not previously recorded, and USD-denominated (no
+    silent FX). The payout is written through the durable AdvisorPayoutStore
+    and the row is marked with the payout id — re-recording is rejected
+    against double-count."""
+    from spine_api.services.commission_ingest import record_row_payout
+
+    batch, payout, error = record_row_payout(
+        batch_id,
+        agency_id,
+        body.row_index,
+        advisor_id=body.advisor_id,
+        recorded_by=agency_id,
+    )
+    if error:
+        # Contract-review R5: record_payout revalidation ValueErrors (positive
+        # amount, missing attribution) must map to 4xx, never escape as 500.
+        if "not found" in error.lower():
+            status_code = 404
+        elif "already recorded" in error.lower():
+            status_code = 409
+        else:
+            status_code = 422
+        raise HTTPException(status_code=status_code, detail=error)
+
+    AuditStore.log_event(
+        event_type="commission_statement_row_recorded",
+        user_id=agency_id,
+        details={
+            "batch_id": batch_id,
+            "row_index": body.row_index,
+            "payout_id": payout["payout_id"],
+            "amount_usd": payout["amount_usd"],
+            "trip_id": payout["trip_id"],
+            "advisor_id": payout["advisor_id"],
+            "storage_backend": payout["storage_backend"],
+        },
+    )
+    return {"ok": True, "payout": payout, "batch": batch.to_dict()}

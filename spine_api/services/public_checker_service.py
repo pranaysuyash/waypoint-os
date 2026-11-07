@@ -311,6 +311,9 @@ def run_public_checker_submission(
             "has_budget_band": has_budget_band,
             "has_traveler_profile": has_traveler_profile,
             "declared_plan_source": declared_plan_source,
+            # Run-stage the traveler submitted under ("booking" = declared
+            # already booked, RDA_EX07 rec-3). Operator-visible funnel signal.
+            "declared_stage": request.stage,
         },
     )
     _safe_log_product_b_event(intake_event, logger=logger)

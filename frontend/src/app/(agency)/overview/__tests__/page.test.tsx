@@ -1,7 +1,17 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import OverviewPage from '../page';
+
+// FND-0402 (2026-11-05): the overview page migrated to react-query hooks —
+// every render must sit under a fresh QueryClientProvider.
+function renderPage(ui: ReactNode = <OverviewPage />) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 const ROUTES = {
   workspaces: '/trips',
@@ -190,7 +200,7 @@ describe('OverviewPage', () => {
   });
 
   it('renders queue cards against their configured destination routes', () => {
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.getByText('2 trips in planning · 5 enquiries · 1 quote to review')).toBeInTheDocument();
     expect(screen.getByText('Action Required')).toBeInTheDocument();
@@ -206,7 +216,7 @@ describe('OverviewPage', () => {
   });
 
   it('renders Action Required above metric cards', () => {
-    render(<OverviewPage />);
+    renderPage();
 
     const actionHeading = screen.getByText('Action Required');
     const metricTitle = screen.getAllByText('Trips in Planning')[0] as HTMLElement;
@@ -216,7 +226,7 @@ describe('OverviewPage', () => {
   });
 
   it('surfaces the highest-priority item as the start here banner', () => {
-    render(<OverviewPage />);
+    renderPage();
 
     const banner = screen.getByLabelText('Start Here');
     expect(within(banner).getByText('Start here')).toBeInTheDocument();
@@ -225,7 +235,7 @@ describe('OverviewPage', () => {
   });
 
   it('does not show totals-only lead or system rows in Action Required', () => {
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.queryByText('New enquiries waiting')).not.toBeInTheDocument();
     expect(screen.queryByText('Agency health check')).not.toBeInTheDocument();
@@ -238,13 +248,13 @@ describe('OverviewPage', () => {
       actionRequiredItems: [],
     });
 
-    render(<OverviewPage />);
+    renderPage();
     expect(screen.getByText('Checking for action required…')).toBeInTheDocument();
     expect(screen.queryByText('No urgent action detected from available data.')).not.toBeInTheDocument();
   });
 
   it('routes overview actions to the specific intake destinations', () => {
-    render(<OverviewPage />);
+    renderPage();
 
     const openTripsLinks = screen.getAllByRole('link', { name: /open trips/i });
     expect(openTripsLinks.length).toBeGreaterThan(0);
@@ -267,7 +277,7 @@ describe('OverviewPage', () => {
       leadInboxError: null,
     });
 
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.getByText('No trips in planning yet')).toBeInTheDocument();
     expect(screen.getAllByText(/A new enquiry is waiting/i).length).toBeGreaterThan(0);
@@ -275,9 +285,12 @@ describe('OverviewPage', () => {
   });
 
   it('groups identical recent trips into a single overview card cluster', () => {
+    // FND-0402: tripPurpose is now a required brief field — without it every
+    // card titles "Trip details incomplete" and all signatures collapse.
     const duplicateTrip = {
       id: 'trip_dup_1',
       destination: 'Bali',
+      tripPurpose: 'Leisure',
       type: 'leisure',
       state: 'amber',
       age: 'Today',
@@ -298,7 +311,7 @@ describe('OverviewPage', () => {
       recentTrips: [duplicateTrip, { ...duplicateTrip, id: 'trip_dup_2' }, { ...duplicateTrip, id: 'trip_unique', destination: 'Singapore' }],
     });
 
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.getByText(/Showing 2 grouped cards from 3 trips\./i)).toBeInTheDocument();
     expect(screen.getByText(/2 matching trips/i)).toBeInTheDocument();
@@ -314,24 +327,34 @@ describe('OverviewPage', () => {
       leadInboxTotal: 0,
       leadInboxLoading: false,
       leadInboxError: null,
+      // FND-0402: the empty-account state must not inherit the base fixture's
+      // header copy, action items, or loading flags — the page renders those
+      // verbatim and the onboarding gate is on live loading flags.
+      headerSubtitle: '',
+      actionRequiredItems: [],
+      recentTripsLoading: false,
     });
 
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.getByText('Welcome to Waypoint')).toBeInTheDocument();
-    expect(screen.getByText('Invite your team')).toBeInTheDocument();
-    expect(screen.getByText('Add your first inquiry')).toBeInTheDocument();
+    // FND-0402: onboarding migrated to outcome-derived steps (activation
+    // facts) — the invite-team checklist item no longer exists.
+    // The step label appears twice (list item + CTA link) — assert on count.
+    expect(screen.getAllByText('Add your first inquiry').length).toBeGreaterThan(0);
+    expect(screen.getByText('Ready the brief')).toBeInTheDocument();
+    expect(screen.getByText('Start planning')).toBeInTheDocument();
   });
 
   it('keeps the trip list visible when planning already has trips', () => {
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.getAllByRole('link', { name: /open trip/i })[0]).toBeInTheDocument();
     expect(screen.queryByText('No trips in planning yet')).not.toBeInTheDocument();
   });
 
   it('renders planning work as a rich trip card instead of a sparse activity row', () => {
-    render(<OverviewPage />);
+    renderPage();
 
     const planningCardHeading = screen.getByText('Trip details incomplete');
     const planningCard = planningCardHeading.closest('[class*="rounded-2xl"]');
@@ -363,7 +386,7 @@ describe('OverviewPage', () => {
       ],
     });
 
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.getByText(/Showing 1 grouped card from 2 trips\./i)).toBeInTheDocument();
     expect(screen.getByText(/2 matching trips/i)).toBeInTheDocument();
@@ -375,7 +398,7 @@ describe('OverviewPage', () => {
       pipeline: [{ label: 'assigned', count: 2 }],
     });
 
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.getByText('2 trips in planning · all Waiting for options')).toBeInTheDocument();
     expect(screen.queryByText('Expand')).not.toBeInTheDocument();
@@ -392,7 +415,7 @@ describe('OverviewPage', () => {
       planningTripsTotal: 4,
     });
 
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.getByText('Waiting for options · 3')).toBeInTheDocument();
     expect(screen.getByText('Ready for booking · 1')).toBeInTheDocument();
@@ -410,7 +433,7 @@ describe('OverviewPage', () => {
       planningTripsTotal: 2,
     });
 
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.getByText('Waiting for options · 1')).toBeInTheDocument();
     expect(screen.getByText('Ready for quote review · 1')).toBeInTheDocument();
@@ -428,7 +451,7 @@ describe('OverviewPage', () => {
       pipeline: [{ label: 'in_progress', count: 5 }],
     });
 
-    render(<OverviewPage />);
+    renderPage();
 
     expect(screen.queryByText(/actively being built/i)).not.toBeInTheDocument();
   });

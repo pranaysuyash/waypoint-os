@@ -173,6 +173,11 @@ function makeStore(overrides: Record<string, unknown> = {}) {
     setDraftMeta: mockSetDraftMeta,
     setInputRawNote: vi.fn(),
     setInputOwnerNote: vi.fn(),
+    // Message→intake hand-off (2026-11-03 tranche): IntakeTab consumes the
+    // prefill on mount; absent here it throws and breaks the page render.
+    pending_intake_prefill: null,
+    setPendingIntakePrefill: vi.fn(),
+    consumePendingIntakePrefill: vi.fn(() => null),
     resetAll: vi.fn(),
     ...overrides,
   };

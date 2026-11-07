@@ -107,14 +107,21 @@ OVERSEAS_TRIP = {
 
 
 def test_tcs_overseas_with_pan_vs_without(monkeypatch):
-    """TCS 206C(1G) applies to OVERSEAS packages: non-PAN 20% > PAN 5% tier."""
+    """TCS applies to OVERSEAS packages. Regime note (R2-C 2026-11-04): the
+    CURRENT budget2026 regime is a flat 2% from the first rupee and the
+    fetched sources state no no-PAN penalty — so with-PAN and without-PAN
+    carry the same rate, with an advisory note on the no-PAN path. The
+    historical strict inequality (no-PAN 20% > PAN 5%) belonged to the
+    budget2024/25 windows, pinned regime-explicitly in
+    test_tax_compliance_effective_dated.py."""
     _wire(monkeypatch, OVERSEAS_TRIP)
     with_pan = client.get(
         "/api/v1/trips/trip_acct_1/accounting-export", params={"pan_number": "ABCDE1234F"}
     ).json()["provenance"]
     without_pan = client.get("/api/v1/trips/trip_acct_1/accounting-export").json()["provenance"]
-    # Non-PAN statutory rule: 20% flat — strictly higher than the 5% PAN tier.
-    assert without_pan["tcs_total"] > with_pan["tcs_total"] > 0
+    assert with_pan["tcs_total"] > 0
+    assert without_pan["tcs_total"] >= with_pan["tcs_total"]  # no-PAN is never cheaper
+    assert with_pan["tcs_total"] == without_pan["tcs_total"]  # flat regime: same standard rate
 
 
 def test_tcs_below_lrs_threshold_is_zero(monkeypatch):

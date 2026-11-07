@@ -1484,14 +1484,19 @@ def generate_risk_flags(
                     risks.append({
                         "flag": "document_risk",
                         "severity": "critical",
-                        "message": f"{traveler}: passport {info.get('status')} — cannot book without valid passport",
+                        "message": f"{traveler}: passport {info.get('status')} — cannot travel without a valid passport",
                     })
         if visa and isinstance(visa.value, dict) and visa.value.get("requirement") == "required" \
            and visa.value.get("status") == "not_applied":
             risks.append({
                 "flag": "visa_not_applied",
                 "severity": "critical",
-                "message": "Visa required but not applied — booking blocked",
+                # Honest in both booking-stage semantics (FND-0399): the stage
+                # gate covers pre-booking travelers AND travelers who declared
+                # the trip already booked (RDA_EX07 rec-3). "Booking blocked"
+                # would be false for declared-booked users, so the copy is
+                # stage-semantics-neutral and true in both cases.
+                "message": "Visa required but not applied — must be resolved before you book or travel",
             })
 
     # --- VISA TIMELINE RISK: Check if not already handled by hybrid engine ---

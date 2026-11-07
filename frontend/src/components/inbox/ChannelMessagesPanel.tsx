@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Building2, MessageSquare, Paperclip, Phone, Mail } from 'lucide-react';
 import { useWorkbenchStore } from '@/stores/workbench';
@@ -46,6 +46,7 @@ const CHANNEL_LABEL: Record<string, string> = {
 export default function ChannelMessagesPanel() {
   const [messages, setMessages] = useState<ChannelMessage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const router = useRouter();
   const setPendingIntakePrefill = useWorkbenchStore((s) => s.setPendingIntakePrefill);
 
@@ -54,23 +55,47 @@ export default function ChannelMessagesPanel() {
     router.push('/inquiries/new?draft=new&tab=intake');
   };
 
+  // FND-0406 (2026-11-07): the feed was one-shot on mount — new arrivals were
+  // invisible until a page reload. Load function + manual refresh + 15s poll
+  // keep the triage feed live without a second full-page mount.
+  const loadMessages = useCallback(async (): Promise<void> => {
+    try {
+      const res = await fetch('/api/v1/messages?limit=50');
+      if (!res.ok) throw new Error(`Message feed unavailable (${res.status})`);
+      const data: { messages: ChannelMessage[] } = await res.json();
+      setMessages(data.messages);
+      setError(null);
+    } catch (err: Error | unknown) {
+      setError(err instanceof Error ? err.message : 'Message feed unavailable');
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/v1/messages?limit=50')
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`Message feed unavailable (${res.status})`);
-        return res.json();
-      })
-      .then((data: { messages: ChannelMessage[] }) => {
-        if (!cancelled) setMessages(data.messages);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      });
+    const run = async () => {
+      await loadMessages();
+      if (cancelled) return;
+      setIsRefreshing(false);
+    };
+    setIsRefreshing(true);
+    void run();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadMessages]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadMessages();
+    }, 15_000);
+    return () => clearInterval(interval);
+  }, [loadMessages]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadMessages();
+    setIsRefreshing(false);
+  };
 
   if (error) {
     return (
@@ -95,7 +120,18 @@ export default function ChannelMessagesPanel() {
           <MessageSquare className='size-4 text-[#58a6ff]' />
           Channel Messages
         </div>
-        <span className='text-ui-xs text-[#484f58]'>{messages.length} recent</span>
+        <div className='flex items-center gap-2'>
+          <span className='text-ui-xs text-[#484f58]'>{messages.length} recent</span>
+          <button
+            type='button'
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className='rounded-lg border border-[#30363d] bg-[#161b22] px-2 py-1 text-[11px] font-medium text-[#58a6ff] transition-colors hover:bg-[#1c2431] disabled:opacity-50'
+            data-testid='channel-messages-refresh'
+          >
+            {isRefreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {messages.length === 0 ? (

@@ -51,6 +51,10 @@ class AuthorityLevel:
     RANK = {
         "manual_override": 1,
         "explicit_user": 2,
+        # Legacy wire value still present on pre-ranked rows (server budget
+        # dual-write emitted it before the ranked writer existed). Read-compat
+        # only: NOT in FACT_LEVELS, so it can never be newly written.
+        "explicit_user_raw": 2,
         "imported_structured": 3,
         "explicit_owner": 4,
         "derived_signal": 5,

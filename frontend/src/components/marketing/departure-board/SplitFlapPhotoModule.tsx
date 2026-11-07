@@ -65,7 +65,7 @@ export const SplitFlapPhotoModule: React.FC<SplitFlapPhotoModuleProps> = ({
 
   return (
     <div
-      className="relative w-[86px] sm:w-[100px] h-[44px] sm:h-[50px] rounded-[4px] bg-[#0c1018] p-[1.5px] shadow-[inset_0_2px_5px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.18)] shrink-0"
+      className="relative w-full h-full min-w-0 rounded-[2.5px] bg-[#0c1018]/80 p-0 shadow-[0_2px_3px_rgba(0,0,0,0.45)] shrink-0"
       style={{ perspective: "520px" }}
       title={caption ?? alt}
       data-testid={`split-flap-photo-row-${rowIndex}`}
@@ -77,7 +77,7 @@ export const SplitFlapPhotoModule: React.FC<SplitFlapPhotoModuleProps> = ({
         }}
       >
         {/* Static Upper Half */}
-        <div className="absolute inset-x-0 top-0 h-[calc(50%-0.75px)] overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1/2 overflow-hidden">
           <img
             src={topStaticSrc}
             alt={alt}
@@ -86,7 +86,7 @@ export const SplitFlapPhotoModule: React.FC<SplitFlapPhotoModuleProps> = ({
         </div>
 
         {/* Static Lower Half */}
-        <div className="absolute inset-x-0 bottom-0 h-[calc(50%-0.75px)] overflow-hidden">
+        <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden">
           <img
             src={bottomStaticSrc}
             alt={alt}
@@ -97,7 +97,7 @@ export const SplitFlapPhotoModule: React.FC<SplitFlapPhotoModuleProps> = ({
         {/* Rotating Upper Leaf */}
         {isFlipping && phase === "upper" ? (
           <div
-            className="absolute inset-x-0 top-0 h-[calc(50%-0.75px)] overflow-hidden z-20"
+            className="absolute inset-x-0 top-0 h-1/2 overflow-hidden z-20"
             style={{
               transformOrigin: "50% 100%",
               transform: "rotateX(-82deg)",
@@ -117,7 +117,7 @@ export const SplitFlapPhotoModule: React.FC<SplitFlapPhotoModuleProps> = ({
         {/* Rotating Lower Leaf */}
         {isFlipping && phase === "lower" && incomingSrc ? (
           <div
-            className="absolute inset-x-0 bottom-0 h-[calc(50%-0.75px)] overflow-hidden z-20"
+            className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden z-20"
             style={{
               transformOrigin: "50% 0%",
               transform: "rotateX(0deg)",
@@ -135,12 +135,11 @@ export const SplitFlapPhotoModule: React.FC<SplitFlapPhotoModuleProps> = ({
         ) : null}
 
         {/* Center Horizontal Split Seam */}
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-[2px] bg-[#080b11] shadow-[0_1px_2px_rgba(0,0,0,0.75)] z-30" />
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-black/35 z-30" />
 
-        {/* Left / Mid / Right Hinge Pin Notches (double-wide module has center + side hinge pins) */}
-        <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[6px] bg-gradient-to-b from-[#94a3b8] via-[#475569] to-[#1e293b] rounded-r-[1px] z-40" />
-        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-[2px] h-[5px] bg-[#334155] rounded-[1px] z-40" />
-        <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-[6px] bg-gradient-to-b from-[#94a3b8] via-[#475569] to-[#1e293b] rounded-l-[1px] z-40" />
+        {/* Subtle Left / Right Mechanical Hinge Notches */}
+        <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 w-[1.5px] h-[3.5px] bg-black/35 z-40" />
+        <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 w-[1.5px] h-[3.5px] bg-black/35 z-40" />
       </div>
     </div>
   );

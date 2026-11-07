@@ -114,11 +114,13 @@ class TestOriginRoundtrip:
             "PATCH must dual-write origin into extracted.facts.origin_city.value"
         )
 
-    def test_patch_origin_authority_is_explicit_user(self, session_client, canonical_trip_id):
+    def test_patch_origin_authority_is_manual_override(self, session_client, canonical_trip_id):
         _patch_trip(session_client, canonical_trip_id, {"origin": "London"})
         result = _get_trip(session_client, canonical_trip_id)
         facts = (result.get("extracted") or {}).get("facts", {})
-        assert facts.get("origin_city", {}).get("authority_level") == "explicit_user"
+        # TRV-DP-07 D1 (2026-11-04): operator patches carry manual_override —
+        # traveler ask-answers (explicit_user) can never regress them.
+        assert facts.get("origin_city", {}).get("authority_level") == "manual_override"
 
     def test_manual_structured_overlay_wins_over_stale_extracted_origin(self):
         trip = {
@@ -286,11 +288,12 @@ class TestPartyCompositionRoundtrip:
             "PATCH must dual-write party_composition into extracted.facts.party_composition.value"
         )
 
-    def test_patch_party_composition_authority_is_explicit_user(self, session_client, canonical_trip_id):
+    def test_patch_party_composition_authority_is_manual_override(self, session_client, canonical_trip_id):
         _patch_trip(session_client, canonical_trip_id, {"party_composition": "4 adults"})
         result = _get_trip(session_client, canonical_trip_id)
         facts = (result.get("extracted") or {}).get("facts", {})
-        assert facts.get("party_composition", {}).get("authority_level") == "explicit_user"
+        # TRV-DP-07 D1: operator patches carry manual_override.
+        assert facts.get("party_composition", {}).get("authority_level") == "manual_override"
 
 
 class TestPacePreferenceRoundtrip:
@@ -312,11 +315,13 @@ class TestPacePreferenceRoundtrip:
             "PATCH must dual-write pace_preference into extracted.facts.pace_preference.value"
         )
 
-    def test_patch_pace_preference_authority_is_explicit_user(self, session_client, canonical_trip_id):
+    def test_patch_pace_preference_authority_is_manual_override(self, session_client, canonical_trip_id):
         _patch_trip(session_client, canonical_trip_id, {"pace_preference": "leisurely"})
         result = _get_trip(session_client, canonical_trip_id)
         facts = (result.get("extracted") or {}).get("facts", {})
-        assert facts.get("pace_preference", {}).get("authority_level") == "explicit_user"
+        # TRV-DP-07 D1 (2026-11-04): operator patches carry manual_override —
+        # the top-authority class, so traveler ask-answers can never regress them.
+        assert facts.get("pace_preference", {}).get("authority_level") == "manual_override"
 
 
 class TestDateYearConfidenceRoundtrip:
@@ -338,11 +343,13 @@ class TestDateYearConfidenceRoundtrip:
             "PATCH must dual-write date_year_confidence into extracted.facts.date_year_confidence.value"
         )
 
-    def test_patch_date_year_confidence_authority_is_explicit_user(self, session_client, canonical_trip_id):
+    def test_patch_date_year_confidence_authority_is_manual_override(self, session_client, canonical_trip_id):
         _patch_trip(session_client, canonical_trip_id, {"date_year_confidence": "tentative"})
         result = _get_trip(session_client, canonical_trip_id)
         facts = (result.get("extracted") or {}).get("facts", {})
-        assert facts.get("date_year_confidence", {}).get("authority_level") == "explicit_user"
+        # TRV-DP-07 D1 (2026-11-04): operator patches carry manual_override —
+        # the top-authority class, so traveler ask-answers can never regress them.
+        assert facts.get("date_year_confidence", {}).get("authority_level") == "manual_override"
 
 
 class TestLeadSourceRoundtrip:
@@ -364,11 +371,13 @@ class TestLeadSourceRoundtrip:
             "PATCH must dual-write lead_source into extracted.facts.lead_source.value"
         )
 
-    def test_patch_lead_source_authority_is_explicit_user(self, session_client, canonical_trip_id):
+    def test_patch_lead_source_authority_is_manual_override(self, session_client, canonical_trip_id):
         _patch_trip(session_client, canonical_trip_id, {"lead_source": "direct_call"})
         result = _get_trip(session_client, canonical_trip_id)
         facts = (result.get("extracted") or {}).get("facts", {})
-        assert facts.get("lead_source", {}).get("authority_level") == "explicit_user"
+        # TRV-DP-07 D1 (2026-11-04): operator patches carry manual_override —
+        # the top-authority class, so traveler ask-answers can never regress them.
+        assert facts.get("lead_source", {}).get("authority_level") == "manual_override"
 
 
 class TestActivityProvenanceRoundtrip:
@@ -390,11 +399,13 @@ class TestActivityProvenanceRoundtrip:
             "PATCH must dual-write activity_provenance into extracted.facts.activity_provenance.value"
         )
 
-    def test_patch_activity_provenance_authority_is_explicit_user(self, session_client, canonical_trip_id):
+    def test_patch_activity_provenance_authority_is_manual_override(self, session_client, canonical_trip_id):
         _patch_trip(session_client, canonical_trip_id, {"activity_provenance": "website_form"})
         result = _get_trip(session_client, canonical_trip_id)
         facts = (result.get("extracted") or {}).get("facts", {})
-        assert facts.get("activity_provenance", {}).get("authority_level") == "explicit_user"
+        # TRV-DP-07 D1 (2026-11-04): operator patches carry manual_override —
+        # the top-authority class, so traveler ask-answers can never regress them.
+        assert facts.get("activity_provenance", {}).get("authority_level") == "manual_override"
 
 
 # ---------------------------------------------------------------------------
@@ -602,7 +613,7 @@ class TestAssumptionActions:
         entry = next(a for a in _assumptions_of(persisted) if a["slot_name"] == "budget_currency")
         assert entry["acknowledged_by_operator"] is True
 
-    def test_correct_writes_explicit_user_fact_and_supersedes_entry(
+    def test_correct_writes_manual_override_fact_and_supersedes_entry(
         self, session_client, assumptions_trip_id,
     ):
         result = _patch_trip(session_client, assumptions_trip_id, {
@@ -616,7 +627,8 @@ class TestAssumptionActions:
         assert "INR" in (entry["operator_notes"] or "")
         fact = (result["extracted"]["facts"] or {}).get("budget_currency")
         assert fact["value"] == "INR"
-        assert fact["authority_level"] == "explicit_user"
+        # TRV-DP-07 D1: the operator assumption correction carries manual_override.
+        assert fact["authority_level"] == "manual_override"
 
     def test_unknown_slot_name_rejected(self, session_client, assumptions_trip_id):
         resp = session_client.patch(

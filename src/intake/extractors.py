@@ -3332,8 +3332,9 @@ def _extract_passport_visa(text: str) -> Dict[str, Any]:
         # not_required — a substring ordering alone cannot fix that, so they
         # get an explicit pre-check; (b) "visa pending" means APPLIED and
         # in-process — its own status, distinct from not_applied (which the
-        # decision engine treats as a critical booking blocker at
-        # decision.py's visa_not_applied check).
+        # decision engine treats as a critical booking-stage gate at
+        # src/intake/decision.py's visa_not_applied check; fires for
+        # booking-stage runs including traveler-declared already-booked).
         not_required_forms = ("no visa required", "no visa needed", "visa not required", "visa-free", "visa free")
         not_applied_forms = ("no visa yet", "no visas yet", "visa not applied", "haven't got visa", "haven't got a visa", "don't have visa", "don't have a visa")
         negated_visa_free = re.search(r"(?:don'?t|doesn'?t|not|never)\s+(?:have\s+)?(?:a\s+)?visa[-\s]?free", text_lower)

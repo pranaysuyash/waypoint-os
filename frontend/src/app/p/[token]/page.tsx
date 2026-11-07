@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Check, CheckCircle, Sparkles, ShieldCheck, ShieldAlert, MapPin, Calendar, ArrowRight, UserCheck } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Check, CheckCircle, Sparkles, ShieldCheck, ShieldAlert, AlertTriangle, MapPin, Calendar, ArrowRight, UserCheck } from 'lucide-react';
+import { formatMoney } from '@/lib/currency';
 
 interface ProposalOption {
   id: string;
@@ -38,6 +39,20 @@ interface ProposalData {
   available_options: ProposalOption[];
   reality_tier?: string;
   stated_requirements?: string[];
+  why_this_fits?: string | null;
+  open_questions?: Array<{ field_name: string; question: string; priority: string }>;
+  // AT-20 renewed consent: the backend sends these when a new revision needs
+  // the traveler to re-accept (accepted_agreement = the superseded terms).
+  revision_id?: string | null;
+  requires_reacceptance?: boolean;
+  accepted_agreement?: {
+    revision_id?: string;
+    selected_total_price?: number;
+    currency?: string;
+    accepted_at?: string;
+  } | null;
+  // Native-currency wire alias (backend PublicProposalView); _usd is legacy.
+  selected_total_price?: number;
 }
 
 // Part-H P1 (2026-09-07): a 200 response is not automatically a proposal.
@@ -66,10 +81,12 @@ export default function PublicProposalPage({ params }: { params: { token: string
   const [signerEmail, setSignerEmail] = useState('');
   const [eSignConsent, setESignConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // AT-20: recoverable acceptance failure (e.g. revision conflict 409) and
+  // renewed-consent state surface honestly — never silent, never fake success.
+  const [acceptanceError, setAcceptanceError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  useEffect(() => {
-    async function loadProposal() {
+  const loadProposal = useCallback(async () => {
       try {
         const res = await fetch(`/api/public/proposals/${token}`);
         if (res.ok) {
@@ -98,12 +115,14 @@ export default function PublicProposalPage({ params }: { params: { token: string
         }
       } catch {
         setLoadError('This proposal could not be loaded right now.');
-      } finally {
-        setLoading(false);
-      }
+    } finally {
+      setLoading(false);
     }
-    void loadProposal();
   }, [token]);
+
+  useEffect(() => {
+    void loadProposal();
+  }, [token, loadProposal]);
 
   const toggleOption = async (optionId: string) => {
     const nextSelected = selectedOptionIds.includes(optionId)
@@ -145,6 +164,10 @@ export default function PublicProposalPage({ params }: { params: { token: string
           signer_email: signerEmail,
           selected_option_ids: selectedOptionIds,
           e_signature_consent: eSignConsent,
+          // AT-20: bind the acceptance to the revision the traveler actually
+          // viewed — the backend rejects a stale revision instead of
+          // recording consent for terms that changed mid-review.
+          revision_id: proposal?.revision_id ?? null,
         }),
       });
 
@@ -155,10 +178,22 @@ export default function PublicProposalPage({ params }: { params: { token: string
         if (parsed && parsed.status === 'accepted') {
           setProposal(parsed);
           setIsSuccess(true);
+          setAcceptanceError(null);
         }
+      } else {
+        // AT-20: a revision conflict (409) or other rejection is a
+        // recoverable, traveler-readable error — not a silent failure.
+        let detail = 'The proposal changed while you were reviewing it. Refresh the page to review the updated terms.';
+        try {
+          const errBody = await res.json();
+          if (errBody?.detail) detail = String(errBody.detail);
+        } catch {
+          // keep the default message
+        }
+        setAcceptanceError(detail);
       }
     } catch {
-      // Handle acceptance failure
+      setAcceptanceError('Something went wrong while recording your acceptance. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -220,7 +255,18 @@ export default function PublicProposalPage({ params }: { params: { token: string
             <div className="text-right">
               <p className="text-xs text-[#8b949e]">Total Package</p>
               <p className="text-lg font-bold text-[#3fb950] tracking-tight">
-                ${currentTotal.toLocaleString()} {proposal.currency}
+                {/* AT-20: format by the proposal's own currency — a hardcoded
+                    '$' mislabels native-currency totals. */}
+                {(() => {
+                  const currency = (proposal.currency || 'USD') as 'USD' | 'INR' | 'EUR' | 'GBP' | 'AED' | 'SGD' | 'KES';
+                  const nativeTotal = proposal.selected_total_price ?? undefined;
+                  const amount = typeof nativeTotal === 'number' && nativeTotal > 0 ? nativeTotal : currentTotal;
+                  try {
+                    return formatMoney(amount, currency);
+                  } catch {
+                    return `${currentTotal.toLocaleString()} ${proposal.currency}`;
+                  }
+                })()}
               </p>
             </div>
             {!isSuccess && (
@@ -279,6 +325,42 @@ export default function PublicProposalPage({ params }: { params: { token: string
             </ul>
             <p className="text-xs text-[#484f58] mt-3">
               Held on file for this trip. Your travel advisor confirms each one is covered before any booking is made.
+            </p>
+          </section>
+        )}
+
+        {/* Why this option (gap-4 trust render): deterministic rationale built
+            only from this trip's persisted decision facts — no generated prose. */}
+        {proposal.why_this_fits && (
+          <section data-testid="proposal-why-this-fits" className="rounded-xl border border-[#58a6ff]/30 bg-[#58a6ff]/5 p-6">
+            <h3 className="text-lg font-bold text-white tracking-tight mb-2 flex items-center gap-2">
+              <CheckCircle className="size-5 text-[#58a6ff]" /> Why This Plan Fits
+            </h3>
+            <p className="text-sm text-[#c9d1d9] leading-relaxed">{proposal.why_this_fits}</p>
+          </section>
+        )}
+
+        {/* Open questions with field names (gap-4 repair banner): the traveler
+            sees exactly what is still open; answers arrive via the advisor's
+            ask link — capability tokens are never mixed on this page. */}
+        {(proposal.open_questions?.length ?? 0) > 0 && (
+          <section data-testid="proposal-open-questions" className="rounded-xl border border-[#d29922]/30 bg-[#d29922]/10 p-6">
+            <h3 className="text-lg font-bold text-white tracking-tight mb-2 flex items-center gap-2">
+              <AlertTriangle className="size-5 text-[#d29922]" /> Still Open Before Booking
+            </h3>
+            <ul className="space-y-1.5">
+              {proposal.open_questions!.map((q) => (
+                <li key={q.field_name} className="text-sm text-[#c9d1d9] flex items-start gap-2">
+                  <span className="text-[#d29922] shrink-0 mt-0.5">•</span>
+                  <span>
+                    {q.question}
+                    <span className="ml-1 text-[#8b949e]">({q.field_name.replace(/_/g, ' ')}{q.priority === 'high' ? ' · high priority' : ''})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-[#484f58] mt-3">
+              Your travel advisor will send you a secure answer link for these — answering them finishes your plan.
             </p>
           </section>
         )}
@@ -396,6 +478,52 @@ export default function PublicProposalPage({ params }: { params: { token: string
                   record your acceptance of this proposal.
                 </p>
               </div>
+
+              {/* AT-20: renewed consent — the traveler previously accepted an
+                  older revision; show those terms and prompt re-review. */}
+              {proposal?.requires_reacceptance && (
+                <div
+                  role="note"
+                  data-testid="reacceptance-banner"
+                  className="rounded-lg border border-[#d29922]/40 bg-[#d29922]/10 p-4 text-sm text-[#d29922]"
+                >
+                  <p className="font-semibold">
+                    You previously accepted this proposal
+                    {proposal.accepted_agreement?.accepted_at
+                      ? ` on ${new Date(proposal.accepted_agreement.accepted_at).toLocaleDateString()}`
+                      : ''}.
+                  </p>
+                  <p className="mt-1 text-[#c9d1d9]">
+                    The proposal has since been updated. Review the updated
+                    proposal and accept again — your earlier acceptance terms
+                    {proposal.accepted_agreement?.selected_total_price
+                      ? ` (total ${proposal.accepted_agreement.currency ?? ''} ${proposal.accepted_agreement.selected_total_price.toLocaleString()})`
+                      : ''} are superseded only once you re-accept.
+                  </p>
+                </div>
+              )}
+
+              {acceptanceError && (
+                <div
+                  role="alert"
+                  data-testid="acceptance-error"
+                  className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-400"
+                >
+                  <p>{acceptanceError}</p>
+                  {/* AT-20 recovery action: re-fetch the proposal so the
+                      traveler reviews the CURRENT revision before re-signing. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAcceptanceError(null);
+                      void loadProposal();
+                    }}
+                    className="mt-2 px-3 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10 text-xs font-semibold text-red-300 hover:bg-red-500/20 transition-colors"
+                  >
+                    Review latest proposal
+                  </button>
+                </div>
+              )}
 
               <form onSubmit={handleAccept} className="space-y-4 max-w-xl">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

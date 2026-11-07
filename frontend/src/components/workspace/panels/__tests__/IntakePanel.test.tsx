@@ -272,6 +272,10 @@ describe('IntakePanel', () => {
         trip={{
           id: 'trip_4b9e0d894872',
           destination: 'Bali',
+          // FND-0402: purpose/origin are required-brief members — without
+          // them the watch card flips to "Incomplete intake".
+          tripPurpose: 'Family Leisure',
+          origin: 'Mumbai',
           type: 'Family Leisure',
           budget: '$3500',
           party: 3,
@@ -383,6 +387,7 @@ describe('IntakePanel', () => {
           id: 'trip_family_1',
           destination: 'Bali',
           origin: 'Mumbai',
+          tripPurpose: 'Leisure',
           type: 'Leisure',
           budget: '₹3.5L',
           party: 5,
@@ -432,6 +437,9 @@ describe('IntakePanel', () => {
           id: 'trip_ready_1',
           destination: 'Nairobi',
           origin: 'Nairobi',
+          // FND-0402: purpose is a required-brief member — 'Ready to build
+          // options' only renders once the required set is complete.
+          tripPurpose: 'Family Leisure',
           type: 'Family Leisure',
           budget: 'Budget: USD 4,500',
           party: 2,
@@ -472,6 +480,7 @@ describe('IntakePanel', () => {
           id: 'trip_ready_2',
           destination: 'Zanzibar',
           origin: 'Nairobi',
+          tripPurpose: 'Family Leisure',
           type: 'Family Leisure',
           budget: 'Budget: USD 4,000',
           party: 3,
@@ -836,6 +845,9 @@ describe('IntakePanel', () => {
           id: 'trip_ready_ui',
           destination: 'Bali',
           origin: 'Sydney',
+          // FND-0402: purpose is a required-brief member — 'Build trip
+          // options' only renders once the required set is complete.
+          tripPurpose: 'Leisure',
           type: 'Leisure',
           budget: '₹75,000',
           party: 2,

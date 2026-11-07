@@ -1,36 +1,181 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type {
   BoardRowId,
   DepartureInquiryFixture,
   InquiryId,
 } from "./board-fixtures";
-import { INQUIRY_ORDER, DEPARTURE_INQUIRIES } from "./board-fixtures";
+import {
+  INQUIRY_ORDER,
+  DEPARTURE_INQUIRIES,
+  DESTINATION_CATALOG_REGISTRY,
+} from "./board-fixtures";
 
 export type InteractiveStageMode = "hero" | "voice_ingest" | "provenance_brief";
 
 /**
+ * Helper to segment a raw voice quote into interactive highlighted workflow tokens
+ * (Destination, Travelers, Duration, Ambiguous Dates, Trip Style) synchronized with voiceProgress.
+ */
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildVoiceWorkflowSegments(
+  quote: string,
+  pillTitle: string,
+  styleSubcopy?: string
+): Array<{
+  text: string;
+  targetRow?: BoardRowId;
+  color?: "yellow" | "cyan" | "green" | "amber" | "purple";
+  threshold: number;
+}> {
+  const escapedDest = escapeRegExp(pillTitle.trim() || "Italy");
+  const escapedStyleSub = styleSubcopy?.trim()
+    ? `|${escapeRegExp(styleSubcopy.trim())}`
+    : "";
+
+  const tokenMatchers: Array<{
+    regex: RegExp;
+    targetRow: BoardRowId;
+    color: "yellow" | "cyan" | "green" | "amber" | "purple";
+    threshold: number;
+  }> = [
+    {
+      regex: new RegExp(
+        `\\b(${escapedDest}|Italy|Japan|Morocco|Dubai|Greece|Switzerland|Peru|Iceland|Kenya|Portugal|Bali|Patagonia|Norway|Maldives|France|Amalfi)\\b`,
+        "i"
+      ),
+      targetRow: "destination",
+      color: "yellow",
+      threshold: 0.12,
+    },
+    {
+      regex:
+        /\b(group of \d+|\d+ travelers?|\d+ travellers?|two of us|\d+ of us|family of \d+|couple|solo traveler)\b/i,
+      targetRow: "travelers",
+      color: "cyan",
+      threshold: 0.08,
+    },
+    {
+      regex: /\b(about \d+ days|\d+ days|\d+ weeks)\b/i,
+      targetRow: "duration",
+      color: "green",
+      threshold: 0.28,
+    },
+    {
+      regex:
+        /\b(next spring|autumn foliage, exact dates still open|Still checking November school break dates|still coordinating exact dates|still coordinating dates|exact dates still open|sometime in October|around November|still coordinating|flexible on dates|in (?:January|February|March|April|May|June|July|August|September|October|November|December)(?: next year| 202\d)?)\b/i,
+      targetRow: "dates",
+      color: "amber",
+      threshold: 0.42,
+    },
+    {
+      regex: new RegExp(
+        `\\b(Food, history, and some time on the coast|Tokyo, Kyoto, and great culinary spots|Atlas Mountain kasbah, and a luxury Sahara camp|private catamaran in the Cyclades and caldera suites|first-class panoramic rail and Zermatt chalets|Sacred Valley lodges, Hiram Bingham train, and Lima dining|South Coast super-jeep, ice caves, and geothermal retreats|private conservancy safari camps and Masai Mara bush flights|Douro Valley wine quintas, Lisbon, and Comporta coast|Ubud jungle wellness sanctuary and private coastal villa|Torres del Paine luxury estancia and glacier trekking|private fjord cruise, Lofoten cabins, and northern lights|Downtown skyline suites, private desert oasis, and yacht charter|overwater pool villa and private sandbank dining|Paris Left Bank, Provence wine estates, and Riviera coast|culture and coastal time|food, culture, and ryokan|desert camp and Atlas kasbah${escapedStyleSub}|culture|adventure|coastal|food)\\b`,
+        "i"
+      ),
+      targetRow: "tripStyle",
+      color: "purple",
+      threshold: 0.62,
+    },
+  ];
+
+  type MatchSpan = {
+    start: number;
+    end: number;
+    text: string;
+    targetRow: BoardRowId;
+    color: "yellow" | "cyan" | "green" | "amber" | "purple";
+    threshold: number;
+  };
+
+  const spans: MatchSpan[] = [];
+  for (const m of tokenMatchers) {
+    const match = m.regex.exec(quote);
+    if (match && match.index !== undefined) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (!spans.some((s) => start < s.end && end > s.start)) {
+        spans.push({
+          start,
+          end,
+          text: match[0],
+          targetRow: m.targetRow,
+          color: m.color,
+          threshold: m.threshold,
+        });
+      }
+    }
+  }
+  spans.sort((a, b) => a.start - b.start);
+
+  const result: Array<{
+    text: string;
+    targetRow?: BoardRowId;
+    color?: "yellow" | "cyan" | "green" | "amber" | "purple";
+    threshold: number;
+  }> = [];
+  let cursor = 0;
+  for (const s of spans) {
+    if (s.start > cursor) {
+      result.push({ text: quote.slice(cursor, s.start), threshold: 0 });
+    }
+    result.push({
+      text: s.text,
+      targetRow: s.targetRow,
+      color: s.color,
+      threshold: s.threshold,
+    });
+    cursor = s.end;
+  }
+  if (cursor < quote.length) {
+    result.push({ text: quote.slice(cursor), threshold: 0 });
+  }
+  return result;
+}
+
+/**
  * Frame 2 Overlay: Floating glassmorphic "Incoming request · 10:14 AM" card
  * positioned at the upper-middle-left (between headline and departure board)
- * with playable 0:24 voice-note waveform and glowing cyan feed vector into Row 4 (DATES).
+ * with playable 0:24 voice-note waveform, live token extraction highlights,
+ * destination voice switcher, and glowing cyan feed vector into Row 4 (DATES).
  */
 export const IncomingRequestVoiceCard: React.FC<{
   fixture: DepartureInquiryFixture;
   isScanningDates: boolean;
   onReplayIngest: () => void;
-}> = ({ fixture, isScanningDates, onReplayIngest }) => {
+  onSelectInquiry?: (id: InquiryId) => void;
+  onShuffleRandom?: () => void;
+  onSelectRow?: (rowId: BoardRowId) => void;
+  onLockDatesAndOpenBrief?: () => void;
+}> = ({
+  fixture,
+  isScanningDates,
+  onReplayIngest,
+  onSelectInquiry,
+  onSelectRow,
+  onLockDatesAndOpenBrief,
+}) => {
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
-  const [voiceProgress, setVoiceProgress] = useState(0.58);
+  const [voiceProgress, setVoiceProgress] = useState(0.72);
+
+  useEffect(() => {
+    // When switching destination in Frame 2, animate the voice extraction progress from 0 -> 1
+    setVoiceProgress(0.15);
+    setIsPlayingVoice(true);
+  }, [fixture.pillTitle, fixture.voiceNote.quote]);
 
   useEffect(() => {
     if (!isPlayingVoice) return;
     const start = performance.now();
-    const durationMs = 2800;
+    const durationMs = 2600;
     const interval = window.setInterval(() => {
       const elapsed = performance.now() - start;
-      const next = Math.min(1, elapsed / durationMs);
+      const next = Math.min(1, 0.15 + (elapsed / durationMs) * 0.85);
       setVoiceProgress(next);
       if (next >= 1) {
         setIsPlayingVoice(false);
@@ -38,7 +183,7 @@ export const IncomingRequestVoiceCard: React.FC<{
       }
     }, 50);
     return () => window.clearInterval(interval);
-  }, [isPlayingVoice]);
+  }, [isPlayingVoice, fixture.pillTitle, fixture.voiceNote.quote]);
 
   const handleTogglePlay = () => {
     if (!isPlayingVoice) {
@@ -48,6 +193,21 @@ export const IncomingRequestVoiceCard: React.FC<{
     } else {
       setIsPlayingVoice(false);
     }
+  };
+
+  const workflowSegments = buildVoiceWorkflowSegments(
+    fixture.voiceNote.quote,
+    fixture.pillTitle,
+    fixture.briefSummary[4]?.subtitle
+  );
+
+  const tokenColorClasses: Record<string, string> = {
+    yellow: "bg-[#fde047]/90 text-slate-950 font-semibold px-1 rounded",
+    cyan: "bg-[#bae6fd]/90 text-slate-950 font-semibold px-1 rounded",
+    green: "bg-[#bbf7d0]/90 text-slate-950 font-semibold px-1 rounded",
+    amber:
+      "bg-[#fbbf24] text-slate-950 font-bold px-1 rounded ring-1 ring-white/70",
+    purple: "bg-[#e9d5ff]/90 text-slate-950 font-semibold px-1 rounded",
   };
 
   return (
@@ -75,7 +235,7 @@ export const IncomingRequestVoiceCard: React.FC<{
         </defs>
         {/* Right-edge cyan connector bracket from Voice Card to Board Frame */}
         <path
-          d="M 714 418 L 728 418 Q 734 418 734 426 L 734 438"
+          d="M 715 418 L 728 418 Q 734 418 734 426 L 734 438"
           fill="none"
           stroke="#93c5fd"
           strokeWidth="2.8"
@@ -83,7 +243,7 @@ export const IncomingRequestVoiceCard: React.FC<{
           filter="url(#ingest-glow)"
         />
         <path
-          d="M 584 484 C 584 536, 618 552, 666 554"
+          d="M 584 484 C 584 528, 616 546, 666 548"
           fill="none"
           stroke="url(#ingest-arrow-grad)"
           strokeWidth="3.5"
@@ -91,7 +251,7 @@ export const IncomingRequestVoiceCard: React.FC<{
           filter="url(#ingest-glow)"
         />
         <path
-          d="M 656 546 L 671 554 L 655 562"
+          d="M 656 540 L 671 548 L 655 556"
           fill="none"
           stroke="#dbeafe"
           strokeWidth="3.2"
@@ -101,18 +261,20 @@ export const IncomingRequestVoiceCard: React.FC<{
         />
       </svg>
 
-      {/* Glassmorphic Incoming Request Card (Upper-Middle-Left, Matching Frame 2) */}
+      {/* Glassmorphic Incoming Request Card (Upper-Middle-Left, Matching Frame 2 Exact 435..715 x 232..484 Bounds) */}
       <div
-        className="pointer-events-auto absolute z-30 rounded-[18px] bg-[#163d82]/78 backdrop-blur-xl border border-[#93c5fd]/45 p-4 sm:p-4.5 text-white shadow-[0_24px_60px_rgba(3,12,38,0.6),0_0_28px_rgba(96,165,250,0.22),inset_0_1px_1px_rgba(255,255,255,0.35)] transition-all duration-300"
+        key={`voice-card-${fixture.pillTitle}`}
+        className="pointer-events-auto absolute z-30 flex flex-col justify-between rounded-[18px] bg-[#163d82]/78 backdrop-blur-xl border border-[#93c5fd]/55 p-4 text-white shadow-[0_24px_60px_rgba(3,12,38,0.6),0_0_28px_rgba(96,165,250,0.22),inset_0_1px_1px_rgba(255,255,255,0.35)] animate-[cardFlipIn_360ms_cubic-bezier(0.22,1,0.36,1)]"
         style={{
-          left: "25.9%",
-          top: "24.1%",
-          width: "17.0%",
-          minWidth: "272px",
+          left: `${(435 / 1672) * 100}%`,
+          top: `${(232 / 941) * 100}%`,
+          width: `${(280 / 1672) * 100}%`,
+          height: `${(252 / 941) * 100}%`,
+          minWidth: "268px",
         }}
         data-testid="incoming-request-voice-card"
       >
-        <div className="flex items-center justify-between text-[12px] text-white/95 mb-2.5">
+        <div className="flex items-center justify-between text-[12px] text-white/95">
           <div className="flex items-center gap-2">
             <svg
               viewBox="0 0 20 20"
@@ -136,12 +298,33 @@ export const IncomingRequestVoiceCard: React.FC<{
           )}
         </div>
 
-        <p className="text-[13.5px] sm:text-[14px] leading-[1.42] text-white/95 font-normal mb-3.5">
-          &ldquo;{fixture.voiceNote.quote}&rdquo;
+        <p className="text-[13px] sm:text-[13.5px] leading-[1.36] text-white/95 font-normal line-clamp-5">
+          &ldquo;
+          {workflowSegments.map((seg, i) => {
+            const isHighlighted =
+              seg.targetRow && seg.color && voiceProgress >= seg.threshold;
+            if (isHighlighted && seg.targetRow && seg.color) {
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onSelectRow?.(seg.targetRow!)}
+                  className={`inline transition-all duration-200 hover:scale-105 ${
+                    tokenColorClasses[seg.color]
+                  }`}
+                  title={`Extracted ${seg.targetRow} — Click to inspect`}
+                >
+                  {seg.text}
+                </button>
+              );
+            }
+            return <span key={i}>{seg.text}</span>;
+          })}
+          &rdquo;
         </p>
 
         {/* Playable Voice Note Waveform Row (Top Border + Ice-Blue Play Button + Glowing Cyan Bars) */}
-        <div className="flex items-center gap-2.5 border-t border-white/20 pt-2.5">
+        <div className="flex items-center gap-2.5 border-t border-white/20 pt-2">
           <button
             type="button"
             onClick={handleTogglePlay}
@@ -187,6 +370,74 @@ export const IncomingRequestVoiceCard: React.FC<{
           </span>
         </div>
       </div>
+
+      {/* Live Epistemic Workflow Status & Voice Note Destination Switcher Pill Strip (Docked cleanly above Voice Card at y=160..222) */}
+      <div
+        className="pointer-events-auto absolute z-30 flex flex-col gap-1 rounded-xl bg-[#0b2154]/92 backdrop-blur-md border border-[#fde047]/50 px-3 py-1.5 text-white shadow-[0_10px_24px_rgba(0,0,0,0.4)]"
+        style={{
+          left: `${(435 / 1672) * 100}%`,
+          top: `${(162 / 941) * 100}%`,
+          width: `${(280 / 1672) * 100}%`,
+          minWidth: "268px",
+        }}
+        data-testid="voice-workflow-status-card"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#fde047] shrink-0"
+            title="4/5 slots extracted · Ambiguous date window holds Row 4 until advisor confirms"
+          >
+            <span>⚠️ Dates Need Clarity</span>
+          </span>
+          <span className="sr-only">
+            4/5 slots extracted · Ambiguous date window holds Row 4 until advisor
+            confirms.
+          </span>
+          {onLockDatesAndOpenBrief ? (
+            <button
+              type="button"
+              onClick={onLockDatesAndOpenBrief}
+              className="shrink-0 rounded-full bg-[#f5c418] hover:bg-[#fde047] text-slate-950 font-bold text-[9.5px] px-2.5 py-0.5 transition-colors"
+              data-testid="voice-lock-brief-button"
+            >
+              Lock & Brief →
+            </button>
+          ) : null}
+        </div>
+        {onSelectInquiry ? (
+          <div className="flex items-center justify-between gap-1 pt-1 border-t border-white/15">
+            <span className="text-[9.5px] font-medium text-white/70">
+              Voice ({fixture.pillTitle}):
+            </span>
+            <div className="flex items-center gap-1">
+              {INQUIRY_ORDER.map((id) => {
+                const active =
+                  fixture.pillTitle.toLowerCase() ===
+                  DEPARTURE_INQUIRIES[id].pillTitle.toLowerCase();
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onSelectInquiry(id)}
+                    className={`rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold transition-all ${
+                      active
+                        ? "bg-white text-[#0c2766]"
+                        : "bg-white/10 text-white/80 hover:bg-white/20"
+                    }`}
+                    data-testid={`voice-switch-${id}`}
+                  >
+                    {DEPARTURE_INQUIRIES[id].pillTitle}
+                  </button>
+                );
+              })}
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 border border-emerald-300/35 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Live</span>
+              </span>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </>
   );
 };
@@ -200,11 +451,94 @@ export const IncomingRequestVoiceCard: React.FC<{
 export const ProvenanceAndBriefOverlay: React.FC<{
   fixture: DepartureInquiryFixture;
   selectedRowId: BoardRowId | null;
+  isDatesConfirmed?: boolean;
   onSelectRow: (rowId: BoardRowId) => void;
+  onSelectInquiry?: (id: InquiryId) => void;
+  onShuffleRandom?: () => void;
   onCloseBrief: () => void;
-}> = ({ fixture, selectedRowId, onSelectRow, onCloseBrief }) => {
-  // Exact slanted-bus glowing wire paths routing from the chat bubbles inside the container
-  // to the vertical center of the 4 Frame 3 category plates (endX=614) in 1672x941 coordinates
+}> = ({
+  fixture,
+  selectedRowId,
+  isDatesConfirmed = false,
+  onSelectRow,
+  onSelectInquiry,
+  onShuffleRandom,
+  onCloseBrief,
+}) => {
+  const overlayRootRef = useRef<HTMLDivElement>(null);
+  const [measuredOrigins, setMeasuredOrigins] = useState<
+    Partial<Record<BoardRowId, { x: number; y: number }>>
+  >({});
+
+  // Measure live DOM positions of the highlighted chat pills inside the 1672x941 stage
+  // so every provenance wire originates directly at its highlighted chat phrase!
+  useLayoutEffect(() => {
+    const root = overlayRootRef.current;
+    if (!root) return;
+
+    const measure = () => {
+      const rootRect = root.getBoundingClientRect();
+      if (rootRect.width <= 0 || rootRect.height <= 0) return;
+
+      const next: Partial<Record<BoardRowId, { x: number; y: number }>> = {};
+      const rows: BoardRowId[] = [
+        "destination",
+        "travelers",
+        "duration",
+        "dates",
+        "tripStyle",
+      ];
+      for (const rId of rows) {
+        const el = root.querySelector<HTMLElement>(
+          `[data-wire-origin="${rId}"]`
+        );
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const x = ((rect.right - rootRect.left) / rootRect.width) * 1672 + 4;
+          const y =
+            ((rect.top + rect.height * 0.5 - rootRect.top) / rootRect.height) *
+            941;
+          next[rId] = { x: Math.round(x), y: Math.round(y) };
+        }
+      }
+      setMeasuredOrigins(next);
+    };
+
+    measure();
+    const t = window.setTimeout(measure, 60);
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(measure);
+      ro.observe(root);
+      return () => {
+        window.clearTimeout(t);
+        ro.disconnect();
+      };
+    }
+    window.addEventListener("resize", measure);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("resize", measure);
+    };
+  }, [fixture.pillTitle, selectedRowId]);
+
+  const buildWireSpec = (
+    rowId: BoardRowId,
+    color: string,
+    fallbackStart: [number, number],
+    busX: number,
+    endY: number
+  ) => {
+    const origin = measuredOrigins[rowId];
+    const startX = origin ? origin.x : fallbackStart[0];
+    const startY = origin ? origin.y : fallbackStart[1];
+    const endX = 618;
+    const midY = startY + (endY - startY) * 0.18;
+    const d = `M ${startX} ${startY} L ${busX} ${startY} C ${busX + 26} ${startY}, ${busX + 46} ${midY}, 574 ${endY + 18} C 582 ${endY + 2}, 596 ${endY}, ${endX} ${endY}`;
+    return { rowId, color, startX, startY, endX, endY, d };
+  };
+
+  // Exact slanted-bus glowing wire paths routing directly from the highlighted chat phrases
+  // out of the bubbles and into the circular ports on the 4 Frame 3 category plates (endX=618)
   const wirePaths: Array<{
     rowId: BoardRowId;
     color: string;
@@ -214,42 +548,13 @@ export const ProvenanceAndBriefOverlay: React.FC<{
     endX: number;
     endY: number;
   }> = [
-    {
-      rowId: "destination",
-      color: "#fde047",
-      startX: 438,
-      startY: 622,
-      endX: 614,
-      endY: 345,
-      d: "M 438 622 L 492 622 C 522 622, 540 530, 566 378 C 572 350, 584 345, 614 345",
-    },
-    {
-      rowId: "travelers",
-      color: "#38bdf8",
-      startX: 438,
-      startY: 644,
-      endX: 614,
-      endY: 423,
-      d: "M 438 644 L 502 644 C 534 644, 550 560, 574 446 C 580 426, 592 423, 614 423",
-    },
-    {
-      rowId: "duration",
-      color: "#4ade80",
-      startX: 430,
-      startY: 706,
-      endX: 614,
-      endY: 500,
-      d: "M 430 706 L 512 706 C 544 706, 560 618, 582 522 C 587 503, 596 500, 614 500",
-    },
-    {
-      rowId: "tripStyle",
-      color: "#d8b4fe",
-      startX: 408,
-      startY: 790,
-      endX: 614,
-      endY: 664,
-      d: "M 408 790 L 520 790 C 554 790, 566 710, 586 672 C 592 664, 600 664, 614 664",
-    },
+    buildWireSpec("destination", "#fde047", [318, 560], 496, 348),
+    buildWireSpec("travelers", "#38bdf8", [308, 582], 504, 424),
+    buildWireSpec("duration", "#4ade80", [254, 650], 512, 500),
+    ...(selectedRowId === "dates"
+      ? [buildWireSpec("dates", "#fbbf24", [386, 650], 516, 582)]
+      : []),
+    buildWireSpec("tripStyle", "#d8b4fe", [406, 742], 520, 663),
   ];
 
   const highlightStyles: Record<string, string> = {
@@ -260,6 +565,14 @@ export const ProvenanceAndBriefOverlay: React.FC<{
       "bg-[#bbf7d0] text-[#064e3b] border border-[#4ade80]/40 shadow-[0_1px_4px_rgba(74,222,128,0.28)]",
     purple:
       "bg-[#e9d5ff] text-[#4c1d95] border border-[#c084fc]/40 shadow-[0_1px_4px_rgba(192,132,252,0.28)]",
+  };
+
+  const rowAccentRing: Record<BoardRowId, string> = {
+    destination: "ring-2 ring-[#fde047] shadow-[0_0_14px_rgba(253,224,71,0.75)] scale-105",
+    travelers: "ring-2 ring-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.75)] scale-105",
+    duration: "ring-2 ring-[#4ade80] shadow-[0_0_14px_rgba(74,222,128,0.75)] scale-105",
+    dates: "ring-2 ring-[#fbbf24] shadow-[0_0_14px_rgba(251,191,36,0.75)] scale-105",
+    tripStyle: "ring-2 ring-[#d8b4fe] shadow-[0_0_14px_rgba(216,180,254,0.75)] scale-105",
   };
 
   const renderBriefRowIcon = (rowId: BoardRowId) => {
@@ -312,12 +625,15 @@ export const ProvenanceAndBriefOverlay: React.FC<{
     "w-[82%] ml-auto",
   ];
 
+  // Track which wire origins have already been assigned to the first matching pill in the chat thread
+  const assignedOrigins = new Set<BoardRowId>();
+
   return (
-    <>
-      {/* SVG Provenance Wires connecting Chat Container -> Left Edge of Category Plates */}
+    <div ref={overlayRootRef} className="pointer-events-none absolute inset-0">
+      {/* SVG Provenance Wires rendered at z-[35] (above chat bubbles, matching GT Frame 3) */}
       <svg
         viewBox="0 0 1672 941"
-        className="pointer-events-none absolute inset-0 w-full h-full z-20"
+        className="pointer-events-none absolute inset-0 w-full h-full z-[35]"
         preserveAspectRatio="none"
         data-testid="provenance-svg-wires"
       >
@@ -331,27 +647,36 @@ export const ProvenanceAndBriefOverlay: React.FC<{
           </filter>
         </defs>
         {wirePaths.map((wire) => {
-          const isFocused = !selectedRowId || selectedRowId === wire.rowId;
+          const isSelectedWire = selectedRowId === wire.rowId;
+          const isFocused = !selectedRowId || isSelectedWire;
           return (
             <g
               key={wire.rowId}
-              style={{ opacity: isFocused ? 1 : 0.35 }}
+              style={{ opacity: isFocused ? 1 : 0.16 }}
               className="transition-opacity duration-200"
             >
               <path
                 d={wire.d}
                 fill="none"
                 stroke={wire.color}
-                strokeWidth={selectedRowId === wire.rowId ? "3.4" : "2.5"}
+                strokeWidth={isSelectedWire ? "3.8" : "2.5"}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                filter="url(#wire-neon-glow)"
+              />
+              {/* Origin Node next to Highlighted Chat Phrase */}
+              <circle
+                cx={wire.startX}
+                cy={wire.startY}
+                r={isSelectedWire ? "4" : "2.5"}
+                fill={wire.color}
                 filter="url(#wire-neon-glow)"
               />
               {/* Glowing Circular Port on Left Edge of Category Plate */}
               <circle
                 cx={wire.endX}
                 cy={wire.endY}
-                r="4"
+                r={isSelectedWire ? "5.2" : "4"}
                 fill={wire.color}
                 stroke="#ffffff"
                 strokeWidth="1.5"
@@ -364,17 +689,19 @@ export const ProvenanceAndBriefOverlay: React.FC<{
 
       {/* Bottom-Left Frosted Container ("Incoming inquiry" / "Today, 9:14 AM") with 4 Staggered White Chat Bubbles */}
       <div
-        className="pointer-events-auto absolute z-30 rounded-[18px] bg-[#1a3875]/62 backdrop-blur-xl border border-[#93c5fd]/40 p-3 sm:p-3.5 text-white shadow-[0_22px_50px_rgba(3,10,28,0.6),inset_0_1px_1px_rgba(255,255,255,0.28)]"
+        key={`chat-thread-${fixture.pillTitle}`}
+        className="pointer-events-auto absolute z-30 flex flex-col justify-between rounded-[18px] bg-[#1a3875]/62 backdrop-blur-xl border border-[#93c5fd]/40 p-3.5 sm:p-4 text-white shadow-[0_22px_50px_rgba(3,10,28,0.6),inset_0_1px_1px_rgba(255,255,255,0.28)] animate-[cardFlipIn_340ms_cubic-bezier(0.22,1,0.36,1)]"
         style={{
-          left: "6.0%",
-          top: "55.4%",
-          width: "23.7%",
+          left: `${(96 / 1672) * 100}%`,
+          top: `${(478 / 941) * 100}%`,
+          width: `${(400 / 1672) * 100}%`,
+          height: `${(394 / 941) * 100}%`,
           minWidth: "310px",
         }}
         data-testid="provenance-chat-thread"
       >
         {/* Container Header Bar */}
-        <div className="flex items-center justify-between px-1 pb-2 mb-2 text-[12px]">
+        <div className="flex items-center justify-between px-1 pb-1.5 text-[12px]">
           <div className="flex items-center gap-2">
             <svg
               viewBox="0 0 20 20"
@@ -392,59 +719,117 @@ export const ProvenanceAndBriefOverlay: React.FC<{
         </div>
 
         {/* 4 Staggered Light Frosted White Speech Bubbles */}
-        <div className="space-y-2">
-          {fixture.chatThread.map((msg, msgIdx) => (
-            <div
-              key={msg.id}
-              className={`rounded-xl bg-[#eef3fb]/95 border border-white/90 px-3 py-2 text-[#1e293b] shadow-[0_4px_12px_rgba(5,15,40,0.18)] ${
-                bubbleWidthClasses[msgIdx] ?? "w-[85%]"
-              }`}
-            >
-              <div className="flex items-end justify-between gap-2 text-[11.5px] sm:text-[12px] leading-[1.36]">
-                <div>
-                  {msg.segments.map((seg, idx) =>
-                    seg.highlight ? (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => onSelectRow(seg.highlight!.targetRow)}
-                        className={`inline-flex items-center rounded px-1.5 py-0.2 mx-0.5 font-bold text-[11px] sm:text-[11.5px] transition-transform hover:scale-105 ${
-                          highlightStyles[seg.highlight.color]
-                        }`}
-                      >
-                        {seg.text}
-                      </button>
-                    ) : (
-                      <span key={idx} className="text-[#1e293b] font-medium">
-                        {seg.text}
-                      </span>
-                    )
-                  )}
+        <div className="flex-1 flex flex-col justify-between gap-2">
+          {fixture.chatThread.map((msg, msgIdx) => {
+            const bubbleHasSelectedTarget =
+              selectedRowId &&
+              (msg.segments.some(
+                (s) => s.highlight?.targetRow === selectedRowId
+              ) ||
+                (selectedRowId === "dates" && msgIdx === 1));
+            const isDimmedBubble =
+              Boolean(selectedRowId) && !bubbleHasSelectedTarget;
+
+            const registerTripStyleBubbleOrigin =
+              msgIdx === 2 && !assignedOrigins.has("tripStyle");
+            if (registerTripStyleBubbleOrigin) {
+              assignedOrigins.add("tripStyle");
+            }
+
+            return (
+              <div
+                key={msg.id}
+                data-wire-origin={
+                  registerTripStyleBubbleOrigin ? "tripStyle" : undefined
+                }
+                className={`rounded-xl bg-[#eef3fb]/95 border px-3 py-2 text-[#1e293b] shadow-[0_4px_12px_rgba(5,15,40,0.18)] transition-all duration-200 ${
+                  bubbleWidthClasses[msgIdx] ?? "w-[85%]"
+                } ${
+                  bubbleHasSelectedTarget
+                    ? "border-[#fde047] ring-2 ring-[#fde047]/65 bg-white"
+                    : "border-white/90"
+                } ${isDimmedBubble ? "opacity-55" : "opacity-100"}`}
+              >
+                <div className="flex items-end justify-between gap-2 text-[11.5px] sm:text-[12px] leading-[1.36]">
+                  <div>
+                    {msg.segments.map((seg, idx) => {
+                      if (seg.highlight) {
+                        const tRow = seg.highlight.targetRow;
+                        const isFirstForRow =
+                          tRow !== "tripStyle" && !assignedOrigins.has(tRow);
+                        if (isFirstForRow) {
+                          assignedOrigins.add(tRow);
+                        }
+                        const isSelectedPill = selectedRowId === tRow;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            data-wire-origin={isFirstForRow ? tRow : undefined}
+                            data-testid={`chat-pill-${tRow}-${msgIdx}-${idx}`}
+                            onClick={() => onSelectRow(tRow)}
+                            className={`inline-flex items-center rounded px-1.5 py-0.2 mx-0.5 font-bold text-[11px] sm:text-[11.5px] transition-all hover:scale-105 ${
+                              highlightStyles[seg.highlight.color]
+                            } ${isSelectedPill ? rowAccentRing[tRow] : ""}`}
+                          >
+                            {seg.text}
+                          </button>
+                        );
+                      }
+                      const isDatesFallback =
+                        msgIdx === 1 && !assignedOrigins.has("dates");
+                      if (isDatesFallback) {
+                        assignedOrigins.add("dates");
+                      }
+                      return (
+                        <span
+                          key={idx}
+                          data-wire-origin={isDatesFallback ? "dates" : undefined}
+                          onClick={
+                            msgIdx === 1 ? () => onSelectRow("dates") : undefined
+                          }
+                          className={`text-[#1e293b] font-medium ${
+                            msgIdx === 1
+                              ? "cursor-pointer hover:underline decoration-[#d97706]"
+                              : ""
+                          } ${
+                            selectedRowId === "dates" && msgIdx === 1
+                              ? "bg-[#fef3c7] text-[#92400e] font-bold px-1 rounded"
+                              : ""
+                          }`}
+                        >
+                          {seg.text}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <span className="text-[9.5px] font-sans text-slate-400 shrink-0">
+                    {msg.timestamp}
+                  </span>
                 </div>
-                <span className="text-[9.5px] font-sans text-slate-400 shrink-0">
-                  {msg.timestamp}
-                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Right-Hand Slide-Over Pearl-White Structured Brief Drawer ("From message to brief") */}
       <aside
-        className="pointer-events-auto absolute z-30 flex flex-col justify-between rounded-[24px] bg-[#f8fafc] border border-white p-5 sm:p-6 text-slate-900 shadow-[0_28px_70px_rgba(4,10,28,0.62)] transition-all duration-300"
+        className="pointer-events-auto absolute z-30 flex flex-col justify-between rounded-[24px] bg-[#f8fafc] border border-white p-5 sm:p-5.5 text-slate-900 shadow-[0_28px_70px_rgba(4,10,28,0.62)] transition-all duration-300"
         style={{
-          left: `${(1250 / 1672) * 100}%`,
-          top: `${(166 / 941) * 100}%`,
-          width: `${(383 / 1672) * 100}%`,
-          minHeight: `${(618 / 941) * 100}%`,
+          left: `${(1249 / 1672) * 100}%`,
+          top: `${(162 / 941) * 100}%`,
+          width: `${(375 / 1672) * 100}%`,
+          height: `${(622 / 941) * 100}%`,
           minWidth: "320px",
+          transform: "perspective(1600px) rotateY(-4.5deg) skewY(-1.15deg)",
+          transformOrigin: "left center",
         }}
         aria-label="From message to brief"
         data-testid="structured-brief-drawer"
       >
         <div>
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-start justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-2">
               <svg
                 viewBox="0 0 20 20"
@@ -458,39 +843,82 @@ export const ProvenanceAndBriefOverlay: React.FC<{
                 From message to brief
               </h3>
             </div>
-            <button
-              type="button"
-              onClick={onCloseBrief}
-              aria-label="Close brief drawer"
-              className="rounded-full p-1 text-slate-400 hover:bg-slate-200/70 hover:text-slate-600 transition-colors"
-            >
-              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
+            <div className="flex items-center gap-1">
+              {onSelectInquiry ? (
+                <div className="flex items-center gap-0.5 rounded-full bg-slate-200/80 p-0.5 mr-1">
+                  {INQUIRY_ORDER.map((id) => {
+                    const active =
+                      fixture.pillTitle.toLowerCase() ===
+                      DEPARTURE_INQUIRIES[id].pillTitle.toLowerCase();
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => onSelectInquiry(id)}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition-all ${
+                          active
+                            ? "bg-[#0f296b] text-white shadow-sm"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                        data-testid={`brief-switch-${id}`}
+                      >
+                        {DEPARTURE_INQUIRIES[id].pillTitle}
+                      </button>
+                    );
+                  })}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9.5px] font-bold text-emerald-800">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Live</span>
+                  </span>
+                </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={onCloseBrief}
+                aria-label="Close brief drawer"
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-200/70 hover:text-slate-600 transition-colors"
+              >
+                <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <p className="text-[12.5px] text-slate-600 leading-[1.42] mb-4">
+          <p className="text-[12.5px] text-slate-600 leading-[1.38] mb-3">
             Waypoint automatically finds key details, fills what it can, and flags
             what&apos;s missing, so you can send a polished quote faster.
           </p>
         </div>
 
-        {/* 5 Rounded White Row Cards with Icons, Subtitles, Photo Thumbnails, and Chevrons */}
-        <div className="flex-1 flex flex-col justify-between gap-2.5">
+        {/* 5 Rounded White Row Cards with Icons, Subtitles, Photo Thumbnails, and 3D Card-Flip on Destination Switch */}
+        <div
+          key={`brief-cards-${fixture.pillTitle}`}
+          className="flex-1 flex flex-col justify-between gap-2 min-h-0 animate-[cardFlipIn_360ms_cubic-bezier(0.22,1,0.36,1)]"
+        >
           {fixture.briefSummary.map((item) => {
             const isRowSelected = selectedRowId === item.rowId;
             const isTripStyleRow = item.rowId === "tripStyle";
+            const isDatesCard = item.rowId === "dates";
+            const rowSpec = fixture.rows.find((r) => r.id === item.rowId);
+            const effectiveStatus =
+              isDatesCard && isDatesConfirmed ? "confirmed" : item.status;
+            const effectiveValue =
+              isDatesCard && isDatesConfirmed
+                ? rowSpec?.confirmedValueLabel ?? "Apr 18 – Apr 27 (Confirmed)"
+                : item.value;
+
             return (
               <button
                 key={item.label}
                 type="button"
                 onClick={() => onSelectRow(item.rowId)}
-                className={`w-full rounded-xl bg-white border px-4 py-3 flex items-center justify-between gap-3 text-left transition-all shadow-[0_1px_3px_rgba(15,23,42,0.04)] ${
+                data-testid={`brief-card-${item.rowId}`}
+                className={`w-full rounded-xl bg-white border px-3.5 py-2.5 flex items-center justify-between gap-3 text-left transition-all shadow-[0_1px_3px_rgba(15,23,42,0.04)] ${
                   isRowSelected
                     ? "border-[#2563eb] ring-2 ring-[#2563eb]/20 bg-blue-50/40"
                     : "border-slate-200/80 hover:border-slate-300"
@@ -501,10 +929,21 @@ export const ProvenanceAndBriefOverlay: React.FC<{
                     {renderBriefRowIcon(item.rowId)}
                   </span>
                   <div className="min-w-0">
-                    <span className="block text-[12px] font-bold text-slate-800 leading-tight">
-                      {item.label}
-                    </span>
-                    {item.status === "needs_confirmation" ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="block text-[12px] font-bold text-slate-800 leading-tight">
+                        {item.label}
+                      </span>
+                      {isRowSelected ? (
+                        <span className="rounded bg-[#dbeafe] px-1.5 py-0.2 text-[9.5px] font-bold text-[#1d4ed8]">
+                          {isDatesCard
+                            ? isDatesConfirmed
+                              ? "Click to unconfirm"
+                              : "Click to confirm"
+                            : "Verified on board"}
+                        </span>
+                      ) : null}
+                    </div>
+                    {effectiveStatus === "needs_confirmation" ? (
                       <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#fef3c7] border border-[#fde68a] px-2.5 py-0.5 text-[11.5px] font-semibold text-[#92400e]">
                         <svg
                           viewBox="0 0 16 16"
@@ -514,15 +953,23 @@ export const ProvenanceAndBriefOverlay: React.FC<{
                         >
                           <path d="M8.865 1.52c-.38-.68-1.35-.68-1.73 0L1.14 12.24c-.37.66.11 1.48.865 1.48h11.99c.755 0 1.235-.82.865-1.48L8.865 1.52zM8 5a.75.75 0 01.75.75v3a.75.75 0 01-1.5 0v-3A.75.75 0 018 5zm0 6.75a.85.85 0 100-1.7.85.85 0 000 1.7z" />
                         </svg>
-                        <span>{item.value}</span>
+                        <span>{effectiveValue}</span>
                       </span>
                     ) : (
                       <>
-                        <span className="block text-[14.5px] font-bold text-slate-900 leading-tight truncate mt-0.5">
-                          {item.value}
+                        <span className="block text-[14px] font-bold text-slate-900 leading-tight truncate mt-0.5">
+                          {effectiveValue}
                         </span>
-                        {item.subtitle ? (
-                          <span className="block text-[11px] text-slate-500 leading-[1.3] mt-0.5 line-clamp-2">
+                        {isDatesCard && isDatesConfirmed ? (
+                          <span className="block text-[10.5px] text-emerald-700 font-semibold leading-[1.25] mt-0.5">
+                            ✓ Confirmed on board · Click to toggle hold
+                          </span>
+                        ) : isRowSelected && rowSpec?.fact.evidenceQuote ? (
+                          <span className="block text-[10.5px] text-[#1d4ed8] font-medium leading-[1.25] mt-0.5 line-clamp-1">
+                            Source: &ldquo;{rowSpec.fact.evidenceQuote}&rdquo;
+                          </span>
+                        ) : item.subtitle ? (
+                          <span className="block text-[11px] text-slate-500 leading-[1.25] mt-0.5 line-clamp-2">
                             {item.subtitle}
                           </span>
                         ) : null}
@@ -539,8 +986,8 @@ export const ProvenanceAndBriefOverlay: React.FC<{
                       aria-hidden="true"
                       className={
                         isTripStyleRow
-                          ? "h-16 w-16 rounded-xl object-cover border border-slate-200"
-                          : "h-11 w-14 rounded-lg object-cover border border-slate-200"
+                          ? "h-14 w-14 rounded-xl object-cover border border-slate-200"
+                          : "h-10 w-13 rounded-lg object-cover border border-slate-200"
                       }
                     />
                   ) : null}
@@ -565,43 +1012,12 @@ export const ProvenanceAndBriefOverlay: React.FC<{
           })}
         </div>
 
-        {/* Epistemic Evidence Callout for Selected Row */}
-        {selectedRowId ? (
-          <div className="mt-3 rounded-xl bg-slate-900 text-white p-2.5 text-[11px] leading-relaxed">
-            {(() => {
-              const row = fixture.rows.find((r) => r.id === selectedRowId);
-              if (!row) return null;
-              return (
-                <>
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="font-mono uppercase tracking-wider text-[9.5px] text-slate-400">
-                      {row.label} · {row.fact.basis.toUpperCase()}
-                    </span>
-                    <span
-                      className={`text-[9.5px] font-semibold px-1.5 py-0.2 rounded ${
-                        row.fact.basis === "unknown"
-                          ? "bg-[#f5c418] text-slate-950"
-                          : "bg-emerald-500/20 text-emerald-300"
-                      }`}
-                    >
-                      {row.fact.basis === "unknown"
-                        ? "Epistemic Hold"
-                        : "Verified Quote"}
-                    </span>
-                  </div>
-                  <p className="text-white/90 font-medium line-clamp-2">
-                    {row.fact.evidenceQuote
-                      ? `"${row.fact.evidenceQuote}"`
-                      : row.fact.advisorFollowUp}
-                  </p>
-                </>
-              );
-            })()}
-          </div>
-        ) : null}
-
         <Link
-          href="/workbench"
+          href={`/workbench?source=departure-board&case=${encodeURIComponent(
+            fixture.pillTitle.toLowerCase().replace(/\s+/g, "-")
+          )}&iata=${encodeURIComponent(fixture.tagCode)}&prefill=${encodeURIComponent(
+            fixture.voiceNote.quote.replace(/^[“"]|[”"]$/g, "")
+          )}`}
           className="sr-only"
           data-testid="review-brief-cta"
         >
@@ -609,7 +1025,7 @@ export const ProvenanceAndBriefOverlay: React.FC<{
           <span aria-hidden="true">→</span>
         </Link>
       </aside>
-    </>
+    </div>
   );
 };
 
@@ -619,7 +1035,13 @@ export const ProvenanceAndBriefOverlay: React.FC<{
  */
 export const InquirySwitcherDock: React.FC<{
   activeInquiryId: InquiryId;
+  activeDisplayTitle?: string;
+  activeDisplaySubtitle?: string;
   onSelectInquiry: (id: InquiryId) => void;
+  onApplyDynamicInquiry?: (rawInput: string) => void;
+  onShuffleRandom?: () => void;
+  isAutoCycling?: boolean;
+  onToggleAutoCycle?: () => void;
   stageMode: InteractiveStageMode;
   onChangeStageMode: (mode: InteractiveStageMode) => void;
   soundEnabled: boolean;
@@ -627,23 +1049,83 @@ export const InquirySwitcherDock: React.FC<{
   visibleInHero?: boolean;
 }> = ({
   activeInquiryId,
+  activeDisplayTitle,
+  activeDisplaySubtitle,
   onSelectInquiry,
+  onApplyDynamicInquiry,
+  onShuffleRandom,
+  isAutoCycling = false,
+  onToggleAutoCycle,
   stageMode,
   onChangeStageMode,
   soundEnabled,
   onToggleSound,
   visibleInHero = false,
 }) => {
+  const [isCustomDrawerOpen, setIsCustomDrawerOpen] = useState(false);
+  const [customDraft, setCustomDraft] = useState("");
   const currentIdx = INQUIRY_ORDER.indexOf(activeInquiryId);
 
   const handleCyclePrev = () => {
+    const activeSlug = (activeDisplayTitle ?? activeInquiryId).toLowerCase();
+    const catIdx = DESTINATION_CATALOG_REGISTRY.findIndex(
+      (entry) =>
+        entry.slug === activeSlug ||
+        entry.displayName.toLowerCase() === activeSlug
+    );
+    if (catIdx >= 0 && onApplyDynamicInquiry) {
+      const prevEntry =
+        DESTINATION_CATALOG_REGISTRY[
+          (catIdx - 1 + DESTINATION_CATALOG_REGISTRY.length) %
+            DESTINATION_CATALOG_REGISTRY.length
+        ];
+      if (
+        prevEntry.slug === "italy" ||
+        prevEntry.slug === "japan" ||
+        prevEntry.slug === "morocco"
+      ) {
+        onSelectInquiry(prevEntry.slug);
+      } else {
+        onApplyDynamicInquiry(prevEntry.displayName);
+      }
+      return;
+    }
     const nextIdx = (currentIdx - 1 + INQUIRY_ORDER.length) % INQUIRY_ORDER.length;
     onSelectInquiry(INQUIRY_ORDER[nextIdx]);
   };
 
   const handleCycleNext = () => {
+    const activeSlug = (activeDisplayTitle ?? activeInquiryId).toLowerCase();
+    const catIdx = DESTINATION_CATALOG_REGISTRY.findIndex(
+      (entry) =>
+        entry.slug === activeSlug ||
+        entry.displayName.toLowerCase() === activeSlug
+    );
+    if (catIdx >= 0 && onApplyDynamicInquiry) {
+      const nextEntry =
+        DESTINATION_CATALOG_REGISTRY[
+          (catIdx + 1) % DESTINATION_CATALOG_REGISTRY.length
+        ];
+      if (
+        nextEntry.slug === "italy" ||
+        nextEntry.slug === "japan" ||
+        nextEntry.slug === "morocco"
+      ) {
+        onSelectInquiry(nextEntry.slug);
+      } else {
+        onApplyDynamicInquiry(nextEntry.displayName);
+      }
+      return;
+    }
     const nextIdx = (currentIdx + 1) % INQUIRY_ORDER.length;
     onSelectInquiry(INQUIRY_ORDER[nextIdx]);
+  };
+
+  const handleSubmitCustom = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customDraft.trim() || !onApplyDynamicInquiry) return;
+    onApplyDynamicInquiry(customDraft.trim());
+    setIsCustomDrawerOpen(false);
   };
 
   const renderDockIcon = (id: InquiryId, isActive: boolean) => {
@@ -672,7 +1154,7 @@ export const InquirySwitcherDock: React.FC<{
   return (
     <>
       <div
-        className={`pointer-events-auto absolute bottom-[5.2%] left-1/2 -translate-x-1/2 z-40 flex flex-wrap lg:flex-nowrap items-center justify-center gap-3.5 rounded-[26px] bg-[#1a2234]/58 backdrop-blur-2xl border border-white/25 px-6 sm:px-7 py-3 sm:py-3.5 text-white shadow-[0_22px_55px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.28)] max-w-[96vw] whitespace-nowrap transition-opacity duration-300 ${
+        className={`pointer-events-auto absolute bottom-[3.2%] sm:bottom-[5.2%] left-1/2 -translate-x-1/2 z-40 flex flex-nowrap items-center justify-start sm:justify-center gap-2 sm:gap-3.5 rounded-[22px] sm:rounded-[26px] bg-[#1a2234]/68 sm:bg-[#1a2234]/58 backdrop-blur-2xl border border-white/25 px-3 sm:px-7 py-2 sm:py-3.5 text-white shadow-[0_22px_55px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.28)] max-w-[94vw] overflow-x-auto whitespace-nowrap transition-opacity duration-300 ${
           visibleInHero
             ? "opacity-100"
             : "opacity-0 hover:opacity-100 focus-within:opacity-100"
@@ -687,7 +1169,7 @@ export const InquirySwitcherDock: React.FC<{
           type="button"
           onClick={handleCyclePrev}
           aria-label="Previous inquiry"
-          className="hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/15 border border-white/35 text-white/90 hover:text-white transition-colors"
+          className="hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 hover:bg-white/15 border border-white/35 text-white/90 hover:text-white transition-colors"
         >
           <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none">
             <path
@@ -700,16 +1182,19 @@ export const InquirySwitcherDock: React.FC<{
           </svg>
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {INQUIRY_ORDER.map((id) => {
             const item = DEPARTURE_INQUIRIES[id];
-            const isActive = id === activeInquiryId;
+            const isActive =
+              id === activeInquiryId &&
+              (!activeDisplayTitle ||
+                activeDisplayTitle.toLowerCase() === item.pillTitle.toLowerCase());
             return (
               <button
                 key={id}
                 type="button"
                 onClick={() => onSelectInquiry(id)}
-                className={`flex items-center gap-3 rounded-full px-5 sm:px-6 py-2 sm:py-2.5 min-w-[168px] text-left transition-all duration-200 whitespace-nowrap ${
+                className={`flex items-center gap-2 sm:gap-3 rounded-full px-3.5 sm:px-6 py-1.5 sm:py-2.5 sm:min-w-[156px] text-left transition-all duration-200 whitespace-nowrap shrink-0 ${
                   isActive
                     ? "bg-white text-[#0f296b] shadow-[0_6px_20px_rgba(255,255,255,0.28)]"
                     : "bg-white/5 text-white hover:bg-white/15 border border-white/35"
@@ -718,9 +1203,9 @@ export const InquirySwitcherDock: React.FC<{
               >
                 {renderDockIcon(id, isActive)}
                 <div className="flex flex-col leading-tight">
-                  <span className="text-[14px] font-bold">{item.pillTitle}</span>
+                  <span className="text-[12.5px] sm:text-[14px] font-bold">{item.pillTitle}</span>
                   <span
-                    className={`text-[12px] ${
+                    className={`hidden sm:inline text-[12px] ${
                       isActive
                         ? "text-[#1e3a8a]/85 font-medium"
                         : "text-white/80 font-normal"
@@ -732,6 +1217,40 @@ export const InquirySwitcherDock: React.FC<{
               </button>
             );
           })}
+
+          {activeDisplayTitle &&
+          !["italy", "japan", "morocco"].includes(
+            activeDisplayTitle.toLowerCase()
+          ) ? (
+            <button
+              type="button"
+              onClick={() => setIsCustomDrawerOpen(true)}
+              className="flex items-center gap-2 sm:gap-2.5 rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2.5 bg-white text-[#0f296b] shadow-[0_6px_20px_rgba(255,255,255,0.28)] text-left transition-all duration-200 whitespace-nowrap shrink-0"
+              data-testid="inquiry-pill-dynamic"
+            >
+              {renderDockIcon(activeInquiryId, true)}
+              <div className="flex flex-col leading-tight">
+                <span className="text-[12.5px] sm:text-[14px] font-bold">
+                  {activeDisplayTitle}
+                </span>
+                <span className="hidden sm:inline text-[12px] text-[#1e3a8a]/85 font-medium">
+                  {activeDisplaySubtitle ?? "Catalog Inquiry"}
+                </span>
+              </div>
+            </button>
+          ) : null}
+
+          {onApplyDynamicInquiry ? (
+            <button
+              type="button"
+              onClick={() => setIsCustomDrawerOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2.5 bg-[#f5c418] hover:bg-[#fde047] text-slate-950 font-bold text-[11.5px] sm:text-[12.5px] shadow-[0_6px_18px_rgba(245,196,24,0.35)] transition-all whitespace-nowrap shrink-0"
+              data-testid="inquiry-custom-trigger"
+              title="Type any natural-language travel request or select from 15 destinations"
+            >
+              <span>✦ Custom Inquiry</span>
+            </button>
+          ) : null}
         </div>
 
         <button
@@ -752,8 +1271,94 @@ export const InquirySwitcherDock: React.FC<{
         </button>
       </div>
 
+      {/* Live Dynamic Inquiry & Catalog Drawer (Revealed when clicking "Custom Inquiry" button) */}
+      {isCustomDrawerOpen && onApplyDynamicInquiry ? (
+        <div
+          className="pointer-events-auto absolute bottom-[16.5%] right-4 z-50 w-[340px] sm:w-[410px] rounded-2xl bg-[#0d1f4d]/95 backdrop-blur-2xl border border-[#93c5fd]/40 p-4 text-white shadow-[0_24px_60px_rgba(0,0,0,0.65)]"
+          data-testid="dynamic-inquiry-popover"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[12px] font-bold uppercase tracking-wider text-[#f5c418]">
+              Live Dynamic Catalog & NLU Parser
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsCustomDrawerOpen(false)}
+              aria-label="Close custom inquiry input"
+              className="text-white/60 hover:text-white text-xs px-1.5 py-0.5"
+            >
+              ✕
+            </button>
+          </div>
+          <form onSubmit={handleSubmitCustom} className="flex items-center gap-2 mb-3">
+            <input
+              type="text"
+              value={customDraft}
+              onChange={(e) => setCustomDraft(e.target.value)}
+              placeholder="e.g. 2 travelers for dubai around june next year..."
+              aria-label="Custom travel inquiry text"
+              className="flex-1 rounded-xl bg-white/10 border border-white/25 px-3 py-1.5 text-xs text-white placeholder:text-white/50 focus:outline-none focus:border-[#f5c418]"
+              data-testid="dynamic-inquiry-input"
+            />
+            <button
+              type="submit"
+              className="rounded-xl bg-[#f5c418] hover:bg-[#fde047] text-slate-950 font-bold text-xs px-3 py-1.5 transition-colors"
+              data-testid="dynamic-inquiry-submit"
+            >
+              Clack →
+            </button>
+          </form>
+          <div className="flex flex-wrap gap-1.5">
+            {DESTINATION_CATALOG_REGISTRY.filter(
+              (entry) => !["italy", "japan", "morocco"].includes(entry.slug)
+            ).map((entry) => (
+              <button
+                key={entry.slug}
+                type="button"
+                onClick={() => {
+                  onApplyDynamicInquiry(entry.displayName);
+                  setIsCustomDrawerOpen(false);
+                }}
+                className="rounded-full bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1 text-[11px] font-medium text-white transition-colors"
+                data-testid={`catalog-chip-${entry.slug}`}
+              >
+                {entry.displayName} · {entry.defaultStyleLabel}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* Discreet Stage Mode & Sound Utility Controls (outside the visual dock, revealed on hover) */}
-      <div className="pointer-events-auto absolute bottom-2 right-3 z-40 flex items-center gap-1 opacity-0 hover:opacity-100 transition-opacity duration-200">
+      <div className="pointer-events-auto absolute bottom-2 right-3 z-40 flex items-center gap-1 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+        {onToggleAutoCycle ? (
+          <button
+            type="button"
+            onClick={onToggleAutoCycle}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              isAutoCycling
+                ? "bg-emerald-400 text-slate-950 font-semibold"
+                : "bg-slate-900/70 text-white/80 hover:bg-slate-900"
+            }`}
+            data-testid="inquiry-auto-cycle-toggle"
+          >
+            {isAutoCycling ? "Auto-Rotate: LIVE" : "Auto-Rotate: PAUSED"}
+          </button>
+        ) : null}
+        {onApplyDynamicInquiry ? (
+          <button
+            type="button"
+            onClick={() => setIsCustomDrawerOpen((prev) => !prev)}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              isCustomDrawerOpen
+                ? "bg-[#f5c418] text-slate-950 font-semibold"
+                : "bg-slate-900/70 text-white/80 hover:bg-slate-900"
+            }`}
+            data-testid="mode-toggle-custom-inquiry"
+          >
+            Custom Inquiry
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() =>

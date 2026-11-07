@@ -128,6 +128,7 @@ describe('KnowledgePanel', () => {
     await userEvent.click(screen.getByRole('button', { name: /search/i }));
     await waitFor(() => expect(screen.getByText('CLAIMS NEED REVIEW')).toBeInTheDocument());
     expect(screen.queryByText('SOURCE EXCERPT')).not.toBeInTheDocument();
-    expect(screen.getByText('Claim support has not been verified.')).toBeInTheDocument();
+    // The panel prefixes the warning with a '⚠ ' node — match by regex.
+    expect(screen.getByText(/Claim support has not been verified\./)).toBeInTheDocument();
   });
 });

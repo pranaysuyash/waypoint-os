@@ -447,3 +447,31 @@ def delete_public_checker_package(
         "deleted_trip": deleted_trip,
         "deleted_artifacts": deleted_artifacts,
     }
+
+
+@router.get("/api/public-checker/agency/{slug_or_id}")
+@limiter.limit("30/minute")
+def get_public_checker_agency(
+    request: Request,
+    slug_or_id: str,
+):
+    """Retrieve public agency branding profile for white-label client diagnostics."""
+    _require_public_checker_enabled()
+    profile = AgencyMarketplaceStore.get_profile_by_slug_or_id(slug_or_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Agency profile not found")
+    _ = request
+    return {
+        "ok": True,
+        "agency": {
+            "agency_id": profile.agency_id,
+            "display_name": profile.display_name,
+            "blurb": profile.blurb,
+            "response_sla_hours": profile.response_sla_hours,
+            "places_covered": profile.places_covered,
+            "customer_types": profile.customer_types,
+            "services": profile.services,
+            "languages": profile.languages,
+        },
+    }
+

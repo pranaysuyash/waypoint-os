@@ -85,6 +85,9 @@ describe('Trip Workspace Ops page', () => {
       stage: 'discovery',
       origin: 'Nairobi',
       destination: 'Maldives',
+      // FND-0402: purpose is a required-brief member — 'Return to Options'
+      // only renders when the required set is complete.
+      tripPurpose: 'Leisure',
       dateWindow: 'Aug 2026',
       budget: '₹7,500',
       party: 2,

@@ -277,10 +277,12 @@ class TestRateLimitMiddlewareRegistration:
             f"Handlers: {list(app.exception_handlers.keys())}"
         )
 
-    def test_auth_router_has_10_routes(self):
+    def test_auth_router_has_12_routes(self):
+        # Drift pin (2026-11-05): `validate-code` and `join` landed in
+        # 49db205d without updating this count; 12 is the current router.
         from spine_api.routers.auth import router
-        assert len(router.routes) == 10, (
-            f"Expected 10 auth routes, got {len(router.routes)}: "
+        assert len(router.routes) == 12, (
+            f"Expected 12 auth routes, got {len(router.routes)}: "
             f"{[r.path for r in router.routes]}"
         )
 

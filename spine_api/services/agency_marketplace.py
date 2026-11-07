@@ -56,6 +56,11 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _PHONE_DIGITS_RE = re.compile(r"\d")
 
 
+def slugify(text: str) -> str:
+    s = re.sub(r"[^\w\s-]", "", text).strip().lower()
+    return re.sub(r"[-\s]+", "-", s)
+
+
 @dataclass(slots=True)
 class AgencyMarketplaceProfile:
     agency_id: str
@@ -187,6 +192,19 @@ class AgencyMarketplaceStore:
             if isinstance(item, dict) and item.get("agency_id"):
                 profiles.append(AgencyMarketplaceProfile(**{**item}))
         return profiles
+
+    @classmethod
+    def get_profile_by_slug_or_id(cls, identifier: str) -> Optional[AgencyMarketplaceProfile]:
+        target = (identifier or "").strip().lower()
+        if not target:
+            return None
+        for p in cls.list_profiles():
+            if p.agency_id.lower() == target:
+                return p
+            p_slug = slugify(p.display_name)
+            if p_slug == target or target in (p_slug, p.agency_id.lower()):
+                return p
+        return None
 
     @classmethod
     def upsert_profile(cls, profile: AgencyMarketplaceProfile) -> None:

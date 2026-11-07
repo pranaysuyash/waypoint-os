@@ -2,6 +2,13 @@
 
 Status: research register. Feeds D-04 (which gaps matter for a precision-first public checker). The 2026-04-14 doc named 15 rules; none exist under those IDs. This maps each to shipped equivalents, internal-only equivalents, or true gaps.
 
+> **DISPOSITION ADDENDUM (2026-11-04, from the random-doc audit of this register — `Docs/review/RANDOM_DOC_AUDIT_RDA_EX07_RULE_COVERAGE_REGISTER_2026-11-04.md`).** Original content below is unmodified history.
+> - **Rec 1 (register as honest scope statement): ACCEPTED** — adopted downstream by the WOBS checker wave as the scope statement; no further action.
+> - **Rec 2 (wire timed-entry-audit/connection-risk into public path): DEFERRED, prerequisite named** — still agency-internal (verified 2026-11-04: consumers are `RouteLogisticsPanel` + route-map only). Revisit trigger: capability-gated structured itinerary input landing on the public path; then gate as `advisory_*`.
+> - **Rec 3 (stage-awareness fast path): IMPLEMENTED 2026-11-04** — backend capability existed all along (probe-verified; the 09-08 register's "checker pins discovery" premise was narrower than reality: `SpineRunRequest.stage` accepted stage, the traveler UI hardcoded `discovery`). Shipped as traveler stage declaration + canonical stage allowlist at the contract + stage-semantics-aware visa/passport copy ("required before travel", not "booking blocked"). WOBS had scheduled this for the 6-month horizon; deferral rationale (open punch-list) no longer held — see audit doc §4.
+> - **Rec 4 (retire rule-ID taxonomy): ACCEPTED** — no rule-ID retrofit exists or is planned; semantic coverage is tracked here and by WOBS/D-04.
+> - **Citation staleness:** `spine_api/decision.py` line refs below predate the module move; the visa/booking gate now lives at `src/intake/decision.py:1476-1498`; `live_checks.py` has since grown to 528 lines plus `entity_checks.py` (Ghost Hotel wave).
+
 ## Mapping
 
 | Doc rule | Sev | Shipped equivalent (public path) | Internal equivalent (not wired to checker) | Verdict |

@@ -73,8 +73,10 @@ def _statutory_tax_preview(trip: dict, agency_id: str) -> Optional[tuple]:
         settings = AgencySettingsStore.load(agency_id)
         if (getattr(settings, "default_currency", "") or "").upper() != "INR":
             return None
-    except Exception:
-        logger.debug("statutory tax preview: agency settings unavailable for %s", agency_id)
+    except Exception as exc:
+        # Contract-review R5 (2026-11-07): a broken settings store permanently
+        # hides the statutory preview — that silence must be observable.
+        logger.warning("statutory tax preview disabled: agency settings unavailable for %s: %s", agency_id, exc)
         return None
 
     facts = (trip.get("extracted") or {}).get("facts") or {}

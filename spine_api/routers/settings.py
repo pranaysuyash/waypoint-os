@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException
 
 from src.llm.usage_guard import get_guard_for_agency, reload_guard_for_agency
+from src.intake.constants import TRIP_STAGE_VALUES_FROZENSET
 
 from spine_api.contract import (
     ApprovalThresholdConfig,
@@ -275,7 +276,9 @@ def update_agency_autonomy_settings(
         policy.allow_explicit_reassess = request.allow_explicit_reassess
 
     if request.auto_reprocess_stages is not None:
-        allowed_stages = {"discovery", "shortlist", "proposal", "booking"}
+        # Canonical vocabulary lives in src.intake.constants.TRIP_STAGE_VALUES
+        # (FND-0400: no local stage-vocabulary copies).
+        allowed_stages = TRIP_STAGE_VALUES_FROZENSET
         sanitized = {
             stage: bool(enabled)
             for stage, enabled in request.auto_reprocess_stages.items()

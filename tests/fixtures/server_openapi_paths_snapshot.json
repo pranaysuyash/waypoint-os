@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 379,
+  "openapi_path_count": 384,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -116,6 +116,9 @@
     "/api/trips/{trip_id}/events/stream",
     "/api/trips/{trip_id}/execution-timeline",
     "/api/trips/{trip_id}/timeline",
+    "/api/v1/agency-api/keys",
+    "/api/v1/agency-api/keys/{key_id}",
+    "/api/v1/agency-api/trips/{trip_id}/summary",
     "/api/v1/benchmarking/stress-test",
     "/api/v1/boundaries/authority-approvals",
     "/api/v1/boundaries/authority-approvals/{approval_id}",
@@ -130,6 +133,7 @@
     "/api/v1/commission/ingest",
     "/api/v1/commission/ingest/{batch_id}",
     "/api/v1/commission/ingest/{batch_id}/link",
+    "/api/v1/commission/ingest/{batch_id}/record",
     "/api/v1/commission/reconcile",
     "/api/v1/commission/record",
     "/api/v1/commission/summary",
@@ -169,6 +173,7 @@
     "/api/v1/disruptions/alerts",
     "/api/v1/disruptions/{trip_id}/rebook",
     "/api/v1/disruptions/{trip_id}/rebook-options",
+    "/api/v1/disruptions/{trip_id}/report",
     "/api/v1/distribution/fare-rules/cat35-markup",
     "/api/v1/distribution/fare-rules/penalties",
     "/api/v1/distribution/gds/generate-cryptics",

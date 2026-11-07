@@ -5,6 +5,7 @@ Tests for individual rule functions in the hybrid engine.
 """
 
 from src.intake.packet_models import CanonicalPacket, Slot
+from src.intake.decision import generate_risk_flags
 from src.decision.rules import (
     rule_elderly_mobility_risk,
     rule_toddler_pacing_risk,
@@ -210,6 +211,51 @@ class TestVisaTimelineRule:
         assert result is not None
         assert result["risk_level"] == "high"
         assert result["visa_lead_time_days"] > 0
+
+
+class TestBookingStageDocumentGate:
+    """Booking-stage gate for visa/passport critical flags (FND-0399,
+    RDA_EX07 rec-3). The gate covers pre-booking runs AND travelers who
+    declared the trip already booked (which submit at stage="booking"),
+    so the copy must be true in both cases."""
+
+    def _visa_not_applied_packet(self) -> CanonicalPacket:
+        return CanonicalPacket(
+            packet_id="test-booking-gate",
+            facts={
+                "visa_status": Slot(
+                    value={"requirement": "required", "status": "not_applied"},
+                    authority_level="explicit_user",
+                ),
+                "passport_status": Slot(
+                    value={"P1": {"status": "expired"}},
+                    authority_level="explicit_user",
+                ),
+            },
+            derived_signals={},
+        )
+
+    def test_booking_stage_fires_visa_not_applied_and_document_risk(self):
+        flags = generate_risk_flags(self._visa_not_applied_packet(), "booking", cached_feasibility=None)
+        by_flag = {r["flag"]: r for r in flags}
+        assert by_flag["visa_not_applied"]["severity"] == "critical"
+        assert by_flag["document_risk"]["severity"] == "critical"
+
+    def test_discovery_stage_does_not_fire_booking_gate(self):
+        flags = generate_risk_flags(self._visa_not_applied_packet(), "discovery", cached_feasibility=None)
+        assert all(r["flag"] != "visa_not_applied" for r in flags)
+        assert all(r["flag"] != "document_risk" for r in flags)
+
+    def test_visa_copy_is_true_for_declared_booked_travelers(self):
+        """'Booking blocked' would be false for a traveler who already
+        booked; the copy must not claim it (FND-0399 trust-and-safety
+        review)."""
+        flags = generate_risk_flags(self._visa_not_applied_packet(), "booking", cached_feasibility=None)
+        visa_msgs = [r["message"] for r in flags if r["flag"] == "visa_not_applied"]
+        assert visa_msgs, "expected visa_not_applied to fire at booking stage"
+        for message in visa_msgs:
+            assert "booking blocked" not in message.lower()
+            assert "book or travel" in message.lower()
 
 
 class TestCompositionRiskRule:

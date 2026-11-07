@@ -1,6 +1,8 @@
-"""Run SAM 3.1 (sam3.1_multiplex.pt) + ViTMatte on the Waypoint Departure Board reference frames."""
+"""Run SAM 3.1 (sam3.1_multiplex.pt) or local SAM 3 (models/sam3) + ViTMatte on the Waypoint Departure Board reference frames."""
+import glob
 import json
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -21,43 +23,16 @@ QWEN_ROOT = Path("/Users/pranay/Projects/qwen-image-21-local")
 sys.path.insert(0, str(QWEN_ROOT / "third_party/sam3"))
 sys.path.insert(0, str(QWEN_ROOT / "third_party/sam3-pilot-stubs"))
 
-from huggingface_hub import hf_hub_download  # noqa: E402
-from sam3.model_builder import build_sam3_image_model, download_ckpt_from_hf  # noqa: E402
-from sam3.model.sam3_image_processor import Sam3Processor  # noqa: E402
-
 OUT_DIR = Path("/Users/pranay/.gemini/antigravity/brain/5f300d3d-dc79-47ee-b13b-b72d067aef9f/scratch/sam31_masks")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-IMG1_PATH = Path("/Users/pranay/Projects/travel_agency_agent/frontend/public/landing/departure-board/concepts/chatgpt-concept-2026-10-26-1.png")
-
-t0 = time.perf_counter()
-ckpt = None
-candidates = [
-    QWEN_ROOT / "models/sam3.1/sam3.1_multiplex.pt",
-]
-for c in candidates:
-    if c.exists():
-        ckpt = str(c)
-        break
-
-if ckpt is None:
-    try:
-        ckpt = hf_hub_download(repo_id="facebook/sam3.1", filename="sam3.1_multiplex.pt", local_files_only=True)
-        print("Found cached SAM 3.1 checkpoint:", ckpt, flush=True)
-    except Exception as e:
-        print("Local cache miss, trying download_ckpt_from_hf(version='sam3.1'):", e, flush=True)
-        ckpt = download_ckpt_from_hf(version="sam3.1")
-        print("Downloaded SAM 3.1 checkpoint:", ckpt, flush=True)
-
-device = "mps"
-model = build_sam3_image_model(device=device, checkpoint_path=ckpt, load_from_HF=False).float()
-load_s = round(time.perf_counter() - t0, 2)
-print(f"SAM 3.1 (sam3.1_multiplex.pt) loaded on {device} in {load_s}s", flush=True)
-
-processor = Sam3Processor(model)
-
-pil1 = Image.open(IMG1_PATH).convert("RGB")
-state1 = processor.set_image(pil1)
+IMG_PATHS = {
+    "frame1": Path("/Users/pranay/Projects/travel_agency_agent/frontend/public/landing/departure-board/concepts/chatgpt-concept-2026-10-26-1.png"),
+    "frame2": Path("/Users/pranay/Projects/travel_agency_agent/frontend/public/landing/departure-board/concepts/chatgpt-concept-2026-10-26-2.png"),
+    "frame3": Path("/Users/pranay/Projects/travel_agency_agent/frontend/public/landing/departure-board/concepts/chatgpt-concept-2026-10-26-3.png"),
+    "frame4": Path("/Users/pranay/Projects/travel_agency_agent/frontend/public/landing/departure-board/concepts/chatgpt-concept-2026-10-26-4.png"),
+}
+IMG1_PATH = IMG_PATHS["frame1"]
 
 CONCEPTS = [
     "departure board",
@@ -71,32 +46,173 @@ CONCEPTS = [
     "hanging luggage tag",
 ]
 
-summary = {"model": "SAM 3.1 (sam3.1_multiplex.pt)", "checkpoint": str(ckpt), "load_s": load_s, "prompts": {}}
+t0 = time.perf_counter()
+device = "mps"
 
-for text in CONCEPTS:
-    t1 = time.perf_counter()
-    with torch.inference_mode():
-        out = processor.set_text_prompt(state=state1, prompt=text)
-    torch.mps.synchronize()
-    dt = round(time.perf_counter() - t1, 3)
-    masks = out["masks"]
-    scores = [round(float(s), 3) for s in out["scores"][:5]] if len(out["scores"]) else []
-    boxes = [[round(float(v), 1) for v in b] for b in out["boxes"][:5]] if len(out["boxes"]) else []
-    n = len(masks)
-    safe = text.replace(" ", "_")
-    if n > 0:
-        combined = np.zeros((pil1.height, pil1.width), dtype=bool)
-        for idx, m in enumerate(masks):
-            m_np = np.asarray(m).squeeze() > 0.5
-            if m_np.ndim == 2:
-                combined |= m_np
-                if idx < 3:
-                    Image.fromarray(m_np.astype(np.uint8) * 255).save(OUT_DIR / f"sam31_{safe}_{idx}.png")
-        Image.fromarray(combined.astype(np.uint8) * 255).save(OUT_DIR / f"sam31_{safe}_union.png")
-    print(f"SAM 3.1 '{text}': {n} mask(s) in {dt}s | scores={scores} | boxes={boxes}", flush=True)
-    summary["prompts"][text] = {"count": n, "seconds": dt, "scores": scores, "boxes": boxes}
+# 1. Locate SAM 3.1 multiplex checkpoint if present in local models or HuggingFace cache
+ckpt = None
+candidates = [
+    QWEN_ROOT / "models/sam3.1/sam3.1_multiplex.pt",
+    *[
+        Path(p)
+        for p in glob.glob(
+            os.path.expanduser(
+                "~/.cache/huggingface/hub/models--facebook--sam3.1/snapshots/*/sam3.1_multiplex.pt"
+            )
+        )
+    ],
+]
+for c in candidates:
+    if c.exists():
+        ckpt = str(c)
+        break
 
-del model, processor
+if ckpt is None:
+    try:
+        from huggingface_hub import hf_hub_download
+
+        ckpt = hf_hub_download(
+            repo_id="facebook/sam3.1",
+            filename="sam3.1_multiplex.pt",
+            local_files_only=True,
+        )
+        print("Found cached SAM 3.1 checkpoint:", ckpt, flush=True)
+    except Exception:
+        ckpt = None
+
+# Only attempt online download if root volume has >= 5.0 GiB free (checkpoint is 3.50 GB)
+free_gib = shutil.disk_usage("/").free / (1024**3)
+if ckpt is None and free_gib >= 5.0 and os.environ.get("SAM31_ALLOW_DOWNLOAD") == "1":
+    from sam3.model_builder import download_ckpt_from_hf
+
+    ckpt = download_ckpt_from_hf(version="sam3.1")
+    print("Downloaded SAM 3.1 checkpoint:", ckpt, flush=True)
+
+pil1 = Image.open(IMG1_PATH).convert("RGB")
+
+if ckpt is not None:
+    from sam3.model_builder import build_sam3_image_model
+    from sam3.model.sam3_image_processor import Sam3Processor as MetaSam3Processor
+
+    model = build_sam3_image_model(device=device, checkpoint_path=ckpt, load_from_HF=False).float()
+    load_s = round(time.perf_counter() - t0, 2)
+    print(f"SAM 3.1 (sam3.1_multiplex.pt) loaded on {device} in {load_s}s", flush=True)
+    processor = MetaSam3Processor(model)
+    state1 = processor.set_image(pil1)
+    summary = {
+        "model": "SAM 3.1 (sam3.1_multiplex.pt)",
+        "checkpoint": str(ckpt),
+        "load_s": load_s,
+        "prompts": {},
+    }
+
+    for text in CONCEPTS:
+        t1 = time.perf_counter()
+        with torch.inference_mode():
+            out = processor.set_text_prompt(state=state1, prompt=text)
+        torch.mps.synchronize()
+        dt = round(time.perf_counter() - t1, 3)
+        masks = out["masks"]
+        scores = [round(float(s), 3) for s in out["scores"][:5]] if len(out["scores"]) else []
+        boxes = [[round(float(v), 1) for v in b] for b in out["boxes"][:5]] if len(out["boxes"]) else []
+        n = len(masks)
+        safe = text.replace(" ", "_")
+        if n > 0:
+            combined = np.zeros((pil1.height, pil1.width), dtype=bool)
+            for idx, m in enumerate(masks):
+                m_np = np.asarray(m).squeeze() > 0.5
+                if m_np.ndim == 2:
+                    combined |= m_np
+                    if idx < 3:
+                        Image.fromarray(m_np.astype(np.uint8) * 255).save(OUT_DIR / f"sam31_{safe}_{idx}.png")
+            Image.fromarray(combined.astype(np.uint8) * 255).save(OUT_DIR / f"sam31_{safe}_union.png")
+        print(f"SAM 3.1 '{text}': {n} mask(s) in {dt}s | scores={scores} | boxes={boxes}", flush=True)
+        summary["prompts"][text] = {"count": n, "seconds": dt, "scores": scores, "boxes": boxes}
+
+    del model, processor
+else:
+    # Fallback to local SAM 3 checkpoint in qwen-image-21-local/models/sam3 (identical still-image perception backbone)
+    from transformers import Sam3Model, Sam3Processor
+
+    sam3_dir = QWEN_ROOT / "models/sam3"
+    print(
+        f"sam3.1_multiplex.pt not in local cache (root free={free_gib:.2f} GiB); using local SAM 3 at {sam3_dir}",
+        flush=True,
+    )
+    processor = Sam3Processor.from_pretrained(sam3_dir, local_files_only=True)
+    model = Sam3Model.from_pretrained(sam3_dir, local_files_only=True).to(device).eval()
+    load_s = round(time.perf_counter() - t0, 2)
+    summary = {
+        "model": "SAM 3 (models/sam3 local fallback)",
+        "checkpoint": str(sam3_dir),
+        "load_s": load_s,
+        "prompts": {},
+        "frames": {},
+    }
+
+    for frame_key, fpath in IMG_PATHS.items():
+        fpil = Image.open(fpath).convert("RGB")
+        summary["frames"][frame_key] = {}
+        for text in ["departure board", "suitcase", "hanging luggage tag"]:
+            t1 = time.perf_counter()
+            inputs = processor(images=fpil, text=text, return_tensors="pt").to(device)
+            with torch.inference_mode():
+                outputs = model(**inputs)
+            torch.mps.synchronize()
+            dt = round(time.perf_counter() - t1, 3)
+            results = processor.post_process_instance_segmentation(
+                outputs,
+                threshold=0.35,
+                mask_threshold=0.5,
+                target_sizes=inputs.get("original_sizes").tolist(),
+            )[0]
+            masks = results["masks"]
+            scores = [round(float(s), 3) for s in results["scores"][:5]] if len(results["scores"]) else []
+            boxes = [[round(float(v), 1) for v in b] for b in results["boxes"][:5]] if len(results["boxes"]) else []
+            n = len(masks)
+            safe = text.replace(" ", "_")
+            if n > 0:
+                combined = np.zeros((fpil.height, fpil.width), dtype=bool)
+                for idx, m in enumerate(masks):
+                    m_np = m.cpu().numpy() > 0.5
+                    if m_np.ndim == 2:
+                        combined |= m_np
+                Image.fromarray(combined.astype(np.uint8) * 255).save(OUT_DIR / f"sam31_{frame_key}_{safe}_union.png")
+            summary["frames"][frame_key][text] = {"count": n, "seconds": dt, "scores": scores, "boxes": boxes}
+            print(f"[{frame_key}] SAM 3 '{text}': {n} mask(s) in {dt}s | scores={scores}", flush=True)
+
+    for text in CONCEPTS:
+        t1 = time.perf_counter()
+        inputs = processor(images=pil1, text=text, return_tensors="pt").to(device)
+        with torch.inference_mode():
+            outputs = model(**inputs)
+        torch.mps.synchronize()
+        dt = round(time.perf_counter() - t1, 3)
+        results = processor.post_process_instance_segmentation(
+            outputs,
+            threshold=0.35,
+            mask_threshold=0.5,
+            target_sizes=inputs.get("original_sizes").tolist(),
+        )[0]
+        masks = results["masks"]
+        scores = [round(float(s), 3) for s in results["scores"][:5]] if len(results["scores"]) else []
+        boxes = [[round(float(v), 1) for v in b] for b in results["boxes"][:5]] if len(results["boxes"]) else []
+        n = len(masks)
+        safe = text.replace(" ", "_")
+        if n > 0:
+            combined = np.zeros((pil1.height, pil1.width), dtype=bool)
+            for idx, m in enumerate(masks):
+                m_np = m.cpu().numpy() > 0.5
+                if m_np.ndim == 2:
+                    combined |= m_np
+                    if idx < 3:
+                        Image.fromarray(m_np.astype(np.uint8) * 255).save(OUT_DIR / f"sam31_{safe}_{idx}.png")
+            Image.fromarray(combined.astype(np.uint8) * 255).save(OUT_DIR / f"sam31_{safe}_union.png")
+        print(f"SAM 3 '{text}': {n} mask(s) in {dt}s | scores={scores} | boxes={boxes}", flush=True)
+        summary["prompts"][text] = {"count": n, "seconds": dt, "scores": scores, "boxes": boxes}
+
+    del model, processor
+
 torch.mps.empty_cache()
 
 from transformers import VitMatteForImageMatting  # noqa: E402
@@ -138,4 +254,4 @@ if board_mask_path.exists():
     print("Saved ViTMatte refined departure board cutout", flush=True)
 
 (OUT_DIR / "sam31_summary.json").write_text(json.dumps(summary, indent=2))
-print("All SAM 3.1 + ViTMatte outputs saved to", OUT_DIR, flush=True)
+print("All SAM 3.1 / SAM 3 + ViTMatte outputs saved to", OUT_DIR, flush=True)

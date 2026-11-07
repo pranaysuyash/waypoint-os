@@ -22,7 +22,7 @@ import binascii
 from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from src.intake.constants import DecisionState
+from src.intake.constants import DecisionState, TRIP_STAGE_VALUES, TRIP_STAGE_VALUES_FROZENSET
 
 
 # =============================================================================
@@ -121,6 +121,18 @@ class SpineRunRequest(BaseModel):
     date_flexibility: Optional[str] = Field(default=None, max_length=500)
     date_year_confidence: Optional[str] = Field(default=None, max_length=50)
     draft_id: Optional[str] = Field(default=None, max_length=100)
+
+    @field_validator("stage")
+    @classmethod
+    def _validate_stage(cls, value: str) -> str:
+        """Reject unknown stages instead of silently degrading to discovery
+        semantics (FND-0400). Vocabulary is the canonical
+        ``src.intake.constants.TRIP_STAGE_VALUES``."""
+        if value not in TRIP_STAGE_VALUES_FROZENSET:
+            raise ValueError(
+                f"Invalid stage={value!r}. Expected one of {TRIP_STAGE_VALUES}"
+            )
+        return value
 
     model_config = {"extra": "forbid"}
 
@@ -1407,6 +1419,14 @@ class InboxStatsResponse(BaseModel):
     oldestWaitingDays: Optional[int] = None
     oldestUnassignedWaitingDays: Optional[int] = None
     statsCoverage: int = 0
+    # R2-F agent-resolved-share KPI (2026-11-03): share of resolved trips the
+    # agent carried past decision with no operator review action. None = no
+    # resolved trips yet (never a fabricated 0%). Counts carry their basis
+    # (roadmap invariant 3): the scan is sample-capped.
+    resolvedCount: int = 0
+    agentResolvedCount: int = 0
+    agentResolvedShare: Optional[float] = None
+    agentResolvedShareBasis: str = "paged_total"
 
 
 class AssignInboxRequest(BaseModel):

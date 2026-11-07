@@ -9,6 +9,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+_decrypt_failure_count = 0
+
 
 @lru_cache(maxsize=1)
 def _get_fernet() -> Fernet:
@@ -95,6 +97,16 @@ def decrypt(token: str) -> str:
         return token
     try:
         return _get_fernet().decrypt(token.encode()).decode()
-    except InvalidToken as e:
-        logger.warning("Decryption failed: %s", e)
+    except InvalidToken:
+        # FND-0403 targeted fix (2026-11-07): legacy/plaintext rows are COMMON
+        # during scan-heavy analytics reads — logging a warning per field per
+        # trip was thousands of sync stderr writes per call (~30s endpoints).
+        # Count instead; the aggregate surfaces once per process at intervals.
+        global _decrypt_failure_count
+        _decrypt_failure_count += 1
+        if _decrypt_failure_count == 1 or _decrypt_failure_count % 500 == 0:
+            logger.warning(
+                "Decryption failed (legacy plaintext or foreign key) — %s occurrences this process",
+                _decrypt_failure_count,
+            )
         return token  # Fallback to original if decryption fails (might be plaintext from old data)

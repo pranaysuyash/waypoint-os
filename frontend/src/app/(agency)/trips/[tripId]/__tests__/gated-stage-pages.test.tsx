@@ -69,7 +69,9 @@ describe("gated planning stage pages", () => {
     render(<PageComponent />);
 
     expect(screen.getByText("Before building options")).toBeInTheDocument();
-    expect(screen.getByText("Confirm budget range and origin city first.")).toBeInTheDocument();
+    // FND-0402: trip purpose joined the required set (FND-0379 fare-quote gate)
+    // — the gate copy now lists it too.
+    expect(screen.getByText("Confirm budget range, origin city, and trip purpose first.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Trip Details" })).toHaveAttribute(
       "href",
       "/trips/trip_4b9e0d894872/intake",

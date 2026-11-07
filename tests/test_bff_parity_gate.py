@@ -20,7 +20,10 @@ ROUTE_MAP = REPO / "frontend" / "src" / "lib" / "route-map.ts"
 SNAPSHOT = REPO / "tests" / "fixtures" / "bff_parity_known_gaps.json"
 
 PRODUCT_PREFIXES = ("/api/v1/", "/api/triage", "/api/public/")
-EXEMPT_SUBSTRINGS = ("webhook", "/internal/", "/stream-events", "/docs", "ws/")
+# "agency-api" (R2-A, 2026-11-04): the external agency-facing API authenticates
+# with X-API-Key (not the operator JWT) and is consumed by external agent/MCP
+# integrations directly against the backend — it is not an operator BFF door.
+EXEMPT_SUBSTRINGS = ("webhook", "/internal/", "/stream-events", "/docs", "ws/", "agency-api")
 
 
 def _route_map_keys() -> set[str]:

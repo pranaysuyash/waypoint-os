@@ -20,9 +20,12 @@ from __future__ import annotations
 import csv
 import difflib
 import io
+import json
+import os
 import re
 import uuid
 from dataclasses import dataclass, field, asdict
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -59,6 +62,10 @@ class StatementRow:
     match_trip_id: Optional[str] = None
     match_method: Optional[str] = None  # booking_ref | amount_fuzzy_supplier
     match_confidence: Optional[float] = None
+    # Money-truth tracking: set when this row has been recorded through the
+    # durable AdvisorPayoutStore (R2-B flow closure). One recording per row.
+    recorded: bool = False
+    recorded_payout_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -257,10 +264,20 @@ def match_rows(
                     best = (score, cand)
             score, cand = best
             if cand is not None and score >= FUZZY_SUPPLIER_THRESHOLD:
-                row.match_status = "matched"
-                row.match_trip_id = cand["trip_id"]
-                row.match_method = "amount_fuzzy_supplier"
+                # Sim-pass money-safety fix (2026-11-07): a fuzzy match is a
+                # SUGGESTION, never an auto-confirmation — difflib similarity
+                # alone must not enable one-click recording of a durable
+                # payout against a possibly-wrong trip. Downgrade to
+                # manual_candidate with the suggestion attached; the operator
+                # links (confirming) before Record unlocks.
+                row.match_status = "manual_candidate"
+                row.match_trip_id = None
+                row.match_method = "fuzzy_suggestion"
                 row.match_confidence = round(score, 3)
+                row.raw_text = (
+                    f"{row.raw_text} | suggested: {cand['trip_id']} "
+                    f"({cand['supplier_name']}, {score:.0%})"
+                )[:300]
                 continue
 
         # 3. Recognizable statement line without a trip match → manual link.
@@ -294,17 +311,82 @@ def create_ingest_batch(
         rows=rows,
     )
     _INGEST_BATCHES[batch.batch_id] = batch
+    _save_batch(batch)
     return batch
 
 
 # In-process working store: ingest candidates are preview-grade until an
 # operator confirms a payout through the durable AdvisorPayoutStore. Money
 # truth never lives here.
+# FND-0404 (2026-11-07): batches persist to disk (JSON, one file per batch)
+# so a backend restart or reload no longer orphans the operator's manual
+# links mid-review. Money truth still only moves through the payout store.
 _INGEST_BATCHES: Dict[str, IngestBatch] = {}
+
+
+def batches_dir() -> Path:
+    override = os.getenv("WAYPOINT_COMMISSION_BATCHES_DIR", "").strip()
+    base = Path(override) if override else Path("data/commission_batches")
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def _save_batch(batch: IngestBatch) -> None:
+    path = batches_dir() / f"{batch.batch_id}.json"
+    path.write_text(json.dumps(batch.to_dict(), indent=2), encoding="utf-8")
+
+
+def _load_batch(batch_id: str) -> Optional[IngestBatch]:
+    path = batches_dir() / f"{batch_id}.json"
+    if not path.exists():
+        return None
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        rows = [StatementRow(**r) for r in raw.get("rows", [])]
+        batch = IngestBatch(
+            batch_id=raw["batch_id"],
+            source_format=raw["source_format"],
+            source_label=raw.get("source_label", ""),
+            created_at=raw.get("created_at", ""),
+            agency_id=raw.get("agency_id", ""),
+            durable=False,
+            rows=rows,
+            linked={int(k): v for k, v in (raw.get("linked") or {}).items()},
+        )
+        return batch
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        # Corrupt/hand-edited batch file: skip it, never crash the read path.
+        del exc
+        return None
+
+
+def list_batches(agency_id: str) -> List[Dict[str, Any]]:
+    """Batch summaries for the agency, newest first (FND-0404 reopen UI)."""
+    out: List[Dict[str, Any]] = []
+    if not batches_dir().exists():
+        return out
+    for path in sorted(batches_dir().glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        batch = _load_batch(path.stem)
+        if batch is None or batch.agency_id != agency_id:
+            continue
+        out.append({
+            "batch_id": batch.batch_id,
+            "source_format": batch.source_format,
+            "source_label": batch.source_label,
+            "created_at": batch.created_at,
+            "row_count": len(batch.rows),
+            "matched_count": sum(1 for r in batch.rows if r.match_status == "matched"),
+            "manual_candidate_count": sum(1 for r in batch.rows if r.match_status == "manual_candidate"),
+        })
+    return out
 
 
 def get_batch(batch_id: str, agency_id: str) -> Optional[IngestBatch]:
     batch = _INGEST_BATCHES.get(batch_id)
+    if batch is None:
+        batch = _load_batch(batch_id)
+        if batch is not None:
+            _INGEST_BATCHES[batch_id] = batch  # re-cache for fast mutation
     if batch is None or batch.agency_id != agency_id:
         return None
     return batch
@@ -322,4 +404,108 @@ def link_row(batch_id: str, agency_id: str, row_index: int, trip_id: str) -> Opt
     batch.rows[row_index].match_method = "manual_link"
     batch.rows[row_index].match_confidence = 1.0
     batch.linked[row_index] = trip_id
+    _save_batch(batch)
     return batch
+
+
+def record_row_payout(
+    batch_id: str,
+    agency_id: str,
+    row_index: int,
+    *,
+    advisor_id: str,
+    recorded_by: str,
+) -> Tuple[Optional["IngestBatch"], Optional[Dict[str, Any]], Optional[str]]:
+    """Record a matched statement row as a DURABLE payout (R2-B flow closure).
+
+    This is the only path from ingest candidates to money truth: the row must
+    be matched, not previously recorded, and denominated in USD — the payout
+    ledger stores ``amount_usd`` and this service never performs an FX
+    conversion (a non-USD statement row is rejected with explicit guidance,
+    never silently converted). On success the row is marked with the durable
+    payout id; re-recording is rejected (idempotent against double-count).
+
+    Returns (updated_batch, payout_record_dict, None) or
+    (None, None, error_message).
+    """
+    from spine_api.services.advisor_payout_store import AdvisorPayoutStore
+
+    batch = get_batch(batch_id, agency_id)
+    if batch is None:
+        return None, None, "Ingest batch not found"
+    if not (0 <= row_index < len(batch.rows)):
+        return None, None, f"row_index {row_index} out of range (batch has {len(batch.rows)} rows)"
+    row = batch.rows[row_index]
+    if row.recorded:
+        return None, None, (
+            f"Row {row_index} was already recorded (payout {row.recorded_payout_id}); "
+            "recording it again would double-count the commission."
+        )
+    if row.match_status != "matched" or not row.match_trip_id:
+        return None, None, (
+            f"Row {row_index} is not matched to a trip — link it (manual-link "
+            "fallback) before recording a payout."
+        )
+    if row.amount is None or row.amount <= 0:
+        return None, None, f"Row {row_index} has no positive amount to record."
+    currency = (row.currency or "USD").upper()
+    if currency != "USD":
+        return None, None, (
+            f"Row {row_index} is denominated {currency}; the payout ledger stores "
+            "USD and this service does not convert currencies. Convert at the "
+            "prevailing rate and record through the payout endpoint with the "
+            "USD amount and this statement reference in the note."
+        )
+    if not advisor_id.strip():
+        return None, None, "advisor_id is required for payout attribution."
+
+    # Contract-review R2 (2026-11-07): the row.recorded flag is process-local —
+    # multi-worker or restart bypasses it, double-recording a durable payout.
+    # Durable idempotency: a deterministic payout_id keyed to (batch, row).
+    # record_payout stores it verbatim (memory PK / SQL PK), so any duplicate
+    # — pre-check or insert conflict — resolves to the existing payout.
+    payout_id = f"stmt-{batch.batch_id}-{row_index}"
+    existing = AdvisorPayoutStore.get_payout(agency_id=agency_id, payout_id=payout_id)
+    if existing is not None:
+        row.recorded = True
+        row.recorded_payout_id = existing.get("payout_id") or payout_id
+        return None, None, (
+            f"Row {row_index} was already recorded (payout {row.recorded_payout_id}); "
+            "recording it again would double-count the commission."
+        )
+
+    try:
+        payout = AdvisorPayoutStore.record_payout(
+            agency_id=agency_id,
+            advisor_id=advisor_id.strip(),
+            amount_usd=round(float(row.amount), 2),
+            recorded_by=recorded_by,
+            trip_id=row.match_trip_id,
+            payout_id=payout_id,
+            note=(
+                f"Commission statement row {row_index} of batch {batch.batch_id} "
+                f"({row.supplier_name or 'unknown supplier'}, ref {row.booking_ref or 'n/a'}; "
+                f"match: {row.match_method})"
+            ),
+        )
+    except Exception as exc:  # duplicate PK / race — resolve to existing record
+        existing = AdvisorPayoutStore.get_payout(agency_id=agency_id, payout_id=payout_id)
+        if existing is not None:
+            row.recorded = True
+            row.recorded_payout_id = existing.get("payout_id") or payout_id
+            return None, None, (
+                f"Row {row_index} was already recorded (payout {row.recorded_payout_id}); "
+                "recording it again would double-count the commission."
+            )
+        return None, None, f"Payout recording failed: {exc}"
+    row.recorded = True
+    row.recorded_payout_id = payout.payout_id
+    batch.linked[f"recorded_{row_index}"] = payout.payout_id
+    _save_batch(batch)
+    return batch, {
+        "payout_id": payout.payout_id,
+        "amount_usd": round(float(row.amount), 2),
+        "trip_id": row.match_trip_id,
+        "advisor_id": advisor_id.strip(),
+        "storage_backend": getattr(payout, "storage_backend", "unknown"),
+    }, None

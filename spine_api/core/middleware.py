@@ -39,6 +39,7 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     "/api/public-checker/re-verify",
     "/api/public-checker/trip/",
     "/api/public-checker/disputes",
+    "/api/public-checker/agency",
     "/api/v1/proposals/token/",
     "/api/v1/trust-scorecard/proposal/",
     # FND-0330 (Sim #4): the group passenger share portal is a capability-token
@@ -50,6 +51,13 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     # (/api/v1/group/{trip_id}/invites, /manual-override) keep session auth —
     # this prefix matches only /token/{token} shapes.
     "/api/v1/group/token/",
+    # R2-A (2026-11-04): the external agency API authenticates with a hashed
+    # per-agency API key (X-API-Key) enforced fail-closed inside the routes —
+    # the middleware must not 401 the request for lacking an operator JWT
+    # before that check runs. Minting/revoking keys stays JWT-gated
+    # (/keys endpoints use get_current_agency), matching the FND-0330
+    # capability-token pattern.
+    "/api/v1/agency-api/",
 )
 
 

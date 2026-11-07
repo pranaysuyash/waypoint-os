@@ -29,6 +29,31 @@ function SignupPageInner() {
     getSearchParam('redirect') || getSearchParam('next'),
     DEFAULT_AUTH_REDIRECT,
   );
+  const sourceParam = getSearchParam('source');
+  const caseParam = getSearchParam('case');
+  const iataParam = getSearchParam('iata');
+  const [sessionHandoff, setSessionHandoff] = useState<{
+    caseTitle?: string;
+    iataCode?: string;
+  } | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.sessionStorage.getItem('waypoint_departure_board_handoff');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+  const formattedCaseName = caseParam
+    ? caseParam
+        .split('-')
+        .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : ''))
+        .join(' ')
+    : sessionHandoff?.caseTitle ?? null;
+  const resolvedIataCode = iataParam ?? sessionHandoff?.iataCode ?? null;
+  const showHandoffBanner =
+    (sourceParam === 'departure-board' || Boolean(sessionHandoff)) &&
+    Boolean(formattedCaseName);
   const passwordStrength = getPasswordStrength(formState.password);
   const passwordsMatch = formState.confirmPassword.length > 0 && formState.password === formState.confirmPassword;
 
@@ -76,9 +101,31 @@ function SignupPageInner() {
 
   return (
     <div className='auth-card'>
+      {showHandoffBanner && formattedCaseName ? (
+        <div
+          data-testid='signup-departure-board-context'
+          className='auth-handoff-banner'
+        >
+          <div className='auth-handoff-left'>
+            <span className='auth-handoff-beacon' aria-hidden='true' />
+            <div className='auth-handoff-text-group'>
+              <span className='auth-handoff-kicker'>Departure Board Handoff</span>
+              <span className='auth-handoff-title'>
+                {formattedCaseName} Inquiry
+              </span>
+            </div>
+          </div>
+          {resolvedIataCode ? (
+            <span className='auth-handoff-badge'>
+              <span className='auth-handoff-flight-icon' aria-hidden='true'>✈</span>
+              {resolvedIataCode}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <h1 className='auth-title'>Create your workspace</h1>
       <p className='auth-subtitle'>
-        Set up your agency in seconds
+        Set up your agency workspace and client departure desk
       </p>
 
       <form onSubmit={handleSubmit}>
@@ -91,19 +138,19 @@ function SignupPageInner() {
             type='text'
             value={formState.name}
             onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'name', value: e.target.value })}
-            placeholder='Jane Smith'
+            placeholder='e.g. Alex Rivera'
             autoComplete='name'
           />
         </div>
 
         <div className='auth-field'>
-          <label htmlFor='email'>Email</label>
+          <label htmlFor='email'>Work email</label>
           <input
             id='email'
             type='email'
             value={formState.email}
             onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'email', value: e.target.value })}
-            placeholder='you@example.com'
+            placeholder='advisor@agency.com'
             required
             autoComplete='email'
           />
@@ -133,13 +180,29 @@ function SignupPageInner() {
             </button>
           </div>
           <div className='auth-password-meta'>
-            <div className='auth-strength-track' aria-hidden='true'>
-              <span
-                className={`auth-strength-fill auth-strength-fill--${passwordStrength.label.toLowerCase()}`}
-                style={{ width: `${Math.max(10, (passwordStrength.score / 5) * 100)}%` }}
-              />
+            <div className='auth-strength-segments' aria-hidden='true'>
+              {[1, 2, 3, 4].map((seg) => {
+                const activeCount = !formState.password
+                  ? 0
+                  : passwordStrength.label === 'Strong'
+                  ? 4
+                  : passwordStrength.label === 'Good'
+                  ? 3
+                  : passwordStrength.label === 'Fair'
+                  ? 2
+                  : 1;
+                const tierClass = `auth-strength-segment--active-${passwordStrength.label.toLowerCase()}`;
+                return (
+                  <span
+                    key={seg}
+                    className={`auth-strength-segment ${seg <= activeCount ? tierClass : ''}`}
+                  />
+                );
+              })}
             </div>
-            <span className='auth-strength-label'>Strength: {passwordStrength.label}</span>
+            <span className='auth-strength-label'>
+              {formState.password ? `Level: ${passwordStrength.label}` : 'Min. 8 chars'}
+            </span>
           </div>
         </div>
 
@@ -176,42 +239,66 @@ function SignupPageInner() {
         {!formState.showAgency ? (
           <button
             type='button'
-            className='auth-button'
-            style={{ background: '#1c2128', color: '#8b949e' }}
+            className='auth-button--ghost'
             onClick={() => dispatch({ type: 'SET_FIELD', field: 'showAgency', value: true })}
           >
-            Customize agency name (optional)
+            + Customize agency name (optional)
           </button>
-        ) : (
-          <div className='auth-field'>
-            <label htmlFor='agency'>Agency name</label>
-            <input
-              id='agency'
-              type='text'
-              value={formState.agencyName}
-              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'agencyName', value: e.target.value })}
-              placeholder='My Travel Agency'
-            />
-          </div>
-        )}
+        ) : null}
 
-        <div className='auth-field' style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
-          <input
-            id='terms'
-            type='checkbox'
-            checked={formState.termsAccepted}
-            onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'termsAccepted', value: e.target.checked })}
-            required
-          />
-          <label htmlFor='terms' style={{ fontSize: '0.85rem' }}>
+        <div className={`auth-expandable-drawer ${formState.showAgency ? 'auth-expandable-drawer--open' : ''}`}>
+          <div className='auth-expandable-content'>
+            <div className='auth-field'>
+              <label htmlFor='agency'>Agency name</label>
+              <input
+                id='agency'
+                type='text'
+                value={formState.agencyName}
+                onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'agencyName', value: e.target.value })}
+                placeholder='e.g. Meridian Travel Co.'
+                autoFocus={formState.showAgency}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className='auth-field-checkbox'>
+          <div className='auth-checkbox-custom'>
+            <input
+              id='terms'
+              type='checkbox'
+              checked={formState.termsAccepted}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'termsAccepted', value: e.target.checked })}
+              required
+            />
+            <div className='auth-checkbox-box' aria-hidden='true'>
+              <svg className='auth-checkbox-icon' viewBox='0 0 12 12' fill='none'>
+                <path d='M2 6L4.8 9L10 3' />
+              </svg>
+            </div>
+          </div>
+          <label htmlFor='terms'>
             I agree to the{' '}
-            <Link href='/terms'>Terms of Service</Link> and{' '}
+            <Link href='/terms'>Terms of Service</Link>{' '}
+            and{' '}
             <Link href='/privacy'>Privacy Policy</Link>
           </label>
         </div>
 
         <button className='auth-button' type='submit' disabled={loading || !formState.termsAccepted}>
-          {loading ? 'Creating workspace…' : 'Create workspace'}
+          <span className='auth-button-inner'>
+            {loading ? (
+              <>
+                <span className='auth-spinner-telemetry' aria-hidden='true' />
+                <span>Preparing agency desk…</span>
+              </>
+            ) : (
+              <>
+                <span>Create workspace</span>
+                <span className='auth-button-arrow' aria-hidden='true'>→</span>
+              </>
+            )}
+          </span>
         </button>
       </form>
 

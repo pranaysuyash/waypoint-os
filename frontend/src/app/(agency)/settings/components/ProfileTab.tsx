@@ -179,6 +179,53 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
         </div>
       </div>
 
+      {/* Client Travel Plan Diagnostic Portal (White-Label Wedge) */}
+      <section className="rounded-lg border border-[#30363d] bg-[#161b22] p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-[#39d0d8]" />
+            <h3 className="text-ui-sm font-semibold text-[#e6edf3]">
+              Client Travel Plan Diagnostic Portal
+            </h3>
+          </div>
+          <span className="text-ui-xs font-semibold uppercase tracking-wider text-[#39d0d8] bg-[#39d0d8]/10 px-2 py-0.5 rounded border border-[#39d0d8]/30">
+            White-Label Live
+          </span>
+        </div>
+        <p className="text-ui-xs text-[#8b949e]">
+          Give prospective or booked travelers your agency-branded diagnostic link. They run an audit to check connection friction, pacing fatigue, and unlock complimentary VIP amenities. When they submit, the ready-to-quote brief lands straight into your Workbench.
+        </p>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+          <div className="flex-1 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-xs text-[#58a6ff] font-mono truncate">
+            {typeof window !== 'undefined'
+              ? `${window.location.origin}/check/${(draft.profile.agency_name || 'your-agency').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+              : `/check/${(draft.profile.agency_name || 'your-agency').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const slug = (draft.profile.agency_name || 'your-agency').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                const url = `${window.location.origin}/check/${slug}`;
+                void navigator.clipboard.writeText(url);
+              }}
+              className="px-3 py-2 bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-ui-xs font-medium rounded-lg border border-[#30363d] transition-colors"
+            >
+              Copy Link
+            </button>
+            <a
+              href={`/check/${(draft.profile.agency_name || 'your-agency').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-ui-xs font-medium rounded-lg transition-colors flex items-center gap-1"
+            >
+              Preview Portal →
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Preview */}
       {draft.profile.agency_name && (
         <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-4 space-y-2">

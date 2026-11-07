@@ -88,7 +88,8 @@ describe('WorkspacesPage', () => {
     expect(within(tripCard as HTMLElement).getByText(/Add budget/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText(/Add origin/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('In planning')).toBeInTheDocument();
-    expect(within(tripCard as HTMLElement).getByText('Next: confirm budget and origin before building options.')).toBeInTheDocument();
+    // FND-0402: trip purpose joined the required set — gate copy lists it.
+    expect(within(tripCard as HTMLElement).getByText('Next: confirm budget range, origin city, and trip purpose before building options.')).toBeInTheDocument();
     expect(screen.getByText(/4B9E/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('Waiting on customer')).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).queryByText('In Progress')).not.toBeInTheDocument();

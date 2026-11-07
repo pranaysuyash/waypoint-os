@@ -6,6 +6,9 @@ function trip(overrides: Partial<Trip>): Trip {
   return {
     id: overrides.id ?? 'trip_1',
     destination: overrides.destination ?? 'Bali',
+    // FND-0402: tripPurpose is a required brief field — without it every
+    // card titles "Trip details incomplete" and all signatures collapse.
+    tripPurpose: overrides.tripPurpose ?? 'Leisure',
     type: overrides.type ?? 'leisure',
     state: overrides.state ?? 'blue',
     age: overrides.age ?? 'Today',

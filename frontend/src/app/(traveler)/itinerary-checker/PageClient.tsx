@@ -494,8 +494,50 @@ const TRAVEL_TAGS = [
   'Sentosa cable car',
 ];
 
+export interface AgencyBrandingContext {
+  agency_id: string;
+  slug?: string;
+  display_name: string;
+  blurb?: string;
+  response_sla_hours?: number;
+  places_covered?: string[];
+  customer_types?: string[];
+  services?: string[];
+  languages?: string[];
+}
+
 // ── Header ────────────────────────────────────────────────────────────────────
-function WedgeHeader() {
+function WedgeHeader({ agencyContext }: { agencyContext?: AgencyBrandingContext | null }) {
+  if (agencyContext) {
+    return (
+      <header style={S.header} className="px-4 py-3 sm:px-8">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={S.logoMark}>
+            <MapPin size={14} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.t1, letterSpacing: '-0.01em', fontFamily: T.fBody }}>
+              {agencyContext.display_name}
+            </div>
+            <div style={{ fontSize: 11, color: T.t3, lineHeight: 1.2, fontFamily: T.fBody }}>
+              Client Travel Plan Diagnostic · Powered by Waypoint
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span className="hidden md:inline" style={{ fontSize: 12, color: T.t3, fontFamily: T.fBody }}>
+            Complimentary Client Audit
+          </span>
+          {agencyContext.response_sla_hours ? (
+            <span style={{ fontSize: 11, color: T.cyan, background: 'rgba(57,208,216,0.1)', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(57,208,216,0.3)', fontFamily: T.fBody }}>
+              Responds within {agencyContext.response_sla_hours}h
+            </span>
+          ) : null}
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header style={S.header} className="px-4 py-3 sm:px-8">
       <Link href='/' style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none' }}>
@@ -635,6 +677,7 @@ type UploadCardState = {
   fileError: string | null;
   retentionConsent: boolean;
   declaredPlanSource: 'self' | 'ai' | 'vendor';
+  alreadyBooked: boolean;
 };
 
 type UploadCardAction =
@@ -646,16 +689,18 @@ type UploadCardAction =
   | { type: 'fileProcessingFailed'; message: string }
   | { type: 'setFileError'; message: string | null }
   | { type: 'setRetentionConsent'; retentionConsent: boolean }
-  | { type: 'setDeclaredPlanSource'; source: 'self' | 'ai' | 'vendor' };
+  | { type: 'setDeclaredPlanSource'; source: 'self' | 'ai' | 'vendor' }
+  | { type: 'setAlreadyBooked'; alreadyBooked: boolean };
 
 const initialUploadCardState: UploadCardState = {
-  activeTab: 'file',
+  activeTab: 'paste',
   dragging: false,
   text: '',
   isProcessingFile: false,
   fileError: null,
   retentionConsent: false,
   declaredPlanSource: 'ai',
+  alreadyBooked: false,
 };
 
 function uploadCardReducer(state: UploadCardState, action: UploadCardAction): UploadCardState {
@@ -678,6 +723,8 @@ function uploadCardReducer(state: UploadCardState, action: UploadCardAction): Up
       return { ...state, retentionConsent: action.retentionConsent };
     case 'setDeclaredPlanSource':
       return { ...state, declaredPlanSource: action.source };
+    case 'setAlreadyBooked':
+      return { ...state, alreadyBooked: action.alreadyBooked };
     default:
       return state;
   }
@@ -690,17 +737,17 @@ function UploadCard({
   isBusy,
 }: {
   onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => void;
-  onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor') => Promise<void>;
+  onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor', alreadyBooked?: boolean) => Promise<void>;
   isBusy: boolean;
 }) {
   const [state, dispatch] = useReducer(uploadCardReducer, initialUploadCardState);
-  const { activeTab, dragging, text, isProcessingFile, fileError, retentionConsent, declaredPlanSource } = state;
+  const { activeTab, dragging, text, isProcessingFile, fileError, retentionConsent, declaredPlanSource, alreadyBooked } = state;
   const fileRef = useRef<HTMLInputElement>(null);
 
   const tabs: { key: UploadTab; label: string }[] = [
-    { key: 'file',       label: 'Upload file'     },
-    { key: 'paste',      label: 'Paste itinerary' },
-    { key: 'screenshot', label: 'Screenshot'      },
+    { key: 'paste',      label: 'Paste plan / ChatGPT' },
+    { key: 'file',       label: 'Upload PDF / file'     },
+    { key: 'screenshot', label: 'Screenshot'           },
   ];
 
   const handleDragOver = (e: DragEvent) => { e.preventDefault(); dispatch({ type: 'setDragging', dragging: true }); };
@@ -708,7 +755,7 @@ function UploadCard({
   const handleFile = async (file: File) => {
     dispatch({ type: 'startFileProcessing' });
     try {
-      await onAnalyzeFile(file, retentionConsent, declaredPlanSource);
+      await onAnalyzeFile(file, retentionConsent, declaredPlanSource, alreadyBooked);
       dispatch({ type: 'fileProcessingSucceeded' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not read that file.';
@@ -770,7 +817,7 @@ function UploadCard({
                 {text.length > 0 ? `${text.length} characters` : 'Messy inputs work fine'}
               </span>
               <button
-                onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent }, declaredPlanSource)}
+                onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent, already_booked: alreadyBooked }, declaredPlanSource)}
                 disabled={text.length < 10 || isBusy || isProcessingFile}
                 style={primaryButtonStyle(text.length >= 10 && !isBusy)}
               >
@@ -780,6 +827,10 @@ function UploadCard({
             <PlanSourcePicker
               value={declaredPlanSource}
               onChange={(source) => dispatch({ type: 'setDeclaredPlanSource', source })}
+            />
+            <AlreadyBookedPicker
+              value={alreadyBooked}
+              onChange={(booked) => dispatch({ type: 'setAlreadyBooked', alreadyBooked: booked })}
             />
             <ConsentToggle
               checked={retentionConsent}
@@ -814,6 +865,10 @@ function UploadCard({
           <PlanSourcePicker
             value={declaredPlanSource}
             onChange={(source) => dispatch({ type: 'setDeclaredPlanSource', source })}
+          />
+          <AlreadyBookedPicker
+            value={alreadyBooked}
+            onChange={(booked) => dispatch({ type: 'setAlreadyBooked', alreadyBooked: booked })}
           />
           <ConsentToggle
             checked={retentionConsent}
@@ -1054,7 +1109,7 @@ function UploadHeroSection({
   isBusy,
 }: {
   onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => void;
-  onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor') => Promise<void>;
+  onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor', alreadyBooked?: boolean) => Promise<void>;
   isBusy: boolean;
 }) {
   return (
@@ -1487,17 +1542,19 @@ function UploadView({
   onAnalyze,
   onAnalyzeFile,
   isBusy,
+  agencyContext,
 }: {
   rootRef: RefObject<HTMLDivElement | null>;
   onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => void;
-  onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor') => Promise<void>;
+  onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor', alreadyBooked?: boolean) => Promise<void>;
   isBusy: boolean;
+  agencyContext?: AgencyBrandingContext | null;
 }) {
   return (
     <div ref={rootRef} style={{
       background: T.canvas, fontFamily: T.fBody, color: T.t1,
     }}>
-      <WedgeHeader />
+      <WedgeHeader agencyContext={agencyContext} />
       <div style={S.pageBackdrop} />
       <UploadHeroSection onAnalyze={onAnalyze} onAnalyzeFile={onAnalyzeFile} isBusy={isBusy} />
       <TravelMomentsSection />
@@ -1562,6 +1619,13 @@ function summaryFromAnalysis(analysis: RunStatusResponse | null): string {
             : 'We completed a live review of your plan.';
 
   return `${summaryLead} ${hardBlockers} critical issues · ${softBlockers} warnings · ${followUps} follow-up questions`;
+}
+
+// RDA_EX07 rec-3 (FND-0399): booking-critical visa/passport checks fire at
+// stage="booking", which doubles as the declared-already-booked stage for the
+// public checker. Everyone else runs the discovery checks.
+export function stageForSubmittedPlan(alreadyBooked: boolean): 'booking' | 'discovery' {
+  return alreadyBooked ? 'booking' : 'discovery';
 }
 
 export function formatTravelerBlockerItem(item: string): string {
@@ -1742,6 +1806,46 @@ function PlanSourcePicker({
       {options.map((option) => (
         <button
           key={option.key}
+          type='button'
+          onClick={() => onChange(option.key)}
+          style={{
+            fontSize: 11.5,
+            padding: '4px 10px',
+            borderRadius: 999,
+            cursor: 'pointer',
+            color: value === option.key ? T.canvas : T.t2,
+            background: value === option.key ? T.cyan : T.elevated,
+            border: `1px solid ${value === option.key ? T.cyan : T.b0}`,
+          }}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Booking-stage declaration (RDA_EX07 rec-3, FND-0399): travelers who have
+// already booked submit under stage="booking" so the booking-critical
+// visa/passport checks fire for them too. Declare-radio only — the engine
+// never infers booked-ness from freeform text.
+function AlreadyBookedPicker({
+  value,
+  onChange,
+}: {
+  value: boolean;
+  onChange: (alreadyBooked: boolean) => void;
+}) {
+  const options: Array<{ key: boolean; label: string }> = [
+    { key: false, label: 'Not booked yet' },
+    { key: true, label: 'Already booked' },
+  ];
+  return (
+    <div style={{ padding: '0 16px 10px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 12, color: T.t4 }}>Have you booked this trip?</span>
+      {options.map((option) => (
+        <button
+          key={String(option.key)}
           type='button'
           onClick={() => onChange(option.key)}
           style={{
@@ -2466,10 +2570,34 @@ type MarketplaceMatch = {
 // Matched-choice close (WOBS P2): user picks from the matched set, or joins
 // the demand-capture waitlist when no agency matches yet. The consent moment
 // (explicit checkbox + send) is the qualification — nothing is sent without it.
-function RouteRequestPanel({ tripId, blockerCount }: { tripId: string | null; blockerCount: number }) {
-  const [phase, setPhase] = useState<'idle' | 'loading' | 'matched' | 'waitlist' | 'sent' | 'error'>('idle');
-  const [matches, setMatches] = useState<MarketplaceMatch[]>([]);
-  const [pickedAgency, setPickedAgency] = useState<string | null>(null);
+function RouteRequestPanel({
+  tripId,
+  blockerCount,
+  agencyContext,
+}: {
+  tripId: string | null;
+  blockerCount: number;
+  agencyContext?: AgencyBrandingContext | null;
+}) {
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'matched' | 'waitlist' | 'sent' | 'error'>(
+    agencyContext ? 'matched' : 'idle'
+  );
+  const [matches, setMatches] = useState<MarketplaceMatch[]>(
+    agencyContext
+      ? [
+          {
+            agency_id: agencyContext.agency_id,
+            display_name: agencyContext.display_name,
+            response_sla_hours: agencyContext.response_sla_hours ?? 24,
+            blurb: agencyContext.blurb ?? 'Your dedicated travel agency advisor.',
+            match_reasons: agencyContext.places_covered?.length
+              ? [`Covers ${agencyContext.places_covered.join(', ')}`]
+              : ['Dedicated Advisor'],
+          },
+        ]
+      : []
+  );
+  const [pickedAgency, setPickedAgency] = useState<string | null>(agencyContext?.agency_id ?? null);
   const [contact, setContact] = useState('');
   const [consented, setConsented] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2606,10 +2734,12 @@ function ResultsConversionSection({
   onShareReport,
   tripId,
   blockerCount,
+  agencyContext,
 }: {
   onShareReport: () => Promise<void>;
   tripId: string | null;
   blockerCount: number;
+  agencyContext?: AgencyBrandingContext | null;
 }) {
   const handleShareReport = onShareReport;
   return (
@@ -2617,21 +2747,27 @@ function ResultsConversionSection({
       {/* Soft agency conversion — matched choice + user-owned brief (WOBS P2) */}
         <div className='itinerary-reveal' style={S.conversionCard}>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: T.t1, marginBottom: 4 }}>Want a professional to handle this?</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: T.t1, marginBottom: 4 }}>
+              {agencyContext ? `Have ${agencyContext.display_name} handle your trip` : 'Want a professional to handle this?'}
+            </div>
             <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55, maxWidth: '50ch' }}>
-              Pick a matched agency to fix these findings — or take this brief to any agent you already trust.
+              {agencyContext
+                ? 'Send your brief directly to your dedicated advisor to fix these findings, claim VIP amenities, and protect your bookings.'
+                : 'Pick a matched agency to fix these findings — or take this brief to any agent you already trust.'}
             </div>
           </div>
-          <RouteRequestPanel tripId={tripId} blockerCount={blockerCount} />
+          <RouteRequestPanel tripId={tripId} blockerCount={blockerCount} agencyContext={agencyContext} />
           <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <button
               onClick={handleShareReport}
               style={S.shareReportButton}>
               Share report
             </button>
-            <Link href='/signup' style={S.advisorLinkButton}>
-              Find an advisor →
-            </Link>
+            {!agencyContext && (
+              <Link href='/signup' style={S.advisorLinkButton}>
+                Find an advisor →
+              </Link>
+            )}
           </div>
         </div>
     </>
@@ -2646,6 +2782,7 @@ function ResultsView({
   tracking,
   analysis,
   errorMessage,
+  agencyContext,
 }: {
   rootRef: RefObject<HTMLDivElement | null>;
   onReset: () => void;
@@ -2653,6 +2790,7 @@ function ResultsView({
   tracking: { sessionId: string; inquiryId: string } | null;
   analysis?: RunStatusResponse | null;
   errorMessage?: string | null;
+  agencyContext?: AgencyBrandingContext | null;
 }) {
   const [manageMessage, setManageMessage] = useState<string | null>(null);
   const [manageBusy, setManageBusy] = useState<'export' | 'delete' | null>(null);
@@ -2799,7 +2937,13 @@ function ResultsView({
   const handleShareReport = async () => {
     if (!tracking) return;
     const packetId = tripId ?? `packet_${Date.now().toString(36)}`;
-    const shareText = `${summaryCopy}\nReport ID: ${tripId ?? 'pending'}`;
+    const shareUrl = agencyContext?.slug
+      ? `https://waypoint.app/check/${agencyContext.slug}`
+      : 'https://waypoint.app/itinerary-checker';
+    const findingsPreview = blockerItems.length > 0
+      ? `\nKey Audit Findings:\n${blockerItems.slice(0, 3).map((item) => `• ${item}`).join('\n')}`
+      : '';
+    const shareText = `🌍 Travel Plan Health Check — Score: ${SCORE}/100\n${summaryCopy}${findingsPreview}\n\nChecked with Waypoint Diagnostic: ${shareUrl}`;
 
     let shareChannel: 'copy_paste' | 'other' = 'copy_paste';
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
@@ -2865,7 +3009,7 @@ function ResultsView({
 
   return (
     <div ref={rootRef} style={S.resultsRoot}>
-      <WedgeHeader />
+      <WedgeHeader agencyContext={agencyContext} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', maxWidth: 860, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <button onClick={onReset} style={S.backButton}>
           ← Analyze another itinerary
@@ -2913,7 +3057,12 @@ function ResultsView({
           onReportRevision={handleReportRevision}
           storageCopy={storageCopy}
         />
-        <ResultsConversionSection onShareReport={handleShareReport} tripId={tripId} blockerCount={blockerItems.length} />
+        <ResultsConversionSection
+          onShareReport={handleShareReport}
+          tripId={tripId}
+          blockerCount={blockerItems.length}
+          agencyContext={agencyContext}
+        />
         <div style={{ paddingBottom: 48 }} />
       </div>
     </div>
@@ -2941,14 +3090,22 @@ function CheckerMaintenanceNotice() {
   );
 }
 
-export default function ItineraryCheckerPage() {
+export default function ItineraryCheckerPage({
+  agencyContext,
+}: {
+  agencyContext?: AgencyBrandingContext | null;
+} = {}) {
   if (CHECKER_DISABLED) {
     return <CheckerMaintenanceNotice />;
   }
-  return <CheckerPage />;
+  return <CheckerPage agencyContext={agencyContext} />;
 }
 
-function CheckerPage() {
+function CheckerPage({
+  agencyContext,
+}: {
+  agencyContext?: AgencyBrandingContext | null;
+} = {}) {
   const [state, dispatch] = useReducer(itineraryCheckerReducer, initialItineraryCheckerState);
   const { view, analysis, analysisError, isAnalyzing, tracking } = state;
   const motionRootRef = useRef<HTMLDivElement>(null);
@@ -2969,7 +3126,7 @@ function CheckerPage() {
       trip_id: tripId ?? analysis?.trip_id ?? null,
       actor_type: 'traveler',
       actor_id: null,
-      workspace_id: 'waypoint-hq',
+      workspace_id: agencyContext?.agency_id ?? 'waypoint-hq',
       channel: 'web',
       locale: typeof navigator !== 'undefined' ? navigator.language : null,
       currency: null,
@@ -3126,7 +3283,10 @@ function CheckerPage() {
         structured_json: { source_payload: storedPayload, ...inferredContext },
         retention_consent: retentionConsent,
         declared_plan_source: declaredPlanSource ?? null,
-        stage: 'discovery',
+        // RDA_EX07 rec-3 (FND-0399): a traveler who declared the trip already
+        // booked submits under stage="booking" so the booking-critical
+        // visa/passport checks fire; everyone else runs the discovery checks.
+        stage: stageForSubmittedPlan(Boolean(sourcePayload?.already_booked)),
         operating_mode: 'normal_intake',
         strict_leakage: true,
         scenario_id: null,
@@ -3147,7 +3307,7 @@ function CheckerPage() {
     }
   };
 
-  const handleAnalyzeFile = async (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor') => {
+  const handleAnalyzeFile = async (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor', alreadyBooked?: boolean) => {
     const extracted = await extractTextFromFile(file);
     const trimmed = extracted.trim();
     if (trimmed.length < 10) {
@@ -3175,6 +3335,7 @@ function CheckerPage() {
       kind: 'file_upload',
       uploaded_file: uploadedFile,
       retention_consent: retentionConsent,
+      already_booked: alreadyBooked ?? false,
       trip_context: inferredContext,
     }, declaredPlanSource);
   };
@@ -3188,6 +3349,7 @@ function CheckerPage() {
         tracking={tracking}
         analysis={analysis}
         errorMessage={analysisError}
+        agencyContext={agencyContext}
       />
     );
   }
@@ -3198,6 +3360,7 @@ function CheckerPage() {
       onAnalyze={handleAnalyze}
       onAnalyzeFile={handleAnalyzeFile}
       isBusy={isAnalyzing}
+      agencyContext={agencyContext}
     />
   );
 }

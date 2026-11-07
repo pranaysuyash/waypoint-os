@@ -185,6 +185,32 @@ def get_inbox_stats(
         if analytics_payload(t).get("sla_status") == "at_risk"
     )
 
+    # R2-F agent-resolved-share (2026-11-03): a trip is RESOLVED when its
+    # decision was produced AND it left the decision stage (proposal link
+    # exists, or a recorded review action moved it on). It is AGENT-RESOLVED
+    # when no operator review action ever touched it (no reviewed_at).
+    # Sample-capped like every scan on this endpoint — the basis travels with
+    # the numbers.
+    resolved = 0
+    agent_resolved = 0
+    for t in raw_trips:
+        analytics = analytics_payload(t)
+        review_meta = analytics.get("review_metadata") if isinstance(analytics.get("review_metadata"), dict) else {}
+        has_decision = isinstance(t.get("decision"), dict) and bool(t.get("decision"))
+        left_decision_stage = bool(t.get("proposal_link_token")) or bool(review_meta.get("reviewed_at"))
+        if not (has_decision and left_decision_stage):
+            continue
+        resolved += 1
+        if not review_meta.get("reviewed_at"):
+            agent_resolved += 1
+
+    agent_resolved_share: Optional[float] = None
+    share_basis = "paged_total"
+    if resolved > 0:
+        agent_resolved_share = round(agent_resolved / resolved, 4)
+    if total > 10000:
+        share_basis = "capped_sample"
+
     return {
         "total": total,
         "unassigned": unassigned,
@@ -197,6 +223,10 @@ def get_inbox_stats(
         "oldestWaitingDays": max(waiting_days) if waiting_days else None,
         "oldestUnassignedWaitingDays": max(unassigned_waiting_days) if unassigned_waiting_days else None,
         "statsCoverage": len(projected_trips),
+        "resolvedCount": resolved,
+        "agentResolvedCount": agent_resolved,
+        "agentResolvedShare": agent_resolved_share,
+        "agentResolvedShareBasis": share_basis,
     }
 
 

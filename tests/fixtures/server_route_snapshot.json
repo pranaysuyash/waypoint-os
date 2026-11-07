@@ -1,5 +1,5 @@
 {
-  "route_count": 417,
+  "route_count": 422,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1106,6 +1106,30 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/agency-api/keys",
+      "name": "create_api_key",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/agency-api/keys/{key_id}",
+      "name": "revoke_key",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/agency-api/trips/{trip_id}/summary",
+      "name": "get_trip_summary",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/benchmarking/stress-test",
       "name": "execute_stress_test",
       "methods": [
@@ -1220,6 +1244,14 @@
     {
       "path": "/api/v1/commission/ingest/{batch_id}/link",
       "name": "manually_link_statement_row",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/commission/ingest/{batch_id}/record",
+      "name": "record_statement_row_payout",
       "methods": [
         "POST"
       ],
@@ -1542,6 +1574,14 @@
       "name": "get_rebook_options",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/disruptions/{trip_id}/report",
+      "name": "report_disruption",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },

@@ -200,3 +200,14 @@ data/llm_traces/
 
 # DB backups: synthetic-data dumps, 60MB-class; never in git history going forward
 Docs/backups/
+
+# Additional IDE/tool state, temp debug scripts, and runtime test-accumulated stores (2026-11-07)
+.zcode/
+tests/zz_debug_*.py
+insights_after_commercial_evidence.png
+data/commission_batches/
+data/messages/agency_cl_*.jsonl
+data/messages/agency_opact_*.jsonl
+data/work_items/agency_fnd0174_family_*.jsonl
+data/work_items/agency_opact_*.jsonl
+data/work_items/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-*.jsonl

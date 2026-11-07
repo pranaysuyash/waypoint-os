@@ -1709,6 +1709,13 @@ app.include_router(pre_departure_router.router, dependencies=[Depends(_auth_or_s
 from spine_api.routers import destination_intelligence as destination_intelligence_router  # noqa: E402
 app.include_router(destination_intelligence_router.router, dependencies=[Depends(_auth_or_skip)])
 
+# Agency-facing external API (R2-A, 2026-11-04): X-API-Key auth — NOT the
+# operator JWT dependency — with provenance-gated (license_tier/as_of)
+# responses per the 2026-10-30 adjudication. Key minting/revoke stay
+# JWT-gated inside the router.
+from spine_api.routers import agency_api as agency_api_router  # noqa: E402
+app.include_router(agency_api_router.router)
+
 # Work-intake classification queue (A1/C1, INCOMING_WORK_CLASSIFICATION_MAP_2026-10-24)
 from spine_api.routers import work_items as work_items_mount_router  # noqa: E402
 app.include_router(work_items_mount_router.router, dependencies=[Depends(_auth_or_skip)])
@@ -2562,7 +2569,7 @@ def patch_trip(
             return None
 
     def _sync_manual_trip_fields(current_trip: Dict[str, Any], incoming_updates: Dict[str, Any]) -> Dict[str, Any]:
-        from src.intake.fact_overrides import TRIP_FIELD_FACTS, record_fact_override
+        from src.intake.fact_overrides import TRIP_FIELD_FACTS, explicit_fact_override, record_fact_override
 
         synced_updates = dict(incoming_updates)
         extracted = _clone_json(current_trip.get("extracted"), {}) or {}
@@ -2612,23 +2619,36 @@ def patch_trip(
             budget_raw = incoming_updates.get("budget")
             budget_text = _trimmed_string(budget_raw)
             if budget_text is not None:
-                facts["budget_raw_text"] = {
-                    "value": budget_text,
-                    "confidence": 1.0,
-                    "authority_level": "explicit_user",
-                    # FND-0368: reference-only. Without a non-correction mode the
-                    # canonical resolver picks this slot FIRST and the raw string
-                    # wins over the parsed numeric below.
-                    "extraction_mode": "raw_reference",
-                }
+                # Contract-review R1 (2026-11-07): budget corrections go through
+                # the ranked writer at manual_override like every other operator
+                # correction — raw dict assignment at explicit_user let a
+                # traveler ask-answer clobber the operator's edit and dropped it
+                # on lifecycle replay. FND-0368 order preserved: raw text first
+                # (reference), parsed numeric after (the fact).
+                budget_source = f"manual_{uuid.uuid4().hex}"
+                facts["budget_raw_text"] = explicit_fact_override(
+                    "budget_raw_text",
+                    budget_text,
+                    source_ref=budget_source,
+                    mode="manual_entry",
+                    previous=facts.get("budget_raw_text"),
+                    authority_level="manual_override",
+                )
                 parsed_budget = _parse_budget_amount(budget_text)
                 if parsed_budget is not None:
-                    facts["budget"] = {
-                        "value": parsed_budget,
-                        "confidence": 1.0,
-                        "authority_level": "explicit_user",
-                    }
+                    facts["budget"] = explicit_fact_override(
+                        "budget",
+                        parsed_budget,
+                        source_ref=budget_source,
+                        mode="manual_entry",
+                        previous=facts.get("budget"),
+                        authority_level="manual_override",
+                    )
                     _set_structured_overlay("budget", parsed_budget)
+                    # FND-0368: the top-level key gets the PARSED numeric too,
+                    # or resolution prefers the raw text over the fact and the
+                    # parse is silently lost.
+                    synced_updates["budget"] = parsed_budget
                     # FND-0368: the top-level key rides in from incoming_updates as
                     # the raw string; the dual-write contract stores the PARSED
                     # numeric there too, or resolution prefers the raw text over
@@ -2638,11 +2658,14 @@ def patch_trip(
                     # Store raw text so extracted.facts.budget is always populated after PATCH.
                     # Downstream resolution via resolve_trip_field() will read this value;
                     # legacy top-level fallbacks exist for pre-fix trips until Phase 5.
-                    facts["budget"] = {
-                        "value": budget_text,
-                        "confidence": 0.5,
-                        "authority_level": "explicit_user_raw",
-                    }
+                    facts["budget"] = explicit_fact_override(
+                        "budget",
+                        budget_text,
+                        source_ref=budget_source,
+                        mode="manual_entry",
+                        previous=facts.get("budget"),
+                        authority_level="manual_override",
+                    )
                     _set_structured_overlay("budget", budget_text)
             else:
                 facts.pop("budget_raw_text", None)

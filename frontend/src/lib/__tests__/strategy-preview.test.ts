@@ -20,6 +20,9 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
     decision: undefined,
     validation: undefined,
     tripPriorities: "slow pace, vegetarian food",
+    // FND-0402: trip purpose is a required brief member (FND-0379 fare-quote
+    // gate) — without it the derived preview opens with the purpose question.
+    tripPurpose: "family holiday",
     ...overrides,
   };
 }

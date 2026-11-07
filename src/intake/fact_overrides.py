@@ -168,6 +168,14 @@ def try_record_fact_override(
     )
     facts[canonical] = slot
     for dependent in FACT_DEPENDENTS.get(canonical, ()):
+        # Contract-review R3 (2026-11-07): invalidation is derived-data
+        # maintenance, but it must not silently DOWNGRADE a higher-authority
+        # dependent (e.g. an operator-corrected resolved_destination under a
+        # traveler's destination answer). Skip dependents held above the
+        # incoming authority — they stay as-is and the root slot's change is
+        # still applied (the operator/traveler value outranks the derived one).
+        if slot_authority_rank(facts.get(dependent)) < AuthorityLevel.rank(authority_level):
+            continue
         invalidated = explicit_fact_override(
             dependent, None, previous=facts.get(dependent),
             authority_level=authority_level,

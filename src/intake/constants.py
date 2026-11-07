@@ -114,3 +114,29 @@ def assert_valid_decision_state(value: str) -> DecisionState:
             f"Invalid decision_state={value!r}. Expected one of {DECISION_STATES}"
         )
     return cast(DecisionState, value)
+
+
+# =============================================================================
+# Trip lifecycle stage vocabulary (canonical single source)
+# =============================================================================
+# The four lifecycle stages shared by trip state, run-request contracts, and
+# decision stage-gating. `stage="booking"` doubles as the booking-critical
+# rule gate (visa_not_applied / document_risk); a traveler who declares the
+# trip already booked submits under this same stage so those rules fire —
+# see SpineRunRequest.stage validation and RDA_EX07 rec-3 (2026-11-04).
+TRIP_STAGE_VALUES: tuple[str, ...] = (
+    "discovery",
+    "shortlist",
+    "proposal",
+    "booking",
+)
+
+TRIP_STAGE_VALUES_FROZENSET = frozenset(TRIP_STAGE_VALUES)
+
+
+def assert_valid_trip_stage(value: str) -> str:
+    if value not in TRIP_STAGE_VALUES_FROZENSET:
+        raise ValueError(
+            f"Invalid stage={value!r}. Expected one of {TRIP_STAGE_VALUES}"
+        )
+    return value

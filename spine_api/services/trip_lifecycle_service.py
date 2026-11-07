@@ -8,6 +8,7 @@ from copy import deepcopy
 from typing import Any, Callable, Dict, Optional
 
 from spine_api.run_ledger import RunLedger
+from src.intake.constants import TRIP_STAGE_VALUES_FROZENSET
 from src.intake.fact_overrides import (
     AUTHORITATIVE_FACT_SNAPSHOT,
     CORRECTION_MODES,
@@ -24,7 +25,9 @@ except (ImportError, ValueError):
 AuditStore = persistence.AuditStore
 TripStore = persistence.TripStore
 
-VALID_STAGES = {"discovery", "shortlist", "proposal", "booking"}
+# Canonical vocabulary lives in src.intake.constants.TRIP_STAGE_VALUES
+# (FND-0400: no local stage-vocabulary copies).
+VALID_STAGES = TRIP_STAGE_VALUES_FROZENSET
 
 
 class ReassessmentPersistenceError(RuntimeError):
@@ -204,13 +207,21 @@ def build_reassessment_request_from_trip(
         except Exception:
             pass
 
+    # Clamp the derived stage to the canonical vocabulary. Stored trips may
+    # predate stage validation (FND-0400); an unknown value here would fail
+    # SpineRunRequest construction downstream, so it degrades explicitly to
+    # discovery — the safe default — at the single derivation point.
+    derived_stage = stage_override or trip.get("stage") or raw_input.get("stage") or "discovery"
+    if derived_stage not in TRIP_STAGE_VALUES_FROZENSET:
+        derived_stage = "discovery"
+
     request_dict: dict[str, Any] = {
         "raw_note": raw_note_value,
         "owner_note": submission.get("owner_note"),
         "structured_json": submission.get("structured_json"),
         "itinerary_text": submission.get("itinerary_text"),
         "retention_consent": bool(raw_input.get("retention_consent", False)),
-        "stage": stage_override or trip.get("stage") or raw_input.get("stage") or "discovery",
+        "stage": derived_stage,
         "operating_mode": operating_mode_override or raw_input.get("operating_mode") or "normal_intake",
         "strict_leakage": bool(strict_leakage_override if strict_leakage_override is not None else raw_input.get("strict_leakage", False)),
         "scenario_id": raw_input.get("fixture_id"),

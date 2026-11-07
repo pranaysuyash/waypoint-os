@@ -58,7 +58,7 @@ export default function SuppliersPage() {
         name: 'Wilderness Safaris DMC',
         category: 'dmc',
         destinations: ['South Africa', 'Botswana', 'Namibia', 'Zimbabwe'],
-        commissionTier: '18% Net Wholesale Markup',
+        commissionTier: '18% Net Wholesale Markup (illustrative)',
         paymentTerms: 'Net 30 Days (48h Soft-Hold)',
         slaScore: 99.2,
         softHoldSupported: true,
@@ -72,7 +72,7 @@ export default function SuppliersPage() {
         name: 'The Royal Portfolio Luxury Collection',
         category: 'hotel',
         destinations: ['Cape Town', 'Franschhoek', 'Kruger National Park'],
-        commissionTier: '15% Preferred Direct Commission',
+        commissionTier: '15% Preferred Direct Commission (illustrative)',
         paymentTerms: 'Pre-paid 14 days before check-in',
         slaScore: 98.8,
         softHoldSupported: true,
@@ -86,7 +86,7 @@ export default function SuppliersPage() {
         name: 'Singapore DMC & Sentosa Experiences',
         category: 'dmc',
         destinations: ['Singapore', 'Malaysia', 'Bintan'],
-        commissionTier: '14% Wholesale Net Contract',
+        commissionTier: '14% Wholesale Net Contract (illustrative)',
         paymentTerms: 'Instant Confirmation / Net 15',
         slaScore: 97.9,
         softHoldSupported: true,
@@ -100,7 +100,7 @@ export default function SuppliersPage() {
         name: 'Emirates Airlines B2B Partner Portal',
         category: 'airline',
         destinations: ['Global Routes via Dubai Hub'],
-        commissionTier: 'Standard IATA + Incentive Override',
+        commissionTier: 'Standard IATA + Incentive Override (illustrative)',
         paymentTerms: 'BSP / GDS Instant Ticketing',
         slaScore: 99.5,
         softHoldSupported: false,
@@ -114,7 +114,7 @@ export default function SuppliersPage() {
         name: 'Cape Executive VIP Logistics & Chauffeur',
         category: 'transport',
         destinations: ['Western Cape', 'Garden Route'],
-        commissionTier: '12% Net Margin Protection',
+        commissionTier: '12% Net Margin Protection (illustrative)',
         paymentTerms: 'Net 15 Days',
         slaScore: 99.0,
         softHoldSupported: true,
@@ -130,7 +130,7 @@ export default function SuppliersPage() {
         name: 'Illustrative Travel Insurance Underwriter (Sample Record)',
         category: 'insurance',
         destinations: ['Illustrative Worldwide Coverage Options'],
-        commissionTier: 'Sample 25% Policy Issuance Commission (Not Carrier-Sourced)',
+        commissionTier: 'Sample 25% Policy Issuance Commission (Not Carrier-Sourced, illustrative)',
         paymentTerms: 'Monthly Commission Remittance',
         slaScore: 98.4,
         softHoldSupported: false,
@@ -201,6 +201,7 @@ export default function SuppliersPage() {
         className='rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100'
       >
         <div className='font-semibold'>Local preview only</div>
+        {/* FND-0398: commission tiers carry the (illustrative) suffix at record level — same rigor as the FND-0182 insurer row. Real supplier master data awaits the DP-04a producer. */}
         <p className='mt-1 text-xs leading-5 text-amber-100/80'>
           The records, commercial terms, scores, and destinations below are sample fixtures for interface review. They are not evidence that a supplier contract exists, a rate sheet is current, an SLA was measured, or inventory is available.
         </p>

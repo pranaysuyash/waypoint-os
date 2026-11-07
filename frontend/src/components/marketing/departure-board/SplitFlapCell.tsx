@@ -13,6 +13,8 @@ export interface SplitFlapCellProps {
   spec: FlapCellSpec;
   rowIndex: number;
   colIndex: number;
+  totalCols?: number;
+  continuousRowText?: string;
   startDelayMs?: number;
   stepDurationMs?: number;
   compact?: boolean;
@@ -25,6 +27,8 @@ export const SplitFlapCell: React.FC<SplitFlapCellProps> = ({
   spec,
   rowIndex,
   colIndex,
+  totalCols = 12,
+  continuousRowText,
   startDelayMs = 0,
   stepDurationMs = 56,
   compact = false,
@@ -120,42 +124,64 @@ export const SplitFlapCell: React.FC<SplitFlapCellProps> = ({
   const rotatingUpperFrame = displayed;
   const rotatingLowerFrame = incoming ?? displayed;
 
+  // Compute warm left-to-right terminal lighting across the board row (#f3ede0 on left -> #d6c8b2 on right)
+  const colRatio = Math.max(0, Math.min(1, colIndex / Math.max(1, totalCols - 1)));
+  const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
+  const creamTopStart = `rgb(${lerp(244, 219, colRatio)}, ${lerp(239, 209, colRatio)}, ${lerp(227, 190, colRatio)})`;
+  const creamTopEnd = `rgb(${lerp(235, 210, colRatio)}, ${lerp(229, 199, colRatio)}, ${lerp(215, 179, colRatio)})`;
+  const creamBotStart = `rgb(${lerp(231, 206, colRatio)}, ${lerp(224, 194, colRatio)}, ${lerp(209, 174, colRatio)})`;
+  const creamBotEnd = `rgb(${lerp(224, 199, colRatio)}, ${lerp(216, 187, colRatio)}, ${lerp(200, 166, colRatio)})`;
+
   const renderFaceContent = (
     frame: FlapStepFrame,
     half: "top" | "bottom"
   ): React.ReactNode => {
     if (frame.variant === "yellow_two_line") {
+      // Continuous multi-flap yellow banner (`NEED` across top, `CONFIRMATION` across bottom)
+      // Each flap clips its own horizontal slice (`left: -colIndex * 100%`, `width: 800%`) so 3D per-flap rotation works while letters flow continuously without artificial gaps!
       return (
         <div
-          className={`w-full h-full flex flex-col items-center justify-center select-none ${
+          className={`relative w-full h-full overflow-hidden select-none ${
             half === "top"
-              ? "bg-gradient-to-b from-[#fad02c] to-[#efb913]"
-              : "bg-gradient-to-b from-[#e6ae0e] to-[#d99f07]"
+              ? "bg-gradient-to-b from-[#f7cc22] to-[#eab812]"
+              : "bg-gradient-to-b from-[#e4b10e] to-[#d8a208]"
           }`}
         >
-          {half === "top" ? (
-            <span
-              className="font-sans font-black text-[#141a24] text-[18px] sm:text-[22px] lg:text-[26px] leading-none uppercase"
-              style={{ transform: "scaleX(0.84) scaleY(1.08)" }}
-            >
-              {frame.topText}
-            </span>
-          ) : (
-            <div className="flex flex-col items-center justify-center w-full leading-none">
+          {/* Screen-reader accessible per-cell text */}
+          <span className="sr-only">
+            {half === "top" ? frame.topText : frame.bottomText ?? ""}
+          </span>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 flex items-center pl-[2.8%]"
+            style={{
+              left: `${-colIndex * 100}%`,
+              width: "800%",
+            }}
+          >
+            {half === "top" ? (
               <span
-                className="font-sans font-black text-[#141a24] text-[17px] sm:text-[20px] lg:text-[24px] tracking-[0.05em] leading-none uppercase"
-                style={{ transform: "scaleX(0.85) scaleY(1.08)" }}
+                className="font-sans font-extrabold text-[#141923] text-[20px] sm:text-[26px] lg:text-[31px] tracking-[0.12em] leading-none uppercase whitespace-nowrap translate-y-[4%]"
+                style={{ transform: "scaleX(0.75) scaleY(1.06)", transformOrigin: "left center" }}
               >
-                {frame.bottomText ?? ""}
+                NEED
               </span>
-            </div>
-          )}
+            ) : (
+              <span
+                className="font-sans font-extrabold text-[#141923] text-[20px] sm:text-[26px] lg:text-[31px] tracking-[0.145em] leading-none uppercase whitespace-nowrap -translate-y-[4%]"
+                style={{ transform: "scaleX(0.76) scaleY(1.06)", transformOrigin: "left center" }}
+              >
+                CONFIRMATION
+              </span>
+            )}
+          </div>
         </div>
       );
     }
 
     const isBlurredFlip = frame.variant === "blurred_flip";
     const isDarkRow4Blur = isBlurredFlip && rowIndex === 3 && colIndex <= 1;
+    const isCream = frame.variant === "cream" || (isBlurredFlip && !isDarkRow4Blur);
 
     const bgClass =
       frame.variant === "scanning_amber"
@@ -172,18 +198,109 @@ export const SplitFlapCell: React.FC<SplitFlapCellProps> = ({
               : "bg-gradient-to-b from-[#171d28] to-[#121720] text-[#f7f3e8]"
             : frame.variant === "dark_blank"
               ? half === "top"
-                ? "bg-gradient-to-b from-[#1f2633] to-[#181e29] text-[#64748b]"
-                : "bg-gradient-to-b from-[#151a24] to-[#11161f] text-[#64748b]"
-              : half === "top"
-                ? "bg-gradient-to-b from-[#f7f3e9] to-[#ece5d5] text-[#151c28]"
-                : "bg-gradient-to-b from-[#e6dfd0] to-[#ddd4c2] text-[#151c28]";
+                ? "bg-gradient-to-b from-[#1d222c] to-[#161b24] text-[#64748b]"
+                : "bg-gradient-to-b from-[#141820] to-[#10141b] text-[#64748b]"
+              : "text-[#141a24]";
+
+    const creamGradientStyle = isCream
+      ? {
+          backgroundImage:
+            half === "top"
+              ? `linear-gradient(to bottom, ${creamTopStart}, ${creamTopEnd})`
+              : `linear-gradient(to bottom, ${creamBotStart}, ${creamBotEnd})`,
+        }
+      : undefined;
 
     const glyphSize = compact
-      ? "text-[20px] sm:text-[25px] lg:text-[31px]"
-      : "text-[27px] sm:text-[36px] lg:text-[45px]";
+      ? "text-[25px] sm:text-[33px] lg:text-[40px]"
+      : "text-[28px] sm:text-[38px] lg:text-[46px]";
+
+    if (
+      continuousRowText &&
+      frame.variant === "cream" &&
+      (!isFlipping || frame.topText === spec.topText)
+    ) {
+      // Continuous multi-flap condensed typography across the 12 physical flaps (`4 TRAVELERS`, `CULTURE + COAST`)
+      const isTravelersRow = rowIndex === 1;
+      const firstChar = continuousRowText.charAt(0);
+      const restText = continuousRowText.slice(1).trimStart();
+
+      return (
+        <div
+          className={`relative w-full h-full overflow-hidden select-none ${bgClass}`}
+          style={creamGradientStyle}
+        >
+          <span className="sr-only">
+            {frame.topText === " " ? "\u00A0" : frame.topText}
+          </span>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 flex items-center"
+            style={{
+              left: `${-colIndex * 100}%`,
+              width: `${totalCols * 100}%`,
+              top: half === "top" ? "100%" : "0%",
+              transform: "translateY(-50%)",
+            }}
+          >
+            {isTravelersRow ? (
+              <div className="flex items-center w-full pl-[2.4%]">
+                <span
+                  className={`font-sans font-extrabold leading-none ${glyphSize} text-[#141a24] inline-block w-[17.5%] shrink-0`}
+                  style={{
+                    transform: "scaleX(0.75) scaleY(1.06)",
+                    transformOrigin: "left center",
+                  }}
+                >
+                  {firstChar}
+                </span>
+                <div className="flex items-center justify-between w-[71.5%] shrink-0">
+                  {Array.from(restText).map((ch, idx) => (
+                    <span
+                      key={idx}
+                      className={`font-sans font-extrabold leading-none ${glyphSize} text-[#141a24]`}
+                      style={{
+                        transform: "scaleX(0.74) scaleY(1.06)",
+                      }}
+                    >
+                      {ch}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center w-full pl-[2.1%]">
+                <div className="flex items-center justify-between w-[89.5%] shrink-0">
+                  {Array.from(continuousRowText).map((ch, idx) => (
+                    <span
+                      key={idx}
+                      className={`font-sans font-extrabold leading-none ${
+                        ch === "+"
+                          ? "text-[20px] sm:text-[26px] lg:text-[31px] mx-[1.2%]"
+                          : glyphSize
+                      } text-[#141a24] ${
+                        ch === " " ? "inline-block w-[4.8%]" : ""
+                      }`}
+                      style={{
+                        transform: "scaleX(0.70) scaleY(1.06)",
+                      }}
+                    >
+                      {ch === " " ? "\u00A0" : ch}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     return (
-      <div className={`relative w-full h-full overflow-hidden select-none ${bgClass}`}>
+      <div
+        className={`relative w-full h-full overflow-hidden select-none ${bgClass}`}
+        style={creamGradientStyle}
+      >
         <span
           className={`absolute left-1/2 font-sans font-extrabold leading-none ${glyphSize} ${
             half === "top" ? "bottom-0" : "top-0"
@@ -191,8 +308,8 @@ export const SplitFlapCell: React.FC<SplitFlapCellProps> = ({
           style={{
             transform:
               half === "top"
-                ? `translate(-50%, 50%) scaleX(0.74) scaleY(${isBlurredFlip ? 1.24 : 1.08})`
-                : `translate(-50%, -50%) scaleX(0.74) scaleY(${isBlurredFlip ? 1.24 : 1.08})`,
+                ? `translate(-50%, 50%) scaleX(${compact ? 0.72 : 0.74}) scaleY(${isBlurredFlip ? 1.22 : 1.06})`
+                : `translate(-50%, -50%) scaleX(${compact ? 0.72 : 0.74}) scaleY(${isBlurredFlip ? 1.22 : 1.06})`,
           }}
         >
           {frame.topText === " " ? "\u00A0" : frame.topText}
@@ -202,44 +319,46 @@ export const SplitFlapCell: React.FC<SplitFlapCellProps> = ({
   };
 
   const isYellowTwoLine = displayed.variant === "yellow_two_line";
+  const isDarkBlank = displayed.variant === "dark_blank";
 
   return (
     <div
-      className={`relative rounded-[3px] ${
-        isYellowTwoLine ? "bg-[#3b2c08]/75 p-[0.5px]" : "bg-[#0e131d]/85 p-[0.75px]"
-      } shadow-[inset_0_1px_2px_rgba(0,0,0,0.65)] transition-shadow duration-200 ${
-        compact
-          ? "w-[22px] sm:w-[25.5px] h-[44px] sm:h-[50px]"
-          : "w-[31px] sm:w-[36.5px] h-[44px] sm:h-[50px]"
-      }`}
+      className={`relative w-full h-full min-w-0 rounded-[2.5px] ${
+        isYellowTwoLine
+          ? "bg-[#2c2106]/65 p-0"
+          : isDarkBlank
+            ? "bg-[#0a0d13]/85 p-0"
+            : "bg-[#1a1815]/60 p-0"
+      } shadow-[0_2px_3px_rgba(0,0,0,0.45)] transition-shadow duration-200`}
       style={{
         perspective: "420px",
-        boxShadow: highlighted && highlightColor
-          ? `0 0 0 1.5px ${highlightColor}, 0 0 12px ${highlightColor}66, inset 0 1px_2px rgba(0,0,0,0.65)`
-          : undefined,
+        boxShadow:
+          highlighted && highlightColor
+            ? `0 0 0 1.5px ${highlightColor}, 0 0 12px ${highlightColor}66`
+            : undefined,
       }}
       data-testid={`split-flap-cell-${rowIndex}-${colIndex}`}
     >
       <div
-        className="relative w-full h-full rounded-[2px] overflow-hidden"
+        className="relative w-full h-full rounded-[2.5px] overflow-hidden"
         style={{
           filter: isFlipping ? "url(#split-flap-motion-blur)" : undefined,
         }}
       >
         {/* Static Upper Half */}
-        <div className="absolute inset-x-0 top-0 h-[calc(50%-0.5px)] overflow-hidden rounded-t-[2px]">
+        <div className="absolute inset-x-0 top-0 h-1/2 overflow-hidden rounded-t-[2.5px]">
           {renderFaceContent(topStaticFrame, "top")}
         </div>
 
         {/* Static Lower Half */}
-        <div className="absolute inset-x-0 bottom-0 h-[calc(50%-0.5px)] overflow-hidden rounded-b-[2px]">
+        <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden rounded-b-[2.5px]">
           {renderFaceContent(bottomStaticFrame, "bottom")}
         </div>
 
         {/* Rotating Upper Leaf (0deg -> -90deg) */}
         {isFlipping && flipPhase === "upper" ? (
           <div
-            className="absolute inset-x-0 top-0 h-[calc(50%-0.5px)] overflow-hidden rounded-t-[2px] z-20"
+            className="absolute inset-x-0 top-0 h-1/2 overflow-hidden rounded-t-[2.5px] z-20"
             style={{
               transformOrigin: "50% 100%",
               transform: "rotateX(-78deg)",
@@ -255,7 +374,7 @@ export const SplitFlapCell: React.FC<SplitFlapCellProps> = ({
         {/* Rotating Lower Leaf (90deg -> 0deg) */}
         {isFlipping && flipPhase === "lower" ? (
           <div
-            className="absolute inset-x-0 bottom-0 h-[calc(50%-0.5px)] overflow-hidden rounded-b-[2px] z-20"
+            className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden rounded-b-[2.5px] z-20"
             style={{
               transformOrigin: "50% 0%",
               transform: "rotateX(0deg)",
@@ -268,16 +387,36 @@ export const SplitFlapCell: React.FC<SplitFlapCellProps> = ({
           </div>
         ) : null}
 
-        {/* Center Horizontal Split Gap & Hinge Shadow (subtle hairline, no strikethrough) */}
+        {/* Physical 3D Mid-Flip Horizontal Leaf + Cast Shadow (matches Reference Frame 2 & Frame 4 mid-flip flaps) */}
+        {displayed.variant === "blurred_flip" || isFlipping ? (
+          <div
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-x-0 z-25 rounded-[1.5px] border-t ${
+              rowIndex === 3 && colIndex <= 1 && displayed.variant === "blurred_flip"
+                ? "bg-gradient-to-b from-[#9c7b34] via-[#705621] to-[#3d2d0e] border-[#e8c674]/55 shadow-[0_7px_9px_rgba(0,0,0,0.68)]"
+                : "bg-gradient-to-b from-[#faf6ec] via-[#e2d6c1] to-[#b5a68e] border-white/80 shadow-[0_7px_9px_rgba(0,0,0,0.52)]"
+            }`}
+            style={{
+              top: flipPhase === "lower" ? "48%" : "24%",
+              height: "25%",
+            }}
+          />
+        ) : null}
+
+        {/* Ultra-faint Horizontal Split Seam (matches ground truth physical hinge line without cutting through letters) */}
         <div
           className={`pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] z-30 ${
-            isYellowTwoLine ? "bg-[#7a5804]/30" : "bg-[#090d14]/28"
+            isYellowTwoLine
+              ? "bg-[#5c4304]/22"
+              : isDarkBlank
+                ? "bg-black/45"
+                : "bg-[#2a241c]/12"
           }`}
         />
 
-        {/* Subtle Dark Mechanical Hinge Notches (no bright silver dash artifact) */}
-        <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 w-[1px] h-[2.5px] bg-black/30 z-40" />
-        <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-[2.5px] bg-black/30 z-40" />
+        {/* Subtle Mechanical Hinge Notches at Left/Right Edges */}
+        <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 w-[1.5px] h-[3px] bg-black/28 z-40" />
+        <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 w-[1.5px] h-[3px] bg-black/28 z-40" />
       </div>
     </div>
   );

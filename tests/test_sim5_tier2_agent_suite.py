@@ -92,16 +92,31 @@ class TestSim5DateAndGeographyExtraction:
 
 class TestSim5TaxCompliance:
     def test_tcs_under_threshold_is_five_percent(self):
-        """Under Section 206C(1G), LRS packages under ₹7L incur 5% TCS."""
+        """Regime-explicit (R2-C 2026-11-04): budget2024 window = 5% under ₹7L;
+        the default (today) is the current flat-2% regime."""
+        from datetime import date
+
         res = TaxComplianceEngine.calculate_tcs(
             current_amount_inr=450000.0,
             is_overseas_trip=True,
             pan_number="AAACA1234F",
             cumulative_fy_spend_inr=0.0,
+            as_of=date(2025, 1, 15),
         )
         assert res.is_applicable is True
+        assert res.regime_name == "budget2024"
         assert res.effective_tcs_rate_pct == 5.0
         assert res.total_tcs_amount_inr == 22500.0
+
+        res_now = TaxComplianceEngine.calculate_tcs(
+            current_amount_inr=450000.0,
+            is_overseas_trip=True,
+            pan_number="AAACA1234F",
+            cumulative_fy_spend_inr=0.0,
+        )
+        assert res_now.regime_name == "budget2026"
+        assert res_now.effective_tcs_rate_pct == 2.0
+        assert res_now.total_tcs_amount_inr == 9000.0
 
     def test_tour_package_gst_five_percent_split(self):
         """Tour package GST without ITC is 5% with 2.5% CGST + 2.5% SGST intra-state."""

@@ -412,8 +412,18 @@ def resolve_trip_field(source: Dict[str, Any], field: str) -> Any:
         if field == "budget":
             from src.intake.normalizer import Normalizer
 
-            parsed = Normalizer.parse_budget(str(value))
-            return _as_int(parsed.get("min") or parsed.get("max"), 0)
+            # Contract-review fix (2026-11-07): normalize currency symbols and
+            # thousands separators BEFORE parsing — parse_budget chokes on
+            # "$8,500"-style raw operator text, which silently zeroed the
+            # ranked-fact read for exactly the corrections operators type.
+            normalized = str(value).replace(",", "")
+            parsed = Normalizer.parse_budget(normalized)
+            amount = _as_int(parsed.get("min") or parsed.get("max"), 0)
+            if not amount:
+                match = re.search(r"(\d+(?:\.\d+)?)", normalized)
+                if match:
+                    amount = _as_int(match.group(1), 0)
+            return amount
         if field == "party_size":
             return max(0, _as_int(value, 0))
         if field == "destination" and isinstance(value, list):

@@ -21,6 +21,7 @@ import { useWorkbenchStore } from '@/stores/workbench';
 import type { SpineStage, OperatingMode } from '@/types/spine';
 import { getTravelerPromptForUnknownField } from '@/lib/traveler-prompts';
 import { RepeatTravelerRecallCard } from './RepeatTravelerRecallCard';
+import { QuickIngestPalette } from './QuickIngestPalette';
 import { Zap, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 const stages: { value: SpineStage; label: string }[] = [
@@ -61,14 +62,22 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
   const [triageResult, setTriageResult] = useState<LiveMessageTriageResponse | null>(null);
   const [isTriaging, setIsTriaging] = useState<boolean>(false);
 
-  // Message→intake hand-off (operator-surface tranche 2026-11-03): consume a
-  // channel message handed over from the inbox ("Use for intake") exactly once
-  // on mount. The operator clicked the action explicitly, so the prefill
-  // replaces an empty note; the mounted triage effect then picks it up.
+  // Message→intake hand-off (operator-surface tranche 2026-11-03; sim-pass
+  // fix 2026-11-07): consume a channel message handed over from the inbox
+  // ("Use for intake") exactly once on mount. An empty note is replaced;
+  // a non-empty note is PRESERVED — the prefill is appended beneath a
+  // labeled separator so the operator's draft and the message both survive
+  // (consume-and-drop was silent data loss on the pilot's second use).
   useEffect(() => {
     const prefill = consumePendingIntakePrefill();
-    if (prefill && !input_raw_note.trim()) {
-      setInputRawNote(prefill);
+    const urlPrefill = getSearchParam('prefill');
+    const resolvedPrefill = (prefill && prefill.trim()) || (urlPrefill && urlPrefill.trim()) || '';
+    if (resolvedPrefill) {
+      setInputRawNote(
+        input_raw_note.trim() && !input_raw_note.includes(resolvedPrefill)
+          ? `${input_raw_note.trimEnd()}\n\n— forwarded from inbox channel message —\n${resolvedPrefill}`
+          : resolvedPrefill,
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -200,11 +209,14 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
-          <div className='flex items-center gap-2 mb-3'>
-            <FileText className='size-4 text-[#8b949e]' />
-            <label htmlFor={id1} className='text-ui-sm font-medium text-[#e6edf3]'>
-              Customer Message
-            </label>
+          <div className='flex items-center justify-between gap-2 mb-3'>
+            <div className='flex items-center gap-2'>
+              <FileText className='size-4 text-[#8b949e]' />
+              <label htmlFor={id1} className='text-ui-sm font-medium text-[#e6edf3]'>
+                Customer Message
+              </label>
+            </div>
+            <QuickIngestPalette onApply={(text) => setInputRawNote(text)} />
           </div>
           <p className='mb-2 text-ui-xs text-[#8b949e]'>
             Paste the exact traveler-facing request: destination ideas, travel window, party details, trip purpose, budget hints, constraints,

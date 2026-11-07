@@ -4,7 +4,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   DEPARTURE_INQUIRIES,
+  DESTINATION_CATALOG_REGISTRY,
+  pickNextCatalogDestination,
+  resolveDynamicInquiryFixture,
   type BoardRowId,
+  type DepartureInquiryFixture,
   type InquiryId,
 } from "./board-fixtures";
 import { splitFlapAudio } from "./board-engine";
@@ -15,15 +19,24 @@ import {
   ProvenanceAndBriefOverlay,
   type InteractiveStageMode,
 } from "./DepartureBoardOverlays";
+import { DepartureBoardFolds } from "./DepartureBoardFolds";
 
 export const DepartureBoardLandingPage: React.FC = () => {
   const [activeInquiryId, setActiveInquiryId] = useState<InquiryId>("italy");
+  const [customFixture, setCustomFixture] =
+    useState<DepartureInquiryFixture | null>(null);
   const [stageMode, setStageMode] = useState<InteractiveStageMode>("hero");
   const [isScanningDates, setIsScanningDates] = useState(false);
+  const [isDatesConfirmed, setIsDatesConfirmed] = useState(false);
   const [selectedRowId, setSelectedRowId] = useState<BoardRowId | null>(null);
   const [forceTriggerKey, setForceTriggerKey] = useState(0);
+  const [rowForceKeys, setRowForceKeys] = useState<
+    Partial<Record<BoardRowId, number>>
+  >({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hasSwitchedInquiry, setHasSwitchedInquiry] = useState(false);
+  const [isAutoCycling, setIsAutoCycling] = useState(true);
+  const [heroCustomInput, setHeroCustomInput] = useState("");
 
   // 3-Layer Mouse Parallax State
   const [mouseNorm, setMouseNorm] = useState<{ x: number; y: number }>({
@@ -42,7 +55,7 @@ export const DepartureBoardLandingPage: React.FC = () => {
     return clearScanTimers;
   }, [clearScanTimers]);
 
-  const fixture = DEPARTURE_INQUIRIES[activeInquiryId];
+  const fixture = customFixture ?? DEPARTURE_INQUIRIES[activeInquiryId];
 
   /**
    * Triggers the Frame 2 -> Frame 1 -> Frame 3 live ingestion story choreography
@@ -53,31 +66,91 @@ export const DepartureBoardLandingPage: React.FC = () => {
     setStageMode("voice_ingest");
     setIsScanningDates(true);
     setSelectedRowId(null);
-
-    // After 1.9s of scanning "APR 18-3?" with "Finalizing dates...",
-    // the epistemic gate locks Row 4 onto signal-yellow "NEED CONFIRMATION"
-    const tLock = window.setTimeout(() => {
-      setIsScanningDates(false);
-      splitFlapAudio.playConfirmationLatch();
-    }, 2800);
-
-    scanTimersRef.current.push(tLock);
+    setForceTriggerKey((prev) => prev + 1);
+    splitFlapAudio.playConfirmationLatch();
   }, [clearScanTimers]);
 
   const handleSelectInquiry = useCallback(
     (nextId: InquiryId) => {
       clearScanTimers();
+      setCustomFixture(null);
       setActiveInquiryId(nextId);
       setHasSwitchedInquiry(true);
       setIsScanningDates(false);
+      setIsDatesConfirmed(false);
       setForceTriggerKey((prev) => prev + 1);
     },
     [clearScanTimers]
   );
 
+  const handleApplyDynamicInquiry = useCallback(
+    (rawInput: string) => {
+      const trimmed = rawInput.trim();
+      if (!trimmed) return;
+      clearScanTimers();
+      const resolved = resolveDynamicInquiryFixture(trimmed);
+      setCustomFixture(resolved);
+      setActiveInquiryId(resolved.id);
+      setHasSwitchedInquiry(true);
+      setIsScanningDates(false);
+      setIsDatesConfirmed(false);
+      setForceTriggerKey((prev) => prev + 1);
+    },
+    [clearScanTimers]
+  );
+
+  const handleShuffleRandomInquiry = useCallback(
+    (
+      mode: "random" | "sequential" = "random",
+      userInitiated: boolean = false
+    ) => {
+      clearScanTimers();
+      const nextEntry = pickNextCatalogDestination(fixture.pillTitle, mode);
+      const resolved = resolveDynamicInquiryFixture(nextEntry.displayName, {
+        randomizeNumbers: true,
+      });
+      setCustomFixture(resolved);
+      setActiveInquiryId(resolved.id);
+      if (userInitiated) {
+        setHasSwitchedInquiry(true);
+      }
+      setIsScanningDates(stageMode === "voice_ingest");
+      setIsDatesConfirmed(false);
+      setForceTriggerKey((prev) => prev + 1);
+    },
+    [clearScanTimers, fixture.pillTitle, stageMode]
+  );
+
+  // Built-In Autonomous Multi-Destination & Dynamic Number Rotation Engine
+  // Runs continuously by default every 5.5s across all 15 destinations with synchronized randomized numbers.
+  useEffect(() => {
+    if (!isAutoCycling) return;
+    const timer = window.setInterval(() => {
+      handleShuffleRandomInquiry("random", false);
+    }, 5500);
+    return () => window.clearInterval(timer);
+  }, [isAutoCycling, handleShuffleRandomInquiry]);
+
   const handleSelectRow = useCallback((rowId: BoardRowId) => {
-    setSelectedRowId((prev) => (prev === rowId ? null : rowId));
     setStageMode("provenance_brief");
+    setSelectedRowId(rowId);
+    setRowForceKeys((prev) => ({
+      ...prev,
+      [rowId]: (prev[rowId] ?? 0) + 1,
+    }));
+    if (rowId === "dates") {
+      setIsDatesConfirmed((prev) => !prev);
+      splitFlapAudio.playConfirmationLatch();
+    }
+  }, []);
+
+  const handleToggleDatesConfirmed = useCallback(() => {
+    setIsDatesConfirmed((prev) => !prev);
+    setRowForceKeys((prev) => ({
+      ...prev,
+      dates: (prev.dates ?? 0) + 1,
+    }));
+    splitFlapAudio.playConfirmationLatch();
   }, []);
 
   const handleChangeStageMode = useCallback(
@@ -87,11 +160,7 @@ export const DepartureBoardLandingPage: React.FC = () => {
       setSelectedRowId(null);
       if (nextMode === "voice_ingest") {
         setIsScanningDates(true);
-        const tLock = window.setTimeout(() => {
-          setIsScanningDates(false);
-          splitFlapAudio.playConfirmationLatch();
-        }, 2800);
-        scanTimersRef.current.push(tLock);
+        setForceTriggerKey((prev) => prev + 1);
       } else {
         setIsScanningDates(false);
       }
@@ -122,6 +191,10 @@ export const DepartureBoardLandingPage: React.FC = () => {
     setMouseNorm({ x: 0, y: 0 });
   }, []);
 
+  const activeCaseSlug = fixture.pillTitle.toLowerCase().replace(/\s+/g, "-");
+  const signupCaseHref = `/signup?source=departure-board&case=${encodeURIComponent(activeCaseSlug)}&iata=${encodeURIComponent(fixture.tagCode)}`;
+  const workbenchCaseHref = `/workbench?source=departure-board&case=${encodeURIComponent(activeCaseSlug)}&iata=${encodeURIComponent(fixture.tagCode)}&prefill=${encodeURIComponent(fixture.voiceNote.quote.replace(/^[“"]|[”"]$/g, ""))}`;
+
   // Headlines & subcopy synchronized with the 4 reference frames
   const heroCopy =
     stageMode === "voice_ingest"
@@ -149,7 +222,7 @@ export const DepartureBoardLandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#04133b] text-white selection:bg-[#f5c418] selection:text-slate-950 overflow-x-hidden">
-      {/* Keyframe animation for the swinging IATA luggage tag */}
+      {/* Keyframe animations for the swinging IATA luggage tag & 3D card flip */}
       <style>{`
         @keyframes tagSwing {
           0% { transform: rotate(11deg); }
@@ -157,6 +230,16 @@ export const DepartureBoardLandingPage: React.FC = () => {
           65% { transform: rotate(4deg); }
           85% { transform: rotate(-1.8deg); }
           100% { transform: rotate(0deg); }
+        }
+        @keyframes cardFlipIn {
+          0% {
+            opacity: 0.35;
+            transform: perspective(1200px) rotateX(-12deg) translateY(6px);
+          }
+          100% {
+            opacity: 1;
+            transform: perspective(1200px) rotateX(0deg) translateY(0);
+          }
         }
       `}</style>
 
@@ -176,10 +259,7 @@ export const DepartureBoardLandingPage: React.FC = () => {
         >
           {/* LAYER 1: Clean Background Landscape (Royal Blue Diagonal + Sunlit Airport Terminal) */}
           <div
-            className="pointer-events-none absolute inset-0 transition-transform duration-200 ease-out"
-            style={{
-              transform: `translate3d(${mouseNorm.x * -6}px, ${mouseNorm.y * -4}px, 0)`,
-            }}
+            className="pointer-events-none absolute inset-0"
             data-testid="departure-board-layer-1"
           >
             <img
@@ -212,6 +292,12 @@ export const DepartureBoardLandingPage: React.FC = () => {
               >
                 <a
                   href="#product"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document
+                      .getElementById("product")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
                   className="inline-flex items-center gap-1 hover:text-white transition-colors"
                 >
                   <span>Product</span>
@@ -221,6 +307,12 @@ export const DepartureBoardLandingPage: React.FC = () => {
                 </a>
                 <a
                   href="#why-waypoint"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document
+                      .getElementById("why-waypoint")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
                   className="inline-flex items-center gap-1 hover:text-white transition-colors"
                 >
                   <span>Why Waypoint</span>
@@ -239,6 +331,12 @@ export const DepartureBoardLandingPage: React.FC = () => {
                 </Link>
                 <a
                   href="#pricing"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document
+                      .getElementById("pricing")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
                   className="hover:text-white transition-colors"
                 >
                   Pricing
@@ -254,7 +352,7 @@ export const DepartureBoardLandingPage: React.FC = () => {
                 Sign in
               </Link>
               <Link
-                href="/signup"
+                href={signupCaseHref}
                 className="inline-flex items-center gap-2 rounded-full bg-white hover:bg-slate-100 text-[#0c2766] font-semibold text-[13.5px] px-4 sm:px-5 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.22)] transition-all"
               >
                 <span>Book a demo</span>
@@ -267,45 +365,51 @@ export const DepartureBoardLandingPage: React.FC = () => {
           <SplitFlapBoard
             fixture={fixture}
             isScanningDates={isScanningDates}
+            isDatesConfirmed={isDatesConfirmed}
             selectedRowId={selectedRowId}
             onSelectRow={handleSelectRow}
             showProvenanceWires={stageMode === "provenance_brief"}
             forceTriggerKey={forceTriggerKey}
+            rowForceKeys={rowForceKeys}
             parallaxOffset={{
-              x: mouseNorm.x * 9,
-              y: mouseNorm.y * 6,
-              rotateY: mouseNorm.x * 1.6,
-              rotateX: mouseNorm.y * -1.1,
+              x: 0,
+              y: 0,
+              rotateY: mouseNorm.x * 0.45,
+              rotateX: mouseNorm.y * -0.35,
             }}
           />
 
-          {/* LAYER 3: Foreground Sofa, Coffee Table (with ITA Boarding Pass & Passport), and Carry-On Suitcase */}
-          <div
-            className="pointer-events-none absolute inset-0 z-20 transition-transform duration-200 ease-out"
-            style={{
-              transform: `translate3d(${mouseNorm.x * 16}px, ${mouseNorm.y * 10}px, 0)`,
-            }}
-            data-testid="departure-board-layer-3"
-          >
-            <img
-              src="/landing/departure-board/fg-luggage-layer.png"
-              alt=""
-              aria-hidden="true"
-              className="w-full h-full object-fill select-none"
-              draggable={false}
-            />
-          </div>
+          {/* LAYER 3: Foreground Carry-On Suitcase Overlap (1:1 Pixel-Registered with Layer 1 & Layer 2) */}
+          {stageMode !== "provenance_brief" ? (
+            <div
+              className="pointer-events-none absolute inset-0 z-20"
+              data-testid="departure-board-layer-3"
+            >
+              <img
+                src="/landing/departure-board/fg-luggage-layer.png"
+                alt=""
+                aria-hidden="true"
+                className="w-full h-full object-fill select-none"
+                draggable={false}
+              />
+            </div>
+          ) : null}
 
           {/* LAYER 4: Left Cobalt-Blue Editorial Copy & CTAs (Matches Frame 1-4 Typography & Position) */}
           <div
             className="pointer-events-none absolute z-30 flex flex-col justify-start transition-all duration-300"
             style={{
-              left: stageMode === "provenance_brief" ? "6.0%" : "7.6%",
-              top: stageMode === "provenance_brief" ? "13.2%" : "16.0%",
-              width: stageMode === "provenance_brief" ? "28%" : "32%",
+              left: stageMode === "provenance_brief" ? "5.7%" : "7.6%",
+              top:
+                stageMode === "provenance_brief"
+                  ? "11.2%"
+                  : stageMode === "hero"
+                    ? "11.5%"
+                    : "16.0%",
+              width: stageMode === "provenance_brief" ? "28.5%" : "32%",
             }}
           >
-            <div className="flex items-center gap-3 mb-2.5 sm:mb-3.5">
+            <div className="flex items-center gap-3 mb-2 sm:mb-2.5">
               <span
                 aria-hidden="true"
                 className="h-[1.5px] w-10 sm:w-14 bg-[#f5c418]/90 rounded-full shrink-0"
@@ -323,7 +427,7 @@ export const DepartureBoardLandingPage: React.FC = () => {
               aria-label={heroCopy.headlineLines.join(" ")}
               className={`font-sans font-bold tracking-[-0.04em] text-white ${
                 stageMode === "hero"
-                  ? "text-[44px] sm:text-[64px] lg:text-[78px] xl:text-[88px] leading-[0.93] mb-4 sm:mb-5"
+                  ? "text-[42px] sm:text-[60px] lg:text-[74px] xl:text-[82px] leading-[0.93] mb-3 sm:mb-4"
                   : stageMode === "voice_ingest"
                     ? "text-[38px] sm:text-[54px] lg:text-[66px] xl:text-[72px] tracking-[-0.045em] leading-[1.03] mb-6 sm:mb-7"
                     : "text-[36px] sm:text-[50px] lg:text-[60px] xl:text-[66px] leading-[0.94] mb-3 sm:mb-4"
@@ -338,7 +442,7 @@ export const DepartureBoardLandingPage: React.FC = () => {
             </h1>
 
             {stageMode === "hero" ? (
-              <p className="text-white/90 font-normal text-[15px] sm:text-[18px] lg:text-[20px] xl:text-[20.5px] leading-[1.35] max-w-[365px] mb-6">
+              <p className="text-white/90 font-normal text-[14.5px] sm:text-[17px] lg:text-[18.5px] xl:text-[19.5px] leading-[1.32] max-w-[365px] mb-4">
                 Turn scattered travel requests
                 <br />
                 into quote-ready briefs <span className="text-[#93c5fd]">your team</span>
@@ -356,18 +460,36 @@ export const DepartureBoardLandingPage: React.FC = () => {
             )}
 
             {/* Primary & Secondary Action Pills (Preserved Across All 4 Reference Frames) */}
-            <div className="pointer-events-auto flex flex-wrap items-center gap-3.5">
+            <div className="pointer-events-auto flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={
                   stageMode === "voice_ingest"
                     ? () => handleChangeStageMode("provenance_brief")
-                    : triggerSeeItWorkSequence
+                    : stageMode === "provenance_brief"
+                      ? () => {
+                          if (!isDatesConfirmed) {
+                            handleSelectRow("dates");
+                          } else {
+                            const order: InquiryId[] = [
+                              "japan",
+                              "morocco",
+                              "italy",
+                            ];
+                            const nextId =
+                              order[
+                                (order.indexOf(activeInquiryId) + 1) %
+                                  order.length
+                              ];
+                            handleSelectInquiry(nextId);
+                          }
+                        }
+                      : triggerSeeItWorkSequence
                 }
-                className={`inline-flex items-center justify-center gap-2.5 rounded-full bg-[#f5c418] hover:bg-[#fde047] text-[#111827] font-semibold shadow-[0_14px_34px_rgba(245,196,24,0.38)] transition-all active:scale-[0.99] ${
+                className={`inline-flex items-center justify-center gap-2 rounded-full bg-[#f5c418] hover:bg-[#fde047] text-[#111827] font-semibold whitespace-nowrap shadow-[0_14px_34px_rgba(245,196,24,0.38)] transition-all active:scale-[0.99] ${
                   stageMode === "provenance_brief"
-                    ? "h-[48px] text-[14px] sm:text-[15px] px-6"
-                    : "h-[58px] text-[15px] sm:text-[16.5px] px-7 sm:px-8"
+                    ? "h-[42px] sm:h-[48px] text-[13px] sm:text-[15px] px-4 sm:px-6"
+                    : "h-[44px] sm:h-[52px] text-[13.5px] sm:text-[15.5px] px-5 sm:px-7"
                 }`}
                 data-testid="see-it-work-cta"
               >
@@ -376,17 +498,118 @@ export const DepartureBoardLandingPage: React.FC = () => {
               </button>
 
               <Link
-                href="/signup"
+                href={signupCaseHref}
                 className={`inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/18 backdrop-blur-md border-[1.5px] border-white/55 text-white font-semibold transition-all ${
                   stageMode === "provenance_brief"
-                    ? "h-[48px] text-[14px] sm:text-[15px] px-6"
-                    : "h-[58px] text-[15px] sm:text-[16.5px] px-7 sm:px-8"
+                    ? "h-[42px] sm:h-[48px] text-[13px] sm:text-[15px] px-4 sm:px-6"
+                    : "h-[44px] sm:h-[52px] text-[13.5px] sm:text-[15.5px] px-5 sm:px-7"
                 }`}
                 data-testid="hero-book-demo-cta"
               >
                 Book a demo
               </Link>
             </div>
+
+            {/* Built-In Autonomous Multi-Destination Stream Status & Quick-Select Strip */}
+            {stageMode === "hero" ? (
+              <div
+                className="pointer-events-auto mt-3 rounded-2xl bg-[#071c54]/90 backdrop-blur-md border border-white/20 px-3 py-2 max-w-[440px] shadow-[0_14px_34px_rgba(0,0,0,0.35)] space-y-1.5"
+                data-testid="hero-live-destination-strip"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAutoCycling((prev) => !prev)}
+                    className="inline-flex items-center gap-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-white/95 hover:text-white whitespace-nowrap"
+                    data-testid="hero-auto-rotate-toggle"
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full shrink-0 ${
+                        isAutoCycling
+                          ? "bg-emerald-400 animate-pulse"
+                          : "bg-amber-400"
+                      }`}
+                    />
+                    <span>
+                      {isAutoCycling
+                        ? "Live · 15 Destinations Auto-Cycling"
+                        : "Paused · 15 Destinations"}
+                    </span>
+                  </button>
+                  <span
+                    className="rounded-full bg-white/10 border border-white/20 text-[#fde047] font-mono text-[9.5px] font-bold px-2 py-0.5 whitespace-nowrap"
+                    data-testid="hero-live-sync-badge"
+                  >
+                    {fixture.tagCode} · {fixture.briefSummary[1]?.value} · {fixture.briefSummary[2]?.value}
+                  </span>
+                </div>
+                {!hasSwitchedInquiry &&
+                mouseNorm.x === 0 &&
+                mouseNorm.y === 0 ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {DESTINATION_CATALOG_REGISTRY.slice(0, 7).map((entry) => {
+                        const isEntryActive =
+                          fixture.pillTitle.toLowerCase() ===
+                          entry.displayName.toLowerCase();
+                        return (
+                          <button
+                            key={entry.slug}
+                            type="button"
+                            onClick={() => {
+                              if (
+                                entry.slug === "italy" ||
+                                entry.slug === "japan" ||
+                                entry.slug === "morocco"
+                              ) {
+                                handleSelectInquiry(entry.slug);
+                              } else {
+                                handleApplyDynamicInquiry(entry.displayName);
+                              }
+                            }}
+                            className={`rounded-md px-1.5 py-0.5 font-mono text-[9.5px] font-bold transition-all ${
+                              isEntryActive
+                                ? "bg-white text-[#0c2766] shadow-sm"
+                                : "bg-white/10 text-white/80 hover:bg-white/20"
+                            }`}
+                            data-testid={`hero-dest-chip-${entry.slug}`}
+                          >
+                            {entry.displayName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!heroCustomInput.trim()) return;
+                        setIsAutoCycling(false);
+                        handleApplyDynamicInquiry(heroCustomInput.trim());
+                      }}
+                      className="flex items-center gap-1.5 pt-1 border-t border-white/15"
+                    >
+                      <input
+                        type="text"
+                        value={heroCustomInput}
+                        onFocus={() => setIsAutoCycling(false)}
+                        onChange={(e) => setHeroCustomInput(e.target.value)}
+                        placeholder="Try: 2 travelers for dubai around june next year..."
+                        aria-label="Enter any travel inquiry"
+                        className="flex-1 rounded-lg bg-white/10 border border-white/20 px-2.5 py-1 text-[11px] text-white placeholder:text-white/55 focus:outline-none focus:border-[#f5c418]"
+                        data-testid="hero-custom-inquiry-input"
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-[#f5c418] hover:bg-[#fde047] text-slate-950 font-mono text-[10px] font-extrabold px-2.5 py-1 transition-colors shrink-0"
+                        data-testid="hero-custom-inquiry-submit"
+                      >
+                        Clack →
+                      </button>
+                    </form>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {/* FRAME 2 OVERLAY: Incoming Request Voice Note Card + Neon Feed Vector */}
@@ -395,6 +618,13 @@ export const DepartureBoardLandingPage: React.FC = () => {
               fixture={fixture}
               isScanningDates={isScanningDates}
               onReplayIngest={triggerSeeItWorkSequence}
+              onSelectInquiry={handleSelectInquiry}
+              onShuffleRandom={() => handleShuffleRandomInquiry("random")}
+              onSelectRow={handleSelectRow}
+              onLockDatesAndOpenBrief={() => {
+                handleChangeStageMode("provenance_brief");
+                setSelectedRowId("dates");
+              }}
             />
           ) : null}
 
@@ -403,7 +633,10 @@ export const DepartureBoardLandingPage: React.FC = () => {
             <ProvenanceAndBriefOverlay
               fixture={fixture}
               selectedRowId={selectedRowId}
-              onSelectRow={(rowId) => setSelectedRowId(rowId)}
+              isDatesConfirmed={isDatesConfirmed}
+              onSelectRow={handleSelectRow}
+              onSelectInquiry={handleSelectInquiry}
+              onShuffleRandom={() => handleShuffleRandomInquiry("random")}
               onCloseBrief={() => setStageMode("hero")}
             />
           ) : null}
@@ -411,228 +644,43 @@ export const DepartureBoardLandingPage: React.FC = () => {
           {/* FRAME 4 OVERLAY: Bottom Frosted-Glass Inquiry Switcher Dock */}
           <InquirySwitcherDock
             activeInquiryId={activeInquiryId}
+            activeDisplayTitle={customFixture?.pillTitle}
+            activeDisplaySubtitle={customFixture?.pillTitle ? `${fixture.tagCode} · ${fixture.briefSummary[1]?.value}` : undefined}
             onSelectInquiry={handleSelectInquiry}
+            onApplyDynamicInquiry={handleApplyDynamicInquiry}
+            onShuffleRandom={() => handleShuffleRandomInquiry("random")}
+            isAutoCycling={isAutoCycling}
+            onToggleAutoCycle={() => setIsAutoCycling((prev) => !prev)}
             stageMode={stageMode}
             onChangeStageMode={handleChangeStageMode}
             soundEnabled={soundEnabled}
             onToggleSound={handleToggleSound}
-            visibleInHero={hasSwitchedInquiry && stageMode === "hero"}
+            visibleInHero={
+              stageMode === "hero" &&
+              (hasSwitchedInquiry || mouseNorm.x !== 0 || mouseNorm.y !== 0)
+            }
           />
         </div>
       </section>
 
       {/* =====================================================================
-          BELOW THE FOLD: THE WAYPOINT TERMINAL OPERATING SYSTEM
+          FOLDS 2, 3, 4 & TERMINAL FOOTER (100% Synchronized Solari Architecture)
          ===================================================================== */}
-      <section
-        id="product"
-        className="relative py-20 sm:py-28 px-6 sm:px-12 max-w-7xl mx-auto"
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-          <div className="lg:col-span-6 space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-3.5 py-1 text-[11px] font-mono uppercase tracking-[0.18em] text-[#fde047]">
-              <span>Waypoint OS · Intake & Epistemic Gate</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.08]">
-              Turn raw trip notes into quote-ready briefs
-            </h2>
-            <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-              Waypoint helps boutique travel agencies turn the notes they already
-              have, whether from calls, emails, WhatsApp messages, or copied
-              itineraries, into structured trip briefs ready for advisor review.
-            </p>
-            <div className="pt-2 flex flex-wrap items-center gap-4">
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-2 rounded-full bg-[#f5c418] hover:bg-[#fde047] text-slate-950 font-semibold text-sm px-6 py-3 shadow-lg transition-all"
-              >
-                <span>Create workspace</span>
-                <span aria-hidden="true">→</span>
-              </Link>
-              <Link
-                href="/workbench"
-                className="inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 text-white font-semibold text-sm px-6 py-3 transition-all"
-              >
-                <span>Open Advisor Workbench</span>
-              </Link>
-            </div>
-          </div>
-
-          <div className="lg:col-span-6 rounded-3xl bg-[#081d52]/90 border border-white/15 p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div>
-                <p className="text-xs font-mono uppercase tracking-widest text-[#fde047]">
-                  Not a prettier CRM. A faster intake and quoting surface
-                </p>
-                <h3 className="text-xl font-bold text-white mt-1">
-                  It helps teams answer faster, quote cleaner, and keep owners out
-                  of every tiny decision
-                </h3>
-              </div>
-              <span className="rounded-lg bg-white/10 px-2.5 py-1 font-mono text-xs font-bold text-white">
-                {fixture.tagCode}
-              </span>
-            </div>
-
-            <ul className="space-y-4">
-              <li className="flex items-start gap-3.5 rounded-2xl bg-white/5 border border-white/10 p-4">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f5c418] text-slate-950 font-mono text-xs font-bold">
-                  01
-                </span>
-                <div>
-                  <p className="font-semibold text-white text-sm sm:text-base">
-                    Extract dates, party size, budget, pace, and trip type from
-                    messy messages
-                  </p>
-                  <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                    Voice notes, WhatsApp forwards, and email threads resolve
-                    directly onto structured departure slots with verbatim quote
-                    provenance.
-                  </p>
-                </div>
-              </li>
-
-              <li className="flex items-start gap-3.5 rounded-2xl bg-white/5 border border-white/10 p-4">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f5c418] text-slate-950 font-mono text-xs font-bold">
-                  02
-                </span>
-                <div>
-                  <p className="font-semibold text-white text-sm sm:text-base">
-                    Surface the missing facts that change itinerary quality before
-                    anyone quotes
-                  </p>
-                  <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                    Waypoint never invents a travel date. Unconfirmed windows lock
-                    onto a signal-yellow epistemic hold until verified.
-                  </p>
-                </div>
-              </li>
-
-              <li className="flex items-start gap-3.5 rounded-2xl bg-white/5 border border-white/10 p-4">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f5c418] text-slate-950 font-mono text-xs font-bold">
-                  03
-                </span>
-                <div>
-                  <p className="font-semibold text-white text-sm sm:text-base">
-                    Protect owner time by showing what needs a human decision and
-                    what does not
-                  </p>
-                  <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                    Senior advisors review a clean brief with explicit vs.
-                    unconfirmed facts separated before supplier outreach begins.
-                  </p>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* =====================================================================
-          SECTION 2: THREE-STAGE MECHANICAL PIPELINE
-         ===================================================================== */}
-      <section
-        id="why-waypoint"
-        className="py-16 sm:py-24 px-6 sm:px-12 border-t border-white/10 bg-[#030e2c]"
-      >
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="max-w-3xl space-y-3">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#f5c418]">
-              Inside the Machine
-            </p>
-            <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-white">
-              Built like flight operations. Designed for boutique travel desks.
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-2xl bg-[#071846] border border-white/12 p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs uppercase tracking-wider text-sky-300">
-                  Gate 01 · The Arrivals Hall
-                </span>
-                <span className="h-2 w-2 rounded-full bg-sky-400" />
-              </div>
-              <h3 className="text-lg font-bold text-white">
-                Multi-channel message ingestion
-              </h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Clients send voice notes at 10:14 AM and follow up with three
-                WhatsApp texts. Waypoint threads every signal into a single trip
-                record without manual copy-paste.
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-[#071846] border border-[#f5c418]/40 p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs uppercase tracking-wider text-[#fde047]">
-                  Gate 02 · Epistemic Hold
-                </span>
-                <span className="h-2 w-2 rounded-full bg-[#f5c418]" />
-              </div>
-              <h3 className="text-lg font-bold text-white">
-                Zero hallucinated dates or budgets
-              </h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                When a traveler says &ldquo;not sure on dates yet,&rdquo; the board
-                explicitly flags <strong className="text-[#fde047]">NEED CONFIRMATION</strong> and
-                drafts the exact advisor follow-up question.
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-[#071846] border border-white/12 p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs uppercase tracking-wider text-emerald-300">
-                  Gate 03 · Ready for Review
-                </span>
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-              </div>
-              <h3 className="text-lg font-bold text-white">
-                One-click brief to workbench handoff
-              </h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Once facts are confirmed, advisors promote the brief straight into
-                the Waypoint Workbench with seasonal suitability and route checks.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =====================================================================
-          FOOTER / CTA
-         ===================================================================== */}
-      <footer
-        id="pricing"
-        className="py-16 px-6 sm:px-12 border-t border-white/10 bg-[#02091f]"
-      >
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
-          <div className="space-y-2">
-            <p className="font-mono text-sm font-black tracking-[0.22em] text-white uppercase">
-              WAYPOINT® · FROM MESSAGES TO MEANINGFUL TRAVEL PLANS
-            </p>
-            <p className="text-sm text-slate-400">
-              Interactive Departure Board intake and quoting surface for travel
-              advisors.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-2 rounded-full bg-[#f5c418] hover:bg-[#fde047] text-slate-950 font-semibold text-sm px-6 py-2.5 transition-all"
-            >
-              <span>Create workspace</span>
-              <span aria-hidden="true">→</span>
-            </Link>
-            <Link
-              href="/itinerary-checker"
-              className="inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 text-white font-semibold text-sm px-5 py-2.5 transition-all"
-            >
-              <span>Free Itinerary Checker</span>
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <DepartureBoardFolds
+        fixture={fixture}
+        activeCaseSlug={activeCaseSlug}
+        workbenchCaseHref={workbenchCaseHref}
+        isAutoCycling={isAutoCycling}
+        onToggleAutoCycle={() => setIsAutoCycling((prev) => !prev)}
+        isDatesConfirmed={isDatesConfirmed}
+        onToggleDatesConfirmed={handleToggleDatesConfirmed}
+        selectedRowId={selectedRowId}
+        onSelectRow={handleSelectRow}
+        onSelectPresetInquiry={handleSelectInquiry}
+        onApplyDynamicInquiry={handleApplyDynamicInquiry}
+        onTriggerVoiceSequence={triggerSeeItWorkSequence}
+        onOpenStageOnHero={handleChangeStageMode}
+      />
     </div>
   );
 };

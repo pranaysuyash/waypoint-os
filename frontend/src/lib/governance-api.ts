@@ -278,6 +278,10 @@ export async function getInboxStats(): Promise<{
   oldestWaitingDays: number | null;
   oldestUnassignedWaitingDays: number | null;
   statsCoverage: number;
+  resolvedCount: number;
+  agentResolvedCount: number;
+  agentResolvedShare: number | null;
+  agentResolvedShareBasis: string;
 }> {
   return api.get('/api/inbox/stats');
 }

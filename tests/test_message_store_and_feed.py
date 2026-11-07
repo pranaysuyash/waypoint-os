@@ -130,7 +130,11 @@ def test_webhook_persists_meta_envelope_messages(message_store, monkeypatch):
     assert res.json()["inbound_messages_stored"] == 2
 
     rows = message_store.list_for_agency("webhook-unattributed")
-    assert {r["provider_message_id"] for r in rows} == {"wamid.meta1", "wamid.meta2"}
+    # FND-0126: the concierge reply is stored alongside the inbound messages
+    # (outbound row, no provider id) — filter to inbound for the id-capture
+    # contract under test, matching the flat-payload test above.
+    inbound_rows = [r for r in rows if r["direction"] == "inbound"]
+    assert {r["provider_message_id"] for r in inbound_rows} == {"wamid.meta1", "wamid.meta2"}
     image_rows = [r for r in rows if r["mime"]]
     assert image_rows and image_rows[0]["filename"] == "passport.jpg"
     # Media message with no text body still records metadata, never a fake body.

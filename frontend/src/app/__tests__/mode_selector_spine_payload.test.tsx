@@ -138,6 +138,12 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
   const mockTrip: Trip = {
     id: "TRIP-MODE-001",
     destination: "Singapore",
+    // FND-0402 (2026-11-05): trip purpose + origin are required-fields-gate
+    // members (planning-status); without them the panel flips to lead-review
+    // mode ("Start planning") and this payload test's process button never
+    // renders.
+    origin: "Mumbai",
+    tripPurpose: "Leisure",
     type: "Leisure",
     state: "green",
     status: "assigned",
@@ -174,7 +180,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
   it("sends normal_intake operating_mode in spine payload by default", async () => {
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Build trip options/i });
+    const processButton = screen.getByRole("button", { name: /Build trip options|Draft follow-up/i }) // process button is label-conditional (follow-up draft when details missing);
     fireEvent.click(processButton);
 
     await waitFor(() => {
@@ -194,7 +200,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
 
       render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-      const processButton = screen.getByRole("button", { name: /Build trip options/i });
+      const processButton = screen.getByRole("button", { name: /Build trip options|Draft follow-up/i }) // process button is label-conditional (follow-up draft when details missing);
       fireEvent.click(processButton);
 
       await waitFor(() => {
@@ -220,7 +226,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
 
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Build trip options/i });
+    const processButton = screen.getByRole("button", { name: /Build trip options|Draft follow-up/i }) // process button is label-conditional (follow-up draft when details missing);
     fireEvent.click(processButton);
 
     await waitFor(() => {
@@ -234,7 +240,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
   it("sends retention_consent=true in the agency payload", async () => {
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Build trip options/i });
+    const processButton = screen.getByRole("button", { name: /Build trip options|Draft follow-up/i }) // process button is label-conditional (follow-up draft when details missing);
     fireEvent.click(processButton);
 
     await waitFor(() => {
@@ -250,7 +256,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
 
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Build trip options/i });
+    const processButton = screen.getByRole("button", { name: /Build trip options|Draft follow-up/i }) // process button is label-conditional (follow-up draft when details missing);
     fireEvent.click(processButton);
 
     await waitFor(() => {

@@ -395,7 +395,8 @@ class TestPrioritiesFlexibilityPatchSync:
         assert priorities_fact is not None, f"trip_priorities not in facts: {trip.get('extracted', {}).get('facts', {})}"
         assert priorities_fact["value"] == "Kid-friendly activities, beach access"
         assert priorities_fact["confidence"] == 1.0
-        assert priorities_fact["authority_level"] == "explicit_user"
+        # TRV-DP-07 D1: operator patches carry manual_override.
+        assert priorities_fact["authority_level"] == "manual_override"
 
     def test_patch_syncs_date_flexibility_to_facts(self, session_client):
         """PATCH with date_flexibility writes to extracted.facts.date_flexibility."""
@@ -505,7 +506,8 @@ class TestDatePartyDestinationPatchSync:
         assert dw_fact is not None, f"date_window not in facts: {trip.get('extracted', {}).get('facts', {})}"
         assert dw_fact["value"] == "March 15-20, 2026"
         assert dw_fact["confidence"] == 1.0
-        assert dw_fact["authority_level"] == "explicit_user"
+        # TRV-DP-07 D1: operator patches carry manual_override.
+        assert dw_fact["authority_level"] == "manual_override"
 
     def test_patch_syncs_party_to_facts(self, session_client):
         """PATCH with party writes to extracted.facts.party_size."""
@@ -520,7 +522,8 @@ class TestDatePartyDestinationPatchSync:
         assert ps_fact is not None, f"party_size not in facts: {trip.get('extracted', {}).get('facts', {})}"
         assert ps_fact["value"] == 4
         assert ps_fact["confidence"] == 1.0
-        assert ps_fact["authority_level"] == "explicit_user"
+        # TRV-DP-07 D1: operator patches carry manual_override.
+        assert ps_fact["authority_level"] == "manual_override"
 
     def test_patch_syncs_destination_to_facts(self, session_client):
         """PATCH with destination writes to extracted.facts.destination_candidates."""
@@ -535,7 +538,8 @@ class TestDatePartyDestinationPatchSync:
         assert dc_fact is not None, f"destination_candidates not in facts: {trip.get('extracted', {}).get('facts', {})}"
         assert dc_fact["value"] == ["Paris"]
         assert dc_fact["confidence"] == 1.0
-        assert dc_fact["authority_level"] == "explicit_user"
+        # TRV-DP-07 D1: operator patches carry manual_override.
+        assert dc_fact["authority_level"] == "manual_override"
 
     def test_patch_syncs_all_three_together(self, session_client):
         """PATCH with all three fields writes all three to facts."""

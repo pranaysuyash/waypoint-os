@@ -150,6 +150,12 @@ class PublicProposalView(BaseModel):
     # occasion) de-attributed from travelers[] facts — never carries traveler
     # names. Empty unless speaker-attributed facts exist.
     stated_requirements: List[str] = Field(default_factory=list)
+    # Gap-4 trust render (2026-11-03): the deterministic why-this-option
+    # rationale (built ONLY from persisted decision facts — never generated
+    # prose) and the trip's open follow-up questions WITH field names, so the
+    # repair state is visible to the traveler it protects.
+    why_this_fits: Optional[str] = None
+    open_questions: List[Dict[str, Any]] = Field(default_factory=list)
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     party_size: Optional[int] = None
@@ -868,6 +874,70 @@ def _duration_from_packet(packet: dict) -> Optional[int]:
     return duration if duration > 0 else None
 
 
+def _why_this_fits(safe_trip: dict) -> Optional[str]:
+    """Deterministic traveler-facing rationale from PERSISTED decision facts.
+
+    Every clause maps to a persisted decision field; when a field is absent
+    the clause is skipped, and when nothing persisted the value stays None —
+    the public page never carries generated prose that no decision produced.
+    """
+    decision = safe_trip.get("decision") or {}
+    rationale = decision.get("rationale")
+    if not isinstance(rationale, dict) or not rationale:
+        return None
+    parts: List[str] = []
+
+    feasibility = rationale.get("feasibility")
+    if feasibility:
+        parts.append(f"feasibility check: {str(feasibility).replace('_', ' ')}")
+
+    budget_verdict = rationale.get("budget_verdict")
+    if budget_verdict:
+        low = rationale.get("budget_total_low")
+        high = rationale.get("budget_total_high")
+        if isinstance(low, (int, float)) and isinstance(high, (int, float)):
+            parts.append(f"estimated within your stated budget ({budget_verdict}, ≈{low:,.0f}–{high:,.0f})")
+        else:
+            parts.append(f"budget check: {str(budget_verdict).replace('_', ' ')}")
+
+    # Sim-pass red-team finding (2026-11-07): the internal planning-confidence
+    # percentage is an agent-model metric — telling a traveler "the model is
+    # 62% sure" undermines trust and leaks an internal signal. Never rendered.
+
+    soft = rationale.get("soft_blockers") or []
+    if soft:
+        parts.append(f"{len(soft)} item(s) need your confirmation before booking")
+
+    if not parts:
+        return None
+    return "This plan was selected for you: " + "; ".join(parts) + "."
+
+
+def _public_open_questions(safe_trip: dict) -> List[Dict[str, Any]]:
+    """The trip's open follow-up questions, public-safe projection.
+
+    Field name + question text + priority only — never internal metadata —
+    so the repair state is visible with the same field names the ask link
+    uses."""
+    decision = safe_trip.get("decision") or {}
+    out: List[Dict[str, Any]] = []
+    for q in decision.get("follow_up_questions") or []:
+        if not isinstance(q, dict):
+            continue
+        field_name = str(q.get("field_name") or "").strip()
+        text = str(q.get("question") or q.get("text") or "").strip()
+        if not field_name or not text:
+            continue
+        out.append(
+            {
+                "field_name": field_name,
+                "question": text[:500],
+                "priority": str(q.get("priority") or "medium"),
+            }
+        )
+    return out
+
+
 def _build_persisted_proposal(token: str, trip_id: str, agency_id: str) -> PublicProposalView:
     """Project only persisted, traveler-safe proposal facts.
 
@@ -926,6 +996,8 @@ def _build_persisted_proposal(token: str, trip_id: str, agency_id: str) -> Publi
         available_options=[],
         reality_tier="persisted_observed",
         stated_requirements=(safe_trip.get("packet") or {}).get("stated_requirements", []),
+        why_this_fits=_why_this_fits(safe_trip),
+        open_questions=_public_open_questions(safe_trip),
         start_date=packet.get("start_date"),
         end_date=packet.get("end_date"),
         party_size=packet.get("party_size"),

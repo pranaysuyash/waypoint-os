@@ -80,6 +80,11 @@ describe("P1 Happy Path Journey", () => {
   const workspaceTrip: Trip = {
     id: "TRIP-123",
     destination: "Singapore",
+    // FND-0402: purpose + origin are required-brief members — without them
+    // the panel flips to lead-review ("Start planning") and the process
+    // button under test never renders.
+    tripPurpose: "Family",
+    origin: "Mumbai",
     type: "Family",
     state: "amber",
     status: "assigned",

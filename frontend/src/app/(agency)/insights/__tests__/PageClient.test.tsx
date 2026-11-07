@@ -60,6 +60,7 @@ const mockDismissAlert = vi.fn();
 const mockRefetchProductBKpis = vi.fn();
 
 vi.mock('@/hooks/useGovernance', () => ({
+  useInboxStats: () => ({ data: null, isLoading: false, error: null, refetch: () => {} }),
   useInsightsSummary: () => ({
     data: mockUseInsightsSummary(),
     isLoading: false,

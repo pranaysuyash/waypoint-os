@@ -5,6 +5,9 @@ import { FileSpreadsheet, Link2, Upload } from 'lucide-react';
 import {
   ingestCommissionStatement,
   linkCommissionStatementRow,
+  recordStatementRowPayout,
+  reopenCommissionBatch,
+  listCommissionBatches,
   type CommissionIngestBatch,
   type CommissionIngestRow,
 } from '@/lib/api-client';
@@ -41,6 +44,37 @@ export default function CommissionStatementsTab() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkFeedback, setLinkFeedback] = useState<string | null>(null);
+  const [recordAdvisorIds, setRecordAdvisorIds] = useState<Record<number, string>>({});
+  const [isRecording, setIsRecording] = useState<number | null>(null);
+  const [recentBatches, setRecentBatches] = useState<
+    Array<{ batch_id: string; created_at: string; row_count: number; source_format: string }>
+  >([]);
+  const [reopenId, setReopenId] = useState('');
+  const [reopenError, setReopenError] = useState<string | null>(null);
+
+  const loadRecentBatches = async () => {
+    try {
+      const res = await listCommissionBatches();
+      setRecentBatches(res.items ?? []);
+    } catch {
+      // non-blocking — reopen list is a convenience
+    }
+  };
+
+  const handleReopen = async () => {
+    setReopenError(null);
+    if (!reopenId.trim()) {
+      setReopenError('Enter a batch ID to reopen.');
+      return;
+    }
+    try {
+      const res = await reopenCommissionBatch(reopenId.trim());
+      setBatch(res);
+      setLinkFeedback(`Reopened batch ${res.batch_id}.`);
+    } catch (err: unknown) {
+      setReopenError(err instanceof Error ? err.message : 'Batch not found.');
+    }
+  };
 
   const handleIngest = async () => {
     setError(null);
@@ -53,10 +87,34 @@ export default function CommissionStatementsTab() {
     try {
       const res = await ingestCommissionStatement(format, content);
       setBatch(res);
+      void loadRecentBatches();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Statement ingest failed.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRecord = async (rowIndex: number) => {
+    if (!batch) return;
+    const advisorId = (recordAdvisorIds[rowIndex] ?? '').trim();
+    if (!advisorId) {
+      setError('Enter the advisor ID to attribute this commission to.');
+      return;
+    }
+    setError(null);
+    setLinkFeedback(null);
+    setIsRecording(rowIndex);
+    try {
+      const res = await recordStatementRowPayout(batch.batch_id, rowIndex, advisorId);
+      setBatch(res.batch);
+      setLinkFeedback(
+        `Row ${rowIndex} recorded durably: payout ${res.payout.payout_id} (USD ${res.payout.amount_usd.toLocaleString()}) → ${res.payout.trip_id}.`,
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Payout recording failed.');
+    } finally {
+      setIsRecording(null);
     }
   };
 
@@ -87,6 +145,28 @@ export default function CommissionStatementsTab() {
         review — money truth only moves when a payout is recorded through the durable payout
         store. Image statements must be pasted as OCR text (no in-process OCR).
       </div>
+
+      {recentBatches.length > 0 && (
+        <div className="rounded-xl border border-[#30363d] bg-[#0f1115] p-4" data-testid="commission-recent-batches">
+          <p className="text-ui-xs font-semibold uppercase tracking-wider text-[#8b949e] mb-2">Recent batches</p>
+          <ul className="space-y-1">
+            {recentBatches.slice(0, 5).map((b) => (
+              <li key={b.batch_id}>
+                <button
+                  type="button"
+                  onClick={() => { setReopenId(b.batch_id); void handleReopen(); }}
+                  className="text-ui-xs text-[#58a6ff] hover:underline font-mono"
+                >
+                  {b.batch_id}
+                </button>
+                <span className="text-ui-xs text-[#8b949e]">
+                  {' '}· {b.row_count} rows · {b.source_format} · {new Date(b.created_at).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-4 space-y-3">
         <div className="flex items-center gap-2">
@@ -202,12 +282,49 @@ export default function CommissionStatementsTab() {
                     </div>
                   )}
                   {row.match_status === 'matched' && row.match_trip_id && (
-                    <a
-                      href={`/trips/${row.match_trip_id}`}
-                      className="text-ui-xs text-[#58a6ff] hover:underline"
-                    >
-                      open trip
-                    </a>
+                    <>
+                      <a
+                        href={`/trips/${row.match_trip_id}`}
+                        className="text-ui-xs text-[#58a6ff] hover:underline"
+                      >
+                        open trip
+                      </a>
+                      {row.currency.toUpperCase() === 'USD' && !row.recorded && (
+                        <div className="flex items-center gap-2">
+                          <input
+                            aria-label={`Advisor ID for row ${row.row_index}`}
+                            value={recordAdvisorIds[row.row_index] ?? ''}
+                            onChange={(e) =>
+                              setRecordAdvisorIds((prev) => ({ ...prev, [row.row_index]: e.target.value }))
+                            }
+                            placeholder="advisor_id"
+                            className="w-32 px-2 py-1 bg-[#0f1115] border border-[#30363d] rounded-lg text-ui-xs text-[#e6edf3] placeholder:text-[#484f58]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRecord(row.row_index)}
+                            disabled={isRecording === row.row_index}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#238636] text-white text-[11px] font-semibold disabled:opacity-50"
+                            data-testid={`commission-record-${row.row_index}`}
+                          >
+                            {isRecording === row.row_index ? 'Recording…' : 'Record payout'}
+                          </button>
+                        </div>
+                      )}
+                      {row.recorded && (
+                        <span
+                          className="inline-flex items-center rounded-full bg-[#3fb950]/10 px-2 py-0.5 text-[10px] font-semibold text-[#3fb950]"
+                          data-testid={`commission-recorded-${row.row_index}`}
+                        >
+                          recorded · {row.recorded_payout_id}
+                        </span>
+                      )}
+                      {row.currency.toUpperCase() !== 'USD' && !row.recorded && (
+                        <span className="text-ui-xs text-[#8b949e]" title="The payout ledger stores USD; no automatic FX conversion.">
+                          {row.currency} — convert + record manually
+                        </span>
+                      )}
+                    </>
                   )}
                 </li>
               ))}

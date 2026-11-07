@@ -94,6 +94,14 @@ RLS_EXCLUDED_AGENCY_TABLES: dict[str, str] = {
     # read cross-tenant by the startup orphan sweep and the stale-run reaper,
     # so agency-scoped RLS would break those platform paths by design.
     "run_checkpoints": "platform run-lifecycle ledger; nullable agency_id; cross-tenant startup orphan sweep / stale-run reaper access by design",
+    # R2-A (2026-11-04): hashed agency API keys (spine_api/core/api_key_auth.py).
+    # Same credential-hash precedent as proposal_access_tokens: key resolution
+    # runs OUTSIDE any authenticated agency session (possession of the key
+    # hash IS the resolution credential), so a tenant GUC does not exist at
+    # lookup time and FORCE RLS would fail the design closed. agency_id on
+    # the row binds the resolved tenant AFTER lookup; revoke is scoped by
+    # (agency_id, key_id) under the operator JWT session.
+    "agency_api_keys": "external API-key credential hashes; lookup is by sha256 key hash only, pre-tenant-context by design (TRV-DP-07 D5)",
 }
 
 # Tables with ENABLE RLS but intentionally WITHOUT FORCE RLS.

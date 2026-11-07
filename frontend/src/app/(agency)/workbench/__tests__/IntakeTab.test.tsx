@@ -131,12 +131,17 @@ describe('IntakeTab', () => {
     );
   });
 
-  it('never lets a prefill clobber a note the operator already typed', () => {
+  it('appends a prefill beneath a labeled separator when a note already exists (no data loss)', () => {
     mockStore.input_raw_note = 'Operator draft already in progress.';
     mockStore.consumePendingIntakePrefill.mockImplementationOnce(() => 'Different message.');
 
     render(<IntakeTab trip={null} />);
 
-    expect(mockStore.setInputRawNote).not.toHaveBeenCalledWith('Different message.');
+    // Sim-pass fix (2026-11-07): consume-and-drop was silent data loss — the
+    // operator's draft AND the forwarded message must both survive.
+    const call = mockStore.setInputRawNote.mock.calls[0][0];
+    expect(call).toContain('Operator draft already in progress.');
+    expect(call).toContain('forwarded from inbox channel message');
+    expect(call).toContain('Different message.');
   });
 });

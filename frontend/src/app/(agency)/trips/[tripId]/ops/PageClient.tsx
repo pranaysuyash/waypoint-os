@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import Link from 'next/link';
 import { useTripContext } from '@/contexts/TripContext';
 import OpsPanel from '@/app/(agency)/workbench/OpsPanel';
+import IrropsReportSection from './IrropsReportSection';
 import { canAccessOpsWorkspace, getPlanningBriefStatus } from '@/lib/planning-status';
 import { getTripRoute } from '@/lib/routes';
 
@@ -82,7 +83,10 @@ export default function OpsPageClient() {
   return (
     <div className="p-6">
       <OpsMigrationBanner />
-      <OpsPanel trip={trip} mode="full" />
+      <div className="space-y-4">
+        <OpsPanel trip={trip} mode="full" />
+        <IrropsReportSection tripId={tripId} />
+      </div>
     </div>
   );
 }

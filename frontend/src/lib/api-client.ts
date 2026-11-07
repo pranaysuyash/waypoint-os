@@ -2227,6 +2227,8 @@ export interface CommissionIngestRow {
   match_trip_id: string | null;
   match_method: string | null;
   match_confidence: number | null;
+  recorded?: boolean;
+  recorded_payout_id?: string | null;
 }
 
 export interface CommissionIngestBatch {
@@ -2263,6 +2265,47 @@ export async function linkCommissionStatementRow(
   return api.post(`/api/commission/ingest/${encodeURIComponent(batchId)}/link`, {
     row_index: rowIndex,
     trip_id: tripId,
+  });
+}
+
+export interface RecordRowPayoutResponse {
+  ok: boolean;
+  payout: {
+    payout_id: string;
+    amount_usd: number;
+    trip_id: string;
+    advisor_id: string;
+    storage_backend: string;
+  };
+  batch: CommissionIngestBatch;
+}
+
+export interface CommissionIngestBatchSummary {
+  batch_id: string;
+  source_format: string;
+  source_label: string;
+  created_at: string;
+  row_count: number;
+  matched_count: number;
+  manual_candidate_count: number;
+}
+
+export async function listCommissionBatches(): Promise<{ items: CommissionIngestBatchSummary[] }> {
+  return api.get('/api/commission/ingest');
+}
+
+export async function reopenCommissionBatch(batchId: string): Promise<CommissionIngestBatch> {
+  return api.get(`/api/commission/ingest/${encodeURIComponent(batchId)}`);
+}
+
+export async function recordStatementRowPayout(
+  batchId: string,
+  rowIndex: number,
+  advisorId: string
+): Promise<RecordRowPayoutResponse> {
+  return api.post(`/api/commission/ingest/${encodeURIComponent(batchId)}/record`, {
+    row_index: rowIndex,
+    advisor_id: advisorId,
   });
 }
 

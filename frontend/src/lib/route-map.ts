@@ -228,9 +228,10 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["followups/{id}/reschedule", { backendPath: "followups/{id}/reschedule" }],
 
   // ── Commission statement ingest (R2-B / Travefy bar, 2026-11-03) ───
-  ["commission/ingest", { backendPath: "commission/ingest" }],
-  ["commission/ingest/{batch_id}", { backendPath: "commission/ingest/{batch_id}" }],
-  ["commission/ingest/{batch_id}/link", { backendPath: "commission/ingest/{batch_id}/link" }],
+  ["commission/ingest", { backendPath: "api/v1/commission/ingest" }],
+  ["commission/ingest/{batch_id}", { backendPath: "api/v1/commission/ingest/{batch_id}" }],
+  ["commission/ingest/{batch_id}/link", { backendPath: "api/v1/commission/ingest/{batch_id}/link" }],
+  ["commission/ingest/{batch_id}/record", { backendPath: "api/v1/commission/ingest/{batch_id}/record" }],
 
   // ── Workbench capability panels (v1 sandbox/simulator routers) ──────────
   // Explicitly mapped so client panels can call the canonical BFF-relative

@@ -134,6 +134,73 @@ describe('CommissionStatementsTab (R2-B)', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('records a matched USD row through the durable payout endpoint and shows the recorded badge', async () => {
+    const calls: Array<{ url: string; body?: unknown }> = [];
+    const fetchMock = vi.fn((url: string, init?: { method?: string; body?: string }) => {
+      calls.push({ url, body: init?.body });
+      if (url === '/api/commission/ingest') {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(BATCH) });
+      }
+      if (url === '/api/commission/ingest/ci_abc123/record') {
+        const updated = {
+          ...BATCH,
+          rows: BATCH.rows.map((r) =>
+            r.row_index === 0
+              ? { ...r, recorded: true, recorded_payout_id: 'pay_rec_9' }
+              : r,
+          ),
+        };
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            ok: true,
+            payout: { payout_id: 'pay_rec_9', amount_usd: 2400, trip_id: 'trip_bali', advisor_id: 'adv_7', storage_backend: 'sql' },
+            batch: updated,
+          }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<CommissionStatementsTab />);
+    await userEvent.type(screen.getByLabelText('Statement content'), 'statement');
+    await userEvent.click(screen.getByTestId('commission-ingest-submit'));
+    await screen.findByTestId('commission-ingest-batch');
+
+    await userEvent.type(screen.getByLabelText('Advisor ID for row 0'), 'adv_7');
+    await userEvent.click(screen.getByTestId('commission-record-0'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('commission-recorded-0')).toHaveTextContent(
+        'recorded · pay_rec_9',
+      );
+    });
+    expect(calls.some((c) => c.url === '/api/commission/ingest/ci_abc123/record')).toBe(true);
+  });
+
+  it('does not offer recording for non-USD matched rows (no silent FX)', async () => {
+    const nonUsd = {
+      ...BATCH,
+      rows: BATCH.rows.map((r) =>
+        r.row_index === 0 ? { ...r, currency: 'INR' } : r,
+      ),
+    };
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/commission/ingest') {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(nonUsd) });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+    }));
+    render(<CommissionStatementsTab />);
+    await userEvent.type(screen.getByLabelText('Statement content'), 'statement');
+    await userEvent.click(screen.getByTestId('commission-ingest-submit'));
+    await screen.findByTestId('commission-ingest-batch');
+
+    expect(screen.getByText(/convert \+ record manually/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('commission-record-0')).not.toBeInTheDocument();
+  });
+
   it('labels candidates as preview-grade, not money truth', () => {
     vi.stubGlobal('fetch', vi.fn());
     render(<CommissionStatementsTab />);

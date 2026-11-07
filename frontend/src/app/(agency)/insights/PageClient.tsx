@@ -12,8 +12,9 @@ import {
   CheckCircle,
   ChevronDown,
   Download,
+  Sparkles,
 } from 'lucide-react';
-import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis, useRevenueMetrics, useOperationalAlerts, useProductBKpis } from '@/hooks/useGovernance';
+import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis, useRevenueMetrics, useOperationalAlerts, useProductBKpis, useInboxStats } from '@/hooks/useGovernance';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { useAuthStore } from '@/stores/auth';
 import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis, OperationalAlert } from '@/types/governance';
@@ -303,6 +304,91 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
 });
 
 // ============================================================================
+// Commercial evidence (FND-0402 close-out: revenue honesty)
+// ============================================================================
+
+interface CurrencyTotal {
+  currency?: string;
+  amount?: number;
+  tripCount?: number;
+}
+
+interface MonetaryMeasure {
+  availability?: 'available' | 'partial' | 'unavailable';
+  totals?: CurrencyTotal[];
+  evidenceTripCount?: number;
+  missingAmountTripCount?: number;
+  missingCurrencyTripCount?: number;
+  excludedPreviewTripCount?: number;
+  reason?: string;
+}
+
+function measureQualification(m: MonetaryMeasure): string | null {
+  const gaps: string[] = [];
+  if (m.missingAmountTripCount) gaps.push(`${m.missingAmountTripCount} missing amount`);
+  if (m.missingCurrencyTripCount) gaps.push(`${m.missingCurrencyTripCount} missing currency`);
+  if (m.excludedPreviewTripCount) gaps.push(`${m.excludedPreviewTripCount} preview-only excluded`);
+  return gaps.length > 0 ? `partial evidence: ${gaps.join(', ')}` : null;
+}
+
+function EvidenceGroup({
+  label,
+  measure,
+  emptyLabel,
+}: {
+  label: string;
+  measure: MonetaryMeasure | undefined;
+  emptyLabel: string;
+}) {
+  const availability = measure?.availability ?? 'unavailable';
+  const totals = (measure?.totals ?? []).filter((t) => t.currency && typeof t.amount === 'number');
+  const qualification = measure ? measureQualification(measure) : null;
+  return (
+    <div
+      role='group'
+      aria-label={label}
+      className='rounded-lg border border-[#1c2128] bg-[#0f1115] p-3'
+    >
+      <p className='text-ui-xs font-semibold uppercase tracking-wider text-[#8b949e]'>{label}</p>
+      {totals.length > 0 ? (
+        <ul className='mt-1.5 space-y-1'>
+          {totals.map((t) => (
+            <li key={t.currency} className='text-ui-sm text-[#e6edf3] font-mono'>
+              {t.currency} {(t.amount ?? 0).toLocaleString()}
+              {t.tripCount ? <span className='text-[#8b949e] font-sans'> · {t.tripCount} trip{t.tripCount === 1 ? '' : 's'}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className='mt-1 text-ui-sm text-[#8b949e]'>
+          {availability === 'unavailable' ? (measure?.reason || emptyLabel) : 'No qualifying records'}
+        </p>
+      )}
+      {qualification && <p className='mt-1 text-ui-xs text-[#d29922]'>{qualification}</p>}
+    </div>
+  );
+}
+
+function CommercialEvidence({ commercial }: { commercial: Record<string, MonetaryMeasure> | undefined }) {
+  return (
+    <section
+      aria-label='Commercial outcomes evidence'
+      className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'
+    >
+      <h2 className='text-ui-base font-semibold text-[#e6edf3]'>Commercial Outcomes (evidence-backed)</h2>
+      <p className='text-ui-xs text-[#8b949e] mt-0.5 mb-3'>
+        Values render only from recorded trip evidence — nothing here is assumed, projected, or relabeled.
+      </p>
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-3'>
+        <EvidenceGroup label='Pipeline budgets' measure={commercial?.budgetPipeline} emptyLabel='Unavailable' />
+        <EvidenceGroup label='Recorded booking value' measure={commercial?.bookedCustomerValue} emptyLabel='Not recorded' />
+        <EvidenceGroup label='Agency earned revenue' measure={commercial?.agencyEarnedRevenue} emptyLabel='Unavailable' />
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
 // MAIN PAGE
 // ============================================================================
 
@@ -321,6 +407,7 @@ export default function OwnerInsightsPage() {
   const { data: teamMetrics, isLoading: isTeamLoading, error: teamError } = useTeamMetrics(timeRange);
   const { data: bottlenecks, isLoading: isBottlenecksLoading, error: bottlenecksError } = useBottleneckAnalysis(timeRange);
   const { data: revenueData, isLoading: isRevenueLoading, error: revenueError } = useRevenueMetrics(timeRange);
+  const { data: inboxStats } = useInboxStats();
   const { data: alertsData, dismiss: dismissAlert } = useOperationalAlerts();
   const {
     data: productBKpis,
@@ -437,46 +524,28 @@ export default function OwnerInsightsPage() {
           icon={TrendingUp}
         />
         
-        <StatCard
-          title='Booked Revenue'
-          value={`$${(revenueData?.bookedRevenue || 0).toLocaleString()}`}
-          subtext='Confirmed revenue'
-          trend='up'
-          icon={CheckCircle}
-        />
+        {/* FND-0402: the assumed-money StatCards (Booked Revenue / GMV /
+            Pipeline / Projected / Near Close) fabricated $0 from absent
+            evidence — replaced by the evidence-backed section below. */}
 
         <StatCard
-          title='GMV (Delivered)'
-          value={`$${(summary.gmv ?? 0).toLocaleString()}`}
-          subtext='Recorded budgets of delivered trips'
-          trend='up'
-          icon={DollarSign}
-        />
-        
-        <StatCard
-          title='Pipeline Value'
-          value={`$${((revenueData?.totalPipelineValue || 0) / 1000).toFixed(0)}k`}
-          subtext='In progress'
+          title='Agent-Resolved Share'
+          value={
+            inboxStats?.agentResolvedShare != null
+              ? `${Math.round(inboxStats.agentResolvedShare * 100)}%`
+              : '—'
+          }
+          subtext={
+            inboxStats?.agentResolvedShare != null
+              ? `${inboxStats.agentResolvedCount}/${inboxStats.resolvedCount} resolved without operator review (${inboxStats.agentResolvedShareBasis})`
+              : 'No resolved trips yet'
+          }
           trend='neutral'
-          icon={DollarSign}
-        />
-        
-        <StatCard
-          title='Projected'
-          value={`$${((revenueData?.projectedRevenue || 0) / 1000).toFixed(0)}k`}
-          subtext='Weighted probability'
-          trend='up'
-          icon={TrendingUp}
-        />
-
-        <StatCard
-          title='Near Close'
-          value={`$${((revenueData?.nearCloseRevenue || 0) / 1000).toFixed(0)}k`}
-          subtext='Safety/Output stage'
-          trend='neutral'
-          icon={Clock}
+          icon={Sparkles}
         />
       </div>
+
+      <CommercialEvidence commercial={revenueData?.commercial as Record<string, MonetaryMeasure> | undefined} />
 
       {/* Main Content Grid */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-5'>
