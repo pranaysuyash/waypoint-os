@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 384,
+  "openapi_path_count": 386,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -61,6 +61,7 @@
     "/api/integrations",
     "/api/integrations/{provider}",
     "/api/internal/documents/{document_id}/download",
+    "/api/public-checker/agency/{slug_or_id}",
     "/api/public-checker/disputes",
     "/api/public-checker/events",
     "/api/public-checker/matches",
@@ -174,6 +175,7 @@
     "/api/v1/disruptions/{trip_id}/rebook",
     "/api/v1/disruptions/{trip_id}/rebook-options",
     "/api/v1/disruptions/{trip_id}/report",
+    "/api/v1/disruptions/{trip_id}/resolve",
     "/api/v1/distribution/fare-rules/cat35-markup",
     "/api/v1/distribution/fare-rules/penalties",
     "/api/v1/distribution/gds/generate-cryptics",

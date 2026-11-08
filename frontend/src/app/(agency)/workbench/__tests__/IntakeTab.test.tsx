@@ -5,6 +5,7 @@ import IntakeTab from '../IntakeTab';
 import type { Trip } from '@/lib/api-client';
 
 const mockReplace = vi.fn();
+let currentSearchParams = new URLSearchParams();
 
 // Mutable holder so tests can drive the workbench draft state the component reads.
 const mockStore = vi.hoisted(() => ({
@@ -19,7 +20,7 @@ const mockStore = vi.hoisted(() => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => currentSearchParams,
   useRouter: () => ({ replace: mockReplace }),
   usePathname: () => '/workbench',
 }));
@@ -44,6 +45,7 @@ const baseTrip = {
 describe('IntakeTab', () => {
   beforeEach(() => {
     mockReplace.mockReset();
+    currentSearchParams = new URLSearchParams();
     mockStore.input_raw_note = '';
     mockStore.input_owner_note = '';
     mockStore.draft_status = 'open';
@@ -143,5 +145,28 @@ describe('IntakeTab', () => {
     expect(call).toContain('Operator draft already in progress.');
     expect(call).toContain('forwarded from inbox channel message');
     expect(call).toContain('Different message.');
+  });
+
+  it('renders departure board handoff banner when source=departure-board', () => {
+    currentSearchParams = new URLSearchParams('source=departure-board&case=portugal&iata=PRT');
+
+    render(<IntakeTab trip={null} />);
+
+    expect(screen.getByTestId('intake-departure-board-handoff-banner')).toBeInTheDocument();
+    expect(screen.getByText('Departure Board Handoff Applied')).toBeInTheDocument();
+    expect(screen.getByText(/PORTUGAL client inquiry note ingested into Raw Notes/)).toBeInTheDocument();
+    expect(screen.getByText('✈ PRT')).toBeInTheDocument();
+  });
+
+  it('extracts and projects live travel signal when raw note contains travel brief details', () => {
+    mockStore.input_raw_note = 'Couple from Mumbai planning 10 days in Japan for our 20th anniversary in October, luxury ryokans, budget around $18,000, vegetarian meals.';
+
+    render(<IntakeTab trip={null} />);
+
+    expect(screen.getByText('Live Ingestion Signal')).toBeInTheDocument();
+    expect(screen.getByText(/Real-Time Signal Extracted · Ready to Process/i)).toBeInTheDocument();
+    expect(screen.getByText('Japan')).toBeInTheDocument();
+    expect(screen.getByText('Mumbai')).toBeInTheDocument();
+    expect(screen.getAllByText('$18,000').length).toBeGreaterThan(0);
   });
 });

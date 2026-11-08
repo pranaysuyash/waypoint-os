@@ -2,7 +2,8 @@
 spine_api.routers.message_triage — Live message triage API for workbench.
 
 Provides sub-second triage of incoming messages (WhatsApp, web, email) using
-TypeSafe System One (Jev) with deterministic fallback.
+fast semantic classification (e.g. TypeSafe System One / Jev) with deterministic
+heuristic fallback. Engine telemetry is returned via `source` without coupling UI labels.
 """
 
 from __future__ import annotations

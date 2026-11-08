@@ -66,6 +66,7 @@ from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from sqlalchemy import text
+from sqlalchemy.dialects.postgresql.asyncpg import AsyncAdapt_asyncpg_dbapi
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import asyncpg
 
@@ -1800,7 +1801,7 @@ def _seed_scenario(agency_id: Optional[str] = None):
         logger.error("SEED_SCENARIO: failed to load fixture: %s", e)
 
 
-def _is_trip_id_integrity_conflict(exc: IntegrityError) -> bool:
+def _is_trip_id_integrity_conflict(exc: Exception) -> bool:
     """Return True only for a duplicate ``trips.id`` insert.
 
     Fixture seeding runs under the requesting agency's RLS context.  A trip
@@ -1808,19 +1809,36 @@ def _is_trip_id_integrity_conflict(exc: IntegrityError) -> bool:
     preflight lookup, while the database primary key remains global.  Treat
     that one expected race/collision as an idempotent skip, but re-raise other
     integrity failures (for example a broken foreign key or malformed row).
+
+    The asyncio dialect can surface the raw adapted DBAPI error (no ``.orig``
+    wrapper, not an ``sqlalchemy.exc.IntegrityError`` subclass), so the
+    asyncpg unique-violation signal is sought on the exception itself and its
+    ``__cause__``/``__context__`` chain as well.
     """
-    original = getattr(exc, "orig", None)
-    sqlstate = getattr(original, "sqlstate", None) or getattr(original, "pgcode", None)
-    constraint = getattr(original, "constraint_name", None)
-    detail = str(getattr(original, "detail", "") or exc).lower()
+    seen: set[int] = set()
+    pending: list[BaseException | None] = [exc]
+    while pending:
+        current = pending.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+        sqlstate = getattr(current, "sqlstate", None) or getattr(current, "pgcode", None)
+        constraint = getattr(current, "constraint_name", None)
+        if sqlstate == "23505":  # PostgreSQL unique_violation
+            detail = str(getattr(current, "detail", "") or "").lower()
+            if constraint in {"trips_pkey", "trip_pkey"} or "trips.id" in detail or "(id)" in detail:
+                return True
+        pending.append(getattr(current, "orig", None))
+        if isinstance(current, BaseException):
+            pending.append(current.__cause__)
+            pending.append(current.__context__)
+
     message = str(exc).lower()
-
-    if sqlstate == "23505":  # PostgreSQL unique_violation
-        return constraint in {"trips_pkey", "trip_pkey"} or "trips.id" in detail or "(id)" in detail
-
-    # SQLite/local test backends expose the table/column in the message rather
-    # than a PostgreSQL SQLSTATE.
-    return "unique constraint failed: trips.id" in message
+    if "unique constraint failed: trips.id" in message:  # SQLite/local test backends
+        return True
+    return "duplicate key value violates unique constraint" in message and (
+        "trips_pkey" in message or "trip_pkey" in message
+    )
 
 
 def _seed_scenario_for_agency(agency_id: str, seed_name: Optional[str] = None) -> int:
@@ -1888,7 +1906,7 @@ def _seed_scenario_for_agency(agency_id: str, seed_name: Optional[str] = None) -
             
             try:
                 TripStore.save_trip(trip_record, agency_id=agency_id)
-            except IntegrityError as exc:
+            except (IntegrityError, AsyncAdapt_asyncpg_dbapi.IntegrityError) as exc:
                 if not _is_trip_id_integrity_conflict(exc):
                     raise
                 logger.warning(

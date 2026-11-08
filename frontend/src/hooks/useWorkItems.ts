@@ -5,6 +5,7 @@ import {
   actOnWorkItem,
   getWorkItems,
   type WorkItemAction,
+  type WorkItemFilterParams,
   type WorkItemQueueResponse,
 } from '@/lib/work-items-api';
 
@@ -12,11 +13,29 @@ import {
  * Classified incoming-work queue for the current agency. Mirrors the repo
  * staleTime convention (useTrips 30s): the queue is operator-glance data,
  * not real-time telemetry — the backend SSE lanes own liveness.
+ * Supports optional operator filter projections (urgency, duplicateOnly, returningOnly).
  */
-export function useWorkItems(limit = 8, includeDone = false) {
+export function useWorkItems(
+  filtersOrLimit: number | WorkItemFilterParams = 8,
+  legacyIncludeDone = false
+) {
+  const params: WorkItemFilterParams =
+    typeof filtersOrLimit === 'object' && filtersOrLimit !== null
+      ? filtersOrLimit
+      : { limit: filtersOrLimit, includeDone: legacyIncludeDone };
+
+  const limit = params.limit ?? 8;
+  const includeDone = params.includeDone ?? false;
+  const urgency = params.urgency;
+  const duplicateOnly = params.duplicateOnly ?? false;
+  const returningOnly = params.returningOnly ?? false;
+
+  const hasExtraFilters = Boolean(urgency || duplicateOnly || returningOnly);
+
   const query = useQuery({
-    queryKey: ['work-items', limit, includeDone],
-    queryFn: (): Promise<WorkItemQueueResponse> => getWorkItems(limit, includeDone),
+    queryKey: ['work-items', limit, includeDone, urgency, duplicateOnly, returningOnly],
+    queryFn: (): Promise<WorkItemQueueResponse> =>
+      hasExtraFilters ? getWorkItems(params) : getWorkItems(limit, includeDone),
     staleTime: 30_000,
   });
 

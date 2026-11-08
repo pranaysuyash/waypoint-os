@@ -1040,3 +1040,13 @@ Canonical counter for the Destination Intelligence master list
 bullets per category (prism topics counted unmarked, not force-bucketed);
 idempotent. Re-run after ANY master-list edit instead of hand-maintaining the
 summary tables.
+
+## verify_departure_board_handoff.mjs
+
+Live E2E walk of the departure-board → auth → workbench handoff lifecycle (9 test points), including the fresh-agency overview network check (T9). Headless Playwright; evidence PNGs + `walk_results.json` under `Docs/sims/assets/handoff_walk/`.
+
+**Prereqs:** backend on `:8000` (`TRIPSTORE_BACKEND=sql`); frontend with the board flag — `NEXT_PUBLIC_LANDING_VARIANT=departure-board npm run dev -- -p 3006`; browser once via `cd frontend && npx playwright install chromium-headless-shell`.
+
+**Usage:** `node tools/verify_departure_board_handoff.mjs --base http://127.0.0.1:3006 [--headed] [--email you@example.com]`
+
+**Exit:** non-zero on any failed test point. Each signup run creates a fresh agency (additive test data by design).

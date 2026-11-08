@@ -1,0 +1,56 @@
+{
+  "results": [
+    {
+      "id": "T1 board landing + CTA",
+      "pass": true,
+      "detail": "3 CTA(s); initial handoff=null (clean)"
+    },
+    {
+      "id": "T2 CTA writes handoff → /signup",
+      "pass": true,
+      "detail": "caseSlug=italy iata=ITA"
+    },
+    {
+      "id": "T3 signup handoff banner",
+      "pass": true,
+      "detail": "CASE QUEUE Italy Inquiry will open in Workbench ✈ ITA"
+    },
+    {
+      "id": "T4 signup → workbench handoff redirect",
+      "pass": true,
+      "detail": "http://127.0.0.1:3006/workbench?source=departure-board&case=italy&iata=ITA&prefill=Hi!%20Looking%20to%20take%20a%20group%20of%204%20to%20Italy%20for%20about%2010%20days%20next%20spring.%20Would%20love%20a%20mix%20of%20culture%20and%20coastal%20time.%20Can%20you%20put%20together%20some%20options%3F"
+    },
+    {
+      "id": "T5 intake prefill consumed",
+      "pass": true,
+      "detail": "textarea contains \"Hi! Looking to take a group of 4 to Italy for about 10 days …\""
+    },
+    {
+      "id": "T6 handoff cleared post-auth",
+      "pass": true,
+      "detail": "sessionStorage key removed"
+    },
+    {
+      "id": "T7 signup revisit: no stale banner",
+      "pass": true,
+      "detail": "banner absent"
+    },
+    {
+      "id": "T8 login: no stale banner",
+      "pass": true,
+      "detail": "banner absent"
+    },
+    {
+      "id": "T9 fresh-agency overview clean",
+      "pass": true,
+      "detail": "no 4xx/5xx during overview load"
+    }
+  ],
+  "consoleErrors": [
+    {
+      "where": "http://127.0.0.1:3006/",
+      "text": "Warning: Extra attributes from the server: %s%s style \n    at input\n    at form\n    at div\n    at div\n    at div\n    at section\n    at div\n    at DepartureBoardLandingPage (webpack-internal:///(app-pages-browser)/./src/components/marketing/departure-board/DepartureBoardHero.tsx:26:98)\n    at Landing"
+    }
+  ],
+  "email": "handoff-walk-1794113233086@test.com"
+}

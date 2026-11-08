@@ -76,24 +76,24 @@ export function RepeatTravelerRecallCard() {
   };
 
   return (
-    <div className="rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/30 via-slate-900/60 to-slate-950/80 p-4 shadow-lg backdrop-blur-sm space-y-3">
+    <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-4 space-y-3">
       {/* Card Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-indigo-500/20">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#21262d]">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-400/30">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#58a6ff]/10 text-[#58a6ff] border border-[#58a6ff]/20">
             <Brain className="h-4 w-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-white tracking-wide">{traveler.name}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-medium border border-indigo-500/30">
+              <span className="text-ui-xs font-semibold text-[#e6edf3] tracking-wide">{traveler.name}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#21262d] text-[#79c0ff] font-medium border border-[#30363d]">
                 Repeat Client ({traveler.tripsCount} Bookings)
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-medium border border-amber-500/20">
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#d29922]/10 text-[#e3b341] font-medium border border-[#d29922]/20">
                 {traveler.vipStatus}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-[#8b949e] mt-0.5">
               Sample of the repeat-traveler memory panel — real recalls appear here once your agency has booking history.
             </p>
           </div>
@@ -103,14 +103,14 @@ export function RepeatTravelerRecallCard() {
           {/* IMP-03: visible honesty badge — this is illustrative content, not a recall. */}
           <span
             data-testid="sample-data-badge"
-            className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 text-[10px] font-semibold uppercase tracking-wide border border-amber-500/30"
+            className="px-2.5 py-1 rounded-md bg-[#d29922]/10 text-[#e3b341] text-[10px] font-semibold uppercase tracking-wide border border-[#d29922]/30"
           >
             Sample data
           </span>
 
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors flex items-center gap-1 border border-slate-700"
+            className="px-2.5 py-1 rounded-md bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-ui-xs font-medium transition-colors flex items-center gap-1 border border-[#30363d]"
           >
             <Plus className="h-3 w-3" />
             {showAddForm ? 'Cancel' : 'Add Note'}
@@ -123,16 +123,16 @@ export function RepeatTravelerRecallCard() {
         {traveler.preferences.map((p) => (
           <div
             key={p.id}
-            className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 space-y-1"
+            className="p-2.5 rounded-lg bg-[#0d1117] border border-[#21262d] space-y-1"
           >
             <div className="flex items-center justify-between text-[11px]">
-              <span className="font-semibold text-indigo-300">{p.category}</span>
-              <span className="text-[10px] font-medium text-emerald-400">
+              <span className="font-semibold text-[#79c0ff]">{p.category}</span>
+              <span className="text-[10px] font-medium text-[#3fb950]">
                 {p.isPermanent ? '🛡️ Permanent Safety' : `${p.freshness}% Fresh`}
               </span>
             </div>
-            <p className="text-xs text-slate-200">{p.summary}</p>
-            <p className="text-[10px] text-slate-500 font-mono pt-0.5">
+            <p className="text-ui-xs text-[#c9d1d9]">{p.summary}</p>
+            <p className="text-[10px] text-[#8b949e] font-mono pt-0.5">
               Source: {p.source}
             </p>
           </div>
@@ -141,15 +141,15 @@ export function RepeatTravelerRecallCard() {
 
       {/* Add New Preference Form (sample demonstration — saves nothing) */}
       {showAddForm && (
-        <div className="p-3 rounded-lg bg-slate-950 border border-indigo-500/30 space-y-2.5">
-          <div className="flex items-center justify-between text-xs text-slate-300 font-medium">
+        <div className="p-3 rounded-lg bg-[#0d1117] border border-[#30363d] space-y-2.5">
+          <div className="flex items-center justify-between text-ui-xs text-[#c9d1d9] font-medium">
             <span>Log New Persistent Preference for {traveler.name} (Sample)</span>
-            <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-400">
+            <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-[#8b949e]">
               <input
                 type="checkbox"
                 checked={isPermanentSafety}
                 onChange={(e) => setIsPermanentSafety(e.target.checked)}
-                className="rounded border-slate-700 bg-slate-900 text-indigo-500"
+                className="rounded border-[#30363d] bg-[#161b22] text-[#58a6ff]"
               />
               <span>Permanent Safety (Allergy/Medical)</span>
             </label>
@@ -160,11 +160,11 @@ export function RepeatTravelerRecallCard() {
               value={newPreference}
               onChange={(e) => setNewPreference(e.target.value)}
               placeholder="e.g. Always prefers high-floor quiet rooms away from elevator..."
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+              className="flex-1 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-ui-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]"
             />
             <button
               onClick={handleSaveNew}
-              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium"
+              className="px-3 py-1.5 bg-[#1f6feb] hover:bg-[#388bfd] text-white rounded-lg text-ui-xs font-medium"
             >
               Save Fact
             </button>
@@ -173,7 +173,7 @@ export function RepeatTravelerRecallCard() {
       )}
 
       {saveStatus && (
-        <div className="p-2 rounded-lg bg-amber-950/40 border border-amber-500/30 text-xs text-amber-300 font-medium">
+        <div className="p-2 rounded-lg bg-[#d29922]/10 border border-[#d29922]/30 text-ui-xs text-[#e3b341] font-medium">
           {saveStatus}
         </div>
       )}

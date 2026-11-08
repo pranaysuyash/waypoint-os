@@ -665,7 +665,15 @@ def duplicate_risk(agency_id: str, contact: Optional[str], *, intent: str = "new
 _URGENCY_RANK = {"high": 0, "normal": 1, "low": 2}
 
 
-def ranked_queue(agency_id: str, *, limit: int = 50, include_done: bool = False) -> Dict[str, Any]:
+def ranked_queue(
+    agency_id: str,
+    *,
+    limit: int = 50,
+    include_done: bool = False,
+    urgency: Optional[str] = None,
+    duplicate_only: bool = False,
+    returning_only: bool = False,
+) -> Dict[str, Any]:
     """C1: the operator work queue — urgency first, returning guests next,
     then recency. Lifecycle-aware: resolved/dismissed items leave the ranked
     list; open + claimed stay (claimed carries its badge). Class counts
@@ -674,7 +682,12 @@ def ranked_queue(agency_id: str, *, limit: int = 50, include_done: bool = False)
 
     ``include_done=True`` is the history reader (map §14.4): resolved/dismissed
     items appear AFTER the actionable list (same sort within each group), so
-    the top of the queue is always actionable even in history mode."""
+    the top of the queue is always actionable even in history mode.
+
+    Optional filters (urgency, duplicate_only, returning_only) project the
+    visible slice for operators while leaving count aggregates as honest
+    queue totals.
+    """
     records = _read_all(agency_id)
     states = _derive_lifecycle(records)
     items = [r for r in records if r.get("record_type", "item") == "item"]
@@ -739,6 +752,15 @@ def ranked_queue(agency_id: str, *, limit: int = 50, include_done: bool = False)
         counts["by_state"][r["state"]] += 1
     duplicates = sum(1 for r in actionable if r.get("duplicate_of"))
     returning = sum(1 for r in actionable if r.get("returning_customer"))
+
+    # Apply operator filter projections (counts remain honest totals)
+    if urgency:
+        visible = [r for r in visible if r.get("urgency") == urgency]
+    if duplicate_only:
+        visible = [r for r in visible if r.get("duplicate_of")]
+    if returning_only:
+        visible = [r for r in visible if r.get("returning_customer")]
+
     return {
         "items": visible[: max(1, limit)],
         "total": len(annotated),

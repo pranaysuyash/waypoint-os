@@ -282,7 +282,9 @@ function reviewCriticality(review: TripReview, referenceNow: number): string {
 
 function tripPendingActions(trip: Trip): string[] {
   const actions: string[] = [];
-  if (trip.action?.trim()) actions.push(trip.action.trim());
+  if (trip.action?.trim() && trip.action.trim().toUpperCase() !== 'PENDING') {
+    actions.push(trip.action.trim());
+  }
   if (trip.overdue) addUnique(actions, 'Clear overdue planning');
   if (trip.state === 'red') addUnique(actions, 'Resolve red status');
   if (!hasKnownValue(trip.dateWindow)) addUnique(actions, 'Confirm travel window');
@@ -310,8 +312,9 @@ function tripSubtitle(trip: Trip): string {
 
 function tripReason(trip: Trip): string {
   const action = trip.action?.trim();
-  if (action) return action;
+  if (action && action.toUpperCase() !== 'PENDING') return action;
   if (trip.overdue) return 'Planning overdue';
+  if (trip.state === 'red') return 'Red status blocker';
   return 'Needs planning attention';
 }
 
@@ -324,7 +327,16 @@ function reviewReason(review: TripReview): string {
   if (review.feedbackSeverity === 'high') return 'High-risk quote review';
   if ((review.riskFlags ?? []).includes('tight_deadline')) return 'Tight deadline before sending';
   if ((review.riskFlags ?? []).includes('high_value')) return 'High-value quote needs approval';
-  return review.reason?.trim() || 'Quote approval needed';
+  const reason = review.reason?.trim();
+  if (reason) {
+    if (reason.includes('STOP_NEEDS_REVIEW')) {
+      return reason
+        .replace(/Decision state STOP_NEEDS_REVIEW requires owner review/i, 'Policy threshold hold requires owner review')
+        .replace(/STOP_NEEDS_REVIEW/g, 'Safety review hold');
+    }
+    return reason;
+  }
+  return 'Quote approval needed';
 }
 
 function slugIdPart(value: unknown): string {

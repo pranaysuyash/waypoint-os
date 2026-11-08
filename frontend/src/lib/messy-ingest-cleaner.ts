@@ -20,9 +20,11 @@ export interface ExtractedTravelSlots {
 const COMMON_DESTINATIONS = [
   'Dubai', 'Abu Dhabi', 'Bali', 'Singapore', 'Phuket', 'Bangkok', 'Koh Samui',
   'Maldives', 'Mauritius', 'Paris', 'Rome', 'London', 'Tokyo', 'Kyoto',
-  'Osaka', 'Switzerland', 'Zurich', 'Lucerne', 'Interlaken', 'Santorini',
-  'Athens', 'Amsterdam', 'Barcelona', 'Madrid', 'New York', 'Hawaii',
-  'Vietnam', 'Da Nang', 'Hanoi', 'Iceland', 'Norway', 'Kashmir', 'Ladakh',
+  'Osaka', 'Japan', 'Italy', 'Portugal', 'Lisbon', 'Porto', 'Switzerland',
+  'Zurich', 'Lucerne', 'Interlaken', 'Santorini', 'Athens', 'Greece',
+  'Amsterdam', 'Barcelona', 'Madrid', 'Spain', 'New York', 'Hawaii',
+  'Vietnam', 'Da Nang', 'Hanoi', 'Iceland', 'Norway', 'Kenya', 'Morocco',
+  'Peru', 'New Zealand', 'South Africa', 'Australia', 'Kashmir', 'Ladakh',
   'Goa', 'Kerala', 'Rajasthan', 'Jaipur', 'Udaipur'
 ];
 
@@ -30,7 +32,7 @@ const COMMON_HOTEL_CHAINS = [
   'Atlantis', 'Ritz-Carlton', 'The Ritz', 'Four Seasons', 'St. Regis',
   'Bulgari', 'Aman', 'Belmond', 'Rosewood', 'Mandarin Oriental',
   'One&Only', 'Waldorf Astoria', 'Marriott', 'Hilton', 'Hyatt', 'Taj',
-  'Oberoi', 'Leela', 'Banyan Tree', 'Six Senses', 'Jumeirah'
+  'Oberoi', 'Leela', 'Banyan Tree', 'Six Senses', 'Jumeirah', 'Ryokan', 'Ryokans'
 ];
 
 export function stripMessagingNoise(rawText: string): string {
@@ -65,12 +67,13 @@ export function parseMessyTravelNote(rawText: string): ExtractedTravelSlots {
 
   // Extract Origin
   let origin: string | undefined;
-  const airportCodeMatch = cleaned.match(/\b(?:from|ex|departs?|departing|origin)\s*[:\-]?\s*([A-Z]{3})\b/i)
-    ?? cleaned.match(/\b([A-Z]{3})\s*(?:to|->|—)\b/i);
+  const airportCodeMatch = cleaned.match(/\b(?:from|ex|departs?|departing|origin)\s+([A-Za-z]+)\s*\(([A-Z]{3})\)/i)
+    ?? cleaned.match(/\b(?:from|ex|departs?|departing|origin|flying from)\s*[:\-]?\s*([A-Z]{3})\b/)
+    ?? cleaned.match(/\b([A-Z]{3})\s*(?:to|->|—)\b/);
   if (airportCodeMatch) {
-    origin = airportCodeMatch[1].toUpperCase();
+    origin = airportCodeMatch[2] ? `${airportCodeMatch[1]} (${airportCodeMatch[2]})` : airportCodeMatch[1].toUpperCase();
   } else {
-    const originCityMatch = cleaned.match(/\b(?:from|ex|flying from)\s+([A-Za-z\s]+?)(?=[,\.\n]|for|to|\bwith\b|\bin\b|$)/i);
+    const originCityMatch = cleaned.match(/\b(?:from|ex|flying from)\s+([A-Za-z]+)(?=[,\.\n\s]|for|to|\bwith\b|\bin\b|\bplanning\b|\blooking\b|\bvisiting\b|\btraveling\b|$)/i);
     if (originCityMatch) {
       origin = originCityMatch[1].trim();
     }
@@ -82,6 +85,7 @@ export function parseMessyTravelNote(rawText: string): ExtractedTravelSlots {
   
   if (
     /\bcouple\b/i.test(textLower) ||
+    /\bmr\.?\s*(?:and|&)\s*mrs\.?\b/i.test(textLower) ||
     /\bme\s*(?:and|&|,)\s*(?:wife|husband|partner|fiancee?)\b/i.test(textLower) ||
     /\b(?:wife|husband|partner)\s*(?:and|&|,)\s*me\b/i.test(textLower)
   ) {
@@ -104,14 +108,16 @@ export function parseMessyTravelNote(rawText: string): ExtractedTravelSlots {
 
   // Extract Dates / Duration
   let datesSummary: string | undefined;
-  const durationMatch = cleaned.match(/(\d+)\s*(?:n(?:ights?)?|d(?:ays?)?)\s*(?:[\/&]\s*(\d+)\s*(?:d(?:ays?)?|n(?:ights?)?))?/i);
+  const durationMatch = cleaned.match(/(\d+)\s*(?:-?\s*days?|-?\s*nights?|n(?:ights?)?|d(?:ays?)?)\b/i);
   const dateWindowMatch = cleaned.match(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:\s*[-–to]\s*\d{1,2})?(?:,?\s*\d{4})?/i)
-    ?? cleaned.match(/\b\d{1,2}(?:st|nd|rd|th)?\s*[-–to]\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i);
+    ?? cleaned.match(/\b\d{1,2}(?:st|nd|rd|th)?\s*[-–to]\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i)
+    ?? cleaned.match(/\b(?:in\s+)?(January|February|March|April|May|June|July|August|September|October|November|December)\b/i);
 
   if (durationMatch && dateWindowMatch) {
-    datesSummary = `${dateWindowMatch[0]} (${durationMatch[0]})`;
+    const dateStr = dateWindowMatch[1] || dateWindowMatch[0];
+    datesSummary = `${dateStr} (${durationMatch[0]})`;
   } else if (dateWindowMatch) {
-    datesSummary = dateWindowMatch[0];
+    datesSummary = dateWindowMatch[1] || dateWindowMatch[0];
   } else if (durationMatch) {
     datesSummary = durationMatch[0];
   }
@@ -123,9 +129,9 @@ export function parseMessyTravelNote(rawText: string): ExtractedTravelSlots {
   const usdBudgetMatch = cleaned.match(/(?:\$|USD|EUR|GBP|£|€)\s*([\d,]+(?:\s*[-–to]\s*[\d,]+)?(?:\s*[kK])?)/i);
 
   if (inrBudgetMatch) {
-    budgetSummary = inrBudgetMatch[0].trim();
+    budgetSummary = inrBudgetMatch[0].replace(/[,.]+$/, '').trim();
   } else if (usdBudgetMatch) {
-    budgetSummary = usdBudgetMatch[0].trim();
+    budgetSummary = usdBudgetMatch[0].replace(/[,.]+$/, '').trim();
   }
 
   // Extract Hotels
@@ -149,6 +155,11 @@ export function parseMessyTravelNote(rawText: string): ExtractedTravelSlots {
   if (/\bbirthday\b/i.test(textLower)) dietary.push('Birthday trip');
   if (/\bprivate\s+(?:pool|villa)\b/i.test(textLower)) dietary.push('Private pool villa');
   if (/\bbeachfront|beach\s+villa\b/i.test(textLower)) dietary.push('Beachfront');
+  if (/\bryokans?\b/i.test(textLower)) dietary.push('Traditional Ryokan');
+  if (/\btea\s+ceremony\b/i.test(textLower)) dietary.push('Private Tea Ceremony');
+  if (/\bbusiness\s+class\b/i.test(textLower)) dietary.push('Business Class');
+  if (/\bfirst\s+class\b/i.test(textLower)) dietary.push('First Class');
+  if (/\bsafari\b/i.test(textLower)) dietary.push('Safari game drives');
 
   return {
     destinations: matchedDestinations,

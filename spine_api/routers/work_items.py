@@ -208,6 +208,18 @@ def get_work_item_queue(
         default=False,
         description="History reader: append resolved/dismissed items after the actionable list.",
     ),
+    urgency: Optional[str] = Query(
+        default=None,
+        description="Filter queue items by urgency class: high | normal | low",
+    ),
+    duplicate_only: bool = Query(
+        default=False,
+        description="Filter queue items to flagged duplicates only",
+    ),
+    returning_only: bool = Query(
+        default=False,
+        description="Filter queue items to returning customers only",
+    ),
 ) -> WorkItemQueueResponse:
     """Urgency-ranked queue of classified incoming work for this agency.
 
@@ -216,8 +228,19 @@ def get_work_item_queue(
     counts.by_state and total stay honest log totals (``count_basis``).
     ``include_done=true`` appends done items (state-annotated) after the
     actionable list — the history view over recorded lifecycle events.
+
+    Optional filters (urgency, duplicate_only, returning_only) project the
+    visible slice for operators while leaving count aggregates as honest
+    queue totals.
     """
-    queue = work_intake.ranked_queue(agency_id, limit=limit, include_done=include_done)
+    queue = work_intake.ranked_queue(
+        agency_id,
+        limit=limit,
+        include_done=include_done,
+        urgency=urgency,
+        duplicate_only=duplicate_only,
+        returning_only=returning_only,
+    )
     return WorkItemQueueResponse(
         items=[WorkItemEntry.model_validate(i) for i in _annotate_display(queue["items"], agency_id)],
         total=queue["total"],

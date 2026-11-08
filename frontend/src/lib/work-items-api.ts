@@ -58,8 +58,44 @@ export interface WorkItemQueueResponse {
 
 export type WorkItemAction = 'claim' | 'unclaim' | 'dismiss' | 'resolve';
 
-export async function getWorkItems(limit = 8, includeDone = false): Promise<WorkItemQueueResponse> {
-  return api.get(`/api/v1/work-items?limit=${limit}&include_done=${includeDone}`);
+export interface WorkItemFilterParams {
+  limit?: number;
+  includeDone?: boolean;
+  urgency?: 'high' | 'normal' | 'low';
+  duplicateOnly?: boolean;
+  returningOnly?: boolean;
+}
+
+export async function getWorkItems(
+  limitOrParams: number | WorkItemFilterParams = 8,
+  legacyIncludeDone = false
+): Promise<WorkItemQueueResponse> {
+  let limit = 8;
+  let includeDone = false;
+  let urgency: string | undefined;
+  let duplicateOnly = false;
+  let returningOnly = false;
+
+  if (typeof limitOrParams === 'object' && limitOrParams !== null) {
+    limit = limitOrParams.limit ?? 8;
+    includeDone = limitOrParams.includeDone ?? false;
+    urgency = limitOrParams.urgency;
+    duplicateOnly = limitOrParams.duplicateOnly ?? false;
+    returningOnly = limitOrParams.returningOnly ?? false;
+  } else {
+    limit = limitOrParams;
+    includeDone = legacyIncludeDone;
+  }
+
+  const query = new URLSearchParams({
+    limit: String(limit),
+    include_done: String(includeDone),
+  });
+  if (urgency) query.set('urgency', urgency);
+  if (duplicateOnly) query.set('duplicate_only', 'true');
+  if (returningOnly) query.set('returning_only', 'true');
+
+  return api.get(`/api/v1/work-items?${query.toString()}`);
 }
 
 export async function actOnWorkItem(

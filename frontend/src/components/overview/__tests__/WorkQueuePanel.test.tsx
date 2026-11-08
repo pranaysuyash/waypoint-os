@@ -238,4 +238,62 @@ describe('WorkQueuePanel', () => {
     renderPanel();
     expect(await screen.findByText(/Work queue unavailable/i)).toBeInTheDocument();
   });
+
+  it('filters by urgency when the urgent badge is clicked, and resets on toggle', async () => {
+    const getSpy = vi.spyOn(workItemsApi, 'getWorkItems').mockResolvedValue(mockQueue());
+    renderPanel();
+
+    const urgentBtn = await screen.findByRole('button', { name: /2 urgent/i });
+    expect(urgentBtn).toHaveAttribute('aria-pressed', 'false');
+
+    // Click urgent filter
+    fireEvent.click(urgentBtn);
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: /2 urgent/i })).toHaveAttribute('aria-pressed', 'true');
+    });
+    expect(await screen.findByText('High Urgency')).toBeInTheDocument();
+
+    await vi.waitFor(() => {
+      expect(getSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ urgency: 'high', limit: 8, includeDone: false })
+      );
+    });
+
+    // Clicking again clears the filter
+    const activeUrgentBtn = screen.getByRole('button', { name: /2 urgent/i });
+    fireEvent.click(activeUrgentBtn);
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: /2 urgent/i })).toHaveAttribute('aria-pressed', 'false');
+    });
+    expect(screen.queryByText('High Urgency')).toBeNull();
+  });
+
+  it('filters by duplicate when the dup? badge is clicked', async () => {
+    const getSpy = vi.spyOn(workItemsApi, 'getWorkItems').mockResolvedValue(mockQueue());
+    renderPanel();
+
+    const dupBtn = await screen.findByRole('button', { name: /1 dup\?/i });
+    expect(dupBtn).toHaveAttribute('aria-pressed', 'false');
+
+    // Click duplicate filter
+    fireEvent.click(dupBtn);
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: /1 dup\?/i })).toHaveAttribute('aria-pressed', 'true');
+    });
+    expect(await screen.findByText('Flagged Duplicates')).toBeInTheDocument();
+
+    await vi.waitFor(() => {
+      expect(getSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ duplicateOnly: true, limit: 8, includeDone: false })
+      );
+    });
+
+    // Click "Show all" to reset
+    const showAllBtn = screen.getByRole('button', { name: /Clear filter/i });
+    fireEvent.click(showAllBtn);
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: /1 dup\?/i })).toHaveAttribute('aria-pressed', 'false');
+    });
+    expect(screen.queryByText('Flagged Duplicates')).toBeNull();
+  });
 });

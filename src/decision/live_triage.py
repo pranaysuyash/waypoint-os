@@ -2,7 +2,13 @@
 decision.live_triage — Sub-second live intake message triage service.
 
 Provides real-time semantic analysis of inbound customer messages (WhatsApp,
-web, email) for the agent /workbench in <500ms using TypeSafe System One (Jev).
+web, email) for the agent /workbench in <500ms.
+
+Architectural contract:
+  - User-facing UI displays semantic domain labels ("Semantic Triage", "Live Advisory").
+  - Engine provenance ("jev", "heuristic_fallback", or custom models) is preserved in
+    the `source` telemetry attribute and latency metrics, allowing benchmarking and swapping
+    engines without mutating or coupling user-facing interfaces.
 
 Decisions evaluated:
   - Intent (Choice): new_booking, trip_modification, cancellation,

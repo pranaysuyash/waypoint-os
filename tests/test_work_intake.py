@@ -182,6 +182,39 @@ def test_ranked_queue_c1():
     assert queue["count_basis"] == "work_item_log_total"
 
 
+def test_ranked_queue_filters_honestly():
+    """Operator queue filtering: projects visible items while leaving totals honest."""
+    unique_agency = f"agency_filter_{uuid.uuid4().hex[:6]}"
+    contact = f"dup_{uuid.uuid4().hex[:6]}@example.com"
+    urgent = work_intake.classify_and_record(
+        "inbound_parse", agency_id=unique_agency, text="URGENT need flight today", contact=f"u_{uuid.uuid4().hex[:6]}@x.com"
+    )
+    first = work_intake.classify_and_record(
+        "inbound_parse", agency_id=unique_agency, text="Want Japan trip", contact=contact
+    )
+    dup = work_intake.classify_and_record(
+        "inbound_parse", agency_id=unique_agency, text="Japan again please", contact=contact
+    )
+    assert dup["duplicate_of"] == first["item_id"]
+
+    # 1. Filter by urgency="high"
+    q_urgent = work_intake.ranked_queue(unique_agency, urgency="high")
+    assert len(q_urgent["items"]) == 1
+    assert q_urgent["items"][0]["item_id"] == urgent["item_id"]
+    # Total, actionable, and counts must remain honest overall totals
+    assert q_urgent["total"] == 3
+    assert q_urgent["actionable"] == 3
+    assert q_urgent["duplicates_flagged"] == 1
+    assert q_urgent["count_basis"] == "work_item_log_total"
+
+    # 2. Filter by duplicate_only=True
+    q_dup = work_intake.ranked_queue(unique_agency, duplicate_only=True)
+    assert len(q_dup["items"]) == 1
+    assert q_dup["items"][0]["item_id"] == dup["item_id"]
+    assert q_dup["total"] == 3
+    assert q_dup["duplicates_flagged"] == 1
+
+
 def test_duplicate_risk_preview_seam():
     contact = f"prev.{uuid.uuid4().hex[:6]}@example.com"
     assert work_intake.duplicate_risk(AGENCY, contact) is False

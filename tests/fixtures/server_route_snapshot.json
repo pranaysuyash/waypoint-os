@@ -1,5 +1,5 @@
 {
-  "route_count": 422,
+  "route_count": 425,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -516,6 +516,14 @@
     {
       "path": "/api/internal/documents/{document_id}/download",
       "name": "internal_document_download",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public-checker/agency/{slug_or_id}",
+      "name": "get_public_checker_agency",
       "methods": [
         "GET"
       ],
@@ -1227,6 +1235,14 @@
     },
     {
       "path": "/api/v1/commission/ingest",
+      "name": "list_ingest_batches",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/commission/ingest",
       "name": "ingest_statement",
       "methods": [
         "POST"
@@ -1580,6 +1596,14 @@
     {
       "path": "/api/v1/disruptions/{trip_id}/report",
       "name": "report_disruption",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/disruptions/{trip_id}/resolve",
+      "name": "resolve_disruption",
       "methods": [
         "POST"
       ],

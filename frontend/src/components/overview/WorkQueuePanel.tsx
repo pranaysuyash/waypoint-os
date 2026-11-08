@@ -286,9 +286,18 @@ function WorkQueueRow({
   );
 }
 
+type QueueFilter = 'urgent' | 'duplicate' | 'returning' | null;
+
 export function WorkQueuePanel() {
+  const [activeFilter, setActiveFilter] = useState<QueueFilter>(null);
   const [includeDone, setIncludeDone] = useState(false);
-  const { data, isLoading, error } = useWorkItems(8, includeDone);
+  const { data, isLoading, error } = useWorkItems({
+    limit: 8,
+    includeDone,
+    urgency: activeFilter === 'urgent' ? 'high' : undefined,
+    duplicateOnly: activeFilter === 'duplicate',
+    returningOnly: activeFilter === 'returning',
+  });
   const action = useWorkItemAction();
   const [actionError, setActionError] = useState<string | null>(null);
   const [noteEditor, setNoteEditor] = useState<{ itemId: string; action: WorkItemAction } | null>(
@@ -333,21 +342,60 @@ export function WorkQueuePanel() {
           </span>
         </div>
         {data && (
-          <div className='flex items-center gap-2 text-[11px]' style={{ color: 'var(--text-muted)' }}>
+          <div className='flex items-center gap-1.5 text-[11px]' style={{ color: 'var(--text-muted)' }}>
             {data.counts.by_urgency.high > 0 && (
-              <span
-                className='inline-flex items-center gap-1 font-semibold'
-                style={{ color: 'var(--accent-red)' }}
+              <button
+                type='button'
+                onClick={() => setActiveFilter((curr) => (curr === 'urgent' ? null : 'urgent'))}
+                aria-pressed={activeFilter === 'urgent'}
+                title={activeFilter === 'urgent' ? 'Clear urgent filter' : 'Filter queue to urgent items'}
+                className='inline-flex items-center gap-1 font-semibold rounded-full px-2 py-0.5 transition-all cursor-pointer border'
+                style={{
+                  color: 'var(--accent-red)',
+                  borderColor: activeFilter === 'urgent' ? 'rgba(248,113,113,0.5)' : 'transparent',
+                  background: activeFilter === 'urgent' ? 'rgba(248,113,113,0.18)' : 'transparent',
+                }}
               >
                 <AlertTriangle className='size-3' aria-hidden='true' />
-                {data.counts.by_urgency.high} urgent
-              </span>
+                <span>{data.counts.by_urgency.high} urgent</span>
+                {activeFilter === 'urgent' && <X className='size-2.5 ml-0.5 opacity-80' />}
+              </button>
             )}
-            {data.returning_customers > 0 && <span>{data.returning_customers} returning</span>}
             {data.duplicates_flagged > 0 && (
-              <span style={{ color: 'var(--accent-amber)' }}>{data.duplicates_flagged} dup?</span>
+              <button
+                type='button'
+                onClick={() => setActiveFilter((curr) => (curr === 'duplicate' ? null : 'duplicate'))}
+                aria-pressed={activeFilter === 'duplicate'}
+                title={activeFilter === 'duplicate' ? 'Clear duplicate filter' : 'Filter queue to flagged duplicates'}
+                className='inline-flex items-center gap-1 font-semibold rounded-full px-2 py-0.5 transition-all cursor-pointer border'
+                style={{
+                  color: 'var(--accent-amber)',
+                  borderColor: activeFilter === 'duplicate' ? 'rgba(245,158,11,0.5)' : 'transparent',
+                  background: activeFilter === 'duplicate' ? 'rgba(245,158,11,0.18)' : 'transparent',
+                }}
+              >
+                <span>{data.duplicates_flagged} dup?</span>
+                {activeFilter === 'duplicate' && <X className='size-2.5 ml-0.5 opacity-80' />}
+              </button>
             )}
-            <span aria-label='total work items'>{data.total} total</span>
+            {data.returning_customers > 0 && (
+              <button
+                type='button'
+                onClick={() => setActiveFilter((curr) => (curr === 'returning' ? null : 'returning'))}
+                aria-pressed={activeFilter === 'returning'}
+                title={activeFilter === 'returning' ? 'Clear returning filter' : 'Filter queue to returning guests'}
+                className='inline-flex items-center gap-1 font-medium rounded-full px-2 py-0.5 transition-all cursor-pointer border'
+                style={{
+                  color: activeFilter === 'returning' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                  borderColor: activeFilter === 'returning' ? 'rgba(59,130,246,0.5)' : 'transparent',
+                  background: activeFilter === 'returning' ? 'rgba(59,130,246,0.18)' : 'transparent',
+                }}
+              >
+                <span>{data.returning_customers} returning</span>
+                {activeFilter === 'returning' && <X className='size-2.5 ml-0.5 opacity-80' />}
+              </button>
+            )}
+            <span aria-label='total work items' className='px-1'>{data.total} total</span>
             {doneCount > 0 && (
               <button
                 type='button'
@@ -362,6 +410,33 @@ export function WorkQueuePanel() {
           </div>
         )}
       </div>
+
+      {activeFilter && (
+        <div
+          className='mt-3 flex items-center justify-between px-3 py-1.5 rounded-lg border text-[11px]'
+          style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-default)' }}
+        >
+          <span style={{ color: 'var(--text-secondary)' }}>
+            Showing{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>
+              {activeFilter === 'urgent' && 'High Urgency'}
+              {activeFilter === 'duplicate' && 'Flagged Duplicates'}
+              {activeFilter === 'returning' && 'Returning Customers'}
+            </strong>{' '}
+            items only
+          </span>
+          <button
+            type='button'
+            onClick={() => setActiveFilter(null)}
+            className='inline-flex items-center gap-1 underline underline-offset-2 text-[11px]'
+            style={{ color: 'var(--accent-blue)' }}
+            aria-label='Clear filter'
+          >
+            <X className='size-3' aria-hidden='true' />
+            Show all
+          </button>
+        </div>
+      )}
 
       {error && (
         <p className='text-[12px] mt-3' style={{ color: 'var(--text-muted)' }}>
@@ -381,10 +456,26 @@ export function WorkQueuePanel() {
         </div>
       )}
       {data && data.items.length === 0 && (
-        <p className='text-[12px] mt-3' style={{ color: 'var(--text-muted)' }}>
-          No incoming work recorded yet. Every inquiry, reply, and system escalation that reaches
-          this agency will appear here, classified.
-        </p>
+        <div className='text-[12px] mt-3' style={{ color: 'var(--text-muted)' }}>
+          {activeFilter ? (
+            <div className='flex items-center gap-2'>
+              <span>No incoming work matches the {activeFilter} filter.</span>
+              <button
+                type='button'
+                onClick={() => setActiveFilter(null)}
+                className='underline underline-offset-2'
+                style={{ color: 'var(--accent-blue)' }}
+              >
+                Clear filter
+              </button>
+            </div>
+          ) : (
+            <p>
+              No incoming work recorded yet. Every inquiry, reply, and system escalation that reaches
+              this agency will appear here, classified.
+            </p>
+          )}
+        </div>
       )}
       {data && data.items.length > 0 && (
         <ol className='mt-3 space-y-2'>

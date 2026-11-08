@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth';
 import { api, ApiException } from '@/lib/api-client';
 import { DEFAULT_AUTH_REDIRECT, resolveSafeRedirect } from '@/lib/auth-redirect';
 import { getPasswordStrength } from '@/lib/password-strength';
+import { clearDepartureBoardHandoff, readDepartureBoardHandoff, type DepartureBoardHandoff } from '@/lib/departure-board-handoff';
 
 type SignupFormState = { name: string; email: string; password: string; confirmPassword: string; showPassword: boolean; showConfirmPassword: boolean; agencyName: string; showAgency: boolean; termsAccepted: boolean };
 type SignupFormAction = { type: 'SET_FIELD'; field: keyof SignupFormState; value: string | boolean };
@@ -21,29 +22,14 @@ function SignupPageInner() {
   const { push } = useRouter();
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
+  const sourceParam = getSearchParam('source');
+  const caseParam = getSearchParam('case');
+  const iataParam = getSearchParam('iata');
   const hydrate = useAuthStore((s) => s.hydrate);
   const [formState, dispatch] = useReducer(signupFormReducer, { name: '', email: '', password: '', confirmPassword: '', showPassword: false, showConfirmPassword: false, agencyName: '', showAgency: false, termsAccepted: false });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const redirectPath = resolveSafeRedirect(
-    getSearchParam('redirect') || getSearchParam('next'),
-    DEFAULT_AUTH_REDIRECT,
-  );
-  const sourceParam = getSearchParam('source');
-  const caseParam = getSearchParam('case');
-  const iataParam = getSearchParam('iata');
-  const [sessionHandoff, setSessionHandoff] = useState<{
-    caseTitle?: string;
-    iataCode?: string;
-  } | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const raw = window.sessionStorage.getItem('waypoint_departure_board_handoff');
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [sessionHandoff] = useState<DepartureBoardHandoff | null>(() => readDepartureBoardHandoff());
   const formattedCaseName = caseParam
     ? caseParam
         .split('-')
@@ -54,6 +40,16 @@ function SignupPageInner() {
   const showHandoffBanner =
     (sourceParam === 'departure-board' || Boolean(sessionHandoff)) &&
     Boolean(formattedCaseName);
+
+  const handoffRedirect =
+    showHandoffBanner && formattedCaseName
+      ? `/workbench?source=departure-board&case=${encodeURIComponent(caseParam || sessionHandoff?.caseSlug || '')}&iata=${encodeURIComponent(resolvedIataCode || '')}${sessionHandoff?.prefill ? `&prefill=${encodeURIComponent(sessionHandoff.prefill)}` : ''}`
+      : DEFAULT_AUTH_REDIRECT;
+
+  const redirectPath = resolveSafeRedirect(
+    getSearchParam('redirect') || getSearchParam('next'),
+    handoffRedirect,
+  );
   const passwordStrength = getPasswordStrength(formState.password);
   const passwordsMatch = formState.confirmPassword.length > 0 && formState.password === formState.confirmPassword;
 
@@ -87,6 +83,9 @@ function SignupPageInner() {
 
       // Rehydrate auth state from the httpOnly cookies via /api/auth/me
       await hydrate();
+      // The handoff is now consumed into the redirect URL — clear it so a
+      // claimed case never resurfaces as a stale banner on a future visit.
+      clearDepartureBoardHandoff();
       push(redirectPath);
     } catch (err) {
       if (err instanceof ApiException) {
@@ -109,9 +108,9 @@ function SignupPageInner() {
           <div className='auth-handoff-left'>
             <span className='auth-handoff-beacon' aria-hidden='true' />
             <div className='auth-handoff-text-group'>
-              <span className='auth-handoff-kicker'>Departure Board Handoff</span>
+              <span className='auth-handoff-kicker'>Case Queue</span>
               <span className='auth-handoff-title'>
-                {formattedCaseName} Inquiry
+                {formattedCaseName} Inquiry will open in Workbench
               </span>
             </div>
           </div>

@@ -363,16 +363,20 @@ describe('public marketing pages', () => {
       screen.getByRole('heading', { name: /Turn your itinerary or travel plan into a clearer trip map/i }),
     ).toBeInTheDocument();
 
-    // Mode tabs present
-    expect(screen.getByRole('button', { name: /Upload file/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Paste itinerary/i })).toBeInTheDocument();
+    // Mode tabs present — labels follow the unslop rewrite of PageClient
+    // (17684bee): 'Upload PDF / file', 'Paste plan / ChatGPT', 'Screenshot'.
+    expect(screen.getByRole('button', { name: /Upload PDF \/ file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Paste plan \/ ChatGPT/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Screenshot/i })).toBeInTheDocument();
 
     // Upload drop zone — 57113daf rebuilt it as a labeled `region` (it wraps
     // interactive children: source picker, consent toggle, choose-file button),
     // so `button` semantics on the container would be nested-interactive and
     // wrong. The region keeps its aria-label as the accessible name; actual
-    // upload activation lives in the real button inside it.
+    // upload activation lives in the real button inside it. The card opens on
+    // the paste tab (17684bee default), so the file tab must be selected for
+    // the region to mount.
+    fireEvent.click(screen.getByRole('button', { name: /Upload PDF \/ file/i }));
     expect(screen.getByRole('region', { name: /Upload itinerary/i })).toBeInTheDocument();
   });
 
@@ -406,8 +410,8 @@ describe('public marketing pages', () => {
   it('enables the paste analyze button once enough text is provided', () => {
     render(<ItineraryCheckerPage />);
 
-    // Switch to paste mode
-    fireEvent.click(screen.getByRole('button', { name: /Paste itinerary/i }));
+    // Switch to paste mode (tab label from the 17684bee unslop rewrite)
+    fireEvent.click(screen.getByRole('button', { name: /Paste plan \/ ChatGPT/i }));
 
     const textarea = screen.getByPlaceholderText(/Paste your day-by-day plan here/i);
     expect(textarea).toBeInTheDocument();
@@ -427,6 +431,9 @@ describe('public marketing pages', () => {
   it('accepts a text upload and runs the scoring flow', async () => {
     render(<ItineraryCheckerPage />);
 
+    // The card opens on the paste tab; switch to the file tab to mount the
+    // drop zone and its file input (17684bee default-tab redesign).
+    fireEvent.click(screen.getByRole('button', { name: /Upload PDF \/ file/i }));
     const fileInput = screen.getByLabelText('Upload itinerary file');
 
     const file = new File(['Hong Kong in August for 2 elders and 1 child.'], 'trip.txt', {
@@ -466,7 +473,7 @@ describe('public marketing pages', () => {
 
     render(<ItineraryCheckerPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Paste itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Paste plan \/ ChatGPT/i }));
     fireEvent.change(screen.getByPlaceholderText(/Paste your day-by-day plan here/i), {
       target: {
         value: 'Fly to Singapore for 5 days with family in October. Need help checking the trip.',
@@ -530,7 +537,7 @@ describe('public marketing pages', () => {
 
     render(<ItineraryCheckerPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Paste itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Paste plan \/ ChatGPT/i }));
     fireEvent.change(screen.getByPlaceholderText(/Paste your day-by-day plan here/i), {
       target: {
         value: 'Singapore family trip with grandparents and a toddler. Comfortable pace please.',
