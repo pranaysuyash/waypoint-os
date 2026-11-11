@@ -61,6 +61,7 @@ export type WorkItemAction = 'claim' | 'unclaim' | 'dismiss' | 'resolve';
 export interface WorkItemFilterParams {
   limit?: number;
   includeDone?: boolean;
+  origin?: WorkItemEntry['origin'];
   urgency?: 'high' | 'normal' | 'low';
   duplicateOnly?: boolean;
   returningOnly?: boolean;
@@ -72,6 +73,7 @@ export async function getWorkItems(
 ): Promise<WorkItemQueueResponse> {
   let limit = 8;
   let includeDone = false;
+  let origin: WorkItemEntry['origin'] | undefined;
   let urgency: string | undefined;
   let duplicateOnly = false;
   let returningOnly = false;
@@ -79,6 +81,7 @@ export async function getWorkItems(
   if (typeof limitOrParams === 'object' && limitOrParams !== null) {
     limit = limitOrParams.limit ?? 8;
     includeDone = limitOrParams.includeDone ?? false;
+    origin = limitOrParams.origin;
     urgency = limitOrParams.urgency;
     duplicateOnly = limitOrParams.duplicateOnly ?? false;
     returningOnly = limitOrParams.returningOnly ?? false;
@@ -91,6 +94,7 @@ export async function getWorkItems(
     limit: String(limit),
     include_done: String(includeDone),
   });
+  if (origin) query.set('origin', origin);
   if (urgency) query.set('urgency', urgency);
   if (duplicateOnly) query.set('duplicate_only', 'true');
   if (returningOnly) query.set('returning_only', 'true');

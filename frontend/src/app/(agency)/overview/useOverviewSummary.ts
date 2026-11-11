@@ -39,7 +39,7 @@ export interface OverviewNavItem {
 const SYSTEM_CHECK_HREF = '/overview?panel=system-check';
 
 function pluralize(count: number, singular: string, plural: string): string {
-  return `${count} ${count === 1 ? singular : plural}`;
+  return `${count.toLocaleString('en-IN')} ${count === 1 ? singular : plural}`;
 }
 
 function displayCount(total: number, isLoading: boolean, error?: Error | null): string | number {

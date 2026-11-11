@@ -33,7 +33,7 @@ type SortKey = 'priority' | 'destination' | 'value' | 'party' | 'dates' | 'sla';
 type SortDirection = 'asc' | 'desc';
 
 function leadCountLabel(count: number): string {
-  return `${count} ${count === 1 ? 'lead' : 'leads'} total`;
+  return `${count.toLocaleString('en-IN')} ${count === 1 ? 'lead' : 'leads'} total`;
 }
 
 const SORT_OPTIONS: Record<SortKey, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -329,11 +329,11 @@ function InboxPageWithSearchParams() {
         </div>
         
         <div className='flex items-center gap-3 flex-wrap'>
-          <div className='relative flex-1 min-w-[180px] max-w-64'>
+          <div className='relative flex-1 min-w-[220px] sm:w-72'>
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]' />
             <input
               type='text'
-              placeholder='Search by customer, destination, or lead ref…'
+              placeholder='Search customer, destination, ref…'
               value={searchQuery}
               onChange={(e) => updateParams({ q: e.target.value || null, page: '1' })}
               className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]'
@@ -464,8 +464,8 @@ function InboxPageWithSearchParams() {
         </div>
       )}
 
-      {/* T6 (FND-0305): real inbound channel messages — what the webhook stored */}
-      <ChannelMessagesPanel />
+      {/* T6 (FND-0305): real inbound channel messages — collapsed by default on /inbox so leads stay above the fold */}
+      <ChannelMessagesPanel defaultCollapsed />
 
       {/* Trip Grid */}
       {isLoading && inboxTrips.length === 0 ? (

@@ -182,6 +182,19 @@ def _emit_notification(trip_id: str, recipient: str, type: str, message: str):
     logger.info(f"Notification emitted: {type} to {recipient} for trip {trip_id}")
 
 
+def _humanize_review_reason(reason: Any) -> str:
+    raw = str(reason or "").strip()
+    if not raw:
+        return "Flagged for owner review"
+    return (
+        raw.replace(
+            "Decision state STOP_NEEDS_REVIEW requires owner review",
+            "Policy hold: requires owner review",
+        )
+        .replace("STOP_NEEDS_REVIEW", "policy hold")
+    )
+
+
 def trip_to_review(trip: dict) -> dict:
     """Transform a stored trip dict into a TripReview-shaped dict for the frontend.
 
@@ -190,10 +203,15 @@ def trip_to_review(trip: dict) -> dict:
     """
     analytics = trip.get("analytics") or {}
     packet = trip.get("packet") or {}
+    extracted = trip.get("extracted") or {}
 
-    budget = packet.get("budget") or {}
-    value = budget.get("value", 0)
-    currency = budget.get("currency", "INR")
+    budget = packet.get("budget") or extracted.get("budget") or {}
+    if isinstance(budget, dict):
+        value = budget.get("value", budget.get("amount", 0)) or 0
+        currency = budget.get("currency", "INR") or "INR"
+    else:
+        value = 0
+        currency = "INR"
 
     trip_id = str(trip.get("trip_id") or trip.get("id") or "").strip()
     review_status = analytics.get("review_status", "pending")
@@ -221,7 +239,7 @@ def trip_to_review(trip: dict) -> dict:
         "agentName": trip.get("assigned_to_name", "Unassigned"),
         "submittedAt": trip.get("created_at", datetime.now(timezone.utc).isoformat()),
         "status": review_status,
-        "reason": analytics.get("review_reason", "Flagged for review"),
+        "reason": _humanize_review_reason(analytics.get("review_reason")),
         "agentNotes": packet.get("notes") or None,
         "ownerNotes": review_meta.get("notes") or None,
         "reviewedAt": review_meta.get("reviewed_at") or None,

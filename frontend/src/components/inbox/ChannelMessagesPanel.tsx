@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Building2, MessageSquare, Paperclip, Phone, Mail } from 'lucide-react';
+import { ArrowRight, Building2, ChevronDown, ChevronUp, MessageSquare, Paperclip, Phone, Mail } from 'lucide-react';
 import { useWorkbenchStore } from '@/stores/workbench';
 
 // T6 (FND-0305): real channel-message feed for the inbox. Renders what the
@@ -43,10 +43,16 @@ const CHANNEL_LABEL: Record<string, string> = {
   email: 'Email',
 };
 
-export default function ChannelMessagesPanel() {
+export interface ChannelMessagesPanelProps {
+  /** Collapse the multi-row feed into a compact header + latest-message bar. */
+  defaultCollapsed?: boolean;
+}
+
+export default function ChannelMessagesPanel({ defaultCollapsed = false }: ChannelMessagesPanelProps = {}) {
   const [messages, setMessages] = useState<ChannelMessage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(!defaultCollapsed);
   const router = useRouter();
   const setPendingIntakePrefill = useWorkbenchStore((s) => s.setPendingIntakePrefill);
 
@@ -77,10 +83,15 @@ export default function ChannelMessagesPanel() {
       if (cancelled) return;
       setIsRefreshing(false);
     };
-    setIsRefreshing(true);
-    void run();
+    const timer = window.setTimeout(() => {
+      if (!cancelled) {
+        setIsRefreshing(true);
+        void run();
+      }
+    }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [loadMessages]);
 
@@ -113,28 +124,90 @@ export default function ChannelMessagesPanel() {
     );
   }
 
+  const latestMessage = messages.find((m) => m.direction === 'inbound' && m.body.trim()) ?? messages[0] ?? null;
+
   return (
     <div data-testid='channel-messages-panel' className='rounded-lg border border-[#30363d] bg-[#0f1115] overflow-hidden'>
-      <div className='px-4 py-3 border-b border-[#30363d] bg-[#161b22] flex items-center justify-between'>
+      <div className={`px-4 py-2.5 bg-[#161b22] flex items-center justify-between gap-3 ${isExpanded || latestMessage ? 'border-b border-[#30363d]' : ''}`}>
         <div className='flex items-center gap-2 text-ui-sm font-semibold text-[#e6edf3]'>
           <MessageSquare className='size-4 text-[#58a6ff]' />
-          Channel Messages
+          <span>Channel Messages</span>
+          <span className='text-ui-xs font-normal text-[#8b949e]'>
+            · {messages.length.toLocaleString('en-IN')} recent
+          </span>
         </div>
         <div className='flex items-center gap-2'>
-          <span className='text-ui-xs text-[#484f58]'>{messages.length} recent</span>
           <button
             type='button'
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className='rounded-lg border border-[#30363d] bg-[#161b22] px-2 py-1 text-[11px] font-medium text-[#58a6ff] transition-colors hover:bg-[#1c2431] disabled:opacity-50'
+            className='rounded-lg border border-[#30363d] bg-[#0f1115] px-2.5 py-1 text-[11px] font-medium text-[#58a6ff] transition-colors hover:bg-[#1c2431] disabled:opacity-50'
             data-testid='channel-messages-refresh'
           >
             {isRefreshing ? 'Refreshing…' : 'Refresh'}
           </button>
+          <button
+            type='button'
+            onClick={() => setIsExpanded((prev) => !prev)}
+            aria-expanded={isExpanded}
+            data-testid='channel-messages-toggle'
+            className='inline-flex items-center gap-1 rounded-lg border border-[#30363d] bg-[#0f1115] px-2.5 py-1 text-[11px] font-medium text-[#e6edf3] transition-colors hover:bg-[#1c2431]'
+          >
+            {isExpanded ? (
+              <>
+                Hide feed
+                <ChevronUp className='size-3.5 text-[#8b949e]' />
+              </>
+            ) : (
+              <>
+                {messages.length > 0 ? `Show feed (${messages.length.toLocaleString('en-IN')})` : 'Show feed'}
+                <ChevronDown className='size-3.5 text-[#8b949e]' />
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      {messages.length === 0 ? (
+      {!isExpanded ? (
+        latestMessage ? (
+          <div
+            data-testid='channel-messages-collapsed-summary'
+            className='px-4 py-2 flex items-center justify-between gap-3 bg-[#0f1115]'
+          >
+            <div className='min-w-0 flex items-center gap-2.5 text-ui-xs'>
+              <span
+                className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  latestMessage.direction === 'inbound' ? 'bg-[#58a6ff]/10 text-[#58a6ff]' : 'bg-[#3fb950]/10 text-[#3fb950]'
+                }`}
+              >
+                {CHANNEL_LABEL[latestMessage.channel] ?? latestMessage.channel} · {latestMessage.direction}
+              </span>
+              <span className='text-[#8b949e] shrink-0'>
+                {latestMessage.from_party || 'unknown sender'}
+              </span>
+              <span className='text-[#e6edf3] truncate'>
+                {latestMessage.body || (latestMessage.filename ? `media message: ${latestMessage.filename}` : 'media message')}
+              </span>
+            </div>
+            {latestMessage.direction === 'inbound' && latestMessage.body.trim() && (
+              <button
+                type='button'
+                onClick={() => handleUseForIntake(latestMessage.body)}
+                className='inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#30363d] bg-[#161b22] px-2.5 py-1 text-[11px] font-medium text-[#58a6ff] transition-colors hover:bg-[#1c2431]'
+                data-testid='channel-message-use-for-intake'
+                aria-label='Use latest message for intake'
+              >
+                Use for intake
+                <ArrowRight className='size-3' />
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className='px-4 py-2 text-ui-xs text-[#8b949e]'>
+            No channel messages have arrived yet. Inbound WhatsApp/SMS messages and vendor quote emails appear here.
+          </p>
+        )
+      ) : messages.length === 0 ? (
         <p className='p-4 text-ui-sm text-[#8b949e]'>
           No channel messages have arrived yet. Inbound WhatsApp/SMS messages and vendor quote emails received through the
           messaging webhook appear here for triage.
@@ -146,7 +219,7 @@ export default function ChannelMessagesPanel() {
             return (
               <li key={m.message_id} className='px-4 py-3 flex items-start gap-3' data-testid='channel-message-row'>
                 <span
-                  className={`mt-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  className={`mt-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                     m.direction === 'inbound' ? 'bg-[#58a6ff]/10 text-[#58a6ff]' : 'bg-[#3fb950]/10 text-[#3fb950]'
                   }`}
                 >

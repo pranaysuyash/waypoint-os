@@ -63,9 +63,10 @@ def get_inbox(
     filterCounts are computed over the FULL projected dataset so tab counts
     are accurate regardless of active filter or page size.
     """
+    inbox_total = max(1, TripStore.count_trips(status=_INBOX_STATUSES, agency_id=agency_id))
     raw_trips = TripStore.list_trip_summaries(
         status=_INBOX_STATUSES,
-        limit=5000,
+        limit=inbox_total,
         agency_id=agency_id,
     )
 

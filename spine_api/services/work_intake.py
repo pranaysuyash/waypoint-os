@@ -140,14 +140,17 @@ DOOR_DISPLAY: Dict[str, str] = {
 
 CHANNEL_DISPLAY: Dict[str, str] = {
     "whatsapp": "WhatsApp",
+    "whatsapp_web": "WhatsApp",
     "email": "Email",
     "sms": "SMS",
     "web": "Web",
     "phone": "Phone",
     "voice": "Voice",
     "instagram": "Instagram",
+    "instagram_dm": "Instagram DM",
     "facebook": "Facebook",
     "telegram": "Telegram",
+    "extension": "Chrome extension",
     "booking_collection": "Collection form",
     "public_checker": "Public checker",
     "proposal_link": "Proposal link",
@@ -670,6 +673,7 @@ def ranked_queue(
     *,
     limit: int = 50,
     include_done: bool = False,
+    origin: Optional[str] = None,
     urgency: Optional[str] = None,
     duplicate_only: bool = False,
     returning_only: bool = False,
@@ -684,7 +688,7 @@ def ranked_queue(
     items appear AFTER the actionable list (same sort within each group), so
     the top of the queue is always actionable even in history mode.
 
-    Optional filters (urgency, duplicate_only, returning_only) project the
+    Optional filters (origin, urgency, duplicate_only, returning_only) project the
     visible slice for operators while leaving count aggregates as honest
     queue totals.
     """
@@ -754,6 +758,8 @@ def ranked_queue(
     returning = sum(1 for r in actionable if r.get("returning_customer"))
 
     # Apply operator filter projections (counts remain honest totals)
+    if origin:
+        visible = [r for r in visible if r.get("origin") == origin]
     if urgency:
         visible = [r for r in visible if r.get("urgency") == urgency]
     if duplicate_only:

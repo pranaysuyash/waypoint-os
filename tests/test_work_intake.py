@@ -214,6 +214,22 @@ def test_ranked_queue_filters_honestly():
     assert q_dup["total"] == 3
     assert q_dup["duplicates_flagged"] == 1
 
+    # 3. Filter by origin preserves honest counts while isolating class
+    sys_item = work_intake.classify_and_record(
+        "stale_run_timeout", agency_id=unique_agency, text="Run timed out", urgency_override="high"
+    )
+    q_demand = work_intake.ranked_queue(unique_agency, origin="demand")
+    assert len(q_demand["items"]) == 3
+    assert all(item["origin"] == "demand" for item in q_demand["items"])
+    assert q_demand["counts"]["by_origin"]["demand"] == 3
+    assert q_demand["counts"]["by_origin"]["system"] == 1
+    assert q_demand["total"] == 4
+
+    q_system = work_intake.ranked_queue(unique_agency, origin="system")
+    assert len(q_system["items"]) == 1
+    assert q_system["items"][0]["item_id"] == sys_item["item_id"]
+    assert q_system["total"] == 4
+
 
 def test_duplicate_risk_preview_seam():
     contact = f"prev.{uuid.uuid4().hex[:6]}@example.com"
@@ -1009,6 +1025,15 @@ def test_display_for_channel_aware_headlines():
     )
     out_unknown = work_intake.display_for(unknown_channel)
     assert out_unknown["headline"] == "Pigeon Post message received"
+
+    wa_web = work_intake.classify("channel_webhook", agency_id=AGENCY, channel="whatsapp_web")
+    assert work_intake.display_for(wa_web)["headline"] == "WhatsApp message received"
+
+    ig_dm = work_intake.classify("channel_webhook", agency_id=AGENCY, channel="instagram_dm")
+    assert work_intake.display_for(ig_dm)["headline"] == "Instagram DM message received"
+
+    ext = work_intake.classify("channel_webhook", agency_id=AGENCY, channel="extension")
+    assert work_intake.display_for(ext)["headline"] == "Chrome extension message received"
 
 
 def test_display_for_meta_composition():

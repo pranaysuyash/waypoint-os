@@ -9,7 +9,7 @@ import {
   AlertTriangle,
   Clock,
   User,
-  DollarSign,
+  Wallet,
   MapPin,
   ChevronRight,
   MoreHorizontal,
@@ -20,7 +20,7 @@ import { getTripRoute } from '@/lib/routes';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { formatLeadTitle } from '@/lib/lead-display';
 import { titleCase } from '@/lib/label-maps';
-import { CURRENCY_CONFIG, formatBudgetWithCode, type SupportedCurrency } from '@/lib/currency';
+import { CURRENCY_CONFIG, formatBudgetWithCode, formatMoneyCompact, type SupportedCurrency } from '@/lib/currency';
 import type { TripReview, ReviewStatus, RiskFlag } from '@/types/governance';
 
 const REVIEW_STATUS_MAP = {
@@ -51,6 +51,14 @@ function getDaysWaiting(submittedAt: string, referenceNow: number) {
 function toSupportedCurrency(currency: string): SupportedCurrency {
   const normalized = currency.trim().toUpperCase();
   return normalized in CURRENCY_CONFIG ? (normalized as SupportedCurrency) : 'USD';
+}
+
+function humanizeReviewReason(reason?: string | null): string {
+  const cleaned = reason?.trim();
+  if (!cleaned) return 'Flagged for owner review';
+  return cleaned
+    .replace(/Decision state STOP_NEEDS_REVIEW requires owner review/gi, 'Policy hold: requires owner review')
+    .replace(/\bSTOP_NEEDS_REVIEW\b/g, 'policy hold');
 }
 
 const RiskFlagBadge = memo(function RiskFlagBadge({ flag }: { flag: RiskFlag }) {
@@ -90,19 +98,23 @@ const ReviewCard = memo(function ReviewCard({
   const [showActions, setShowActions] = useState(false);
   const [reason, setReason] = useState('');
   const daysWaiting = getDaysWaiting(review.submittedAt, referenceNow);
-  
-  const isUrgent = daysWaiting > 2 || review.riskFlags.includes('high_value');
-  
+  const isCriticalPriority =
+    Boolean(review.isEscalated) ||
+    review.slaStatus === 'breached' ||
+    review.riskFlags.includes('high_value') ||
+    review.riskFlags.includes('complex_itinerary');
+  const hasHighAge = review.status === 'pending' && daysWaiting > 7;
+
   return (
     <div
       className={`rounded-xl border p-4 transition-all hover:border-[#30363d] ${
-        isUrgent ? 'border-[#f85149]/30 bg-[#f85149]/5' : 'border-[#1c2128] bg-[#0f1115]'
+        isCriticalPriority ? 'border-[#f85149]/35 bg-[#f85149]/[0.04]' : 'border-[#1c2128] bg-[#0f1115]'
       }`}
     >
       <div className='flex items-start justify-between gap-4'>
         <div className='flex-1 min-w-0'>
           <div className='flex items-center gap-2 mb-1'>
-            {isUrgent && <AlertTriangle className='size-4 text-[#f85149] shrink-0' />}
+            {isCriticalPriority && <AlertTriangle className='size-4 text-[#f85149] shrink-0' />}
             <span className='text-ui-sm text-[#8b949e] font-mono'>{review.tripReference}</span>
             <StatusBadge status={review.status} map={REVIEW_STATUS_MAP} />
           </div>
@@ -111,7 +123,7 @@ const ReviewCard = memo(function ReviewCard({
             {getReviewTitle(review)}
           </h3>
           
-          <div className='flex items-center gap-4 text-ui-xs text-[#8b949e] mb-2'>
+          <div className='flex flex-wrap items-center gap-4 text-ui-xs text-[#8b949e] mb-2'>
             <span className='flex items-center gap-1'>
               <MapPin className='size-3' /> {titleCase(review.tripType)}
             </span>
@@ -119,16 +131,18 @@ const ReviewCard = memo(function ReviewCard({
               <User className='size-3' /> {review.partySize} pax
             </span>
             <span className='flex items-center gap-1'>
-              <DollarSign className='size-3' /> 
-              {formatBudgetWithCode(review.value, toSupportedCurrency(review.currency))}
+              <Wallet className='size-3' />
+              {review.value > 0
+                ? formatBudgetWithCode(review.value, toSupportedCurrency(review.currency))
+                : 'Budget to confirm'}
             </span>
-            <span className='flex items-center gap-1'>
+            <span className={`flex items-center gap-1 ${hasHighAge ? 'text-[#d29922]' : ''}`}>
               <Clock className='size-3' /> {daysWaiting}d waiting
             </span>
           </div>
           
           <p className='text-ui-sm text-[#8b949e] mb-2'>
-            <span className='text-[#e6edf3]'>Reason for review:</span> {review.reason}
+            <span className='text-[#e6edf3]'>Reason for review:</span> {humanizeReviewReason(review.reason)}
           </p>
           
           {review.agentNotes && (
@@ -249,6 +263,7 @@ const ReviewCard = memo(function ReviewCard({
 
 export default function OwnerReviewsPage() {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | 'all'>('all');
+  const [visibleLimit, setVisibleLimit] = useState(25);
   const [referenceNow] = useState(() => Date.now());
   const { data: reviews, isLoading, error, refetch, submitAction } = useReviews();
   const { state: unifiedState } = useUnifiedState();
@@ -317,11 +332,40 @@ export default function OwnerReviewsPage() {
   const reviewCounts = unifiedState?.review_counts ?? {};
   const pendingCount = unifiedState?.pending_review_count ?? reviewCounts['pending'] ?? 0;
   const approvedCount = reviewCounts['approved'] ?? 0;
-  const rejectedCount = reviewCounts['rejected'] ?? 0;
   const escalatedCount = reviewCounts['escalated'] ?? 0;
-  const totalValue = unifiedState?.total_pending_review_value ?? 0;
+  const valueByCurrency: Record<string, number> = (() => {
+    const fromUnified = unifiedState?.pending_review_value_by_currency;
+    if (fromUnified && Object.keys(fromUnified).length > 0) {
+      return fromUnified;
+    }
+    const aggregated: Record<string, number> = {};
+    for (const r of reviews) {
+      if (r.status === 'pending' && r.value > 0) {
+        const cur = toSupportedCurrency(r.currency);
+        aggregated[cur] = (aggregated[cur] ?? 0) + r.value;
+      }
+    }
+    if (Object.keys(aggregated).length === 0 && (unifiedState?.total_pending_review_value ?? 0) > 0) {
+      const cur = toSupportedCurrency(unifiedState?.primary_review_currency ?? 'INR');
+      aggregated[cur] = unifiedState!.total_pending_review_value!;
+    }
+    return aggregated;
+  })();
+  const currencyEntries = Object.entries(valueByCurrency).filter(([, amount]) => amount > 0);
+  const primaryEntry = currencyEntries.sort((a, b) => b[1] - a[1])[0];
+  const totalValueDisplay = primaryEntry
+    ? formatMoneyCompact(primaryEntry[1], toSupportedCurrency(primaryEntry[0]))
+    : 'To confirm';
+  const totalValueSubtitle =
+    currencyEntries.length > 1
+      ? `+${currencyEntries.length - 1} other ${currencyEntries.length - 1 === 1 ? 'currency' : 'currencies'}`
+      : primaryEntry
+        ? primaryEntry[0]
+        : 'Budgets awaiting entry';
   const hasSummaryBacklog = pendingCount > 0 && reviews.length === 0;
   const hasMoreLoadedReviewsThanVisible = statusFilter === 'all' && reviews.length > 0 && pendingCount > reviews.length;
+  const visibleReviews = sortedReviews.slice(0, visibleLimit);
+  const remainingReviewsCount = Math.max(0, sortedReviews.length - visibleReviews.length);
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
@@ -357,29 +401,30 @@ export default function OwnerReviewsPage() {
       <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
           <span className='text-ui-sm text-[#8b949e]'>Pending Quotes</span>
-          <div className='text-ui-2xl font-bold text-[#e6edf3] mt-1'>{pendingCount}</div>
+          <div className='text-ui-2xl font-bold text-[#e6edf3] tabular-nums mt-1'>{pendingCount.toLocaleString('en-IN')}</div>
         </div>
         
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
           <span className='text-ui-sm text-[#8b949e] font-inter'>Total Value in Progress</span>
-          <div className='text-ui-2xl font-bold text-[#e6edf3] mt-1'>
-            ${(totalValue / 1000).toFixed(1)}k
+          <div className='text-ui-2xl font-bold text-[#e6edf3] tabular-nums mt-1'>
+            {totalValueDisplay}
           </div>
+          <div className='text-ui-xs text-[#8b949e] mt-0.5'>{totalValueSubtitle}</div>
         </div>
         
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
           <span className='text-ui-sm text-[#8b949e]'>Approved Quotes</span>
-          <div className='text-ui-2xl font-bold text-[#3fb950] mt-1'>{approvedCount}</div>
+          <div className='text-ui-2xl font-bold text-[#3fb950] tabular-nums mt-1'>{approvedCount.toLocaleString('en-IN')}</div>
         </div>
         
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
           <span className='text-ui-sm text-[#8b949e]'>Escalated</span>
-          <div className='text-ui-2xl font-bold text-[#58a6ff] mt-1'>{escalatedCount}</div>
+          <div className='text-ui-2xl font-bold text-[#58a6ff] tabular-nums mt-1'>{escalatedCount.toLocaleString('en-IN')}</div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className='flex items-center gap-2 border-b border-[#1c2128] pb-3'>
+      <div className='flex flex-wrap items-center gap-2 border-b border-[#1c2128] pb-3'>
         {[
           { key: 'all', label: 'All', count: reviews.length },
           { key: 'pending', label: 'Pending', count: pendingCount },
@@ -390,7 +435,10 @@ export default function OwnerReviewsPage() {
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setStatusFilter(tab.key as ReviewStatus | 'all')}
+            onClick={() => {
+              setStatusFilter(tab.key as ReviewStatus | 'all');
+              setVisibleLimit(25);
+            }}
             className={`px-4 py-2 rounded-lg text-ui-sm font-medium transition-colors ${
               statusFilter === tab.key
                 ? 'bg-[#161b22] text-[#e6edf3]'
@@ -398,7 +446,7 @@ export default function OwnerReviewsPage() {
             }`}
           >
             {tab.label}
-            <span className='ml-2 text-ui-xs text-[#484f58]'>{tab.count}</span>
+            <span className='ml-2 text-ui-xs tabular-nums text-[#8b949e]'>{tab.count.toLocaleString('en-IN')}</span>
           </button>
         ))}
       </div>
@@ -407,7 +455,7 @@ export default function OwnerReviewsPage() {
       <div className='space-y-3'>
         {hasMoreLoadedReviewsThanVisible && (
           <div className='rounded-xl border border-[#d29922]/25 bg-[#d29922]/10 px-4 py-3 text-ui-sm text-[#d29922]'>
-            Showing {reviews.length} loaded quotes while the summary reports {pendingCount} pending quotes.
+            Showing {reviews.length.toLocaleString('en-IN')} loaded quotes while the summary reports {pendingCount.toLocaleString('en-IN')} pending quotes.
             Refresh if you expect the queue to have grown since the last load.
           </div>
         )}
@@ -421,7 +469,7 @@ export default function OwnerReviewsPage() {
             <p>No quotes to review</p>
             {hasSummaryBacklog ? (
               <p className='text-ui-xs mt-2 max-w-md mx-auto'>
-                Summary counts show {pendingCount} pending quotes, but no detailed review cards are loaded in this view yet.
+                Summary counts show {pendingCount.toLocaleString('en-IN')} pending quotes, but no detailed review cards are loaded in this view yet.
                 Refresh if you expect new approvals to have arrived.
               </p>
             ) : (
@@ -429,16 +477,41 @@ export default function OwnerReviewsPage() {
             )}
           </div>
         ) : (
-          sortedReviews.map((review, index) => (
-            <ReviewCard
-              key={review.id || `review-${index}`}
-              review={review}
-              referenceNow={referenceNow}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              onRequestChanges={handleRequestChanges}
-            />
-          ))
+          <>
+            {visibleReviews.map((review, index) => (
+              <ReviewCard
+                key={review.id || `review-${index}`}
+                review={review}
+                referenceNow={referenceNow}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onRequestChanges={handleRequestChanges}
+              />
+            ))}
+            {remainingReviewsCount > 0 && (
+              <div className='flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#1c2128] bg-[#0f1115] px-4 py-3 text-ui-sm text-[#8b949e]'>
+                <span>
+                  Showing {visibleReviews.length.toLocaleString('en-IN')} of {sortedReviews.length.toLocaleString('en-IN')} quotes
+                </span>
+                <div className='flex items-center gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => setVisibleLimit((prev) => prev + 25)}
+                    className='rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-1.5 text-ui-xs font-medium text-[#58a6ff] hover:bg-[#1c2431]'
+                  >
+                    Show {Math.min(25, remainingReviewsCount)} more
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => setVisibleLimit(sortedReviews.length)}
+                    className='rounded-lg border border-[#30363d] bg-[#0d1117] px-3 py-1.5 text-ui-xs font-medium text-[#8b949e] hover:text-[#e6edf3]'
+                  >
+                    Show all ({sortedReviews.length.toLocaleString('en-IN')})
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

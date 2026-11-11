@@ -44,54 +44,64 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
   const isOverview = variant === 'overview';
   const isWorkspace = variant === 'workspace' || variant === 'default';
 
+  const rawOverviewNextAction = isOverview
+    ? summary.nextAction.replace(/^Next:\s*/i, '').trim()
+    : summary.nextAction;
+  const overviewNextAction = rawOverviewNextAction
+    ? rawOverviewNextAction.charAt(0).toUpperCase() + rawOverviewNextAction.slice(1)
+    : rawOverviewNextAction;
+
   return (
     <div
-      className='group block rounded-2xl border p-5 transition-all'
+      className='group block rounded-2xl border p-4 sm:p-5 transition-colors'
       style={{
-        background: 'linear-gradient(180deg, rgba(17,20,27,0.98) 0%, rgba(12,16,22,0.98) 100%)',
+        background: 'var(--bg-surface)',
         borderColor: meta.border,
-        boxShadow: '0 18px 44px rgba(0,0,0,0.20)',
       }}
     >
       {/* Header: trip name + status */}
-      <div className='-mx-5 -mt-5 mb-4 px-5 py-3 rounded-t-2xl' style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(48,54,61,0.7)' }}>
-        <div className='flex items-center justify-between'>
-          <span className={`${isCompact ? 'text-[14px]' : 'text-[16px]'} font-semibold`} style={{ color: 'var(--text-primary)' }}>
+      <div className='flex flex-wrap items-center justify-between gap-2 pb-3 mb-3' style={{ borderBottom: '1px solid var(--border-default)' }}>
+        <div className='flex items-center gap-2 min-w-0'>
+          <span className={`${isCompact ? 'text-[14px]' : 'text-[15px]'} font-semibold`} style={{ color: 'var(--text-primary)' }}>
             {summary.title}
           </span>
-          <div className='flex items-center gap-2'>
-            {similarTripCount > 1 ? (
-              <span
-                className='inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide'
-                style={{
-                  color: 'var(--text-tertiary)',
-                  borderColor: 'rgba(139,148,158,0.24)',
-                  background: 'rgba(139,148,158,0.08)',
-                }}
-                title={`${similarTripCount} trips share this same overview pattern`}
-              >
-                {similarTripCount} matching trips
-              </span>
-            ) : null}
-            <span className='text-[12px] font-semibold uppercase tracking-wide' style={{ color: meta.fg }}>
-              {summary.statusLabel}
+          {similarTripCount > 1 ? (
+            <span
+              className='inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums'
+              style={{
+                color: 'var(--text-tertiary)',
+                borderColor: 'var(--border-default)',
+                background: 'var(--bg-elevated)',
+              }}
+              title={`${similarTripCount} trips share this same overview pattern`}
+            >
+              {similarTripCount.toLocaleString('en-IN')} matching trips
             </span>
-          </div>
+          ) : null}
         </div>
+        <span className='text-[12px] font-medium' style={{ color: meta.fg }}>
+          {summary.statusLabel}
+        </span>
       </div>
-      <div className='space-y-4 px-1'>
+
+      <div className='space-y-3'>
         {/* Ref + metadata + freshness */}
-        <div className='grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-start'>
-          <div className='min-w-0'>
-            <span className='inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded-full shrink-0' style={{ color: '#8b949e', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              Ref {summary.inquiryReference}
-            </span>
-            <p className='mt-2 text-[13px]' style={{ color: 'var(--text-secondary)' }}>
+        <div className='flex flex-wrap items-start justify-between gap-2'>
+          <div className='min-w-0 space-y-1'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className='inline-flex items-center text-[11px] font-mono px-2 py-0.5 rounded-full shrink-0' style={{ color: 'var(--text-muted)', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+                Ref {summary.inquiryReference}
+              </span>
+              <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
+                {summary.assignmentLabel}
+              </span>
+            </div>
+            <p className='text-[13px]' style={{ color: 'var(--text-secondary)' }}>
               {[trip.contactName, summary.subtitle].filter(Boolean).join(' · ')}{summary.budgetLabel !== 'Budget missing' ? ` · ${summary.budgetLabel}` : ''}
             </p>
           </div>
           <span
-            className='shrink-0 rounded-full px-2.5 py-1 text-[12px] font-medium justify-self-end'
+            className='shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium'
             style={{ color: fc.fg, background: fc.bg, border: `1px solid ${fc.border}` }}
             title={freshness.detail}
           >
@@ -99,68 +109,64 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
           </span>
         </div>
 
-        <div className='flex items-center gap-2'>
-          <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>{summary.assignmentLabel}</span>
-        </div>
-
-        {/* Contact details */}
-        {!hasCustomerName(trip.rawInput, trip.agentNotes, trip.contactName) && (
-          <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(139,148,158,0.15)', background: 'rgba(139,148,158,0.03)' }}>
-            <p className='text-[12px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--text-muted)' }}>Contact details</p>
-            <div className='mt-2 flex flex-wrap items-center gap-x-3 gap-y-1'>
-              <span className='text-[12px]' style={{ color: '#8b949e' }}>Contact name missing</span>
-              <Link
-                href={`/trips/${trip.id}/intake?repair=customerName`}
-                className='inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-medium hover:opacity-80 transition-opacity'
-                style={{ color: '#8b949e', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-              >
-                Add contact name
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Missing trip details */}
-        {summary.missingBadges.length > 0 && (
-          <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(210,153,34,0.25)', background: 'rgba(210,153,34,0.04)' }}>
-            <p className='text-[12px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--accent-amber)' }}>Missing trip details</p>
-            <div className='mt-3 flex flex-wrap gap-2'>
-              {summary.missingBadges.slice(0, isOverview ? 3 : 2).map((badge) => {
-                const param = fieldParam[badge];
-                const fieldName = badge.replace(/ missing$/i, '').toLowerCase();
-                return (
-                  <Link
-                    key={badge}
-                    href={`/trips/${trip.id}/intake?repair=${param}`}
-                    className='inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-medium hover:opacity-80 transition-opacity'
-                    style={{ color: '#d29922', background: 'rgba(210,153,34,0.12)', border: '1px solid rgba(210,153,34,0.25)' }}
-                  >
-                    Add {fieldName}
-                  </Link>
-                );
-              })}
-              {isOverview && summary.missingBadges.length > 3 ? (
-                <span
-                  className='inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[12px] font-medium'
-                  style={{ color: 'var(--text-muted)', background: 'rgba(139,148,158,0.08)', borderColor: 'rgba(139,148,158,0.18)' }}
-                  title={`${summary.missingBadges.length - 3} more missing fields`}
+        {/* Contact & missing details as clean hairline rows (no nested cards-inside-cards) */}
+        {(!hasCustomerName(trip.rawInput, trip.agentNotes, trip.contactName) || summary.missingBadges.length > 0) && (
+          <div className='pt-2.5 space-y-2' style={{ borderTop: '1px solid var(--border-default)' }}>
+            {!hasCustomerName(trip.rawInput, trip.agentNotes, trip.contactName) && (
+              <div className='flex flex-wrap items-center justify-between gap-2 text-[12px]'>
+                <span style={{ color: 'var(--text-muted)' }}>Contact name missing</span>
+                <Link
+                  href={`/trips/${trip.id}/intake?repair=customerName`}
+                  className='inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium hover:underline'
+                  style={{ color: 'var(--accent-blue)' }}
                 >
-                  +{summary.missingBadges.length - 3} more
+                  Add contact name
+                </Link>
+              </div>
+            )}
+
+            {summary.missingBadges.length > 0 && (
+              <div className='flex flex-wrap items-center gap-1.5'>
+                <span className='text-[12px] font-medium mr-1' style={{ color: 'var(--accent-amber)' }}>
+                  Missing trip details:
                 </span>
-              ) : null}
-            </div>
+                {summary.missingBadges.slice(0, isOverview ? 3 : 2).map((badge) => {
+                  const param = fieldParam[badge];
+                  const fieldName = badge.replace(/ missing$/i, '').toLowerCase();
+                  return (
+                    <Link
+                      key={badge}
+                      href={`/trips/${trip.id}/intake?repair=${param}`}
+                      className='inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium transition-opacity hover:opacity-80'
+                      style={{ color: '#d29922', background: 'rgba(210,153,34,0.10)', border: '1px solid rgba(210,153,34,0.22)' }}
+                    >
+                      Add {fieldName}
+                    </Link>
+                  );
+                })}
+                {isOverview && summary.missingBadges.length > 3 ? (
+                  <span
+                    className='inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium'
+                    style={{ color: 'var(--text-muted)', background: 'var(--bg-elevated)' }}
+                    title={`${summary.missingBadges.length - 3} more missing fields`}
+                  >
+                    +{summary.missingBadges.length - 3} more
+                  </span>
+                ) : null}
+              </div>
+            )}
           </div>
         )}
 
         {/* Stage/progress */}
         {isWorkspace && (
-          <div className='flex items-center gap-1.5 py-1'>
-            <span className='text-[12px] font-semibold' style={{ color: 'var(--text-secondary)' }}>Stage:</span>
-            <span className='text-[12px] font-semibold' style={{ color: 'var(--accent-blue)' }}>{summary.stage}</span>
+          <div className='flex flex-wrap items-center gap-1.5 pt-1 text-[12px]'>
+            <span className='font-semibold' style={{ color: 'var(--text-secondary)' }}>Stage:</span>
+            <span className='font-semibold' style={{ color: 'var(--accent-blue)' }}>{summary.stage}</span>
             {progressItems.length > 0 ? (
               <>
-                <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>·</span>
-                <span className='text-[12px]' style={{ color: 'var(--text-secondary)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>·</span>
+                <span style={{ color: 'var(--text-secondary)' }}>
                   {progressItems.map((item, i) => (
                     <span key={item.label}>
                       {i > 0 ? ' · ' : ''}
@@ -173,18 +179,14 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
           </div>
         )}
 
-        {/* Next step */}
-        <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(48,54,61,0.85)', background: 'rgba(255,255,255,0.02)' }}>
-          <p className='text-[13px]' style={{ color: 'var(--text-primary)' }}>
-            {isOverview ? summary.nextAction.replace(/^Next:\s*/i, '') : summary.nextAction}
+        {/* Next step + primary action inline footer */}
+        <div className='flex flex-wrap items-center justify-between gap-3 pt-2.5' style={{ borderTop: '1px solid var(--border-default)' }}>
+          <p className='text-[13px] min-w-0 flex-1' style={{ color: 'var(--text-secondary)' }}>
+            {overviewNextAction}
           </p>
-        </div>
-
-        {/* CTA */}
-        <div className='flex items-center justify-end gap-3'>
           <Link
             href={summary.action.href}
-            className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium'
+            className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium shrink-0 transition-colors'
             style={{ color: 'var(--accent-blue)', background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.25)' }}
           >
             {summary.action.label}

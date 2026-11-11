@@ -11,6 +11,7 @@ import { formatDateWindowDisplay, formatLeadTitle } from '@/lib/lead-display';
 import { focusNextOutside } from '@/lib/accessibility';
 import {
   formatContextualSLA,
+  formatFlagLabel,
   formatStageLabel,
   getMicroLabel,
   getMetricsForProfile,
@@ -112,7 +113,7 @@ function FlagBadge({ flag, showLabel }: { flag: string; showLabel: boolean }) {
         border: '1px solid rgba(210,153,34,0.20)',
       }}
     >
-      {label || flag}
+      {label || formatFlagLabel(flag)}
     </span>
   );
 }
@@ -136,7 +137,7 @@ function TripCardSLA({ trip }: { trip: InboxTrip }) {
   return (
     <span
       data-testid="trip-card-sla"
-      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
       style={{
         color: style.text,
         background: style.bg,
@@ -192,7 +193,7 @@ function TripCardStageBadge({ stage }: { stage: string }) {
   return (
     <span
       data-testid="trip-card-stage"
-      className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium"
       style={{
         color: style.text,
         background: style.bg,

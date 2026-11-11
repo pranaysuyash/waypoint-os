@@ -2406,7 +2406,8 @@ async def list_trips(
     
     trips = await _ts(TripStore.list_trips, status=status, limit=limit, agency_id=agency_id)
     total = await _ts(TripStore.count_trips, status=status, agency_id=agency_id)
-    return {"items": trips, "total": total}
+    status_counts = await _ts(TripStore.count_trips_by_status, status=status, agency_id=agency_id)
+    return {"items": trips, "total": total, "statusCounts": status_counts}
 
 
 @app.get("/stats")

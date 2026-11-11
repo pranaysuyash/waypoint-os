@@ -26,14 +26,15 @@ export function useWorkItems(
 
   const limit = params.limit ?? 8;
   const includeDone = params.includeDone ?? false;
+  const origin = params.origin;
   const urgency = params.urgency;
   const duplicateOnly = params.duplicateOnly ?? false;
   const returningOnly = params.returningOnly ?? false;
 
-  const hasExtraFilters = Boolean(urgency || duplicateOnly || returningOnly);
+  const hasExtraFilters = Boolean(origin || urgency || duplicateOnly || returningOnly);
 
   const query = useQuery({
-    queryKey: ['work-items', limit, includeDone, urgency, duplicateOnly, returningOnly],
+    queryKey: ['work-items', limit, includeDone, origin, urgency, duplicateOnly, returningOnly],
     queryFn: (): Promise<WorkItemQueueResponse> =>
       hasExtraFilters ? getWorkItems(params) : getWorkItems(limit, includeDone),
     staleTime: 30_000,

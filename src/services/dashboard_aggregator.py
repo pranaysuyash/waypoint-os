@@ -10,6 +10,98 @@ logger = logging.getLogger(__name__)
 
 VALID_STAGES = ["new", "assigned", "in_progress", "completed", "cancelled", "incomplete"]
 
+# Canonical lifecycle vocabulary matching spine_api/routers/inbox.py & frontend/src/lib/trip-domain.ts (FND-0120).
+# Kept additive alongside VALID_STAGES so fixture tests asserting the 6 legacy keys remain exact.
+INBOX_LIFECYCLE_STATUSES = (
+    "new",
+    "incomplete",
+    "needs_followup",
+    "awaiting_customer_details",
+    "snoozed",
+)
+WORKSPACE_LIFECYCLE_STATUSES = (
+    "assigned",
+    "in_progress",
+    "ready_to_quote",
+    "ready_to_book",
+    "blocked",
+    "active",
+)
+TERMINAL_AND_REVIEW_STATUSES = (
+    "completed",
+    "cancelled",
+    "booked",
+    "delivered",
+    "pending_review",
+    "rejected",
+    "recovery",
+    "escalated",
+)
+KNOWN_LIFECYCLE_STATUSES = frozenset(
+    list(VALID_STAGES)
+    + list(INBOX_LIFECYCLE_STATUSES)
+    + list(WORKSPACE_LIFECYCLE_STATUSES)
+    + list(TERMINAL_AND_REVIEW_STATUSES)
+)
+
+_UNPATCHED_LIST_TRIP_SUMMARIES = TripStore.list_trip_summaries
+
+
+def _extract_budget_value_and_currency(trip: Dict[str, Any]) -> Tuple[float, str]:
+    packet = trip.get("packet") or {}
+    extracted = trip.get("extracted") or {}
+    budget = packet.get("budget") or extracted.get("budget") or {}
+    raw_value = 0.0
+    raw_currency = "INR"
+    if isinstance(budget, dict):
+        raw_val = budget.get("value", budget.get("amount", 0))
+        try:
+            raw_value = float(raw_val or 0)
+        except (TypeError, ValueError):
+            raw_value = 0.0
+        cur = budget.get("currency")
+        if isinstance(cur, str) and cur.strip():
+            raw_currency = cur.strip().upper()
+    elif isinstance(extracted, dict):
+        raw_val = extracted.get("budget_amount", 0)
+        try:
+            raw_value = float(raw_val or 0)
+        except (TypeError, ValueError):
+            raw_value = 0.0
+        cur = extracted.get("budget_currency")
+        if isinstance(cur, str) and cur.strip():
+            raw_currency = cur.strip().upper()
+    return raw_value, raw_currency
+
+
+def _load_untruncated_trips(agency_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Load all agency trip projections without 10,000-row cap while respecting test patches."""
+    if TripStore.list_trip_summaries is _UNPATCHED_LIST_TRIP_SUMMARIES and hasattr(
+        TripStore, "list_unified_state_projections"
+    ):
+        return TripStore.list_unified_state_projections(agency_id=agency_id)
+
+    batch_size = 5000
+    offset = 0
+    deduped: Dict[str, Dict[str, Any]] = {}
+    while True:
+        page = (
+            TripStore.list_trip_summaries(limit=batch_size, agency_id=agency_id)
+            if offset == 0
+            else TripStore.list_trip_summaries(limit=batch_size, agency_id=agency_id, offset=offset)
+        )
+        if not page:
+            break
+        before = len(deduped)
+        for item in page:
+            item_id = item.get("id")
+            if item_id:
+                deduped[str(item_id)] = item
+        if len(page) < batch_size or len(deduped) == before:
+            break
+        offset += len(page)
+    return list(deduped.values())
+
 SLA_THRESHOLDS = {
     "new": timedelta(hours=4),
     "assigned": timedelta(hours=24),
@@ -79,12 +171,10 @@ class DashboardAggregator:
 
         t0 = time.perf_counter()
 
-        # Use list_trip_summaries: avoids fetching heavy JSONB blobs (itinerary,
-        # notes, messages) — we only need status, id, created_at for this aggregation.
-        all_trips = TripStore.list_trip_summaries(limit=10000, agency_id=agency_id)
+        all_trips = _load_untruncated_trips(agency_id=agency_id)
         t1 = time.perf_counter()
         logger.warning(
-            "[perf] unified-state list_trip_summaries agency=%s trips=%d elapsed=%.3fs",
+            "[perf] unified-state _load_untruncated_trips agency=%s trips=%d elapsed=%.3fs",
             agency_id, len(all_trips), t1 - t0
         )
 
@@ -111,14 +201,15 @@ class DashboardAggregator:
             "escalated": 0,
             "revision_needed": 0,
         }
-        total_pending_review_value = 0
+        total_pending_review_value = 0.0
+        pending_review_value_by_currency: Dict[str, float] = {}
 
         for trip in trips:
             status = trip.get("status")
             trip_id = trip.get("id", "missing_id")
 
-            if status in VALID_STAGES:
-                stages[status] += 1
+            if status in KNOWN_LIFECYCLE_STATUSES:
+                stages[status] = stages.get(status, 0) + 1
             else:
                 orphans.append({
                     "id": trip_id,
@@ -135,10 +226,12 @@ class DashboardAggregator:
             if isinstance(analytics, dict):
                 if analytics.get("requires_review") is True:
                     pending_review_count += 1
-                    # Sum value of pending reviews for the summary card
-                    packet = trip.get("packet") or {}
-                    budget = packet.get("budget") or {}
-                    total_pending_review_value += budget.get("value", 0)
+                    rev_value, rev_currency = _extract_budget_value_and_currency(trip)
+                    total_pending_review_value += rev_value
+                    if rev_value > 0:
+                        pending_review_value_by_currency[rev_currency] = (
+                            pending_review_value_by_currency.get(rev_currency, 0.0) + rev_value
+                        )
 
                 review_status = analytics.get("review_status")
                 if review_status in review_counts:
@@ -180,9 +273,15 @@ class DashboardAggregator:
             t3 - t2, t3 - t0
         )
 
-        # Derive dashboard counts from trip statuses
-        workspace_trip_count = stages.get("assigned", 0) + stages.get("in_progress", 0)
-        inbox_lead_count = stages.get("new", 0)
+        # Derive dashboard counts from canonical workspace & inbox lifecycle vocabularies
+        workspace_trip_count = sum(stages.get(s, 0) for s in WORKSPACE_LIFECYCLE_STATUSES)
+        inbox_lead_count = sum(stages.get(s, 0) for s in INBOX_LIFECYCLE_STATUSES)
+
+        primary_review_currency = (
+            max(pending_review_value_by_currency.items(), key=lambda kv: kv[1])[0]
+            if pending_review_value_by_currency
+            else "INR"
+        )
 
         result = {
             "canonical_total": canonical_total,
@@ -201,6 +300,8 @@ class DashboardAggregator:
             "pending_review_count": pending_review_count,
             "review_counts": review_counts,
             "total_pending_review_value": total_pending_review_value,
+            "pending_review_value_by_currency": pending_review_value_by_currency,
+            "primary_review_currency": primary_review_currency,
             "pipeline_stages": pipeline_stages,
         }
 
@@ -224,10 +325,10 @@ class DashboardAggregator:
                     return cached_value
 
         t0 = time.perf_counter()
-        all_trips = TripStore.list_trip_summaries(limit=10000, agency_id=agency_id)
+        all_trips = _load_untruncated_trips(agency_id=agency_id)
         t1 = time.perf_counter()
         logger.warning(
-            "[perf] dashboard-stats list_trip_summaries agency=%s trips=%d elapsed=%.3fs",
+            "[perf] dashboard-stats _load_untruncated_trips agency=%s trips=%d elapsed=%.3fs",
             agency_id, len(all_trips), t1 - t0
         )
         trips = [t for t in all_trips if t.get("id")]

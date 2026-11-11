@@ -606,7 +606,7 @@ export const ComposableFilterBar = memo(function ComposableFilterBar({
               : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2128]'
           }`}
         >
-          {total !== undefined ? `All (${total})` : 'All'}
+          {total !== undefined ? `All (${total.toLocaleString('en-IN')})` : 'All'}
         </button>
 
         {/* Filter dropdowns - skip minValue/maxValue for now (input-based) */}

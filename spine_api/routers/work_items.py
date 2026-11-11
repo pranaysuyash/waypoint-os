@@ -208,6 +208,10 @@ def get_work_item_queue(
         default=False,
         description="History reader: append resolved/dismissed items after the actionable list.",
     ),
+    origin: Optional[str] = Query(
+        default=None,
+        description="Filter queue items by origin: demand | supply | operator | system | world",
+    ),
     urgency: Optional[str] = Query(
         default=None,
         description="Filter queue items by urgency class: high | normal | low",
@@ -237,6 +241,7 @@ def get_work_item_queue(
         agency_id,
         limit=limit,
         include_done=include_done,
+        origin=origin,
         urgency=urgency,
         duplicate_only=duplicate_only,
         returning_only=returning_only,

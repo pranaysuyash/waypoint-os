@@ -118,7 +118,8 @@ const StatCard = memo(function StatCard({
     );
   }
 
-  const displayValue = isLoading && value === '-' ? '-' : value;
+  const rawDisplayValue = isLoading && value === '-' ? '-' : value;
+  const displayValue = typeof rawDisplayValue === 'number' ? rawDisplayValue.toLocaleString('en-IN') : rawDisplayValue;
   const displaySub = isLoading && sub === 'Loading…' ? 'Loading…' : sub;
 
   const cardContent = (
@@ -204,10 +205,11 @@ const STAGE_COLORS: Record<string, string> = {
   ready_to_quote: '#a371f7',
   ready_to_book: '#3fb950',
   blocked: '#f85149',
+  active: '#39d353',
 };
 
 function stageColor(label: string): string {
-  return STAGE_COLORS[label] ?? '#58a6ff';
+  return STAGE_COLORS[label.trim().toLowerCase().replace(/\s+/g, '_')] ?? '#8b949e';
 }
 
 function getStageLabel(label: string): string {
@@ -223,8 +225,13 @@ function getStageLabel(label: string): string {
       return 'Ready for booking';
     case 'blocked':
       return 'Needs attention';
+    case 'active':
+      return 'In trip';
     default:
-      return label;
+      return label
+        .replace(/[_-]+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 }
 
@@ -245,7 +252,7 @@ const PipelineBar = memo(function PipelineBar({
   const stageTotal = useMemo(() => {
     return safeData.reduce((s, x) => s + (Number(x.count) || 0), 0);
   }, [safeData]);
-  const total = planningTripsTotal;
+  const total = stageTotal > 0 ? stageTotal : planningTripsTotal;
 
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -328,7 +335,7 @@ const PipelineBar = memo(function PipelineBar({
               ))}
             </div>
           </div>
-          <span className='text-[13px] font-semibold tabular-nums' style={{ color: 'var(--text-primary)' }}>{total}</span>
+          <span className='text-[13px] font-semibold tabular-nums' style={{ color: 'var(--text-primary)' }}>{total.toLocaleString('en-IN')}</span>
         </div>
         {hasMultipleStages ? (
           <div className='flex flex-wrap gap-x-3 gap-y-0.5 mt-2'>
@@ -340,13 +347,13 @@ const PipelineBar = memo(function PipelineBar({
                     background: stageColor(stage.label),
                   }}
                 />
-                {getStageLabel(stage.label)} · {stage.count}
+                {getStageLabel(stage.label)} · {stage.count.toLocaleString('en-IN')}
               </div>
             ))}
           </div>
         ) : (
           <p className='text-[12px] mt-1.5' style={{ color: 'var(--text-muted)' }}>
-            {total} {total === 1 ? 'trip' : 'trips'} in planning · all {getStageLabel(safeData.find(s => s.count > 0)?.label ?? '')}
+            {total.toLocaleString('en-IN')} {total === 1 ? 'trip' : 'trips'} in planning · all {getStageLabel(safeData.find(s => s.count > 0)?.label ?? '')}
           </p>
         )}
       </div>
@@ -359,7 +366,7 @@ const PipelineBar = memo(function PipelineBar({
       <div className='flex items-center justify-between mb-3'>
         <h2 className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
         <div className='flex items-center gap-2'>
-          <span className='text-[12px] font-mono tabular-nums' style={{ color: 'var(--text-tertiary)' }}>{total} total</span>
+          <span className='text-[12px] font-mono tabular-nums' style={{ color: 'var(--text-tertiary)' }}>{total.toLocaleString('en-IN')} total</span>
           <button
             onClick={() => setIsExpanded(false)}
             className='text-[12px] font-medium transition-colors'
@@ -380,7 +387,7 @@ const PipelineBar = memo(function PipelineBar({
                 <span className='text-[12px] font-medium' style={{ color: 'var(--text-primary)' }}>
                   {getStageLabel(stage.label)}
                 </span>
-                <span className='text-[12px] font-mono tabular-nums' style={{ color: 'var(--text-tertiary)' }}>{stage.count}</span>
+                <span className='text-[12px] font-mono tabular-nums' style={{ color: 'var(--text-tertiary)' }}>{stage.count.toLocaleString('en-IN')}</span>
               </div>
               <div className='h-1.5 rounded-full overflow-hidden' style={{ background: 'var(--bg-elevated)' }}>
                 <div
@@ -628,72 +635,70 @@ function OverviewPageContent() {
 
       {featuredAction ? (
         <section
-          className='rounded-xl border p-4'
-          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
+          className='rounded-xl border px-4 py-3 flex items-center justify-between gap-4 flex-wrap'
+          style={{
+            background: 'var(--bg-surface)',
+            borderColor: 'var(--border-default)',
+          }}
           aria-label='Start Here'
         >
-          <div className='flex items-center justify-between gap-3 flex-wrap'>
-            <div className='flex items-center gap-2'>
-              <span
-                className='inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider'
-                style={{
-                  color: 'var(--accent-blue)',
-                  borderColor: 'rgba(88,166,255,0.28)',
-                  background: 'rgba(88,166,255,0.08)',
-                }}
-              >
-                Start here
-              </span>
-              <span className='text-[12px] font-medium' style={{ color: 'var(--text-secondary)' }}>
-                Highest-priority action from the queue
-              </span>
-            </div>
-            <div className='flex items-center gap-2'>
-              <span
-                className='inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider'
-                style={{
-                  color: 'var(--text-tertiary)',
-                  borderColor: 'var(--border-default)',
-                  background: 'rgba(139,148,158,0.08)',
-                }}
-              >
-                {featuredAction.label}
-              </span>
-              <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
-                {featuredAction.priority.toUpperCase()}
-              </span>
+          <div className='flex items-center gap-3 min-w-0 flex-1'>
+            <span
+              className='inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider shrink-0'
+              style={{
+                color: 'var(--accent-blue)',
+                borderColor: 'rgba(88,166,255,0.28)',
+                background: 'rgba(88,166,255,0.08)',
+              }}
+            >
+              Start here
+            </span>
+            <div className='min-w-0 flex-1'>
+              <div className='flex items-center gap-2 min-w-0'>
+                <p className='text-[14px] font-semibold truncate' style={{ color: 'var(--text-primary)' }}>
+                  {featuredAction.title}
+                </p>
+                <span
+                  className='text-[11px] font-medium shrink-0'
+                  style={{
+                    color:
+                      featuredAction.priority === 'urgent'
+                        ? 'var(--accent-red)'
+                        : 'var(--text-tertiary)',
+                  }}
+                >
+                  {featuredAction.label}
+                </span>
+              </div>
+              <p className='text-[12px] truncate mt-0.5' style={{ color: 'var(--text-muted)' }}>
+                {(featuredAction.nextAction ?? featuredAction.reason ?? featuredAction.subtitle)
+                  .replace(/\bDecision state STOP_NEEDS_REVIEW requires owner review\b/g, 'Quote requires owner review')
+                  .replace(/\bSTOP_NEEDS_REVIEW\b/g, 'owner review')
+                  .replace(/\bPENDING\s*[·:-]?\s*/g, '')}
+              </p>
             </div>
           </div>
-          <div className='mt-3 flex items-start justify-between gap-4 flex-wrap'>
-            <div className='min-w-0'>
-              <p className='text-[15px] font-semibold' style={{ color: 'var(--text-primary)' }}>
-                {featuredAction.title}
-              </p>
-              <p className='text-[13px] mt-1' style={{ color: 'var(--text-secondary)' }}>
-                {featuredAction.reason}
-              </p>
-              <p className='text-[12px] mt-1.5' style={{ color: 'var(--text-muted)' }}>
-                {featuredAction.nextAction ?? featuredAction.subtitle}
-              </p>
-            </div>
-            <div className='flex flex-wrap items-center gap-3 shrink-0'>
+          <div className='flex items-center gap-3 shrink-0'>
+            {featuredAction.secondaryHref && featuredAction.secondaryCtaLabel ? (
               <Link
-                href={featuredAction.href}
-                className='inline-flex items-center gap-1 text-[13px] font-medium'
-                style={{ color: 'var(--accent-blue)' }}
+                href={featuredAction.secondaryHref}
+                className='inline-flex items-center gap-1 text-[12px] font-medium hover:underline underline-offset-2'
+                style={{ color: 'var(--text-secondary)' }}
               >
-                {featuredAction.ctaLabel} <ArrowRight className='size-3.5' aria-hidden='true' />
+                {featuredAction.secondaryCtaLabel}
               </Link>
-              {featuredAction.secondaryHref && featuredAction.secondaryCtaLabel ? (
-                <Link
-                  href={featuredAction.secondaryHref}
-                  className='inline-flex items-center gap-1 text-[12px] font-medium'
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {featuredAction.secondaryCtaLabel} <ArrowRight className='size-3.5' aria-hidden='true' />
-                </Link>
-              ) : null}
-            </div>
+            ) : null}
+            <Link
+              href={featuredAction.href}
+              className='inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors hover:bg-white/5'
+              style={{
+                borderColor: 'rgba(88,166,255,0.35)',
+                background: 'rgba(88,166,255,0.08)',
+                color: 'var(--accent-blue)',
+              }}
+            >
+              {featuredAction.ctaLabel} <ArrowRight className='size-3.5' aria-hidden='true' />
+            </Link>
           </div>
         </section>
       ) : null}
@@ -834,7 +839,7 @@ function OverviewPageContent() {
                 ? 'Latest Trips Status · loading…'
                 : planningTripsError
                   ? 'Latest Trips Status · unavailable'
-                  : `Latest Trips Status · showing ${recentTrips?.length ?? 0} of ${planningTripsTotal}`}
+                  : `Latest Trips Status · showing ${(recentTrips?.length ?? 0).toLocaleString('en-IN')} of ${planningTripsTotal.toLocaleString('en-IN')}`}
             </h2>
             <div className='mt-3 space-y-2'>
               {stateEntries.map((entry) => {

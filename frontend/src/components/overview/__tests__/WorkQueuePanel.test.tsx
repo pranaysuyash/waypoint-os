@@ -203,15 +203,23 @@ describe('WorkQueuePanel', () => {
     };
     const getSpy = vi
       .spyOn(workItemsApi, 'getWorkItems')
-      .mockImplementation(async (_limit = 8, includeDone = false) =>
-        includeDone ? { ...base, items: [...base.items, doneItem] } : base
-      );
+      .mockImplementation(async (limitOrParams = 8, legacyIncludeDone = false) => {
+        const incDone =
+          typeof limitOrParams === 'object' && limitOrParams !== null
+            ? Boolean(limitOrParams.includeDone)
+            : legacyIncludeDone;
+        return incDone ? { ...base, items: [...base.items, doneItem] } : base;
+      });
     renderPanel();
 
     // mockQueue has by_state.resolved=9 + dismissed=1 -> toggle visible
     fireEvent.click(await screen.findByText('show 10 done'));
 
-    await vi.waitFor(() => expect(getSpy).toHaveBeenCalledWith(8, true));
+    await vi.waitFor(() =>
+      expect(getSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 8, includeDone: true, origin: 'demand' })
+      )
+    );
     expect(await screen.findByText('hide done')).toBeInTheDocument();
     // the done row renders with its state badge and NO action buttons
     const doneRow = screen.getByText('resolved').closest('li');
@@ -255,7 +263,7 @@ describe('WorkQueuePanel', () => {
 
     await vi.waitFor(() => {
       expect(getSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ urgency: 'high', limit: 8, includeDone: false })
+        expect.objectContaining({ origin: 'demand', urgency: 'high', limit: 8, includeDone: false })
       );
     });
 
@@ -284,7 +292,7 @@ describe('WorkQueuePanel', () => {
 
     await vi.waitFor(() => {
       expect(getSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ duplicateOnly: true, limit: 8, includeDone: false })
+        expect.objectContaining({ origin: 'demand', duplicateOnly: true, limit: 8, includeDone: false })
       );
     });
 
@@ -295,5 +303,55 @@ describe('WorkQueuePanel', () => {
       expect(screen.getByRole('button', { name: /1 dup\?/i })).toHaveAttribute('aria-pressed', 'false');
     });
     expect(screen.queryByText('Flagged Duplicates')).toBeNull();
+  });
+
+  it('defaults to client demand origin, switches origin tabs, and links bound trips directly', async () => {
+    const getSpy = vi.spyOn(workItemsApi, 'getWorkItems').mockResolvedValue(mockQueue());
+    renderPanel();
+
+    expect(await screen.findByText('New trip request')).toBeInTheDocument();
+    expect(getSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ origin: 'demand', limit: 8, includeDone: false })
+    );
+
+    // Direct trip navigation links rendered on bound items
+    const openLinks = screen.getAllByRole('link', { name: /Open trip/i });
+    expect(openLinks[0]).toHaveAttribute('href', '/trips/trip_1/intake');
+    expect(openLinks[1]).toHaveAttribute('href', '/trips/trip_2/intake');
+
+    // Switching to System Alerts queries origin: 'system'
+    const systemTab = screen.getByRole('tab', { name: /System Alerts/i });
+    fireEvent.click(systemTab);
+    await vi.waitFor(() =>
+      expect(getSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ origin: 'system', limit: 8, includeDone: false })
+      )
+    );
+
+    // Switching to All Signals omits origin (legacy signature (8, false))
+    const allTab = screen.getByRole('tab', { name: /All Signals/i });
+    fireEvent.click(allTab);
+    await vi.waitFor(() => expect(getSpy).toHaveBeenCalledWith(8, false));
+  });
+
+  it('offers one-click fallback to All Signals when Client Demand has 0 items but other origins are active', async () => {
+    const getSpy = vi.spyOn(workItemsApi, 'getWorkItems').mockResolvedValue(
+      mockQueue({
+        items: [],
+        total: 4,
+        actionable: 4,
+        counts: {
+          by_origin: { demand: 0, supply: 0, operator: 1, system: 3, world: 0 },
+          by_intent: { new_demand: 0, answer: 0, decision: 0, info: 1, exception: 3, query: 0, meta: 0 },
+          by_urgency: { high: 3, normal: 1, low: 0 },
+          by_state: { open: 4, claimed: 0, resolved: 0, dismissed: 0 },
+        },
+      })
+    );
+    renderPanel();
+
+    const fallbackBtn = await screen.findByRole('button', { name: /View all 4 active items/i });
+    fireEvent.click(fallbackBtn);
+    await vi.waitFor(() => expect(getSpy).toHaveBeenCalledWith(8, false));
   });
 });

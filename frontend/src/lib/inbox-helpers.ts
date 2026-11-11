@@ -440,6 +440,32 @@ export function getMicroLabel(value: string): string | undefined {
   return MICRO_LABELS[value];
 }
 
+const FLAG_LABELS: Record<string, string> = {
+  details_unclear: 'Details unclear',
+  incomplete: 'Incomplete details',
+  needs_clarification: 'Needs clarification',
+  unassigned: 'Unassigned',
+  high_value: 'High value',
+  vip: 'VIP',
+  tight_deadline: 'Tight deadline',
+  complex_itinerary: 'Complex itinerary',
+  missing_contact: 'Missing contact',
+  low_confidence: 'Needs verification',
+};
+
+/**
+ * Convert backend flag tokens (for example, `details_unclear`) into calm,
+ * operator-facing sentence-case labels.
+ */
+export function formatFlagLabel(flag: string): string {
+  if (!flag) return 'Flagged';
+  const normalized = flag.trim().toLowerCase();
+  if (FLAG_LABELS[normalized]) return FLAG_LABELS[normalized];
+  const words = normalized.replace(/[_-]+/g, ' ').trim();
+  if (!words) return 'Flagged';
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /**
  * Convert backend enum-style labels into operator-facing title case.
  *

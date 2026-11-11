@@ -592,7 +592,28 @@ class FileTripStore:
 
     @staticmethod
     def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
-        return len(FileTripStore.list_trips(status=status, limit=10000, agency_id=agency_id))
+        return sum(FileTripStore.count_trips_by_status(status=status, agency_id=agency_id).values())
+
+    @staticmethod
+    def count_trips_by_status(status: Optional[str] = None, agency_id: Optional[str] = None) -> dict[str, int]:
+        allowed_statuses = (
+            {s.strip() for s in status.split(",") if s.strip()} if status else None
+        )
+        counts: dict[str, int] = {}
+        for filepath in TRIPS_DIR.glob("trip_*.json"):
+            try:
+                with open(filepath) as f:
+                    trip = json.load(f)
+                if agency_id and trip.get("agency_id") != agency_id:
+                    continue
+                trip_status = trip.get("status")
+                if allowed_statuses is not None and trip_status not in allowed_statuses:
+                    continue
+                if trip_status:
+                    counts[trip_status] = counts.get(trip_status, 0) + 1
+            except (OSError, ValueError):
+                continue
+        return counts
     
     @staticmethod
     def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
@@ -1324,7 +1345,12 @@ class SQLTripStore:
     @staticmethod
     async def list_trip_summaries(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         """List trips with only fields needed by dashboard/inbox projections."""
-        async with SQLTripStore._rls_session() as session:
+        session_ctx = (
+            SQLTripStore._rls_session_for_agency(agency_id)
+            if agency_id
+            else SQLTripStore._rls_session()
+        )
+        async with session_ctx as session:
             query = select(
                 Trip.id,
                 Trip.run_id,
@@ -1363,7 +1389,12 @@ class SQLTripStore:
     @staticmethod
     async def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
         """Count trips matching filter (without limit)."""
-        async with SQLTripStore._rls_session() as session:
+        session_ctx = (
+            SQLTripStore._rls_session_for_agency(agency_id)
+            if agency_id
+            else SQLTripStore._rls_session()
+        )
+        async with session_ctx as session:
             from sqlalchemy import func
             query = select(func.count()).select_from(Trip)
             if status:
@@ -1376,6 +1407,108 @@ class SQLTripStore:
                 query = query.where(Trip.agency_id == agency_id)
             result = await session.execute(query)
             return result.scalar_one()
+
+    @staticmethod
+    async def count_trips_by_status(status: Optional[str] = None, agency_id: Optional[str] = None) -> dict[str, int]:
+        """Aggregate trip counts per status in SQL with zero row truncation."""
+        session_ctx = (
+            SQLTripStore._rls_session_for_agency(agency_id)
+            if agency_id
+            else SQLTripStore._rls_session()
+        )
+        async with session_ctx as session:
+            from sqlalchemy import func
+            query = select(Trip.status, func.count()).group_by(Trip.status)
+            if status:
+                statuses = [s.strip() for s in status.split(",") if s.strip()]
+                if len(statuses) == 1:
+                    query = query.where(Trip.status == statuses[0])
+                else:
+                    query = query.where(Trip.status.in_(statuses))
+            if agency_id:
+                query = query.where(Trip.agency_id == agency_id)
+            result = await session.execute(query)
+            return {row[0]: int(row[1]) for row in result.all() if row[0]}
+
+    @staticmethod
+    async def list_unified_state_projections(agency_id: Optional[str] = None) -> list[dict]:
+        """Fetch lightweight projections across all agency trips without limit truncation.
+
+        Only decrypts `analytics`, and only decrypts `extracted` when
+        `requires_review` is True so full-agency aggregation stays sub-second.
+        """
+        session_ctx = (
+            SQLTripStore._rls_session_for_agency(agency_id)
+            if agency_id
+            else SQLTripStore._rls_session()
+        )
+        async with session_ctx as session:
+            query = select(
+                Trip.id,
+                Trip.status,
+                Trip.stage,
+                Trip.created_at,
+                Trip.analytics,
+                Trip.extracted,
+            ).order_by(Trip.created_at.desc())
+            if agency_id:
+                query = query.where(Trip.agency_id == agency_id)
+            result = await session.execute(query)
+            projections: list[dict] = []
+            for row in result.all():
+                analytics = (
+                    SQLTripStore._decrypt_field_from_storage("analytics", row.analytics)
+                    if row.analytics
+                    else None
+                )
+                extracted = (
+                    SQLTripStore._decrypt_field_from_storage("extracted", row.extracted)
+                    if isinstance(analytics, dict) and analytics.get("requires_review") is True and row.extracted
+                    else None
+                )
+                projections.append({
+                    "id": row.id,
+                    "status": row.status,
+                    "stage": row.stage,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "analytics": analytics,
+                    "extracted": extracted or {},
+                })
+            return projections
+
+    @staticmethod
+    async def list_pending_review_trips(agency_id: Optional[str] = None) -> list[dict]:
+        """Load full trip records for all trips with analytics.requires_review == True."""
+        session_ctx = (
+            SQLTripStore._rls_session_for_agency(agency_id)
+            if agency_id
+            else SQLTripStore._rls_session()
+        )
+        async with session_ctx as session:
+            scan_query = select(Trip.id, Trip.analytics).order_by(Trip.created_at.desc())
+            if agency_id:
+                scan_query = scan_query.where(Trip.agency_id == agency_id)
+            scan_res = await session.execute(scan_query)
+            matching_ids: list[str] = []
+            for row in scan_res.all():
+                analytics = (
+                    SQLTripStore._decrypt_field_from_storage("analytics", row.analytics)
+                    if row.analytics
+                    else None
+                )
+                if isinstance(analytics, dict) and analytics.get("requires_review") is True:
+                    matching_ids.append(row.id)
+            if not matching_ids:
+                return []
+            trips: list[dict] = []
+            for i in range(0, len(matching_ids), 500):
+                batch_ids = matching_ids[i : i + 500]
+                full_query = select(Trip).where(Trip.id.in_(batch_ids)).order_by(Trip.created_at.desc())
+                if agency_id:
+                    full_query = full_query.where(Trip.agency_id == agency_id)
+                full_res = await session.execute(full_query)
+                trips.extend(SQLTripStore._to_dict(t) for t in full_res.scalars().all())
+            return trips
 
     @staticmethod
     async def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
@@ -2280,8 +2413,49 @@ class TripStore:
     def list_trip_summaries(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         backend = TripStore._backend()
         if backend is FileTripStore:
-            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset)
         return _run_async_blocking(SQLTripStore.list_trip_summaries(status=status, limit=limit, agency_id=agency_id, offset=offset))
+
+    @staticmethod
+    def list_unified_state_projections(agency_id: Optional[str] = None) -> list:
+        """Load untruncated lightweight trip projections across the entire agency."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            trips: list = []
+            offset = 0
+            batch_size = 5000
+            while True:
+                page = FileTripStore.list_trips(limit=batch_size, agency_id=agency_id, offset=offset)
+                if not page:
+                    break
+                trips.extend(page)
+                if len(page) < batch_size:
+                    break
+                offset += len(page)
+            return trips
+        return _run_async_blocking(SQLTripStore.list_unified_state_projections(agency_id=agency_id))
+
+    @staticmethod
+    def list_pending_review_trips(agency_id: Optional[str] = None) -> list:
+        """Load all full trip records currently flagged for owner review."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            pending: list = []
+            offset = 0
+            batch_size = 2000
+            while True:
+                page = FileTripStore.list_trips(limit=batch_size, agency_id=agency_id, offset=offset)
+                if not page:
+                    break
+                for trip in page:
+                    analytics = trip.get("analytics")
+                    if isinstance(analytics, dict) and analytics.get("requires_review") is True:
+                        pending.append(trip)
+                if len(page) < batch_size:
+                    break
+                offset += len(page)
+            return pending
+        return _run_async_blocking(SQLTripStore.list_pending_review_trips(agency_id=agency_id))
 
     @staticmethod
     def list_trip_summaries_for_agency(agency_id: str, status: Optional[str] = None, limit: int = 100, offset: int = 0) -> list:
@@ -2302,7 +2476,7 @@ class TripStore:
     async def alist_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         backend = TripStore._backend()
         if backend is FileTripStore:
-            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset)
         return await SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset)
 
     @staticmethod
@@ -2313,6 +2487,16 @@ class TripStore:
             return FileTripStore.count_trips(status=status, agency_id=agency_id)
         return _run_async_blocking(
             SQLTripStore.count_trips(status=status, agency_id=agency_id)
+        )
+
+    @staticmethod
+    def count_trips_by_status(status: Optional[str] = None, agency_id: Optional[str] = None) -> dict[str, int]:
+        """Count trips grouped by status with zero limit truncation."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.count_trips_by_status(status=status, agency_id=agency_id)
+        return _run_async_blocking(
+            SQLTripStore.count_trips_by_status(status=status, agency_id=agency_id)
         )
 
     @staticmethod

@@ -1,34 +1,63 @@
 'use client';
 
 /**
- * WorkQueuePanel — the operator surface over the classified incoming-work
- * queue (INCOMING_WORK_CLASSIFICATION_MAP_2026-10-24 §5 C1; the queue is the
- * one read surface over the canonical work-intake store).
+ * WorkQueuePanel — operator triage queue over the canonical work-intake store
+ * (`GET /api/v1/work-items`, `PATCH /api/v1/work-items/{id}`).
  *
- * Renders urgency-ranked items with per-class counts and the outcome-state
- * lifecycle actions (map §14: claim / release / dismiss / resolve — event-
- * sourced on the backend's append-only log). Honesty rules carried over
- * from the backend contract: counts are log totals (count_basis), the
- * returning-guest badge is an on-file annotation (never confirmed trip data),
- * and the duplicate badge is a flag for operators, not an auto-merge.
+ * Defaults to Client Demand (`origin: 'demand'`) so live traveler inquiries and
+ * channel replies are never buried behind background watchdog alerts. Operators
+ * can switch origins (Client Demand, System Alerts, Team Activity, All) and filter
+ * by urgency, flagged duplicates, or returning guests.
  */
 
-import { AlertTriangle, ArrowUpRight, Check, Repeat, RotateCw, X } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowUpRight,
+  Check,
+  FileCheck2,
+  Globe,
+  MessageSquare,
+  Repeat,
+  RotateCw,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useWorkItemAction, useWorkItems } from '@/hooks/useWorkItems';
-import type { WorkItemEntry, WorkItemAction } from '@/lib/work-items-api';
+import { getTripRoute } from '@/lib/routes';
+import type { WorkItemAction, WorkItemEntry } from '@/lib/work-items-api';
 
-const URGENCY_STYLE: Record<WorkItemEntry['urgency'], { color: string; bg: string }> = {
-  high: { color: 'var(--accent-red)', bg: 'rgba(248,113,113,0.10)' },
-  normal: { color: 'var(--text-secondary)', bg: 'transparent' },
-  low: { color: 'var(--text-tertiary)', bg: 'transparent' },
+type OriginTab = 'demand' | 'system' | 'operator' | 'all';
+type QueueFilter = 'urgent' | 'duplicate' | 'returning' | null;
+
+const CHANNEL_TOKEN_LABELS: Record<string, string> = {
+  whatsapp: 'WhatsApp',
+  whatsapp_web: 'WhatsApp',
+  instagram_dm: 'Instagram DM',
+  public_checker: 'Public checker',
+  extension: 'Chrome extension',
+  proposal_link: 'Proposal link',
 };
 
-function humanizeDoor(door: string): string {
-  return door
+function humanizeToken(raw: string): string {
+  const mapped = CHANNEL_TOKEN_LABELS[raw];
+  if (mapped) return mapped;
+  return raw
     .split('_')
+    .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function formatMetaSegments(meta: string[]): string[] {
+  return meta
+    .map((segment) => {
+      const trimmed = segment.trim();
+      if (!trimmed) return '';
+      return CHANNEL_TOKEN_LABELS[trimmed] ?? trimmed;
+    })
+    .filter(Boolean);
 }
 
 function timeOfDay(iso: string): string {
@@ -37,6 +66,35 @@ function timeOfDay(iso: string): string {
   } catch {
     return '';
   }
+}
+
+function SourceIcon({ item }: { item: WorkItemEntry }) {
+  const isUrgent = item.urgency === 'high';
+  let Icon = MessageSquare;
+  if (item.origin === 'system') {
+    Icon = AlertTriangle;
+  } else if (item.channel === 'proposal_link') {
+    Icon = FileCheck2;
+  } else if (item.channel === 'public_checker') {
+    Icon = Globe;
+  } else if (item.origin === 'operator') {
+    Icon = Activity;
+  }
+
+  return (
+    <span
+      className='inline-flex items-center justify-center size-7 rounded-md border shrink-0'
+      style={{
+        color: isUrgent ? 'var(--accent-red)' : 'var(--text-tertiary)',
+        borderColor: isUrgent ? 'rgba(248,113,113,0.35)' : 'var(--border-default)',
+        background: isUrgent ? 'rgba(248,113,113,0.10)' : 'var(--bg-surface)',
+      }}
+      aria-label={`urgency ${item.urgency}`}
+      title={`Urgency: ${item.urgency}`}
+    >
+      <Icon className='size-3.5' aria-hidden='true' />
+    </span>
+  );
 }
 
 function ActionButton({
@@ -61,7 +119,7 @@ function ActionButton({
       disabled={disabled}
       title={title}
       aria-label={title}
-      className='inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 shrink-0'
+      className='inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 shrink-0 cursor-pointer'
       style={{ borderColor: 'var(--border-default)', color: 'var(--text-tertiary)' }}
       onMouseEnter={(e) => {
         if (!disabled) e.currentTarget.style.color = hoverColor;
@@ -97,34 +155,39 @@ function WorkQueueRow({
   noteDraft: string;
   onNoteDraftChange: (value: string) => void;
 }) {
-  const urgency = URGENCY_STYLE[item.urgency] ?? URGENCY_STYLE.normal;
   const claimed = item.state === 'claimed';
   const done = item.state === 'resolved' || item.state === 'dismissed';
   const editorOpen = noteEditor?.itemId === item.item_id;
+  const metaSegments = formatMetaSegments(item.meta);
+  const subtitleText = metaSegments.length > 0 ? metaSegments.join(' · ') : humanizeToken(item.door);
+
   return (
     <li
-      className='flex items-center gap-3 px-3 py-2 rounded-lg'
+      className='flex items-center gap-3 px-3 py-2.5 rounded-lg border'
       style={{
         background: 'var(--bg-elevated)',
-        opacity: done ? 0.7 : 1,
+        borderColor: 'rgba(255,255,255,0.04)',
+        opacity: done ? 0.65 : 1,
       }}
     >
-      <span
-        className='inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider shrink-0'
-        style={{
-          color: urgency.color,
-          borderColor: item.urgency === 'high' ? 'rgba(248,113,113,0.35)' : 'var(--border-default)',
-          background: urgency.bg,
-        }}
-        aria-label={`urgency ${item.urgency}`}
-      >
-        {item.urgency}
-      </span>
+      <SourceIcon item={item} />
+
       <div className='flex-1 min-w-0'>
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-2 flex-wrap'>
           <span className='text-[13px] font-medium truncate' style={{ color: 'var(--text-primary)' }}>
-            {item.headline || humanizeDoor(item.door)}
+            {item.headline || humanizeToken(item.door)}
           </span>
+          {item.urgency === 'high' && (
+            <span
+              className='inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold shrink-0'
+              style={{
+                color: 'var(--accent-red)',
+                background: 'rgba(248,113,113,0.12)',
+              }}
+            >
+              Urgent
+            </span>
+          )}
           {(item.group_count ?? 1) > 1 && (
             <span
               className='inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold shrink-0'
@@ -181,24 +244,15 @@ function WorkQueueRow({
             </span>
           )}
         </div>
-        {item.meta.length > 0 ? (
-          <div
-            className='text-[11px] mt-0.5 truncate'
-            style={{ color: 'var(--text-muted)' }}
-            title={`Classification: ${item.origin} · ${item.intent} · ${item.authority}${item.channel ? ` · ${item.channel}` : ''}${item.trip_id ? ` · trip ${item.trip_id}` : ''}`}
-          >
-            {item.meta.join(' · ')}
-          </div>
-        ) : (
-          <div
-            className='text-[11px] mt-0.5 truncate'
-            style={{ color: 'var(--text-muted)' }}
-            title={`Classification: ${item.origin} · ${item.intent} · ${item.authority}${item.trip_id ? ` · trip ${item.trip_id}` : ''}`}
-          >
-            {humanizeDoor(item.door)}
-          </div>
-        )}
+        <div
+          className='text-[11px] mt-0.5 truncate'
+          style={{ color: 'var(--text-muted)' }}
+          title={`Classification: ${item.origin} · ${item.intent} · ${item.authority}${item.channel ? ` · ${item.channel}` : ''}${item.trip_id ? ` · trip ${item.trip_id}` : ''}`}
+        >
+          {subtitleText}
+        </div>
       </div>
+
       {editorOpen && noteEditor ? (
         <form
           className='flex items-center gap-1 shrink-0'
@@ -237,7 +291,18 @@ function WorkQueueRow({
           />
         </form>
       ) : (
-        <div className='flex items-center gap-1 shrink-0'>
+        <div className='flex items-center gap-1.5 shrink-0'>
+          {item.trip_id && (
+            <Link
+              href={getTripRoute(item.trip_id, 'intake')}
+              className='inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors hover:bg-white/5 shrink-0'
+              style={{ borderColor: 'rgba(88,166,255,0.28)', color: 'var(--accent-blue)' }}
+              title={`Open trip ${item.trip_id}`}
+            >
+              Open trip
+              <ArrowUpRight className='size-3' aria-hidden='true' />
+            </Link>
+          )}
           {done ? null : claimed ? (
             <>
               <ActionButton
@@ -279,25 +344,28 @@ function WorkQueueRow({
           )}
         </div>
       )}
-      <span className='text-[11px] shrink-0' style={{ color: 'var(--text-tertiary)' }}>
+
+      <span className='text-[11px] tabular-nums shrink-0' style={{ color: 'var(--text-tertiary)' }}>
         {timeOfDay(item.received_at)}
       </span>
     </li>
   );
 }
 
-type QueueFilter = 'urgent' | 'duplicate' | 'returning' | null;
-
 export function WorkQueuePanel() {
+  const [originTab, setOriginTab] = useState<OriginTab>('demand');
   const [activeFilter, setActiveFilter] = useState<QueueFilter>(null);
   const [includeDone, setIncludeDone] = useState(false);
+
   const { data, isLoading, error } = useWorkItems({
     limit: 8,
     includeDone,
+    origin: originTab === 'all' ? undefined : originTab,
     urgency: activeFilter === 'urgent' ? 'high' : undefined,
     duplicateOnly: activeFilter === 'duplicate',
     returningOnly: activeFilter === 'returning',
   });
+
   const action = useWorkItemAction();
   const [actionError, setActionError] = useState<string | null>(null);
   const [noteEditor, setNoteEditor] = useState<{ itemId: string; action: WorkItemAction } | null>(
@@ -323,6 +391,13 @@ export function WorkQueuePanel() {
     ? (data.counts.by_state.resolved ?? 0) + (data.counts.by_state.dismissed ?? 0)
     : 0;
 
+  const originTabs: Array<{ id: OriginTab; label: string; count: number | null }> = [
+    { id: 'demand', label: 'Client Demand', count: data ? (data.counts.by_origin.demand ?? 0) : null },
+    { id: 'system', label: 'System Alerts', count: data ? (data.counts.by_origin.system ?? 0) : null },
+    { id: 'operator', label: 'Team Activity', count: data ? (data.counts.by_origin.operator ?? 0) : null },
+    { id: 'all', label: 'All Signals', count: data ? (data.actionable ?? 0) : null },
+  ];
+
   return (
     <section
       className='rounded-xl border p-4'
@@ -330,19 +405,17 @@ export function WorkQueuePanel() {
       aria-label='Incoming Work'
     >
       <div className='flex items-center justify-between gap-3 flex-wrap'>
-        <div className='flex items-center gap-2'>
+        <div>
           <h2 className='text-[14px] font-semibold' style={{ color: 'var(--text-primary)' }}>
             Incoming Work
           </h2>
-          <span
-            className='inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider'
-            style={{ color: 'var(--text-tertiary)', borderColor: 'var(--border-default)' }}
-          >
-            classified
-          </span>
+          <p className='text-[11px] mt-0.5' style={{ color: 'var(--text-muted)' }}>
+            Live client inquiries, channel replies, and watchdog alerts
+          </p>
         </div>
+
         {data && (
-          <div className='flex items-center gap-1.5 text-[11px]' style={{ color: 'var(--text-muted)' }}>
+          <div className='flex items-center gap-1.5 text-[11px] flex-wrap' style={{ color: 'var(--text-muted)' }}>
             {data.counts.by_urgency.high > 0 && (
               <button
                 type='button'
@@ -395,12 +468,14 @@ export function WorkQueuePanel() {
                 {activeFilter === 'returning' && <X className='size-2.5 ml-0.5 opacity-80' />}
               </button>
             )}
-            <span aria-label='total work items' className='px-1'>{data.total} total</span>
+            <span aria-label='total work items' className='px-1 tabular-nums'>
+              {data.total} total
+            </span>
             {doneCount > 0 && (
               <button
                 type='button'
                 onClick={() => setIncludeDone((v) => !v)}
-                className='underline underline-offset-2'
+                className='underline underline-offset-2 cursor-pointer'
                 style={{ color: 'var(--accent-blue)' }}
                 aria-pressed={includeDone}
               >
@@ -410,6 +485,47 @@ export function WorkQueuePanel() {
           </div>
         )}
       </div>
+
+      {!error && (
+        <div
+          className='mt-3 flex items-center gap-1.5 flex-wrap border-b pb-2.5'
+          style={{ borderColor: 'var(--border-default)' }}
+          role='tablist'
+          aria-label='Filter incoming work by source'
+        >
+          {originTabs.map((tab) => {
+            const active = originTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type='button'
+                role='tab'
+                aria-selected={active}
+                onClick={() => setOriginTab(tab.id)}
+                className='inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer border'
+                style={{
+                  color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  background: active ? 'var(--bg-elevated)' : 'transparent',
+                  borderColor: active ? 'var(--border-default)' : 'transparent',
+                }}
+              >
+                <span>{tab.label}</span>
+                {tab.count !== null && (
+                  <span
+                    className='tabular-nums text-[10px] rounded px-1 py-0.2'
+                    style={{
+                      color: active ? 'var(--accent-blue)' : 'var(--text-muted)',
+                      background: active ? 'rgba(88,166,255,0.12)' : 'rgba(255,255,255,0.04)',
+                    }}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {activeFilter && (
         <div
@@ -428,7 +544,7 @@ export function WorkQueuePanel() {
           <button
             type='button'
             onClick={() => setActiveFilter(null)}
-            className='inline-flex items-center gap-1 underline underline-offset-2 text-[11px]'
+            className='inline-flex items-center gap-1 underline underline-offset-2 text-[11px] cursor-pointer'
             style={{ color: 'var(--accent-blue)' }}
             aria-label='Clear filter'
           >
@@ -451,7 +567,7 @@ export function WorkQueuePanel() {
       {isLoading && (
         <div className='mt-3 space-y-2' aria-label='loading work queue'>
           {['wq-skeleton-1', 'wq-skeleton-2', 'wq-skeleton-3'].map((key) => (
-            <div key={key} className='h-10 rounded-lg animate-pulse' style={{ background: 'var(--bg-elevated)' }} />
+            <div key={key} className='h-11 rounded-lg animate-pulse' style={{ background: 'var(--bg-elevated)' }} />
           ))}
         </div>
       )}
@@ -463,16 +579,28 @@ export function WorkQueuePanel() {
               <button
                 type='button'
                 onClick={() => setActiveFilter(null)}
-                className='underline underline-offset-2'
+                className='underline underline-offset-2 cursor-pointer'
                 style={{ color: 'var(--accent-blue)' }}
               >
                 Clear filter
               </button>
             </div>
+          ) : originTab !== 'all' && data.actionable > 0 ? (
+            <div className='flex items-center gap-2'>
+              <span>No open items in this category.</span>
+              <button
+                type='button'
+                onClick={() => setOriginTab('all')}
+                className='underline underline-offset-2 cursor-pointer'
+                style={{ color: 'var(--accent-blue)' }}
+              >
+                View all {data.actionable} active items
+              </button>
+            </div>
           ) : (
             <p>
-              No incoming work recorded yet. Every inquiry, reply, and system escalation that reaches
-              this agency will appear here, classified.
+              No incoming work recorded yet. Every inquiry, reply, and system alert that reaches
+              this agency will appear here.
             </p>
           )}
         </div>
@@ -499,9 +627,8 @@ export function WorkQueuePanel() {
         </ol>
       )}
       {data && data.items.length > 0 && data.total > data.items.length && (
-        <p className='text-[11px] mt-3' style={{ color: 'var(--text-tertiary)' }}>
-          Showing {data.items.length} of {data.total} · totals count the append-only work log
-          <ArrowUpRight className='inline size-3 ml-1' aria-hidden='true' />
+        <p className='text-[11px] mt-3 tabular-nums' style={{ color: 'var(--text-tertiary)' }}>
+          Showing {data.items.length} of {data.total} logged work items
         </p>
       )}
     </section>

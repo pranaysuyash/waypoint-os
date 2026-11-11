@@ -11,7 +11,7 @@ const PIPELINE_ORDER = WORKSPACE_TRIP_STATUS_LIST;
 
 export async function GET(request: NextRequest) {
   try {
-    const tripsUrl = spineUrl(`/trips?status=${WORKSPACE_TRIP_STATUSES}&limit=10000`);
+    const tripsUrl = spineUrl(`/trips?status=${WORKSPACE_TRIP_STATUSES}&limit=1`);
     const response = await fetch(
       tripsUrl,
       {
@@ -28,6 +28,27 @@ export async function GET(request: NextRequest) {
     }
 
     const spineApiData = await response.json();
+    const rawStatusCounts =
+      spineApiData &&
+      typeof spineApiData === "object" &&
+      "statusCounts" in spineApiData &&
+      spineApiData.statusCounts &&
+      typeof spineApiData.statusCounts === "object"
+        ? (spineApiData.statusCounts as Record<string, unknown>)
+        : null;
+
+    if (rawStatusCounts) {
+      return bffJson(
+        PIPELINE_ORDER.map((label) => {
+          const count = Number(rawStatusCounts[label] ?? 0);
+          return {
+            label,
+            count: Number.isFinite(count) ? count : 0,
+          };
+        }),
+      );
+    }
+
     const trips = transformSpineTripsResponseToTrips(spineApiData).filter(isWorkspaceTrip);
 
     const counts = new Map<string, number>();

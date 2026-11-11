@@ -6,10 +6,16 @@ import gsap from 'gsap';
 import { api } from '@/lib/api-client';
 import { safeWriteClipboardText } from '@/lib/clipboard';
 import type { RunStatusResponse } from '@/types/spine';
-import { WedgeVisualShowcase } from '@/components/traveler/WedgeVisualShowcase';
+import {
+  WedgeVisualShowcase,
+  WEDGE_SCENARIO_LIST,
+  WEDGE_SCENARIO_CATALOG,
+  type WedgeScenarioBundle,
+  type WedgeScenarioKey,
+} from '@/components/traveler/WedgeVisualShowcase';
 import {
   Activity, ArrowRight, Check, Clock, DollarSign,
-  Camera, Compass, FileCheck, Globe, MapPin, PlaneTakeoff, Route,
+  Camera, Compass, FileCheck, Globe, MapPin, Pause, Play, PlaneTakeoff, Route,
   Shield, Sparkles, Star, SunMedium, Ticket, Upload,
 } from 'lucide-react';
 
@@ -179,26 +185,25 @@ const S = {
     inset: 0,
     pointerEvents: 'none',
     backgroundImage: `
-      radial-gradient(circle at 50% 20%, rgba(255,193,122,0.18) 0%, transparent 36%),
-      radial-gradient(circle at 16% 14%, rgba(57,208,216,0.10) 0%, transparent 24%),
-      radial-gradient(circle at 88% 16%, rgba(163,113,247,0.12) 0%, transparent 22%),
-      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
+      radial-gradient(circle at 18% 10%, rgba(57,208,216,0.07) 0%, transparent 32%),
+      radial-gradient(circle at 82% 12%, rgba(88,166,255,0.06) 0%, transparent 30%),
+      linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px)
     `,
-    backgroundSize: 'auto, auto, 52px 52px, 52px 52px',
+    backgroundSize: 'auto, auto, 64px 64px, 64px 64px',
     backgroundPosition: 'center top, center top, center center, center center',
     zIndex: 0,
   },
   heroSection: {
     position: 'relative',
     zIndex: 1,
-    maxWidth: 1140,
+    maxWidth: 1180,
     margin: '0 auto',
-    padding: '72px 40px 80px',
+    padding: '56px 40px 68px',
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-    gap: 64,
-    alignItems: 'center',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+    gap: 48,
+    alignItems: 'start',
   },
   amberKicker: {
     display: 'inline-flex',

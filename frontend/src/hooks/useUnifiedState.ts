@@ -19,6 +19,8 @@ export interface UnifiedState {
   pending_review_count?: number;
   review_counts?: Record<string, number>;
   total_pending_review_value?: number;
+  pending_review_value_by_currency?: Record<string, number>;
+  primary_review_currency?: string;
   pipeline_stages?: Record<string, number>;
 }
 

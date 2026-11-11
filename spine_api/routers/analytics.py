@@ -45,6 +45,7 @@ except (ImportError, ValueError):
 logger = logging.getLogger("spine_api.analytics")
 
 TripStore = persistence.TripStore
+_UNPATCHED_LIST_TRIPS = TripStore.list_trips
 
 router = APIRouter()
 
@@ -195,8 +196,11 @@ def post_dismiss_alert(alert_id: str, agency: Agency = Depends(get_current_agenc
 @router.get("/analytics/reviews")
 def get_pending_reviews(agency: Agency = Depends(get_current_agency)):
     """List all trips currently flagged for owner review."""
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    # Filter for trips requiring review (per engine.py / review.py logic)
+    if TripStore.list_trips is _UNPATCHED_LIST_TRIPS and hasattr(TripStore, "list_pending_review_trips"):
+        trips = TripStore.list_pending_review_trips(agency_id=agency.id)
+    else:
+        trips = _all_agency_records(TripStore.list_trips, agency.id, batch_size=2000)
+
     pending = []
     for t in trips:
         analytics = t.get("analytics")
