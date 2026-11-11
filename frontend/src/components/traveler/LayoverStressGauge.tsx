@@ -293,7 +293,7 @@ export function LayoverStressGauge({ segment = DEFAULT_SEGMENT, onAdvisorHelp }:
         <div>
           <strong style={{ color: '#39d0d8' }}>How a Waypoint Advisor protects this:</strong>{' '}
           {isCritical
-            ? 'We automatically re-ticket to a flight with a 110-minute buffer or add airside VIP tarmac escort to eliminate security queues, preventing stranded luggage in London.'
+            ? `We automatically re-ticket to a flight with a 110-minute buffer or add airside VIP tarmac escort to eliminate security queues, preventing stranded luggage at ${segment.transitHub}.`
             : 'We pre-assign seats in front cabin rows for swift deplaning and monitor real-time tail number telemetry to re-route proactively before you land.'}
         </div>
       </div>
