@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { parse as parseSetCookie } from "set-cookie-parser";
 import { NextRequest } from "next/server";
-import { POST } from "../route";
+import { GET, POST } from "../route";
 
 function buildCookieHeaderFromSetCookies(rawSetCookies: string[]): string {
   const cookies = parseSetCookie(rawSetCookies);
@@ -113,5 +113,73 @@ describe("/api/trips POST endpoint - live call capture", () => {
         process.env.DISABLE_CALL_CAPTURE = originalEnv;
       }
     }
+  });
+});
+
+describe("/api/trips GET BFF forwarding & workspace status filtering", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("forwards q, scope, offset, preserves valid workspace status subset, and exposes statusCounts", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [],
+          total: 5,
+          limit: 24,
+          offset: 24,
+          statusCounts: {
+            assigned: 44100,
+            in_progress: 120,
+            waiting_customer: 49,
+            blocked: 5,
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest(
+      "http://localhost:3005/api/trips?view=workspace&status=blocked&q=Paris&scope=quotes&offset=24&limit=24",
+    );
+    const response = await GET(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const backendUrl = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(backendUrl.searchParams.get("status")).toBe("blocked");
+    expect(backendUrl.searchParams.get("q")).toBe("Paris");
+    expect(backendUrl.searchParams.get("scope")).toBe("quotes");
+    expect(backendUrl.searchParams.get("offset")).toBe("24");
+    expect(backendUrl.searchParams.get("limit")).toBe("24");
+    expect(body.statusCounts).toEqual({
+      assigned: 44100,
+      in_progress: 120,
+      waiting_customer: 49,
+      blocked: 5,
+    });
+  });
+
+  it("falls back to canonical workspace statuses when caller supplies an unknown status on view=workspace", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ items: [], total: 0, limit: 24, offset: 0 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest(
+      "http://localhost:3005/api/trips?view=workspace&status=invalid_status",
+    );
+    await GET(request);
+
+    const backendUrl = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(backendUrl.searchParams.get("status")).toBe(
+      "assigned,in_progress,ready_to_quote,ready_to_book,blocked,active",
+    );
   });
 });

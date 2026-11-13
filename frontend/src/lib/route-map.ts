@@ -67,6 +67,10 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
 
   // ── Audit ────────────────────────────────────────────────────
   ["audit", { backendPath: "audit" }],
+  ["audit/logs", { backendPath: "api/audit" }],
+  ["audit/chain-verify", { backendPath: "api/audit/chain-verify" }],
+  ["audit/routing-health/batch-triage", { backendPath: "audit/routing-health/batch-triage" }],
+  ["audit/routing-health/export", { backendPath: "audit/routing-health/export" }],
 
   // ── Scenarios are frontend-local; do not map them through this proxy.
 
@@ -212,6 +216,8 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["team/members/{id}", { backendPath: "api/team/members/{id}" }],
 
   ["audit/trip/{id}", { backendPath: "audit" }],
+  ["audit/{id}/triage", { backendPath: "audit/{id}/triage" }],
+  ["audit/{id}/suppress-routing-health-paging", { backendPath: "audit/{id}/suppress-routing-health-paging" }],
 
   ["analytics/agent/{id}/drill-down", { backendPath: "analytics/agent/{id}/drill-down" }],
 
@@ -279,6 +285,7 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["v1/rag/query", { backendPath: "api/v1/rag/query" }],
   ["v1/rag/documents", { backendPath: "api/v1/rag/documents" }],
   ["v1/rag/documents/index", { backendPath: "api/v1/rag/documents/index" }],
+  ["v1/rag/documents/{id}", { backendPath: "api/v1/rag/documents/{id}" }],
   // Work-intake classification queue (INCOMING_WORK_CLASSIFICATION_MAP
   // 2026-10-24 §5 C1; backend spine_api/routers/work_items.py). {id} entry =
   // the outcome-state lifecycle PATCH (map §14: claim/unclaim/dismiss/resolve).
@@ -308,6 +315,12 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   // yield-arbitrage/* paths stay denied.
   ["v1/yield/arbitrage/{trip_id}", { backendPath: "api/v1/yield/arbitrage/{trip_id}" }],
   ["v1/yield/swap-supplier", { backendPath: "api/v1/yield/swap-supplier" }],
+
+  // ── Supplier contracts & soft-hold ledger (agency-scoped) ───────────
+  ["v1/supplier/contracts", { backendPath: "api/v1/supplier/contracts" }],
+  ["v1/supplier/contracts/upload", { backendPath: "api/v1/supplier/contracts/upload" }],
+  ["v1/supplier/inventory/holds", { backendPath: "api/v1/supplier/inventory/holds" }],
+  ["v1/supplier/inventory/soft-hold", { backendPath: "api/v1/supplier/inventory/soft-hold" }],
 ];
 
 const BACKEND_ROUTE_MAP = new Map(BACKEND_ROUTE_ENTRIES);

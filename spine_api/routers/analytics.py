@@ -8,6 +8,8 @@ and export endpoints. Product-B analytics remains in product_b_analytics.py.
 from __future__ import annotations
 
 import logging
+import threading
+import time
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -15,6 +17,7 @@ from typing import Callable, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from spine_api.contract import ExportRequest, ExportResponse
 from spine_api.core.auth import get_current_agency
@@ -46,17 +49,32 @@ logger = logging.getLogger("spine_api.analytics")
 
 TripStore = persistence.TripStore
 _UNPATCHED_LIST_TRIPS = TripStore.list_trips
+_UNPATCHED_LIST_TRIP_SUMMARIES = getattr(TripStore, "list_trip_summaries", None)
+_UNPATCHED_LIST_PAYMENT_RECORDS = getattr(TripStore, "list_trip_payment_records_for_agency", None)
+
+_SNAPSHOT_CACHE_TTL_SECONDS = 15.0
+_snapshot_cache: dict[tuple[str, str], tuple[float, list[dict]]] = {}
+_snapshot_locks: dict[tuple[str, str], threading.Lock] = {}
+_snapshot_meta_lock = threading.Lock()
 
 router = APIRouter()
 
 
-def _all_agency_records(reader: Callable, agency_id: str, *, batch_size: int = 500) -> list[dict]:
-    """Use canonical paged readers with no first-page aggregate truncation.
+def clear_analytics_snapshot_cache() -> None:
+    """Clear the short-TTL analytics snapshot cache."""
+    with _snapshot_meta_lock:
+        _snapshot_cache.clear()
 
-    Offset readers can observe concurrent changes. Deduplicate stable IDs and
-    fail explicitly if a reader stops making progress rather than spin forever
-    or represent a partial result as a tenant-wide total.
-    """
+
+def _is_unpatched_reader(reader: Callable) -> bool:
+    return reader in (
+        _UNPATCHED_LIST_TRIPS,
+        _UNPATCHED_LIST_TRIP_SUMMARIES,
+        _UNPATCHED_LIST_PAYMENT_RECORDS,
+    )
+
+
+def _load_paged_agency_records(reader: Callable, agency_id: str, *, batch_size: int = 500) -> list[dict]:
     records: dict[str, dict] = {}
     offset = 0
     while True:
@@ -74,6 +92,39 @@ def _all_agency_records(reader: Callable, agency_id: str, *, batch_size: int = 5
             raise HTTPException(status_code=503, detail="Analytics source paging did not advance; refresh after source recovery.")
         offset += len(page)
     return list(records.values())
+
+
+def _all_agency_records(reader: Callable, agency_id: str, *, batch_size: int = 500) -> list[dict]:
+    """Use canonical paged readers with no first-page aggregate truncation.
+
+    Offset readers can observe concurrent changes. Deduplicate stable IDs and
+    fail explicitly if a reader stops making progress rather than spin forever
+    or represent a partial result as a tenant-wide total.
+
+    Concurrent /insights requests share a singleflight lock + short 15s TTL
+    snapshot when using the unpatched production TripStore readers so a 48k-row
+    corpus is scanned once per page load instead of 5x in parallel.
+    """
+    if not _is_unpatched_reader(reader) or batch_size != 500:
+        return _load_paged_agency_records(reader, agency_id, batch_size=batch_size)
+
+    cache_key = (str(agency_id), getattr(reader, "__name__", str(reader)))
+    now = time.monotonic()
+    hit = _snapshot_cache.get(cache_key)
+    if hit and now - hit[0] < _SNAPSHOT_CACHE_TTL_SECONDS:
+        return hit[1]
+
+    with _snapshot_meta_lock:
+        lock = _snapshot_locks.setdefault(cache_key, threading.Lock())
+
+    with lock:
+        now = time.monotonic()
+        hit = _snapshot_cache.get(cache_key)
+        if hit and now - hit[0] < _SNAPSHOT_CACHE_TTL_SECONDS:
+            return hit[1]
+        loaded = _load_paged_agency_records(reader, agency_id, batch_size=batch_size)
+        _snapshot_cache[cache_key] = (time.monotonic(), loaded)
+        return loaded
 
 
 def _window(period: str, start: Optional[str], end: Optional[str]):
@@ -114,7 +165,7 @@ async def get_analytics_team(
     agency: Agency = Depends(get_current_agency),
     db: AsyncSession = Depends(get_rls_db),
 ):
-    trips = _all_agency_records(TripStore.list_trips, agency.id)
+    trips = await run_in_threadpool(_all_agency_records, TripStore.list_trips, agency.id)
     members = await membership_service.list_members(db, agency_id=agency.id)
     return compute_team_metrics(trips, members)
 

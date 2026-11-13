@@ -215,3 +215,9 @@ data/messages/agency_opact_*.jsonl
 data/work_items/agency_fnd0174_family_*.jsonl
 data/work_items/agency_opact_*.jsonl
 data/work_items/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-*.jsonl
+output/antigravity-migrated/
+output/
+
+# Agent session debris and temporary tool scripts
+Docs/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
+tools/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/

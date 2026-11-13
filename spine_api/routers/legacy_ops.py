@@ -331,7 +331,10 @@ def get_audit_events(
 ):
     """Get recent audit events for the current agency."""
     events = AuditStore.get_events(limit=limit)
-    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
+    if hasattr(TripStore, "list_trip_summaries"):
+        agency_trips = TripStore.list_trip_summaries(agency_id=agency.id, limit=10000)
+    else:
+        agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
     agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
 
     filtered = [

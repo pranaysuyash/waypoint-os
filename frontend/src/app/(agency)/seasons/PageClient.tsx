@@ -409,9 +409,11 @@ export default function SeasonsPageClient() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <label className="text-ui-xs text-[#8b949e]">
+          <label htmlFor="campaign-name" className="text-ui-xs text-[#8b949e]">
             Campaign name
             <input
+              id="campaign-name"
+              name="campaignName"
               value={newCampaignForm.name}
               onChange={(event) =>
                 setNewCampaignForm((state) => ({ ...state, name: event.target.value }))
@@ -420,9 +422,11 @@ export default function SeasonsPageClient() {
               placeholder="Monsoon Beach Promotion"
             />
           </label>
-          <label className="text-ui-xs text-[#8b949e]">
+          <label htmlFor="campaign-destination" className="text-ui-xs text-[#8b949e]">
             Destination
             <input
+              id="campaign-destination"
+              name="campaignDestination"
               value={newCampaignForm.destination}
               onChange={(event) =>
                 setNewCampaignForm((state) => ({ ...state, destination: event.target.value }))
@@ -431,9 +435,11 @@ export default function SeasonsPageClient() {
               placeholder="Goa / Dubai / Tokyo"
             />
           </label>
-          <label className="text-ui-xs text-[#8b949e]">
+          <label htmlFor="campaign-status" className="text-ui-xs text-[#8b949e]">
             Status
             <select
+              id="campaign-status"
+              name="campaignStatus"
               value={newCampaignForm.status}
               onChange={(event) =>
                 setNewCampaignForm((state) => ({
@@ -452,9 +458,11 @@ export default function SeasonsPageClient() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <label className="text-ui-xs text-[#8b949e]">
+          <label htmlFor="campaign-start-month" className="text-ui-xs text-[#8b949e]">
             Start month (1-12)
             <input
+              id="campaign-start-month"
+              name="startMonth"
               type="number"
               min={1}
               max={12}
@@ -468,9 +476,11 @@ export default function SeasonsPageClient() {
               className="mt-1 w-full rounded-lg border border-[#30363d] bg-[#161b22] px-2 py-2 text-ui-sm"
             />
           </label>
-          <label className="text-ui-xs text-[#8b949e]">
+          <label htmlFor="campaign-end-month" className="text-ui-xs text-[#8b949e]">
             End month (1-12)
             <input
+              id="campaign-end-month"
+              name="endMonth"
               type="number"
               min={1}
               max={12}
@@ -484,9 +494,11 @@ export default function SeasonsPageClient() {
               className="mt-1 w-full rounded-lg border border-[#30363d] bg-[#161b22] px-2 py-2 text-ui-sm"
             />
           </label>
-          <label className="text-ui-xs text-[#8b949e]">
+          <label htmlFor="campaign-min-budget" className="text-ui-xs text-[#8b949e]">
             Min budget
             <input
+              id="campaign-min-budget"
+              name="minBudget"
               type="number"
               value={newCampaignForm.target_budget_min}
               onChange={(event) =>
@@ -498,9 +510,11 @@ export default function SeasonsPageClient() {
               className="mt-1 w-full rounded-lg border border-[#30363d] bg-[#161b22] px-2 py-2 text-ui-sm"
             />
           </label>
-          <label className="text-ui-xs text-[#8b949e]">
+          <label htmlFor="campaign-max-budget" className="text-ui-xs text-[#8b949e]">
             Max budget
             <input
+              id="campaign-max-budget"
+              name="maxBudget"
               type="number"
               value={newCampaignForm.target_budget_max}
               onChange={(event) =>
@@ -516,9 +530,11 @@ export default function SeasonsPageClient() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {CAMPAIGN_CHANNELS.map((channel) => (
-            <label key={channel} className="text-ui-xs text-[#8b949e]">
-              {channel} mix weight
+            <label key={channel} htmlFor={`campaign-mix-${channel}`} className="text-ui-xs text-[#8b949e]">
+              <span className="capitalize">{channel}</span> mix weight
               <input
+                id={`campaign-mix-${channel}`}
+                name={`mix_${channel}`}
                 type="number"
                 step={0.05}
                 value={newCampaignForm.channel_mix[channel]}
@@ -538,9 +554,11 @@ export default function SeasonsPageClient() {
           ))}
         </div>
 
-        <label className="text-ui-xs text-[#8b949e]">
+        <label htmlFor="campaign-notes" className="text-ui-xs text-[#8b949e]">
           Notes
           <textarea
+            id="campaign-notes"
+            name="campaignNotes"
             value={newCampaignForm.notes}
             onChange={(event) =>
               setNewCampaignForm((state) => ({ ...state, notes: event.target.value }))
@@ -551,16 +569,18 @@ export default function SeasonsPageClient() {
           />
         </label>
 
-        <label className="text-ui-xs text-[#8b949e]">
+        <label htmlFor="campaign-blocklist" className="text-ui-xs text-[#8b949e]">
           Blocklist tags (one per line)
           <textarea
+            id="campaign-blocklist"
+            name="campaignBlocklist"
             value={newCampaignForm.blocklist}
             onChange={(event) =>
               setNewCampaignForm((state) => ({ ...state, blocklist: event.target.value }))
             }
             rows={2}
             className="mt-1 w-full rounded-lg border border-[#30363d] bg-[#161b22] px-2 py-2 text-ui-sm"
-            placeholder="budget_violation\ndestination_mismatch"
+            placeholder={"budget_violation\ndestination_mismatch"}
           />
         </label>
 
@@ -805,9 +825,11 @@ export default function SeasonsPageClient() {
                   )}
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <label className="text-ui-xs text-[#8b949e]">
+                    <label htmlFor={`scenario-${campaign.plan_id}`} className="text-ui-xs text-[#8b949e]">
                       Scenario
                       <select
+                        id={`scenario-${campaign.plan_id}`}
+                        name={`scenario_${campaign.plan_id}`}
                         value={scenario}
                         onChange={(event) =>
                           setScenarioByCampaign((state) => ({

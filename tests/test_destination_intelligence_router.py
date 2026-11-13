@@ -30,6 +30,7 @@ def _patch_fcdo(band="1", slug="japan"):
     def fake(slug_arg):
         assert slug_arg == slug
         return {
+            "requested_slug": slug,
             "country_slug": slug,
             "content_payload": {"details": {}},
             "advisory_band": band,
@@ -60,6 +61,8 @@ def test_safety_verdict_shape_and_gating(clear_cache):
     assert resp.status_code == 200
     body = resp.json()
     assert body["destination_slug"] == "japan"
+    assert body["requested_slug"] == "japan"
+    assert body["country_slug"] == "japan"
     assert body["band"] == "1" and body["label"] == "Normal precautions"
     assert "c1_advisory" in body["coverage"] and "c2_violent_crime" in body["coverage"]
     assert body["coverage_gaps"] == ["c3_neighborhood", "c4_events"]
@@ -83,6 +86,26 @@ def test_safety_upstream_failure_is_502_not_500(clear_cache, monkeypatch):
     resp = client.get("/api/v1/destination-intelligence/safety/japan", headers=HEADERS)
     assert resp.status_code == 502
     assert resp.json()["detail"]["error"] == "upstream_fetch_failed"
+
+
+def test_safety_domestic_uk_baseline(clear_cache):
+    resp = client.get("/api/v1/destination-intelligence/safety/united-kingdom", headers=HEADERS)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["destination_slug"] == "united-kingdom"
+    assert body["requested_slug"] == "united-kingdom"
+    assert body["country_slug"] == "united-kingdom"
+    assert body["band"] == "1"
+    assert "Domestic territory" in body.get("alias_note", "")
+
+
+def test_weather_suitability_inverted_date_is_422(clear_cache):
+    resp = client.get(
+        "/api/v1/destination-intelligence/weather-suitability?lat=13.75&lng=100.5&start_date=2026-12-10&end_date=2026-12-01&activity=city",
+        headers=HEADERS,
+    )
+    assert resp.status_code == 422
+    assert "start_date must be on or before end_date" in resp.json()["detail"]["detail"]
 
 
 def test_weather_suitability_contract(clear_cache, monkeypatch):

@@ -349,3 +349,62 @@ class TestPaymentsQueueApi:
         assert page_body["summary"]["total"] == page_body["pagination"]["total"]
         assert page_body["summary"]["by_queue_status"]["due_soon"] >= 2
         assert page_body["summary"]["by_queue_status"]["overdue"] == 0
+
+    def test_urgent_sort_configured_only_and_search(self, session_client, agency_id, trip_factory):
+        """GET /payments?sort=urgent&configured_only=true&q=... ranks overdue first and filters cleanly."""
+        trip_unconfigured = trip_factory("payments_urgent_unconf")
+        trip_overdue = trip_factory("payments_urgent_overdue")
+        trip_due_later = trip_factory("payments_urgent_later")
+
+        TripStore.update_trip_for_agency(
+            trip_unconfigured,
+            agency_id,
+            {"extracted": {"destination_raw": "Lisbon"}},
+        )
+        TripStore.update_trip_for_agency(
+            trip_due_later,
+            agency_id,
+            {
+                "extracted": {"destination_raw": "Kyoto"},
+                "booking_data": {
+                    "payment_tracking": _payment_tracking(
+                        payment_status="partially_paid",
+                        agreed=2000,
+                        paid=500,
+                        final_due=date.today() + timedelta(days=30),
+                    )
+                },
+            },
+        )
+        TripStore.update_trip_for_agency(
+            trip_overdue,
+            agency_id,
+            {
+                "extracted": {"destination_raw": "Amalfi"},
+                "booking_data": {
+                    "payment_tracking": _payment_tracking(
+                        payment_status="partially_paid",
+                        agreed=4500,
+                        paid=1500,
+                        final_due=date.today() - timedelta(days=3),
+                    )
+                },
+            },
+        )
+
+        urgent_resp = session_client.get("/payments?sort=urgent&configured_only=true&limit=25")
+        assert urgent_resp.status_code == 200
+        urgent_body = urgent_resp.json()
+        urgent_ids = [item["trip_id"] for item in urgent_body["items"]]
+        assert trip_unconfigured not in urgent_ids
+        assert trip_overdue in urgent_ids
+        assert trip_due_later in urgent_ids
+        assert urgent_ids.index(trip_overdue) < urgent_ids.index(trip_due_later)
+
+        search_resp = session_client.get("/payments?sort=urgent&q=amalfi")
+        assert search_resp.status_code == 200
+        search_body = search_resp.json()
+        assert search_body["pagination"]["total"] == 1
+        assert search_body["items"][0]["trip_id"] == trip_overdue
+        assert search_body["items"][0]["destination"] == "Amalfi"
+        assert search_body["items"][0]["trip_name"] == "Amalfi trip"

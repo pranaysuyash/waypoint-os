@@ -12,7 +12,7 @@
  * Every value on this page comes from the backend; empty sections say so.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +24,7 @@ import {
   FileCheck,
   Layers,
   Link2,
+  Search,
   Users,
 } from 'lucide-react';
 import {
@@ -36,15 +37,7 @@ import {
   revokeCollectionLink,
 } from '@/lib/api-client';
 import { useTrips, useTrip } from '@/hooks/useTrips';
-
-function formatTripPickerLabel(trip: {
-  id: string;
-  destination?: string | null;
-  dateWindow?: string | null;
-}): string {
-  const parts = [trip.destination || 'Unnamed trip', trip.dateWindow].filter(Boolean);
-  return `${parts.join(' · ')} (${trip.id})`;
-}
+import { formatTripPickerLabel } from '@/lib/trip-picker-label';
 
 function fmtDate(value?: string | null): string {
   if (!value) return '—';
@@ -68,8 +61,44 @@ export default function BookingsPageClient() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [pickerScope, setPickerScope] = useState<'bookings' | 'all'>('bookings');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const { data: trips, isLoading } = useTrips({ view: 'workspace', limit: 100 });
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 250);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const {
+    data: scopedBookingTrips,
+    total: scopedBookingTotal,
+    isLoading: scopedBookingsLoading,
+  } = useTrips({
+    scope: 'bookings',
+    limit: 50,
+    q: debouncedSearch || undefined,
+    enabled: pickerScope === 'bookings',
+  });
+
+  const shouldLoadAllFallback =
+    pickerScope === 'all' || (!scopedBookingsLoading && scopedBookingTrips.length === 0 && !debouncedSearch);
+
+  const {
+    data: allPlanningTrips,
+    total: allPlanningTotal,
+    isLoading: allPlanningLoading,
+  } = useTrips({
+    view: 'workspace',
+    limit: 50,
+    q: debouncedSearch || undefined,
+    enabled: shouldLoadAllFallback,
+  });
+
+  const usingFallbackAll =
+    pickerScope === 'bookings' && !scopedBookingsLoading && scopedBookingTrips.length === 0 && !debouncedSearch;
+  const trips = pickerScope === 'all' || usingFallbackAll ? allPlanningTrips : scopedBookingTrips;
+  const isLoading = pickerScope === 'all' ? allPlanningLoading : scopedBookingsLoading;
 
   const tripOptions = useMemo(
     () => trips.map((trip) => ({ id: trip.id, label: formatTripPickerLabel(trip) })),
@@ -170,30 +199,28 @@ export default function BookingsPageClient() {
       <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
         <div>
           <h1 className='text-ui-xl font-semibold text-[#e6edf3] flex items-center gap-2'>
-            <CalendarCheck className='size-6 text-[#3fb950]' />
+            <CalendarCheck className='size-5 text-[#3fb950]' aria-hidden='true' />
             Bookings
           </h1>
           <p className='text-ui-sm text-[#8b949e] mt-1'>
-            The traveler booking dossier for the selected trip: collected traveler details,
-            payment tracking, and customer submissions. Send the collection form to gather
-            what is missing.
+            Traveler dossiers, payment tracking, and customer collection links for active trips.
           </p>
         </div>
 
         {effectiveSelectedTripId && (
-          <div className='flex flex-wrap items-center gap-3'>
+          <div className='flex flex-wrap items-center gap-2.5'>
             <Link
               href={`/trips/${effectiveSelectedTripId}/ops`}
-              className='px-3.5 py-2 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-sm'
+              className='px-3 py-1.5 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-ui-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-sm'
             >
-              <Layers className='size-3.5' />
+              <Layers className='size-3.5' aria-hidden='true' />
               Open Ops Workspace
             </Link>
             <Link
               href={`/trips/${effectiveSelectedTripId}/timeline`}
-              className='px-3.5 py-2 bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-xs font-medium rounded-md border border-[#30363d] flex items-center gap-1.5 transition-colors'
+              className='px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-ui-xs font-medium rounded-md border border-[#30363d] flex items-center gap-1.5 transition-colors'
             >
-              <Clock className='size-3.5 text-[#58a6ff]' />
+              <Clock className='size-3.5 text-[#58a6ff]' aria-hidden='true' />
               Trip Timeline
             </Link>
           </div>
@@ -202,30 +229,73 @@ export default function BookingsPageClient() {
 
       {/* Trip Picker */}
       <div className='rounded-lg border border-[#30363d] p-4 bg-[#0d1117] space-y-3'>
-        <div className='flex flex-col md:flex-row md:items-center justify-between gap-3'>
-          <div className='space-y-1'>
-            <label htmlFor='bookings-trip-select' className='block text-xs font-medium text-[#8b949e] uppercase tracking-wider'>
-              Active Trip Booking Scope
+        <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-3'>
+          <div className='flex items-center gap-2 flex-wrap'>
+            <label htmlFor='bookings-trip-select' className='text-xs font-medium text-[#8b949e] uppercase tracking-wider'>
+              Booking Trip
             </label>
-            <select
-              id='bookings-trip-select'
-              data-testid='bookings-trip-select'
-              value={effectiveSelectedTripId}
-              onChange={(e) => handleTripChange(e.target.value)}
-              className='w-full md:w-[460px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#3fb950] outline-none'
-              disabled={isLoading || tripOptions.length === 0}
-            >
-              {tripOptions.length === 0 ? (
-                <option value=''>No trips in planning</option>
-              ) : (
-                tripOptions.map((trip) => (
-                  <option key={trip.id} value={trip.id}>
-                    {trip.label}
-                  </option>
-                ))
-              )}
-            </select>
+            <div className='inline-flex items-center rounded-md border border-[#30363d] bg-[#161b22] p-0.5 text-ui-xs'>
+              <button
+                type='button'
+                onClick={() => setPickerScope('bookings')}
+                aria-pressed={pickerScope === 'bookings'}
+                className={`px-2.5 py-1 rounded font-medium transition-colors tabular-nums ${
+                  pickerScope === 'bookings' ? 'bg-[#0d1117] text-[#e6edf3]' : 'text-[#8b949e] hover:text-[#e6edf3]'
+                }`}
+              >
+                Active Dossiers{typeof scopedBookingTotal === 'number' && scopedBookingTotal > 0 ? ` (${scopedBookingTotal.toLocaleString('en-IN')})` : ''}
+              </button>
+              <button
+                type='button'
+                onClick={() => setPickerScope('all')}
+                aria-pressed={pickerScope === 'all'}
+                className={`px-2.5 py-1 rounded font-medium transition-colors tabular-nums ${
+                  pickerScope === 'all' ? 'bg-[#0d1117] text-[#e6edf3]' : 'text-[#8b949e] hover:text-[#e6edf3]'
+                }`}
+              >
+                All Planning Trips{typeof allPlanningTotal === 'number' && allPlanningTotal > 0 ? ` (${allPlanningTotal.toLocaleString('en-IN')})` : ''}
+              </button>
+            </div>
           </div>
+
+          <div className='relative w-full lg:w-64'>
+            <Search className='size-3.5 text-[#8b949e] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none' aria-hidden='true' />
+            <input
+              type='search'
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder='Filter by destination or ref…'
+              aria-label='Filter booking trips'
+              className='w-full bg-[#161b22] border border-[#30363d] rounded-md pl-8 pr-3 py-1.5 text-xs text-[#e6edf3] placeholder:text-[#8b949e] focus:border-[#3fb950] outline-none'
+            />
+          </div>
+        </div>
+
+        <div className='flex flex-col md:flex-row md:items-center justify-between gap-3'>
+          <select
+            id='bookings-trip-select'
+            data-testid='bookings-trip-select'
+            value={effectiveSelectedTripId}
+            onChange={(e) => handleTripChange(e.target.value)}
+            className='w-full md:w-[520px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#3fb950] outline-none'
+            disabled={isLoading || tripOptions.length === 0}
+          >
+            {tripOptions.length === 0 ? (
+              <option value=''>
+                {debouncedSearch
+                  ? 'No matching booking trips'
+                  : pickerScope === 'bookings'
+                    ? 'No active booking dossiers yet'
+                    : 'No trips in planning'}
+              </option>
+            ) : (
+              tripOptions.map((trip) => (
+                <option key={trip.id} value={trip.id}>
+                  {trip.label}
+                </option>
+              ))
+            )}
+          </select>
 
           {selectedTrip && (
             <div className='flex items-center gap-3 text-xs bg-[#161b22] px-3 py-2 rounded-md border border-[#30363d]'>

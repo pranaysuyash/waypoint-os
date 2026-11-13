@@ -1,91 +1,137 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import OpsPanel from '../workbench/OpsPanel';
-import { useTrip, useTrips } from '@/hooks/useTrips';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { CalendarCheck, FileText, Info, Layers } from 'lucide-react';
+import { useTrip } from '@/hooks/useTrips';
+import type { Trip } from '@/lib/api-client';
 import { formatTripPickerLabel } from '@/lib/trip-picker-label';
+import { ScopedTripPickerBar } from '@/components/workspace/ScopedTripPickerBar';
+import OpsPanel from '../workbench/OpsPanel';
 
 export default function DocumentsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchParamsString = searchParams.toString();
   const urlTripId = searchParams.get('tripId') || searchParams.get('trip') || '';
+  const [selectedTripId, setSelectedTripId] = useState<string>(urlTripId);
+  const [selectedTripSummary, setSelectedTripSummary] = useState<Trip | undefined>(undefined);
+  const { data: selectedTripDetail } = useTrip(selectedTripId || null);
 
-  const { data: trips, isLoading } = useTrips({ view: 'workspace', limit: 100 });
+  const selectedTrip = selectedTripDetail ?? selectedTripSummary;
 
-  const tripOptions = useMemo(
-    () => trips.map((trip) => ({ id: trip.id, label: formatTripPickerLabel(trip) })),
-    [trips],
-  );
-  const selectedTripExists = trips.some((trip) => trip.id === urlTripId);
-  const effectiveSelectedTripId = selectedTripExists ? urlTripId : trips[0]?.id ?? '';
-  const { data: selectedTrip } = useTrip(effectiveSelectedTripId || null);
-
-  const handleTripChange = useCallback(
-    (newTripId: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (newTripId) {
-        params.set('tripId', newTripId);
-      } else {
-        params.delete('tripId');
+  const handleSelectTrip = useCallback(
+    (tripId: string, trip: Trip | undefined) => {
+      const changedBySelection = Boolean(selectedTripId && tripId && tripId !== selectedTripId);
+      setSelectedTripId(tripId);
+      setSelectedTripSummary(trip);
+      if (changedBySelection) {
+        const next = new URLSearchParams(searchParamsString);
+        next.set('tripId', tripId);
+        router.replace(`${pathname}?${next.toString()}`, { scroll: false });
       }
-      router.push(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [pathname, router, searchParams],
+    [pathname, router, searchParamsString, selectedTripId]
   );
+
+  const currentStage = (selectedTrip?.stage || 'intake').toLowerCase();
+  const canUploadForStage = currentStage === 'proposal' || currentStage === 'booking';
 
   return (
     <div className='p-6 space-y-6'>
-      <div>
-        <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Documents</h1>
-        <p className='text-ui-sm text-[#8b949e] mt-1'>
-          Route-level shell over canonical document contracts. No parallel document workflow.
-        </p>
-      </div>
+      {/* Header */}
+      <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
+        <div>
+          <h1 className='text-ui-xl font-semibold text-[#e6edf3] flex items-center gap-2'>
+            <FileText className='size-5 text-[#58a6ff]' aria-hidden='true' />
+            Documents
+          </h1>
+          <p className='text-ui-sm text-[#8b949e] mt-1'>
+            Verify traveler passports, visas, tickets, and AI extraction fields across active trips.
+          </p>
+        </div>
 
-      <div className='rounded-lg border border-[#30363d] p-4 bg-[#0d1117]'>
-        <label htmlFor='documents-trip-select' className='block text-xs text-[#8b949e] mb-2'>
-          Select trip
-        </label>
-        <select
-          id='documents-trip-select'
-          data-testid='documents-trip-select'
-          value={effectiveSelectedTripId}
-          onChange={(e) => handleTripChange(e.target.value)}
-          className='w-full md:w-[420px] bg-[#0d1117] border border-[#30363d] rounded p-2 text-sm text-[#e6edf3]'
-          disabled={isLoading || tripOptions.length === 0}
-        >
-          {tripOptions.length === 0 ? (
-            <option value=''>No trips in planning</option>
-          ) : (
-            tripOptions.map((trip) => (
-              <option key={trip.id} value={trip.id}>
-                {trip.label}
-              </option>
-            ))
-          )}
-        </select>
-
-        {effectiveSelectedTripId && (
-          <div className='mt-3 text-xs text-[#8b949e]'>
-            Need full context?{' '}
-            <Link className='text-[#58a6ff] hover:text-[#79b8ff]' href={`/trips/${effectiveSelectedTripId}/intake`}>
-              Open trip workspace
+        {selectedTripId && (
+          <div className='flex flex-wrap items-center gap-2.5'>
+            <Link
+              href={`/trips/${selectedTripId}/ops`}
+              className='px-3 py-1.5 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-ui-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-sm'
+            >
+              <Layers className='size-3.5' aria-hidden='true' />
+              Open Ops Workspace
+            </Link>
+            <Link
+              href={`/bookings?tripId=${selectedTripId}`}
+              className='px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-ui-xs font-medium rounded-md border border-[#30363d] flex items-center gap-1.5 transition-colors'
+            >
+              <CalendarCheck className='size-3.5 text-[#3fb950]' aria-hidden='true' />
+              Booking Dossier
+            </Link>
+            <Link
+              href={`/trips/${selectedTripId}/intake`}
+              className='px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-ui-xs font-medium rounded-md border border-[#30363d] transition-colors'
+            >
+              Open Trip Workspace
             </Link>
           </div>
         )}
       </div>
 
+      {/* Scoped Searchable Trip Selector */}
+      <ScopedTripPickerBar
+        label='Trip'
+        selectId='documents-trip-select'
+        selectTestId='documents-trip-select'
+        scope='documents'
+        scopedLabel='Documents & Upload-Ready'
+        allLabel='All Workspace Trips'
+        requestedTripId={urlTripId}
+        selectedTripId={selectedTripId}
+        onSelectTrip={handleSelectTrip}
+        searchPlaceholder='Search destination, ref, or traveler…'
+        helperText={
+          selectedTrip
+            ? `Selected: ${formatTripPickerLabel(selectedTrip)} · Stage: ${currentStage}`
+            : undefined
+        }
+      />
+
+      {selectedTrip && !canUploadForStage && (
+        <div
+          data-testid='documents-stage-notice'
+          className='rounded-lg border border-[#30363d] bg-[#161b22] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-ui-xs text-[#8b949e]'
+        >
+          <div className='flex items-start sm:items-center gap-2.5'>
+            <Info className='size-4 text-[#d29922] shrink-0 mt-0.5 sm:mt-0' aria-hidden='true' />
+            <span>
+              Document uploads activate once a trip reaches{' '}
+              <strong className='text-[#e6edf3]'>Proposal</strong> or{' '}
+              <strong className='text-[#e6edf3]'>Booking</strong> stage (current stage:{' '}
+              <span className='font-mono text-[#e6edf3]'>{currentStage}</span>). Existing files can still
+              be reviewed below.
+            </span>
+          </div>
+          <Link
+            href={`/trips/${selectedTrip.id}/intake`}
+            className='text-[#58a6ff] hover:underline font-medium shrink-0'
+          >
+            Advance stage in Intake →
+          </Link>
+        </div>
+      )}
+
+      {/* Canonical Document Ops Panel */}
       {selectedTrip ? (
-        <OpsPanel trip={selectedTrip} mode='documents' />
+        <div className='rounded-xl border border-[#30363d] bg-[#0d1117] p-4'>
+          <OpsPanel trip={selectedTrip} mode='documents' />
+        </div>
       ) : (
-        <div className='text-sm text-[#8b949e]'>
-          {isLoading ? 'Loading trips…' : 'No trip selected.'}
+        <div className='rounded-xl border border-[#30363d] bg-[#161b22] p-8 text-center text-ui-sm text-[#8b949e]'>
+          Select a trip above to inspect or upload traveler documents.
         </div>
       )}
     </div>
   );
 }
-

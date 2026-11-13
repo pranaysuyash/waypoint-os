@@ -13,12 +13,46 @@ import {
   Layers,
   AlertTriangle,
   CheckCircle2,
+  Search,
 } from 'lucide-react';
 
 // T4 (FND-0303): this page renders the REAL quote read model from
 // GET /api/v1/trips/{trip_id}/quotes — spine-persisted recommended option,
 // policy-resolved margin (FND-0268 provenance), real review/proposal status.
 // The former fabricated tier matrix (v1/v2/v3 from a fixed budget) is gone.
+
+function formatMissingQuoteInput(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('strategy.recommended_option.cost')) {
+    return 'Itinerary cost model — add a modeled cost estimate on the selected itinerary option before pricing a quote.';
+  }
+  if (trimmed.startsWith('strategy.recommended_option')) {
+    return 'Recommended itinerary option — build or choose an itinerary option on the trip workspace first.';
+  }
+  if (trimmed.startsWith('decision.budget_breakdown')) {
+    return 'Cost basis breakdown — generate budget bucket estimates (stays, flights, transfers) on the trip workspace.';
+  }
+  if (trimmed.startsWith('commercial_pricing')) {
+    return 'Commercial approval — review or approve the customer retail price in Quote Review.';
+  }
+  // Fallback: remove raw dotted/snake field paths when parenthetical hint exists
+  const parenMatch = trimmed.match(/^[a-z0-9_.]+\s*\((.+)\)$/i);
+  if (parenMatch && parenMatch[1]) {
+    const label = parenMatch[1].trim();
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  return trimmed.replace(/_/g, ' ');
+}
+
+function fmtQuoteMoney(amount: number, currency: string): string {
+  if (currency === 'USD') {
+    return `$${amount.toLocaleString('en-US')}`;
+  }
+  if (currency === 'INR') {
+    return `INR ${amount.toLocaleString()}`;
+  }
+  return `${currency} ${amount.toLocaleString('en-US')}`;
+}
 
 interface QuoteProvenance {
   applied_rule_id?: string;
@@ -82,7 +116,44 @@ export default function QuotesPageClient() {
   const searchParams = useSearchParams();
   const urlTripId = searchParams.get('tripId') || searchParams.get('trip') || '';
 
-  const { data: trips, isLoading } = useTrips({ view: 'workspace', limit: 100 });
+  const [pickerScope, setPickerScope] = useState<'quotes' | 'all'>('quotes');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 250);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const {
+    data: scopedQuoteTrips,
+    total: scopedQuotesTotal,
+    isLoading: scopedQuotesLoading,
+  } = useTrips({
+    scope: 'quotes',
+    limit: 50,
+    q: debouncedSearch || undefined,
+    enabled: pickerScope === 'quotes',
+  });
+
+  const shouldLoadAllFallback =
+    pickerScope === 'all' || (!scopedQuotesLoading && scopedQuoteTrips.length === 0 && !debouncedSearch);
+
+  const {
+    data: allPlanningTrips,
+    total: allPlanningTotal,
+    isLoading: allPlanningLoading,
+  } = useTrips({
+    view: 'workspace',
+    limit: 50,
+    q: debouncedSearch || undefined,
+    enabled: shouldLoadAllFallback,
+  });
+
+  const usingFallbackAll =
+    pickerScope === 'quotes' && !scopedQuotesLoading && scopedQuoteTrips.length === 0 && !debouncedSearch;
+  const trips = pickerScope === 'all' || usingFallbackAll ? allPlanningTrips : scopedQuoteTrips;
+  const isLoading = pickerScope === 'all' ? allPlanningLoading : scopedQuotesLoading;
 
   const tripOptions = useMemo(
     () => trips.map((trip) => ({ id: trip.id, label: formatTripPickerLabel(trip) })),
@@ -143,29 +214,32 @@ export default function QuotesPageClient() {
       <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
         <div>
           <h1 className='text-ui-xl font-semibold text-[#e6edf3] flex items-center gap-2'>
-            <FileText className='size-6 text-[#58a6ff]' />
-            Quotes & Commercial Proposals
+            <FileText className='size-5 text-[#58a6ff]' aria-hidden='true' />
+            Quotes &amp; Commercial Proposals
           </h1>
           <p className='text-ui-sm text-[#8b949e] mt-1'>
-            Spine-derived quote for the selected trip: persisted itinerary cost, policy-resolved margin
-            (rule provenance shown), and real review status. Nothing on this page is invented.
+            Client proposals, modeled itinerary costs, and policy margin rules from persisted trip records.
           </p>
         </div>
 
         {effectiveSelectedTripId && (
-          <div className='flex items-center gap-3'>
+          <div className='flex items-center gap-2.5 flex-wrap'>
             <Link
               href={`/trips/${effectiveSelectedTripId}/output`}
-              className='px-3.5 py-2 bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-sm'
+              className={`px-3 py-1.5 text-ui-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors ${
+                activeQuote
+                  ? 'bg-[#238636] hover:bg-[#2ea043] text-white shadow-sm'
+                  : 'bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] border border-[#30363d]'
+              }`}
             >
-              <Sparkles className='size-3.5' />
+              <Sparkles className='size-3.5' aria-hidden='true' />
               Generate Output Artifacts
             </Link>
             <Link
               href='/reviews'
-              className='px-3.5 py-2 bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-xs font-medium rounded-md border border-[#30363d] flex items-center gap-1.5 transition-colors'
+              className='px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-ui-xs font-medium rounded-md border border-[#30363d] flex items-center gap-1.5 transition-colors'
             >
-              <ShieldCheck className='size-3.5 text-[#a371f7]' />
+              <ShieldCheck className='size-3.5 text-[#a371f7]' aria-hidden='true' />
               Quote Review Queue
             </Link>
           </div>
@@ -174,19 +248,64 @@ export default function QuotesPageClient() {
 
       {/* Trip Picker */}
       <div className='rounded-lg border border-[#30363d] p-4 bg-[#0d1117] space-y-3'>
-        <label htmlFor='quotes-trip-select' className='block text-xs font-medium text-[#8b949e] uppercase tracking-wider'>
-          Active Trip Proposal Scope
-        </label>
+        <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-3'>
+          <div className='flex items-center gap-2 flex-wrap'>
+            <label htmlFor='quotes-trip-select' className='text-xs font-medium text-[#8b949e] uppercase tracking-wider'>
+              Proposal Trip
+            </label>
+            <div className='inline-flex items-center rounded-md border border-[#30363d] bg-[#161b22] p-0.5 text-ui-xs'>
+              <button
+                type='button'
+                onClick={() => setPickerScope('quotes')}
+                aria-pressed={pickerScope === 'quotes'}
+                className={`px-2.5 py-1 rounded font-medium transition-colors tabular-nums ${
+                  pickerScope === 'quotes' ? 'bg-[#0d1117] text-[#e6edf3]' : 'text-[#8b949e] hover:text-[#e6edf3]'
+                }`}
+              >
+                With Quote Data{typeof scopedQuotesTotal === 'number' && scopedQuotesTotal > 0 ? ` (${scopedQuotesTotal.toLocaleString('en-IN')})` : ''}
+              </button>
+              <button
+                type='button'
+                onClick={() => setPickerScope('all')}
+                aria-pressed={pickerScope === 'all'}
+                className={`px-2.5 py-1 rounded font-medium transition-colors tabular-nums ${
+                  pickerScope === 'all' ? 'bg-[#0d1117] text-[#e6edf3]' : 'text-[#8b949e] hover:text-[#e6edf3]'
+                }`}
+              >
+                All Planning Trips{typeof allPlanningTotal === 'number' && allPlanningTotal > 0 ? ` (${allPlanningTotal.toLocaleString('en-IN')})` : ''}
+              </button>
+            </div>
+          </div>
+
+          <div className='relative w-full lg:w-64'>
+            <Search className='size-3.5 text-[#8b949e] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none' aria-hidden='true' />
+            <input
+              type='search'
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder='Filter trips by destination or ref…'
+              aria-label='Filter proposal trips'
+              className='w-full bg-[#161b22] border border-[#30363d] rounded-md pl-8 pr-3 py-1.5 text-xs text-[#e6edf3] placeholder:text-[#8b949e] focus:border-[#58a6ff] outline-none'
+            />
+          </div>
+        </div>
+
         <select
           id='quotes-trip-select'
           data-testid='quotes-trip-select'
           value={effectiveSelectedTripId}
           onChange={(e) => handleTripChange(e.target.value)}
-          className='w-full md:w-[460px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#58a6ff] outline-none'
+          className='w-full md:w-[520px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#58a6ff] outline-none'
           disabled={isLoading || tripOptions.length === 0}
         >
           {tripOptions.length === 0 ? (
-            <option value=''>No trips in planning</option>
+            <option value=''>
+              {debouncedSearch
+                ? 'No matching trips'
+                : pickerScope === 'quotes'
+                  ? 'No trips with persisted quote models yet'
+                  : 'No trips in planning'}
+            </option>
           ) : (
             tripOptions.map((trip) => (
               <option key={trip.id} value={trip.id}>
@@ -217,13 +336,12 @@ export default function QuotesPageClient() {
             <h2 className='text-ui-base font-semibold text-[#e6edf3]'>No quote yet for this trip</h2>
           </div>
           <p className='text-ui-sm text-[#8b949e] mb-3'>
-            Quotes are derived from spine output. This trip doesn&apos;t have the persisted inputs a real
-            quote needs yet:
+            Quotes require a persisted itinerary option and modeled cost from the trip workspace:
           </p>
           <ul className='space-y-1.5'>
             {quotesData.missing.map((m) => (
               <li key={m} className='text-ui-sm text-[#8b949e] flex items-start gap-2'>
-                <span className='text-[#d29922] mt-0.5'>•</span> {m}
+                <span className='text-[#d29922] mt-0.5'>•</span> {formatMissingQuoteInput(m)}
               </li>
             ))}
           </ul>
@@ -232,7 +350,7 @@ export default function QuotesPageClient() {
               href={`/trips/${effectiveSelectedTripId}`}
               className='inline-block mt-4 px-3.5 py-2 bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] text-xs font-medium rounded-md border border-[#30363d]'
             >
-              Open trip to process intake
+              Open trip to complete quote setup
             </Link>
           )}
         </div>
@@ -247,26 +365,20 @@ export default function QuotesPageClient() {
                 <span>Client Retail</span>
                 <DollarSign className='size-4 text-[#3fb950]' />
               </div>
-              <div className='text-2xl font-bold text-[#3fb950]' data-testid='quote-rack-price'>
-                {activeQuote.rack_price == null ? (
-                  'Pricing review'
-                ) : (
-                  <>
-                    {activeQuote.currency === 'USD' ? '$' : `${activeQuote.currency} `}
-                    {activeQuote.rack_price.toLocaleString()}
-                  </>
-                )}
+              <div className='text-2xl font-bold text-[#3fb950] tabular-nums' data-testid='quote-rack-price'>
+                {activeQuote.rack_price == null
+                  ? 'Pricing review'
+                  : fmtQuoteMoney(activeQuote.rack_price, activeQuote.currency)}
               </div>
               <div className='text-xs text-[#484f58]'>Computed preview — net cost + policy margin</div>
             </div>
 
             <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
               <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider'>Net Cost</div>
-              <div className='text-2xl font-bold text-[#e6edf3]' data-testid='quote-net-cost'>
-                {activeQuote.currency === 'USD' ? '$' : `${activeQuote.currency} `}
-                {activeQuote.net_cost.toLocaleString()}
+              <div className='text-2xl font-bold text-[#e6edf3] tabular-nums' data-testid='quote-net-cost'>
+                {fmtQuoteMoney(activeQuote.net_cost, activeQuote.currency)}
               </div>
-              <div className='text-xs text-[#484f58]'>Persisted modeled cost (spine)</div>
+              <div className='text-xs text-[#484f58]'>Persisted modeled cost</div>
             </div>
 
             <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-1.5'>
@@ -323,7 +435,7 @@ export default function QuotesPageClient() {
                       <ul className='space-y-1'>
                         {quotesData!.missing.map((m) => (
                           <li key={m} className='text-xs text-[#8b949e] flex items-start gap-1.5'>
-                            <span className='text-[#d29922] mt-0.5'>•</span> {m}
+                            <span className='text-[#d29922] mt-0.5'>•</span> {formatMissingQuoteInput(m)}
                           </li>
                         ))}
                       </ul>

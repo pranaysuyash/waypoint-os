@@ -253,6 +253,8 @@ function RoutingHealthAlertCard({
       <div className="flex items-center justify-between gap-2 mb-1">
         <div>
           <input
+            id={`select-alert-${event.id}`}
+            name="selectedAlerts"
             type="checkbox"
             checked={checked}
             onChange={() => onToggleSelection(event.id)}
@@ -493,6 +495,38 @@ export default function AuditPage() {
   const [batchResult, setBatchResult] = useState<RoutingHealthTriageBatchResponse | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportFormat, setExportFormat] = useState<"json" | "csv">("json");
+  const [chainVerdict, setChainVerdict] = useState<{
+    verdict: string;
+    events_scanned: number;
+    anchored: number;
+    legacy_unanchored: number;
+    forks: string[];
+  } | null>(null);
+  const [chainLoading, setChainLoading] = useState(false);
+  const [chainError, setChainError] = useState<string | null>(null);
+
+  async function handleVerifyChain() {
+    setChainLoading(true);
+    setChainError(null);
+    try {
+      const res = await fetch("/api/audit/chain-verify", { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error(`Chain check failed (HTTP ${res.status})`);
+      }
+      const data = await res.json();
+      setChainVerdict({
+        verdict: String(data.verdict ?? "unknown"),
+        events_scanned: Number(data.events_scanned ?? 0),
+        anchored: Number(data.anchored ?? 0),
+        legacy_unanchored: Number(data.legacy_unanchored ?? 0),
+        forks: Array.isArray(data.forks) ? data.forks : [],
+      });
+    } catch (err) {
+      setChainError(err instanceof Error ? err.message : "Unable to verify execution chain");
+    } finally {
+      setChainLoading(false);
+    }
+  }
 
   const { sources, error } = state;
 
@@ -541,7 +575,7 @@ export default function AuditPage() {
   }
 
   async function handleTriage(eventId: string, action: AuditTriageAction, note: string): Promise<AuditEvent> {
-    const response = await fetch(`/legacy_ops/audit/${encodeURIComponent(eventId)}/triage`, {
+    const response = await fetch(`/api/audit/${encodeURIComponent(eventId)}/triage`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -589,7 +623,7 @@ export default function AuditPage() {
         note: batchNote.trim() || undefined,
       }));
 
-      const response = await fetch("/legacy_ops/audit/routing-health/batch-triage", {
+      const response = await fetch("/api/audit/routing-health/batch-triage", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -635,7 +669,7 @@ export default function AuditPage() {
     };
 
     const response = await fetch(
-      `/legacy_ops/audit/${encodeURIComponent(eventId)}/suppress-routing-health-paging`,
+      `/api/audit/${encodeURIComponent(eventId)}/suppress-routing-health-paging`,
       {
         method: "POST",
         headers: {
@@ -670,7 +704,7 @@ export default function AuditPage() {
       include_paging: "true",
     });
 
-    const response = await fetch(`/legacy_ops/audit/routing-health/export?${params.toString()}`, {
+    const response = await fetch(`/api/audit/routing-health/export?${params.toString()}`, {
       cache: "no-store",
     });
 
@@ -704,16 +738,16 @@ export default function AuditPage() {
         routingHealthSuppressedRes,
       ] = await Promise.all([
         fetch("/api/audit?limit=50", { cache: "no-store" }),
-        fetch("/legacy_ops/audit?limit=100&event_type=routing_health_alert", {
+        fetch("/api/audit?limit=100&event_type=routing_health_alert", {
           cache: "no-store",
         }),
-        fetch("/legacy_ops/audit?limit=100&event_type=routing_health_paging_alert", {
+        fetch("/api/audit?limit=100&event_type=routing_health_paging_alert", {
           cache: "no-store",
         }),
-        fetch("/legacy_ops/audit?limit=100&event_type=routing_health_alert_triage", {
+        fetch("/api/audit?limit=100&event_type=routing_health_alert_triage", {
           cache: "no-store",
         }),
-        fetch("/legacy_ops/audit?limit=100&event_type=routing_health_paging_alert_suppressed", {
+        fetch("/api/audit?limit=100&event_type=routing_health_paging_alert_suppressed", {
           cache: "no-store",
         }),
       ]);
@@ -804,21 +838,23 @@ export default function AuditPage() {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-semibold mb-4">Trip Fit & Compliance Audit</h1>
-      <p className="text-muted-foreground mb-6">
-        Audit trail of trip processing: stage transitions, validation outcomes,
-        and operator overrides, plus routing health escalation signals.
-      </p>
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <header className="space-y-1">
+        <h1 className="text-ui-2xl font-semibold text-[#e6edf3]">Trip Fit &amp; Compliance Audit</h1>
+        <p className="text-ui-sm text-[#8b949e]">
+          Audit trail of trip processing: stage transitions, validation outcomes,
+          operator overrides, routing health escalation signals, and PA-19 execution chain integrity.
+        </p>
+      </header>
 
       <section
-        className="mb-6 rounded border border-muted p-3 space-y-2"
+        className="rounded-xl border border-[#30363d] bg-[#0d1117] p-4 space-y-2"
         aria-label="Live refresh controls"
       >
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="text-xs border rounded px-2 py-1"
+            className="text-ui-xs border border-[#30363d] bg-[#161b22] text-[#e6edf3] rounded-lg px-3 py-1.5 hover:border-[#58a6ff]"
             onClick={() => setAutoRefreshEnabled((previous) => !previous)}
             aria-label={autoRefreshEnabled ? "Pause live refresh" : "Enable live refresh"}
           >
@@ -826,19 +862,59 @@ export default function AuditPage() {
           </button>
           <button
             type="button"
-            className="text-xs border rounded px-2 py-1"
+            className="text-ui-xs border border-[#30363d] bg-[#161b22] text-[#e6edf3] rounded-lg px-3 py-1.5 hover:border-[#58a6ff] disabled:opacity-50"
             onClick={() => void fetchAudit()}
             disabled={isRefreshing}
           >
             {isRefreshing ? "Refreshing…" : "Refresh now"}
           </button>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-ui-xs text-[#8b949e]">
             status: {autoRefreshEnabled ? "live" : "paused"} · interval: {autoRefreshMs / 1000}s
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-ui-xs text-[#8b949e]">
           last refresh: {lastRefreshAt ? new Date(lastRefreshAt).toLocaleTimeString() : "never"}
         </p>
+      </section>
+
+      <section
+        className="rounded-xl border border-[#30363d] bg-[#0d1117] p-4 space-y-3"
+        aria-label="Execution hash chain integrity"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-ui-base font-semibold text-[#e6edf3]">Execution Chain Integrity (PA-19)</h2>
+            <p className="text-ui-xs text-[#8b949e]">
+              Walks the agency execution-event hash chain to detect tampering or concurrent-append forks.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleVerifyChain()}
+            disabled={chainLoading}
+            className="text-ui-xs border border-[#30363d] bg-[#161b22] text-[#e6edf3] rounded-lg px-3 py-1.5 hover:border-[#58a6ff] disabled:opacity-50"
+          >
+            {chainLoading ? "Verifying…" : "Verify Hash Chain"}
+          </button>
+        </div>
+        {chainError ? <p className="text-ui-xs text-[#f85149]">{chainError}</p> : null}
+        {chainVerdict ? (
+          <div className="flex flex-wrap items-center gap-3 text-ui-xs text-[#c9d1d9] pt-1 border-t border-[#21262d]">
+            <span
+              className={`px-2 py-0.5 rounded border font-semibold uppercase ${
+                chainVerdict.verdict === "pass"
+                  ? "border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]"
+                  : "border-[#f85149]/40 bg-[#f85149]/10 text-[#f85149]"
+              }`}
+            >
+              {chainVerdict.verdict}
+            </span>
+            <span>Scanned: {chainVerdict.events_scanned}</span>
+            <span>Anchored: {chainVerdict.anchored}</span>
+            <span>Legacy unanchored: {chainVerdict.legacy_unanchored}</span>
+            <span>Forks: {chainVerdict.forks.length}</span>
+          </div>
+        ) : null}
       </section>
 
       {tripEvents.length === 0 ? (
@@ -860,18 +936,20 @@ export default function AuditPage() {
           onTriage={handleTriage}
         />
 
-        <section className="rounded border border-dashed p-3 space-y-3">
-          <h2 className="text-base font-semibold">Batch triage</h2>
-          <p className="text-sm text-muted-foreground">
+        <section className="rounded-xl border border-dashed border-[#30363d] bg-[#0d1117] p-4 space-y-3">
+          <h2 className="text-base font-semibold text-[#e6edf3]">Batch triage</h2>
+          <p className="text-sm text-[#8b949e]">
             Selected alerts: {selectedAlertCount}
           </p>
           <div className="flex flex-wrap gap-2 items-end">
-            <label className="text-xs text-muted-foreground" htmlFor="batch-action">
+            <label className="text-xs text-[#8b949e]" htmlFor="batch-action">
               Action
             </label>
             <select
               id="batch-action"
-              className="border rounded px-2 py-1 text-xs"
+              name="batchAction"
+              aria-label="Batch triage action"
+              className="border border-[#30363d] bg-[#161b22] text-[#e6edf3] rounded px-2 py-1 text-xs"
               value={batchAction}
               onChange={(evt) => setBatchAction(evt.target.value as AuditTriageAction)}
             >
@@ -879,28 +957,30 @@ export default function AuditPage() {
               <option value="close">Close</option>
               <option value="escalate">Escalate</option>
             </select>
-            <label className="text-xs text-muted-foreground" htmlFor="batch-note">
+            <label className="text-xs text-[#8b949e]" htmlFor="batch-note">
               Note
             </label>
             <input
               id="batch-note"
-              className="border rounded px-2 py-1 text-xs min-w-[240px]"
+              name="batchNote"
+              aria-label="Batch triage note"
+              className="border border-[#30363d] bg-[#161b22] text-[#e6edf3] rounded px-2 py-1 text-xs min-w-[240px]"
               value={batchNote}
               onChange={(evt) => setBatchNote(evt.target.value)}
               placeholder="Optional note for all selected"
             />
             <button
               type="button"
-              className="text-xs border rounded px-2 py-1"
+              className="text-xs border border-[#30363d] bg-[#161b22] text-[#e6edf3] rounded px-3 py-1 hover:border-[#58a6ff]"
               disabled={isBatchSubmitting}
               onClick={() => void handleBatchTriage()}
             >
               Run batch triage
             </button>
           </div>
-          {batchError ? <p className="text-destructive text-xs">{batchError}</p> : null}
+          {batchError ? <p className="text-[#f85149] text-xs">{batchError}</p> : null}
           {batchResult ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[#8b949e]">
               batch result: requested={batchResult.requested}, succeeded={batchResult.succeeded},
               failed={batchResult.failed}
             </p>
@@ -918,15 +998,17 @@ export default function AuditPage() {
           formatter={(event) => `suppressed_for:${event.details.suppress_for_minutes ?? "-"}m`}
         />
 
-        <section className="rounded border border-dashed p-3 space-y-3">
-          <h2 className="text-base font-semibold">Routing-health evidence export</h2>
+        <section className="rounded-xl border border-dashed border-[#30363d] bg-[#0d1117] p-4 space-y-3">
+          <h2 className="text-base font-semibold text-[#e6edf3]">Routing-health evidence export</h2>
           <div className="flex gap-2 items-center">
-            <label className="text-xs text-muted-foreground" htmlFor="export-format">
+            <label className="text-xs text-[#8b949e]" htmlFor="export-format">
               Format
             </label>
             <select
               id="export-format"
-              className="border rounded px-2 py-1 text-xs"
+              name="exportFormat"
+              aria-label="Export format"
+              className="border border-[#30363d] bg-[#161b22] text-[#e6edf3] rounded px-2 py-1 text-xs"
               value={exportFormat}
               onChange={(evt) => {
                 setExportFormat(evt.target.value as "json" | "csv");
@@ -937,7 +1019,7 @@ export default function AuditPage() {
             </select>
             <button
               type="button"
-              className="text-xs border rounded px-2 py-1"
+              className="text-xs border border-[#30363d] bg-[#161b22] text-[#e6edf3] rounded px-3 py-1 hover:border-[#58a6ff]"
               onClick={() => {
                 void handleExportEvidence().catch((error) => {
                   setExportError(error instanceof Error ? error.message : "Unable to export evidence");
@@ -947,7 +1029,7 @@ export default function AuditPage() {
               Export evidence
             </button>
           </div>
-          {exportError ? <p className="text-destructive text-xs">{exportError}</p> : null}
+          {exportError ? <p className="text-[#f85149] text-xs">{exportError}</p> : null}
         </section>
       </div>
     </div>

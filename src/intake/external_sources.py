@@ -105,6 +105,27 @@ def fetch_fcdo_country(country_slug: str) -> Dict[str, Any]:
     """
     requested = country_slug.strip().lower().replace(" ", "-")
     slug = _FCDO_SLUG_ALIASES.get(requested, requested)
+
+    # Domestic handling: GOV.UK FCDO does not advise on the UK domestically.
+    # Return governed baseline Band 1 with domestic provenance (never 404).
+    if slug in ("united-kingdom", "uk", "great-britain", "england", "scotland", "wales", "northern-ireland"):
+        return {
+            "requested_slug": requested,
+            "country_slug": "united-kingdom",
+            "content_payload": {},
+            "advisory_band": "1",
+            "raw_alert_status": ["no_advisory"],
+            "public_updated_at": datetime.now(timezone.utc).isoformat(),
+            "provenance": {
+                "source_id": "fcdo-domestic-baseline",
+                "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                "license_tier": LicenseTier.PUBLIC_DOMAIN.value,
+                "approximate": False,
+                "category": DataCategory.SAFETY_ADVISORY.value,
+            },
+            "alias_note": "Domestic territory — baseline Band 1 (no foreign advisory issued)",
+        }
+
     result: FetchResult = fetch_json(
         f"{FCDO_CONTENT_BASE}/{slug}",
         source_id="fcdo-content-api",
@@ -331,7 +352,7 @@ def fetch_open_meteo_climate_normals(
     daily = "temperature_2m_max,precipitation_sum,weather_code"
     year_samples: List[Dict[str, Any]] = []
     provenances: List[Dict[str, Any]] = []
-    skipped_years: List[str] = []
+    skipped_years: List[int] = []
     # Year-crossing windows (e.g., 12-29 → 01-04: New Year trips) end in the
     # FOLLOWING calendar year — the common far-future planning case.
     crosses_year = end_mmdd < start_mmdd
@@ -353,7 +374,7 @@ def fetch_open_meteo_climate_normals(
         tmaxs = daily_payload.get("temperature_2m_max") or []
         precips = daily_payload.get("precipitation_sum") or []
         if not tmaxs:
-            skipped_years.append(str(y))
+            skipped_years.append(y)
             continue
         year_samples.append({
             "year": y,

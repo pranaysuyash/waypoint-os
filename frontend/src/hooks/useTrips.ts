@@ -1,4 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type QueryObserverResult,
+  type RefetchOptions,
+} from "@tanstack/react-query";
 import {
   getTrips,
   getTrip,
@@ -12,9 +18,19 @@ import {
   type PipelineStage,
 } from "@/lib/api-client";
 
+export interface UseTripsParams {
+  state?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+  view?: string;
+  q?: string;
+  scope?: string;
+  enabled?: boolean;
+}
+
 const QK = {
-  trips: (params?: { state?: string; limit?: number; offset?: number; view?: string }) =>
-    ["trips", params] as const,
+  trips: (params?: UseTripsParams) => ["trips", params] as const,
   trip: (id: string | null) => ["trips", id] as const,
   tripStats: () => ["trips", "stats"] as const,
   pipeline: () => ["trips", "pipeline"] as const,
@@ -47,24 +63,39 @@ function asTripStats(value: unknown): TripStats | null {
   return { active, pendingReview, readyToBook, needsAttention };
 }
 
-export function useTrips(params?: {
-  state?: string;
-  limit?: number;
-  offset?: number;
-  view?: string;
-}) {
-  const { state, limit, offset, view } = params ?? {};
+export interface UseTripsResult {
+  data: Trip[];
+  total: number;
+  statusCounts?: Record<string, number>;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: (options?: RefetchOptions) => Promise<QueryObserverResult<unknown, Error>>;
+}
+
+export function useTrips(params?: UseTripsParams): UseTripsResult {
+  const { state, status, limit, offset, view, q, scope, enabled = true } = params ?? {};
+  const queryParams = {
+    ...(state ? { state } : {}),
+    ...(status ? { status } : {}),
+    ...(limit != null ? { limit } : {}),
+    ...(offset ? { offset } : {}),
+    ...(view ? { view } : {}),
+    ...(q ? { q } : {}),
+    ...(scope ? { scope } : {}),
+  };
 
   const query = useQuery({
-    queryKey: QK.trips(params),
-    queryFn: () => getTrips({ state, limit, offset, view }),
+    queryKey: QK.trips(queryParams),
+    queryFn: () => getTrips({ state, status, limit, offset, view, q, scope }),
     staleTime: DEFAULT_STALE_TIME,
+    enabled,
   });
   const hasError = Boolean(query.error);
 
   return {
     data: hasError ? [] : (query.data?.items ?? []),
     total: hasError ? 0 : (query.data?.total ?? 0),
+    statusCounts: hasError ? {} : (query.data?.statusCounts ?? {}),
     isLoading: query.isLoading,
     error: query.error as Error | null,
     refetch: query.refetch,

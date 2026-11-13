@@ -195,6 +195,9 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
         {canUpload && canManageDocuments && (
           <div className="flex items-center gap-2">
             <select
+              id="ops-document-type"
+              name="document_type"
+              aria-label="Document type"
               value={uploadDocType}
               onChange={(e) => setUploadDocType(e.target.value)}
               className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
@@ -243,7 +246,10 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                   {doc.document_type.replace('_', ' ')}
                 </span>
                 <span className="text-xs text-[#8b949e]">
-                  {doc.filename_ext} · {(doc.size_bytes / 1024).toFixed(0)}KB
+                  {doc.filename_ext}
+                  {typeof doc.size_bytes === 'number' && Number.isFinite(doc.size_bytes)
+                    ? ` · ${Math.max(1, Math.round(doc.size_bytes / 1024))}KB`
+                    : ''}
                 </span>
                 <span
                   className={`text-xs px-2 py-0.5 rounded ${

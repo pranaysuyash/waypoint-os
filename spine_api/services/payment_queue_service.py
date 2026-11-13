@@ -1,9 +1,26 @@
 from __future__ import annotations
 
+import threading
+import time
 from datetime import date, datetime
 from typing import Any, Optional, Sequence
 
 from spine_api.persistence import TripStore
+
+_DEFAULT_LIST_PAYMENT_RECORDS_FUNC = TripStore.list_trip_payment_records_for_agency
+_PAYMENT_SNAPSHOT_CACHE: dict[str, tuple[int, str, float, list[dict[str, Any]]]] = {}
+_PAYMENT_SNAPSHOT_LOCK = threading.Lock()
+_PAYMENT_SNAPSHOT_TTL_S = 60.0
+
+_QUEUE_URGENCY_ORDER = {
+    "overdue": 0,
+    "due_soon": 1,
+    "refund_in_progress": 2,
+    "due_later": 3,
+    "unknown": 4,
+    "paid_complete": 5,
+    "not_configured": 6,
+}
 
 PAYMENT_QUEUE_STATUSES = (
     "not_configured",
@@ -181,11 +198,15 @@ def _build_item(
 
     destination = None
     destination_details = trip.get("destination")
-    if isinstance(destination_details, dict):
+    if isinstance(destination_details, str) and destination_details.strip():
+        destination = destination_details.strip()
+    elif isinstance(destination_details, dict):
         destination = destination_details.get("destination") or destination_details.get("city") or destination_details.get("country")
     if not destination:
         booking_destination = booking_data.get("destination")
-        if isinstance(booking_destination, dict):
+        if isinstance(booking_destination, str) and booking_destination.strip():
+            destination = booking_destination.strip()
+        elif isinstance(booking_destination, dict):
             destination = (
                 booking_destination.get("destination")
                 or booking_destination.get("city")
@@ -226,7 +247,11 @@ def _matches_filters(
     payment_status: Optional[str] = None,
     refund_status: Optional[str] = None,
     due_bucket: Optional[str] = None,
+    configured_only: bool = False,
+    q: Optional[str] = None,
 ) -> bool:
+    if configured_only and item["queue_status"] == "not_configured":
+        return False
     if queue_status and item["queue_status"] != queue_status:
         return False
     if payment_status and item["payment_status"] != payment_status:
@@ -235,6 +260,22 @@ def _matches_filters(
         return False
     if due_bucket and item["due_bucket"] != due_bucket:
         return False
+    term = (q or "").strip().lower()
+    if term:
+        haystack = " ".join(
+            str(part or "").lower()
+            for part in (
+                item.get("trip_id"),
+                item.get("trip_name"),
+                item.get("destination"),
+                item.get("queue_status"),
+                item.get("payment_status"),
+                item.get("refund_status"),
+                item.get("currency"),
+            )
+        )
+        if term not in haystack:
+            return False
     return True
 
 
@@ -242,6 +283,61 @@ def _strip_internal_fields(item: dict[str, Any]) -> dict[str, Any]:
     item_copy = dict(item)
     item_copy.pop("due_bucket", None)
     return item_copy
+
+
+def _finalize_queue_response(
+    *,
+    matched_items: list[dict[str, Any]],
+    limit: int,
+    offset: int,
+    sort: str,
+    today: date,
+) -> dict[str, Any]:
+    if sort == "urgent":
+        ordered = sorted(
+            matched_items,
+            key=lambda item: _QUEUE_URGENCY_ORDER.get(item["queue_status"], 99),
+        )
+    else:
+        ordered = matched_items
+
+    filtered_total = len(ordered)
+    paginated = ordered[offset : offset + limit]
+    has_more = offset + len(paginated) < filtered_total
+
+    by_queue_status = {status: 0 for status in PAYMENT_QUEUE_STATUSES}
+    due_within_7_days = 0
+    for item in ordered:
+        by_queue_status[item["queue_status"]] = by_queue_status.get(item["queue_status"], 0) + 1
+        if item["final_payment_due"] is not None:
+            due_date = _parse_iso_date(item["final_payment_due"])
+            if due_date is not None:
+                balance_due = _safe_float(item.get("balance_due"))
+                if balance_due is None or balance_due > 0:
+                    days = (due_date - today).days
+                    if 0 <= days <= 7:
+                        due_within_7_days += 1
+
+    return {
+        "summary": {
+            "total": filtered_total,
+            "by_queue_status": by_queue_status,
+            "overdue_count": by_queue_status.get("overdue", 0),
+            "due_soon_count": by_queue_status.get("due_soon", 0),
+            "not_configured_count": by_queue_status.get("not_configured", 0),
+            "paid_complete_count": by_queue_status.get("paid_complete", 0),
+            "refund_in_progress_count": by_queue_status.get("refund_in_progress", 0),
+            "due_within_7_days_count": due_within_7_days,
+        },
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "returned": len(paginated),
+            "total": filtered_total,
+            "has_more": has_more,
+        },
+        "items": [_strip_internal_fields(item) for item in paginated],
+    }
 
 
 def build_payment_queue_response(
@@ -254,6 +350,9 @@ def build_payment_queue_response(
     payment_status: Optional[str] = None,
     refund_status: Optional[str] = None,
     due_bucket: Optional[str] = None,
+    configured_only: bool = False,
+    q: Optional[str] = None,
+    sort: str = "recent",
     today: Optional[date] = None,
 ) -> dict[str, Any]:
     today = today or datetime.now().date()
@@ -271,60 +370,46 @@ def build_payment_queue_response(
             payment_status=payment_status,
             refund_status=refund_status,
             due_bucket=due_bucket,
+            configured_only=configured_only,
+            q=q,
         ):
             continue
 
         projected.append(item)
 
-    total_filtered = len(projected)
+    return _finalize_queue_response(
+        matched_items=projected,
+        limit=limit,
+        offset=offset,
+        sort=sort,
+        today=today,
+    )
 
-    paginated = projected[offset : offset + limit]
-    has_more = offset + len(paginated) < total_filtered
 
-    by_queue_status = {status: 0 for status in PAYMENT_QUEUE_STATUSES}
-    for item in projected:
-        by_queue_status[item["queue_status"]] = by_queue_status.get(item["queue_status"], 0) + 1
+def _load_agency_payment_items_cached(agency_id: str, today: date) -> list[dict[str, Any]]:
+    today_iso = today.isoformat()
+    write_ver = TripStore.get_write_version()
+    now_mono = time.monotonic()
 
-    due_within_7_days = 0
-    for item in projected:
-        if item["final_payment_due"] is None:
+    with _PAYMENT_SNAPSHOT_LOCK:
+        cached = _PAYMENT_SNAPSHOT_CACHE.get(agency_id)
+        if cached and cached[0] == write_ver and cached[1] == today_iso and (now_mono - cached[2]) < _PAYMENT_SNAPSHOT_TTL_S:
+            return cached[3]
+
+    raw_records = TripStore.load_all_trip_payment_records_for_agency(agency_id=agency_id)
+    projected: list[dict[str, Any]] = []
+    for trip in raw_records:
+        trip_id = str(trip.get("id") or "")
+        if not trip_id:
             continue
-        due_date = _parse_iso_date(item["final_payment_due"])
-        if due_date is None:
-            continue
-        balance_due = _safe_float(item.get("balance_due"))
-        if balance_due is not None and balance_due <= 0:
-            continue
-        days = (due_date - today).days
-        if 0 <= days <= 7:
-            due_within_7_days += 1
+        projected.append(_build_item(trip, trip.get("booking_data"), today))
 
-    summary = {
-        "total": total_filtered,
-        "by_queue_status": by_queue_status,
-        "overdue_count": by_queue_status.get("overdue", 0),
-        "due_soon_count": by_queue_status.get("due_soon", 0),
-        "not_configured_count": by_queue_status.get("not_configured", 0),
-        "paid_complete_count": by_queue_status.get("paid_complete", 0),
-        "refund_in_progress_count": by_queue_status.get("refund_in_progress", 0),
-        "due_within_7_days_count": due_within_7_days,
-    }
+    latest_write_ver = TripStore.get_write_version()
+    if latest_write_ver == write_ver:
+        with _PAYMENT_SNAPSHOT_LOCK:
+            _PAYMENT_SNAPSHOT_CACHE[agency_id] = (latest_write_ver, today_iso, time.monotonic(), projected)
 
-    pagination = {
-        "limit": limit,
-        "offset": offset,
-        "returned": len(paginated),
-        "total": total_filtered,
-        "has_more": has_more,
-    }
-
-    items = [_strip_internal_fields(item) for item in paginated]
-
-    return {
-        "summary": summary,
-        "pagination": pagination,
-        "items": items,
-    }
+    return projected
 
 
 def build_payment_queue_response_for_agency(
@@ -336,21 +421,48 @@ def build_payment_queue_response_for_agency(
     payment_status: Optional[str] = None,
     refund_status: Optional[str] = None,
     due_bucket: Optional[str] = None,
+    configured_only: bool = False,
+    q: Optional[str] = None,
+    sort: str = "recent",
     today: Optional[date] = None,
     batch_size: int = 1000,
 ) -> dict[str, Any]:
     """Build payments queue response across full tenant scope.
 
-    Iterates all agency-scoped trip summaries in bounded batches and computes
-    filtered totals, summary stats, and requested page over the full tenant set.
+    Uses single-pass SQL loading with mutation-versioned caching in normal
+    runtime, while preserving batched `list_trip_payment_records_for_agency`
+    semantics whenever callers/tests override the batch reader.
     """
     today = today or datetime.now().date()
+    use_fast_snapshot = (
+        batch_size == 1000
+        and TripStore.list_trip_payment_records_for_agency is _DEFAULT_LIST_PAYMENT_RECORDS_FUNC
+    )
 
-    by_queue_status = {status: 0 for status in PAYMENT_QUEUE_STATUSES}
-    due_within_7_days = 0
-    filtered_total = 0
-    paginated_items: list[dict[str, Any]] = []
+    if use_fast_snapshot:
+        all_items = _load_agency_payment_items_cached(agency_id, today)
+        matched = [
+            item
+            for item in all_items
+            if _matches_filters(
+                item,
+                queue_status=queue_status,
+                payment_status=payment_status,
+                refund_status=refund_status,
+                due_bucket=due_bucket,
+                configured_only=configured_only,
+                q=q,
+            )
+        ]
+        return _finalize_queue_response(
+            matched_items=matched,
+            limit=limit,
+            offset=offset,
+            sort=sort,
+            today=today,
+        )
 
+    matched_items: list[dict[str, Any]] = []
     raw_offset = 0
     while True:
         trips = TripStore.list_trip_payment_records_for_agency(
@@ -374,51 +486,21 @@ def build_payment_queue_response_for_agency(
                 payment_status=payment_status,
                 refund_status=refund_status,
                 due_bucket=due_bucket,
+                configured_only=configured_only,
+                q=q,
             ):
                 continue
 
-            filtered_total += 1
-            by_queue_status[item["queue_status"]] = by_queue_status.get(item["queue_status"], 0) + 1
-
-            if item["final_payment_due"] is not None:
-                due_date = _parse_iso_date(item["final_payment_due"])
-                if due_date is not None:
-                    balance_due = _safe_float(item.get("balance_due"))
-                    if balance_due is None or balance_due > 0:
-                        days = (due_date - today).days
-                        if 0 <= days <= 7:
-                            due_within_7_days += 1
-
-            if filtered_total > offset and len(paginated_items) < limit:
-                paginated_items.append(_strip_internal_fields(item))
+            matched_items.append(item)
 
         raw_offset += len(trips)
         if len(trips) < batch_size:
             break
 
-    has_more = offset + len(paginated_items) < filtered_total
-
-    summary = {
-        "total": filtered_total,
-        "by_queue_status": by_queue_status,
-        "overdue_count": by_queue_status.get("overdue", 0),
-        "due_soon_count": by_queue_status.get("due_soon", 0),
-        "not_configured_count": by_queue_status.get("not_configured", 0),
-        "paid_complete_count": by_queue_status.get("paid_complete", 0),
-        "refund_in_progress_count": by_queue_status.get("refund_in_progress", 0),
-        "due_within_7_days_count": due_within_7_days,
-    }
-
-    pagination = {
-        "limit": limit,
-        "offset": offset,
-        "returned": len(paginated_items),
-        "total": filtered_total,
-        "has_more": has_more,
-    }
-
-    return {
-        "summary": summary,
-        "pagination": pagination,
-        "items": paginated_items,
-    }
+    return _finalize_queue_response(
+        matched_items=matched_items,
+        limit=limit,
+        offset=offset,
+        sort=sort,
+        today=today,
+    )

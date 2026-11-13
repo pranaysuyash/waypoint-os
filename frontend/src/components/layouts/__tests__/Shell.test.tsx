@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { SidebarTripContext } from '../Shell';
+import { SidebarTripContext, getPageLabel } from '../Shell';
 import type { Trip } from '@/lib/api-client';
 
 vi.mock('next/link', () => ({
@@ -60,5 +60,12 @@ describe('SidebarTripContext', () => {
     mockPathname = '/trips/trip_1/intake';
     const { container } = render(<SidebarTripContext trip={makeTrip()} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('preserves canonical section label casing for breadcrumbs without CSS capitalization', () => {
+    expect(getPageLabel('/trips')).toBe('Trips in Planning');
+    expect(getPageLabel('/quotes')).toBe('Quotes');
+    expect(getPageLabel('/bookings')).toBe('Bookings');
+    expect(getPageLabel('/custom-ops-route')).toBe('Custom Ops Route');
   });
 });

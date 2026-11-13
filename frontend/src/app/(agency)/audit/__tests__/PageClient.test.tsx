@@ -190,7 +190,7 @@ describe('AuditPage', () => {
       const url = String(input);
       const method = init?.method ?? 'GET';
 
-      if (method === 'POST' && url.includes('/legacy_ops/audit/routing-alert-1/triage')) {
+      if (method === 'POST' && url.includes('/api/audit/routing-alert-1/triage')) {
         const requestBody = JSON.parse(
           typeof init?.body === 'string' ? init.body : '{}'
         );
@@ -286,7 +286,7 @@ describe('AuditPage', () => {
 
     const triagePostCall = fetchMock.mock.calls.find(
       ([calledUrl, init]) =>
-        String(calledUrl).includes('/legacy_ops/audit/routing-alert-1/triage') &&
+        String(calledUrl).includes('/api/audit/routing-alert-1/triage') &&
         (init?.method ?? 'GET') === 'POST'
     );
     expect(triagePostCall).toBeDefined();
@@ -302,7 +302,7 @@ describe('AuditPage', () => {
       const url = String(input);
       const method = init?.method ?? 'GET';
 
-      if (method === 'POST' && url.includes('/legacy_ops/audit/routing-health/batch-triage')) {
+      if (method === 'POST' && url.includes('/api/audit/routing-health/batch-triage')) {
         const body = JSON.parse(typeof init?.body === 'string' ? init.body : '[]');
         return {
           ok: true,
@@ -419,7 +419,7 @@ describe('AuditPage', () => {
 
     const batchCall = fetchMock.mock.calls.find(
       ([calledUrl, init]) =>
-        String(calledUrl).includes('/legacy_ops/audit/routing-health/batch-triage') &&
+        String(calledUrl).includes('/api/audit/routing-health/batch-triage') &&
         (init?.method ?? 'GET') === 'POST',
     );
     expect(batchCall).toBeDefined();
@@ -436,7 +436,7 @@ describe('AuditPage', () => {
       const url = String(input);
       const method = init?.method ?? 'GET';
 
-      if (method === 'POST' && url.includes('/legacy_ops/audit/paging-alert-1/suppress-routing-health-paging')) {
+      if (method === 'POST' && url.includes('/api/audit/paging-alert-1/suppress-routing-health-paging')) {
         return {
           ok: true,
           json: async () => ({
@@ -522,7 +522,7 @@ describe('AuditPage', () => {
 
     const suppressionCall = fetchMock.mock.calls.find(
       ([calledUrl, init]) =>
-        String(calledUrl).includes('/legacy_ops/audit/paging-alert-1/suppress-routing-health-paging') &&
+        String(calledUrl).includes('/api/audit/paging-alert-1/suppress-routing-health-paging') &&
         (init?.method ?? 'GET') === 'POST',
     );
     expect(suppressionCall).toBeDefined();
@@ -535,7 +535,7 @@ describe('AuditPage', () => {
       const url = String(input);
       const method = init?.method ?? 'GET';
 
-      if (method === 'GET' && url.includes('/legacy_ops/audit/routing-health/export')) {
+      if (method === 'GET' && url.includes('/api/audit/routing-health/export')) {
         if (url.includes('format=csv')) {
           return {
             ok: true,
@@ -599,7 +599,7 @@ describe('AuditPage', () => {
 
     const jsonCall = fetchMock.mock.calls.find(
       ([calledUrl, init]) =>
-        String(calledUrl).includes('/legacy_ops/audit/routing-health/export') &&
+        String(calledUrl).includes('/api/audit/routing-health/export') &&
         (init?.method ?? 'GET') === 'GET' &&
         String(calledUrl).includes('format=json')
     );
@@ -611,7 +611,7 @@ describe('AuditPage', () => {
 
     const csvCall = fetchMock.mock.calls.find(
       ([calledUrl, init]) =>
-        String(calledUrl).includes('/legacy_ops/audit/routing-health/export') &&
+        String(calledUrl).includes('/api/audit/routing-health/export') &&
         (init?.method ?? 'GET') === 'GET' &&
         String(calledUrl).includes('format=csv')
     );

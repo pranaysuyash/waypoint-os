@@ -338,21 +338,22 @@ function SettingsPageInner() {
 
         {/* Tabs */}
         <div className="border-b border-[#1c2128]">
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = tab.id === activeTab;
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-ui-sm font-medium transition-colors border-b-2 -mb-px ${
+                  className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-ui-sm font-medium transition-colors border-b-2 -mb-px ${
                     isActive
                       ? 'border-[#58a6ff] text-[#58a6ff]'
                       : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9]'
                   }`}
                 >
-                  <Icon className="size-4" />
+                  <Icon className="size-4 shrink-0" />
                   {tab.label}
                 </button>
               );

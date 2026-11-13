@@ -62,7 +62,10 @@ describe('SuppliersPage', () => {
     expect(screen.getByRole('option', { name: /Cape Town business trip · Updated recently · BC27/i })).toBeInTheDocument();
     expect(screen.getByText(/medium \(not supplier-verified\)/i)).toBeInTheDocument();
     expect(screen.getByText(/stored trip snapshot \(freshness unknown\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Showing 6 sample records/i)).toBeInTheDocument();
+    expect(screen.getByText(/Showing 9 sample records/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Airlines' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Transfers' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Insurance' })).toBeInTheDocument();
     expect(screen.queryByText(/Verified Partners/i)).not.toBeInTheDocument();
   });
 });

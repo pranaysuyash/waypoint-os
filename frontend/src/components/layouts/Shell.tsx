@@ -210,7 +210,7 @@ function MobileMoreSheet({ pathname }: { pathname: string }) {
   );
 }
 
-function getPageLabel(pathname: string): string {
+export function getPageLabel(pathname: string): string {
   // A1: the breadcrumb tells the truth — the section the path is actually in.
   // (The former "Lead Inbox" remap for incomplete trips fought the page's own
   // trail; origin context lives in the sidebar trip-context card.)
@@ -221,7 +221,8 @@ function getPageLabel(pathname: string): string {
       }
     }
   }
-  return pathname.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') ?? 'Overview';
+  const fallback = pathname.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') ?? 'Overview';
+  return fallback.replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -439,7 +440,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {pathname !== '/overview' && (
               <>
                 <span style={{ color: 'var(--border-default)' }} aria-hidden='true'>/</span>
-                <span className='capitalize font-medium' style={{ color: 'var(--text-primary)' }} aria-current='page'>
+                <span className='font-medium' style={{ color: 'var(--text-primary)' }} aria-current='page'>
                   {getPageLabel(pathname)}
                 </span>
               </>

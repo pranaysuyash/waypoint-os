@@ -69,6 +69,7 @@ def _cached(key: str, ttl: float, build):
 class SafetyVerdictResponse(BaseModel):
     destination_slug: str
     requested_slug: Optional[str] = None
+    country_slug: Optional[str] = None
     alias_note: Optional[str] = None
     band: str
     label: str
@@ -87,6 +88,9 @@ class WeatherSuitabilityResponse(BaseModel):
     days: Optional[list[Dict[str, Any]]] = None
     summary: Optional[Dict[str, Any]] = None
     normals: Optional[Dict[str, Any]] = None
+    rain_day_fraction: Optional[float] = None
+    years_used: Optional[list[int]] = None
+    years_skipped: Optional[list[int]] = None
     confidence_note: Optional[str] = None
     coverage: Optional[list[str]] = None
     coverage_gaps: Optional[list[str]] = None
@@ -105,10 +109,16 @@ def _build_safety_verdict(country_slug: str, iso3: Optional[str], lat: Optional[
     advisory = fetch_fcdo_country(country_slug)
     homicide: Optional[Dict[str, Any]] = None
     if iso3:
-        homicide = fetch_worldbank_homicide(iso3)
+        try:
+            homicide = fetch_worldbank_homicide(iso3)
+        except ExternalFetchError as exc:
+            logger.info("homicide component unavailable for %s (honest gap): %s", iso3, exc)
     neighborhood: Optional[Dict[str, Any]] = None
     if lat is not None and lng is not None and month:
-        neighborhood = fetch_uk_street_crime(lat, lng, month)
+        try:
+            neighborhood = fetch_uk_street_crime(lat, lng, month)
+        except ExternalFetchError as exc:
+            logger.info("neighborhood street crime unavailable for %s,%s (honest gap): %s", lat, lng, exc)
     events: Optional[Dict[str, Any]] = None
     if include_events:
         try:
@@ -123,6 +133,8 @@ def _build_safety_verdict(country_slug: str, iso3: Optional[str], lat: Optional[
         neighborhood=neighborhood,
         events=events,
     )
+    verdict["requested_slug"] = advisory.get("requested_slug", country_slug)
+    verdict["country_slug"] = advisory.get("country_slug", country_slug)
     if advisory.get("alias_note"):
         verdict["alias_note"] = advisory["alias_note"]
     return verdict
@@ -167,6 +179,11 @@ def get_weather_suitability(
     """Trip-window weather grading. Within the ~16-day forecast horizon this
     grades the live forecast; beyond it, ERA5 climate baselines (mode
     declares which)."""
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "invalid_date_range", "detail": "start_date must be on or before end_date"},
+        )
     try:
         out = grade_trip_conditions(lat, lng, start_date, end_date, activity=activity)
     except ExternalFetchError as exc:

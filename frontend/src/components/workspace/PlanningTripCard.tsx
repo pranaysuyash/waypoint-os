@@ -36,7 +36,9 @@ interface PlanningTripCardProps {
 
 export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant = 'default', similarTripCount = 1 }: PlanningTripCardProps) {
   const summary = getPlanningListSummary(trip);
-  const progressItems = getPlanningStageProgressItems(trip).slice(1);
+  const allProgressItems = getPlanningStageProgressItems(trip);
+  const completedCount = allProgressItems.filter((item) => item.label.endsWith('✓')).length;
+  const activeProgressItem = allProgressItems[completedCount] ?? allProgressItems[0];
   const freshness = getTripFreshnessLabel(trip);
   const fc = freshnessColors[freshness.tone] ?? freshnessColors.neutral;
   const meta = PLANNING_LIST_STATE_META[summary.statusTone] ?? PLANNING_LIST_STATE_META.blue;
@@ -44,12 +46,10 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
   const isOverview = variant === 'overview';
   const isWorkspace = variant === 'workspace' || variant === 'default';
 
-  const rawOverviewNextAction = isOverview
-    ? summary.nextAction.replace(/^Next:\s*/i, '').trim()
-    : summary.nextAction;
-  const overviewNextAction = rawOverviewNextAction
-    ? rawOverviewNextAction.charAt(0).toUpperCase() + rawOverviewNextAction.slice(1)
-    : rawOverviewNextAction;
+  const rawNextAction = summary.nextAction.replace(/^Next:\s*/i, '').trim();
+  const nextActionCopy = rawNextAction
+    ? rawNextAction.charAt(0).toUpperCase() + rawNextAction.slice(1)
+    : rawNextAction;
 
   return (
     <div
@@ -160,29 +160,27 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
 
         {/* Stage/progress */}
         {isWorkspace && (
-          <div className='flex flex-wrap items-center gap-1.5 pt-1 text-[12px]'>
-            <span className='font-semibold' style={{ color: 'var(--text-secondary)' }}>Stage:</span>
-            <span className='font-semibold' style={{ color: 'var(--accent-blue)' }}>{summary.stage}</span>
-            {progressItems.length > 0 ? (
-              <>
-                <span style={{ color: 'var(--text-muted)' }}>·</span>
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  {progressItems.map((item, i) => (
-                    <span key={item.label}>
-                      {i > 0 ? ' · ' : ''}
-                      <span style={{ color: item.color }}>{item.label}</span>
-                    </span>
-                  ))}
-                </span>
-              </>
-            ) : null}
+          <div className='flex flex-wrap items-center gap-2 pt-1 text-[12px]'>
+            <span
+              className='inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-medium'
+              style={{
+                color: activeProgressItem?.color ?? 'var(--accent-blue)',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+              }}
+            >
+              Stage: {summary.stage}
+            </span>
+            <span className='text-[11px] font-mono tabular-nums' style={{ color: 'var(--text-muted)' }}>
+              Step {Math.min(completedCount + 1, 5)} of 5
+            </span>
           </div>
         )}
 
         {/* Next step + primary action inline footer */}
         <div className='flex flex-wrap items-center justify-between gap-3 pt-2.5' style={{ borderTop: '1px solid var(--border-default)' }}>
           <p className='text-[13px] min-w-0 flex-1' style={{ color: 'var(--text-secondary)' }}>
-            {overviewNextAction}
+            {nextActionCopy}
           </p>
           <Link
             href={summary.action.href}

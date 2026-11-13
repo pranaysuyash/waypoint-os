@@ -4,19 +4,27 @@ spine_api/routers/supplier.py — DMC & Preferred Supplier Wholesale Contract Ro
 First-principles implementation:
   - Requires JWT authentication on all endpoints
   - Scopes contract storage and inventory holds per agency
+  - Persists operator-recorded contracts & holds in local SQLite across restarts
   - No hardcoded demo contract fallbacks (unknown contracts return 404)
-  - Computes net/rack totals and agency margin from real uploaded rate sheets
-  - Includes reality tier metadata (DATA_DEPENDENT)
+  - Computes net/rack totals and agency margin from uploaded rate sheets
+  - Includes reality tier metadata (DP-04a live provider feed not connected)
 
 Endpoints:
+  GET  /api/v1/supplier/contracts — List agency-recorded wholesale contracts
   POST /api/v1/supplier/contracts/upload — Ingest wholesale rate sheets
+  GET  /api/v1/supplier/inventory/holds — List agency-recorded soft holds
   POST /api/v1/supplier/inventory/soft-hold — Reserve 48h zero-cost hold on contract inventory
 """
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+import sqlite3
+import threading
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
@@ -32,9 +40,109 @@ logger = logging.getLogger("spine_api.supplier")
 
 router = APIRouter(prefix="/api/v1/supplier", tags=["DMC & Supplier Inventory"])
 
-# Agency-scoped in-memory stores: {agency_id: {contract_id: contract_data}}
+# Agency-scoped stores: {agency_id: {contract_id: contract_data}}
 CONTRACTS_STORE: Dict[str, Dict[str, Dict[str, Any]]] = {}
 HOLDS_STORE: Dict[str, Dict[str, Dict[str, Any]]] = {}
+
+_DB_LOCK = threading.Lock()
+_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "suppliers" / "supplier_ledger.db"
+
+
+def _sqlite_enabled() -> bool:
+    return "PYTEST_CURRENT_TEST" not in os.environ
+
+
+def _ensure_tables(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS supplier_contracts (
+            contract_id TEXT PRIMARY KEY,
+            agency_id TEXT NOT NULL,
+            uploaded_at TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS supplier_inventory_holds (
+            hold_id TEXT PRIMARY KEY,
+            agency_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS ix_sc_agency_id ON supplier_contracts (agency_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS ix_sh_agency_id ON supplier_inventory_holds (agency_id)"
+    )
+
+
+def _persist_contract_record(record: Dict[str, Any]) -> None:
+    if not _sqlite_enabled():
+        return
+    with _DB_LOCK:
+        _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(_DB_PATH) as conn:
+            _ensure_tables(conn)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO supplier_contracts (contract_id, agency_id, uploaded_at, payload_json)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    record["contract_id"],
+                    record["agency_id"],
+                    record["uploaded_at"],
+                    json.dumps(record),
+                ),
+            )
+            conn.commit()
+
+
+def _persist_hold_record(record: Dict[str, Any]) -> None:
+    if not _sqlite_enabled():
+        return
+    with _DB_LOCK:
+        _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(_DB_PATH) as conn:
+            _ensure_tables(conn)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO supplier_inventory_holds (hold_id, agency_id, created_at, payload_json)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    record["hold_id"],
+                    record["agency_id"],
+                    record["created_at"],
+                    json.dumps(record),
+                ),
+            )
+            conn.commit()
+
+
+def _hydrate_stores_from_sqlite() -> None:
+    if not _sqlite_enabled() or not _DB_PATH.exists():
+        return
+    with _DB_LOCK:
+        try:
+            with sqlite3.connect(_DB_PATH) as conn:
+                _ensure_tables(conn)
+                for row in conn.execute("SELECT payload_json FROM supplier_contracts ORDER BY uploaded_at DESC"):
+                    record = json.loads(row[0])
+                    CONTRACTS_STORE.setdefault(record["agency_id"], {})[record["contract_id"]] = record
+                for row in conn.execute("SELECT payload_json FROM supplier_inventory_holds ORDER BY created_at DESC"):
+                    record = json.loads(row[0])
+                    HOLDS_STORE.setdefault(record["agency_id"], {})[record["hold_id"]] = record
+        except Exception as exc:
+            logger.warning("Failed hydrating supplier ledger from SQLite: %s", exc)
+
+
+_hydrate_stores_from_sqlite()
 
 
 class RateTableItem(BaseModel):
@@ -48,6 +156,7 @@ class RateTableItem(BaseModel):
 
 class ContractUploadRequest(BaseModel):
     supplier_name: str = Field(..., description="Supplier / DMC company name")
+    supplier_category: str = Field("dmc", description="Supplier category (dmc, hotel, airline, rail_charter, transfer, safari, insurance)")
     destination: str = Field(..., description="Destination covered by contract")
     contact_email: Optional[str] = Field(None, description="Contract manager contact email")
     currency: str = Field("USD", description="Currency code")
@@ -86,6 +195,56 @@ class SoftHoldResponse(BaseModel):
     _meta: Optional[Dict[str, Any]] = None
 
 
+class SupplierContractsListResponse(BaseModel):
+    items: List[Dict[str, Any]]
+    total: int
+    _meta: Optional[Dict[str, Any]] = None
+
+
+class SupplierHoldsListResponse(BaseModel):
+    items: List[Dict[str, Any]]
+    total: int
+    _meta: Optional[Dict[str, Any]] = None
+
+
+@router.get("/contracts")
+async def list_supplier_contracts(
+    agency_id: str = Depends(get_current_agency_id),
+) -> Dict[str, Any]:
+    """List agency-recorded supplier/DMC rate-sheet contracts (oldest-safe, newest first)."""
+    records = list(CONTRACTS_STORE.get(agency_id, {}).values())
+    records.sort(key=lambda r: str(r.get("uploaded_at") or ""), reverse=True)
+    return {
+        "items": records,
+        "total": len(records),
+        "_meta": TierMetadata.for_response(
+            get_feature_tier("supplier_management"),
+            "supplier_management",
+            computation_method="operator_recorded_contract_ledger",
+            missing_for_upgrade=["dp04a_provider_feed"],
+        ),
+    }
+
+
+@router.get("/inventory/holds")
+async def list_inventory_soft_holds(
+    agency_id: str = Depends(get_current_agency_id),
+) -> Dict[str, Any]:
+    """List agency-recorded 48-hour inventory soft holds (newest first)."""
+    records = list(HOLDS_STORE.get(agency_id, {}).values())
+    records.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    return {
+        "items": records,
+        "total": len(records),
+        "_meta": TierMetadata.for_response(
+            get_feature_tier("supplier_management"),
+            "supplier_management",
+            computation_method="stored_contract_rate_hold",
+            missing_for_upgrade=["supplier_hold_gds_api"],
+        ),
+    }
+
+
 @router.post("/contracts/upload", response_model=ContractUploadResponse)
 async def upload_supplier_contract(
     req: ContractUploadRequest,
@@ -106,6 +265,7 @@ async def upload_supplier_contract(
         "contract_id": contract_id,
         "agency_id": agency_id,
         "supplier_name": req.supplier_name,
+        "supplier_category": (req.supplier_category or "dmc").strip().lower(),
         "destination": req.destination,
         "contact_email": req.contact_email,
         "currency": req.currency,
@@ -118,6 +278,7 @@ async def upload_supplier_contract(
     if agency_id not in CONTRACTS_STORE:
         CONTRACTS_STORE[agency_id] = {}
     CONTRACTS_STORE[agency_id][contract_id] = contract_record
+    _persist_contract_record(contract_record)
 
     AuditStore.log_event(
         event_type="supplier_contract_uploaded",
@@ -207,6 +368,7 @@ async def create_inventory_soft_hold(
     if agency_id not in HOLDS_STORE:
         HOLDS_STORE[agency_id] = {}
     HOLDS_STORE[agency_id][hold_id] = hold_record
+    _persist_hold_record(hold_record)
 
     AuditStore.log_event(
         event_type="supplier_inventory_soft_hold",

@@ -1,380 +1,803 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
   Search,
-  Sparkles,
-  Compass,
-  FileCheck2,
-  Users,
-  ShieldCheck,
   Plus,
-  ArrowRight,
-  ExternalLink,
+  ShieldCheck,
+  Sparkles,
+  FileText,
+  Trash2,
+  Database,
+  AlertTriangle,
   CheckCircle2,
-  Tag,
+  X,
 } from 'lucide-react';
+import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
+import { SimulatedBadge } from '@/components/ui/SimulatedBadge';
 
-interface PlaybookEntry {
-  id: string;
-  category: 'playbook' | 'visa' | 'preference' | 'rule';
+type DocumentSourceType =
+  | 'agency_policy'
+  | 'supplier_contract'
+  | 'government_advisory'
+  | 'trip_document'
+  | 'tribal_knowledge'
+  | 'override_log'
+  | 'itinerary_template'
+  | 'specialty_knowledge';
+
+interface RAGDocumentItem {
+  document_id: string;
   title: string;
-  destination: string;
-  summary: string;
-  keyTakeaways: string[];
-  lastUpdated: string;
-  author: string;
+  source_type: DocumentSourceType | string;
+  license_class?: string;
+  embedding_model?: string | null;
+  chunk_count: number;
+}
+
+interface RAGStatusResponse {
+  provider?: string;
+  embedding_model?: string;
+  lexical_backend?: string;
+  indexed_chunks?: number;
+  semantic_available?: boolean;
+  corpus_provenance?: string;
+}
+
+interface RAGCitation {
+  chunk: {
+    id: string;
+    text: string;
+    metadata: {
+      document_id: string;
+      title: string;
+      source_type: string;
+    };
+  };
+  score: number;
+  match_type?: string;
+}
+
+interface RAGQueryResponse {
+  answer: string;
+  citations: RAGCitation[];
+  groundedness_score?: number;
+  ungrounded_claims?: string[];
+}
+
+interface StarterTemplate {
+  document_id: string;
+  title: string;
+  source_type: DocumentSourceType;
   tags: string[];
+  text: string;
+}
+
+const SOURCE_TYPE_LABELS: Record<DocumentSourceType, string> = {
+  agency_policy: 'Agency Policy',
+  supplier_contract: 'Supplier Contract',
+  government_advisory: 'Government Advisory',
+  trip_document: 'Trip Document',
+  tribal_knowledge: 'Tribal Knowledge',
+  override_log: 'Override Log',
+  itinerary_template: 'Itinerary Template',
+  specialty_knowledge: 'Specialty Knowledge',
+};
+
+const CURATED_CATEGORIES: Array<{
+  id: string;
+  label: string;
+  sourceTypes: DocumentSourceType[];
+}> = [
+  {
+    id: 'cat:playbooks',
+    label: 'Playbooks & Cheatsheets',
+    sourceTypes: ['specialty_knowledge', 'itinerary_template', 'tribal_knowledge'],
+  },
+  {
+    id: 'cat:regulatory',
+    label: 'Visa & Regulatory',
+    sourceTypes: ['government_advisory', 'trip_document'],
+  },
+  {
+    id: 'cat:memory',
+    label: 'Customer Memory',
+    sourceTypes: ['override_log'],
+  },
+  {
+    id: 'cat:rules',
+    label: 'Agency Rules',
+    sourceTypes: ['agency_policy', 'supplier_contract'],
+  },
+];
+
+const STARTER_TEMPLATES: StarterTemplate[] = [
+  {
+    document_id: 'starter_sa_safari_malaria_free',
+    title: 'South Africa Luxury Safari & Malaria-Free Reserves Guide',
+    source_type: 'specialty_knowledge',
+    tags: ['Safari', 'Luxury', 'Family', 'Malaria-Free'],
+    text: 'Operational playbook for high-net-worth families seeking 5-star safari experiences with zero malaria risk (Madikwe & Eastern Cape). Recommended reserves: Madikwe Game Reserve, Shamwari, and Kwandwe. Fly into Johannesburg OR Tambo (JNB) and connect via private charter or FedAir into Madikwe airstrip. Standard minimum stay: 3 nights per lodge.',
+  },
+  {
+    document_id: 'starter_schengen_visa_checklist',
+    title: 'Schengen Visa Processing & Appointment Strategy for Indian Passports',
+    source_type: 'agency_policy',
+    tags: ['Visa', 'Schengen', 'Compliance', 'Indian Passport'],
+    text: 'Mandatory Schengen checklist: passport valid at least 3 months beyond return date, confirmed round-trip flight reservation, day-by-day hotel confirmation, minimum EUR 30,000 travel medical insurance covering repatriation, 6 months stamped bank statements, and VFS appointment lead time of 45 to 60 days in peak season.',
+  },
+  {
+    document_id: 'starter_quote_approval_margin_policy',
+    title: 'Agency Margin Guardrail & Senior Operator Approval Policy',
+    source_type: 'agency_policy',
+    tags: ['Margin', 'Finance', 'Approval', 'Guardrail'],
+    text: 'Quotes exceeding $25,000 USD total value or carrying a net agency margin below 12% require explicit senior operator sign-off before issuing client payment links. Non-refundable supplier deposits must be disclosed in writing prior to booking confirmation.',
+  },
+];
+
+function slugifyId(title: string): string {
+  const base = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 64);
+  return base || `doc_${Date.now()}`;
 }
 
 export default function KnowledgePage() {
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(null);
-  const [isNewPlaybookModalOpen, setIsNewPlaybookModalOpen] = useState<boolean>(false);
+  const [status, setStatus] = useState<RAGStatusResponse | null>(null);
+  const [documents, setDocuments] = useState<RAGDocumentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const entries: PlaybookEntry[] = useMemo(() => {
-    return [
-      {
-        id: 'kb_01',
-        category: 'playbook',
-        title: 'South Africa Luxury Safari & Malaria-Free Reserves Guide',
-        destination: 'South Africa',
-        summary: 'Operational playbook for high-net-worth families seeking 5-star safari experiences with zero malaria risk (Madikwe & Eastern Cape).',
-        keyTakeaways: [
-          'Madikwe Game Reserve is premier malaria-free destination for under-12 kids.',
-          'Book private game vehicles to allow flexible schedule for younger children.',
-          'Connect JNB to lodge directly via Federal Air charter to avoid 5h road transfers.',
-        ],
-        lastUpdated: '2026-08-20',
-        author: 'Senior Africa Specialist',
-        tags: ['Safari', 'Luxury', 'Family', 'Malaria-Free'],
-      },
-      {
-        id: 'kb_02',
-        category: 'visa',
-        title: 'Schengen Visa Processing & Appointment Strategy for Indian Passports',
-        destination: 'Europe (Schengen)',
-        summary: 'Comprehensive checklist of mandatory documents, VFS appointment availability windows, and required travel insurance clauses.',
-        keyTakeaways: [
-          'Mandatory 6 months passport validity from intended return date with 2 blank pages.',
-          'Travel insurance must cover minimum EUR 30,000 with COVID & repatriation inclusion.',
-          'Apply via primary destination country to prevent entry refusal under Schengen rules.',
-        ],
-        lastUpdated: '2026-08-25',
-        author: 'Head of Visa Operations',
-        tags: ['Visa', 'Schengen', 'Compliance', 'Indian Passport'],
-      },
-      {
-        id: 'kb_03',
-        category: 'playbook',
-        title: 'Japan Sakura (Cherry Blossom) 2027 Sourcing & Ryokan Playbook',
-        destination: 'Japan',
-        summary: 'Critical lead-time requirements for Kyoto ryokans, private kaiseki dining, and Shinkansen luggage booking rules during peak blossom season.',
-        keyTakeaways: [
-          'Top Kyoto ryokans (Tawaraya, Hiiragiya) open bookings 6 months in advance; lock in Oct.',
-          'Tokaido Shinkansen requires oversized luggage area reservations (baggage > 160cm).',
-          'Recommend Hiroshima/Miyajima or Kanazawa for less crowded secondary blossom spots.',
-        ],
-        lastUpdated: '2026-08-15',
-        author: 'Asia Curator Lead',
-        tags: ['Japan', 'Sakura', 'Ryokan', 'Peak Season'],
-      },
-      {
-        id: 'kb_04',
-        category: 'preference',
-        title: 'Learned Customer Memory: HNW Family Dining & Transfer Heuristics',
-        destination: 'Global',
-        summary: 'Agency-wide learned taste profile from 150+ completed luxury trips. Tracks common unspoken preferences and VIP ground arrangements.',
-        keyTakeaways: [
-          'Always arrange pre-stocked vehicle with chilled still water and electrolyte drinks.',
-          'Families with >2 kids prefer interconnecting suites over adjacent separate rooms.',
-          'Automatic dietary flag: Ensure Jain / Vegan preferences communicated directly to hotel GM.',
-        ],
-        lastUpdated: '2026-08-28',
-        author: 'Autonomous Customer Memory Engine',
-        tags: ['Customer Memory', 'Taste Graph', 'VIP Concierge'],
-      },
-      {
-        id: 'kb_05',
-        category: 'rule',
-        title: 'Agency Margin & Sourcing Guardrail Rules',
-        destination: 'Internal Policy',
-        summary: 'Standard operating rules governing minimum wholesale markup, quote risk overrides, and mandatory supplier credit checks.',
-        keyTakeaways: [
-          'Bespoke multi-city itineraries must maintain >= 14% gross markup before operator override.',
-          'Quotes exceeding ,000 require senior operator approval in Quote Review queue.',
-          'Only tier-1 DMCs eligible for 48h zero-cost hold without upfront client deposit.',
-        ],
-        lastUpdated: '2026-08-29',
-        author: 'Agency Principal',
-        tags: ['Governance', 'Margin Guardrails', 'Operating Policy'],
-      },
-    ];
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+
+  const [queryResult, setQueryResult] = useState<RAGQueryResponse | null>(null);
+  const [queryLoading, setQueryLoading] = useState(false);
+  const [queryError, setQueryError] = useState<string | null>(null);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newSourceType, setNewSourceType] = useState<DocumentSourceType>('agency_policy');
+  const [newTags, setNewTags] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  const loadKnowledgeBase = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const [statusRes, docsRes] = await Promise.all([
+        fetch('/api/v1/rag/status', { cache: 'no-store' }),
+        fetch('/api/v1/rag/documents', { cache: 'no-store' }),
+      ]);
+      if (!statusRes.ok) {
+        throw new Error(`RAG status failed (HTTP ${statusRes.status})`);
+      }
+      if (!docsRes.ok) {
+        throw new Error(`Document listing failed (HTTP ${docsRes.status})`);
+      }
+      const statusJson = (await statusRes.json()) as RAGStatusResponse;
+      const docsJson = (await docsRes.json()) as { items?: RAGDocumentItem[] };
+      const items = Array.isArray(docsJson.items) ? docsJson.items : [];
+      setStatus(statusJson);
+      setDocuments(items);
+      setSelectedDocId((prev) =>
+        prev && items.some((d) => d.document_id === prev) ? prev : items[0]?.document_id ?? null,
+      );
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Unable to load Knowledge Base');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const filteredEntries = useMemo(() => {
-    return entries.filter((e) => {
-      const matchesCategory = selectedCategory === 'all' || e.category === selectedCategory;
-      const matchesSearch =
-        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchesCategory && matchesSearch;
-    });
-  }, [entries, selectedCategory, searchQuery]);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const [statusRes, docsRes] = await Promise.all([
+          fetch('/api/v1/rag/status', { cache: 'no-store' }),
+          fetch('/api/v1/rag/documents', { cache: 'no-store' }),
+        ]);
+        if (!active) return;
+        if (!statusRes.ok) throw new Error(`RAG status failed (HTTP ${statusRes.status})`);
+        if (!docsRes.ok) throw new Error(`Document listing failed (HTTP ${docsRes.status})`);
+        const statusJson = (await statusRes.json()) as RAGStatusResponse;
+        const docsJson = (await docsRes.json()) as { items?: RAGDocumentItem[] };
+        if (!active) return;
+        const items = Array.isArray(docsJson.items) ? docsJson.items : [];
+        setStatus(statusJson);
+        setDocuments(items);
+        setSelectedDocId((prev) =>
+          prev && items.some((d) => d.document_id === prev) ? prev : items[0]?.document_id ?? null,
+        );
+      } catch (err) {
+        if (active) {
+          setLoadError(err instanceof Error ? err.message : 'Unable to load Knowledge Base');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const activeEntry = entries.find((e) => e.id === selectedPlaybookId) || filteredEntries[0] || entries[0];
+  const filteredDocuments = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const curated = CURATED_CATEGORIES.find((cat) => cat.id === activeFilter);
+    return documents.filter((doc) => {
+      const matchesFilter =
+        activeFilter === 'all' ||
+        (curated
+          ? curated.sourceTypes.includes(doc.source_type as DocumentSourceType)
+          : doc.source_type === activeFilter);
+      const matchesQuery =
+        !q ||
+        doc.title.toLowerCase().includes(q) ||
+        doc.document_id.toLowerCase().includes(q) ||
+        doc.source_type.toLowerCase().includes(q);
+      return matchesFilter && matchesQuery;
+    });
+  }, [documents, activeFilter, searchQuery]);
+
+  const selectedDoc = useMemo(
+    () => documents.find((d) => d.document_id === selectedDocId) ?? filteredDocuments[0] ?? null,
+    [documents, filteredDocuments, selectedDocId],
+  );
+
+  const handleAskRag = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    setQueryLoading(true);
+    setQueryError(null);
+    try {
+      const res = await fetch('/api/v1/rag/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q, top_k: 5, include_graph: true }),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error(`Query failed (${res.status}): ${detail || res.statusText}`);
+      }
+      const data = (await res.json()) as RAGQueryResponse;
+      setQueryResult(data);
+    } catch (err) {
+      setQueryError(err instanceof Error ? err.message : 'Knowledge query failed');
+    } finally {
+      setQueryLoading(false);
+    }
+  };
+
+  const indexPlaybook = async (payload: {
+    document_id: string;
+    title: string;
+    source_type: DocumentSourceType;
+    text: string;
+    tags: string[];
+  }) => {
+    const res = await fetch('/api/v1/rag/documents/index', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...payload,
+        license_class: 'agency_owned',
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      throw new Error(`Indexing failed (${res.status}): ${detail || res.statusText}`);
+    }
+    const result = (await res.json()) as { chunks_created?: number; document_id?: string };
+    setActionMessage(
+      `Indexed "${payload.title}" (${result.chunks_created ?? 1} chunk${result.chunks_created === 1 ? '' : 's'}).`,
+    );
+    await loadKnowledgeBase();
+    setSelectedDocId(payload.document_id);
+  };
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newContent.trim()) {
+      setSubmitError('Title and playbook content are required.');
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const tags = newTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .slice(0, 20);
+      await indexPlaybook({
+        document_id: slugifyId(newTitle.trim()),
+        title: newTitle.trim(),
+        source_type: newSourceType,
+        text: newContent.trim(),
+        tags,
+      });
+      setNewTitle('');
+      setNewTags('');
+      setNewContent('');
+      setShowCreateModal(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Unable to index playbook');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string, title: string) => {
+    setActionMessage(null);
+    setLoadError(null);
+    try {
+      const res = await fetch(`/api/v1/rag/documents/${encodeURIComponent(documentId)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        throw new Error(`Delete failed (HTTP ${res.status})`);
+      }
+      setActionMessage(`Removed "${title}" from the agency knowledge base.`);
+      await loadKnowledgeBase();
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Unable to delete document');
+    }
+  };
+
+  const indexedIds = useMemo(() => new Set(documents.map((d) => d.document_id)), [documents]);
 
   return (
-    <div className='p-6 space-y-6'>
-
+    <div className='p-6 max-w-6xl mx-auto space-y-6'>
       {/* Header */}
-      <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
+      <header className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#1c2128] pb-4'>
         <div>
-          <h1 className='text-ui-xl font-semibold text-[#e6edf3] flex items-center gap-2'>
+          <BackToOverviewLink />
+          <h1 className='text-ui-2xl font-semibold text-[#e6edf3] flex items-center gap-2.5 mt-2'>
             <BookOpen className='size-6 text-[#58a6ff]' />
-            Knowledge Base & Agency Memory
+            Knowledge Base &amp; Agency Memory
           </h1>
           <p className='text-ui-sm text-[#8b949e] mt-1'>
-            Canonical agency intelligence, destination playbooks, visa compliance checklists, and learned customer memory.
+            Agency-scoped RAG documents, SOPs, visa policies, and grounded retrieval citations.
           </p>
         </div>
 
         <button
           type='button'
-          onClick={() => setIsNewPlaybookModalOpen(true)}
-          className='px-3.5 py-2 bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-sm self-start md:self-auto'
+          onClick={() => {
+            setSubmitError(null);
+            setShowCreateModal(true);
+          }}
+          className='flex items-center gap-2 px-4 py-2 bg-[#238636] text-white rounded-lg text-ui-sm font-medium hover:bg-[#2ea043] transition-colors shrink-0'
         >
-          <Plus className='size-3.5' />
-          Create New Playbook
+          <Plus className='size-4' /> Create New Playbook
         </button>
-      </div>
+      </header>
 
-      {/* RAG Search Bar */}
-      <div className='rounded-lg border border-[#30363d] p-4 bg-[#0d1117] space-y-3'>
-        <div className='relative w-full'>
-          <Search className='absolute left-3.5 top-3 size-4 text-[#58a6ff]' />
-          <input
-            type='text'
-            placeholder='Search agency knowledge (e.g. "Schengen passport rules", "South Africa safari with kids", "Kyoto ryokan booking timeline")…'
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className='w-full pl-10 pr-4 py-2.5 bg-[#161b22] border border-[#30363d] rounded-md text-sm text-[#e6edf3] placeholder-[#8b949e] focus:border-[#58a6ff] outline-none shadow-inner'
-          />
+      {/* Live RAG Engine Status Bar */}
+      <section
+        aria-label='RAG engine status'
+        className='rounded-xl border border-[#30363d] bg-[#0d1117] px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-ui-xs'
+      >
+        <div className='flex flex-wrap items-center gap-3 text-[#c9d1d9]'>
+          <span className='inline-flex items-center gap-1.5 font-medium text-[#e6edf3]'>
+            <Database className='size-3.5 text-[#58a6ff]' />
+            RAG Store:
+          </span>
+          <span>
+            {documents.length} document{documents.length === 1 ? '' : 's'} ·{' '}
+            {status?.indexed_chunks ?? 0} indexed chunks
+          </span>
+          {status?.lexical_backend ? (
+            <span className='text-[#8b949e]'>Lexical: {status.lexical_backend}</span>
+          ) : null}
+          {status?.embedding_model ? (
+            <span className='text-[#8b949e]'>Embeddings: {status.embedding_model}</span>
+          ) : null}
         </div>
+        <span className='text-[#8b949e]'>
+          {status ? (status.semantic_available ? 'Hybrid semantic + lexical active' : 'Lexical retrieval active') : 'Connecting…'}
+        </span>
+      </section>
 
-        <div className='flex flex-wrap gap-1.5 pt-1'>
-          {[
-            { id: 'all', label: 'All Intelligence' },
-            { id: 'playbook', label: 'Playbooks & Cheatsheets' },
-            { id: 'visa', label: 'Visa & Regulatory' },
-            { id: 'preference', label: 'Customer Memory' },
-            { id: 'rule', label: 'Agency Rules' },
-          ].map((cat) => {
-            const isSelected = selectedCategory === cat.id;
-            return (
+      {actionMessage ? (
+        <div className='rounded-lg border border-[#3fb950]/40 bg-[#3fb950]/10 px-4 py-2.5 text-ui-xs text-[#3fb950] flex items-center justify-between'>
+          <span className='flex items-center gap-2'>
+            <CheckCircle2 className='size-4' />
+            {actionMessage}
+          </span>
+          <button type='button' onClick={() => setActionMessage(null)} aria-label='Dismiss notice'>
+            <X className='size-3.5' />
+          </button>
+        </div>
+      ) : null}
+
+      {loadError ? (
+        <div className='rounded-xl border border-[#f85149]/40 bg-[#f85149]/10 p-4 flex items-center justify-between'>
+          <span className='text-ui-sm text-[#f85149] flex items-center gap-2'>
+            <AlertTriangle className='size-4' />
+            {loadError}
+          </span>
+          <button
+            type='button'
+            onClick={() => void loadKnowledgeBase()}
+            className='px-3 py-1.5 rounded-lg border border-[#30363d] bg-[#161b22] text-ui-xs text-[#e6edf3]'
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
+      {/* Search & Grounded Query Bar */}
+      <div className='space-y-3'>
+        <form onSubmit={(e) => void handleAskRag(e)} className='flex gap-2'>
+          <div className='relative flex-1'>
+            <label htmlFor='knowledge-search-input' className='sr-only'>
+              Search agency knowledge or ask a grounded question
+            </label>
+            <Search className='absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]' />
+            <input
+              id='knowledge-search-input'
+              name='knowledgeSearch'
+              type='text'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder='Search playbooks or ask a grounded question (e.g. "Schengen visa", "margin approval")...'
+              aria-label='Search agency knowledge'
+              className='w-full pl-10 pr-4 py-2.5 bg-[#0f1115] border border-[#30363d] rounded-xl text-ui-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff]'
+            />
+          </div>
+          <button
+            type='submit'
+            disabled={queryLoading || !searchQuery.trim()}
+            className='px-4 py-2.5 rounded-xl bg-[#1f6feb] text-white text-ui-sm font-medium hover:bg-[#388bfd] disabled:opacity-50 shrink-0 flex items-center gap-1.5'
+          >
+            <Sparkles className='size-4' />
+            {queryLoading ? 'Querying…' : 'Query RAG'}
+          </button>
+        </form>
+
+        <div className='space-y-2'>
+          <div className='flex items-center gap-2 flex-wrap'>
+            <button
+              type='button'
+              onClick={() => setActiveFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-ui-xs font-medium transition-colors ${
+                activeFilter === 'all'
+                  ? 'bg-[#1f6feb] text-white'
+                  : 'bg-[#161b22] text-[#8b949e] hover:text-[#e6edf3]'
+              }`}
+            >
+              All Intelligence ({documents.length})
+            </button>
+            {CURATED_CATEGORIES.map((category) => (
               <button
-                key={cat.id}
+                key={category.id}
                 type='button'
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  isSelected
+                onClick={() => setActiveFilter(category.id)}
+                className={`px-3 py-1.5 rounded-lg text-ui-xs font-medium transition-colors ${
+                  activeFilter === category.id
                     ? 'bg-[#1f6feb] text-white'
-                    : 'bg-[#161b22] text-[#8b949e] hover:text-[#e6edf3] border border-[#30363d]'
+                    : 'bg-[#161b22] text-[#8b949e] hover:text-[#e6edf3]'
                 }`}
               >
-                {cat.label}
+                {category.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
+          <div className='flex items-center gap-1.5 flex-wrap'>
+            <span className='text-[11px] text-[#8b949e] mr-1'>Source type:</span>
+            {(Object.entries(SOURCE_TYPE_LABELS) as Array<[DocumentSourceType, string]>).map(([key, label]) => (
+              <button
+                key={key}
+                type='button'
+                onClick={() => setActiveFilter(key)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  activeFilter === key
+                    ? 'bg-[#58a6ff]/20 text-[#79c0ff] border border-[#58a6ff]/40'
+                    : 'bg-[#0d1117] text-[#8b949e] border border-[#21262d] hover:text-[#e6edf3]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Main Grid: Knowledge List & Playbook Detail Drawer */}
-      <div className='grid gap-6 lg:grid-cols-3'>
-        {/* Knowledge Articles List */}
-        <div className='lg:col-span-2 space-y-3'>
-          <div className='text-xs font-semibold text-[#8b949e] uppercase tracking-wider px-1'>
-            Verified Articles & Memory Nodes ({filteredEntries.length})
-          </div>
-
-          <div className='space-y-3'>
-            {filteredEntries.map((entry) => {
-              const isSelected = entry.id === (selectedPlaybookId || activeEntry?.id);
-              const categoryBadgeClass =
-                entry.category === 'playbook'
-                  ? 'bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/40'
-                  : entry.category === 'visa'
-                  ? 'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/40'
-                  : entry.category === 'preference'
-                  ? 'bg-[#a371f7]/20 text-[#a371f7] border border-[#a371f7]/40'
-                  : 'bg-[#238636]/20 text-[#3fb950] border border-[#238636]/40';
-
-              return (
-                <div
-                  key={entry.id}
-                  onClick={() => setSelectedPlaybookId(entry.id)}
-                  className={`p-4 rounded-lg border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#161b22] border-[#58a6ff] shadow-md'
-                      : 'bg-[#0d1117] border-[#30363d] hover:bg-[#161b22] hover:border-[#8b949e]/40'
-                  }`}
-                >
-                  <div className='flex items-start justify-between gap-3'>
-                    <div className='space-y-1'>
-                      <div className='flex items-center gap-2'>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${categoryBadgeClass}`}>
-                          {entry.category}
-                        </span>
-                        <span className='text-xs font-medium text-[#8b949e]'>• {entry.destination}</span>
-                      </div>
-                      <h3 className='text-sm font-semibold text-[#e6edf3]'>{entry.title}</h3>
-                    </div>
-                    <span className='text-[11px] text-[#8b949e] shrink-0 font-mono'>{entry.lastUpdated}</span>
-                  </div>
-
-                  <p className='text-xs text-[#8b949e] mt-2 line-clamp-2'>{entry.summary}</p>
-
-                  <div className='flex flex-wrap items-center gap-1.5 mt-3'>
-                    {entry.tags.map((tag, i) => (
-                      <span
-                        key={i}
-                        className='px-2 py-0.5 text-[10px] bg-[#161b22] border border-[#30363d] text-[#c9d1d9] rounded-full flex items-center gap-1'
-                      >
-                        <Tag className='size-2.5 text-[#8b949e]' />
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* Grounded RAG Query Answer */}
+      {queryError ? (
+        <div className='rounded-xl border border-[#f85149]/30 bg-[#f85149]/5 p-4 text-ui-xs text-[#f85149]'>
+          {queryError}
         </div>
+      ) : null}
 
-        {/* Detailed Inspector Drawer */}
-        <div className='space-y-4'>
-          {activeEntry ? (
-            <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-5 space-y-4 sticky top-6'>
-              <div className='border-b border-[#30363d] pb-3 space-y-2'>
-                <div className='flex items-center justify-between text-xs text-[#8b949e]'>
-                  <span>Author: {activeEntry.author}</span>
-                  <span className='font-mono'>{activeEntry.lastUpdated}</span>
-                </div>
-                <h2 className='text-sm font-bold text-[#e6edf3] leading-snug'>{activeEntry.title}</h2>
-                <div className='text-xs text-[#58a6ff]'>Scope: {activeEntry.destination}</div>
-              </div>
-
-              <div className='space-y-3 text-xs'>
-                <div>
-                  <div className='font-semibold text-[#8b949e] uppercase text-[10px] mb-1'>Executive Summary</div>
-                  <p className='text-[#c9d1d9] leading-relaxed'>{activeEntry.summary}</p>
-                </div>
-
-                <div className='pt-2 border-t border-[#30363d]'>
-                  <div className='font-semibold text-[#8b949e] uppercase text-[10px] mb-2'>
-                    Mandatory Operational Rules & Takeaways
-                  </div>
-                  <ul className='space-y-2'>
-                    {activeEntry.keyTakeaways.map((point, i) => (
-                      <li key={i} className='flex items-start gap-2 text-[#c9d1d9]'>
-                        <CheckCircle2 className='size-4 text-[#3fb950] shrink-0 mt-0.5' />
-                        <span className='leading-tight'>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className='pt-3 border-t border-[#30363d] flex items-center justify-between text-xs'>
-                <span className='text-[#8b949e]'>Synced with RAG Vector Store</span>
-                <Link
-                  href='/overview'
-                  className='text-[#58a6ff] hover:text-[#79b8ff] font-medium inline-flex items-center gap-1'
+      {queryResult ? (
+        <section
+          aria-label='Grounded RAG answer'
+          className='rounded-xl border border-[#58a6ff]/40 bg-[#0d1117] p-5 space-y-3'
+        >
+          <div className='flex items-center justify-between'>
+            <h2 className='text-ui-sm font-semibold text-[#e6edf3] flex items-center gap-2'>
+              <Sparkles className='size-4 text-[#58a6ff]' />
+              Grounded Retrieval Answer
+            </h2>
+            <button
+              type='button'
+              onClick={() => setQueryResult(null)}
+              className='text-ui-xs text-[#8b949e] hover:text-[#e6edf3]'
+            >
+              Clear
+            </button>
+          </div>
+          <p className='text-ui-sm text-[#e6edf3] whitespace-pre-line'>{queryResult.answer}</p>
+          {queryResult.citations.length > 0 ? (
+            <div className='space-y-2 pt-2 border-t border-[#21262d]'>
+              <p className='text-ui-xs text-[#8b949e] uppercase tracking-wider'>
+                Citations ({queryResult.citations.length})
+              </p>
+              {queryResult.citations.map((cit) => (
+                <div
+                  key={cit.chunk.id}
+                  className='rounded-lg border border-[#21262d] bg-[#161b22] p-3 text-ui-xs space-y-1'
                 >
-                  <span>Return to Command</span>
-                  <ArrowRight className='size-3' />
-                </Link>
-              </div>
+                  <div className='flex items-center justify-between text-[#c9d1d9] font-medium'>
+                    <span>{cit.chunk.metadata.title}</span>
+                    <span className='text-[#8b949e]'>score {cit.score.toFixed(2)}</span>
+                  </div>
+                  <p className='text-[#8b949e] line-clamp-3'>{cit.chunk.text}</p>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-6 text-center text-xs text-[#8b949e]'>
-              Select an article to inspect full playbooks.
-            </div>
+            <p className='text-ui-xs text-[#8b949e]'>No matching citations found in indexed agency documents.</p>
           )}
+        </section>
+      ) : null}
+
+      {/* Main Content Split */}
+      <div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
+        {/* Left List */}
+        <div className='lg:col-span-7 space-y-3'>
+          <h2 className='text-ui-xs font-semibold uppercase tracking-wider text-[#8b949e] px-1'>
+            Indexed Agency Documents ({filteredDocuments.length})
+          </h2>
+
+          {isLoading ? (
+            <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 text-ui-sm text-[#8b949e]'>
+              Loading indexed agency documents…
+            </div>
+          ) : filteredDocuments.length === 0 ? (
+            <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-8 text-center space-y-3'>
+              <FileText className='size-8 text-[#8b949e] mx-auto' />
+              <p className='text-ui-sm text-[#e6edf3] font-medium'>No indexed documents match this view</p>
+              <p className='text-ui-xs text-[#8b949e]'>
+                Create a playbook above or index one of the starter templates below to enable grounded search.
+              </p>
+            </div>
+          ) : (
+            filteredDocuments.map((doc) => {
+              const isSelected = selectedDoc?.document_id === doc.document_id;
+              return (
+                <div
+                  key={doc.document_id}
+                  onClick={() => setSelectedDocId(doc.document_id)}
+                  className={`rounded-xl border p-4 cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-[#161b22] border-[#58a6ff]'
+                      : 'bg-[#0f1115] border-[#1c2128] hover:border-[#30363d]'
+                  }`}
+                >
+                  <div className='flex items-start justify-between gap-2 mb-1.5'>
+                    <div className='flex items-center gap-2 flex-wrap'>
+                      <span className='px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[#58a6ff]/15 text-[#58a6ff]'>
+                        {SOURCE_TYPE_LABELS[doc.source_type as DocumentSourceType] ?? doc.source_type}
+                      </span>
+                      <span className='text-ui-xs text-[#8b949e]'>
+                        {doc.chunk_count} chunk{doc.chunk_count === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <button
+                      type='button'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleDeleteDocument(doc.document_id, doc.title);
+                      }}
+                      aria-label={`Delete ${doc.title}`}
+                      className='text-[#8b949e] hover:text-[#f85149] p-1 rounded'
+                    >
+                      <Trash2 className='size-3.5' />
+                    </button>
+                  </div>
+                  <h3 className='text-ui-base font-semibold text-[#e6edf3]'>{doc.title || doc.document_id}</h3>
+                  <p className='text-ui-xs text-[#8b949e] mt-1 font-mono'>
+                    id: {doc.document_id} · license: {doc.license_class ?? 'agency_owned'}
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Right Preview & Starter Templates */}
+        <div className='lg:col-span-5 space-y-4'>
+          {selectedDoc ? (
+            <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5 space-y-3'>
+              <div className='flex items-center justify-between text-ui-xs text-[#8b949e]'>
+                <span className='flex items-center gap-1.5 text-[#58a6ff]'>
+                  <ShieldCheck className='size-4' />
+                  Agency-scoped corpus record
+                </span>
+                <span>{selectedDoc.chunk_count} chunks</span>
+              </div>
+              <h2 className='text-ui-lg font-semibold text-[#e6edf3]'>{selectedDoc.title}</h2>
+              <div className='text-ui-xs text-[#8b949e] space-y-1'>
+                <div>Document ID: <span className='font-mono text-[#c9d1d9]'>{selectedDoc.document_id}</span></div>
+                <div>Source type: <span className='text-[#c9d1d9]'>{selectedDoc.source_type}</span></div>
+                <div>License: <span className='text-[#c9d1d9]'>{selectedDoc.license_class ?? 'agency_owned'}</span></div>
+                <div>Embedding model: <span className='text-[#c9d1d9]'>{selectedDoc.embedding_model || 'lexical-only'}</span></div>
+              </div>
+              <button
+                type='button'
+                onClick={() => {
+                  setSearchQuery(selectedDoc.title);
+                  void handleAskRag();
+                }}
+                className='w-full mt-2 px-3 py-2 rounded-lg border border-[#30363d] bg-[#161b22] text-ui-xs text-[#e6edf3] hover:border-[#58a6ff]'
+              >
+                Query chunks for this document
+              </button>
+            </div>
+          ) : null}
+
+          {/* Reference Starter Templates (honestly marked until indexed) */}
+          <div className='rounded-xl border border-[#30363d] bg-[#0d1117] p-5 space-y-3'>
+            <div className='flex items-center justify-between gap-2'>
+              <h3 className='text-ui-sm font-semibold text-[#e6edf3]'>Reference Starter Playbooks</h3>
+              <SimulatedBadge label='Starter Templates' />
+            </div>
+            <p className='text-ui-xs text-[#8b949e]'>
+              Curated operational templates. Click Index to add a template to your agency RAG store.
+            </p>
+            <div className='space-y-2.5'>
+              {STARTER_TEMPLATES.map((tpl) => {
+                const alreadyIndexed = indexedIds.has(tpl.document_id);
+                return (
+                  <div key={tpl.document_id} className='rounded-lg border border-[#21262d] bg-[#161b22] p-3 space-y-2'>
+                    <div className='flex items-start justify-between gap-2'>
+                      <div>
+                        <p className='text-ui-xs font-medium text-[#e6edf3]'>{tpl.title}</p>
+                        <p className='text-[11px] text-[#8b949e] mt-0.5 line-clamp-2'>{tpl.text}</p>
+                      </div>
+                      <button
+                        type='button'
+                        disabled={alreadyIndexed}
+                        onClick={() => void indexPlaybook(tpl)}
+                        className='px-2.5 py-1 rounded text-[11px] border border-[#30363d] bg-[#0d1117] text-[#e6edf3] hover:border-[#58a6ff] disabled:opacity-50 shrink-0'
+                      >
+                        {alreadyIndexed ? 'Indexed' : 'Index'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Create New Playbook Modal */}
-      {isNewPlaybookModalOpen && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4'>
-          <div className='w-full max-w-lg bg-[#0d1117] border border-[#30363d] rounded-lg shadow-xl p-6 space-y-4'>
+      {/* Create Playbook Modal */}
+      {showCreateModal ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4'>
+          <form
+            onSubmit={(e) => void handleCreateSubmit(e)}
+            className='bg-[#161b22] border border-[#30363d] rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl'
+          >
             <div className='flex items-center justify-between border-b border-[#30363d] pb-3'>
-              <div className='flex items-center gap-2 font-semibold text-base text-[#e6edf3]'>
-                <BookOpen className='size-5 text-[#58a6ff]' />
-                <span>Create New Agency Playbook</span>
-              </div>
+              <h3 className='text-ui-lg font-semibold text-[#e6edf3]'>Index New Agency Playbook</h3>
               <button
                 type='button'
-                onClick={() => setIsNewPlaybookModalOpen(false)}
-                className='text-[#8b949e] hover:text-[#e6edf3] text-sm'
+                onClick={() => setShowCreateModal(false)}
+                className='text-[#8b949e] hover:text-[#e6edf3]'
               >
-                ✕
+                Cancel
               </button>
             </div>
-
-            <div className='space-y-3 text-xs text-[#c9d1d9]'>
+            {submitError ? <p className='text-ui-xs text-[#f85149]'>{submitError}</p> : null}
+            <div className='space-y-3'>
               <div>
-                <label className='block text-[#8b949e] mb-1 font-medium'>Playbook Title</label>
+                <label htmlFor='kb-new-title' className='block text-ui-xs font-medium text-[#8b949e] mb-1'>
+                  Title
+                </label>
                 <input
+                  id='kb-new-title'
+                  name='title'
                   type='text'
-                  placeholder='e.g., Vietnam & Cambodia Luxury River Cruise Logistics'
-                  className='w-full p-2 bg-[#161b22] border border-[#30363d] rounded text-sm text-[#e6edf3] outline-none focus:border-[#58a6ff]'
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder='e.g. Maldives Water Villa Transfer Guidelines'
+                  className='w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3]'
                 />
               </div>
-
               <div>
-                <label className='block text-[#8b949e] mb-1 font-medium'>Destination / Category</label>
+                <label htmlFor='kb-new-source-type' className='block text-ui-xs font-medium text-[#8b949e] mb-1'>
+                  Source Type
+                </label>
+                <select
+                  id='kb-new-source-type'
+                  name='sourceType'
+                  value={newSourceType}
+                  onChange={(e) => setNewSourceType(e.target.value as DocumentSourceType)}
+                  className='w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3]'
+                >
+                  {(Object.entries(SOURCE_TYPE_LABELS) as Array<[DocumentSourceType, string]>).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor='kb-new-tags' className='block text-ui-xs font-medium text-[#8b949e] mb-1'>
+                  Tags (comma-separated)
+                </label>
                 <input
+                  id='kb-new-tags'
+                  name='tags'
                   type='text'
-                  placeholder='e.g., Southeast Asia (Mekong)'
-                  className='w-full p-2 bg-[#161b22] border border-[#30363d] rounded text-sm text-[#e6edf3] outline-none focus:border-[#58a6ff]'
+                  value={newTags}
+                  onChange={(e) => setNewTags(e.target.value)}
+                  placeholder='e.g. Maldives, Seaplane, Luxury'
+                  className='w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3]'
                 />
               </div>
-
               <div>
-                <label className='block text-[#8b949e] mb-1 font-medium'>Operational Guidance & Takeaways</label>
+                <label htmlFor='kb-new-content' className='block text-ui-xs font-medium text-[#8b949e] mb-1'>
+                  Content / Operational Rules
+                </label>
                 <textarea
-                  rows={4}
-                  placeholder='Enter operational notes, preferred DMC contacts, visa rules, and pacing recommendations…'
-                  className='w-full p-2 bg-[#161b22] border border-[#30363d] rounded text-sm text-[#e6edf3] outline-none focus:border-[#58a6ff]'
-                ></textarea>
+                  id='kb-new-content'
+                  name='content'
+                  rows={5}
+                  required
+                  value={newContent}
+                  onChange={(e) => setNewContent(e.target.value)}
+                  placeholder='Enter detailed agency policy, visa checklist, or supplier instructions...'
+                  className='w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3]'
+                />
               </div>
             </div>
-
-            <div className='flex justify-end gap-2 pt-2 border-t border-[#30363d]'>
+            <div className='flex justify-end gap-2 pt-2'>
               <button
                 type='button'
-                onClick={() => setIsNewPlaybookModalOpen(false)}
-                className='px-3.5 py-1.5 bg-[#21262d] text-[#e6edf3] rounded text-xs hover:bg-[#30363d] border border-[#30363d]'
+                onClick={() => setShowCreateModal(false)}
+                className='px-4 py-2 text-ui-sm text-[#8b949e] hover:text-[#e6edf3]'
               >
                 Cancel
               </button>
               <button
-                type='button'
-                onClick={() => setIsNewPlaybookModalOpen(false)}
-                className='px-3.5 py-1.5 bg-[#238636] text-white rounded text-xs font-semibold hover:bg-[#2ea043]'
+                type='submit'
+                disabled={isSubmitting}
+                className='px-4 py-2 bg-[#238636] text-white rounded-lg text-ui-sm font-medium hover:bg-[#2ea043] disabled:opacity-50'
               >
-                Save & Index into Agency Brain
+                {isSubmitting ? 'Indexing…' : 'Save & Index into Agency Brain'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

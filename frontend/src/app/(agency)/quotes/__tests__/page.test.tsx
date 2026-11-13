@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import QuotesPageClient from '../PageClient';
 
 // T4 (FND-0303): the page renders the REAL quote read model from
@@ -66,23 +66,26 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('tripId=trip_123'),
 }));
 
+const mockUseTrips = vi.fn(() => ({
+  data: [
+    {
+      id: 'trip_123',
+      destination: 'Cape Town',
+      type: 'luxury',
+      origin: 'London',
+      budget: '$4,500',
+      dateWindow: 'November 2026',
+      tripPurpose: 'vacation',
+      party: 2,
+      validation: { is_valid: true, errors: [], warnings: [] },
+    },
+  ],
+  total: 1,
+  isLoading: false,
+}));
+
 vi.mock('@/hooks/useTrips', () => ({
-  useTrips: () => ({
-    data: [
-      {
-        id: 'trip_123',
-        destination: 'Cape Town',
-        type: 'luxury',
-        origin: 'London',
-        budget: '$4,500',
-        dateWindow: 'November 2026',
-        tripPurpose: 'vacation',
-        party: 2,
-        validation: { is_valid: true, errors: [], warnings: [] },
-      },
-    ],
-    isLoading: false,
-  }),
+  useTrips: (...args: unknown[]) => mockUseTrips(...(args as [])),
 }));
 
 vi.mock('@/components/navigation/BackToOverviewLink', () => ({
@@ -167,7 +170,8 @@ describe('QuotesPageClient not-ready + honesty (T4 supersedes FND-0260)', () => 
       expect(screen.getByTestId('quotes-not-ready')).toBeInTheDocument();
     });
     expect(screen.getByText(/No quote yet for this trip/)).toBeInTheDocument();
-    expect(screen.getByText(/strategy.recommended_option/)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended itinerary option/)).toBeInTheDocument();
+    expect(screen.queryByText(/strategy\.recommended_option/)).not.toBeInTheDocument();
   });
 
   it('never fabricates prices, tiers, or a sample-data badge', async () => {
@@ -226,5 +230,25 @@ describe('QuotesPageClient error state', () => {
     expect(screen.getByTestId('quote-margin')).toHaveTextContent(/Awaiting retail/i);
     expect(screen.getByText(/Native currency retail requires/)).toBeInTheDocument();
     expect(screen.queryByText('No quote yet for this trip')).not.toBeInTheDocument();
+  });
+
+  it('requests quote-scoped trips by default and switches to all planning trips on demand', async () => {
+    render(<QuotesPageClient />);
+    expect(mockUseTrips).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scope: 'quotes',
+        enabled: true,
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /All Planning Trips/i }));
+    await waitFor(() => {
+      expect(mockUseTrips).toHaveBeenCalledWith(
+        expect.objectContaining({
+          view: 'workspace',
+          enabled: true,
+        }),
+      );
+    });
   });
 });

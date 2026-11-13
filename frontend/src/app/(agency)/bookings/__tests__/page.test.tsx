@@ -12,13 +12,16 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('tripId=trip_456'),
 }));
 
+const mockUseTrips = vi.fn(() => ({
+  data: [
+    { id: 'trip_456', destination: 'South Africa', dateWindow: 'Nov 2026', party: 2 },
+  ],
+  total: 1,
+  isLoading: false,
+}));
+
 vi.mock('@/hooks/useTrips', () => ({
-  useTrips: () => ({
-    data: [
-      { id: 'trip_456', destination: 'South Africa', dateWindow: 'Nov 2026', party: 2 },
-    ],
-    isLoading: false,
-  }),
+  useTrips: (...args: unknown[]) => mockUseTrips(...(args as [])),
   useTrip: (id: string | null) => ({
     data: id ? { id, destination: 'South Africa', dateWindow: 'Nov 2026', party: 2 } : null,
   }),
@@ -159,5 +162,36 @@ describe('BookingsPageClient (honest booking dossier)', () => {
     mockApi({ hasLink: false });
     renderPage();
     expect(await screen.findByRole('button', { name: /Generate collection link/i })).toBeInTheDocument();
+  });
+
+  it('requests booking-scoped trips by default and uses canonical trip picker labels without raw internal IDs', async () => {
+    mockUseTrips.mockReturnValue({
+      data: [
+        {
+          id: 'tc_roundtrip_01ab',
+          destination: 'Japan',
+          origin: 'Delhi',
+          budget: 'INR 400,000',
+          tripPurpose: 'leisure',
+          dateWindow: 'Oct 2026',
+          party: 2,
+          validation: { is_valid: true, errors: [], warnings: [] },
+        } as never,
+      ],
+      total: 1,
+      isLoading: false,
+    });
+    mockApi();
+    renderPage();
+
+    expect(mockUseTrips).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scope: 'bookings',
+        enabled: true,
+      }),
+    );
+    const select = await screen.findByTestId('bookings-trip-select');
+    expect(select.textContent).toContain('Japan');
+    expect(select.textContent).not.toContain('tc_roundtrip_01ab');
   });
 });

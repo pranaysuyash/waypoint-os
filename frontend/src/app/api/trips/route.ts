@@ -2,15 +2,16 @@ import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
 import {
   transformSpineTripsResponseToTrips,
-  isWorkspaceTrip,
 } from "@/lib/bff-trip-adapters";
-import { WORKSPACE_TRIP_STATUSES } from "@/lib/trip-domain";
+import { WORKSPACE_TRIP_STATUS_LIST, WORKSPACE_TRIP_STATUSES } from "@/lib/trip-domain";
 import { spineUrl } from "@/lib/proxy-core";
 import type { SpineRunRequest } from "@/types/generated/spine-api";
 
 // Kill switch for call capture feature
 // Set DISABLE_CALL_CAPTURE=true to disable POST /api/trips
 // Read at call time (not module level) so env changes are picked up at runtime
+
+const ALLOWED_WORKSPACE_STATUS_SET = new Set<string>(WORKSPACE_TRIP_STATUS_LIST);
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,10 +21,22 @@ export async function GET(request: NextRequest) {
     const upstreamParams = new URLSearchParams(searchParams);
     upstreamParams.delete("view");
 
-    // workspace view: pass workspace statuses to backend so filtering,
-    // pagination, and total are all server-side.
+    // workspace view: pass workspace statuses (or validated subset) to backend
+    // so filtering, pagination, statusCounts, and total are all server-side SSOT.
     if (view === "workspace") {
-      upstreamParams.set("status", WORKSPACE_TRIP_STATUSES);
+      const requestedStatus = upstreamParams.get("status");
+      if (requestedStatus) {
+        const filtered = requestedStatus
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => ALLOWED_WORKSPACE_STATUS_SET.has(s));
+        upstreamParams.set(
+          "status",
+          filtered.length > 0 ? filtered.join(",") : WORKSPACE_TRIP_STATUSES,
+        );
+      } else {
+        upstreamParams.set("status", WORKSPACE_TRIP_STATUSES);
+      }
     }
 
     const query = upstreamParams.toString();
@@ -40,10 +53,19 @@ export async function GET(request: NextRequest) {
 
     const spineApiData = await response.json();
     const transformedItems = transformSpineTripsResponseToTrips(spineApiData);
+    const statusCounts =
+      spineApiData &&
+      typeof spineApiData === "object" &&
+      "statusCounts" in spineApiData &&
+      spineApiData.statusCounts &&
+      typeof spineApiData.statusCounts === "object"
+        ? (spineApiData.statusCounts as Record<string, number>)
+        : undefined;
 
     return bffJson({
       items: transformedItems,
       total: spineApiData.total ?? transformedItems.length,
+      ...(statusCounts ? { statusCounts } : {}),
     });
   } catch (error) {
     console.error("Error fetching trips from spine_api:", error);

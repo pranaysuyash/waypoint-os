@@ -16,10 +16,13 @@ import Link from 'next/link';
 import { memo, useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Briefcase,
+  ChevronLeft,
   ChevronRight,
   AlertTriangle,
   LayoutGrid,
+  Search,
   Table2,
+  X,
 } from 'lucide-react';
 import { useTrips } from '@/hooks/useTrips';
 import { InlineError } from '@/components/error-boundary';
@@ -29,7 +32,19 @@ import { getPlanningListSummary, getPlanningStageLabel } from '@/lib/planning-li
 import { getPlanningBriefStatus, hasPlanningBriefBlocker } from '@/lib/planning-status';
 import { groupTripsByOverviewSignature } from '@/lib/trip-grouping';
 import { isTripEscalated } from '@/lib/trip-lifecycle';
+import { WORKSPACE_TRIP_STATUS_LIST } from '@/lib/trip-domain';
 import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceTable';
+
+const PAGE_SIZE = 24;
+
+const WORKSPACE_STATUS_LABELS: Record<string, string> = {
+  assigned: 'Assigned',
+  in_progress: 'In progress',
+  ready_to_quote: 'Ready to quote',
+  ready_to_book: 'Ready to book',
+  blocked: 'Blocked',
+  active: 'In trip',
+};
 
 // ============================================================================
 // DOMAIN BOUNDARY DEFINITION
@@ -275,26 +290,76 @@ function WorkspacesPageWithSearchParams() {
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
 
-  const { data: workspaceTrips, isLoading, error, refetch } = useTrips({ view: 'workspace' });
+  const initialQuery = getSearchParam('q') ?? '';
+  const [searchInput, setSearchInput] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery.trim());
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchInput.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const rawStatusParam = getSearchParam('status');
+  const activeStatus =
+    rawStatusParam && WORKSPACE_TRIP_STATUS_LIST.includes(rawStatusParam as never) ? rawStatusParam : 'all';
+
+  const parsedPage = Number.parseInt(getSearchParam('page') ?? '1', 10);
+  const currentPage = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
+  const offset = (currentPage - 1) * PAGE_SIZE;
+
+  const isUnfilteredAll = activeStatus === 'all' && !debouncedQuery;
+  const {
+    data: workspaceTrips,
+    total,
+    statusCounts,
+    isLoading,
+    error,
+    refetch,
+  } = useTrips({
+    view: 'workspace',
+    status: activeStatus !== 'all' ? activeStatus : undefined,
+    limit: PAGE_SIZE,
+    offset,
+    q: debouncedQuery || undefined,
+  });
+
+  // Only fetch lightweight baseline counts when a filter/search is active so default
+  // unfiltered /trips issues a single request and filtered tabs retain full counts.
+  const { total: baselineTotalRaw, statusCounts: baselineStatusCountsRaw } = useTrips({
+    view: 'workspace',
+    limit: 1,
+    enabled: !isUnfilteredAll,
+  });
+
+  const resolvedTotal = total || workspaceTrips.length;
+  const workspaceTotalCount = isUnfilteredAll ? resolvedTotal : baselineTotalRaw || resolvedTotal;
+  const tabCounts: Record<string, number> = isUnfilteredAll
+    ? (statusCounts ?? {})
+    : baselineStatusCountsRaw && Object.keys(baselineStatusCountsRaw).length > 0
+      ? baselineStatusCountsRaw
+      : (statusCounts ?? {});
 
   // URL state persistence with localStorage fallback
   const urlView = getSearchParam('view') as 'card' | 'table' | null;
   const [viewMode, setViewModeState] = useState<'card' | 'table'>(() => urlView || getSavedView());
-  
+
   const [sortField, setSortField] = useState<SortField>(
-    () => (getSearchParam('sort') as SortField) || 'stage'
+    () => (getSearchParam('sort') as SortField) || 'stage',
   );
   const [sortDirection, setSortDirection] = useState<SortDirection>(
-    () => (getSearchParam('dir') as SortDirection) || 'asc'
+    () => (getSearchParam('dir') as SortDirection) || 'asc',
   );
 
   const updateParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
-      if (value === null) params.delete(key);
+      if (value === null || value === '') params.delete(key);
       else params.set(key, value);
     });
-    push(`?${params.toString()}`);
+    const nextQuery = params.toString();
+    push(nextQuery ? `?${nextQuery}` : '?');
   }, [push, searchParams]);
 
   const setViewMode = useCallback((v: 'card' | 'table') => {
@@ -303,14 +368,34 @@ function WorkspacesPageWithSearchParams() {
     updateParams({ view: v });
   }, [updateParams]);
 
+  const handleStatusChange = useCallback((nextStatus: string) => {
+    updateParams({
+      status: nextStatus === 'all' ? null : nextStatus,
+      page: null,
+    });
+  }, [updateParams]);
+
+  const handlePageChange = useCallback((nextPage: number) => {
+    updateParams({ page: nextPage <= 1 ? null : String(nextPage) });
+  }, [updateParams]);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInput(value);
+    updateParams({ q: value.trim() ? value : null, page: null });
+  }, [updateParams]);
+
+  const clearAllFilters = useCallback(() => {
+    setSearchInput('');
+    setDebouncedQuery('');
+    updateParams({ q: null, status: null, filter: null, page: null });
+  }, [updateParams]);
+
   const needsDetailsCount = useMemo(
     () => workspaceTrips.filter((trip) => hasPlanningBriefBlocker(trip)).length,
     [workspaceTrips],
   );
 
-  // Escalated queue (register N-4): client-side slice over the workspace list.
-  // Server-side escalation filtering (routing-state join) is the follow-up slice —
-  // documented in the handoff; this keeps escalated trips visible today.
+  // Escalated queue (register N-4): client-side slice over the active page.
   const escalatedTrips = useMemo(
     () => workspaceTrips.filter(isTripEscalated),
     [workspaceTrips],
@@ -333,6 +418,10 @@ function WorkspacesPageWithSearchParams() {
     [visibleTrips],
   );
   const isCardGrouped = groupedTrips.length < visibleTrips.length;
+  const totalPages = Math.max(1, Math.ceil(resolvedTotal / PAGE_SIZE));
+  const hasActiveFilter = Boolean(debouncedQuery || activeStatus !== 'all' || showEscalatedOnly);
+  const pageStart = resolvedTotal === 0 ? 0 : Math.min(offset + 1, resolvedTotal);
+  const pageEnd = Math.min(offset + workspaceTrips.length, resolvedTotal);
 
   const handleSort = useCallback((field: SortField) => {
     setSortField((current) => {
@@ -353,11 +442,14 @@ function WorkspacesPageWithSearchParams() {
             Trips your team is actively working on
           </p>
         </div>
-        <div className='flex items-center gap-3'>
+        <div className='flex items-center gap-3 flex-wrap'>
           {needsDetailsCount > 0 && (
-            <span className='flex items-center gap-1.5 text-ui-sm text-[#d29922]'>
+            <span
+              className='flex items-center gap-1.5 text-ui-sm text-[#d29922]'
+              title={`${needsDetailsCount} of ${workspaceTrips.length} trips shown on this page still need required brief details`}
+            >
               <AlertTriangle className='size-3.5' aria-hidden='true' />
-              {needsDetailsCount} needs details
+              {needsDetailsCount} of {workspaceTrips.length} on page need details
             </span>
           )}
           {escalatedTrips.length > 0 && (
@@ -376,12 +468,74 @@ function WorkspacesPageWithSearchParams() {
               {escalatedTrips.length} escalated
             </button>
           )}
-          <span className='text-ui-sm text-[var(--text-muted)]'>
-            {isLoading ? 'Loading…' : `${workspaceTrips.length} in planning`}
+          <span className='text-ui-sm font-medium text-[#e6edf3] tabular-nums' data-testid='trips-total-count'>
+            {isLoading && workspaceTotalCount === 0
+              ? 'Loading…'
+              : `${workspaceTotalCount.toLocaleString('en-IN')} in planning`}
           </span>
           <ViewToggle view={viewMode} onChange={setViewMode} />
         </div>
       </header>
+
+      {/* Search + Stage Filter Bar */}
+      <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-xl border border-[#1c2128] bg-[#0f1115] p-3'>
+        <div className='relative flex-1 max-w-md'>
+          <Search className='size-3.5 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none' aria-hidden='true' />
+          <input
+            type='search'
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder='Search destination, client, or ref…'
+            aria-label='Search trips in planning'
+            className='w-full bg-[#0a0d11] border border-[#1c2128] rounded-lg pl-8 pr-8 py-1.5 text-ui-sm text-[#e6edf3] placeholder:text-[var(--text-muted)] focus:border-[#58a6ff] focus:outline-none'
+          />
+          {searchInput && (
+            <button
+              type='button'
+              onClick={() => handleSearchChange('')}
+              aria-label='Clear search'
+              className='absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[#e6edf3]'
+            >
+              <X className='size-3.5' />
+            </button>
+          )}
+        </div>
+
+        <div className='flex items-center gap-1.5 flex-wrap' role='group' aria-label='Filter by planning status'>
+          <button
+            type='button'
+            onClick={() => handleStatusChange('all')}
+            aria-pressed={activeStatus === 'all'}
+            className={`px-2.5 py-1 rounded-md text-ui-xs font-medium transition-colors tabular-nums ${
+              activeStatus === 'all'
+                ? 'bg-[#161b22] text-[#e6edf3] border border-[#30363d]'
+                : 'text-[var(--text-muted)] hover:text-[#e6edf3] border border-transparent'
+            }`}
+          >
+            All ({workspaceTotalCount.toLocaleString('en-IN')})
+          </button>
+          {WORKSPACE_TRIP_STATUS_LIST.map((st) => {
+            const count = tabCounts[st] ?? 0;
+            if (count === 0 && activeStatus !== st) return null;
+            const isSelected = activeStatus === st;
+            return (
+              <button
+                key={st}
+                type='button'
+                onClick={() => handleStatusChange(st)}
+                aria-pressed={isSelected}
+                className={`px-2.5 py-1 rounded-md text-ui-xs font-medium transition-colors tabular-nums ${
+                  isSelected
+                    ? 'bg-[#161b22] text-[#58a6ff] border border-[#58a6ff]/40'
+                    : 'text-[var(--text-muted)] hover:text-[#e6edf3] border border-transparent'
+                }`}
+              >
+                {WORKSPACE_STATUS_LABELS[st] ?? st} ({count.toLocaleString('en-IN')})
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Error */}
       {error && (
@@ -412,17 +566,36 @@ function WorkspacesPageWithSearchParams() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!error && !isLoading && workspaceTrips.length === 0 && <EmptyWorkspace />}
+      {/* Filtered empty state */}
+      {!error && !isLoading && visibleTrips.length === 0 && hasActiveFilter && (
+        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-10 text-center space-y-3'>
+          <p className='text-[#e6edf3] font-medium'>No matching trips in planning</p>
+          <p className='text-ui-sm text-[var(--text-muted)]'>
+            Try clearing your search query or switching status filter.
+          </p>
+          <button
+            type='button'
+            onClick={clearAllFilters}
+            className='px-4 py-2 bg-[#161b22] border border-[#30363d] text-[#e6edf3] rounded-lg text-ui-sm font-medium hover:bg-[#21262d] transition-colors'
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
+
+      {/* True Empty workspace state */}
+      {!error && !isLoading && visibleTrips.length === 0 && !hasActiveFilter && <EmptyWorkspace />}
 
       {/* Content */}
-      {!error && workspaceTrips.length > 0 && (
+      {!error && visibleTrips.length > 0 && (
         <>
           {viewMode === 'card' ? (
             <div className='space-y-4'>
               {isCardGrouped ? (
                 <p className='text-ui-sm text-[var(--text-muted)]'>
-                  Showing {groupedTrips.length.toLocaleString('en-IN')} grouped cards from {visibleTrips.length.toLocaleString('en-IN')} trips.
+                  {resolvedTotal > visibleTrips.length
+                    ? `Showing ${groupedTrips.length.toLocaleString('en-IN')} grouped cards from ${visibleTrips.length.toLocaleString('en-IN')} trips on this page (${resolvedTotal.toLocaleString('en-IN')} total).`
+                    : `Showing ${groupedTrips.length.toLocaleString('en-IN')} grouped cards from ${visibleTrips.length.toLocaleString('en-IN')} trips.`}
                 </p>
               ) : null}
               {groupedTrips.length === 1 ? (
@@ -446,9 +619,41 @@ function WorkspacesPageWithSearchParams() {
               onSort={handleSort}
             />
           )}
+
+          {/* Pagination */}
+          {resolvedTotal > PAGE_SIZE && (
+            <div className='flex items-center justify-between gap-3 pt-2 border-t border-[#1c2128] text-ui-sm text-[var(--text-muted)]'>
+              <span className='tabular-nums'>
+                Showing {pageStart.toLocaleString('en-IN')}–{pageEnd.toLocaleString('en-IN')} of{' '}
+                {resolvedTotal.toLocaleString('en-IN')} {hasActiveFilter ? 'matching' : 'planning'} trips
+              </span>
+              <div className='flex items-center gap-2'>
+                <button
+                  type='button'
+                  disabled={currentPage <= 1}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#1c2128] bg-[#0f1115] text-[#e6edf3] text-ui-xs font-medium hover:bg-[#161b22] disabled:opacity-40 disabled:pointer-events-none'
+                >
+                  <ChevronLeft className='size-3.5' aria-hidden='true' />
+                  Previous
+                </button>
+                <span className='text-ui-xs tabular-nums px-2'>
+                  Page {currentPage.toLocaleString('en-IN')} of {totalPages.toLocaleString('en-IN')}
+                </span>
+                <button
+                  type='button'
+                  disabled={currentPage >= totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#1c2128] bg-[#0f1115] text-[#e6edf3] text-ui-xs font-medium hover:bg-[#161b22] disabled:opacity-40 disabled:pointer-events-none'
+                >
+                  Next
+                  <ChevronRight className='size-3.5' aria-hidden='true' />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
-
     </div>
   );
 }

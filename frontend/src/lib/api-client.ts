@@ -528,18 +528,26 @@ export interface AnalyticsPipelineStage {
 
 export async function getTrips(params?: {
   state?: string;
+  status?: string;
   limit?: number;
   offset?: number;
   view?: string;
-}): Promise<{ items: Trip[]; total: number }> {
+  q?: string;
+  scope?: string;
+}): Promise<{ items: Trip[]; total: number; statusCounts?: Record<string, number> }> {
   const searchParams = new URLSearchParams();
   if (params?.state) searchParams.set("state", params.state);
-  if (params?.limit) searchParams.set("limit", params.limit.toString());
-  if (params?.offset) searchParams.set("offset", params.offset.toString());
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.limit != null) searchParams.set("limit", params.limit.toString());
+  if (params?.offset != null && params.offset > 0) searchParams.set("offset", params.offset.toString());
   if (params?.view) searchParams.set("view", params.view);
+  if (params?.q && params.q.trim()) searchParams.set("q", params.q.trim());
+  if (params?.scope) searchParams.set("scope", params.scope);
 
   const query = searchParams.toString();
-  return api.get<{ items: Trip[]; total: number }>(`/api/trips${query ? `?${query}` : ""}`);
+  return api.get<{ items: Trip[]; total: number; statusCounts?: Record<string, number> }>(
+    `/api/trips${query ? `?${query}` : ""}`
+  );
 }
 
 export async function getTrip(id: string): Promise<Trip> {
@@ -1512,6 +1520,9 @@ export interface PaymentQueueParams {
   payment_status?: PaymentStatus;
   refund_status?: RefundStatus;
   due_bucket?: 'none' | 'overdue' | 'due_0_3' | 'due_4_7' | 'due_8_14';
+  configured_only?: boolean;
+  q?: string;
+  sort?: 'recent' | 'urgent';
 }
 
 export async function getPaymentsQueue(params?: PaymentQueueParams): Promise<PaymentQueueResponse> {
@@ -1522,8 +1533,139 @@ export async function getPaymentsQueue(params?: PaymentQueueParams): Promise<Pay
   if (params?.payment_status) searchParams.set('payment_status', params.payment_status);
   if (params?.refund_status) searchParams.set('refund_status', params.refund_status);
   if (params?.due_bucket) searchParams.set('due_bucket', params.due_bucket);
+  if (params?.configured_only) searchParams.set('configured_only', 'true');
+  if (params?.q?.trim()) searchParams.set('q', params.q.trim());
+  if (params?.sort) searchParams.set('sort', params.sort);
   const qs = searchParams.toString();
   return api.get<PaymentQueueResponse>(`/api/payments${qs ? `?${qs}` : ''}`);
+}
+
+export interface SupplierRateTableItem {
+  room_type: string;
+  net_rate_per_night: number;
+  rack_rate_per_night: number;
+  season_start?: string | null;
+  season_end?: string | null;
+  cancellation_lead_days?: number | null;
+}
+
+export interface SupplierContractRecord {
+  contract_id: string;
+  agency_id: string;
+  supplier_name: string;
+  supplier_category?: string | null;
+  destination: string;
+  contact_email?: string | null;
+  currency: string;
+  rate_table: SupplierRateTableItem[];
+  terms_and_conditions?: string | null;
+  uploaded_at: string;
+  status: string;
+}
+
+export interface SupplierContractsListResponse {
+  items: SupplierContractRecord[];
+  total: number;
+  _meta?: {
+    tier?: string;
+    feature?: string;
+    notice?: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface SupplierContractUploadPayload {
+  supplier_name: string;
+  supplier_category?: string;
+  destination: string;
+  contact_email?: string;
+  currency: string;
+  rate_table: SupplierRateTableItem[];
+  terms_and_conditions?: string;
+}
+
+export interface SupplierContractUploadResponse {
+  contract_id: string;
+  supplier_name: string;
+  destination: string;
+  total_rates_ingested: number;
+  uploaded_at: string;
+  status: string;
+}
+
+export interface SupplierHoldRecord {
+  hold_id: string;
+  agency_id: string;
+  contract_id: string;
+  supplier_name: string;
+  room_type: string;
+  guest_name: string;
+  check_in: string;
+  check_out: string;
+  net_rate_total: number;
+  rack_rate_total: number;
+  estimated_agency_margin: number;
+  created_at: string;
+  expires_at: string;
+  status: string;
+}
+
+export interface SupplierHoldsListResponse {
+  items: SupplierHoldRecord[];
+  total: number;
+  _meta?: {
+    tier?: string;
+    feature?: string;
+    notice?: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface SupplierSoftHoldPayload {
+  contract_id: string;
+  room_type: string;
+  check_in: string;
+  check_out: string;
+  guest_name: string;
+  agent_id?: string;
+}
+
+export interface SupplierSoftHoldResponse {
+  hold_id: string;
+  contract_id: string;
+  supplier_name: string;
+  room_type: string;
+  net_rate_total: number;
+  rack_rate_total: number;
+  estimated_agency_margin: number;
+  expires_at: string;
+  status: string;
+  _meta?: {
+    tier?: string;
+    feature?: string;
+    notice?: string;
+    [key: string]: unknown;
+  };
+}
+
+export async function listSupplierContracts(): Promise<SupplierContractsListResponse> {
+  return api.get<SupplierContractsListResponse>('/api/v1/supplier/contracts');
+}
+
+export async function uploadSupplierContract(
+  payload: SupplierContractUploadPayload
+): Promise<SupplierContractUploadResponse> {
+  return api.post<SupplierContractUploadResponse>('/api/v1/supplier/contracts/upload', payload);
+}
+
+export async function listSupplierHolds(): Promise<SupplierHoldsListResponse> {
+  return api.get<SupplierHoldsListResponse>('/api/v1/supplier/inventory/holds');
+}
+
+export async function createSupplierSoftHold(
+  payload: SupplierSoftHoldPayload
+): Promise<SupplierSoftHoldResponse> {
+  return api.post<SupplierSoftHoldResponse>('/api/v1/supplier/inventory/soft-hold', payload);
 }
 
 // ---------------------------------------------------------------------------
@@ -2333,6 +2475,9 @@ export interface WeatherSuitability {
   days?: Array<Record<string, unknown>>;
   summary?: Record<string, number>;
   normals?: Record<string, number>;
+  rain_day_fraction?: number;
+  years_used?: number[];
+  years_skipped?: number[];
   confidence_note?: string;
   coverage?: string[];
   coverage_gaps?: string[];
@@ -2348,9 +2493,21 @@ export interface DestinationRatings {
 
 export async function getSafetyVerdict(
   countrySlug: string,
-  opts?: { iso3?: string }
+  opts?: {
+    iso3?: string;
+    lat?: number;
+    lng?: number;
+    month?: string;
+    include_events?: boolean;
+  }
 ): Promise<SafetyVerdict> {
-  const q = opts?.iso3 ? `?iso3=${encodeURIComponent(opts.iso3)}` : "";
+  const params = new URLSearchParams();
+  if (opts?.iso3) params.set("iso3", opts.iso3);
+  if (opts?.lat != null) params.set("lat", opts.lat.toString());
+  if (opts?.lng != null) params.set("lng", opts.lng.toString());
+  if (opts?.month) params.set("month", opts.month);
+  if (opts?.include_events) params.set("include_events", "true");
+  const q = params.toString() ? `?${params.toString()}` : "";
   return api.get<SafetyVerdict>(
     `/api/destination-intelligence/safety/${encodeURIComponent(countrySlug)}${q}`
   );

@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import WorkspacesPage from '../page';
+
+const mockRouterPush = vi.fn();
+let mockSearchParams = new URLSearchParams();
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockRouterPush }),
+  useSearchParams: () => mockSearchParams,
+}));
 
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
@@ -20,6 +28,7 @@ import { useTrips } from '@/hooks/useTrips';
 describe('WorkspacesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
     vi.mocked(useTrips).mockReturnValue({
       data: [],
       total: 0,
@@ -89,7 +98,7 @@ describe('WorkspacesPage', () => {
     expect(within(tripCard as HTMLElement).getByText(/Add origin/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('In planning')).toBeInTheDocument();
     // FND-0402: trip purpose joined the required set — gate copy lists it.
-    expect(within(tripCard as HTMLElement).getByText('Next: confirm budget range, origin city, and trip purpose before building options.')).toBeInTheDocument();
+    expect(within(tripCard as HTMLElement).getByText('Confirm budget range, origin city, and trip purpose before building options.')).toBeInTheDocument();
     expect(screen.getByText(/4B9E/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('Waiting on customer')).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).queryByText('In Progress')).not.toBeInTheDocument();
@@ -176,5 +185,61 @@ describe('WorkspacesPage', () => {
 
     expect(screen.getByText(/Showing 1 grouped cards from 2 trips\./i)).toBeInTheDocument();
     expect(screen.getByText(/2 matching trips/i)).toBeInTheDocument();
+  });
+
+  it('displays SSOT workspace total, status counts, and forwards search, status, and page filters', () => {
+    vi.mocked(useTrips).mockReturnValue({
+      data: [
+        {
+          id: 'trip_p1',
+          destination: 'Paris',
+          type: 'Honeymoon',
+          state: 'red',
+          age: 'Today',
+          party: 2,
+          dateWindow: 'July 2026',
+          origin: 'Delhi',
+          budget: '₹4L',
+          status: 'blocked',
+          rawInput: { raw_note: 'Paris trip' },
+          createdAt: '2026-05-01T10:00:00Z',
+          updatedAt: '2026-05-01T10:00:00Z',
+        },
+      ],
+      total: 44274,
+      statusCounts: {
+        assigned: 44100,
+        in_progress: 120,
+        waiting_customer: 49,
+        blocked: 5,
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<WorkspacesPage />);
+
+    expect(screen.getByText(/44,274 in planning/i)).toBeInTheDocument();
+    const blockedBtn = screen.getByRole('button', { name: /Blocked \(5\)/i });
+    fireEvent.click(blockedBtn);
+    expect(mockRouterPush).toHaveBeenCalledWith('?status=blocked');
+
+    const nextBtn = screen.getByRole('button', { name: /Next/i });
+    fireEvent.click(nextBtn);
+    expect(mockRouterPush).toHaveBeenCalledWith('?page=2');
+
+    // Also verify URL-driven status/page params forward straight to useTrips
+    mockSearchParams = new URLSearchParams('status=blocked&page=2&q=Paris');
+    render(<WorkspacesPage />);
+    expect(vi.mocked(useTrips)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        view: 'workspace',
+        status: 'blocked',
+        q: 'Paris',
+        limit: 24,
+        offset: 24,
+      }),
+    );
   });
 });

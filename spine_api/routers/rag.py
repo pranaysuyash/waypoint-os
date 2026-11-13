@@ -111,6 +111,19 @@ def list_documents(
     return {"items": rag.store.list_documents(agency.id), "total": None}
 
 
+@router.delete("/documents/{document_id}")
+def delete_document(
+    document_id: str,
+    agency: Agency = Depends(get_current_agency),
+    rag: RAGService = Depends(get_rag_service),
+):
+    """Delete an indexed document and its chunks for the current agency."""
+    deleted = rag.store.delete_chunks_by_document(document_id=document_id, agency_id=agency.id)
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found")
+    return {"status": "deleted", "document_id": document_id, "chunks_deleted": deleted}
+
+
 @limiter.limit("60/minute")
 @router.post("/query")
 def query_rag(

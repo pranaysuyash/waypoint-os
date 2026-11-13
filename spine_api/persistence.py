@@ -27,7 +27,7 @@ import concurrent.futures
 from contextlib import asynccontextmanager, contextmanager
 import re
 
-from sqlalchemy import select, text as sa_text
+from sqlalchemy import Text, and_, case, cast, exists, func, or_, select, text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from spine_api.core.database import DATABASE_URL
@@ -448,6 +448,181 @@ def file_lock(filepath: Path, timeout_seconds: float = 30.0):
             pass
 
 
+def _trip_short_ref(trip_id: str) -> str:
+    cleaned = trip_id.strip()
+    if cleaned.lower().startswith("trip_"):
+        cleaned = cleaned[5:]
+    tail = cleaned.split("_")[-1].strip() or cleaned
+    return tail[:4].lower()
+
+
+def _extract_slot_text(container: Any, key: str) -> str:
+    if not isinstance(container, dict):
+        return ""
+    val = container.get(key)
+    if isinstance(val, dict):
+        inner = val.get("value")
+        return str(inner).strip() if inner is not None else ""
+    return str(val).strip() if val is not None else ""
+
+
+def _trip_search_matches(trip: dict, q: Optional[str]) -> bool:
+    """Case-insensitive substring search over operator-visible trip metadata."""
+    term = (q or "").strip().lower()
+    if not term:
+        return True
+    trip_id = str(trip.get("id") or "")
+    extracted_val = trip.get("extracted")
+    extracted: dict = extracted_val if isinstance(extracted_val, dict) else {}
+    facts_val = extracted.get("facts")
+    facts: dict = facts_val if isinstance(facts_val, dict) else {}
+    raw_input_val = trip.get("raw_input")
+    raw_input: dict = raw_input_val if isinstance(raw_input_val, dict) else {}
+    strategy_val = trip.get("strategy")
+    strategy: dict = strategy_val if isinstance(strategy_val, dict) else {}
+    rec_val = strategy.get("recommended_option")
+    rec: dict = rec_val if isinstance(rec_val, dict) else {}
+    haystacks = [
+        trip_id,
+        _trip_short_ref(trip_id),
+        str(trip.get("destination") or ""),
+        str(trip.get("origin") or ""),
+        str(trip.get("status") or ""),
+        str(trip.get("stage") or ""),
+        str(trip.get("lead_source") or ""),
+        _extract_slot_text(facts, "destination"),
+        _extract_slot_text(facts, "destination_country"),
+        _extract_slot_text(facts, "origin"),
+        _extract_slot_text(facts, "origin_city"),
+        _extract_slot_text(facts, "contact_name"),
+        _extract_slot_text(facts, "customer_name"),
+        _extract_slot_text(facts, "trip_purpose"),
+        _extract_slot_text(facts, "date_window"),
+        _extract_slot_text(extracted, "destination"),
+        _extract_slot_text(extracted, "origin"),
+        _extract_slot_text(extracted, "contact_name"),
+        _extract_slot_text(extracted, "customer_name"),
+        str(raw_input.get("raw_note") or ""),
+        str(raw_input.get("owner_note") or ""),
+        str(raw_input.get("fixture_id") or ""),
+        str(rec.get("name") or ""),
+        str(rec.get("summary") or ""),
+    ]
+    return any(term in text.lower() for text in haystacks if text)
+
+
+def _quote_scope_rank(trip: dict) -> int:
+    """Return 2 for priced quote options, 1 for unpriced strategy/budget data, 0 otherwise."""
+    strategy = trip.get("strategy")
+    if isinstance(strategy, dict):
+        rec = strategy.get("recommended_option")
+        if isinstance(rec, dict) and rec:
+            cost = rec.get("cost")
+            try:
+                if cost is not None and float(cost) > 0:
+                    return 2
+            except (TypeError, ValueError):
+                pass
+            return 1
+    decision = trip.get("decision")
+    if isinstance(decision, dict):
+        bb = decision.get("budget_breakdown")
+        if isinstance(bb, dict) and bb:
+            return 1
+    if trip.get("status") in ("ready_to_quote", "ready_to_book"):
+        return 1
+    return 0
+
+
+def _has_booking_dossier_payload(payload: Any) -> bool:
+    if not isinstance(payload, dict) or payload.get("__unreadable"):
+        return False
+    travelers = payload.get("travelers")
+    if isinstance(travelers, list) and len(travelers) > 0:
+        return True
+    payment = payload.get("payment_tracking")
+    if isinstance(payment, dict) and any(
+        payment.get(k) not in (None, "", 0, False)
+        for k in ("agreed_amount", "amount_paid", "balance_due", "payment_status", "payment_reference", "currency")
+    ):
+        return True
+    payer = payload.get("payer")
+    if isinstance(payer, dict) and any(payer.get(k) for k in ("name", "email", "phone")):
+        return True
+    if payload.get("special_requirements") or payload.get("booking_notes"):
+        return True
+    return False
+
+
+def _booking_dossier_rank(
+    trip: dict,
+    booking_data: Any = None,
+    pending_booking_data: Any = None,
+    has_collection_token: bool = False,
+) -> int:
+    """Rank trips for bookings discovery: 3=payment+travelers, 2=dossier/pending, 1=stage/link, 0=none."""
+    bd_ok = _has_booking_dossier_payload(booking_data)
+    pbd_ok = _has_booking_dossier_payload(pending_booking_data)
+    has_payment = bool(isinstance(booking_data, dict) and isinstance(booking_data.get("payment_tracking"), dict) and booking_data.get("payment_tracking"))
+    has_travelers = bool(isinstance(booking_data, dict) and isinstance(booking_data.get("travelers"), list) and len(booking_data["travelers"]) > 0)
+    if has_payment and has_travelers:
+        return 3
+    if bd_ok or pbd_ok:
+        return 2
+    if (
+        has_collection_token
+        or trip.get("stage") in ("booking", "booked")
+        or trip.get("status") in ("ready_to_book", "completed")
+        or bool(trip.get("booking_data_source"))
+    ):
+        return 1
+    return 0
+
+
+def _documents_scope_rank(trip: dict, has_documents: bool = False) -> int:
+    """Rank trips for documents triage: 2=uploaded documents present, 1=upload-ready stage, 0=none."""
+    if has_documents:
+        return 2
+    if trip.get("stage") in ("proposal", "booking", "booked") or trip.get("status") in ("ready_to_book", "completed"):
+        return 1
+    return 0
+
+
+def _suppliers_scope_rank(trip: dict) -> int:
+    """Rank trips for supplier intelligence/contract context."""
+    if trip.get("supplier_intelligence_snapshot") or trip.get("supplier_risk_level"):
+        return 2
+    if (
+        trip.get("stage") in ("shortlist", "proposal", "booking", "booked")
+        or trip.get("status") in ("ready_to_quote", "ready_to_book", "completed")
+    ):
+        return 1
+    return 0
+
+
+def _trip_matches_scope(
+    trip: dict,
+    scope: Optional[str],
+    booking_data: Any = None,
+    pending_booking_data: Any = None,
+    has_collection_token: bool = False,
+    has_documents: bool = False,
+) -> bool:
+    if not scope or scope == "all":
+        return True
+    if scope == "quotes":
+        return _quote_scope_rank(trip) > 0
+    if scope == "bookings":
+        bd = booking_data if booking_data is not None else trip.get("booking_data")
+        pbd = pending_booking_data if pending_booking_data is not None else trip.get("pending_booking_data")
+        return _booking_dossier_rank(trip, bd, pbd, has_collection_token=has_collection_token) > 0
+    if scope == "documents":
+        return _documents_scope_rank(trip, has_documents=has_documents) > 0
+    if scope == "suppliers":
+        return _suppliers_scope_rank(trip) > 0
+    return True
+
+
 class FileTripStore:
     """File-based trip storage using JSON."""
     _lock = threading.Lock()
@@ -556,46 +731,92 @@ class FileTripStore:
         return None
 
     @staticmethod
-    def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
-        """List trips, optionally filtered by status and/or agency.
+    def list_trips(
+        status: Optional[str] = None,
+        limit: int = 100,
+        agency_id: Optional[str] = None,
+        offset: int = 0,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> list:
+        """List trips, optionally filtered by status, search query, scope, and/or agency.
 
         status accepts a single status (e.g. 'new') or a comma-separated list
         (e.g. 'new,incomplete,needs_followup') for inbox-style multi-status filters.
 
         `offset` is applied in-process so that paginating callers behave
-        identically on the file and SQL backends. The file store previously
-        ignored offset, which made every paginated scan loop forever (R-03).
+        identically on the file and SQL backends.
         """
         allowed_statuses = (
-            set(status.split(",")) if status else None
+            {s.strip() for s in status.split(",") if s.strip()} if status else None
         )
-        trips = []
-        # Collect through the end of the requested window so it can be sliced.
+        trips: list[tuple[int, dict]] = []
+        needs_full_scan = scope in ("quotes", "bookings", "documents", "suppliers")
         wanted = offset + limit
 
         for filepath in sorted(TRIPS_DIR.glob("trip_*.json"), reverse=True):
             try:
                 with open(filepath) as f:
                     trip = json.load(f)
-                    
-                # Filter by agency_id if provided
+
                 if agency_id and trip.get("agency_id") != agency_id:
                     continue
-                
-                if allowed_statuses is None or trip.get("status") in allowed_statuses:
-                    trips.append(trip)
-                if len(trips) >= wanted:
+                if allowed_statuses is not None and trip.get("status") not in allowed_statuses:
+                    continue
+                if not _trip_search_matches(trip, q):
+                    continue
+                if not _trip_matches_scope(trip, scope):
+                    continue
+
+                rank = 0
+                if scope == "quotes":
+                    rank = _quote_scope_rank(trip)
+                elif scope == "bookings":
+                    rank = _booking_dossier_rank(
+                        trip,
+                        trip.get("booking_data"),
+                        trip.get("pending_booking_data"),
+                    )
+                elif scope == "documents":
+                    rank = _documents_scope_rank(trip)
+                elif scope == "suppliers":
+                    rank = _suppliers_scope_rank(trip)
+                trips.append((rank, trip))
+                if not needs_full_scan and len(trips) >= wanted:
                     break
             except (OSError, ValueError):
                 continue
-        return trips[offset:offset + limit]
+
+        if needs_full_scan:
+            trips.sort(
+                key=lambda item: (item[0], str(item[1].get("updated_at") or "")),
+                reverse=True,
+            )
+        return [
+            {k: v for k, v in item[1].items() if k not in ("booking_data", "pending_booking_data")}
+            for item in trips[offset:offset + limit]
+        ]
 
     @staticmethod
-    def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
-        return sum(FileTripStore.count_trips_by_status(status=status, agency_id=agency_id).values())
+    def count_trips(
+        status: Optional[str] = None,
+        agency_id: Optional[str] = None,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> int:
+        return sum(
+            FileTripStore.count_trips_by_status(
+                status=status, agency_id=agency_id, q=q, scope=scope
+            ).values()
+        )
 
     @staticmethod
-    def count_trips_by_status(status: Optional[str] = None, agency_id: Optional[str] = None) -> dict[str, int]:
+    def count_trips_by_status(
+        status: Optional[str] = None,
+        agency_id: Optional[str] = None,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> dict[str, int]:
         allowed_statuses = (
             {s.strip() for s in status.split(",") if s.strip()} if status else None
         )
@@ -608,6 +829,10 @@ class FileTripStore:
                     continue
                 trip_status = trip.get("status")
                 if allowed_statuses is not None and trip_status not in allowed_statuses:
+                    continue
+                if not _trip_search_matches(trip, q):
+                    continue
+                if not _trip_matches_scope(trip, scope):
                     continue
                 if trip_status:
                     counts[trip_status] = counts.get(trip_status, 0) + 1
@@ -1231,6 +1456,7 @@ class SQLTripStore:
                     )
                 session.add(Trip(**model_data))
             await session.commit()
+        _bump_trip_write_version()
         return trip_id
 
     @staticmethod
@@ -1312,33 +1538,284 @@ class SQLTripStore:
             return [SQLTripStore._to_summary_dict(row) for row in result.all()]
 
     @staticmethod
-    async def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
-        """List trips, optionally filtered by status and/or agency.
+    def _is_postgresql_session(session: Any) -> bool:
+        bind = getattr(session, "bind", None)
+        return getattr(getattr(bind, "dialect", None), "name", "") == "postgresql"
 
-        status accepts single status or comma-separated statuses (e.g., 'new,incomplete').
+    @staticmethod
+    def _apply_sql_filters(
+        query: Any,
+        session: Any,
+        *,
+        status: Optional[str] = None,
+        agency_id: Optional[str] = None,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> Any:
+        if status:
+            statuses = [s.strip() for s in status.split(",") if s.strip()]
+            if len(statuses) == 1:
+                query = query.where(Trip.status == statuses[0])
+            elif statuses:
+                query = query.where(Trip.status.in_(statuses))
+        if agency_id:
+            query = query.where(Trip.agency_id == agency_id)
 
-        When an explicit agency_id is supplied the RLS context is set from that
-        argument, so the call also works when the auth ContextVar is unset
-        (background tasks, sync facade calls, tests). It previously always used
-        the ContextVar session and silently returned an empty list in exactly
-        those contexts (R-03).
-        """
+        term = (q or "").strip()
+        if term:
+            pattern = f"%{term}%"
+            query = query.where(
+                or_(
+                    Trip.id.ilike(pattern),
+                    Trip.status.ilike(pattern),
+                    Trip.stage.ilike(pattern),
+                    cast(Trip.extracted, Text).ilike(pattern),
+                    cast(Trip.raw_input, Text).ilike(pattern),
+                    cast(Trip.strategy, Text).ilike(pattern),
+                )
+            )
+
+        if scope == "quotes":
+            if SQLTripStore._is_postgresql_session(session):
+                query = query.where(
+                    or_(
+                        Trip.status.in_(("ready_to_quote", "ready_to_book")),
+                        sa_text("json_typeof(trips.strategy->'recommended_option') = 'object'"),
+                        sa_text("json_typeof(trips.decision->'budget_breakdown') = 'object'"),
+                    )
+                )
+            else:
+                query = query.where(
+                    or_(
+                        Trip.status.in_(("ready_to_quote", "ready_to_book")),
+                        Trip.strategy.isnot(None),
+                        Trip.decision.isnot(None),
+                    )
+                )
+        elif scope == "bookings":
+            from spine_api.models.tenant import BookingCollectionToken
+
+            token_exists = exists(
+                select(BookingCollectionToken.id).where(
+                    BookingCollectionToken.trip_id == Trip.id,
+                    BookingCollectionToken.agency_id == Trip.agency_id,
+                )
+            )
+            query = query.where(
+                or_(
+                    Trip.stage.in_(("booking", "booked")),
+                    Trip.status.in_(("ready_to_book", "completed")),
+                    Trip.booking_data_source.isnot(None),
+                    token_exists,
+                    and_(
+                        Trip.pending_booking_data.isnot(None),
+                        cast(Trip.pending_booking_data, Text) != "null",
+                    ),
+                    and_(
+                        Trip.booking_data.isnot(None),
+                        cast(Trip.booking_data, Text) != "null",
+                        or_(
+                            func.length(cast(Trip.booking_data, Text)) > 180,
+                            ~cast(Trip.booking_data, Text).contains("__encrypted_blob"),
+                        ),
+                    ),
+                )
+            )
+        elif scope == "documents":
+            from spine_api.models.tenant import BookingDocument
+
+            doc_exists = exists(
+                select(BookingDocument.id).where(
+                    BookingDocument.trip_id == Trip.id,
+                    BookingDocument.agency_id == Trip.agency_id,
+                    BookingDocument.deleted_at.is_(None),
+                )
+            )
+            query = query.where(
+                or_(
+                    doc_exists,
+                    Trip.stage.in_(("proposal", "booking", "booked")),
+                    Trip.status.in_(("ready_to_book", "completed")),
+                )
+            )
+        elif scope == "suppliers":
+            query = query.where(
+                or_(
+                    cast(Trip.analytics, Text).contains("supplier_intelligence_snapshot"),
+                    cast(Trip.analytics, Text).contains("supplier_risk_level"),
+                    Trip.stage.in_(("shortlist", "proposal", "booking", "booked")),
+                    Trip.status.in_(("ready_to_quote", "ready_to_book", "completed")),
+                )
+            )
+        return query
+
+    @staticmethod
+    async def list_trips(
+        status: Optional[str] = None,
+        limit: int = 100,
+        agency_id: Optional[str] = None,
+        offset: int = 0,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> list:
+        """List trips, optionally filtered by status, search query, scope, and/or agency."""
         session_ctx = (
             SQLTripStore._rls_session_for_agency(agency_id)
             if agency_id
             else SQLTripStore._rls_session()
         )
         async with session_ctx as session:
-            query = select(Trip).order_by(Trip.created_at.desc())
-            if status:
-                statuses = [s.strip() for s in status.split(",") if s.strip()]
-                if len(statuses) == 1:
-                    query = query.where(Trip.status == statuses[0])
-                else:
-                    query = query.where(Trip.status.in_(statuses))
-            if agency_id:
-                query = query.where(Trip.agency_id == agency_id)
-            query = query.offset(offset).limit(limit)
+            is_pg = SQLTripStore._is_postgresql_session(session)
+            query = SQLTripStore._apply_sql_filters(
+                select(Trip),
+                session,
+                status=status,
+                agency_id=agency_id,
+                q=q,
+                scope=scope,
+            )
+
+            if scope == "quotes":
+                if is_pg:
+                    query = query.order_by(
+                        sa_text(
+                            "CASE WHEN trips.strategy->'recommended_option'->>'cost' IS NOT NULL THEN 0 ELSE 1 END"
+                        ),
+                        Trip.created_at.desc(),
+                    ).offset(offset).limit(limit)
+                    result = await session.execute(query)
+                    return [SQLTripStore._to_dict(trip) for trip in result.scalars().all()]
+                # SQLite fallback: filter & rank in Python for exact JSON dict checks
+                result = await session.execute(query.order_by(Trip.created_at.desc()))
+                ranked = []
+                for trip_obj in result.scalars().all():
+                    d = SQLTripStore._to_dict(trip_obj)
+                    r = _quote_scope_rank(d)
+                    if r > 0 and _trip_search_matches(d, q):
+                        ranked.append((r, d))
+                ranked.sort(key=lambda item: item[0], reverse=True)
+                return [item[1] for item in ranked[offset:offset + limit]]
+
+            if scope == "bookings":
+                from spine_api.models.tenant import BookingCollectionToken
+
+                candidate_order = (
+                    case(
+                        (
+                            and_(
+                                Trip.booking_data.isnot(None),
+                                cast(Trip.booking_data, Text) != "null",
+                                func.length(cast(Trip.booking_data, Text)) >= 800,
+                            ),
+                            0,
+                        ),
+                        (
+                            and_(
+                                Trip.pending_booking_data.isnot(None),
+                                cast(Trip.pending_booking_data, Text) != "null",
+                            ),
+                            1,
+                        ),
+                        else_=2,
+                    ),
+                    func.coalesce(func.length(cast(Trip.booking_data, Text)), 0).desc(),
+                    Trip.created_at.desc(),
+                )
+                fetch_cap = max((offset + limit) * 3, 120)
+                result = await session.execute(query.order_by(*candidate_order).limit(fetch_cap))
+                candidate_objs = list(result.scalars().all())
+                token_trip_ids: set[str] = set()
+                if candidate_objs:
+                    cand_ids = [obj.id for obj in candidate_objs]
+                    tok_res = await session.execute(
+                        select(BookingCollectionToken.trip_id).where(
+                            BookingCollectionToken.trip_id.in_(cand_ids)
+                        )
+                    )
+                    token_trip_ids = {str(tid) for tid in tok_res.scalars().all()}
+
+                ranked_bookings: list[tuple[int, dict]] = []
+                for trip_obj in candidate_objs:
+                    bd = (
+                        SQLTripStore._decrypt_field_from_storage("booking_data", trip_obj.booking_data)
+                        if trip_obj.booking_data is not None
+                        else None
+                    )
+                    pbd = (
+                        SQLTripStore._decrypt_field_from_storage("pending_booking_data", trip_obj.pending_booking_data)
+                        if trip_obj.pending_booking_data is not None
+                        else None
+                    )
+                    trip_dict = SQLTripStore._to_dict(trip_obj)
+                    tier = _booking_dossier_rank(
+                        trip_dict,
+                        booking_data=bd,
+                        pending_booking_data=pbd,
+                        has_collection_token=trip_obj.id in token_trip_ids,
+                    )
+                    if tier > 0 and _trip_search_matches(trip_dict, q):
+                        ranked_bookings.append((tier, trip_dict))
+
+                ranked_bookings.sort(key=lambda item: item[0], reverse=True)
+                return [item[1] for item in ranked_bookings[offset:offset + limit]]
+
+            if scope == "documents":
+                from spine_api.models.tenant import BookingDocument
+
+                doc_exists = exists(
+                    select(BookingDocument.id).where(
+                        BookingDocument.trip_id == Trip.id,
+                        BookingDocument.agency_id == Trip.agency_id,
+                        BookingDocument.deleted_at.is_(None),
+                    )
+                )
+                doc_order = (
+                    case((doc_exists, 0), else_=1),
+                    case(
+                        (
+                            or_(
+                                Trip.strategy.isnot(None),
+                                func.length(cast(Trip.extracted, Text)) > 10,
+                            ),
+                            0,
+                        ),
+                        else_=1,
+                    ),
+                    case((Trip.stage.in_(("booking", "booked")), 0), (Trip.stage == "proposal", 1), else_=2),
+                    Trip.created_at.desc(),
+                )
+                result = await session.execute(query.order_by(*doc_order).offset(offset).limit(limit))
+                return [SQLTripStore._to_dict(trip) for trip in result.scalars().all()]
+
+            if scope == "suppliers":
+                sup_order = (
+                    case(
+                        (
+                            or_(
+                                cast(Trip.analytics, Text).contains("supplier_intelligence_snapshot"),
+                                cast(Trip.analytics, Text).contains("supplier_risk_level"),
+                            ),
+                            0,
+                        ),
+                        else_=1,
+                    ),
+                    case(
+                        (
+                            or_(
+                                Trip.strategy.isnot(None),
+                                func.length(cast(Trip.extracted, Text)) > 10,
+                            ),
+                            0,
+                        ),
+                        else_=1,
+                    ),
+                    case((Trip.stage.in_(("booking", "booked", "proposal")), 0), else_=1),
+                    Trip.created_at.desc(),
+                )
+                result = await session.execute(query.order_by(*sup_order).offset(offset).limit(limit))
+                return [SQLTripStore._to_dict(trip) for trip in result.scalars().all()]
+
+            query = query.order_by(Trip.created_at.desc()).offset(offset).limit(limit)
             result = await session.execute(query)
             return [SQLTripStore._to_dict(trip) for trip in result.scalars().all()]
 
@@ -1387,7 +1864,12 @@ class SQLTripStore:
             return [SQLTripStore._to_summary_dict(row) for row in result.all()]
 
     @staticmethod
-    async def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
+    async def count_trips(
+        status: Optional[str] = None,
+        agency_id: Optional[str] = None,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> int:
         """Count trips matching filter (without limit)."""
         session_ctx = (
             SQLTripStore._rls_session_for_agency(agency_id)
@@ -1395,21 +1877,39 @@ class SQLTripStore:
             else SQLTripStore._rls_session()
         )
         async with session_ctx as session:
-            from sqlalchemy import func
-            query = select(func.count()).select_from(Trip)
-            if status:
-                statuses = [s.strip() for s in status.split(",") if s.strip()]
-                if len(statuses) == 1:
-                    query = query.where(Trip.status == statuses[0])
-                else:
-                    query = query.where(Trip.status.in_(statuses))
-            if agency_id:
-                query = query.where(Trip.agency_id == agency_id)
+            if scope == "quotes" and not SQLTripStore._is_postgresql_session(session):
+                base_q = SQLTripStore._apply_sql_filters(
+                    select(Trip),
+                    session,
+                    status=status,
+                    agency_id=agency_id,
+                    q=q,
+                    scope=scope,
+                )
+                result = await session.execute(base_q)
+                return sum(
+                    1
+                    for trip_obj in result.scalars().all()
+                    if _quote_scope_rank(SQLTripStore._to_dict(trip_obj)) > 0
+                )
+            query = SQLTripStore._apply_sql_filters(
+                select(func.count()).select_from(Trip),
+                session,
+                status=status,
+                agency_id=agency_id,
+                q=q,
+                scope=scope,
+            )
             result = await session.execute(query)
-            return result.scalar_one()
+            return int(result.scalar_one())
 
     @staticmethod
-    async def count_trips_by_status(status: Optional[str] = None, agency_id: Optional[str] = None) -> dict[str, int]:
+    async def count_trips_by_status(
+        status: Optional[str] = None,
+        agency_id: Optional[str] = None,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> dict[str, int]:
         """Aggregate trip counts per status in SQL with zero row truncation."""
         session_ctx = (
             SQLTripStore._rls_session_for_agency(agency_id)
@@ -1417,16 +1917,31 @@ class SQLTripStore:
             else SQLTripStore._rls_session()
         )
         async with session_ctx as session:
-            from sqlalchemy import func
-            query = select(Trip.status, func.count()).group_by(Trip.status)
-            if status:
-                statuses = [s.strip() for s in status.split(",") if s.strip()]
-                if len(statuses) == 1:
-                    query = query.where(Trip.status == statuses[0])
-                else:
-                    query = query.where(Trip.status.in_(statuses))
-            if agency_id:
-                query = query.where(Trip.agency_id == agency_id)
+            if scope == "quotes" and not SQLTripStore._is_postgresql_session(session):
+                base_q = SQLTripStore._apply_sql_filters(
+                    select(Trip),
+                    session,
+                    status=status,
+                    agency_id=agency_id,
+                    q=q,
+                    scope=scope,
+                )
+                result = await session.execute(base_q)
+                counts: dict[str, int] = {}
+                for trip_obj in result.scalars().all():
+                    d = SQLTripStore._to_dict(trip_obj)
+                    if _quote_scope_rank(d) > 0 and d.get("status"):
+                        st = str(d["status"])
+                        counts[st] = counts.get(st, 0) + 1
+                return counts
+            query = SQLTripStore._apply_sql_filters(
+                select(Trip.status, func.count()).group_by(Trip.status),
+                session,
+                status=status,
+                agency_id=agency_id,
+                q=q,
+                scope=scope,
+            )
             result = await session.execute(query)
             return {row[0]: int(row[1]) for row in result.all() if row[0]}
 
@@ -1550,6 +2065,7 @@ class SQLTripStore:
                     setattr(trip_obj, key, value)
             trip_obj.updated_at = datetime.now(timezone.utc)
             await session.commit()
+            _bump_trip_write_version()
             return SQLTripStore._to_dict(trip_obj)
 
     @staticmethod
@@ -1890,6 +2406,7 @@ class SQLTripStore:
         async with SQLTripStore._rls_session_for_agency(agency_id) as session:
             result = await session.execute(sa_text(sql), params)
             await session.commit()
+            _bump_trip_write_version()
             row = result.fetchone()
             if not row:
                 return None
@@ -1908,6 +2425,7 @@ class SQLTripStore:
                 return False
             await session.delete(trip_obj)
             await session.commit()
+            _bump_trip_write_version()
             return True
 
     @staticmethod
@@ -1924,6 +2442,41 @@ class SQLTripStore:
             return SQLTripStore._decrypt_field_from_storage("booking_data", trip_obj.booking_data)
 
     @staticmethod
+    def _build_payment_record_row(row: Any) -> dict[str, Any]:
+        bk_raw = row.booking_data
+        bk = (
+            SQLTripStore._decrypt_field_from_storage("booking_data", bk_raw)
+            if isinstance(bk_raw, dict) and bk_raw
+            else (bk_raw if bk_raw else None)
+        )
+        strategy = getattr(row, "strategy", None)
+        trip_name = ""
+        if isinstance(strategy, dict):
+            rec = strategy.get("recommended_option")
+            if isinstance(rec, dict) and isinstance(rec.get("name"), str):
+                trip_name = rec["name"].strip()
+        dest = None
+        ext = getattr(row, "extracted", None)
+        if isinstance(ext, dict):
+            cand = ext.get("destination_raw") or ext.get("destination")
+            if isinstance(cand, str) and cand.strip() and not looks_like_fernet_token(cand):
+                dest = cand.strip()
+            elif isinstance(ext.get("destination_candidates"), list) and ext["destination_candidates"]:
+                first = ext["destination_candidates"][0]
+                if isinstance(first, str) and first.strip() and not looks_like_fernet_token(first):
+                    dest = first.strip()
+        record: dict[str, Any] = {
+            "id": row.id,
+            "status": row.status,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            "destination": dest,
+            "booking_data": bk,
+        }
+        if trip_name:
+            record["trip_name"] = trip_name
+        return record
+
+    @staticmethod
     async def list_trip_payment_records_for_agency(agency_id: str, limit: int = 100, offset: int = 0) -> list[dict]:
         """List agency trips with payment payloads for read-model assembly."""
         async with SQLTripStore._rls_session_for_agency(agency_id) as session:
@@ -1934,6 +2487,8 @@ class SQLTripStore:
                     Trip.id,
                     Trip.status,
                     Trip.updated_at,
+                    Trip.strategy,
+                    Trip.extracted,
                     Trip.booking_data,
                 )
                 .where(Trip.agency_id == agency_id)
@@ -1942,17 +2497,28 @@ class SQLTripStore:
                 .limit(limit)
             )
             result = await session.execute(query)
-            records: list[dict] = []
-            for row in result.all():
-                records.append(
-                    {
-                        "id": row.id,
-                        "status": row.status,
-                        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-                        "booking_data": SQLTripStore._decrypt_field_from_storage("booking_data", row.booking_data),
-                    }
+            return [SQLTripStore._build_payment_record_row(row) for row in result.all()]
+
+    @staticmethod
+    async def load_all_trip_payment_records_for_agency(agency_id: str) -> list[dict]:
+        """Fetch all agency payment records in one SQL roundtrip without 1k-batch hops."""
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
+            from sqlalchemy import select
+
+            query = (
+                select(
+                    Trip.id,
+                    Trip.status,
+                    Trip.updated_at,
+                    Trip.strategy,
+                    Trip.extracted,
+                    Trip.booking_data,
                 )
-            return records
+                .where(Trip.agency_id == agency_id)
+                .order_by(Trip.created_at.desc())
+            )
+            result = await session.execute(query)
+            return [SQLTripStore._build_payment_record_row(row) for row in result.all()]
 
     @staticmethod
     async def get_pending_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
@@ -2078,6 +2644,17 @@ def _get_sync_async_bridge() -> _SyncAsyncBridge:
             if _SYNC_ASYNC_BRIDGE is None or _SYNC_ASYNC_BRIDGE.loop.is_closed():
                 _SYNC_ASYNC_BRIDGE = _SyncAsyncBridge()
     return _SYNC_ASYNC_BRIDGE
+
+
+_TRIP_WRITE_VERSION = 0
+_TRIP_WRITE_LOCK = threading.Lock()
+
+
+def _bump_trip_write_version() -> int:
+    global _TRIP_WRITE_VERSION
+    with _TRIP_WRITE_LOCK:
+        _TRIP_WRITE_VERSION += 1
+        return _TRIP_WRITE_VERSION
 
 
 class TripStore:
@@ -2401,13 +2978,24 @@ class TripStore:
         return await SQLTripStore._get_trip_internal(trip_id)
 
     @staticmethod
-    def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
+    def list_trips(
+        status: Optional[str] = None,
+        limit: int = 100,
+        agency_id: Optional[str] = None,
+        offset: int = 0,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> list:
         backend = TripStore._backend()
         if backend is FileTripStore:
             return FileTripStore.list_trips(
-                status=status, limit=limit, agency_id=agency_id, offset=offset
+                status=status, limit=limit, agency_id=agency_id, offset=offset, q=q, scope=scope
             )
-        return _run_async_blocking(SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset))
+        return _run_async_blocking(
+            SQLTripStore.list_trips(
+                status=status, limit=limit, agency_id=agency_id, offset=offset, q=q, scope=scope
+            )
+        )
 
     @staticmethod
     def list_trip_summaries(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
@@ -2473,30 +3061,51 @@ class TripStore:
         )
 
     @staticmethod
-    async def alist_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
+    async def alist_trips(
+        status: Optional[str] = None,
+        limit: int = 100,
+        agency_id: Optional[str] = None,
+        offset: int = 0,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> list:
         backend = TripStore._backend()
         if backend is FileTripStore:
-            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset)
-        return await SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset)
-
-    @staticmethod
-    def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
-        """Count trips matching filter (without limit)."""
-        backend = TripStore._backend()
-        if backend is FileTripStore:
-            return FileTripStore.count_trips(status=status, agency_id=agency_id)
-        return _run_async_blocking(
-            SQLTripStore.count_trips(status=status, agency_id=agency_id)
+            return FileTripStore.list_trips(
+                status=status, limit=limit, agency_id=agency_id, offset=offset, q=q, scope=scope
+            )
+        return await SQLTripStore.list_trips(
+            status=status, limit=limit, agency_id=agency_id, offset=offset, q=q, scope=scope
         )
 
     @staticmethod
-    def count_trips_by_status(status: Optional[str] = None, agency_id: Optional[str] = None) -> dict[str, int]:
+    def count_trips(
+        status: Optional[str] = None,
+        agency_id: Optional[str] = None,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> int:
+        """Count trips matching filter (without limit)."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.count_trips(status=status, agency_id=agency_id, q=q, scope=scope)
+        return _run_async_blocking(
+            SQLTripStore.count_trips(status=status, agency_id=agency_id, q=q, scope=scope)
+        )
+
+    @staticmethod
+    def count_trips_by_status(
+        status: Optional[str] = None,
+        agency_id: Optional[str] = None,
+        q: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> dict[str, int]:
         """Count trips grouped by status with zero limit truncation."""
         backend = TripStore._backend()
         if backend is FileTripStore:
-            return FileTripStore.count_trips_by_status(status=status, agency_id=agency_id)
+            return FileTripStore.count_trips_by_status(status=status, agency_id=agency_id, q=q, scope=scope)
         return _run_async_blocking(
-            SQLTripStore.count_trips_by_status(status=status, agency_id=agency_id)
+            SQLTripStore.count_trips_by_status(status=status, agency_id=agency_id, q=q, scope=scope)
         )
 
     @staticmethod
@@ -2631,6 +3240,28 @@ class TripStore:
         return _run_async_blocking(
             SQLTripStore.list_trip_payment_records_for_agency(agency_id=agency_id, limit=limit, offset=offset)
         )
+
+    @staticmethod
+    def get_write_version() -> int:
+        return _TRIP_WRITE_VERSION
+
+    @staticmethod
+    def load_all_trip_payment_records_for_agency(agency_id: str) -> list[dict]:
+        """Load all agency payment records in one SQL pass when running against SQLTripStore."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            records: list[dict] = []
+            offset = 0
+            while True:
+                batch = FileTripStore.list_trip_payment_records_for_agency(agency_id, limit=2000, offset=offset)
+                if not batch:
+                    break
+                records.extend(batch)
+                if len(batch) < 2000:
+                    break
+                offset += len(batch)
+            return records
+        return _run_async_blocking(SQLTripStore.load_all_trip_payment_records_for_agency(agency_id=agency_id))
 
     @staticmethod
     def get_pending_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:

@@ -2380,34 +2380,66 @@ async def metrics_endpoint():
 
 
 @app.get("/trips")
-
 async def list_trips(
     status: Optional[str] = None,
-    limit: int = 100,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    q: Optional[str] = None,
+    scope: Optional[Literal["all", "quotes", "bookings", "documents", "suppliers"]] = None,
     agency: Agency = Depends(get_current_agency),
 ):
     """
-    List trips for the current user's agency, optionally filtered by status.
-    
+    List trips for the current user's agency, optionally filtered by status,
+    search query `q`, or product surface `scope`, with pagination.
+
     Test agencies (is_test=True) will automatically get test data seeded
     if no trips exist yet.
     """
     agency_id = agency.id
-    
+
     # Auto-seed for test agencies if no trips exist
     if agency.is_test:
-        existing_trips = await _ts(TripStore.list_trips, agency_id=agency_id)
+        existing_trips = await _ts(TripStore.list_trips, agency_id=agency_id, limit=1)
         if not existing_trips:
             try:
                 seed_count = await _ts(_seed_scenario_for_agency, agency_id)
                 logger.info("Auto-seeded %d test trips for test agency %s", seed_count, agency_id)
             except (OSError, ValueError, KeyError) as e:
                 logger.warning("Failed to auto-seed for test agency: %s", e)
-    
-    trips = await _ts(TripStore.list_trips, status=status, limit=limit, agency_id=agency_id)
-    total = await _ts(TripStore.count_trips, status=status, agency_id=agency_id)
-    status_counts = await _ts(TripStore.count_trips_by_status, status=status, agency_id=agency_id)
-    return {"items": trips, "total": total, "statusCounts": status_counts}
+
+    normalized_scope = None if scope in (None, "all") else scope
+    normalized_q = q.strip() if isinstance(q, str) and q.strip() else None
+
+    trips = await _ts(
+        TripStore.list_trips,
+        status=status,
+        limit=limit,
+        offset=offset,
+        q=normalized_q,
+        scope=normalized_scope,
+        agency_id=agency_id,
+    )
+    total = await _ts(
+        TripStore.count_trips,
+        status=status,
+        q=normalized_q,
+        scope=normalized_scope,
+        agency_id=agency_id,
+    )
+    status_counts = await _ts(
+        TripStore.count_trips_by_status,
+        status=status,
+        q=normalized_q,
+        scope=normalized_scope,
+        agency_id=agency_id,
+    )
+    return {
+        "items": trips,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "statusCounts": status_counts,
+    }
 
 
 @app.get("/stats")
@@ -3237,6 +3269,9 @@ def get_payments_queue(
         "cancelled",
     ]] = Query(None),
     due_bucket: Optional[Literal["none", "overdue", "due_0_3", "due_4_7", "due_8_14"]] = Query(None),
+    configured_only: bool = Query(False),
+    q: Optional[str] = Query(None),
+    sort: Literal["recent", "urgent"] = Query("recent"),
     agency: Agency = Depends(get_current_agency),
 ):
     return build_payment_queue_response_for_agency(
@@ -3247,6 +3282,9 @@ def get_payments_queue(
         payment_status=payment_status,
         refund_status=refund_status,
         due_bucket=due_bucket,
+        configured_only=configured_only,
+        q=q,
+        sort=sort,
     )
 
 

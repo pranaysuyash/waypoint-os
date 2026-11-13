@@ -158,7 +158,7 @@ describe('payments page', () => {
   it('passes filter params to payments queue hook', () => {
     render(<PageClient />);
     expect(mockUsePaymentsQueue).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 25, offset: 0 }),
+      expect.objectContaining({ limit: 25, offset: 0, sort: 'urgent' }),
     );
 
     fireEvent.change(screen.getByLabelText('Queue status'), {
@@ -166,7 +166,26 @@ describe('payments page', () => {
     });
 
     expect(mockUsePaymentsQueue).toHaveBeenLastCalledWith(
+      expect.objectContaining({ queue_status: 'overdue', offset: 0, sort: 'urgent' }),
+    );
+  });
+
+  it('supports interactive KPI filter cards, Hide unconfigured toggle, and Most recent sort', () => {
+    render(<PageClient />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Overdue/i }));
+    expect(mockUsePaymentsQueue).toHaveBeenLastCalledWith(
       expect.objectContaining({ queue_status: 'overdue', offset: 0 }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Hide unconfigured/i }));
+    expect(mockUsePaymentsQueue).toHaveBeenLastCalledWith(
+      expect.objectContaining({ configured_only: true, offset: 0 }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Most recent/i }));
+    expect(mockUsePaymentsQueue).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: 'recent', offset: 0 }),
     );
   });
 });

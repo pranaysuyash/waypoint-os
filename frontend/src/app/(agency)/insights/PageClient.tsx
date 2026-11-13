@@ -293,9 +293,9 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
               <p className='text-ui-sm text-[#e6edf3]'>{cause.cause}</p>
               <p className='text-ui-xs text-[#8b949e]'>Affecting {cause.affectedTrips} trips · {cause.percentage}% of delays</p>
             </div>
-            <button className='text-ui-xs text-[#58a6ff] hover:text-[#79b8ff]'>
+            <span className='text-ui-xs px-2.5 py-1 rounded-md bg-[#58a6ff]/10 text-[#58a6ff] border border-[#58a6ff]/20 shrink-0'>
               {cause.suggestedAction}
-            </button>
+            </span>
           </div>
         ))}
       </div>
@@ -402,11 +402,11 @@ export default function OwnerInsightsPage() {
   } | null>(null);
   const { push } = useRouter();
   
-  const { data: summary, isLoading: isSummaryLoading, error: summaryError } = useInsightsSummary(timeRange);
-  const { data: pipelineMetrics, isLoading: isPipelineLoading, error: pipelineError } = usePipelineMetrics(timeRange);
-  const { data: teamMetrics, isLoading: isTeamLoading, error: teamError } = useTeamMetrics(timeRange);
-  const { data: bottlenecks, isLoading: isBottlenecksLoading, error: bottlenecksError } = useBottleneckAnalysis(timeRange);
-  const { data: revenueData, isLoading: isRevenueLoading, error: revenueError } = useRevenueMetrics(timeRange);
+  const { data: summary, isLoading: isSummaryLoading, error: summaryError, refetch: refetchSummary } = useInsightsSummary(timeRange);
+  const { data: pipelineMetrics, isLoading: isPipelineLoading, error: pipelineError, refetch: refetchPipeline } = usePipelineMetrics(timeRange);
+  const { data: teamMetrics, isLoading: isTeamLoading, error: teamError, refetch: refetchTeam } = useTeamMetrics(timeRange);
+  const { data: bottlenecks, isLoading: isBottlenecksLoading, error: bottlenecksError, refetch: refetchBottlenecks } = useBottleneckAnalysis(timeRange);
+  const { data: revenueData, isLoading: isRevenueLoading, error: revenueError, refetch: refetchRevenue } = useRevenueMetrics(timeRange);
   const { data: inboxStats } = useInboxStats();
   const { data: alertsData, dismiss: dismissAlert } = useOperationalAlerts();
   const {
@@ -423,8 +423,34 @@ export default function OwnerInsightsPage() {
   const safeBottlenecks = bottlenecks ?? [];
   const safeAlerts = alertsData ?? [];
 
-  const isLoading = isSummaryLoading || isPipelineLoading || isTeamLoading || isBottlenecksLoading || isRevenueLoading;
-  const hasError = summaryError || pipelineError || teamError || bottlenecksError || revenueError;
+  const handleExportSnapshot = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      timeRange,
+      canonicalWorkspaceTrips: unifiedState?.canonical_total ?? null,
+      summary,
+      pipelineMetrics: safePipelineMetrics,
+      teamMetrics: safeTeamMetrics,
+      bottlenecks: safeBottlenecks,
+      revenue: revenueData,
+      inboxStats,
+      productBKpis,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `waypoint-insights-${timeRange}-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const maxStageCount = useMemo(
+    () => Math.max(1, ...safePipelineMetrics.map((m) => m.tripCount ?? 0)),
+    [safePipelineMetrics],
+  );
 
   const handleMetricDrillDown = (agentId: string, metric: DrillDownMetric) => {
     const agent = safeTeamMetrics.find((m) => m.userId === agentId);
@@ -459,7 +485,13 @@ export default function OwnerInsightsPage() {
         
         <div className='flex items-center gap-3'>
           <div className='relative'>
+            <label htmlFor='insights-time-range' className='sr-only'>
+              Time range
+            </label>
             <select
+              id='insights-time-range'
+              name='timeRange'
+              aria-label='Time range'
               value={timeRange}
               onChange={(e) => {
                 const v = e.target.value;
@@ -476,7 +508,11 @@ export default function OwnerInsightsPage() {
             <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e] pointer-events-none' />
           </div>
           
-          <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-ui-sm hover:bg-[#21262d] transition-colors'>
+          <button
+            type='button'
+            onClick={handleExportSnapshot}
+            className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-ui-sm hover:bg-[#21262d] transition-colors'
+          >
             <Download className='size-4' /> Export
           </button>
         </div>
@@ -496,54 +532,70 @@ export default function OwnerInsightsPage() {
         showPlatformLink={platformRole === 'super_admin'}
       />
 
-      {isLoading && (
-        <div className="flex flex-col items-center justify-center py-20 bg-[#0f1115] border border-[#1c2128] rounded-xl">
-          <div className="size-10 border-4 border-[#58a6ff] border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-[#8b949e]">Calculating latest dashboard telemetry…</p>
-        </div>
-      )}
-
-      {hasError && (
-        <div className="flex flex-col items-center justify-center py-20 bg-[#f85149]/5 border border-[#f85149]/30 rounded-xl">
-          <AlertTriangle className="size-10 text-[#f85149] mb-4" />
-          <p className="text-[#e6edf3] font-semibold">Failed to fetch live data</p>
-          <p className="text-[#8b949e] text-ui-sm mt-1">Please ensure the backend analytics service is running.</p>
-        </div>
-      )}
-
-      {!isLoading && !hasError && summary && (
-        <>
-
       {/* Summary Stats */}
-      <div className='grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3'>
-        <StatCard
-          title='Total Inquiries'
-          value={unifiedState?.canonical_total?.toString() ?? (summary.totalInquiries ?? 0).toString()}
-          subtext={`${summary.conversionRate}% conversion`}
-          trend='up'
-          icon={TrendingUp}
-        />
-        
-        {/* FND-0402: the assumed-money StatCards (Booked Revenue / GMV /
-            Pipeline / Projected / Near Close) fabricated $0 from absent
-            evidence — replaced by the evidence-backed section below. */}
-
-        <StatCard
-          title='Agent-Resolved Share'
-          value={
-            inboxStats?.agentResolvedShare != null
-              ? `${Math.round(inboxStats.agentResolvedShare * 100)}%`
-              : '—'
-          }
-          subtext={
-            inboxStats?.agentResolvedShare != null
-              ? `${inboxStats.agentResolvedCount}/${inboxStats.resolvedCount} resolved without operator review (${inboxStats.agentResolvedShareBasis})`
-              : 'No resolved trips yet'
-          }
-          trend='neutral'
-          icon={Sparkles}
-        />
-      </div>
+      {isSummaryLoading ? (
+        <div className='flex items-center justify-center py-12 bg-[#0f1115] border border-[#1c2128] rounded-xl'>
+          <div className='size-6 border-2 border-[#58a6ff] border-t-transparent rounded-full animate-spin mr-3' />
+          <p className='text-ui-sm text-[#8b949e]'>Loading summary metrics…</p>
+        </div>
+      ) : summaryError ? (
+        <div className='flex items-center justify-between p-4 bg-[#f85149]/5 border border-[#f85149]/30 rounded-xl'>
+          <div className='flex items-center gap-3'>
+            <AlertTriangle className='size-5 text-[#f85149]' />
+            <p className='text-ui-sm text-[#e6edf3]'>Failed to load summary metrics.</p>
+          </div>
+          <button
+            type='button'
+            onClick={() => void refetchSummary?.()}
+            className='px-3 py-1.5 text-ui-xs bg-[#161b22] border border-[#30363d] rounded-lg text-[#e6edf3] hover:bg-[#21262d]'
+          >
+            Retry
+          </button>
+        </div>
+      ) : summary ? (
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
+          <StatCard
+            title='Total Inquiries'
+            value={(summary.totalInquiries ?? 0).toLocaleString()}
+            subtext={`${summary.conversionRate ?? 0}% conversion (${timeRange})`}
+            trend='up'
+            icon={TrendingUp}
+          />
+          <StatCard
+            title='All-Time Workspace Trips'
+            value={unifiedState?.canonical_total != null ? unifiedState.canonical_total.toLocaleString() : '—'}
+            subtext='Canonical agency corpus'
+            trend='neutral'
+            icon={Users}
+          />
+          <StatCard
+            title='Agent-Resolved Share'
+            value={
+              inboxStats?.agentResolvedShare != null
+                ? `${Math.round(inboxStats.agentResolvedShare * 100)}%`
+                : '—'
+            }
+            subtext={
+              inboxStats?.agentResolvedShare != null
+                ? `${inboxStats.agentResolvedCount}/${inboxStats.resolvedCount} resolved without operator review (${inboxStats.agentResolvedShareBasis})`
+                : 'No resolved trips yet'
+            }
+            trend='neutral'
+            icon={Sparkles}
+          />
+          <StatCard
+            title='Open Bottlenecks'
+            value={isBottlenecksLoading ? '…' : safeBottlenecks.length.toString()}
+            subtext={
+              bottlenecksError
+                ? 'Bottleneck check failed'
+                : `${safeBottlenecks.filter((b) => b.severity === 'high' || b.severity === 'critical').length} high/critical`
+            }
+            trend={safeBottlenecks.length > 0 ? 'down' : 'neutral'}
+            icon={AlertTriangle}
+          />
+        </div>
+      ) : null}
 
       <CommercialEvidence commercial={revenueData?.commercial as Record<string, MonetaryMeasure> | undefined} />
 
@@ -554,37 +606,37 @@ export default function OwnerInsightsPage() {
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
           <div className='flex items-center justify-between mb-4'>
             <h2 className='text-ui-base font-semibold text-[#e6edf3]'>Average Time to Complete</h2>
-            <span className='text-ui-xs text-[#8b949e]'>Avg: {(summary.pipelineVelocity?.averageTotal ?? 0)} days total</span>
+            <span className='text-ui-xs text-[#8b949e]'>Avg: {(summary?.pipelineVelocity?.averageTotal ?? 0)} days total</span>
           </div>
           
           <div className='space-y-1'>
             <VelocityBar 
               label='New Inquiry → Details' 
-              value={(summary.pipelineVelocity?.stage1To2 ?? 0) * 24} 
+              value={(summary?.pipelineVelocity?.stage1To2 ?? 0) * 24} 
               max={maxStageTime}
               color='#3fb950'
             />
             <VelocityBar 
               label='Details → Ready to Quote' 
-              value={(summary.pipelineVelocity?.stage2To3 ?? 0) * 24} 
+              value={(summary?.pipelineVelocity?.stage2To3 ?? 0) * 24} 
               max={maxStageTime}
               color='#58a6ff'
             />
             <VelocityBar 
               label='Ready to Quote → Build Options' 
-              value={(summary.pipelineVelocity?.stage3To4 ?? 0) * 24} 
+              value={(summary?.pipelineVelocity?.stage3To4 ?? 0) * 24} 
               max={maxStageTime}
               color='#d29922'
             />
             <VelocityBar 
               label='Build Options → Final Review' 
-              value={(summary.pipelineVelocity?.stage4To5 ?? 0) * 24} 
+              value={(summary?.pipelineVelocity?.stage4To5 ?? 0) * 24} 
               max={maxStageTime}
               color='#58a6ff'
             />
             <VelocityBar 
               label='Final Review → Booked' 
-              value={(summary.pipelineVelocity?.stage5ToBooked ?? 0) * 24} 
+              value={(summary?.pipelineVelocity?.stage5ToBooked ?? 0) * 24} 
               max={maxStageTime}
               color='#3fb950'
             />
@@ -593,30 +645,45 @@ export default function OwnerInsightsPage() {
 
         {/* Stage Breakdown */}
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
-          <h2 className='text-ui-base font-semibold text-[#e6edf3] mb-4'>Stage Breakdown</h2>
-          
-          <div className='space-y-3'>
-            {safePipelineMetrics.map((stage) => (
-              <div key={stage.stageId} className='flex items-center justify-between'>
-                <div className='flex-1'>
-                  <div className='flex items-center justify-between mb-1'>
-                    <span className='text-ui-sm text-[#e6edf3]'>{stage.stageName}</span>
-                    <span className='text-ui-xs text-[#8b949e]'>{stage.tripCount} trips · {stage.exitRate != null ? `${stage.exitRate}% exit` : 'no exit data'}</span>
-                  </div>
-                  <div className='h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
-                    <div 
-                      className='h-full bg-[#58a6ff] rounded-full'
-                      style={{ width: `${(stage.tripCount / 20) * 100}%` }}
-                    />
-                  </div>
-                </div>
-                
-                <span className='ml-4 text-ui-xs text-[#8b949e] w-16 text-right'>
-                  {stage.avgTimeInStage != null ? `${stage.avgTimeInStage}h` : '—'}
-                </span>
-              </div>
-            ))}
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-ui-base font-semibold text-[#e6edf3]'>Stage Breakdown</h2>
+            {pipelineError && (
+              <button
+                type='button'
+                onClick={() => void refetchPipeline?.()}
+                className='text-ui-xs text-[#58a6ff] hover:underline'
+              >
+                Retry
+              </button>
+            )}
           </div>
+          
+          {isPipelineLoading ? (
+            <p className='text-ui-sm text-[#8b949e]'>Loading pipeline stages…</p>
+          ) : (
+            <div className='space-y-3'>
+              {safePipelineMetrics.map((stage) => (
+                <div key={stage.stageId} className='flex items-center justify-between'>
+                  <div className='flex-1'>
+                    <div className='flex items-center justify-between mb-1'>
+                      <span className='text-ui-sm text-[#e6edf3]'>{stage.stageName}</span>
+                      <span className='text-ui-xs text-[#8b949e]'>{stage.tripCount} trips · {stage.exitRate != null ? `${stage.exitRate}% exit` : 'no exit data'}</span>
+                    </div>
+                    <div className='h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
+                      <div 
+                        className='h-full bg-[#58a6ff] rounded-full'
+                        style={{ width: `${Math.min(100, ((stage.tripCount ?? 0) / maxStageCount) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <span className='ml-4 text-ui-xs text-[#8b949e] w-16 text-right'>
+                    {stage.avgTimeInStage != null ? `${stage.avgTimeInStage}h` : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Pipeline Funnel */}
@@ -633,7 +700,22 @@ export default function OwnerInsightsPage() {
 
         {/* Revenue Chart */}
         <div className='lg:col-span-2'>
-          {(revenueData?.revenueByMonth || []).length > 0 ? (
+          {isRevenueLoading ? (
+            <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 text-ui-sm text-[#8b949e]'>
+              Loading revenue telemetry…
+            </div>
+          ) : revenueError ? (
+            <div className='flex items-center justify-between rounded-xl border border-[#f85149]/30 bg-[#f85149]/5 p-4'>
+              <p className='text-ui-sm text-[#e6edf3]'>Revenue metrics temporarily unavailable.</p>
+              <button
+                type='button'
+                onClick={() => void refetchRevenue?.()}
+                className='px-3 py-1.5 text-ui-xs bg-[#161b22] border border-[#30363d] rounded-lg text-[#e6edf3]'
+              >
+                Retry
+              </button>
+            </div>
+          ) : (revenueData?.revenueByMonth || []).length > 0 ? (
             <RevenueChart data={(revenueData?.revenueByMonth || []).map((d: any) => ({
               month: d.month ?? '',
               inquiries: d.inquiries ?? 0,
@@ -650,7 +732,22 @@ export default function OwnerInsightsPage() {
 
         {/* Team Performance Chart */}
         <div className='lg:col-span-2'>
-          {safeTeamMetrics.length > 0 ? (
+          {isTeamLoading ? (
+            <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 text-ui-sm text-[#8b949e]'>
+              Loading team performance…
+            </div>
+          ) : teamError ? (
+            <div className='flex items-center justify-between rounded-xl border border-[#f85149]/30 bg-[#f85149]/5 p-4'>
+              <p className='text-ui-sm text-[#e6edf3]'>Team metrics temporarily unavailable.</p>
+              <button
+                type='button'
+                onClick={() => void refetchTeam?.()}
+                className='px-3 py-1.5 text-ui-xs bg-[#161b22] border border-[#30363d] rounded-lg text-[#e6edf3]'
+              >
+                Retry
+              </button>
+            </div>
+          ) : safeTeamMetrics.length > 0 ? (
             <TeamPerformanceChart
               data={safeTeamMetrics.map(member => ({
                 name: member.name,
@@ -697,9 +794,24 @@ export default function OwnerInsightsPage() {
 
         {/* Bottlenecks */}
         <div className='lg:col-span-2'>
-          <h2 className='text-ui-base font-semibold text-[#e6edf3] mb-3'>Bottleneck Analysis</h2>
+          <div className='flex items-center justify-between mb-3'>
+            <h2 className='text-ui-base font-semibold text-[#e6edf3]'>Bottleneck Analysis</h2>
+            {bottlenecksError && (
+              <button
+                type='button'
+                onClick={() => void refetchBottlenecks?.()}
+                className='text-ui-xs text-[#58a6ff] hover:underline'
+              >
+                Retry
+              </button>
+            )}
+          </div>
           
-          {safeBottlenecks.length > 0 ? (
+          {isBottlenecksLoading ? (
+            <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 text-ui-sm text-[#8b949e]'>
+              Analyzing stage bottlenecks…
+            </div>
+          ) : safeBottlenecks.length > 0 ? (
             <div className='space-y-3'>
               {safeBottlenecks.map((bottleneck) => (
                 <BottleneckCard key={bottleneck.stageId} analysis={bottleneck} />
@@ -714,8 +826,6 @@ export default function OwnerInsightsPage() {
         </div>
 
       </div>
-      </>
-      )}
 
       {/* Metric Drill-Down Drawer */}
       {drillDownState && (

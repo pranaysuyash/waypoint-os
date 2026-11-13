@@ -9,6 +9,8 @@ interface ProfileTabProps {
 }
 
 function Field({
+  id,
+  name,
   label,
   icon: Icon,
   value,
@@ -16,6 +18,8 @@ function Field({
   placeholder,
   type = 'text',
 }: {
+  id?: string;
+  name?: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   value: string;
@@ -23,13 +27,21 @@ function Field({
   placeholder?: string;
   type?: string;
 }) {
+  const fieldId =
+    id ??
+    `profile-${label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')}`;
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[#8b949e]">
+      <label htmlFor={fieldId} className="flex items-center gap-1.5 text-ui-xs font-medium text-[#8b949e]">
         <Icon className="size-3.5" />
         {label}
       </label>
       <input
+        id={fieldId}
+        name={name ?? fieldId}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
