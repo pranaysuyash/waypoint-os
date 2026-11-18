@@ -31,7 +31,7 @@ import { useTripContext } from '@/contexts/TripContext';
 import { getTripRoute } from '@/lib/routes';
 import { resolveRepairDeepLinkField } from '@/lib/repair-deep-link';
 import type { SpineStage, OperatingMode, SpineRunRequest } from '@/types/spine';
-import { FIELD_LABELS, labelOrTitle } from '@/lib/label-maps';
+import { FIELD_LABELS, formatBlockerLabel, labelOrTitle } from '@/lib/label-maps';
 import {
   CURRENCY_CONFIG,
   type SupportedCurrency,
@@ -1334,7 +1334,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
           </p>
           {hardBlockers.length > 0 ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
-              {hardBlockers[0]}
+              {formatBlockerLabel(hardBlockers[0]!)}
             </p>
           ) : leadNeedsConfirmation ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
@@ -1542,6 +1542,9 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
               </div>
             </div>
             <textarea
+              id='followup-draft-message'
+              name='followup_draft'
+              aria-label='Suggested follow-up message'
               ref={followUpTextareaRef}
               value={followUpDraft}
               onChange={(e) => setFollowUpDraft(e.target.value)}
@@ -1550,8 +1553,10 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
             />
             <div className='mt-2 flex items-center justify-between gap-3 text-ui-xs text-[var(--text-secondary)]'>
               <div className='flex items-center gap-2'>
-                <span>Recipient:</span>
+                <label htmlFor='followup-recipient'>Recipient:</label>
                 <input
+                  id='followup-recipient'
+                  name='followup_recipient'
                   type='text'
                   value={askRecipient}
                   onChange={(e) => setAskRecipient(e.target.value)}

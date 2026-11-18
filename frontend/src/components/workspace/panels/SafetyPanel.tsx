@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
+import { useTripContext } from "@/contexts/TripContext";
 import type { SafetyResult, PromptBundle } from "@/types/spine";
 import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -17,6 +18,7 @@ interface SafetyPanelProps {
 }
 
 export function SafetyPanel({ tripId }: SafetyPanelProps) {
+  const context = useTripContext({ optional: true });
   const {
     result_safety,
     result_traveler_bundle,
@@ -27,7 +29,11 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
   const debugJsonAllowed = isDebugJsonAllowed();
   const effectiveShowRaw = debugJsonAllowed && (debug_raw_json || showRaw);
 
-  if (!result_safety) {
+  const effectiveSafety = (result_safety || context?.trip?.safety || null) as SafetyResult | null;
+  const travelerBundle = (result_traveler_bundle || context?.trip?.traveler_bundle || null) as PromptBundle | null;
+  const internalBundle = (result_internal_bundle || context?.trip?.internal_bundle || null) as PromptBundle | null;
+
+  if (!effectiveSafety) {
     return (
       <div className="p-6 text-center">
         <h2 className="text-ui-xl font-semibold text-text-primary">Safety review not ready yet</h2>
@@ -44,8 +50,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
     );
   }
 
-  const safety = result_safety as SafetyResult;
-  const travelerBundle = result_traveler_bundle as PromptBundle | null;
+  const safety = effectiveSafety;
   const isStrictFail = safety.strict_leakage && !safety.leakage_passed;
   const safetyStatusCopy = getSafetyReviewStatusCopy(safety);
   const cleanupChecklist = getSafetyCleanupChecklist();
@@ -149,27 +154,22 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
         </div>
       </section>
 
-      {!debugJsonAllowed && (
-        <div className="rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">
-          Technical Data is hidden by privacy policy. Set <code>NEXT_PUBLIC_ALLOW_DEBUG_JSON=true</code> in a secure environment to enable.
-        </div>
+      {debugJsonAllowed && (
+        <button
+          type="button"
+          className="text-ui-xs text-accent-blue hover:text-accent-blue underline mt-2"
+          onClick={() => setShowRaw((prev) => !prev)}
+        >
+          {effectiveShowRaw ? "Hide" : "Show"} Diagnostic Data
+        </button>
       )}
-
-      <button
-        type="button"
-        className="text-ui-xs text-accent-blue hover:text-accent-blue underline mt-2 disabled:opacity-50"
-        disabled={!debugJsonAllowed}
-        onClick={() => setShowRaw((prev) => !prev)}
-      >
-        {effectiveShowRaw ? "Hide" : "Show"} Diagnostic Data
-      </button>
 
       {effectiveShowRaw && (
         <pre className="bg-sidebar p-4 rounded text-ui-xs font-mono text-text-muted overflow-x-auto border border-[#1c2128]">
           {JSON.stringify({
-            safety: result_safety,
-            traveler_bundle: result_traveler_bundle,
-            internal_bundle: result_internal_bundle,
+            safety: effectiveSafety,
+            traveler_bundle: travelerBundle,
+            internal_bundle: internalBundle,
           }, null, 2)}
         </pre>
       )}

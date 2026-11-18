@@ -89,20 +89,15 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
         </section>
       )}
 
-      {!debugJsonAllowed && (
-        <div className="rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">
-          Technical Data is hidden by privacy policy. Set <code>NEXT_PUBLIC_ALLOW_DEBUG_JSON=true</code> in a secure environment to enable.
-        </div>
+      {debugJsonAllowed && (
+        <button
+          type="button"
+          className="text-ui-xs text-accent-blue hover:text-accent-blue underline"
+          onClick={() => setDebugRawJson(!debug_raw_json)}
+        >
+          {debug_raw_json ? "Hide" : "Show"} Technical Data
+        </button>
       )}
-
-      <button
-        type="button"
-        className="text-ui-xs text-accent-blue hover:text-accent-blue underline disabled:opacity-50"
-        disabled={!debugJsonAllowed}
-        onClick={() => setDebugRawJson(!debug_raw_json)}
-      >
-        {debug_raw_json ? "Hide" : "Show"} Technical Data
-      </button>
 
       {debug_raw_json && debugJsonAllowed && (
         <pre className="bg-sidebar p-4 rounded text-ui-xs font-mono text-text-muted overflow-x-auto">

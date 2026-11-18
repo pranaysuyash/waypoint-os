@@ -2465,7 +2465,9 @@ function buildTravelerTripSummary(
   const preferencesFromFacts = buildSummaryFactItem(packet, 'soft_preferences', 'Trip notes');
   const travelerPlanFromFacts = buildSummaryFactItem(packet, 'traveler_plan', 'Booking stage');
   const destinationStatusFromFacts = buildSummaryFactItem(packet, 'destination_status', 'Destination status');
-  const budgetFromFacts = buildSummaryFactItem(packet, 'budget_scope', 'Budget');
+  const budgetFromFacts =
+    buildSummaryFactItem(packet, 'budget_raw_text', 'Budget')
+    || buildSummaryFactItem(packet, 'budget_scope', 'Budget');
   const sourceFromLiveChecks = liveChecks?.source ? { l: 'Data checked', v: 'Live sources' } : null;
 
   const summaryLines = [
@@ -2572,10 +2574,17 @@ type ItineraryCheckerState = {
   analysisError: string | null;
   isAnalyzing: boolean;
   tracking: CheckerTracking | null;
+  submittedText: string | null;
+  lastRetentionConsent: boolean;
 };
 
 type ItineraryCheckerAction =
-  | { type: 'analysisStarted'; tracking: CheckerTracking }
+  | {
+      type: 'analysisStarted';
+      tracking: CheckerTracking;
+      submittedText: string;
+      retentionConsent: boolean;
+    }
   | { type: 'analysisSucceeded'; analysis: RunStatusResponse }
   | { type: 'analysisFailed'; message: string }
   | { type: 'resetToUpload' };
@@ -2586,6 +2595,8 @@ const initialItineraryCheckerState: ItineraryCheckerState = {
   analysisError: null,
   isAnalyzing: false,
   tracking: null,
+  submittedText: null,
+  lastRetentionConsent: false,
 };
 
 function itineraryCheckerReducer(
@@ -2597,6 +2608,8 @@ function itineraryCheckerReducer(
       return {
         ...state,
         tracking: action.tracking,
+        submittedText: action.submittedText,
+        lastRetentionConsent: action.retentionConsent,
         isAnalyzing: true,
       };
     case 'analysisSucceeded':
@@ -3077,7 +3090,9 @@ function RouteRequestPanel({
             boxShadow: '0 4px 14px rgba(57,208,216,0.25)',
           }}
         >
-          {blockerCount > 0 ? `Get these ${blockerCount} things fixed →` : 'Get it fixed by an agency →'}
+          {blockerCount > 0
+            ? `Get ${blockerCount === 1 ? 'this 1 issue' : `these ${blockerCount} issues`} fixed →`
+            : 'Get it fixed by an agency →'}
         </button>
       ) : null}
 
@@ -3206,12 +3221,16 @@ function ResultsView({
   analysis,
   errorMessage,
   agencyContext,
+  submittedText = null,
+  lastRetentionConsent = false,
 }: {
   rootRef: RefObject<HTMLDivElement | null>;
   onReset: () => void;
   onEmitEvent: (eventName: string, properties: Record<string, unknown>, tripId?: string | null) => Promise<void>;
   tracking: { sessionId: string; inquiryId: string } | null;
   analysis?: RunStatusResponse | null;
+  submittedText?: string | null;
+  lastRetentionConsent?: boolean;
   errorMessage?: string | null;
   agencyContext?: AgencyBrandingContext | null;
 }) {
@@ -3286,7 +3305,9 @@ function ResultsView({
         ? 'You ran this as a one-time analysis. No uploaded document text was retained.'
         : reportStorage.hasStoredUpload
           ? 'Uploaded details were retained for this report.'
-          : 'We couldn\u2019t confirm what was saved.';;
+          : !lastRetentionConsent
+            ? 'You ran this as a one-time analysis. No uploaded document text was retained.'
+            : 'We couldn\u2019t confirm what was saved.';
 
   const handleExport = async () => {
     if (!tripId) return;
@@ -3461,7 +3482,7 @@ function ResultsView({
           </span>
         </div>
         <ResultsFindingsSection blockerItems={blockerItems} analysis={analysis} />
-        <WedgeVisualShowcase analysis={analysis} />
+        <WedgeVisualShowcase analysis={analysis} rawPlanText={submittedText} />
         <ResultsHeaderGrid
           score={SCORE}
           circumference={circumference}
@@ -3530,7 +3551,7 @@ function CheckerPage({
   agencyContext?: AgencyBrandingContext | null;
 } = {}) {
   const [state, dispatch] = useReducer(itineraryCheckerReducer, initialItineraryCheckerState);
-  const { view, analysis, analysisError, isAnalyzing, tracking } = state;
+  const { view, analysis, analysisError, isAnalyzing, tracking, submittedText, lastRetentionConsent } = state;
   const motionRootRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string>(makeTrackingId('sess'));
 
@@ -3697,7 +3718,12 @@ function CheckerPage({
           inquiry_id: nextTracking.inquiryId,
         };
 
-    dispatch({ type: 'analysisStarted', tracking: nextTracking });
+    dispatch({
+      type: 'analysisStarted',
+      tracking: nextTracking,
+      submittedText: trimmed,
+      retentionConsent,
+    });
     try {
       const result = await api.post<RunStatusResponse>('/api/public-checker/run', {
         raw_note: trimmed,
@@ -3771,6 +3797,8 @@ function CheckerPage({
         onEmitEvent={emitProductBEvent}
         tracking={tracking}
         analysis={analysis}
+        submittedText={submittedText}
+        lastRetentionConsent={lastRetentionConsent}
         errorMessage={analysisError}
         agencyContext={agencyContext}
       />

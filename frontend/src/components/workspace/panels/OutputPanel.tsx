@@ -244,27 +244,23 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
         )}
       </div>
 
-      <div className="mt-8">
-        {!debugJsonAllowed && (
-          <div className="mb-2 rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">
-            Technical Data is hidden by privacy policy. Set <code>NEXT_PUBLIC_ALLOW_DEBUG_JSON=true</code> in a secure environment to enable.
-          </div>
-        )}
-        <button
-          type="button"
-          className={styles.jsonToggle}
-          disabled={!debugJsonAllowed}
-          onClick={() => setDebugRawJson(!debug_raw_json)}
-        >
-          {debug_raw_json ? "Hide" : "Show"} Technical Data
-        </button>
+      {debugJsonAllowed && (
+        <div className="mt-8">
+          <button
+            type="button"
+            className={styles.jsonToggle}
+            onClick={() => setDebugRawJson(!debug_raw_json)}
+          >
+            {debug_raw_json ? "Hide" : "Show"} Technical Data
+          </button>
 
-        {debug_raw_json && debugJsonAllowed && (
-          <div className={styles.jsonOutput}>
-            <pre>{JSON.stringify({ internal_bundle: internalBundle, traveler_bundle: travelerBundle, review_status: trip?.review_status }, null, 2)}</pre>
-          </div>
-        )}
-      </div>
+          {debug_raw_json && (
+            <div className={styles.jsonOutput}>
+              <pre>{JSON.stringify({ internal_bundle: internalBundle, traveler_bundle: travelerBundle, review_status: trip?.review_status }, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

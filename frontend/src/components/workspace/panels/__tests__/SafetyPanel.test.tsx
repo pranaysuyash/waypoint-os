@@ -34,8 +34,8 @@ describe('SafetyPanel privacy gating', () => {
   it('keeps diagnostic data blocked by default policy', () => {
     render(<SafetyPanel tripId="trip-1" />);
 
-    expect(screen.getByText(/hidden by privacy policy/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Show Diagnostic Data/i })).toBeDisabled();
+    expect(screen.queryByText(/NEXT_PUBLIC_ALLOW_DEBUG_JSON/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Show Diagnostic Data/i })).not.toBeInTheDocument();
   });
 
   it('shows diagnostic data only in secure debug mode', () => {

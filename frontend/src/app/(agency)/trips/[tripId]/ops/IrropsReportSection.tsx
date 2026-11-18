@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Send } from 'lucide-react';
 import type { Trip } from '@/lib/api-client';
 
@@ -34,24 +34,29 @@ export default function IrropsReportSection({ tripId }: { tripId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
 
-  const loadState = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/v1/trips/${encodeURIComponent(tripId)}`);
-      if (!res.ok) throw new Error(`Trip unavailable (${res.status})`);
-      const data = await res.json();
-      const d = data?.active_disruption;
-      setActive(d && d.status !== 'RESOLVED' ? d : null);
-      setError(null);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Disruption state unavailable.');
-    } finally {
-      setLoading(false);
-    }
-  }, [tripId]);
-
   useEffect(() => {
-    void loadState();
-  }, [loadState]);
+    let activeFlag = true;
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/v1/trips/${encodeURIComponent(tripId)}`);
+        if (!res.ok) throw new Error(`Trip unavailable (${res.status})`);
+        const data = await res.json();
+        if (!activeFlag) return;
+        const d = data?.active_disruption;
+        setActive(d && d.status !== 'RESOLVED' ? d : null);
+        setError(null);
+      } catch (err: unknown) {
+        if (!activeFlag) return;
+        setError(err instanceof Error ? err.message : 'Disruption state unavailable.');
+      } finally {
+        if (activeFlag) setLoading(false);
+      }
+    };
+    void run();
+    return () => {
+      activeFlag = false;
+    };
+  }, [tripId]);
 
   const handleReport = async () => {
     setError(null);
@@ -61,7 +66,7 @@ export default function IrropsReportSection({ tripId }: { tripId: string }) {
       return;
     }
     if (triggerKind === 'delay' && (!delayMinutes || Number(delayMinutes) < 0)) {
-      setError('Delay reports need delay_minutes.');
+      setError('Delay reports require a delay duration in minutes.');
       return;
     }
     setIsSubmitting(true);

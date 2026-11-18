@@ -452,20 +452,15 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
         </section>
       )}
 
-      {!debugJsonAllowed && (
-        <div className="rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">
-          Technical Data is hidden by privacy policy. Set <code>NEXT_PUBLIC_ALLOW_DEBUG_JSON=true</code> in a secure environment to enable.
-        </div>
+      {debugJsonAllowed && (
+        <button
+          type="button"
+          className="text-[var(--ui-text-xs)] text-text-placeholder hover:text-text-muted transition-colors underline underline-offset-2"
+          onClick={() => setDebugRawJson(!debug_raw_json)}
+        >
+          {debug_raw_json ? "Hide" : "Show"} raw JSON
+        </button>
       )}
-
-      <button
-        type="button"
-        className="text-[var(--ui-text-xs)] text-text-placeholder hover:text-text-muted transition-colors underline underline-offset-2 disabled:opacity-50"
-        disabled={!debugJsonAllowed}
-        onClick={() => setDebugRawJson(!debug_raw_json)}
-      >
-        {debug_raw_json ? "Hide" : "Show"} raw JSON
-      </button>
     </div>
   );
 }

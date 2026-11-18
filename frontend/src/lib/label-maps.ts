@@ -125,3 +125,62 @@ export function titleCase(s: string): string {
 export function labelOrTitle(mapping: Record<string, string>, key: string, fallback?: string): string {
   return mapping[key] || fallback || titleCase(key);
 }
+
+export const BLOCKER_LABELS: Record<string, string> = {
+  extraction_quality: "Required trip details are still incomplete",
+  budget_unknown: "Budget range needs confirmation",
+  date_window_missing: "Travel window needs confirmation",
+  destination_ambiguous: "Destination choice needs confirmation",
+  policy_violation: "Requires owner policy review",
+  suitability_critical: "Traveler suitability concern requires acknowledgment",
+};
+
+export function formatBlockerLabel(code: string): string {
+  const normalized = code.trim().toLowerCase();
+  return BLOCKER_LABELS[normalized] || titleCase(code);
+}
+
+export const AUTHORITY_LABELS: Record<string, string> = {
+  explicit_user: "Client stated",
+  derived_signal: "System inferred",
+  operator_override: "Operator confirmed",
+  system_default: "System default",
+  repeat_memory: "Traveler memory",
+};
+
+export function formatPacketAuthority(authority?: string | null): string {
+  if (!authority) return "-";
+  return AUTHORITY_LABELS[authority] || titleCase(authority);
+}
+
+const PACKET_ENUM_LABELS: Record<string, string> = {
+  semi_open: "Semi-open",
+  open_market: "Open market",
+  nothing_booked: "Nothing booked yet",
+  partially_booked: "Partially booked",
+  fully_booked: "Fully booked",
+  flexible: "Flexible",
+  soft: "Flexible",
+  hard: "Fixed",
+  strict: "Fixed",
+  total: "Total trip",
+  per_person: "Per person",
+  international: "International",
+  domestic: "Domestic",
+};
+
+export function formatPacketValue(value: unknown): string {
+  if (value === null || value === undefined) return "-";
+  if (Array.isArray(value)) return value.map((item) => formatPacketValue(item)).join(", ");
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).filter(
+      ([, v]) => v !== null && v !== undefined && v !== "",
+    );
+    if (entries.length === 0) return "-";
+    return entries
+      .map(([k, v]) => `${String(v)} ${k.replace(/_/g, " ")}`)
+      .join(", ");
+  }
+  const str = String(value);
+  return PACKET_ENUM_LABELS[str] ?? str;
+}

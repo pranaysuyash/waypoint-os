@@ -206,7 +206,7 @@ describe('OutputPanel', () => {
 
   it('keeps Technical Data blocked by default policy', () => {
     render(<OutputPanel tripId="TRIP-123" />);
-    expect(screen.getByText(/hidden by privacy policy/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Show Technical Data/i })).toBeDisabled();
+    expect(screen.queryByText(/NEXT_PUBLIC_ALLOW_DEBUG_JSON/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Show Technical Data/i })).not.toBeInTheDocument();
   });
 });

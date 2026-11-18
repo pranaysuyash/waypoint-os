@@ -7,7 +7,14 @@ import { AlertTriangle, CheckCircle2, CloudSun, DollarSign, FileText, Plane, Shi
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { AgentOperationsMetadata, Trip } from "@/lib/api-client";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, PacketAssumption, ValidationReport } from "@/types/spine";
-import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
+import {
+  FIELD_LABELS,
+  SIGNAL_LABELS,
+  AMBIGUITY_TYPE_LABELS,
+  labelOrTitle,
+  formatPacketAuthority,
+  formatPacketValue,
+} from "@/lib/label-maps";
 import { getTravelerPromptForUnknownField } from "@/lib/traveler-prompts";
 import { getTripRepairRoute } from "@/lib/routes";
 import {
@@ -192,7 +199,7 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
                   <td className="px-4 py-2 text-ui-xs">{labelOrTitle(FIELD_LABELS, field)}</td>
                   <td className="px-4 py-2">{_formatValue(slot.value)}</td>
                   <td className="px-4 py-2 text-text-muted">{_formatConfidence(slot.confidence)}</td>
-                  <td className="px-4 py-2 text-text-muted">{slot.authority_level || "-"}</td>
+                  <td className="px-4 py-2 text-text-muted">{formatPacketAuthority(slot.authority_level)}</td>
                 </tr>
               );
             })}
@@ -202,16 +209,17 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
       </section>
 
       {/* Derived Signals */}
-      {Object.keys(derivedSignals).length > 0 && (
+      {Object.entries(derivedSignals).filter(([signal]) => signal !== "internal_data_present").length > 0 && (
         <section>
 	          <h3 className="text-[var(--ui-text-xs)] font-semibold uppercase tracking-widest text-text-placeholder mb-3">Inferred Details</h3>
           <div className="bg-[#0a0d11] rounded-lg border border-highlight p-4 divide-y divide-[#1c2128]">
-            {Object.entries(derivedSignals).map((entry) => {
-              const [signal, slot] = entry;
+            {Object.entries(derivedSignals)
+              .filter(([signal]) => signal !== "internal_data_present")
+              .map(([signal, slot]) => {
               return (
                 <div key={`sig-${signal}`} className="flex justify-between py-2 text-ui-sm text-text-rationale">
                   <span className="font-medium">{labelOrTitle(SIGNAL_LABELS, signal)}</span>
-                  <span className="text-text-muted text-ui-xs">{String(slot.value)} ({_formatConfidence(slot.confidence)})</span>
+                  <span className="text-text-muted text-ui-xs">{_formatValue(slot.value)} ({_formatConfidence(slot.confidence)})</span>
                 </div>
               );
             })}
@@ -327,25 +335,22 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
         </section>
       )}
 
-      {!debugJsonAllowed && (
-        <div className="rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">
-          Technical Data is hidden by privacy policy. Set <code>NEXT_PUBLIC_ALLOW_DEBUG_JSON=true</code> in a secure environment to enable.
-        </div>
-      )}
+      {debugJsonAllowed && (
+        <>
+          <button
+            type="button"
+            className="text-ui-xs text-text-placeholder hover:text-text-muted underline"
+            onClick={() => setDebugRawJson(!debug_raw_json)}
+          >
+            {debug_raw_json ? "Hide" : "Show"} Technical Data
+          </button>
 
-      <button
-        type="button"
-        className="text-ui-xs text-text-placeholder hover:text-text-muted underline disabled:opacity-50"
-        disabled={!debugJsonAllowed}
-        onClick={() => setDebugRawJson(!debug_raw_json)}
-      >
-        {debug_raw_json ? "Hide" : "Show"} Technical Data
-      </button>
-
-      {debug_raw_json && debugJsonAllowed && (
-        <pre className="bg-rationale border border-[var(--border-default)] p-4 rounded-xl text-[var(--ui-text-xs)] font-mono text-text-muted overflow-x-auto leading-relaxed">
-          {JSON.stringify(bookingRequest, null, 2)}
-        </pre>
+          {debug_raw_json && (
+            <pre className="bg-rationale border border-[var(--border-default)] p-4 rounded-xl text-[var(--ui-text-xs)] font-mono text-text-muted overflow-x-auto leading-relaxed">
+              {JSON.stringify(bookingRequest, null, 2)}
+            </pre>
+          )}
+        </>
       )}
     </div>
   );
@@ -734,10 +739,7 @@ function _getFactValue(facts: Record<string, SlotValue>, field: string): unknown
 }
 
 function _formatValue(value: unknown): string {
-  if (value === null || value === undefined) return "-";
-  if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+  return formatPacketValue(value);
 }
 
 function _formatConfidence(confidence: number | undefined): string {

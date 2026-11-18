@@ -9,7 +9,7 @@ import {
 } from "@/lib/lead-display";
 
 const CORE_DETAIL_SOFT_BLOCKERS = new Set(["incomplete_intake"]);
-const BLOCKED_PLANNING_ALLOWED_STAGES = new Set(["intake", "packet", "timeline"]);
+const BLOCKED_PLANNING_ALLOWED_STAGES = new Set(["intake", "packet", "followups", "timeline"]);
 const OPS_WORKSPACE_STAGES = new Set(["proposal", "booking"]);
 
 export type PlanningBriefStatus =

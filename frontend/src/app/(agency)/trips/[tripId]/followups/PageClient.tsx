@@ -43,12 +43,14 @@ export default function FollowupsPage() {
   const fetchFollowups = useCallback(async () => {
     dispatch({ type: 'loading' });
 
-    const filterParam = filterType === 'all' ? '' : `&filter=${filterType}`;
-    const statusParam = statusFilter === 'all' ? '' : `&status=${statusFilter}`;
+    const params = new URLSearchParams();
+    if (filterType !== 'all') params.set('filter', filterType);
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    const qs = params.toString();
 
     try {
       const response = await fetch(
-        `/api/followups/dashboard?${filterParam}${statusParam}`,
+        `/api/followups${qs ? `?${qs}` : ''}`,
         {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },

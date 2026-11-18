@@ -33,14 +33,15 @@ import { hasImportantTimelineEvent } from "@/lib/timeline-rail";
 import type { TimelineResponse } from "@/types/spine";
 
 const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
-  { id: "intake",   label: "Intake"          },
-  { id: "packet",   label: "Trip Details"    },
-  { id: "strategy", label: "Options"         },
-  { id: "decision", label: "Quote Assessment"},
-  { id: "output",   label: "Output"          },
-  { id: "safety",   label: "Risk Review"     },
-  { id: "ops",      label: "Ops"             },
-  { id: "timeline", label: "Timeline"        },
+  { id: "intake",    label: "Intake"           },
+  { id: "packet",    label: "Trip Details"     },
+  { id: "strategy",  label: "Options"          },
+  { id: "decision",  label: "Quote Assessment" },
+  { id: "output",    label: "Output"           },
+  { id: "safety",    label: "Risk Review"      },
+  { id: "ops",       label: "Ops"              },
+  { id: "followups", label: "Follow-ups"       },
+  { id: "timeline",  label: "Timeline"         },
 ];
 
 // State → accent colour mapping (matches WP design tokens)
@@ -58,6 +59,7 @@ function parseTripId(param: string | string[] | undefined): string | null {
 
 function getActiveStage(pathname: string): WorkspaceStage {
   const segment = pathname.split("/").filter(Boolean).at(-1);
+  if (segment === "suitability") return "decision";
   const stage = STAGE_TABS.find((item) => item.id === segment)?.id;
   return stage ?? "intake";
 }
@@ -126,7 +128,6 @@ function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
     if (tab.id === 'ops') return canAccessOpsWorkspace(trip);
     return true;
   });
-  const timelineEvents = timelineState.timeline?.events ?? [];
   const timelineLoading = timelineState.status === "loading";
   const timelineError = timelineState.error;
 

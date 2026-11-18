@@ -19,6 +19,7 @@ export type WorkspaceStage =
   | 'output'
   | 'safety'
   | 'suitability'
+  | 'followups'
   | 'timeline'
   | 'ops';
 

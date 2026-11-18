@@ -1435,7 +1435,7 @@ export function resolveDynamicWedgeScenario(
   }
 
   // Dynamic overrides from user's raw text + extracted facts
-  const layoverMinutesMatch = (rawPlanText ?? '').match(/(\d{2,3})\s*(?:m|min|minute|minutes)\s+layover(?:\s+at\s+([A-Za-z\s()]+))?/i);
+  const layoverMinutesMatch = (rawPlanText ?? '').match(/(\d{2,3})\s*(?:m|min|minute|minutes)\s+layover(?:\s+(?:at|in)\s+([A-Za-z ]+(?:\([A-Za-z]{3}\))?))?/i);
   const parsedLayoverMins = layoverMinutesMatch ? Number(layoverMinutesMatch[1]) : null;
   const parsedLayoverHubRaw = layoverMinutesMatch?.[2]?.trim();
 
@@ -1546,12 +1546,15 @@ export function resolveDynamicWedgeScenario(
     layoverSegment.scheduledMinutes = parsedLayoverMins;
   }
   if (parsedLayoverHubRaw) {
-    const hubCodeMatch = parsedLayoverHubRaw.match(/\b([A-Z]{3})\b/);
-    const hubCode = hubCodeMatch ? hubCodeMatch[1] : stops[1]?.code ?? 'HUB';
+    const hubRaw = parsedLayoverHubRaw.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+    const bareCode = /^[A-Za-z]{3}$/.test(hubRaw);
+    const embeddedCode = parsedLayoverHubRaw.match(/\(([A-Za-z]{3})\)/)?.[1];
+    const hubCode = (bareCode ? hubRaw : embeddedCode ?? stops[1]?.code ?? 'HUB').toUpperCase();
+    const cleanCity = hubRaw.replace(new RegExp(`\\b${hubCode}\\b`, 'i'), '').replace(/\s+/g, ' ').trim();
     stops[1] = {
       ...stops[1],
       code: hubCode,
-      city: parsedLayoverHubRaw.replace(/\([A-Z]{3}\)/g, '').trim() || stops[1].city,
+      city: cleanCity || stops[1].city,
       highlight: `${layoverSegment.scheduledMinutes}m tight transit hub`,
     };
     layoverSegment.transitHub = `${stops[1].city} (${hubCode})`;
