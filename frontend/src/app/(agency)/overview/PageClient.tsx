@@ -235,6 +235,26 @@ function getStageLabel(label: string): string {
   }
 }
 
+function getStageHref(label: string): string {
+  const normalized = label.trim().toLowerCase().replace(/\s+/g, '_');
+  switch (normalized) {
+    case 'assigned':
+      return '/trips?status=assigned';
+    case 'in_progress':
+      return '/trips?status=in_progress';
+    case 'ready_to_quote':
+      return '/trips?status=ready_to_quote';
+    case 'ready_to_book':
+      return '/trips?status=ready_to_book';
+    case 'blocked':
+      return '/trips?status=blocked';
+    case 'active':
+      return '/trips?status=active';
+    default:
+      return `/trips?status=${encodeURIComponent(normalized)}`;
+  }
+}
+
 const PipelineBar = memo(function PipelineBar({
   data,
   isLoading,
@@ -324,13 +344,15 @@ const PipelineBar = memo(function PipelineBar({
           <div className='flex-1'>
             <div className='h-2 rounded-full overflow-hidden flex' style={{ background: 'var(--bg-elevated)' }}>
               {safeData.filter(s => s.count > 0).map((stage, i) => (
-                <div
+                <Link
                   key={stage.label || `stage-${i}`}
-                  className='h-full transition-all'
+                  href={getStageHref(stage.label)}
+                  className='h-full transition-all hover:opacity-80'
                   style={{
                     width: `${(stage.count / stageTotal) * 100}%`,
                     background: stageColor(stage.label),
                   }}
+                  title={`View ${stage.count.toLocaleString('en-IN')} trips in ${getStageLabel(stage.label)}`}
                 />
               ))}
             </div>
@@ -340,7 +362,13 @@ const PipelineBar = memo(function PipelineBar({
         {hasMultipleStages ? (
           <div className='flex flex-wrap gap-x-3 gap-y-0.5 mt-2'>
             {safeData.filter(s => s.count > 0).map((stage) => (
-              <div key={stage.label} className='flex items-center gap-1.5 text-[11px]' style={{ color: 'var(--text-muted)' }}>
+              <Link
+                key={stage.label}
+                href={getStageHref(stage.label)}
+                className='flex items-center gap-1.5 text-[11px] transition-colors hover:underline underline-offset-2'
+                style={{ color: 'var(--text-muted)' }}
+                title={`Filter trips by ${getStageLabel(stage.label)}`}
+              >
                 <span
                   className='size-1.5 rounded-full shrink-0'
                   style={{
@@ -348,7 +376,7 @@ const PipelineBar = memo(function PipelineBar({
                   }}
                 />
                 {getStageLabel(stage.label)} · {stage.count.toLocaleString('en-IN')}
-              </div>
+              </Link>
             ))}
           </div>
         ) : (
@@ -378,13 +406,18 @@ const PipelineBar = memo(function PipelineBar({
       </div>
 
       <div className='space-y-2'>
-        {safeData.map((stage, i) => {
+        {safeData.map((stage) => {
           const pct = stageTotal > 0 ? (stage.count / stageTotal) * 100 : 0;
           const color = stageColor(stage.label);
           return (
-            <div key={stage.label} className='group'>
+            <Link
+              key={stage.label}
+              href={getStageHref(stage.label)}
+              className='group block p-1.5 rounded-lg -mx-1.5 transition-colors hover:bg-white/5'
+              title={`Filter trips by ${getStageLabel(stage.label)}`}
+            >
               <div className='flex items-center justify-between mb-1'>
-                <span className='text-[12px] font-medium' style={{ color: 'var(--text-primary)' }}>
+                <span className='text-[12px] font-medium group-hover:text-[var(--accent-blue)] transition-colors' style={{ color: 'var(--text-primary)' }}>
                   {getStageLabel(stage.label)}
                 </span>
                 <span className='text-[12px] font-mono tabular-nums' style={{ color: 'var(--text-tertiary)' }}>{stage.count.toLocaleString('en-IN')}</span>
@@ -395,7 +428,7 @@ const PipelineBar = memo(function PipelineBar({
                   style={{ width: `${pct}%`, background: color }}
                 />
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

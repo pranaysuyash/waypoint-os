@@ -85,12 +85,16 @@ const RiskFlagBadge = memo(function RiskFlagBadge({ flag }: { flag: RiskFlag }) 
 const ReviewCard = memo(function ReviewCard({
   review,
   referenceNow,
+  isSelected = false,
+  onToggleSelect,
   onApprove,
   onReject,
   onRequestChanges,
 }: {
   review: TripReview;
   referenceNow: number;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string, selected: boolean) => void;
   onApprove: (id: string, notes?: string) => void;
   onReject: (id: string, notes?: string) => void;
   onRequestChanges: (id: string, notes?: string) => void;
@@ -112,16 +116,33 @@ const ReviewCard = memo(function ReviewCard({
       }`}
     >
       <div className='flex items-start justify-between gap-4'>
-        <div className='flex-1 min-w-0'>
-          <div className='flex items-center gap-2 mb-1'>
-            {isCriticalPriority && <AlertTriangle className='size-4 text-[#f85149] shrink-0' />}
-            <span className='text-ui-sm text-[#8b949e] font-mono'>{review.tripReference}</span>
-            <StatusBadge status={review.status} map={REVIEW_STATUS_MAP} />
-          </div>
-          
-          <h3 className='text-ui-base font-semibold text-[#e6edf3] mb-1'>
-            {getReviewTitle(review)}
-          </h3>
+        <div className='flex items-start gap-3 flex-1 min-w-0'>
+          {onToggleSelect && (
+            <input
+              type='checkbox'
+              id={`select-review-${review.id}`}
+              name={`select-review-${review.id}`}
+              aria-label={`Select quote ${review.tripReference || review.id}`}
+              checked={isSelected}
+              onChange={(e) => onToggleSelect(review.id, e.target.checked)}
+              className='mt-1 size-4 rounded border-[#30363d] bg-[#0d1117] text-[#58a6ff] focus:ring-0 focus:ring-offset-0 cursor-pointer shrink-0'
+            />
+          )}
+          <div className='flex-1 min-w-0'>
+            <div className='flex items-center gap-2 mb-1'>
+              {isCriticalPriority && <AlertTriangle className='size-4 text-[#f85149] shrink-0' />}
+              <span className='text-ui-sm text-[#8b949e] font-mono'>{review.tripReference}</span>
+              <StatusBadge status={review.status} map={REVIEW_STATUS_MAP} />
+            </div>
+            
+            <h3 className='text-ui-base font-semibold text-[#e6edf3] mb-1'>
+              {getReviewTitle(review)}
+            </h3>
+            {!hasKnownDestination(review.destination) && (review.tripReference || review.agentName) && (
+              <p className='text-ui-xs text-[#58a6ff] font-medium mb-1'>
+                {[review.tripReference ? `Ref ${review.tripReference}` : null, review.agentName && review.agentName !== 'Unassigned' ? `Assigned: ${review.agentName}` : null].filter(Boolean).join(' · ')}
+              </p>
+            )}
           
           <div className='flex flex-wrap items-center gap-4 text-ui-xs text-[#8b949e] mb-2'>
             <span className='flex items-center gap-1'>
@@ -176,6 +197,7 @@ const ReviewCard = memo(function ReviewCard({
               ))}
             </div>
           )}
+          </div>
         </div>
         
         <div className='flex flex-col gap-2'>
@@ -245,10 +267,10 @@ const ReviewCard = memo(function ReviewCard({
           
           {review.tripId && (
             <Link
-              href={getTripRoute(review.tripId)}
+              href={getTripRoute(review.tripId, 'output')}
               className='flex items-center justify-center gap-1 text-ui-xs text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
             >
-              View Details <ChevronRight className='size-3' />
+              View Quote <ChevronRight className='size-3' />
             </Link>
           )}
         </div>
@@ -265,9 +287,13 @@ export default function OwnerReviewsPage() {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | 'all'>('all');
   const [visibleLimit, setVisibleLimit] = useState(25);
   const [referenceNow] = useState(() => Date.now());
-  const { data: reviews, isLoading, error, refetch, submitAction } = useReviews();
+  const { data: reviews, isLoading, error, refetch, submitAction, bulkAction } = useReviews();
   const { state: unifiedState } = useUnifiedState();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedReviews, setSelectedReviews] = useState<Set<string>>(new Set());
+  const [bulkActionType, setBulkActionType] = useState<'approve' | 'reject' | 'request_changes' | null>(null);
+  const [bulkNotes, setBulkNotes] = useState('');
+  const [bulkFeedback, setBulkFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Filter reviews (page-local — acceptable per SSOT rule)
   const filteredReviews = reviews.filter((r) => {
@@ -310,6 +336,56 @@ export default function OwnerReviewsPage() {
   const handleApprove = (id: string, notes?: string) => handleAction(id, 'approve', notes ?? '');
   const handleReject = (id: string, notes?: string) => handleAction(id, 'reject', notes ?? '');
   const handleRequestChanges = (id: string, notes?: string) => handleAction(id, 'request_changes', notes ?? '');
+
+  const handleToggleSelect = useCallback((id: string, selected: boolean) => {
+    setSelectedReviews((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedReviews(new Set());
+  }, []);
+
+  const handleSelectAllVisible = useCallback(() => {
+    const ids = sortedReviews.slice(0, visibleLimit).map((r) => r.id);
+    setSelectedReviews(new Set(ids));
+  }, [sortedReviews, visibleLimit]);
+
+  const handleExecuteBulkAction = useCallback(async () => {
+    if (!bulkActionType || selectedReviews.size === 0) return;
+    setIsProcessing(true);
+    setBulkFeedback(null);
+    setActionError(null);
+    try {
+      const ids = Array.from(selectedReviews);
+      const requests = ids.map((id) => ({
+        reviewId: id,
+        action: bulkActionType as any,
+        notes: bulkNotes.trim() || (bulkActionType === 'approve' ? 'Bulk approved by owner via dashboard.' : 'Bulk review action'),
+      }));
+      const res = await bulkAction(requests);
+      setBulkFeedback({
+        type: 'success',
+        message: `Successfully processed ${res?.processed ?? ids.length} quotes (${bulkActionType.replace('_', ' ')}).`,
+      });
+      setSelectedReviews(new Set());
+      setBulkActionType(null);
+      setBulkNotes('');
+      await refetch();
+    } catch (err) {
+      console.error('Bulk review action failed:', err);
+      setBulkFeedback({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Bulk review action failed. Please try again.',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [bulkActionType, selectedReviews, bulkNotes, bulkAction, refetch]);
 
   if (error) {
     return (
@@ -397,6 +473,25 @@ export default function OwnerReviewsPage() {
         </div>
       )}
 
+      {bulkFeedback && (
+        <div
+          role='alert'
+          className={`flex items-center justify-between p-3 rounded-lg border text-ui-sm ${
+            bulkFeedback.type === 'success'
+              ? 'bg-[#3fb950]/10 border-[#3fb950]/30 text-[#3fb950]'
+              : 'bg-[#f85149]/10 border-[#f85149]/30 text-[#f85149]'
+          }`}
+        >
+          <span>{bulkFeedback.message}</span>
+          <button
+            onClick={() => setBulkFeedback(null)}
+            className='text-ui-xs underline hover:no-underline ml-3'
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Stats */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
@@ -451,6 +546,63 @@ export default function OwnerReviewsPage() {
         ))}
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedReviews.size > 0 && (
+        <div className='flex flex-wrap items-center justify-between gap-3 p-3 bg-[#161b22] rounded-xl border border-[#30363d]'>
+          <div className='flex items-center gap-3'>
+            <span className='text-ui-sm text-[#e6edf3] font-medium'>
+              <strong>{selectedReviews.size}</strong> {selectedReviews.size === 1 ? 'quote' : 'quotes'} selected
+            </span>
+            <button
+              type='button'
+              onClick={handleSelectAllVisible}
+              className='text-ui-xs text-[#58a6ff] hover:underline'
+            >
+              Select all visible ({visibleReviews.length})
+            </button>
+            <button
+              type='button'
+              onClick={handleClearSelection}
+              className='text-ui-xs text-[#8b949e] hover:text-[#e6edf3]'
+            >
+              Clear
+            </button>
+          </div>
+          <div className='flex items-center gap-2 flex-wrap'>
+            <button
+              type='button'
+              onClick={() => {
+                setBulkActionType('approve');
+                setBulkNotes('Bulk approved by owner via dashboard.');
+              }}
+              className='flex items-center gap-1.5 px-3 py-1.5 bg-[#3fb950] text-white rounded-lg text-ui-sm font-medium hover:bg-[#4bc95b] transition-colors'
+            >
+              <CheckCircle className='size-3.5' /> Bulk Approve
+            </button>
+            <button
+              type='button'
+              onClick={() => {
+                setBulkActionType('request_changes');
+                setBulkNotes('');
+              }}
+              className='flex items-center gap-1.5 px-3 py-1.5 bg-[#d29922] text-white rounded-lg text-ui-sm font-medium hover:bg-[#e3a532] transition-colors'
+            >
+              <RefreshCw className='size-3.5' /> Bulk Request Changes
+            </button>
+            <button
+              type='button'
+              onClick={() => {
+                setBulkActionType('reject');
+                setBulkNotes('');
+              }}
+              className='flex items-center gap-1.5 px-3 py-1.5 bg-[#f85149] text-white rounded-lg text-ui-sm font-medium hover:bg-[#ff6b6b] transition-colors'
+            >
+              <XCircle className='size-3.5' /> Bulk Reject
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Review Queue */}
       <div className='space-y-3'>
         {hasMoreLoadedReviewsThanVisible && (
@@ -483,6 +635,8 @@ export default function OwnerReviewsPage() {
                 key={review.id || `review-${index}`}
                 review={review}
                 referenceNow={referenceNow}
+                isSelected={selectedReviews.has(review.id)}
+                onToggleSelect={handleToggleSelect}
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onRequestChanges={handleRequestChanges}
@@ -514,6 +668,55 @@ export default function OwnerReviewsPage() {
           </>
         )}
       </div>
+
+      {/* Bulk Action Confirmation Modal */}
+      {bulkActionType && (
+        <div className='fixed inset-0 bg-[#0d1117]/80 backdrop-blur-sm flex items-center justify-center z-50 p-4'>
+          <div className='bg-[#161b22] border border-[#30363d] rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4'>
+            <h3 className='text-ui-base font-semibold text-[#e6edf3] capitalize'>
+              Bulk {bulkActionType.replace('_', ' ')} ({selectedReviews.size} {selectedReviews.size === 1 ? 'quote' : 'quotes'})
+            </h3>
+            <p className='text-ui-sm text-[#8b949e]'>
+              {bulkActionType === 'approve'
+                ? 'Confirm bulk approval for the selected quotes.'
+                : 'Please provide a reason for the selected quotes (required):'}
+            </p>
+            <textarea
+              value={bulkNotes}
+              onChange={(e) => setBulkNotes(e.target.value)}
+              placeholder='Supervisor audit note / feedback…'
+              rows={3}
+              className='w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder:text-[#484f58] focus:outline-none focus:border-[#58a6ff]'
+            />
+            <div className='flex items-center justify-end gap-2 pt-2'>
+              <button
+                type='button'
+                onClick={() => {
+                  setBulkActionType(null);
+                  setBulkNotes('');
+                }}
+                className='px-3 py-1.5 text-ui-sm text-[#8b949e] hover:text-[#e6edf3]'
+              >
+                Cancel
+              </button>
+              <button
+                type='button'
+                disabled={bulkActionType !== 'approve' && !bulkNotes.trim()}
+                onClick={handleExecuteBulkAction}
+                className={`px-4 py-1.5 rounded-lg text-ui-sm font-medium text-white transition-colors ${
+                  bulkActionType === 'approve'
+                    ? 'bg-[#3fb950] hover:bg-[#4bc95b]'
+                    : bulkActionType === 'reject'
+                      ? 'bg-[#f85149] hover:bg-[#ff6b6b]'
+                      : 'bg-[#d29922] hover:bg-[#e3a532]'
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                Confirm {bulkActionType.replace('_', ' ')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Processing Overlay */}
       {isProcessing && (

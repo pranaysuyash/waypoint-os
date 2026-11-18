@@ -11,6 +11,7 @@ import {
   PLANNING_LIST_STATE_META,
 } from '@/lib/planning-list-display';
 import { hasCustomerName, readCustomerName } from '@/lib/lead-display';
+import { resolveRepairDeepLinkField } from '@/lib/repair-deep-link';
 
 const freshnessColors: Record<string, { fg: string; bg: string; border: string }> = {
   neutral: { fg: '#8b949e', bg: 'rgba(139,148,158,0.10)', border: 'rgba(139,148,158,0.20)' },
@@ -26,6 +27,9 @@ const fieldParam: Record<string, string> = {
   'Destination missing': 'destination',
   'Travel window missing': 'dateWindow',
   'Traveler count missing': 'party',
+  'Trip purpose missing': 'type',
+  'Trip priorities / must-haves missing': 'priorities',
+  'Date flexibility missing': 'flexibility',
 };
 
 interface PlanningTripCardProps {
@@ -131,12 +135,13 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
                   Missing trip details:
                 </span>
                 {summary.missingBadges.slice(0, isOverview ? 3 : 2).map((badge) => {
-                  const param = fieldParam[badge];
+                  const param = fieldParam[badge] || resolveRepairDeepLinkField(badge.replace(/ missing$/i, ''));
+                  const href = param ? `/trips/${trip.id}/intake?repair=${encodeURIComponent(param)}` : `/trips/${trip.id}/intake`;
                   const fieldName = badge.replace(/ missing$/i, '').toLowerCase();
                   return (
                     <Link
                       key={badge}
-                      href={`/trips/${trip.id}/intake?repair=${param}`}
+                      href={href}
                       className='inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium transition-opacity hover:opacity-80'
                       style={{ color: '#d29922', background: 'rgba(210,153,34,0.10)', border: '1px solid rgba(210,153,34,0.22)' }}
                     >

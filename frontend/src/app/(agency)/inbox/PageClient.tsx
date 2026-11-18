@@ -55,12 +55,14 @@ function BulkActionsToolbar({
   onAssign,
   onExport,
   agents,
+  isAssigning = false,
 }: {
   selectedCount: number;
   onClearSelection: () => void;
   onAssign: (agentId: string) => void;
   onExport: () => void;
   agents: { id: string; name: string }[];
+  isAssigning?: boolean;
 }) {
   const [showAssignDropdown, setShowAssignDropdown] = useState(false);
 
@@ -72,7 +74,8 @@ function BulkActionsToolbar({
         </span>
         <button
           onClick={onClearSelection}
-          className='text-ui-xs text-[#8b949e] hover:text-[#e6edf3]'
+          disabled={isAssigning}
+          className='text-ui-xs text-[#8b949e] hover:text-[#e6edf3] disabled:opacity-50'
         >
           Clear
         </button>
@@ -82,10 +85,11 @@ function BulkActionsToolbar({
         <div className='relative'>
           <button
             onClick={() => setShowAssignDropdown(!showAssignDropdown)}
-            className='flex items-center gap-1.5 px-3 py-1.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+            disabled={isAssigning}
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-medium hover:bg-[#6eb5ff] disabled:opacity-60 transition-colors'
           >
             <UserPlus className='size-4' />
-            Assign to…
+            {isAssigning ? 'Assigning…' : 'Assign to…'}
           </button>
           
           {showAssignDropdown && (
@@ -163,6 +167,8 @@ function InboxPageWithSearchParams() {
 
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [assignFeedback, setAssignFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // View profile from URL role param, falling back to localStorage, then default
   const [viewProfile, setViewProfile] = useState<ViewProfile>(() => {
@@ -273,13 +279,28 @@ function InboxPageWithSearchParams() {
     assignTrips({ tripIds: [tripId], assignTo: agentId, notifyAssignee: true });
   }, [assignTrips]);
 
-  const handleBulkAssign = useCallback((agentId: string) => {
+  const handleBulkAssign = useCallback(async (agentId: string) => {
     const tripIds = [...selectedTrips];
-    if (tripIds.length > 0) {
-      assignTrips({ tripIds, assignTo: agentId, notifyAssignee: true });
+    if (tripIds.length === 0) return;
+    setIsAssigning(true);
+    setAssignFeedback(null);
+    try {
+      const res = await assignTrips({ tripIds, assignTo: agentId, notifyAssignee: true });
+      const targetAgent = agents.find((a) => a.id === agentId)?.name || 'selected agent';
+      setAssignFeedback({
+        type: 'success',
+        message: `Successfully assigned ${res?.assigned ?? tripIds.length} ${tripIds.length === 1 ? 'enquiry' : 'enquiries'} to ${targetAgent}.`,
+      });
+      handleClearSelection();
+    } catch (err) {
+      setAssignFeedback({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to assign enquiries. Please try again.',
+      });
+    } finally {
+      setIsAssigning(false);
     }
-    handleClearSelection();
-  }, [selectedTrips, handleClearSelection, assignTrips]);
+  }, [selectedTrips, handleClearSelection, assignTrips, agents]);
 
   const handleExport = useCallback(() => {
     const selected = inboxTrips.filter((t) => selectedTrips.has(t.id));
@@ -322,6 +343,25 @@ function InboxPageWithSearchParams() {
   return (
     <div className='p-5 pb-4 max-w-[1400px] mx-auto space-y-5'>
       {/* Header */}
+      {assignFeedback && (
+        <div
+          role='alert'
+          className={`flex items-center justify-between p-3 rounded-lg border text-ui-sm ${
+            assignFeedback.type === 'success'
+              ? 'bg-[#3fb950]/10 border-[#3fb950]/30 text-[#3fb950]'
+              : 'bg-[#f85149]/10 border-[#f85149]/30 text-[#f85149]'
+          }`}
+        >
+          <span>{assignFeedback.message}</span>
+          <button
+            onClick={() => setAssignFeedback(null)}
+            className='text-ui-xs underline hover:no-underline ml-3'
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <header className='flex items-center justify-between pt-1'>
         <div>
           <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Lead Inbox</h1>
@@ -333,6 +373,9 @@ function InboxPageWithSearchParams() {
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]' />
             <input
               type='text'
+              id='inbox-search-input'
+              name='q'
+              aria-label='Search customer, destination, ref'
               placeholder='Search customer, destination, ref…'
               value={searchQuery}
               onChange={(e) => updateParams({ q: e.target.value || null, page: '1' })}
@@ -422,6 +465,8 @@ function InboxPageWithSearchParams() {
             <label htmlFor='inbox-limit' className='text-ui-xs text-[#8b949e]'>Rows</label>
             <select
               id='inbox-limit'
+              name='limit'
+              aria-label='Rows per page'
               value={String(limit)}
               onChange={(e) => updateParams({ limit: e.target.value, page: '1' })}
               className='bg-[#161b22] border border-[#30363d] rounded-md px-2 py-1 text-ui-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
@@ -443,6 +488,7 @@ function InboxPageWithSearchParams() {
           onAssign={handleBulkAssign}
           onExport={handleExport}
           agents={agents}
+          isAssigning={isAssigning}
         />
       )}
 
