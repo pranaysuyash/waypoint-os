@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { AlertTriangle, Car, Clock, MapPin, Plane, Train } from 'lucide-react';
 
 export interface RouteStop {
   id: string;
@@ -208,7 +209,7 @@ export function RouteArcRibbon({
           >
             {legs.map((leg, index) => {
               const isSelected = selectedLegIndex === index;
-              const modeIcon = leg.mode === 'flight' ? '✈️' : leg.mode === 'train' ? '🚆' : '🚗';
+              const ModeIcon = leg.mode === 'flight' ? Plane : leg.mode === 'train' ? Train : Car;
               const statusBg =
                 leg.status === 'warning'
                   ? 'rgba(248,81,73,0.15)'
@@ -220,6 +221,7 @@ export function RouteArcRibbon({
 
               return (
                 <button
+                  type="button"
                   key={`${leg.fromId}-${leg.toId}`}
                   onClick={() => setSelectedLegIndex(index)}
                   style={{
@@ -238,9 +240,9 @@ export function RouteArcRibbon({
                   }}
                   title={leg.notes}
                 >
-                  <span>{modeIcon}</span>
+                  <ModeIcon size={13} />
                   <span>{leg.durationText}</span>
-                  {leg.status === 'warning' ? <span style={{ fontSize: 10 }}>⚠️</span> : null}
+                  {leg.status === 'warning' ? <AlertTriangle size={12} /> : null}
                 </button>
               );
             })}
@@ -283,10 +285,10 @@ export function RouteArcRibbon({
             {selectedLeg.notes}
           </p>
 
-          <div style={{ fontSize: 12, color: '#8b949e', display: 'flex', gap: 16 }}>
-            <span>🕒 Duration: <strong style={{ color: '#f0f6fc' }}>{selectedLeg.durationText}</strong></span>
-            <span>📍 Mode: <strong style={{ color: '#f0f6fc', textTransform: 'capitalize' }}>{selectedLeg.mode}</strong></span>
-            {toStop.highlight ? <span>💎 Destination Focus: <strong style={{ color: '#39d0d8' }}>{toStop.highlight}</strong></span> : null}
+          <div style={{ fontSize: 12, color: '#8b949e', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Clock size={12} /> Duration: <strong style={{ color: '#f0f6fc' }}>{selectedLeg.durationText}</strong></span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><MapPin size={12} /> Mode: <strong style={{ color: '#f0f6fc', textTransform: 'capitalize' }}>{selectedLeg.mode}</strong></span>
+            {toStop.highlight ? <span>Focus: <strong style={{ color: '#39d0d8' }}>{toStop.highlight}</strong></span> : null}
           </div>
         </div>
       ) : null}

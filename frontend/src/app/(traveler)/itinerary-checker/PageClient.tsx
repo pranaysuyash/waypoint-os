@@ -37,8 +37,8 @@ const T = {
   purple: '#a371f7',
   b0: '#21262d',
   b1: '#30363d',
-  fDisplay: "'Outfit', system-ui, sans-serif",
-  fBody:    "'Inter', system-ui, sans-serif",
+  fDisplay: "var(--font-sora), 'Outfit', system-ui, sans-serif",
+  fBody:    "var(--font-rubik), system-ui, sans-serif",
   fMono:    "'JetBrains Mono', monospace",
 };
 
@@ -181,27 +181,16 @@ const S = {
     letterSpacing: '0.08em',
   },
   pageBackdrop: {
-    position: 'fixed',
-    inset: 0,
-    pointerEvents: 'none',
-    backgroundImage: `
-      radial-gradient(circle at 18% 10%, rgba(57,208,216,0.07) 0%, transparent 32%),
-      radial-gradient(circle at 82% 12%, rgba(88,166,255,0.06) 0%, transparent 30%),
-      linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px)
-    `,
-    backgroundSize: 'auto, auto, 64px 64px, 64px 64px',
-    backgroundPosition: 'center top, center top, center center, center center',
-    zIndex: 0,
+    display: 'none',
   },
   heroSection: {
     position: 'relative',
     zIndex: 1,
     maxWidth: 1180,
     margin: '0 auto',
-    padding: '56px 40px 68px',
+    padding: '44px clamp(16px, 4vw, 40px) 56px',
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
     gap: 48,
     alignItems: 'start',
   },
@@ -209,17 +198,17 @@ const S = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 7,
-    padding: '5px 12px',
-    borderRadius: 999,
-    marginBottom: 24,
-    color: '#ffd6a6',
-    fontSize: 12,
-    letterSpacing: '0.13em',
+    padding: '4px 10px',
+    borderRadius: 6,
+    marginBottom: 18,
+    color: T.t2,
+    fontSize: 11.5,
+    letterSpacing: '0.1em',
     textTransform: 'uppercase',
-    fontFamily: T.fBody,
+    fontFamily: T.fMono,
     fontWeight: 600,
-    border: '1px solid rgba(255,193,122,0.24)',
-    background: 'rgba(25,18,10,0.74)',
+    border: `1px solid ${T.b1}`,
+    background: T.surface,
   },
   heroOrbBlue: {
     position: 'absolute',
@@ -274,7 +263,7 @@ const S = {
     marginBottom: 14,
   },
   resultsRoot: {
-    background: 'radial-gradient(circle at 15% 10%, rgba(122,185,255,0.07) 0%, transparent 28%), radial-gradient(circle at 85% 0%, rgba(163,113,247,0.06) 0%, transparent 24%), radial-gradient(circle at 50% 100%, rgba(57,208,216,0.05) 0%, transparent 26%), #07090b',
+    background: T.canvas,
     minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
@@ -340,12 +329,11 @@ const S = {
     fontSize: 12,
     fontWeight: 600,
     fontFamily: T.fBody,
-    background: 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
-    color: '#071018',
+    background: T.cyan,
+    color: '#07090b',
     border: 'none',
     cursor: 'pointer',
     textDecoration: 'none',
-    boxShadow: '0 4px 14px rgba(57,208,216,0.25)',
   },
 } satisfies Record<string, CSSProperties>;
 
@@ -373,21 +361,24 @@ const primaryButtonStyle = (enabled: boolean, height = 34, padding = '0 14px'): 
   fontSize: height > 40 ? 13 : 12,
   fontWeight: 600,
   fontFamily: T.fBody,
-  background: enabled
-    ? 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)'
-    : T.elevated,
-  color: enabled ? '#071018' : T.t3,
+  background: enabled ? T.cyan : T.elevated,
+  color: enabled ? '#07090b' : T.t3,
   border: 'none',
   cursor: enabled ? 'pointer' : 'not-allowed',
-  boxShadow: enabled ? '0 8px 24px rgba(57,208,216,0.3)' : 'none',
-  transition: 'background 160ms, color 160ms, box-shadow 160ms',
+  transition: 'background 160ms, color 160ms',
 });
 
 const uploadDropZoneStyle = (dragging: boolean): CSSProperties => ({
   borderRadius: 14,
   border: `2px dashed ${dragging ? T.cyan : T.b1}`,
   background: dragging ? 'rgba(57,208,216,0.04)' : T.surface,
-  padding: '44px 24px',
+  padding: '36px 24px',
+  minHeight: 477,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxSizing: 'border-box',
   textAlign: 'center',
   cursor: 'pointer',
   transition: 'border-color 200ms, background 200ms',
@@ -415,8 +406,8 @@ const sectionButtonStyle = (variant: 'primary' | 'secondary' = 'primary'): CSSPr
   fontSize: 12,
   fontWeight: 600,
   fontFamily: T.fBody,
-  background: variant === 'primary' ? 'linear-gradient(135deg, #7ab9ff 0%, #39d0d8 100%)' : 'transparent',
-  color: variant === 'primary' ? '#071018' : T.t2,
+  background: variant === 'primary' ? T.cyan : 'transparent',
+  color: variant === 'primary' ? '#07090b' : T.t2,
   border: variant === 'primary' ? 'none' : `1px solid ${T.b1}`,
   cursor: 'pointer',
 });
@@ -730,7 +721,7 @@ const initialUploadCardState: UploadCardState = {
   text: '',
   isProcessingFile: false,
   fileError: null,
-  retentionConsent: false,
+  retentionConsent: true,
   declaredPlanSource: 'ai',
   alreadyBooked: false,
 };
@@ -820,14 +811,6 @@ function UploadCard({
 
   return (
     <div style={{ width: '100%', position: 'relative' }}>
-      <div aria-hidden style={S.uploadGlowFrame}>
-        <div className='itinerary-glow' style={{
-          position: 'absolute', inset: '14% 10% auto', height: 180,
-          background: 'radial-gradient(circle, rgba(57,208,216,0.12) 0%, rgba(57,208,216,0.02) 38%, transparent 72%)',
-          filter: 'blur(8px)',
-        }} />
-        <div className='itinerary-scanline' style={S.uploadScanline} />
-      </div>
       {/* Mode tabs */}
       <div style={{
         display: 'flex', gap: 4, marginBottom: 12,
@@ -902,8 +885,8 @@ function UploadCard({
               <button
                 type='button'
                 onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent, already_booked: alreadyBooked }, declaredPlanSource)}
-                disabled={text.length < 10 || isBusy || isProcessingFile}
-                style={primaryButtonStyle(text.length >= 10 && !isBusy)}
+                disabled={text.trim().length < 10 || isBusy || isProcessingFile}
+                style={primaryButtonStyle(text.trim().length >= 10 && !isBusy && !isProcessingFile)}
               >
                 {isBusy ? 'Scoring…' : 'Score My Itinerary'} <ArrowRight size={13} />
               </button>
@@ -1011,247 +994,6 @@ function UploadCard({
   );
 }
 
-function TravelPreviewCard({
-  scenario,
-  isAutoPlaying,
-  onToggleAutoPlay,
-  activeScenarioIdx,
-  onSelectScenario,
-  onLoadScenario,
-}: {
-  scenario: WedgeScenarioBundle;
-  isAutoPlaying: boolean;
-  onToggleAutoPlay: () => void;
-  activeScenarioIdx: number;
-  onSelectScenario: (index: number) => void;
-  onLoadScenario: (scenario: WedgeScenarioBundle) => void;
-}) {
-  const stopPositions = [42, 152, 272, 378];
-  const nodeY = [78, 36, 48, 28];
-  const nodeColors = [T.blue, T.red, T.cyan, T.green];
-
-  return (
-    <div style={S.previewCard}>
-      <div aria-hidden style={S.previewBackground} />
-      <div style={{ position: 'relative' }}>
-        {/* Header Row */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: isAutoPlaying ? T.cyan : T.amber,
-              boxShadow: isAutoPlaying ? `0 0 8px ${T.cyan}` : 'none',
-              flexShrink: 0,
-            }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.cyan }}>
-              Live Diagnostic Stream
-            </span>
-            <button
-              type='button'
-              onClick={onToggleAutoPlay}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '2px 8px',
-                borderRadius: 999,
-                border: `1px solid ${T.b1}`,
-                background: 'rgba(13,17,23,0.85)',
-                color: T.t2,
-                fontSize: 10.5,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {isAutoPlaying ? <Pause size={10} /> : <Play size={10} />}
-              {isAutoPlaying ? 'Auto-rotating · Pause' : 'Paused · Resume'}
-            </button>
-          </div>
-          <div className='itinerary-stamp' style={S.previewStamp}>
-            {scenario.badge}
-          </div>
-        </div>
-
-        {/* Scenario Switcher Pills */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-          {WEDGE_SCENARIO_LIST.map((item, idx) => {
-            const active = idx === activeScenarioIdx;
-            return (
-              <button
-                key={item.key}
-                type='button'
-                onClick={() => onSelectScenario(idx)}
-                style={{
-                  padding: '4px 9px',
-                  borderRadius: 999,
-                  fontSize: 11,
-                  fontWeight: active ? 700 : 500,
-                  cursor: 'pointer',
-                  background: active ? 'rgba(57,208,216,0.14)' : 'rgba(255,255,255,0.03)',
-                  color: active ? T.cyan : T.t3,
-                  border: `1px solid ${active ? 'rgba(57,208,216,0.45)' : 'rgba(168,179,193,0.12)'}`,
-                }}
-              >
-                {item.badge}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Title & Score Row */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 14 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11.5, color: T.t3, marginBottom: 3, fontFamily: T.fMono }}>
-              {scenario.windowLabel}
-            </div>
-            <h3 style={{ fontSize: 19, lineHeight: 1.15, fontWeight: 600, color: T.t1, fontFamily: T.fDisplay, margin: 0 }}>
-              {scenario.title}
-            </h3>
-            <div style={{ fontSize: 12, color: T.t2, marginTop: 4 }}>
-              {scenario.partySummary} · {scenario.budgetSummary}
-            </div>
-          </div>
-          <div style={{
-            minWidth: 106, textAlign: 'right',
-            padding: '8px 11px', borderRadius: 12,
-            background: 'rgba(57,208,216,0.08)', border: '1px solid rgba(57,208,216,0.22)',
-            flexShrink: 0,
-          }}>
-            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.t3 }}>Health check</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1.05 }}>
-              {scenario.score}<span style={{ fontSize: 12, fontWeight: 500, color: T.t3 }}>/100</span>
-            </div>
-            <div style={{ fontSize: 10.5, color: T.amber, marginTop: 2, fontWeight: 600 }}>
-              {scenario.statusLabel}
-            </div>
-          </div>
-        </div>
-
-        {/* Dynamic Route Ribbon */}
-        <div style={{
-          padding: 12, borderRadius: 16,
-          background: 'rgba(7,9,11,0.75)',
-          border: '1px solid rgba(168,179,193,0.12)',
-          marginBottom: 14,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: T.t1 }}>Route ribbon</div>
-            <div style={{ fontSize: 11, color: T.cyan, fontFamily: T.fMono }}>{scenario.routeSummary}</div>
-          </div>
-          <svg viewBox='0 0 420 112' width='100%' height='112' aria-hidden style={{ display: 'block' }}>
-            <defs>
-              <linearGradient id={`itineraryRoute-${scenario.key}`} x1='0%' y1='0%' x2='100%' y2='0%'>
-                <stop offset='0%' stopColor='rgba(88,166,255,0.6)' />
-                <stop offset='40%' stopColor='rgba(248,81,73,0.85)' />
-                <stop offset='75%' stopColor='rgba(57,208,216,0.9)' />
-                <stop offset='100%' stopColor='rgba(63,185,80,0.75)' />
-              </linearGradient>
-            </defs>
-            <path
-              d='M42 78 Q97 24 152 36 T272 48 T378 28'
-              fill='none'
-              stroke={`url(#itineraryRoute-${scenario.key})`}
-              strokeWidth='3'
-              strokeLinecap='round'
-              strokeDasharray='7 8'
-            />
-            {scenario.stops.slice(0, 4).map((stop, idx) => {
-              const cx = stopPositions[idx] ?? 42 + idx * 110;
-              const cy = nodeY[idx] ?? 48;
-              const fill = nodeColors[idx] ?? T.cyan;
-              return (
-                <g key={stop.id}>
-                  <circle cx={cx} cy={cy} r='6' fill={fill} stroke='#07090b' strokeWidth='2' />
-                  <text
-                    x={cx}
-                    y={cy + 20}
-                    textAnchor='middle'
-                    fill='#f0f6fc'
-                    fontSize='11'
-                    fontWeight='700'
-                    fontFamily={T.fMono}
-                  >
-                    {stop.code}
-                  </text>
-                  <text
-                    x={cx}
-                    y={cy + 33}
-                    textAnchor='middle'
-                    fill='#8b949e'
-                    fontSize='9.5'
-                    fontFamily={T.fBody}
-                  >
-                    {stop.city.length > 14 ? `${stop.city.slice(0, 12)}…` : stop.city}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-
-        {/* 4 Metric Tiles */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-          gap: 8,
-          marginBottom: 12,
-        }}>
-          {[
-            { icon: SunMedium, label: 'Weather', value: scenario.weatherSummary, color: T.amber },
-            { icon: Camera, label: 'Stops', value: scenario.stopsSummary, color: T.blue },
-            { icon: Sparkles, label: 'Flow', value: scenario.flowSummary, color: T.green },
-            { icon: Route, label: 'VIP Perks', value: scenario.perksValueSummary, color: T.cyan },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.label} style={{
-                padding: '10px 11px',
-                borderRadius: 12,
-                background: 'rgba(255,255,255,0.025)',
-                border: '1px solid rgba(168,179,193,0.12)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-                  <div style={colorIconStyle(item.color, 20, 6)}>
-                    <Icon size={12} strokeWidth={1.9} />
-                  </div>
-                  <div style={{ fontSize: 11, color: T.t3 }}>{item.label}</div>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: T.t1, lineHeight: 1.35 }}>{item.value}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        <button
-          type='button'
-          onClick={() => onLoadScenario(scenario)}
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            borderRadius: 10,
-            border: '1px solid rgba(57,208,216,0.3)',
-            background: 'rgba(57,208,216,0.08)',
-            color: T.cyan,
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-          }}
-        >
-          Load this scenario into checker & inspect live →
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── What we check data ────────────────────────────────────────────────────────
 const CHECKS = [
   {
@@ -1297,78 +1039,138 @@ function UploadHeroSection({
   onAnalyzeFile,
   isBusy,
   activeScenario,
-  activeScenarioIdx,
-  isAutoPlaying,
-  onToggleAutoPlay,
   onSelectScenario,
-  onLoadScenario,
   externalDraftText,
 }: {
   onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => void;
   onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor', alreadyBooked?: boolean) => Promise<void>;
   isBusy: boolean;
   activeScenario: WedgeScenarioBundle;
-  activeScenarioIdx: number;
-  isAutoPlaying: boolean;
-  onToggleAutoPlay: () => void;
   onSelectScenario: (index: number) => void;
-  onLoadScenario: (scenario: WedgeScenarioBundle) => void;
   externalDraftText: { text: string; nonce: number } | null;
 }) {
+  const topFinding = activeScenario.findings[0];
+
   return (
     <>
-      {/* ── HERO: split 2-col ── */}
+      {/* ── HERO: balanced 2-col ── */}
       <section style={S.heroSection}>
-        {/* Left: headline + context + rotating live diagnostic stream */}
+        {/* Left: clear problem/output framing + compact real-output snapshot */}
         <div>
-          {/* Kicker */}
           <span style={S.amberKicker}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#39d0d8', boxShadow: '0 0 5px #39d0d8', flexShrink: 0 }} />
             Free travel plan check
           </span>
 
           <h1 style={{
-            fontSize: 'clamp(36px, 4vw, 52px)', fontWeight: 600,
-            lineHeight: 1.04, letterSpacing: '-0.04em',
-            color: '#f5fbff', fontFamily: T.fDisplay, marginBottom: 18,
+            fontSize: 'clamp(34px, 3.8vw, 48px)', fontWeight: 600,
+            lineHeight: 1.06, letterSpacing: '-0.035em',
+            color: '#f5fbff', fontFamily: T.fDisplay, marginBottom: 16,
           }}>
             Turn your itinerary or travel plan into a clearer trip map.
           </h1>
 
-          <p style={{ fontSize: 15.5, lineHeight: 1.68, color: T.t2, maxWidth: '45ch', marginBottom: 24 }}>
-            Upload an itinerary, paste your own travel plan, or drop a screenshot. The checker shows what it
-            understood, flags missing or risky parts, and gives you a clearer starting point before you book or
-            send it onward.
+          <p style={{ fontSize: 15, lineHeight: 1.65, color: T.t2, maxWidth: '46ch', marginBottom: 24 }}>
+            Upload a PDF, paste your draft, or drop a screenshot. Waypoint extracts your route and dates,
+            flags missing or risky details, and gives you a brief you can keep or send to an advisor.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, maxWidth: 560, marginBottom: 24 }}>
-            {[
-              { stat: '60 sec', label: 'to score the plan and flag issues' },
-              { stat: 'PDF + paste', label: 'works from messy inputs' },
-              { stat: 'Shareable', label: 'export or pass the result along' },
-            ].map(s => (
-              <div key={s.stat} style={{
-                padding: '13px 15px', borderRadius: 14,
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(168,179,193,0.12)',
-              }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1, whiteSpace: 'nowrap' }}>{s.stat}</div>
-                <div style={{ fontSize: 12, color: T.t3, marginTop: 4, lineHeight: 1.4 }}>{s.label}</div>
+          {/* Compact real-output snapshot matching /api/public-checker/run */}
+          <div style={{
+            borderRadius: 12,
+            background: T.surface,
+            border: `1px solid ${T.b0}`,
+            padding: '16px 18px',
+            minHeight: 204,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              paddingBottom: 12,
+              borderBottom: `1px solid ${T.b0}`,
+              marginBottom: 12,
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.t3, fontFamily: T.fMono }}>
+                  Output preview · {activeScenario.badge}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: T.t1, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {activeScenario.title}
+                </div>
               </div>
-            ))}
-          </div>
+              <div style={{
+                padding: '5px 10px',
+                borderRadius: 8,
+                background: T.elevated,
+                border: `1px solid ${T.b1}`,
+                textAlign: 'right',
+                flexShrink: 0,
+              }}>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: T.t3 }}>Health check</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: T.t1, fontFamily: T.fMono }}>{activeScenario.score}/100</div>
+              </div>
+            </div>
 
-          <TravelPreviewCard
-            scenario={activeScenario}
-            isAutoPlaying={isAutoPlaying}
-            onToggleAutoPlay={onToggleAutoPlay}
-            activeScenarioIdx={activeScenarioIdx}
-            onSelectScenario={onSelectScenario}
-            onLoadScenario={onLoadScenario}
-          />
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: '8px 16px',
+              marginBottom: topFinding ? 12 : 0,
+              fontSize: 12,
+            }}>
+              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span style={{ color: T.t4 }}>Route: </span>
+                <span style={{ color: T.t1, fontFamily: T.fMono }}>{activeScenario.routeSummary}</span>
+              </div>
+              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span style={{ color: T.t4 }}>Window: </span>
+                <span style={{ color: T.t1 }}>{activeScenario.windowLabel}</span>
+              </div>
+              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span style={{ color: T.t4 }}>Group: </span>
+                <span style={{ color: T.t1 }}>{activeScenario.partySummary}</span>
+              </div>
+              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span style={{ color: T.t4 }}>Budget: </span>
+                <span style={{ color: T.t1, fontFamily: T.fMono }}>{activeScenario.budgetSummary}</span>
+              </div>
+            </div>
+
+            {topFinding ? (
+              <div style={{
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: 'rgba(248,81,73,0.06)',
+                border: '1px solid rgba(248,81,73,0.2)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                minHeight: 42,
+              }}>
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  fontFamily: T.fMono,
+                  color: T.red,
+                  marginTop: 2,
+                  flexShrink: 0,
+                }}>
+                  Flagged
+                </span>
+                <div style={{ fontSize: 12, color: T.t1, lineHeight: 1.45 }}>
+                  {topFinding.label}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
 
-        {/* Right: interactive upload/paste tool positioned above the fold */}
+        {/* Right: interactive upload/paste tool */}
         <div className='itinerary-reveal' style={{ position: 'relative' }}>
           <UploadCard
             onAnalyze={onAnalyze}
@@ -1378,40 +1180,6 @@ function UploadHeroSection({
             onSelectScenario={onSelectScenario}
             activeScenarioKey={activeScenario.key}
           />
-        </div>
-      </section>
-    </>
-  );
-}
-
-function TravelMomentsSection() {
-  return (
-    <>
-      {/* ── TRAVEL MOMENTS ── */}
-      <section style={S.travelMomentsSection}>
-        <div style={{
-          maxWidth: 1180, margin: '0 auto',
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14,
-        }}>
-          {TRAVEL_MOMENTS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.title} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 12,
-                padding: '16px 16px', borderRadius: 18,
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(168,179,193,0.12)',
-              }}>
-                <div style={S.travelMomentIcon}>
-                  <Icon size={18} strokeWidth={1.8} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: T.t1, marginBottom: 4 }}>{item.title}</div>
-                  <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>{item.body}</div>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </section>
     </>
@@ -1432,7 +1200,12 @@ function PublicVisualDiagnosticSection({
   onInteractPause: () => void;
 }) {
   return (
-    <section style={{ position: 'relative', zIndex: 1, padding: '72px 40px 24px' }}>
+    <section style={{
+      position: 'relative',
+      zIndex: 1,
+      borderTop: `1px solid ${T.b0}`,
+      padding: '56px clamp(16px, 4vw, 40px)',
+    }}>
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <div style={{
           display: 'flex',
@@ -1440,25 +1213,25 @@ function PublicVisualDiagnosticSection({
           justifyContent: 'space-between',
           alignItems: 'flex-end',
           gap: 20,
-          marginBottom: 24,
+          marginBottom: 20,
         }}>
           <div>
             <div style={S.sectionKicker}>
-              <Compass size={13} /> Interactive Physics & Perks Engine
+              Diagnostic Engine
             </div>
             <h2 style={{
-              fontSize: 'clamp(26px, 3.3vw, 38px)',
+              fontSize: 'clamp(24px, 3vw, 34px)',
               fontWeight: 600,
               letterSpacing: '-0.03em',
               color: T.t1,
               fontFamily: T.fDisplay,
               margin: '0 0 8px 0',
             }}>
-              Explore the 8 diagnostic checks before you upload
+              Inspect how each check works
             </h2>
-            <p style={{ fontSize: 14.5, color: T.t2, maxWidth: '58ch', margin: 0, lineHeight: 1.6 }}>
-              Inspect live airport hub cutaways, 3D orbital flight routes, biological pacing burnout curves, and
-              unclaimed hotel rate-parity perks across real itinerary scenarios.
+            <p style={{ fontSize: 14, color: T.t2, maxWidth: '58ch', margin: 0, lineHeight: 1.6 }}>
+              Switch scenarios to inspect hub layover buffers, multi-stop routes, daily pacing load, and eligible
+              hotel rate-parity perks before uploading your own plan.
             </p>
           </div>
 
@@ -1517,53 +1290,6 @@ function PublicVisualDiagnosticSection({
   );
 }
 
-function TravelChecksSection() {
-  return (
-    <>
-      {/* ── WHAT WE CHECK ── */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '80px 40px' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <div style={S.sectionKicker}>
-              <FileCheck size={13} /> Six trip checks
-            </div>
-            <h2 style={{
-              fontSize: 'clamp(28px, 3.5vw, 40px)', fontWeight: 600,
-              letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay, marginBottom: 14,
-            }}>
-              What this checker catches
-            </h2>
-            <p style={{ fontSize: 15, color: T.t2, maxWidth: '46ch', margin: '0 auto', lineHeight: 1.65 }}>
-              Every report covers the parts travelers actually feel: timing, costs, pacing, safety, and trip friction.
-            </p>
-          </div>
-
-          <div className='itinerary-stagger' style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16,
-          }}>
-            {CHECKS.map(c => {
-              const Icon = c.icon;
-              return (
-                <div key={c.label} style={{
-                  padding: '24px 26px', borderRadius: 16,
-                  background: T.surface, border: `1px solid ${T.b0}`,
-                  transition: 'border-color 200ms',
-                }}>
-                  <div style={{ ...colorIconStyle(c.color, 40, 10), marginBottom: 16 }}>
-                    <Icon size={18} strokeWidth={1.8} />
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: T.t1, marginBottom: 8 }}>{c.label}</div>
-                  <div style={{ fontSize: 12.5, color: T.t2, lineHeight: 1.65 }}>{c.body}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-    </>
-  );
-}
-
 function ExampleFindingsSection({
   scenario,
   onLoadScenario,
@@ -1576,57 +1302,44 @@ function ExampleFindingsSection({
       {/* ── EXAMPLE FINDINGS (SCENARIO-SYNCED) ── */}
       <section style={{
         position: 'relative', zIndex: 1,
-        padding: '0 40px 88px',
+        borderTop: `1px solid ${T.b0}`,
+        padding: '64px clamp(16px, 4vw, 40px)',
+        background: T.surface,
       }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 64, alignItems: 'start',
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 56, alignItems: 'start',
           }}>
             {/* Left: copy */}
-            <div style={{ paddingTop: 8 }}>
+            <div style={{ paddingTop: 4 }}>
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
                 padding: '4px 10px',
-                borderRadius: 999,
-                background: 'rgba(210,153,34,0.1)',
-                border: '1px solid rgba(210,153,34,0.24)',
+                borderRadius: 6,
+                background: 'rgba(210,153,34,0.08)',
+                border: '1px solid rgba(210,153,34,0.22)',
                 fontSize: 11,
                 fontWeight: 700,
-                letterSpacing: '0.08em',
+                letterSpacing: '0.06em',
                 textTransform: 'uppercase',
                 color: T.amber,
                 marginBottom: 14,
               }}>
-                Active scenario: {scenario.title} ({scenario.routeSummary})
+                {scenario.title} · {scenario.routeSummary}
               </div>
               <h2 style={{
-                fontSize: 'clamp(26px, 3vw, 38px)', fontWeight: 600,
+                fontSize: 'clamp(24px, 2.8vw, 34px)', fontWeight: 600,
                 letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay,
-                marginBottom: 18, lineHeight: 1.1,
+                marginBottom: 16, lineHeight: 1.12,
               }}>
                 Specific signals, not vague travel advice
               </h2>
-              <p style={{ fontSize: 15, color: T.t2, lineHeight: 1.7, marginBottom: 24, maxWidth: '40ch' }}>
-                The best results are specific to the plan you gave us. When the input is thinner, the checker still
-                shows what it understood, what feels risky, and what details need to be clarified next.
+              <p style={{ fontSize: 14.5, color: T.t2, lineHeight: 1.65, marginBottom: 22, maxWidth: '42ch' }}>
+                Every check surfaces what the engine extracted, what feels brittle or missing, and what to confirm
+                before you book or hand the brief to an advisor.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-                {[
-                  { label: 'Route gap', desc: 'Where the trip feels brittle', color: T.red },
-                  { label: 'Cost leak', desc: 'Fees and friction worth fixing', color: T.amber },
-                  { label: 'Trip upgrade', desc: 'Small changes that improve the plan', color: T.blue },
-                ].map(row => (
-                  <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                      width: 8, height: 8, borderRadius: '50%', background: row.color, flexShrink: 0,
-                    }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: T.t1 }}>{row.label}</span>
-                    <span style={{ fontSize: 12, color: T.t3 }}>{row.desc}</span>
-                  </div>
-                ))}
-              </div>
               <button
                 type='button'
                 onClick={() => onLoadScenario(scenario)}
@@ -1637,7 +1350,7 @@ function ExampleFindingsSection({
             </div>
 
             {/* Right: synced findings cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 396 }}>
               {scenario.findings.map(f => {
                 const sev = f.sev;
                 return (
@@ -1660,225 +1373,42 @@ function ExampleFindingsSection({
   );
 }
 
-function SampleBriefPreviewSection({
-  scenario,
-  onLoadScenario,
-  onRunScenarioLive,
-  isBusy,
-}: {
-  scenario: WedgeScenarioBundle;
-  onLoadScenario: (scenario: WedgeScenarioBundle) => void;
-  onRunScenarioLive: (scenario: WedgeScenarioBundle) => void;
-  isBusy: boolean;
-}) {
-  return (
-    <>
-      {/* ── SAMPLE BRIEF PREVIEW (SCENARIO-SYNCED) ── */}
-      <section style={{
-        position: 'relative', zIndex: 1,
-        borderTop: `1px solid ${T.b0}`,
-        padding: '88px 40px',
-        background: T.surface,
-      }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <div style={{
-              fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: T.blue, marginBottom: 14,
-            }}>
-              What you receive
-            </div>
-            <h2 style={{
-              fontSize: 'clamp(26px, 3vw, 38px)', fontWeight: 600,
-              letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay, marginBottom: 14,
-            }}>
-              A scored trip snapshot you can review or share
-            </h2>
-            <p style={{ fontSize: 15, color: T.t2, maxWidth: '46ch', margin: '0 auto', lineHeight: 1.65 }}>
-              Not just a raw paste box. You get a score, extracted trip details when available, and clearly grouped
-              flags you can keep, export, or send onward.
-            </p>
-          </div>
-
-          {/* Brief mockup synced to active scenario */}
-          <div style={{
-            maxWidth: 820, margin: '0 auto',
-            borderRadius: 20, border: `1px solid ${T.b1}`,
-            background: T.canvas, overflow: 'hidden',
-          }}>
-            {/* Mockup chrome bar */}
-            <div style={{
-              padding: '12px 18px', borderBottom: `1px solid ${T.b0}`,
-              background: T.elevated, display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              {['#f85149', '#d29922', '#3fb950'].map(c => (
-                <div key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
-              ))}
-              <div style={{
-                ...S.emailInputFrame,
-                height: 22,
-                margin: '0 12px',
-                padding: '0 0 0 10px',
-              }}>
-                <span style={{ fontSize: 12, color: T.t4, fontFamily: T.fMono }}>
-                  waypoint.travel/report/{scenario.key}
-                </span>
-              </div>
-            </div>
-
-            {/* Brief content */}
-            <div style={{ padding: '24px 28px', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 24, alignItems: 'start' }}>
-              {/* Score block */}
-              <div style={{
-                padding: '18px 20px', borderRadius: 14, background: T.surface,
-                border: `1px solid ${T.b0}`, textAlign: 'center', minWidth: 140,
-              }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t4, marginBottom: 12 }}>
-                  Health check
-                </div>
-                <div style={{ position: 'relative', width: 72, height: 72, margin: '0 auto 12px' }}>
-                  <svg width='72' height='72' viewBox='0 0 72 72' style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx='36' cy='36' r='28' fill='none' stroke={T.b0} strokeWidth='6' />
-                    <circle cx='36' cy='36' r='28' fill='none' stroke={T.amber} strokeWidth='6'
-                      strokeDasharray={`${2 * Math.PI * 28 * (scenario.score / 100)} ${2 * Math.PI * 28}`}
-                      strokeLinecap='round' />
-                  </svg>
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: 22, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>{scenario.score}</span>
-                    <span style={{ fontSize: 12, color: T.t3 }}>/100</span>
-                  </div>
-                </div>
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: T.amber }}>{scenario.statusLabel}</div>
-                <div style={{ display: 'flex', gap: 10, marginTop: 12, justifyContent: 'center' }}>
-                  {[
-                    { n: scenario.criticalCount, c: T.red },
-                    { n: scenario.warningCount, c: T.amber },
-                    { n: scenario.infoCount, c: T.blue },
-                  ].map((m, idx) => (
-                    <div key={`${idx}-${m.c}`} style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: m.c, fontFamily: T.fDisplay }}>{m.n}</div>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.c, margin: '3px auto 0' }} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Summary lines */}
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: T.t1, marginBottom: 4 }}>
-                  {scenario.title} — Diagnostic Brief
-                </div>
-                <div style={{ fontSize: 12, color: T.t3, marginBottom: 18 }}>
-                  {scenario.windowLabel} · {scenario.routeSummary} · {scenario.budgetSummary}
-                </div>
-
-                {scenario.dossierRows.map(row => (
-                  <div key={row.label} style={{
-                    display: 'flex', alignItems: 'baseline', gap: 10,
-                    padding: '7px 0', borderBottom: `1px solid ${T.b0}`,
-                  }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.t4, minWidth: 86 }}>{row.label}</span>
-                    <span style={{ fontSize: 12, color: T.t2, fontFamily: T.fMono }}>{row.value}</span>
-                  </div>
-                ))}
-
-                <div style={{ marginTop: 18, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <button
-                    type='button'
-                    onClick={() => onRunScenarioLive(scenario)}
-                    disabled={isBusy}
-                    style={{
-                      ...sectionButtonStyle('primary'),
-                      cursor: isBusy ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {isBusy ? 'Running live scan…' : 'Score this sample live →'}
-                  </button>
-                  <button
-                    type='button'
-                    onClick={() => onLoadScenario(scenario)}
-                    style={sectionButtonStyle('secondary')}
-                  >
-                    Load into checker ↑
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </>
-  );
-}
-
 function FinalCtaSection() {
   return (
-    <>
-      {/* ── FINAL CTA ── */}
-      <section style={{
-        position: 'relative', zIndex: 1,
-        borderTop: `1px solid ${T.b0}`,
-        padding: '88px 40px 96px',
-        background: 'radial-gradient(circle at 50% 0%, rgba(57,208,216,0.07) 0%, transparent 60%)',
+    <footer style={{
+      position: 'relative',
+      zIndex: 1,
+      borderTop: `1px solid ${T.b0}`,
+      padding: '36px 40px 44px',
+      background: T.canvas,
+    }}>
+      <div style={{
+        maxWidth: 1180,
+        margin: '0 auto',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 20,
       }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
-          <span style={{
-            ...S.amberKicker,
-            color: '#d8eef0',
-            border: '1px solid rgba(57,208,216,0.22)',
-            background: 'rgba(7,22,26,0.8)',
-          }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.cyan, boxShadow: `0 0 5px ${T.cyan}`, flexShrink: 0 }} />
-            Free · 60 seconds · No account
-          </span>
-
-          <h2 style={{
-            fontSize: 'clamp(28px, 4vw, 46px)', fontWeight: 600,
-            letterSpacing: '-0.04em', color: T.t1, fontFamily: T.fDisplay,
-            marginBottom: 18, lineHeight: 1.05,
-          }}>
-            Ready to make the trip feel clear?
-          </h2>
-
-          <p style={{ fontSize: 15, color: T.t2, lineHeight: 1.7, marginBottom: 36, maxWidth: '40ch', margin: '0 auto 36px' }}>
-            Upload now and see what the checker understood, where the plan still feels weak, and what to tighten
-            before you book.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-            <button
-              type='button'
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              style={{
-                ...primaryButtonStyle(true, 52, '0 28px'),
-                gap: 8,
-                fontSize: 15,
-                fontWeight: 700,
-                boxShadow: '0 12px 32px rgba(57,208,216,0.35), inset 0 1px 0 rgba(255,255,255,0.38)',
-              }}
-            >
-              Check my itinerary now <ArrowRight size={16} />
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
-              {['No account needed', 'Results in 60 seconds', 'Private & secure'].map(label => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Check size={12} color={T.green} strokeWidth={2.5} />
-                  <span style={{ fontSize: 12, color: T.t4 }}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginTop: 48, paddingTop: 36, borderTop: `1px solid ${T.b0}`, fontSize: 12, color: T.t4 }}>
-            Travel agent?{' '}
-            <Link href='/signup' style={{ color: T.blue, textDecoration: 'none' }}>
-              See Waypoint OS for agencies →
-            </Link>
-          </div>
+        <div style={{ maxWidth: 680, fontSize: 11.5, color: T.t3, lineHeight: 1.55 }}>
+          {CHECKER_DISCLAIMER} Submitted itineraries, extracted facts, and scores are saved by default to improve
+          the checker unless you uncheck storage above.
         </div>
-      </section>
-    </>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <button
+            type='button'
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            style={sectionButtonStyle('primary')}
+          >
+            Check my itinerary ↑
+          </button>
+          <Link href='/signup' style={{ fontSize: 12, color: T.blue, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            For agencies: Waypoint OS →
+          </Link>
+        </div>
+      </div>
+    </footer>
   );
 }
 
@@ -1897,7 +1427,7 @@ function UploadView({
   agencyContext?: AgencyBrandingContext | null;
 }) {
   const [activeScenarioIdx, setActiveScenarioIdx] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [draftToLoad, setDraftToLoad] = useState<{ text: string; nonce: number } | null>(null);
 
   useEffect(() => {
@@ -1933,39 +1463,19 @@ function UploadView({
     }
   };
 
-  const handleRunScenarioLive = (scenario: WedgeScenarioBundle) => {
-    setIsAutoPlaying(false);
-    onAnalyze(
-      scenario.samplePasteText,
-      {
-        kind: 'paste',
-        source: 'sample_scenario',
-        retention_consent: false,
-        already_booked: false,
-      },
-      'ai',
-    );
-  };
-
   return (
     <div ref={rootRef} style={{
       background: T.canvas, fontFamily: T.fBody, color: T.t1,
     }}>
       <WedgeHeader agencyContext={agencyContext} />
-      <div style={S.pageBackdrop} />
       <UploadHeroSection
         onAnalyze={onAnalyze}
         onAnalyzeFile={onAnalyzeFile}
         isBusy={isBusy}
         activeScenario={activeScenario}
-        activeScenarioIdx={activeScenarioIdx}
-        isAutoPlaying={isAutoPlaying}
-        onToggleAutoPlay={() => setIsAutoPlaying((prev) => !prev)}
         onSelectScenario={handleSelectScenario}
-        onLoadScenario={handleLoadScenario}
         externalDraftText={draftToLoad}
       />
-      <TravelMomentsSection />
       <PublicVisualDiagnosticSection
         scenario={activeScenario}
         activeScenarioIdx={activeScenarioIdx}
@@ -1973,22 +1483,10 @@ function UploadView({
         onLoadScenario={handleLoadScenario}
         onInteractPause={() => setIsAutoPlaying(false)}
       />
-      <TravelChecksSection />
       <ExampleFindingsSection
         scenario={activeScenario}
         onLoadScenario={handleLoadScenario}
       />
-      <SampleBriefPreviewSection
-        scenario={activeScenario}
-        onLoadScenario={handleLoadScenario}
-        onRunScenarioLive={handleRunScenarioLive}
-        isBusy={isBusy}
-      />
-      <div style={{ position: 'relative', zIndex: 1, padding: '0 40px 40px', textAlign: 'center' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto', fontSize: 11.5, color: T.t3, lineHeight: 1.55 }}>
-          {CHECKER_DISCLAIMER}
-        </div>
-      </div>
       <FinalCtaSection />
     </div>
   );
@@ -2189,23 +1687,28 @@ function ConsentToggle({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <div style={{
-      padding: '0 16px 10px',
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 10,
-    }}>
+    <label
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        padding: '0 16px 10px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+    >
       <input
         type='checkbox'
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         style={{ marginTop: 3, accentColor: T.cyan }}
       />
-      <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.45 }}>
+      <span style={{ fontSize: 12, color: T.t2, lineHeight: 1.45 }}>
         Store my typed input, extracted facts, and score to help improve the checker.
         Leave unchecked for a one-time, anonymous analysis — nothing is kept.
-      </div>
-    </div>
+      </span>
+    </label>
   );
 }
 
@@ -3454,7 +2957,7 @@ function ResultsView({
   return (
     <div ref={rootRef} style={S.resultsRoot}>
       <WedgeHeader agencyContext={agencyContext} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', maxWidth: 860, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px clamp(16px, 4vw, 32px)', maxWidth: 1080, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <button onClick={onReset} style={S.backButton}>
           ← Analyze another itinerary
         </button>

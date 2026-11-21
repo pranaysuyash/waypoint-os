@@ -1,6 +1,17 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import {
+  Activity,
+  BedDouble,
+  Building2,
+  Clock,
+  Globe,
+  Route,
+  Scale,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react';
 import type { RunStatusResponse } from '@/types/spine';
 import { LayoverStressGauge, type LayoverSegment } from './LayoverStressGauge';
 import { RouteArcRibbon, type RouteStop, type RouteLeg } from './RouteArcRibbon';
@@ -1092,7 +1103,7 @@ export const WEDGE_SCENARIO_CATALOG: Record<WedgeScenarioKey, WedgeScenarioBundl
         perks: [
           { icon: '🥐', label: 'Daily Alpine Artisanal Breakfast', estimatedValue: 190, description: 'Complimentary breakfast overlooking Matterhorn valley' },
           { icon: '💳', label: 'Michelin-Starred Dining Credit', estimatedValue: 100, description: '100 CHF food & beverage credit' },
-          { icon: ' इलेक्ट्रिक', label: 'Private Electric Taxi & Cavern Lift', estimatedValue: 80, description: 'Private electric vehicle meet at Zermatt station' },
+          { icon: 'car', label: 'Private Electric Taxi & Cavern Lift', estimatedValue: 80, description: 'Private electric vehicle meet at Zermatt station' },
         ],
       },
     ],
@@ -1625,7 +1636,7 @@ type TabType = 'stress' | 'isoAirport' | 'globe3d' | 'route' | 'pacing' | 'isoHo
 
 const SHOWCASE_TABS: {
   key: TabType;
-  icon: string;
+  icon: LucideIcon;
   label: string;
   sublabel: string;
   accent: string;
@@ -1633,65 +1644,65 @@ const SHOWCASE_TABS: {
 }[] = [
   {
     key: 'stress',
-    icon: '⏱️',
+    icon: Clock,
     label: 'Connection Stress',
-    sublabel: 'MCT & delay buffer gauge',
+    sublabel: 'Hub buffer & delay check',
     accent: '#f85149',
     bgActive: 'rgba(248,81,73,0.12)',
   },
   {
     key: 'isoAirport',
-    icon: '🏗️',
-    label: '2.5D Airport Cutaway',
-    sublabel: 'Bag & terminal particle flow',
+    icon: Building2,
+    label: 'Terminal Transfer',
+    sublabel: 'Gate & baggage transit path',
     accent: '#38bdf8',
     bgActive: 'rgba(56,189,248,0.14)',
   },
   {
     key: 'globe3d',
-    icon: '🌐',
-    label: '3D Globe Flight Arc',
-    sublabel: 'Interactive orbital trajectory',
+    icon: Globe,
+    label: '3D Route Arc',
+    sublabel: 'Multi-leg flight trajectory',
     accent: '#60a5fa',
     bgActive: 'rgba(96,165,250,0.14)',
   },
   {
     key: 'route',
-    icon: '🗺️',
-    label: 'Route Arc Ribbon',
-    sublabel: 'Multi-stop transfer topology',
+    icon: Route,
+    label: 'Stop Sequence',
+    sublabel: 'Air & rail leg breakdown',
     accent: '#39d0d8',
     bgActive: 'rgba(57,208,216,0.12)',
   },
   {
     key: 'pacing',
-    icon: '⚡',
-    label: 'Pacing & Fatigue Curve',
-    sublabel: 'Circadian stamina vs. steps',
+    icon: Activity,
+    label: 'Daily Pacing',
+    sublabel: 'Step load & recovery margin',
     accent: '#d29922',
     bgActive: 'rgba(210,153,34,0.12)',
   },
   {
     key: 'isoHotel',
-    icon: '🏨',
-    label: '2.5D Suite Cutaway',
-    sublabel: 'OTA room vs. VIP suite wing',
+    icon: BedDouble,
+    label: 'Room vs. Partner Tier',
+    sublabel: 'OTA allocation vs. direct desk',
     accent: '#34d399',
     bgActive: 'rgba(52,211,153,0.14)',
   },
   {
     key: 'comparison',
-    icon: '⚖️',
+    icon: Scale,
     label: 'Before vs. After',
-    sublabel: 'Raw DIY vs. Advisor protected',
+    sublabel: 'Self-planned vs. advisor-backed',
     accent: '#58a6ff',
     bgActive: 'rgba(88,166,255,0.12)',
   },
   {
     key: 'perks',
-    icon: '💎',
-    label: 'VIP Perks Radar',
-    sublabel: 'Unclaimed rate-parity value',
+    icon: Sparkles,
+    label: 'Hotel Perks Check',
+    sublabel: 'Rate-parity credits & breakfast',
     accent: '#3fb950',
     bgActive: 'rgba(63,185,80,0.12)',
   },
@@ -1712,6 +1723,23 @@ export function WedgeVisualShowcase({
 
   return (
     <div style={{ marginTop: 24, marginBottom: 28 }}>
+      {analysis ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: '#0d1117',
+            border: '1px solid #21262d',
+            fontSize: 12,
+            color: '#8b949e',
+            lineHeight: 1.5,
+          }}
+        >
+          Route and hub nodes reflect your submitted itinerary; terminal transit times, pacing load curves, and
+          hotel perk figures are illustrative partner benchmarks unless explicitly listed in your findings above.
+        </div>
+      ) : null}
       {/* Visual Navigation Grid — all 8 modules visible without horizontal clipping */}
       <div
         role="tablist"
@@ -1729,6 +1757,7 @@ export function WedgeVisualShowcase({
       >
         {SHOWCASE_TABS.map((tab) => {
           const isActive = activeTab === tab.key;
+          const Icon = tab.icon;
           return (
             <button
               key={tab.key}
@@ -1750,7 +1779,20 @@ export function WedgeVisualShowcase({
                 transition: 'all 0.15s ease',
               }}
             >
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{tab.icon}</span>
+              <span style={{
+                width: 28,
+                height: 28,
+                borderRadius: 8,
+                background: isActive ? `${tab.accent}22` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${isActive ? `${tab.accent}44` : 'rgba(48,54,61,0.6)'}`,
+                color: isActive ? tab.accent : '#8b949e',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Icon size={14} strokeWidth={1.9} />
+              </span>
               <div style={{ minWidth: 0 }}>
                 <div
                   style={{
@@ -1782,7 +1824,8 @@ export function WedgeVisualShowcase({
         })}
       </div>
 
-      {/* Render Active Visual Moment with dynamically resolved trip telemetry */}
+      {/* Render Active Visual Moment with locked minHeight to prevent tab-switch CLS */}
+      <div style={{ minHeight: 780 }}>
       {activeTab === 'stress' ? (
         <LayoverStressGauge segment={resolved.layoverSegment} onAdvisorHelp={onAdvisorHelp} />
       ) : null}
@@ -1831,6 +1874,7 @@ export function WedgeVisualShowcase({
           onClaimPerks={onAdvisorHelp}
         />
       ) : null}
+      </div>
     </div>
   );
 }

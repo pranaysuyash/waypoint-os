@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
 
 export interface LayoverSegment {
   inboundFlight: string;
@@ -77,7 +78,7 @@ export function LayoverStressGauge({ segment = DEFAULT_SEGMENT, onAdvisorHelp }:
                 border: `1px solid ${statusColor}44`,
               }}
             >
-              Travel Physics · Hub Transit
+              Hub Connection Check
             </span>
             <span style={{ fontSize: 12, color: '#8b949e' }}>
               {segment.transitHub}
@@ -289,7 +290,7 @@ export function LayoverStressGauge({ segment = DEFAULT_SEGMENT, onAdvisorHelp }:
           color: '#c9d1d9',
         }}
       >
-        <span style={{ color: '#39d0d8', fontSize: 16 }}>🛡️</span>
+        <ShieldCheck size={16} color='#39d0d8' style={{ flexShrink: 0, marginTop: 2 }} />
         <div>
           <strong style={{ color: '#39d0d8' }}>How a Waypoint Advisor protects this:</strong>{' '}
           {isCritical

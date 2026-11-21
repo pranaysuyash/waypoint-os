@@ -127,7 +127,7 @@ export function IsometricAirportCutaway({
             {isMisconnected ? `${bufferDeficit}m Deficit` : `+${bufferDeficit}m Safe Cushion`}
           </div>
           <div style={{ fontSize: 11, color: '#8b949e' }}>
-            {isMisconnected ? '⚠️ 84% Baggage Stranding Risk' : '✓ Normal Transit Clearance'}
+            {isMisconnected ? 'High baggage misconnect risk' : 'Normal transit clearance'}
           </div>
         </div>
       </div>
@@ -196,7 +196,7 @@ export function IsometricAirportCutaway({
             <polygon points="80,105 160,60 160,0 80,45" fill="#111827" stroke="#374151" strokeWidth="1" />
             {/* Roof Top */}
             <polygon points="0,0 80,45 160,0 80,-45" fill="#374151" stroke="#4b5563" strokeWidth="1" />
-            <text x="80" y="5" textAnchor="middle" fill="#9ca3af" fontSize="10" fontWeight="700">T5A Inbound</text>
+            <text x="80" y="5" textAnchor="middle" fill="#9ca3af" fontSize="10" fontWeight="700">Inbound Terminal</text>
             <text x="80" y="22" textAnchor="middle" fill="#38bdf8" fontSize="8.5">{inboundFlight}</text>
           </g>
 
@@ -214,7 +214,7 @@ export function IsometricAirportCutaway({
             <polygon points="0,60 80,105 80,45 0,0" fill="#1f2937" stroke="#374151" strokeWidth="1" />
             <polygon points="80,105 160,60 160,0 80,45" fill="#111827" stroke="#374151" strokeWidth="1" />
             <polygon points="0,0 80,45 160,0 80,-45" fill="#374151" stroke="#4b5563" strokeWidth="1" />
-            <text x="80" y="5" textAnchor="middle" fill="#9ca3af" fontSize="10" fontWeight="700">T3 Connecting Gate</text>
+            <text x="80" y="5" textAnchor="middle" fill="#9ca3af" fontSize="10" fontWeight="700">Connecting Gate</text>
             <text x="80" y="22" textAnchor="middle" fill="#34d399" fontSize="8.5">{connectingFlight}</text>
           </g>
 
@@ -243,7 +243,7 @@ export function IsometricAirportCutaway({
             <circle r="7" fill="#f59e0b" filter="url(#isoGlow)" />
             <circle r="3" fill="#ffffff" />
             <text y="-11" textAnchor="middle" fill="#f59e0b" fontSize="9" fontWeight="700" fontFamily="'JetBrains Mono', monospace">
-              🧳 Luggage
+              Luggage
             </text>
           </g>
 
@@ -252,7 +252,7 @@ export function IsometricAirportCutaway({
             <circle r="8" fill="#38bdf8" filter="url(#isoGlow)" />
             <circle r="3.5" fill="#ffffff" />
             <text y="-12" textAnchor="middle" fill="#38bdf8" fontSize="9" fontWeight="700" fontFamily="'JetBrains Mono', monospace">
-              👤 Traveler
+              Traveler
             </text>
           </g>
 
@@ -276,6 +276,7 @@ export function IsometricAirportCutaway({
 
         {/* Play/Pause Float Overlay */}
         <button
+          type="button"
           onClick={() => setIsPlaying(!isPlaying)}
           style={{
             position: 'absolute',
@@ -290,7 +291,7 @@ export function IsometricAirportCutaway({
             cursor: 'pointer',
           }}
         >
-          {isPlaying ? '⏸ Pause Simulation' : '▶ Resume Animation'}
+          {isPlaying ? 'Pause simulation' : 'Resume simulation'}
         </button>
       </div>
 
@@ -349,8 +350,8 @@ export function IsometricAirportCutaway({
           lineHeight: 1.55,
         }}
       >
-        <strong style={{ color: '#38bdf8' }}>Why this matters to a human traveler:</strong>{' '}
-        Heathrow's Minimum Connecting Time (MCT) for international T5 $\rightarrow$ T3 transfers is legally 90 minutes. Airlines frequently sell 50-minute itineraries on separate or tight tickets because automated ticketing engines only look at nominal gates. In a real travel scenario, your checked baggage is left behind in London 84% of the time. A Waypoint Advisor enforces an automatic 110-minute floor or books airside tarmac transfers.
+        <strong style={{ color: '#38bdf8' }}>Why this matters:</strong>{' '}
+        International hub transfers at {transitHub} often require airside terminal changes, security re-screening, and gate cutoffs well above nominal ticketing minimums. When inbound flights hold on arrival, tight connections leave bags behind or miss boarding cutoff. A Waypoint Advisor flags tight hubs early and recommends safer buffers or tarmac transfer options.
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Building2, Sparkles } from 'lucide-react';
 
 export interface LuxuryPropertyPerk {
   hotelName: string;
@@ -139,7 +140,7 @@ export function HiddenPerksRadar({
                 whiteSpace: 'nowrap',
               }}
             >
-              <span>🏨</span>
+              <Building2 size={15} color={isSelected ? '#39d0d8' : '#8b949e'} />
               <div style={{ textAlign: 'left' }}>
                 <div>{prop.hotelName}</div>
                 <div style={{ fontSize: 11, color: isSelected ? '#39d0d8' : '#6e7681' }}>
@@ -189,7 +190,7 @@ export function HiddenPerksRadar({
                   gap: 12,
                 }}
               >
-                <span style={{ fontSize: 20 }}>{perk.icon}</span>
+                <Sparkles size={15} color='#3fb950' style={{ flexShrink: 0, marginTop: 2 }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#f0f6fc' }}>{perk.label}</span>

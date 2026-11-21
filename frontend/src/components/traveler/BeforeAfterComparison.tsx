@@ -237,7 +237,7 @@ export function BeforeAfterComparison({ items = DEFAULT_COMPARISON_ITEMS }: Befo
                           color: '#f85149',
                         }}
                       >
-                        ⚠️ {item.before.riskBadge}
+                        {item.before.riskBadge}
                       </span>
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: '#f0f6fc', marginBottom: 4 }}>
@@ -271,7 +271,7 @@ export function BeforeAfterComparison({ items = DEFAULT_COMPARISON_ITEMS }: Befo
                           color: '#39d0d8',
                         }}
                       >
-                        ✓ {item.after.advantageBadge}
+                        {item.after.advantageBadge}
                       </span>
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: '#f0f6fc', marginBottom: 4 }}>

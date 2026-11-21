@@ -103,7 +103,7 @@ export function PacingExhaustionCurve({
                 border: '1px solid rgba(210,153,34,0.25)',
               }}
             >
-              Circadian Physics · Energy & Fatigue Wave
+              Daily Pacing & Fatigue
             </span>
             {hasElderlyOrKids ? (
               <span
@@ -117,7 +117,7 @@ export function PacingExhaustionCurve({
                   border: '1px solid rgba(248,81,73,0.25)',
                 }}
               >
-                ♿ Elderly / Multi-Gen Pace Threshold
+                Multi-gen pace threshold
               </span>
             ) : null}
           </div>
@@ -341,7 +341,7 @@ export function PacingExhaustionCurve({
                     fontWeight: 700,
                   }}
                 >
-                  ⚠️ Fatigue Spike
+                  Fatigue Spike
                 </span>
               ) : null}
             </div>

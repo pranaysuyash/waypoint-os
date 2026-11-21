@@ -164,8 +164,8 @@ export function IsometricHotelSanctuary({
 
             {/* Room Furniture Miniatures */}
             <polygon points="150,95 210,120 195,127 135,102" fill="#475569" />
-            <text x="210" y="80" textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="700">Standard Room (35m²)</text>
-            <text x="210" y="96" textAnchor="middle" fill="#ef4444" fontSize="8.5">❌ No Breakfast · No Upgrades</text>
+            <text x="210" y="80" textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="700">Standard Room ({hotel.otaRoom.areaSqm}m²)</text>
+            <text x="210" y="96" textAnchor="middle" fill="#ef4444" fontSize="8.5">No Breakfast · No Upgrades</text>
           </g>
 
           {/* Right Wing: Waypoint Virtuoso Luxury Suite (Vibrant Gold/Emerald Tone) */}
@@ -178,9 +178,9 @@ export function IsometricHotelSanctuary({
             {/* Private Terrace Outcropping */}
             <polygon points="420,200 480,225 450,238 390,213" fill="#047857" stroke="#34d399" />
 
-            <text x="420" y="75" textAnchor="middle" fill="#34d399" fontSize="11" fontWeight="800">Deluxe Suite (68m²)</text>
-            <text x="420" y="92" textAnchor="middle" fill="#f8fafc" fontSize="9">✨ $100 Credit + Daily Breakfast for Two</text>
-            <text x="420" y="106" textAnchor="middle" fill="#a7f3d0" fontSize="8.5">Place Vendôme Terrace View</text>
+            <text x="420" y="75" textAnchor="middle" fill="#34d399" fontSize="11" fontWeight="800">Partner Suite ({hotel.waypointSuite.areaSqm}m²)</text>
+            <text x="420" y="92" textAnchor="middle" fill="#f8fafc" fontSize="9">${hotel.waypointSuite.credits} Credit + Daily Breakfast for Two</text>
+            <text x="420" y="106" textAnchor="middle" fill="#a7f3d0" fontSize="8.5">{hotel.city} · Illustrative Tier</text>
           </g>
 
           {/* Central Architectural Dividing Axis */}

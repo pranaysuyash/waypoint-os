@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Globe } from 'lucide-react';
 
 export interface GlobeWaypoint {
   id: string;
@@ -279,7 +280,7 @@ export function Interactive3DGlobeFlightArc({
             Interactive Orthographic 3D Journey Telemetry
           </h3>
           <p style={{ fontSize: 13, color: '#8b949e', margin: '4px 0 0 0' }}>
-            Real-time Great-Circle parabolic geodesics tracking transatlantic altitude climb and European transit airspace.
+            3D spherical trajectory view across your itinerary&apos;s origin, transit hubs, and destinations.
           </p>
         </div>
         <div style={{ fontSize: 12, color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
@@ -329,8 +330,8 @@ export function Interactive3DGlobeFlightArc({
             fontFamily: "'JetBrains Mono', monospace",
           }}
         >
-          <div>GEO: Transatlantic Great-Circle WGS84</div>
-          <div style={{ color: '#38bdf8', marginTop: 2 }}>ALT ENVELOPE: Cruise FL380 (38,000 ft)</div>
+          <div>ROUTE: {activeLegTitle}</div>
+          <div style={{ color: '#38bdf8', marginTop: 2 }}>PROJECTION: 3D Orthographic Sphere</div>
         </div>
 
         {/* Waypoint Pill List */}
@@ -380,9 +381,9 @@ export function Interactive3DGlobeFlightArc({
           lineHeight: 1.55,
         }}
       >
-        <span style={{ fontSize: 18 }}>🌐</span>
+        <Globe size={16} color='#38bdf8' style={{ flexShrink: 0, marginTop: 2 }} />
         <div>
-          <strong style={{ color: '#38bdf8' }}>Geodesic Spatial Reality:</strong> Flat map projections (like Web Mercator) distort high-latitude routes by over 40%. Waypoint's 3D spherical engine computes real physical distance (5,570 km JFK → LHR) and atmospheric headwinds to determine genuine arrival margins before you book.
+          <strong style={{ color: '#38bdf8' }}>Spherical Route Geometry:</strong> Flat map projections distort long-haul high-latitude routes. Viewing the full multi-leg arc ({activeLegTitle}) highlights hub backtracking and total flight-time exposure before you book.
         </div>
       </div>
     </div>
