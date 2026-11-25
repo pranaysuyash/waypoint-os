@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Optional, Callable, List
+from typing import Any, Optional, Callable
 
 from spine_api.contract import RunMeta, SpineRunRequest
 from spine_api.failure_taxonomy import (
@@ -594,8 +594,16 @@ def execute_spine_pipeline(
         decision_recorded = False
         try:
             existing = run_ledger.get_all_steps(run_id)
-            if "packet" not in existing and hasattr(result, "packet"):
-                run_ledger.save_step(run_id, "packet", to_dict(result.packet))
+            if hasattr(result, "packet"):
+                packet_payload = to_dict(result.packet)
+                if "packet" not in existing or (
+                    isinstance(packet_payload, dict) and (
+                        packet_payload.get("itinerary_feasibility_findings")
+                        or packet_payload.get("itinerary_feasibility_question")
+                    )
+                ):
+                    # Run status serves this checkpoint. Include advisories added after extraction.
+                    run_ledger.save_step(run_id, "packet", packet_payload)
             if "validation" not in existing and hasattr(result, "validation"):
                 run_ledger.save_step(run_id, "validation", to_dict(result.validation))
             if "decision" not in existing and hasattr(result, "decision"):
@@ -708,6 +716,7 @@ def execute_spine_pipeline(
         # Resolve trusted correction context from persisted, tenant-scoped
         # state. No public request field can forge this authority.
         from spine_api.services.trip_lifecycle_service import (
+            ReassessmentPersistenceError,
             build_reassessment_envelope_from_trip,
             build_reassessment_request_from_trip,
             persist_reassessment_result,
@@ -726,6 +735,9 @@ def execute_spine_pipeline(
             current_trip = dict(current_trip)
             current_trip.setdefault("id", reassessment_id)
             if target_trip_id:
+                edit_revision = (run_ledger.get_meta(run_id) or {}).get("auto_edit_source_revision")
+                if edit_revision and str(current_trip.get("updated_at")) != edit_revision:
+                    raise ReassessmentPersistenceError("A newer trip revision superseded this queued edit.")
                 # A queued edit may wait behind other work. Use the current
                 # stored source and corrections, retaining explicit run options.
                 request = SpineRunRequest(**build_reassessment_request_from_trip(
@@ -869,7 +881,7 @@ def execute_spine_pipeline(
                             "validation": to_dict(result.validation) if hasattr(result, "validation") else None,
                             "decision": to_dict(result.decision) if hasattr(result, "decision") else None,
                             "strategy": to_dict(result.strategy) if hasattr(result, "strategy") else None,
-                            "safety": to_dict(result.safety) if hasattr(result, "safety") else None,
+                            "safety": None,  # Early exit precedes the leakage scan.
                             "meta": {**meta.model_dump(), "submission": consented_submission,
                                      "retention_consent": request.retention_consent,
                                      "blocked": True, "early_exit_reason": result.early_exit_reason},
@@ -903,7 +915,7 @@ def execute_spine_pipeline(
                                         to_dict,
                                     ) if hasattr(result, "traveler_bundle") else None,
                                     "internal_bundle": to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
-                                    "safety": to_dict(result.safety) if hasattr(result, "safety") else None,
+                                    "safety": None,
                                     "fees": to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
                                     "frontier_result": to_dict(result.frontier_result) if hasattr(result, "frontier_result") and result.frontier_result else None,
                                     "meta": {
@@ -1053,7 +1065,7 @@ def execute_spine_pipeline(
                             to_dict,
                         ) if hasattr(result, "traveler_bundle") else None,
                         "internal_bundle": to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
-                        "safety": to_dict(result.safety) if hasattr(result, "safety") else None,
+                        "safety": None,  # Partial intake has no audited traveler output.
                         "fees": to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
                         "frontier_result": to_dict(result.frontier_result) if hasattr(result, "frontier_result") and result.frontier_result else None,
                         "meta": {
@@ -1127,6 +1139,7 @@ def execute_spine_pipeline(
             )
 
             # Save the trip to persistence scoped to the user's agency
+            completed_scan = getattr(result, "leakage_result", None) or {}
             reprocess_trip_id, reprocess_status = _resolve_draft_reprocess_target(
                 draft_store, run_ledger, trip_store, run_id, logger,
             )
@@ -1143,7 +1156,9 @@ def execute_spine_pipeline(
                         to_dict,
                     ) if hasattr(result, "traveler_bundle") else None,
                     "internal_bundle": to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
-                    "safety": to_dict(result.safety) if hasattr(result, "safety") else None,
+                    "safety": {
+                        **completed_scan, "strict_leakage": request.strict_leakage,
+                    } if isinstance(completed_scan.get("leakage_passed"), bool) else None,
                     "fees": to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
                     "frontier_result": to_dict(result.frontier_result) if hasattr(result, "frontier_result") and result.frontier_result else None,
                     "meta": {
@@ -1186,19 +1201,6 @@ def execute_spine_pipeline(
                 from src.analytics.review import trigger_feedback_recovery
                 trigger_feedback_recovery(trip_id_saved, reason=trip_post["analytics"].get("review_reason"))
                 logger.info("Feedback recovery triggered for trip: %s", trip_id_saved)
-
-            # Compute leakage results first — used both by checkpoint and response
-            all_leaks: List[str] = (
-                result.leakage_result.get("leaks", [])
-                if hasattr(result, "leakage_result") and result.leakage_result
-                else []
-            )
-            is_safe: bool = (
-                result.leakage_result.get("is_safe", len(all_leaks) == 0)
-                if hasattr(result, "leakage_result") and result.leakage_result
-                else len(all_leaks) == 0
-            )
-            _ = is_safe
 
             # Wave A: complete the ledger and emit terminal event
             # (All pipeline steps were already checkpointed incrementally via

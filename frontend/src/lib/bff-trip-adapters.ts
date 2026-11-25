@@ -268,10 +268,8 @@ export function normalizeSafetyResult(value: unknown): SafetyResult | null {
     ...(Array.isArray(value.traveler_bundle_leaks) ? value.traveler_bundle_leaks : []),
     ...(Array.isArray(value.sanitized_view_leaks) ? value.sanitized_view_leaks : []),
   ]);
-  const leakagePassed =
-    typeof value.leakage_passed === "boolean"
-      ? value.leakage_passed
-      : leakageErrors.length === 0;
+  const leakagePassed = leakageErrors.length > 0 ? false : value.leakage_passed;
+  if (typeof leakagePassed !== "boolean") return null;
 
   return {
     ...value,
@@ -503,11 +501,14 @@ export function transformSpineTripToTrip(
   const validation = asRecord(trip.validation);
   const decision = asRecord(trip.decision);
   const status = asString(trip.status, "new");
+  const reassess = asRecord(trip.reassess);
   const createdAt = asString(trip.created_at, now.toISOString());
   const budget = budgetValue(trip);
 
   return {
     id: asString(firstPresent(trip.id, trip.trip_id), ""),
+    runId: optionalString(trip.run_id),
+    pendingReassessmentRunId: reassess.queued === true ? optionalString(reassess.run_id) : undefined,
     // Canonical top-level fields (from TripResponse or inbox projection) take precedence
     // for fields where the backend's resolve_trip_field() guarantees correctness.
     // For extracted fields, hunting functions preserve the correct AI-first priority order

@@ -136,3 +136,34 @@ def test_public_checker_contract_promotes_weather_when_snapshot_marks_authoritat
     decision = saved["decision"]
     assert decision["hard_blockers"] == ["Heavy rain risk"]
     assert decision["advisory_hard_blockers"] == []
+
+
+def test_public_contract_preserves_unavailable_place_lookup_reason(session_client, monkeypatch):
+    import server
+    from spine_api.services import public_checker_service
+    from src.public_checker import entity_checks
+
+    monkeypatch.setenv("ENTITY_CHECK_ENABLED", "1")
+    monkeypatch.setattr(server, "build_envelopes", lambda payload: payload)
+    monkeypatch.setattr(server, "load_fixture_expectations", lambda _: None)
+    monkeypatch.setattr(server, "_to_dict", lambda value: value)
+    monkeypatch.setattr(server, "save_processed_trip", lambda *_, **__: "trip_place_fixture")
+    monkeypatch.setattr(public_checker_service, "run_spine_once", _make_live_checker_mock())
+    monkeypatch.setattr(public_checker_service, "build_live_checker_signals", lambda *_: None)
+    monkeypatch.setattr(entity_checks, "_cache", {})
+    monkeypatch.setattr(entity_checks, "_last_request_at", 0.0)
+
+    def unavailable(_url):
+        raise TimeoutError("Synthetic provider timeout")
+
+    monkeypatch.setattr(entity_checks, "_http_get_json", unavailable)
+    response = session_client.post(
+        "/api/public-checker/run",
+        json={"raw_note": "We are staying at Hotel Alpha in Bali for three nights."},
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    check, = result["packet"]["public_checker_entity_checks"]
+    assert check["status"] == "unverified"
+    assert check["reason"] == "source_unavailable"
+    assert result["hard_blockers"] == []

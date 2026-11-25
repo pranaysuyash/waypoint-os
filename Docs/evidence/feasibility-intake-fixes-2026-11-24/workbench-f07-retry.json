@@ -1,0 +1,8 @@
+{
+  "case": "F07",
+  "variant": "changed",
+  "state": "failed",
+  "errorType": "PrivacyGuardError",
+  "decision": "STOP_NEEDS_REVIEW",
+  "flags": []
+}

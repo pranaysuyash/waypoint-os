@@ -1,0 +1,36 @@
+{
+  "public": {
+    "http": 200,
+    "decision": "ASK_FOLLOWUP"
+  },
+  "workbench": {
+    "auth": 200,
+    "accepted": 200,
+    "state": "completed",
+    "decision": "ASK_FOLLOWUP",
+    "landingTab": "Risk Review",
+    "runId": "50106dc4-689d-4579-a625-5ed89a2b5a57"
+  },
+  "findings": [
+    {
+      "flag": "overnight_hotel_arrival",
+      "message": "Your plan says you land at 02:25 on 19 December, after your proposed 18 December hotel check-in date. If you book the previous night so the room is ready on arrival, tell the hotel you'll arrive after midnight and confirm it will hold the room.",
+      "details": {
+        "title": "Confirm late hotel arrival",
+        "context": "Overnight flight and proposed hotel check-in",
+        "source_url": null,
+        "authority": "advisory"
+      }
+    },
+    {
+      "flag": "goa_day_pacing",
+      "message": "Baga, Dudhsagar and Old Goa could make for a packed day. Dudhsagar includes a separate access leg from Collem. Confirm the falls entry arrangements and when you expect to return to Collem, then check whether the transfers and time at Baga and Old Goa still fit. Your plan does not give enough timing detail to confirm all three will fit.",
+      "details": {
+        "title": "Check whether all three stops fit",
+        "context": "Baga, Dudhsagar and Old Goa day plan",
+        "source_url": "https://www.goa.gov.in/places/dudhsagar-waterfalls/",
+        "authority": "advisory"
+      }
+    }
+  ]
+}

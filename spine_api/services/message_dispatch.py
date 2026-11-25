@@ -25,7 +25,7 @@ import httpx
 
 logger = logging.getLogger("spine_api.message_dispatch")
 
-WHATSAPP_GRAPH_URL = "https://graph.facebook.com/v21.0"
+WHATSAPP_GRAPH_URL = "https://graph.facebook.com/v25.0"
 SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
 DISPATCH_TIMEOUT_SECONDS = 10.0
 # Meta Cloud API rejects text bodies over 4096 chars — fail before the network
@@ -46,11 +46,14 @@ def _sendgrid_credentials() -> Optional[str]:
     return key or None
 
 
-def dispatch_outbound_message(*, recipient: str, channel: str, content: str) -> Dict[str, Any]:
+def dispatch_outbound_message(
+    *, recipient: str, channel: str, content: str, agency_id: str | None = None,
+    whatsapp_inbox_id: str | None = None, callback_id: str | None = None,
+) -> Dict[str, Any]:
     """Attempt real provider dispatch for one outbound message.
 
     Returns a dict with:
-      - dispatch_status: SENT | FAILED | NOT_CONFIGURED | UNSUPPORTED
+      - dispatch_status: SENT | FAILED | DELIVERY_UNKNOWN | NOT_CONFIGURED | STAFF_REVIEW_REQUIRED | UNSUPPORTED
       - provider: canonical provider name for the channel
       - detail: human-readable context for audit logs (never contains creds)
 
@@ -83,11 +86,21 @@ def dispatch_outbound_message(*, recipient: str, channel: str, content: str) -> 
                 "detail": "WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID not set",
             }
         token, phone_number_id = creds
+        # Only the managed WhatsApp dispatch path has a claimed, tenant-bound
+        # attempt. Legacy manual surfaces can still provide a link for sharing.
+        from spine_api.services.whatsapp_journal import bound_inbox
+
+        if not agency_id or not callback_id or whatsapp_inbox_id != phone_number_id or bound_inbox(agency_id) != phone_number_id:
+            return {
+                "dispatch_status": "STAFF_REVIEW_REQUIRED", "provider": provider,
+                "detail": "Send through the agency's managed WhatsApp conversation",
+            }
         payload = {
             "messaging_product": "whatsapp",
             "to": recipient_digits,
             "type": "text",
             "text": {"preview_url": False, "body": content},
+            "biz_opaque_callback_data": callback_id,
         }
         try:
             response = httpx.post(
@@ -97,9 +110,9 @@ def dispatch_outbound_message(*, recipient: str, channel: str, content: str) -> 
                 timeout=DISPATCH_TIMEOUT_SECONDS,
             )
         except httpx.HTTPError as exc:
-            logger.warning("WhatsApp dispatch error: %s", exc)
-            return {"dispatch_status": "FAILED", "provider": provider, "detail": f"{type(exc).__name__}"}
-        if response.status_code < 300:
+            logger.warning("WhatsApp transport result unavailable: %s", type(exc).__name__)
+            return {"dispatch_status": "DELIVERY_UNKNOWN", "provider": provider, "detail": type(exc).__name__}
+        if 200 <= response.status_code < 300:
             # Capture Meta's provider-assigned message id: delivery statuses
             # arrive keyed by THIS id, so the caller stores outbound rows with
             # it (reply threading rides a separate reply_to field).
@@ -112,13 +125,13 @@ def dispatch_outbound_message(*, recipient: str, channel: str, content: str) -> 
             except Exception:
                 provider_message_id = None
             return {
-                "dispatch_status": "SENT",
+                "dispatch_status": "SENT" if provider_message_id else "DELIVERY_UNKNOWN",
                 "provider": provider,
-                "detail": "accepted by Cloud API",
+                "detail": "accepted by Cloud API" if provider_message_id else "Provider response did not contain a message ID",
                 "provider_message_id": provider_message_id,
             }
         return {
-            "dispatch_status": "FAILED",
+            "dispatch_status": "FAILED" if 400 <= response.status_code < 500 and response.status_code != 408 else "DELIVERY_UNKNOWN",
             "provider": provider,
             "detail": f"provider HTTP {response.status_code}",
         }

@@ -8,64 +8,18 @@ Run:
 from __future__ import annotations
 
 from datetime import date, timedelta
-from types import SimpleNamespace
 
 import pytest
 
 import server
-from server import app
-from spine_api.persistence import TripStore, TEST_AGENCY_ID
-
-
-def _resolve_agency_ids() -> tuple[str, str | None]:
-    import json
-    import subprocess
-    import sys
-
-    code = (
-        "import asyncio, asyncpg, json\n"
-        "async def run():\n"
-        "  conn = await asyncpg.connect(host='localhost', port=5432, user='waypoint', password='waypoint_dev_password', database='waypoint_os')\n"
-        "  row = await conn.fetchrow(\"SELECT agency_id FROM memberships WHERE user_id = $1 AND is_primary = TRUE\", '323468de-ba3d-437b-aa10-35b281a0c6a6')\n"
-        "  primary = row['agency_id'] if row else None\n"
-        "  row2 = await conn.fetchrow(\"SELECT id FROM agencies WHERE id <> $1 LIMIT 1\", primary if primary else '')\n"
-        "  other = row2['id'] if row2 else None\n"
-        "  print(json.dumps({'primary': primary, 'other': other}))\n"
-        "  await conn.close()\n"
-        "asyncio.run(run())\n"
-    )
-    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=15)
-    if result.returncode != 0:
-        return TEST_AGENCY_ID, None
-    data = json.loads(result.stdout.strip())
-    return (data.get("primary") or TEST_AGENCY_ID, data.get("other"))
-
-
-@pytest.fixture(scope="module")
-def agency_ids():
-    return _resolve_agency_ids()
+from spine_api.persistence import TripStore
 
 
 @pytest.fixture()
-def agency_id(agency_ids):
-    return agency_ids[0]
+def trip_factory(session_agency_id):
+    created_trips: list[tuple[str, str]] = []
 
-
-@pytest.fixture(autouse=True)
-def override_payments_agency_dependency(agency_id):
-    original_overrides = dict(app.dependency_overrides)
-    app.dependency_overrides[server.get_current_agency] = lambda: SimpleNamespace(id=agency_id)
-    try:
-        yield
-    finally:
-        app.dependency_overrides = original_overrides
-
-
-@pytest.fixture()
-def trip_factory(agency_id):
-    created_ids: list[str] = []
-
-    def _create_trip(source: str = "payments_queue_api_test") -> str:
+    def _create_trip(source: str = "payments_queue_api_test", *, agency_id: str = session_agency_id) -> str:
         trip_id = TripStore.save_trip(
             {
                 "source": source,
@@ -79,12 +33,12 @@ def trip_factory(agency_id):
             },
             agency_id=agency_id,
         )
-        created_ids.append(trip_id)
+        created_trips.append((trip_id, agency_id))
         return trip_id
 
     yield _create_trip
 
-    for trip_id in created_ids:
+    for trip_id, agency_id in created_trips:
         try:
             TripStore.delete_trip_for_agency(trip_id, agency_id)
         except Exception:
@@ -114,14 +68,14 @@ def _payment_tracking(*, payment_status: str, refund_status: str = "not_applicab
 
 
 class TestPaymentsQueueApi:
-    def test_full_tenant_scope_not_limited_to_initial_5000(self, session_client, monkeypatch, agency_id):
+    def test_full_tenant_scope_not_limited_to_initial_5000(self, session_client, monkeypatch, session_agency_id):
         total_trips = 5002
 
         call_offsets: list[int] = []
         booking_lookup_called = False
 
         def fake_list_trip_payment_records_for_agency(*, agency_id: str, limit: int = 100, offset: int = 0):
-            assert agency_id
+            assert agency_id == session_agency_id
             call_offsets.append(offset)
             if offset >= total_trips:
                 return []
@@ -169,11 +123,14 @@ class TestPaymentsQueueApi:
         assert any(offset >= 5000 for offset in call_offsets)
         assert booking_lookup_called is False
 
-    def test_tenant_isolation(self, session_client, agency_id, agency_ids, trip_factory):
+    def test_tenant_isolation(
+        self, session_client, session_agency_id, trip_factory, auth_enforced,
+        boundary_principal_factory, boundary_token_factory,
+    ):
         trip_id = trip_factory("payments_queue_tenant")
         _set_booking_data(
             trip_id,
-            agency_id,
+            session_agency_id,
             {
                 "payment_tracking": _payment_tracking(
                     payment_status="partially_paid",
@@ -184,43 +141,43 @@ class TestPaymentsQueueApi:
             },
         )
 
+        other_agency_id = "agency_payments_boundary"
+        other_user_id = "usr_payments_boundary"
+        assert other_agency_id != session_agency_id
+        boundary_principal_factory(other_user_id, other_agency_id)
+        other_trip_id = trip_factory("payments_queue_other_tenant", agency_id=other_agency_id)
+
         baseline = session_client.get("/payments")
         assert baseline.status_code == 200
         baseline_ids = {item["trip_id"] for item in baseline.json()["items"]}
         assert trip_id in baseline_ids
+        assert other_trip_id not in baseline_ids
 
-        other_agency_id = agency_ids[1]
-        if not other_agency_id:
-            pytest.skip("No second agency found for tenant isolation override")
+        token = boundary_token_factory(other_user_id, other_agency_id)
+        isolated = session_client.get("/payments", headers={"Authorization": f"Bearer {token}"})
+        assert isolated.status_code == 200
+        isolated_ids = {item["trip_id"] for item in isolated.json()["items"]}
+        assert other_trip_id in isolated_ids
+        assert trip_id not in isolated_ids
 
-        original_overrides = dict(app.dependency_overrides)
-        app.dependency_overrides[server.get_current_agency] = lambda: SimpleNamespace(id=other_agency_id)
-        try:
-            isolated = session_client.get("/payments")
-            assert isolated.status_code == 200
-            isolated_ids = {item["trip_id"] for item in isolated.json()["items"]}
-            assert trip_id not in isolated_ids
-        finally:
-            app.dependency_overrides = original_overrides
-
-    def test_queue_derivation_missing_partial_overdue_paid_refund(self, session_client, agency_id, trip_factory):
+    def test_queue_derivation_missing_partial_overdue_paid_refund(self, session_client, session_agency_id, trip_factory):
         trip_missing = trip_factory("payments_queue_missing")
         trip_partial = trip_factory("payments_queue_partial")
         trip_overdue = trip_factory("payments_queue_overdue")
         trip_paid = trip_factory("payments_queue_paid")
         trip_refund = trip_factory("payments_queue_refund")
 
-        _set_booking_data(trip_missing, agency_id, None)
+        _set_booking_data(trip_missing, session_agency_id, None)
         _set_booking_data(
             trip_partial,
-            agency_id,
+            session_agency_id,
             {
                 "payment_tracking": _payment_tracking(payment_status="unknown", notes="internal note should not leak"),
             },
         )
         _set_booking_data(
             trip_overdue,
-            agency_id,
+            session_agency_id,
             {
                 "payment_tracking": _payment_tracking(
                     payment_status="partially_paid",
@@ -232,7 +189,7 @@ class TestPaymentsQueueApi:
         )
         _set_booking_data(
             trip_paid,
-            agency_id,
+            session_agency_id,
             {
                 "payment_tracking": _payment_tracking(
                     payment_status="paid",
@@ -243,7 +200,7 @@ class TestPaymentsQueueApi:
         )
         _set_booking_data(
             trip_refund,
-            agency_id,
+            session_agency_id,
             {
                 "payment_tracking": _payment_tracking(
                     payment_status="partially_paid",
@@ -283,14 +240,14 @@ class TestPaymentsQueueApi:
         resp = session_client.get(path)
         assert resp.status_code == 422
 
-    def test_pagination_after_filtering_and_filtered_summary(self, session_client, agency_id, trip_factory):
+    def test_pagination_after_filtering_and_filtered_summary(self, session_client, session_agency_id, trip_factory):
         trip_due_old = trip_factory("payments_queue_due_old")
         trip_overdue = trip_factory("payments_queue_between")
         trip_due_new = trip_factory("payments_queue_due_new")
 
         _set_booking_data(
             trip_due_old,
-            agency_id,
+            session_agency_id,
             {
                 "payment_tracking": _payment_tracking(
                     payment_status="partially_paid",
@@ -302,7 +259,7 @@ class TestPaymentsQueueApi:
         )
         _set_booking_data(
             trip_overdue,
-            agency_id,
+            session_agency_id,
             {
                 "payment_tracking": _payment_tracking(
                     payment_status="partially_paid",
@@ -314,7 +271,7 @@ class TestPaymentsQueueApi:
         )
         _set_booking_data(
             trip_due_new,
-            agency_id,
+            session_agency_id,
             {
                 "payment_tracking": _payment_tracking(
                     payment_status="partially_paid",
@@ -350,7 +307,7 @@ class TestPaymentsQueueApi:
         assert page_body["summary"]["by_queue_status"]["due_soon"] >= 2
         assert page_body["summary"]["by_queue_status"]["overdue"] == 0
 
-    def test_urgent_sort_configured_only_and_search(self, session_client, agency_id, trip_factory):
+    def test_urgent_sort_configured_only_and_search(self, session_client, session_agency_id, trip_factory):
         """GET /payments?sort=urgent&configured_only=true&q=... ranks overdue first and filters cleanly."""
         trip_unconfigured = trip_factory("payments_urgent_unconf")
         trip_overdue = trip_factory("payments_urgent_overdue")
@@ -358,12 +315,12 @@ class TestPaymentsQueueApi:
 
         TripStore.update_trip_for_agency(
             trip_unconfigured,
-            agency_id,
+            session_agency_id,
             {"extracted": {"destination_raw": "Lisbon"}},
         )
         TripStore.update_trip_for_agency(
             trip_due_later,
-            agency_id,
+            session_agency_id,
             {
                 "extracted": {"destination_raw": "Kyoto"},
                 "booking_data": {
@@ -378,7 +335,7 @@ class TestPaymentsQueueApi:
         )
         TripStore.update_trip_for_agency(
             trip_overdue,
-            agency_id,
+            session_agency_id,
             {
                 "extracted": {"destination_raw": "Amalfi"},
                 "booking_data": {

@@ -299,6 +299,14 @@ def session_client():
         yield client
 
 
+@pytest.fixture(scope="module")
+def session_agency_id(session_client) -> str:
+    """Resolve the signed-in agency through the same server and database as the test."""
+    response = session_client.get("/api/auth/me")
+    response.raise_for_status()
+    return response.json()["agency"]["id"]
+
+
 # ---------------------------------------------------------------------------
 # Shared HTTP auth-boundary test seam (FND-0198 / EV-09).
 #

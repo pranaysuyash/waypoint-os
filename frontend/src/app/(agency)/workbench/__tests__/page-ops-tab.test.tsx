@@ -52,7 +52,8 @@ let mockSpineRunState: {
   hard_blockers: [],
   soft_blockers: [],
 };
-vi.mock('@/components/ui/tabs', () => ({
+vi.mock('@/components/ui/tabs', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/components/ui/tabs')>(),
   Tabs: ({ tabs }: { tabs: { id: string; label: string }[] }) => {
     renderedTabs = tabs;
     return <div data-testid='tabs' />;
@@ -84,10 +85,10 @@ vi.mock('@/hooks/useSpineRun', () => ({
   }),
 }));
 
-vi.mock('@/stores/workbench', () => ({
+vi.mock('@/stores/workbench', () => {
   // FND-0283: PageClient now subscribes via per-field selectors — the mock
   // must apply the selector to the mock state object.
-  useWorkbenchStore: (sel?: (s: Record<string, unknown>) => unknown) => {
+  function useWorkbenchStore(sel?: (s: Record<string, unknown>) => unknown) {
     const state = {
     result_safety: null,
     result_strategy: null,
@@ -127,8 +128,9 @@ vi.mock('@/stores/workbench', () => ({
     resetAll: vi.fn(),
   };
     return sel ? sel(state) : state;
-  },
-}));
+  }
+  return { useWorkbenchStore: Object.assign(useWorkbenchStore, { setState: vi.fn() }) };
+});
 
 vi.mock('@/lib/api-client', () => ({
   submitTripReviewAction: vi.fn(),

@@ -24,6 +24,8 @@ from src.intake.decision import run_gap_and_decision
 from src.intake.extractors import ExtractionPipeline
 from src.intake.packet_models import CanonicalPacket, Slot, SourceEnvelope
 from src.decision.rules import rule_visa_timeline_risk
+from src.decision.rules.additional_rules import rule_visa_international_default
+from src.intake.safety import check_no_leakage
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "data" / "fixtures" / "scenarios"
 SEED_FIXTURES = [
@@ -166,11 +168,35 @@ def test_visa_timeline_high_urgency_long_lead_time_is_high_risk():
     assert result["visa_lead_time_days"] == 30
 
 
+def test_international_trip_without_visa_details_gives_a_traveler_safe_next_step():
+    packet = CanonicalPacket(
+        packet_id="international-no-visa-evidence",
+        derived_signals={"domestic_or_international": Slot(value="international", authority_level="derived")},
+    )
+    advice = rule_visa_international_default(packet)
+    assert advice is not None
+    assert not check_no_leakage({"system_context": advice["reasoning"]})
+    assert "visa" in advice["reasoning"].lower()
+    assert "passport" in advice["reasoning"].lower()
+
+
 def test_visa_timeline_high_urgency_short_lead_time_is_medium_risk():
     # Japan lead time is 14 days — not > 14, so high urgency stays medium.
     result = rule_visa_timeline_risk(_visa_packet("Japan", "high"))
     assert result is not None
     assert result["risk_level"] == "medium"
+
+
+@pytest.mark.parametrize(("visa", "expected_phrase"), [
+    ({"requirement": "required", "status": "approved"}, "reports an approved visa"),
+    ({"requirement": "not_required"}, "says a visa is unnecessary"),
+    ({"requirement": "required", "status": "pending"}, "confirm the destination"),
+])
+def test_visa_reasoning_reflects_reported_status_when_destination_is_missing(visa, expected_phrase):
+    packet = CanonicalPacket(packet_id="visa-inquiry", facts={"visa_status": Slot(value=visa)})
+    advice = rule_visa_timeline_risk(packet)
+    assert advice is not None and expected_phrase in advice["reasoning"].lower()
+    assert not check_no_leakage({"system_context": advice["reasoning"]})
 
 
 def test_visa_timeline_low_urgency_is_low_risk():

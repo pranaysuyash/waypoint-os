@@ -1,10 +1,12 @@
 'use client';
 
+import { getItineraryFeasibilityEvidence, getItineraryFeasibilityFindings } from '@/lib/itinerary-feasibility';
 import Link from 'next/link';
 import { useEffect, useState, useRef, useReducer, type CSSProperties, type RefObject, DragEvent } from 'react';
 import gsap from 'gsap';
 import { api } from '@/lib/api-client';
 import { safeWriteClipboardText } from '@/lib/clipboard';
+import { formatPacketValue, isLegacyBookingDefault } from '@/lib/label-maps';
 import type { RunStatusResponse } from '@/types/spine';
 import {
   WedgeVisualShowcase,
@@ -27,7 +29,7 @@ const T = {
   input:    '#111318',
   t1: '#e6edf3',
   t2: '#8b949e',
-  t3: '#6e7681',
+  t3: 'var(--text-muted)',
   t4: '#484f58',
   blue:   '#58a6ff',
   cyan:   '#39d0d8',
@@ -189,9 +191,6 @@ const S = {
     maxWidth: 1180,
     margin: '0 auto',
     padding: '44px clamp(16px, 4vw, 40px) 56px',
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
-    gap: 48,
     alignItems: 'start',
   },
   amberKicker: {
@@ -516,7 +515,7 @@ function WedgeHeader({ agencyContext }: { agencyContext?: AgencyBrandingContext 
           </span>
           {agencyContext.response_sla_hours ? (
             <span style={{ fontSize: 11, color: T.cyan, background: 'rgba(57,208,216,0.1)', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(57,208,216,0.3)', fontFamily: T.fBody }}>
-              Responds within {agencyContext.response_sla_hours}h
+              Listed response time: {agencyContext.response_sla_hours}h
             </span>
           ) : null}
         </div>
@@ -536,7 +535,7 @@ function WedgeHeader({ agencyContext }: { agencyContext?: AgencyBrandingContext 
         </div>
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <span className="hidden md:inline" style={{ fontSize: 12, color: T.t3, fontFamily: T.fBody }}>Free · No account required · 60 seconds</span>
+        <span className="hidden md:inline" style={{ fontSize: 12, color: T.t3, fontFamily: T.fBody }}>Free · No account required</span>
         <Link href='/signup' style={S.agencyPillLink}>
           For agencies →
         </Link>
@@ -653,7 +652,6 @@ function inferTravelContext(text: string): Record<string, unknown> {
     dateWindow:
       text.match(/trip window\s*[:\-]\s*([^\n\r|]+)/i)?.[1]?.trim() ??
       text.match(/late may\s+\d{4}/i)?.[0]?.trim(),
-    partySize: text.match(/(\d+)\s+(?:travelers?|travellers?|people|guests)/i)?.[1],
   };
 
   const destinationCandidates = new Set<string>();
@@ -668,7 +666,6 @@ function inferTravelContext(text: string): Record<string, unknown> {
     ...(matches.purpose ? { trip_purpose: matches.purpose } : {}),
     ...(matches.budget ? { budget_raw_text: matches.budget } : {}),
     ...(matches.dateWindow ? { date_window: matches.dateWindow } : {}),
-    ...(matches.partySize ? { party_size: Number(matches.partySize) } : {}),
     ...(destinationCandidates.size > 0 ? { destination_candidates: [...destinationCandidates] } : {}),
   };
 }
@@ -721,7 +718,7 @@ const initialUploadCardState: UploadCardState = {
   text: '',
   isProcessingFile: false,
   fileError: null,
-  retentionConsent: true,
+  retentionConsent: false,
   declaredPlanSource: 'ai',
   alreadyBooked: false,
 };
@@ -818,7 +815,7 @@ function UploadCard({
         border: `1px solid ${T.b0}`,
       }}>
         {tabs.map(tab => (
-          <button key={tab.key} type='button' onClick={() => dispatch({ type: 'selectTab', tab: tab.key })} style={tabButtonStyle(activeTab === tab.key)}>
+          <button key={tab.key} type='button' onClick={() => dispatch({ type: 'selectTab', tab: tab.key })} aria-pressed={activeTab === tab.key} style={tabButtonStyle(activeTab === tab.key)}>
             {tab.label}
           </button>
         ))}
@@ -866,7 +863,10 @@ function UploadCard({
               );
             })}
           </div>
+          <label htmlFor='checker-itinerary' style={{ display: 'block', padding: '12px 16px 0', color: T.t2 }}>Your itinerary</label>
           <textarea
+            id='checker-itinerary'
+            name='itinerary'
             value={text}
             onChange={e => dispatch({ type: 'setText', text: e.target.value })}
             placeholder={'Paste your day-by-day plan here…\n\nDay 1: Arrive LAX → London Heathrow (AA100, dep 10:30)\nDay 2: London - check-in The Connaught, walking tour\nDay 3: Paris Eurostar (07:55) - Musée d\'Orsay, Seine dinner\n…'}
@@ -879,7 +879,7 @@ function UploadCard({
             rowGap: 10,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: T.t4 }}>
+              <span style={{ fontSize: 12, color: T.t3 }}>
                 {text.length > 0 ? `${text.length} characters` : 'Messy inputs work fine'}
               </span>
               <button
@@ -888,7 +888,7 @@ function UploadCard({
                 disabled={text.trim().length < 10 || isBusy || isProcessingFile}
                 style={primaryButtonStyle(text.trim().length >= 10 && !isBusy && !isProcessingFile)}
               >
-                {isBusy ? 'Scoring…' : 'Score My Itinerary'} <ArrowRight size={13} />
+                {isBusy ? 'Checking…' : 'Check my itinerary'} <ArrowRight size={13} />
               </button>
             </div>
             <PlanSourcePicker
@@ -986,7 +986,7 @@ function UploadCard({
         {['Free to use', 'No sign-up required', 'Consent-based storage'].map(label => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <Check size={12} color={T.green} strokeWidth={2.5} />
-            <span style={{ fontSize: 12, color: T.t4 }}>{label}</span>
+            <span style={{ fontSize: 12, color: T.t3 }}>{label}</span>
           </div>
         ))}
       </div>
@@ -1038,6 +1038,7 @@ function UploadHeroSection({
   onAnalyze,
   onAnalyzeFile,
   isBusy,
+  analysisError,
   activeScenario,
   onSelectScenario,
   externalDraftText,
@@ -1045,16 +1046,21 @@ function UploadHeroSection({
   onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => void;
   onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor', alreadyBooked?: boolean) => Promise<void>;
   isBusy: boolean;
+  analysisError: string | null;
   activeScenario: WedgeScenarioBundle;
   onSelectScenario: (index: number) => void;
   externalDraftText: { text: string; nonce: number } | null;
 }) {
   const topFinding = activeScenario.findings[0];
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (analysisError) errorRef.current?.focus();
+  }, [analysisError]);
 
   return (
     <>
       {/* ── HERO: balanced 2-col ── */}
-      <section style={S.heroSection}>
+      <section className='grid gap-6 md:grid-cols-2 md:gap-x-12' style={S.heroSection}>
         {/* Left: clear problem/output framing + compact real-output snapshot */}
         <div>
           <span style={S.amberKicker}>
@@ -1066,21 +1072,40 @@ function UploadHeroSection({
             lineHeight: 1.06, letterSpacing: '-0.035em',
             color: '#f5fbff', fontFamily: T.fDisplay, marginBottom: 16,
           }}>
-            Turn your itinerary or travel plan into a clearer trip map.
+            Check your itinerary before you book.
           </h1>
 
-          <p style={{ fontSize: 15, lineHeight: 1.65, color: T.t2, maxWidth: '46ch', marginBottom: 24 }}>
-            Upload a PDF, paste your draft, or drop a screenshot. Waypoint extracts your route and dates,
-            flags missing or risky details, and gives you a brief you can keep or send to an advisor.
+          <p style={{ fontSize: 15, lineHeight: 1.65, color: T.t2, maxWidth: '46ch', marginBottom: 0 }}>
+            Upload a PDF, paste your draft, or drop a screenshot. Waypoint extracts your route and dates
+            and shows which details to confirm before paying.
           </p>
+        </div>
 
-          {/* Compact real-output snapshot matching /api/public-checker/run */}
+        {/* Right: interactive upload/paste tool */}
+        <div className='itinerary-reveal min-w-0 md:col-start-2 md:row-span-2 md:row-start-1' style={{ position: 'relative' }}>
+          {analysisError ? (
+            <div role='alert' ref={errorRef} tabIndex={-1} style={{ scrollMarginTop: 88, ...severityCardStyle('rgba(248,81,73,0.08)', 'rgba(248,81,73,0.25)'), display: 'block', marginBottom: 12, color: T.t1 }}>
+              <strong>Itinerary check unavailable</strong>
+              <div style={{ marginTop: 4, lineHeight: 1.5 }}>{analysisError}</div>
+            </div>
+          ) : null}
+          {isBusy ? <p role='status' style={{ color: T.t2 }}>Checking your itinerary…</p> : null}
+          <UploadCard
+            onAnalyze={onAnalyze}
+            onAnalyzeFile={onAnalyzeFile}
+            isBusy={isBusy}
+            externalDraftText={externalDraftText}
+            onSelectScenario={onSelectScenario}
+            activeScenarioKey={activeScenario.key}
+          />
+        </div>
+        <div className='min-w-0 md:col-start-1 md:row-start-2'>
+          {/* Illustrative finding from the selected sample itinerary */}
           <div style={{
             borderRadius: 12,
             background: T.surface,
             border: `1px solid ${T.b0}`,
             padding: '16px 18px',
-            minHeight: 204,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
@@ -1095,48 +1120,12 @@ function UploadHeroSection({
               marginBottom: 12,
             }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.t3, fontFamily: T.fMono }}>
-                  Output preview · {activeScenario.badge}
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.t2, fontFamily: T.fMono }}>
+                  Sample finding · {activeScenario.badge}
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: T.t1, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {activeScenario.title}
                 </div>
-              </div>
-              <div style={{
-                padding: '5px 10px',
-                borderRadius: 8,
-                background: T.elevated,
-                border: `1px solid ${T.b1}`,
-                textAlign: 'right',
-                flexShrink: 0,
-              }}>
-                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: T.t3 }}>Health check</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: T.t1, fontFamily: T.fMono }}>{activeScenario.score}/100</div>
-              </div>
-            </div>
-
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: '8px 16px',
-              marginBottom: topFinding ? 12 : 0,
-              fontSize: 12,
-            }}>
-              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                <span style={{ color: T.t4 }}>Route: </span>
-                <span style={{ color: T.t1, fontFamily: T.fMono }}>{activeScenario.routeSummary}</span>
-              </div>
-              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                <span style={{ color: T.t4 }}>Window: </span>
-                <span style={{ color: T.t1 }}>{activeScenario.windowLabel}</span>
-              </div>
-              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                <span style={{ color: T.t4 }}>Group: </span>
-                <span style={{ color: T.t1 }}>{activeScenario.partySummary}</span>
-              </div>
-              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                <span style={{ color: T.t4 }}>Budget: </span>
-                <span style={{ color: T.t1, fontFamily: T.fMono }}>{activeScenario.budgetSummary}</span>
               </div>
             </div>
 
@@ -1168,18 +1157,6 @@ function UploadHeroSection({
               </div>
             ) : null}
           </div>
-        </div>
-
-        {/* Right: interactive upload/paste tool */}
-        <div className='itinerary-reveal' style={{ position: 'relative' }}>
-          <UploadCard
-            onAnalyze={onAnalyze}
-            onAnalyzeFile={onAnalyzeFile}
-            isBusy={isBusy}
-            externalDraftText={externalDraftText}
-            onSelectScenario={onSelectScenario}
-            activeScenarioKey={activeScenario.key}
-          />
         </div>
       </section>
     </>
@@ -1418,17 +1395,21 @@ function UploadView({
   onAnalyze,
   onAnalyzeFile,
   isBusy,
+  analysisError,
+  initialDraft,
   agencyContext,
 }: {
   rootRef: RefObject<HTMLDivElement | null>;
   onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>, declaredPlanSource?: 'self' | 'ai' | 'vendor') => void;
   onAnalyzeFile: (file: File, retentionConsent: boolean, declaredPlanSource?: 'self' | 'ai' | 'vendor', alreadyBooked?: boolean) => Promise<void>;
   isBusy: boolean;
+  analysisError: string | null;
+  initialDraft: string | null;
   agencyContext?: AgencyBrandingContext | null;
 }) {
   const [activeScenarioIdx, setActiveScenarioIdx] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
-  const [draftToLoad, setDraftToLoad] = useState<{ text: string; nonce: number } | null>(null);
+  const [draftToLoad, setDraftToLoad] = useState<{ text: string; nonce: number } | null>(initialDraft ? { text: initialDraft, nonce: 0 } : null);
 
   useEffect(() => {
     if (!isAutoPlaying) return;
@@ -1472,6 +1453,7 @@ function UploadView({
         onAnalyze={onAnalyze}
         onAnalyzeFile={onAnalyzeFile}
         isBusy={isBusy}
+        analysisError={analysisError}
         activeScenario={activeScenario}
         onSelectScenario={handleSelectScenario}
         externalDraftText={draftToLoad}
@@ -1493,55 +1475,6 @@ function UploadView({
 }
 
 // ── Results data ──────────────────────────────────────────────────────────────
-function scoreFromAnalysis(analysis: RunStatusResponse | null): number {
-  if (!analysis) return 62;
-
-  const validation = analysis.validation as Record<string, unknown> | null | undefined;
-  const packet = analysis.packet as Record<string, unknown> | null | undefined;
-  const decisionState = analysis.decision_state ?? null;
-  const hardBlockers = analysis.hard_blockers?.length ?? 0;
-  const softBlockers = analysis.soft_blockers?.length ?? 0;
-
-  const candidateScore = [
-    validation?.overall_score,
-    validation?.quality_score,
-    packet?.quality_score,
-    packet?.score,
-  ].find((value): value is number => typeof value === 'number' && Number.isFinite(value));
-
-  if (typeof candidateScore === 'number') {
-    return Math.max(0, Math.min(100, Math.round(candidateScore)));
-  }
-
-  if (decisionState === 'PROCEED_TRAVELER_SAFE') return 82;
-  if (decisionState === 'PROCEED_INTERNAL_DRAFT') return 74;
-  if (decisionState === 'ASK_FOLLOWUP') return 64;
-  if (decisionState === 'STOP_NEEDS_REVIEW') return 42;
-
-  return Math.max(35, 80 - (hardBlockers * 12) - (softBlockers * 6));
-}
-
-function summaryFromAnalysis(analysis: RunStatusResponse | null): string {
-  if (!analysis) return 'Example report - your score depends on what your plan contains';
-
-  const decisionState = analysis.decision_state ?? 'unknown';
-  const hardBlockers = analysis.hard_blockers?.length ?? 0;
-  const softBlockers = analysis.soft_blockers?.length ?? 0;
-  const followUps = analysis.follow_up_questions?.length ?? 0;
-  const summaryLead =
-    decisionState === 'PROCEED_TRAVELER_SAFE'
-      ? 'Your plan looks broadly workable.'
-      : decisionState === 'PROCEED_INTERNAL_DRAFT'
-        ? 'Your plan is usable, with a few things worth tightening.'
-        : decisionState === 'ASK_FOLLOWUP'
-          ? 'We found a few details worth clarifying before you rely on this plan.'
-          : decisionState === 'STOP_NEEDS_REVIEW'
-            ? 'We found important gaps that need a closer look before this plan is ready to trust.'
-            : 'We completed a live review of your plan.';
-
-  return `${summaryLead} ${hardBlockers} critical issues · ${softBlockers} warnings · ${followUps} follow-up questions`;
-}
-
 // RDA_EX07 rec-3 (FND-0399): booking-critical visa/passport checks fire at
 // stage="booking", which doubles as the declared-already-booked stage for the
 // public checker. Everyone else runs the discovery checks.
@@ -1549,42 +1482,20 @@ export function stageForSubmittedPlan(alreadyBooked: boolean): 'booking' | 'disc
   return alreadyBooked ? 'booking' : 'discovery';
 }
 
-export function formatTravelerBlockerItem(item: string): string {
+export function formatTravelerBlockerItem(item: string, sourceFindings: readonly string[] = []): string {
   if (item === 'extraction_quality') {
     return 'We could not confidently read the key trip details from this plan yet. Please add clearer dates, route details, and traveler info.';
   }
 
   if (item === 'incomplete_intake') {
-    return 'A few core intake details are still missing. Add travel dates, budget and traveler count to move this from draft to reliable recommendations.';
+    return 'A few core intake details are still missing. Review the missing details below and add what you know.';
   }
+
+  if (sourceFindings.includes(item) && /\s/.test(item.trim())) return item;
 
   // Part-K AT-21: backend slugs must not reach travelers as findings — an
   // unknown blocker falls back to an honest generic line, never raw copy.
   return 'We flagged something in this plan that needs a human eye. Your travel advisor can confirm the details.';
-}
-
-function getTravelerTripSummaryFallback(
-  analysis: RunStatusResponse | null | undefined,
-  errorMessage: string | null | undefined,
-): { l: string; v: string } {
-  if (errorMessage) {
-    return {
-      l: 'Status',
-      v: 'We could not finish the live review this time. Please try again.',
-    };
-  }
-
-  if (analysis) {
-    return {
-      l: 'Status',
-      v: 'We scored the plan, but we could not confidently pull out the key trip details yet.',
-    };
-  }
-
-  return {
-    l: 'Status',
-    v: 'Waiting for your live review to finish.',
-  };
 }
 
 function getPacketFactValue(packet: Record<string, unknown> | null | undefined, key: string): unknown {
@@ -1592,6 +1503,7 @@ function getPacketFactValue(packet: Record<string, unknown> | null | undefined, 
   if (!facts || typeof facts !== 'object') return undefined;
   const factEntry = (facts as Record<string, unknown>)[key];
   if (!factEntry || typeof factEntry !== 'object') return undefined;
+  if (key === 'traveler_plan' && isLegacyBookingDefault(factEntry)) return undefined;
   return (factEntry as Record<string, unknown>).value;
 }
 
@@ -1705,8 +1617,8 @@ function ConsentToggle({
         style={{ marginTop: 3, accentColor: T.cyan }}
       />
       <span style={{ fontSize: 12, color: T.t2, lineHeight: 1.45 }}>
-        Store my typed input, extracted facts, and score to help improve the checker.
-        Leave unchecked for a one-time, anonymous analysis — nothing is kept.
+        Allow Waypoint to save my original text or upload to help improve the checker.
+        Leave unchecked to run the check without saving your original input. A derived report can still be saved.
       </span>
     </label>
   );
@@ -1728,7 +1640,7 @@ function PlanSourcePicker({
   ];
   return (
     <div style={{ padding: '0 16px 10px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <span style={{ fontSize: 12, color: T.t4 }}>Who made this plan?</span>
+      <span style={{ fontSize: 12, color: T.t3 }}>Who made this plan?</span>
       {options.map((option) => (
         <button
           key={option.key}
@@ -1768,7 +1680,7 @@ function AlreadyBookedPicker({
   ];
   return (
     <div style={{ padding: '0 16px 10px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <span style={{ fontSize: 12, color: T.t4 }}>Have you booked this trip?</span>
+      <span style={{ fontSize: 12, color: T.t3 }}>Have you booked this trip?</span>
       {options.map((option) => (
         <button
           key={String(option.key)}
@@ -1886,7 +1798,8 @@ function formatTravelerFactValue(value: unknown): string | null {
 }
 
 function buildSummaryFactItem(packet: Record<string, unknown> | null | undefined, key: string, label: string): ResultSummaryItem | null {
-  const value = formatTravelerFactValue(getPacketFactValue(packet, key));
+  const raw = getPacketFactValue(packet, key);
+  const value = key === 'traveler_plan' && typeof raw === 'string' ? formatPacketValue(raw) : formatTravelerFactValue(raw);
   if (!value) return null;
   return {
     l: label,
@@ -2008,6 +1921,9 @@ function formatClarificationLabel(raw: string): string {
 
 function buildTravelerClarifications(analysis: RunStatusResponse | null | undefined): string[] {
   const packet = (analysis?.packet as Record<string, unknown> | null | undefined) ?? null;
+  if (getItineraryFeasibilityEvidence(packet).returnDatePending) {
+    return ['Add your return date when you know it.'];
+  }
   const validation = (analysis?.validation as Record<string, unknown> | null | undefined) ?? null;
 
   const unknowns = Array.isArray(packet?.unknowns) ? packet.unknowns : [];
@@ -2077,20 +1993,16 @@ type ItineraryCheckerState = {
   analysisError: string | null;
   isAnalyzing: boolean;
   tracking: CheckerTracking | null;
-  submittedText: string | null;
   lastRetentionConsent: boolean;
+  submittedText: string | null;
+  editDraft: string | null;
 };
 
 type ItineraryCheckerAction =
-  | {
-      type: 'analysisStarted';
-      tracking: CheckerTracking;
-      submittedText: string;
-      retentionConsent: boolean;
-    }
-  | { type: 'analysisSucceeded'; analysis: RunStatusResponse }
+  | { type: 'analysisStarted' }
+  | { type: 'analysisSucceeded'; analysis: RunStatusResponse; tracking: CheckerTracking; retentionConsent: boolean; submittedText: string }
   | { type: 'analysisFailed'; message: string }
-  | { type: 'resetToUpload' };
+  | { type: 'resetToUpload'; edit?: boolean };
 
 const initialItineraryCheckerState: ItineraryCheckerState = {
   view: 'upload',
@@ -2098,8 +2010,9 @@ const initialItineraryCheckerState: ItineraryCheckerState = {
   analysisError: null,
   isAnalyzing: false,
   tracking: null,
-  submittedText: null,
   lastRetentionConsent: false,
+  submittedText: null,
+  editDraft: null,
 };
 
 function itineraryCheckerReducer(
@@ -2110,15 +2023,16 @@ function itineraryCheckerReducer(
     case 'analysisStarted':
       return {
         ...state,
-        tracking: action.tracking,
-        submittedText: action.submittedText,
-        lastRetentionConsent: action.retentionConsent,
+        analysisError: null,
         isAnalyzing: true,
       };
     case 'analysisSucceeded':
       return {
         ...state,
         analysis: action.analysis,
+        tracking: action.tracking,
+        submittedText: action.submittedText,
+        lastRetentionConsent: action.retentionConsent,
         analysisError: null,
         isAnalyzing: false,
         view: 'results',
@@ -2126,14 +2040,14 @@ function itineraryCheckerReducer(
     case 'analysisFailed':
       return {
         ...state,
-        analysis: null,
         analysisError: action.message,
         isAnalyzing: false,
-        view: 'results',
       };
     case 'resetToUpload':
       return {
         ...state,
+        editDraft: action.edit ? state.submittedText : null,
+        submittedText: null,
         analysis: null,
         analysisError: null,
         view: 'upload',
@@ -2148,12 +2062,6 @@ type ManageBusyState = 'export' | 'delete' | null;
 type RevisionOutcome = 'revised' | 'no_change' | 'rejected';
 
 function ResultsHeaderGrid({
-  score,
-  circumference,
-  analysis,
-  errorMessage,
-  summaryCopy,
-  blockerItems,
   tripSummary,
   liveChecks,
           clarificationItems,
@@ -2164,13 +2072,8 @@ function ResultsHeaderGrid({
   onDelete,
   onReportRevision,
   storageCopy,
+  hasScopedQuestion,
 }: {
-  score: number;
-  circumference: number;
-  analysis?: RunStatusResponse | null;
-  errorMessage?: string | null;
-  summaryCopy: string;
-  blockerItems: string[];
   tripSummary: ResultSummaryItem[];
   liveChecks?: Record<string, any>;
   clarificationItems: string[];
@@ -2181,85 +2084,48 @@ function ResultsHeaderGrid({
   onDelete: () => Promise<void>;
   onReportRevision: (revisionOutcome: RevisionOutcome) => Promise<void>;
   storageCopy: string;
+  hasScopedQuestion?: boolean;
 }) {
-  const SCORE = score;
   const handleExport = onExport;
   const handleDelete = onDelete;
   const handleReportRevision = onReportRevision;
+  const summary = hasScopedQuestion ? tripSummary.filter(({ l, v }) =>
+    !(l === 'Signal' && v.startsWith('Next inputs needed:'))
+    && !(l === 'Booking stage' && v.toLowerCase() === 'nothing booked'),
+  ) : tripSummary;
   return (
     <>
-      {/* Results header grid */}
-        <div className='itinerary-reveal' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 24 }}>
-          {/* Score card */}
-            <div style={{ padding: '24px 26px', borderRadius: 20, background: T.surface, border: `1px solid ${T.b0}` }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 14 }}>
-                Health check
-              </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              <div style={{ position: 'relative', width: 56, height: 56, flexShrink: 0 }}>
-                <svg width='56' height='56' viewBox='0 0 56 56' style={{ transform: 'rotate(-90deg)' }}>
-                  <circle cx='28' cy='28' r='22' fill='none' stroke={T.b0} strokeWidth='5' />
-                  <circle cx='28' cy='28' r='22' fill='none' stroke={T.amber} strokeWidth='5'
-                    strokeDasharray={`${(2 * Math.PI * 22) * (SCORE / 100)} ${2 * Math.PI * 22}`}
-                    strokeLinecap='round' />
-                </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 16, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>{SCORE}</div>
-                  <div style={{ fontSize: 9, color: T.t3, marginTop: 1 }}>/100</div>
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: T.t1, marginBottom: 5 }}>
-                  {analysis ? 'Live review' : errorMessage ? 'Live review unavailable' : 'Waiting for live review'}
-                </div>
-                <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>{summaryCopy}</div>
-                {errorMessage ? (
-                  <div style={{ fontSize: 12, color: T.red, lineHeight: 1.55, marginTop: 8 }}>
-                    {errorMessage}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              {[
-                { l: 'Critical', v: Math.max(0, Array.isArray(analysis?.hard_blockers) ? analysis!.hard_blockers.length : 0), c: T.red },
-                { l: 'Warnings', v: Math.max(0, Array.isArray(analysis?.soft_blockers) ? analysis!.soft_blockers.length : 0), c: T.amber },
-                { l: 'Heads up', v: blockerItems.length > 0 ? blockerItems.length : 0, c: T.blue },
-              ].map(m => (
-                <div key={m.l} style={{ flex: 1, padding: '8px 10px', background: T.elevated, borderRadius: 8, textAlign: 'center' }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: m.c, fontFamily: T.fDisplay }}>{m.v}</div>
-                  <div style={{ fontSize: 12, color: T.t3, marginTop: 1 }}>{m.l}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
+      <div style={{ marginBottom: 24 }}>
           {/* Trip summary + saved-data management */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {(!hasScopedQuestion || summary.length > 0) && (
             <div style={{ padding: '18px 20px', borderRadius: 16, background: T.surface, border: `1px solid ${T.b0}`, flex: 1 }}>
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 12 }}>
                 Trip Summary (Extracted)
               </div>
               <div className='itinerary-stagger' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                {(tripSummary.length > 0 ? tripSummary : [getTravelerTripSummaryFallback(analysis, errorMessage)]).map(f => (
+                {(summary.length > 0 ? summary : [{ l: 'Status', v: 'We couldn’t confidently identify the key trip details.' }]).map(f => (
                   <div key={f.l}>
-                    <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.t4 }}>{f.l}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.t3 }}>{f.l}</div>
                     <div style={{ fontSize: 12.5, color: T.t1, marginTop: 2, fontFamily: T.fMono }}>{f.v}</div>
                   </div>
                 ))}
               </div>
             </div>
+            )}
 
             {liveChecks ? (
               <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.04)', border: '1px solid rgba(57,208,216,0.16)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Live destination check</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Destination evidence</div>
                 <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>
-                  {String(liveChecks.destination ?? 'Destination')} · {String(liveChecks.climate?.precipitation_mm_avg ?? 'n/a')} mm avg rain · {String(liveChecks.climate?.wind_kmh_avg ?? 'n/a')} km/h wind
+                  {String(liveChecks.destination ?? 'Destination')}
+                  {typeof liveChecks.climate?.precipitation_mm_avg === 'number' ? ` · ${liveChecks.climate.precipitation_mm_avg} mm average rain` : ''}
+                  {typeof liveChecks.climate?.wind_kmh_avg === 'number' ? ` · ${liveChecks.climate.wind_kmh_avg} km/h average wind` : ''}
                 </div>
                 <div style={{ fontSize: 12, color: T.t3, marginBottom: 10 }}>
-                  {liveChecks.current_conditions ? (
+                  {typeof liveChecks.current_conditions?.current?.temperature_c === 'number' ? (
                     <>
-                      Current weather: {String(liveChecks.current_conditions.current?.temperature_c ?? 'n/a')}°C now
+                      Current weather: {String(liveChecks.current_conditions.current.temperature_c)}°C now
                       {liveChecks.current_conditions.current?.apparent_temperature_c != null
                         ? `, feels like ${String(liveChecks.current_conditions.current.apparent_temperature_c)}°C`
                         : ''}
@@ -2274,7 +2140,7 @@ function ResultsHeaderGrid({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {Array.isArray(liveChecks.signals) && liveChecks.signals.length > 0 ? (
                     <div style={{ fontSize: 12, color: T.cyan, lineHeight: 1.5 }}>
-                      Checked against live data sources.
+                      Source signals are available for this destination.
                     </div>
                   ) : null}
                   {(Array.isArray(liveChecks.soft_blockers) ? liveChecks.soft_blockers : []).slice(0, 2).map((item: string) => (
@@ -2310,7 +2176,7 @@ function ResultsHeaderGrid({
                 {storageCopy}
               </div>
               {manageMessage ? (
-                <div style={{ fontSize: 12, color: T.t3, marginBottom: 10 }}>{manageMessage}</div>
+                <div role='status' style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>{manageMessage}</div>
               ) : null}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
@@ -2357,7 +2223,7 @@ function ResultsHeaderGrid({
                   Rejected
                 </button>
               </div>
-              <div style={{ fontSize: 12, color: T.t4, marginTop: 8 }}>
+              <div style={{ fontSize: 12, color: T.t3, marginTop: 8 }}>
                 Reference: {tripId ?? 'being generated'}
               </div>
             </div>
@@ -2370,8 +2236,14 @@ function ResultsHeaderGrid({
 function ResultsFindingsSection({
   blockerItems,
   analysis,
+  needsDetails,
+  sourceFindings,
+  hasScopedResult,
 }: {
+  sourceFindings: string[];
   blockerItems: string[];
+  needsDetails: boolean;
+  hasScopedResult?: boolean;
   analysis?: RunStatusResponse | null;
 }) {
   // Disagree is per-report UI feedback only (honest label below) — it is not
@@ -2382,16 +2254,17 @@ function ResultsFindingsSection({
   const entityChecks = Array.isArray(packet?.public_checker_entity_checks)
     ? (packet!.public_checker_entity_checks as Array<Record<string, any>>)
     : [];
+  if ((hasScopedResult || sourceFindings.length > 0) && !blockerItems.length && !entityChecks.length) return null;
 
   return (
     <>
       {/* Findings — first object on the page (Manifest: pins before numbers) */}
         <div className='itinerary-stagger' style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t2, marginBottom: 12 }}>What your plan is missing</div>
+          <h2 style={{ fontSize: 16, fontWeight: 650, color: T.t1, marginBottom: 12 }}>Findings to review</h2>
           {blockerItems.length > 0 ? (
             <div className='itinerary-stagger' style={{ display: 'grid', gap: 10 }}>
-              {blockerItems.map((item, index) => {
-                const severity = index < (analysis?.hard_blockers?.length ?? 0) ? 'Critical' : 'Warning';
+              {blockerItems.map((item) => {
+                const severity = analysis?.hard_blockers?.includes(item) ? 'Critical' : 'Warning';
                 const c = rSevColor(severity) as keyof typeof rSevBadgeTxt;
                 const key = `${severity}-${item.slice(0, 30)}`;
                 const isDisputed = Boolean(disputed[key]);
@@ -2413,11 +2286,11 @@ function ResultsFindingsSection({
                     </span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: T.t1, lineHeight: 1.55 }}>
-                        {formatTravelerBlockerItem(item)}
+                        {formatTravelerBlockerItem(item, sourceFindings)}
                       </div>
                       {isDisputed ? (
                         <div style={{ fontSize: 11.5, color: T.t3, marginTop: 4 }}>
-                          Noted for this report — you marked this as fine.
+                          Noted for this report — you flagged this finding for review.
                         </div>
                       ) : null}
                     </div>
@@ -2446,19 +2319,19 @@ function ResultsFindingsSection({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {isDisputed ? 'Dispute removed' : 'Looks fine'}
+                      {isDisputed ? 'Undo feedback' : 'Question this finding'}
                     </button>
                   </div>
                 );
               })}
             </div>
-          ) : (
+          ) : hasScopedResult || sourceFindings.length > 0 || entityChecks.length > 0 ? null : (
             <div style={{
               padding: '14px 16px', borderRadius: 12,
               background: 'rgba(88,166,255,0.05)', border: '1px solid rgba(88,166,255,0.15)',
               fontSize: 12, color: T.t2, lineHeight: 1.55,
             }}>
-              No issues found yet. Upload your itinerary and we&apos;ll check timing, weather, and pacing.
+              {needsDetails ? 'There is too little information to draw a conclusion for all checks.' : 'This report has no specific findings. Confirm booking details with the relevant provider.'}
             </div>
           )}
 
@@ -2469,6 +2342,10 @@ function ResultsFindingsSection({
                 {entityChecks.map((check, index) => {
                   const verified = check.status === 'verified';
                   const notFound = check.status === 'not_found';
+                  const outcome = verified ? 'Public record found'
+                    : notFound ? 'No public record'
+                    : check.reason === 'source_unavailable' ? 'Source unavailable'
+                    : check.reason === 'lodging_match_uncertain' ? 'Lodging match uncertain' : 'Unable to verify';
                   return (
                     <div key={`${check.name}-${index}`} style={{
                       padding: '10px 14px', borderRadius: 10,
@@ -2480,7 +2357,7 @@ function ResultsFindingsSection({
                         fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
                         color: verified ? T.blue : T.amber, marginRight: 8,
                       }}>
-                        {verified ? 'Found' : notFound ? 'No public record' : 'Not checked'}
+                        {outcome}
                       </span>
                       {String(check.message ?? '')}
                     </div>
@@ -2501,7 +2378,7 @@ function ResultsFindingsSection({
 type MarketplaceMatch = {
   agency_id: string;
   display_name: string;
-  response_sla_hours: number;
+  response_sla_hours?: number;
   blurb: string;
   match_reasons: string[];
 };
@@ -2511,11 +2388,9 @@ type MarketplaceMatch = {
 // (explicit checkbox + send) is the qualification — nothing is sent without it.
 function RouteRequestPanel({
   tripId,
-  blockerCount,
   agencyContext,
 }: {
   tripId: string | null;
-  blockerCount: number;
   agencyContext?: AgencyBrandingContext | null;
 }) {
   const [phase, setPhase] = useState<'idle' | 'loading' | 'matched' | 'waitlist' | 'sent' | 'error'>(
@@ -2527,10 +2402,10 @@ function RouteRequestPanel({
           {
             agency_id: agencyContext.agency_id,
             display_name: agencyContext.display_name,
-            response_sla_hours: agencyContext.response_sla_hours ?? 24,
+            response_sla_hours: agencyContext.response_sla_hours,
             blurb: agencyContext.blurb ?? 'Your dedicated travel agency advisor.',
             match_reasons: agencyContext.places_covered?.length
-              ? [`Covers ${agencyContext.places_covered.join(', ')}`]
+              ? [`Listed coverage: ${agencyContext.places_covered.join(', ')}`]
               : ['Dedicated Advisor'],
           },
         ]
@@ -2540,6 +2415,8 @@ function RouteRequestPanel({
   const [contact, setContact] = useState('');
   const [consented, setConsented] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [leadStatus, setLeadStatus] = useState<string | null>(null);
 
   const findMatches = async () => {
     if (!tripId) return;
@@ -2559,32 +2436,37 @@ function RouteRequestPanel({
   };
 
   const sendBrief = async () => {
-    if (!tripId || !consented) return;
+    if (!tripId || !consented || !pickedAgency || !contact.trim() || sending) return;
     setError(null);
+    setSending(true);
     try {
-      await api.post('/api/public-checker/route-request', {
+      const receipt = await api.post<{ ok: boolean; lead_id: string; status: string }>('/api/public-checker/route-request', {
         trip_id: tripId,
         contact,
         agency_id: pickedAgency,
         consent: true,
-      });
+      }, { retry: 0 });
+      if (!receipt.ok || !receipt.lead_id) throw new Error('Missing request receipt');
+      setLeadStatus(receipt.status);
       setPhase('sent');
     } catch {
-      setError('Could not send your brief. Please try again.');
+      setError('Could not confirm your request. Please try again.');
+    } finally {
+      setSending(false);
     }
   };
 
   if (phase === 'sent') {
     return (
-      <div style={{ fontSize: 12.5, color: T.green, lineHeight: 1.55 }}>
-        ✓ Brief saved. {pickedAgency ? 'The matched agency will reach out in-product.' : "We'll match an agency and send your brief when one covers your trip."}
+      <div role='status' style={{ fontSize: 12.5, color: T.t1, lineHeight: 1.55 }}>
+        {leadStatus === 'routed' ? 'Request recorded for the selected agency. Delivery has not been confirmed.' : 'Request recorded. No agency delivery has been confirmed.'}
       </div>
     );
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {phase === 'idle' ? (
+      {phase === 'idle' || phase === 'error' ? (
         <button
           onClick={() => void findMatches()}
           disabled={!tripId}
@@ -2593,9 +2475,7 @@ function RouteRequestPanel({
             boxShadow: '0 4px 14px rgba(57,208,216,0.25)',
           }}
         >
-          {blockerCount > 0
-            ? `Get ${blockerCount === 1 ? 'this 1 issue' : `these ${blockerCount} issues`} fixed →`
-            : 'Get it fixed by an agency →'}
+          Check advisor availability
         </button>
       ) : null}
 
@@ -2603,11 +2483,12 @@ function RouteRequestPanel({
 
       {phase === 'matched' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 12, color: T.t2 }}>Agencies matched to your plan — pick who receives it:</div>
+          <div style={{ fontSize: 12, color: T.t2 }}>{agencyContext ? 'Agency linked to this checker' : 'Agencies matched to your plan — pick who receives it:'}</div>
           {matches.map((match) => (
             <button
               key={match.agency_id}
-              onClick={() => setPickedAgency(match.agency_id)}
+              aria-pressed={pickedAgency === match.agency_id}
+              onClick={() => { setPickedAgency(match.agency_id); setConsented(false); }}
               style={{
                 textAlign: 'left', padding: '10px 14px', borderRadius: 10,
                 background: pickedAgency === match.agency_id ? 'rgba(57,208,216,0.1)' : T.elevated,
@@ -2617,9 +2498,7 @@ function RouteRequestPanel({
             >
               <div style={{ fontSize: 12.5, fontWeight: 600, color: T.t1 }}>
                 {match.display_name}
-                <span style={{ fontSize: 11, fontWeight: 400, color: T.t3, marginLeft: 8 }}>
-                  responds within {match.response_sla_hours}h
-                </span>
+                {match.response_sla_hours != null ? <span style={{ fontSize: 12, color: T.t2, marginLeft: 8 }}>Listed response time: {match.response_sla_hours}h</span> : null}
               </div>
               {match.match_reasons.length > 0 ? (
                 <div style={{ fontSize: 11.5, color: T.t3, marginTop: 2 }}>
@@ -2633,13 +2512,15 @@ function RouteRequestPanel({
 
       {phase === 'waitlist' ? (
         <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>
-          No matched agency covers this trip yet — leave your contact and we&apos;ll send your brief to the first agency that does.
+          No matching advisor is available for this trip. You can still keep the report or take it to an advisor you know.
         </div>
       ) : null}
 
-      {(phase === 'matched' || phase === 'waitlist') ? (
+      {phase === 'matched' && pickedAgency ? (
         <>
+          <label htmlFor='checker-advisor-contact' style={{ color: T.t2 }}>Email or phone</label>
           <input
+            id='checker-advisor-contact'
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             placeholder='Email or phone for the agency to reach you'
@@ -2653,33 +2534,35 @@ function RouteRequestPanel({
             <span>
               {pickedAgency
                 ? `Send my brief and contact to ${matches.find((m) => m.agency_id === pickedAgency)?.display_name ?? 'the selected agency'}. Findings only — your raw documents stay private.`
-                : 'Send my brief to the next matched agency. Findings only — your raw documents stay private.'}
+                : null}
             </span>
           </label>
           <button
             onClick={() => void sendBrief()}
-            disabled={!consented || contact.trim().length === 0}
+            disabled={sending || !consented || contact.trim().length === 0}
             style={primaryButtonStyle(Boolean(consented && contact.trim()))}
           >
-            {phase === 'matched' ? 'Send my brief →' : 'Notify me →'}
+            {sending ? 'Recording request…' : 'Request advisor follow-up'}
           </button>
         </>
       ) : null}
 
-      {error ? <div style={{ fontSize: 12, color: T.red }}>{error}</div> : null}
+      {error ? <div role='alert' style={{ fontSize: 12, color: T.red }}>{error}</div> : null}
     </div>
   );
 }
 
 function ResultsConversionSection({
   onShareReport,
+  shareText,
+  shareStatus,
   tripId,
-  blockerCount,
   agencyContext,
 }: {
   onShareReport: () => Promise<void>;
+  shareText: string;
+  shareStatus: string | null;
   tripId: string | null;
-  blockerCount: number;
   agencyContext?: AgencyBrandingContext | null;
 }) {
   const handleShareReport = onShareReport;
@@ -2693,23 +2576,17 @@ function ResultsConversionSection({
             </div>
             <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55, maxWidth: '50ch' }}>
               {agencyContext
-                ? 'Send your brief directly to your dedicated advisor to fix these findings, claim VIP amenities, and protect your bookings.'
-                : 'Pick a matched agency to fix these findings — or take this brief to any agent you already trust.'}
+                ? 'Request follow-up from the agency using your report and contact details.'
+                : 'Check whether an advisor is available, or take your findings to one you already trust.'}
             </div>
           </div>
-          <RouteRequestPanel tripId={tripId} blockerCount={blockerCount} agencyContext={agencyContext} />
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            <button
-              onClick={handleShareReport}
-              style={S.shareReportButton}>
-              Share report
-            </button>
-            {!agencyContext && (
-              <Link href='/signup' style={S.advisorLinkButton}>
-                Find an advisor →
-              </Link>
-            )}
-          </div>
+          <RouteRequestPanel tripId={tripId} agencyContext={agencyContext} />
+          <details style={{ marginTop: 16 }}>
+            <summary style={{ color: T.t1, cursor: 'pointer', paddingBlock: 8 }}>Share findings summary</summary>
+            <p style={{ color: T.t2, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 13 }}>{shareText}</p>
+            <button type='button' onClick={handleShareReport} style={S.shareReportButton}>Share this summary</button>
+            {shareStatus ? <p role='status' style={{ color: T.t2, marginBlock: 8 }}>{shareStatus}</p> : null}
+          </details>
         </div>
     </>
   );
@@ -2719,25 +2596,36 @@ function ResultsConversionSection({
 function ResultsView({
   rootRef,
   onReset,
+  onEdit,
+  onRecheck,
+  submittedText,
+  rechecking,
+  recheckError,
   onEmitEvent,
   tracking,
   analysis,
-  errorMessage,
   agencyContext,
-  submittedText = null,
   lastRetentionConsent = false,
 }: {
   rootRef: RefObject<HTMLDivElement | null>;
   onReset: () => void;
+  onEdit: () => void;
+  onRecheck: (text: string) => Promise<void>;
+  submittedText: string;
+  rechecking: boolean;
+  recheckError: string | null;
   onEmitEvent: (eventName: string, properties: Record<string, unknown>, tripId?: string | null) => Promise<void>;
   tracking: { sessionId: string; inquiryId: string } | null;
   analysis?: RunStatusResponse | null;
-  submittedText?: string | null;
   lastRetentionConsent?: boolean;
-  errorMessage?: string | null;
   agencyContext?: AgencyBrandingContext | null;
 }) {
   const [manageMessage, setManageMessage] = useState<string | null>(null);
+  const [revisedText, setRevisedText] = useState(submittedText);
+  const [showRevision, setShowRevision] = useState(false);
+  const revisionInput = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { if (showRevision) revisionInput.current?.focus(); }, [showRevision]);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [manageBusy, setManageBusy] = useState<'export' | 'delete' | null>(null);
   const [reportStorage, setReportStorage] = useState<PublicCheckerReportStorageSummary>({
     loading: false,
@@ -2746,22 +2634,49 @@ function ResultsView({
     uploadFileName: null,
   });
 
-  const SCORE = scoreFromAnalysis(analysis ?? null);
-  const summaryCopy = summaryFromAnalysis(analysis ?? null);
-  const circumference = 2 * Math.PI * 36;
   const tripId = analysis?.trip_id ?? null;
+  const accessToken = analysis?.access_token ?? null;
   const liveChecks = ((analysis?.packet as Record<string, any> | null | undefined)?.public_checker_live_checks as Record<string, any> | undefined) ?? undefined;
   const tripSummary = buildTravelerTripSummary(analysis ?? null, liveChecks);
   const clarificationItems = buildTravelerClarifications(analysis ?? null);
+  const reportHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    reportHeading.current?.focus();
+  }, []);
+  const sourceFindings = [liveChecks?.hard_blockers, liveChecks?.soft_blockers]
+    .flatMap((items) => Array.isArray(items) ? items.filter((item): item is string => typeof item === 'string') : []);
+  const needsDetails = analysis?.state === 'blocked'
+    || analysis?.decision_state === 'ASK_FOLLOWUP'
+    || analysis?.decision_state === 'STOP_NEEDS_REVIEW'
+    || clarificationItems.length > 0;
   const blockerItems = [
     ...(Array.isArray(analysis?.hard_blockers) ? analysis?.hard_blockers : []),
     ...(Array.isArray(analysis?.soft_blockers) ? analysis?.soft_blockers : []),
   ];
 
+  const genericIntakeBlockers = new Set(['incomplete_intake', 'extraction_quality']);
+  const concreteBlocker = blockerItems.find((item) => !genericIntakeBlockers.has(item));
+  const firstAction = concreteBlocker ? formatTravelerBlockerItem(concreteBlocker, sourceFindings) : clarificationItems[0];
+  const submittedFacts = analysis?.packet as Record<string, unknown> | null | undefined;
+  const itineraryFindings = getItineraryFeasibilityFindings(submittedFacts);
+  const feasibilityEvidence = getItineraryFeasibilityEvidence(submittedFacts);
+  const detailCount = itineraryFindings.length + Number(Boolean(feasibilityEvidence.question));
+  const scopedHeading = detailCount === 1 ? '1 itinerary detail to confirm' : `${detailCount} itinerary details to confirm`;
+  const returnPromptAtEditor = feasibilityEvidence.returnDatePending && detailCount > 0 && !concreteBlocker;
+  const outboundOnly = getPacketFactValue(submittedFacts, 'date_confidence') === 'outbound_only'
+    && !getPacketFactValue(submittedFacts, 'date_end');
+  const keyTripFacts = [
+    buildSummaryFactItem(submittedFacts ?? null, 'origin_city', 'Departure city'),
+    buildSummaryFactItem(submittedFacts ?? null, 'destination', 'Destination')
+      ?? buildSummaryFactItem(submittedFacts ?? null, 'destination_candidates',
+        getPacketFactValue(submittedFacts, 'destination_status') === 'definite' ? 'Destination' : 'Destination candidates'),
+    buildSummaryFactItem(submittedFacts ?? null, 'date_window', outboundOnly ? 'Outbound date' : 'Travel window'),
+    buildSummaryFactItem(submittedFacts ?? null, 'party_size', 'Travelers'),
+  ].filter((item): item is ResultSummaryItem => Boolean(item));
+
+
   useEffect(() => {
-    if (!tripId) {
-      return;
-    }
+    if (!tripId || !accessToken) return;
 
     let isMounted = true;
 
@@ -2769,15 +2684,9 @@ function ResultsView({
       try {
         if (!isMounted) return;
         setReportStorage((state) => ({ ...state, loading: true }));
-        const accessToken = (() => {
-        try { return sessionStorage.getItem(`checker_access_${tripId}`); } catch { return null; }
-      })();
-      const response = await fetch(
-        accessToken
-          ? `/api/public-checker/trip/${tripId}`
-          : `/api/public-checker/${tripId}`,
-        accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
-      );
+        const response = await fetch(`/api/public-checker/trip/${encodeURIComponent(tripId)}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
         if (!response.ok) throw new Error('Could not read report metadata');
         const payload = await response.json();
         if (!isMounted) return;
@@ -2796,7 +2705,7 @@ function ResultsView({
     return () => {
       isMounted = false;
     };
-  }, [tripId]);
+  }, [tripId, accessToken]);
 
   const storageCopy = reportStorage.loading
     ? 'Checking what we saved…'
@@ -2805,27 +2714,19 @@ function ResultsView({
         ? `Report and upload were saved${reportStorage.uploadFileName ? ` (file: ${reportStorage.uploadFileName})` : ''}.`
         : 'Report was saved with your consent.'
       : reportStorage.retentionConsented === false
-        ? 'You ran this as a one-time analysis. No uploaded document text was retained.'
-        : reportStorage.hasStoredUpload
-          ? 'Uploaded details were retained for this report.'
-          : !lastRetentionConsent
-            ? 'You ran this as a one-time analysis. No uploaded document text was retained.'
-            : 'We couldn\u2019t confirm what was saved.';
+        ? 'You did not opt in to saving your original input. The derived report may still be available.'
+        : lastRetentionConsent
+          ? 'You requested that we save this report. We couldn’t confirm what was saved.'
+          : 'You requested a one-time check. We couldn’t confirm the storage status.';
 
   const handleExport = async () => {
-    if (!tripId) return;
+    if (!tripId || !accessToken) return;
     setManageBusy('export');
     setManageMessage(null);
     try {
-      const accessToken = (() => {
-        try { return sessionStorage.getItem(`checker_access_${tripId}`); } catch { return null; }
-      })();
-      const response = await fetch(
-        accessToken
-          ? `/api/public-checker/trip/${tripId}/export`
-          : `/api/public-checker/${tripId}/export`,
-        accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
-      );
+      const response = await fetch(`/api/public-checker/trip/${encodeURIComponent(tripId)}/export`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       if (!response.ok) throw new Error('Export failed');
       const payload = await response.json();
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -2835,15 +2736,6 @@ function ResultsView({
       link.download = `waypoint-checker-${tripId}.json`;
       link.click();
       URL.revokeObjectURL(url);
-      await onEmitEvent(
-        'finding_evidence_opened',
-        {
-          finding_id: `trip_${tripId}`,
-          evidence_type: 'source_snippet',
-          open_index: 1,
-        },
-        tripId,
-      );
       setManageMessage('Export downloaded.');
     } catch {
       setManageMessage('Could not export this report.');
@@ -2853,24 +2745,16 @@ function ResultsView({
   };
 
   const handleDelete = async () => {
-    if (!tripId) return;
+    if (!tripId || !accessToken) return;
     const confirmed = window.confirm('Delete this saved itinerary report and its stored upload data?');
     if (!confirmed) return;
     setManageBusy('delete');
     setManageMessage(null);
     try {
-      const accessToken = (() => {
-        try { return sessionStorage.getItem(`checker_access_${tripId}`); } catch { return null; }
-      })();
-      const response = await fetch(
-        accessToken
-          ? `/api/public-checker/trip/${tripId}`
-          : `/api/public-checker/${tripId}`,
-        {
-          method: 'DELETE',
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-        },
-      );
+      const response = await fetch(`/api/public-checker/trip/${encodeURIComponent(tripId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       if (!response.ok) throw new Error('Delete failed');
       setManageMessage('Deleted.');
       onReset();
@@ -2881,47 +2765,43 @@ function ResultsView({
     }
   };
 
-  const handleShareReport = async () => {
-    if (!tracking) return;
-    const packetId = tripId ?? `packet_${Date.now().toString(36)}`;
-    const shareUrl = agencyContext?.slug
-      ? `https://waypoint.app/check/${agencyContext.slug}`
-      : 'https://waypoint.app/itinerary-checker';
-    const findingsPreview = blockerItems.length > 0
-      ? `\nKey Audit Findings:\n${blockerItems.slice(0, 3).map((item) => `• ${item}`).join('\n')}`
+  const shareUrl = agencyContext?.slug
+    ? `https://waypoint.app/check/${agencyContext.slug}`
+    : 'https://waypoint.app/itinerary-checker';
+  const reportBlockers = detailCount > 0
+    ? blockerItems.filter((item) => !genericIntakeBlockers.has(item))
+    : blockerItems;
+  const shareFindings = [
+    ...reportBlockers.slice(0, 3).map((item) => formatTravelerBlockerItem(item, sourceFindings)),
+    ...(feasibilityEvidence.question ? [
+      `${feasibilityEvidence.question}${feasibilityEvidence.ask ? `\n  Ask ${feasibilityEvidence.ask}` : ''}`,
+    ] : []),
+    ...itineraryFindings.map(({ title, message, source, ask }) =>
+      `${title}: ${message}${ask ? `\n  Ask ${ask}` : ''}${source ? `\n  ${source.label}: ${source.url}` : ''}`,
+    ),
+  ];
+  const findingsPreview = shareFindings.length > 0
+    ? `\nKey findings:\n${[...new Set(shareFindings)].map((finding) => `• ${finding}`).join('\n')}`
       : '';
-    const shareText = `🌍 Travel Plan Health Check — Score: ${SCORE}/100\n${summaryCopy}${findingsPreview}\n\nChecked with Waypoint Diagnostic: ${shareUrl}`;
-
-    let shareChannel: 'copy_paste' | 'other' = 'copy_paste';
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      try {
-        await navigator.share({
-          title: 'Waypoint itinerary findings',
-          text: shareText,
-        });
-        shareChannel = 'other';
-      } catch {
-        // User cancelled or share failed. Fall back to clipboard.
+  const shareText = `Waypoint itinerary findings${findingsPreview}\n\n${shareUrl}`;
+  const handleShareReport = async () => {
+    const packetId = tripId ?? `packet_${Date.now().toString(36)}`;
+    setShareStatus(null);
+    const shareChannel = typeof navigator.share === 'function' ? 'other' : 'copy_paste';
+    try {
+      if (shareChannel === 'other') {
+        await navigator.share({ title: 'Waypoint itinerary findings', text: shareText });
+      } else {
+        if (!await safeWriteClipboardText(shareText)) throw new Error('Clipboard unavailable');
       }
-    }
-
-    if (shareChannel === 'copy_paste') {
-      try {
-        await safeWriteClipboardText(shareText);
-        await onEmitEvent(
-          'action_packet_copied',
-          {
-            packet_id: packetId,
-            packet_type: 'agent_message',
-            finding_count: blockerItems.length,
-            had_manual_edits: false,
-          },
-          tripId,
-        );
-      } catch {
-        // ignore clipboard failure for telemetry; user still has visible summary
+      setShareStatus(shareChannel === 'other' ? 'Findings shared.' : 'Findings copied.');
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        setShareStatus('Could not share findings. Please try again.');
       }
+      return;
     }
+    if (!tracking) return;
 
     await onEmitEvent(
       'action_packet_shared',
@@ -2957,57 +2837,95 @@ function ResultsView({
   return (
     <div ref={rootRef} style={S.resultsRoot}>
       <WedgeHeader agencyContext={agencyContext} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px clamp(16px, 4vw, 32px)', maxWidth: 1080, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        <button onClick={onReset} style={S.backButton}>
-          ← Analyze another itinerary
-        </button>
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
-          padding: '10px 16px', borderRadius: 12,
-          background: T.surface, border: `1px solid ${T.b0}`, marginBottom: 20,
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.t3 }}>
-            Provenance
-          </span>
-          <span style={{ fontSize: 12, color: T.t2 }}>
-            Checked against live sources · Advisory findings only
-          </span>
-          {analysis?.report_fingerprint ? (
-            <span
-              style={{ fontSize: 11, color: T.t4, fontFamily: 'monospace' }}
-              title="Tamper-evident report fingerprint"
-            >
-              {analysis.report_fingerprint.slice(0, 14)}
-            </span>
+      <div style={{ flex: 1, overflowWrap: 'anywhere', padding: '24px clamp(16px, 4vw, 32px)', maxWidth: 1080, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        <nav aria-label='Itinerary actions' style={{ display: 'flex', flexWrap: 'wrap', gap: '0 16px' }}>
+          <button onClick={onEdit} disabled={rechecking} style={{ ...S.backButton, color: T.t2 }}>← Edit itinerary</button>
+          <button onClick={onReset} disabled={rechecking} style={{ ...S.backButton, color: T.t2 }}>Check another itinerary</button>
+        </nav>
+        <header style={{ padding: '24px clamp(16px, 4vw, 32px)', background: T.surface, border: `1px solid ${T.b0}`, borderRadius: 16, marginBottom: 24 }}>
+          <p style={{ color: T.cyan, fontSize: 13, margin: '0 0 8px' }}>Itinerary report</p>
+          <h1 ref={reportHeading} tabIndex={-1} style={{ color: T.t1, fontSize: 'clamp(28px, 5vw, 42px)', lineHeight: 1.12, margin: '0 0 12px' }}>
+            {concreteBlocker ? 'Review these findings before booking' : detailCount > 0 ? scopedHeading : needsDetails ? 'Your check needs more details' : 'Your itinerary check'}
+          </h1>
+          {(!returnPromptAtEditor || feasibilityEvidence.question) && <p style={{ color: T.t2, lineHeight: 1.6, margin: 0 }}>
+            {(concreteBlocker ? firstAction : feasibilityEvidence.question ?? firstAction) ?? (needsDetails
+              ? 'Check that your itinerary includes the key trip details, then run the check again.'
+              : 'Review the checks we could run and confirm booking details with your providers.')}
+          </p>}
+          {concreteBlocker && feasibilityEvidence.question && (
+            <p style={{ color: T.t1, margin: '8px 0 0' }}>{feasibilityEvidence.question}</p>
+          )}
+          {feasibilityEvidence.context && (
+            <p style={{ color: T.t2, margin: '8px 0 0' }}>{feasibilityEvidence.context}</p>
+          )}
+          {feasibilityEvidence.question && feasibilityEvidence.ask && (
+            <p style={{ color: T.t2, margin: '8px 0 0' }}>Ask {feasibilityEvidence.ask}</p>
+          )}
+          {feasibilityEvidence.question && feasibilityEvidence.source && (
+            <a href={feasibilityEvidence.source.url} style={{ color: T.cyan, textDecoration: 'underline' }}>{feasibilityEvidence.source.label}</a>
+          )}
+          {keyTripFacts.length > 0 ? (
+            <dl aria-label='What we read from your itinerary' style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 24px', margin: '16px 0 0' }}>
+              {keyTripFacts.map(({ l, v }) => (
+                <div key={l}>
+                  <dt style={{ color: T.t2, fontSize: 12 }}>{l}</dt>
+                  <dd style={{ color: T.t1, margin: '3px 0 0', fontSize: 14 }}>{v}</dd>
+                </div>
+              ))}
+            </dl>
           ) : null}
-          <span style={{ fontSize: 12, color: T.t4, marginLeft: 'auto' }}>
-            Report {tripId ?? 'pending'}
-          </span>
-        </div>
-        <ResultsFindingsSection blockerItems={blockerItems} analysis={analysis} />
-        <WedgeVisualShowcase analysis={analysis} rawPlanText={submittedText} />
+          {itineraryFindings.map(({ id, title, message, source, ask }) => (
+            <aside key={id} aria-labelledby={`checker-${id}`} style={{ marginTop: 16, padding: 16, borderRadius: 12, border: '1px solid rgba(210,153,34,0.45)', background: 'rgba(210,153,34,0.08)' }}>
+              <h2 id={`checker-${id}`} style={{ margin: '0 0 6px', color: T.amber, fontSize: 16, fontWeight: 650 }}>{title}</h2>
+              <p style={{ margin: 0, color: T.t1, lineHeight: 1.6 }}>{message}</p>
+              {ask && <p style={{ color: T.t2, margin: '8px 0 0' }}>Ask {ask}</p>}
+              {source ? <a href={source.url} style={{ display: 'inline-block', marginTop: 8, color: T.cyan, textDecoration: 'underline' }}>{source.label}</a> : null}
+            </aside>
+          ))}
+          {returnPromptAtEditor && <p style={{ color: T.t2, margin: '16px 0 0' }}>{clarificationItems[0]}</p>}
+          {submittedText ? (
+            <div style={{ marginTop: 16 }}>
+              <button type='button' aria-expanded={showRevision} aria-controls='checker-revision' disabled={rechecking}
+                onClick={() => setShowRevision((open) => !open)} style={sectionButtonStyle('secondary')}>
+                {showRevision ? 'Hide itinerary editor' : 'Correct or add trip details'}
+              </button>
+              {showRevision ? (
+                <form id='checker-revision' onSubmit={(event) => { event.preventDefault(); void onRecheck(revisedText); }}
+                  style={{ marginTop: 16, display: 'grid', gap: 10, justifyItems: 'start' }}>
+                  <label htmlFor='checker-revision-text' style={{ color: T.t1 }}>Your submitted itinerary</label>
+                  <textarea id='checker-revision-text' ref={revisionInput} value={revisedText} disabled={rechecking}
+                    onChange={(event) => setRevisedText(event.target.value)} rows={5}
+                    style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: 12, background: T.input, color: T.t1, border: `1px solid ${T.b1}`, borderRadius: 10 }} />
+                  {rechecking ? <p role='status' style={{ color: T.t2, margin: 0 }}>Checking your updated itinerary…</p> : null}
+                  {recheckError ? <p role='alert' style={{ color: T.red, margin: 0 }}>{recheckError} The report below is from your previous check.</p> : null}
+                  <button type='submit' disabled={rechecking || revisedText.trim().length < 10 || revisedText.trim() === submittedText.trim()}
+                    style={sectionButtonStyle('primary')}>
+                    {rechecking ? 'Checking again…' : 'Recheck my itinerary'}
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          ) : null}
+        </header>
+        <ResultsFindingsSection blockerItems={clarificationItems.length || feasibilityEvidence.question ? blockerItems.filter((item) => !genericIntakeBlockers.has(item)) : blockerItems} analysis={analysis} needsDetails={needsDetails} sourceFindings={sourceFindings} hasScopedResult={Boolean(feasibilityEvidence.question) || itineraryFindings.length > 0} />
         <ResultsHeaderGrid
-          score={SCORE}
-          circumference={circumference}
-          analysis={analysis}
-          errorMessage={errorMessage}
-          summaryCopy={summaryCopy}
-          blockerItems={blockerItems}
           tripSummary={tripSummary}
           liveChecks={liveChecks}
-          clarificationItems={clarificationItems}
+          clarificationItems={feasibilityEvidence.question || (feasibilityEvidence.returnDatePending && !concreteBlocker) ? [] : clarificationItems}
           manageMessage={manageMessage}
           manageBusy={manageBusy}
-          tripId={tripId}
+          tripId={accessToken ? tripId : null}
           onExport={handleExport}
           onDelete={handleDelete}
           onReportRevision={handleReportRevision}
           storageCopy={storageCopy}
+          hasScopedQuestion={Boolean(feasibilityEvidence.question)}
         />
         <ResultsConversionSection
           onShareReport={handleShareReport}
+          shareText={shareText}
+          shareStatus={shareStatus}
           tripId={tripId}
-          blockerCount={blockerItems.length}
           agencyContext={agencyContext}
         />
         <div style={{ paddingBottom: 48 }} />
@@ -3054,7 +2972,7 @@ function CheckerPage({
   agencyContext?: AgencyBrandingContext | null;
 } = {}) {
   const [state, dispatch] = useReducer(itineraryCheckerReducer, initialItineraryCheckerState);
-  const { view, analysis, analysisError, isAnalyzing, tracking, submittedText, lastRetentionConsent } = state;
+  const { view, analysis, analysisError, isAnalyzing, tracking, lastRetentionConsent, editDraft, submittedText } = state;
   const motionRootRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string>(makeTrackingId('sess'));
 
@@ -3196,8 +3114,9 @@ function CheckerPage({
       inquiryId: makeTrackingId('inq'),
     };
 
+    dispatch({ type: 'analysisStarted' });
     if (analysis?.trip_id && tracking?.inquiryId) {
-      await emitProductBEvent(
+      void emitProductBEvent(
         're_audit_started',
         {
           prior_packet_id: analysis.trip_id,
@@ -3221,12 +3140,6 @@ function CheckerPage({
           inquiry_id: nextTracking.inquiryId,
         };
 
-    dispatch({
-      type: 'analysisStarted',
-      tracking: nextTracking,
-      submittedText: trimmed,
-      retentionConsent,
-    });
     try {
       const result = await api.post<RunStatusResponse>('/api/public-checker/run', {
         raw_note: trimmed,
@@ -3242,19 +3155,17 @@ function CheckerPage({
         operating_mode: 'normal_intake',
         strict_leakage: true,
         scenario_id: null,
-      });
-      if (result.access_token && result.trip_id) {
-        try {
-          sessionStorage.setItem(`checker_access_${result.trip_id}`, result.access_token);
-        } catch {
-          // storage unavailable — manage-data panel degrades, report still renders
-        }
+      }, { retry: 0 });
+      if (!result?.run_id || !['completed', 'blocked'].includes(result.state)
+        || result.error_message || !result.packet || typeof result.packet !== 'object'
+        || Array.isArray(result.packet) || Object.keys(result.packet).length === 0) {
+        throw new Error('The checker returned no usable report.');
       }
-      dispatch({ type: 'analysisSucceeded', analysis: result });
-    } catch (error) {
+      dispatch({ type: 'analysisSucceeded', analysis: result, tracking: nextTracking, submittedText: trimmed, retentionConsent });
+    } catch {
       dispatch({
         type: 'analysisFailed',
-        message: error instanceof Error ? error.message : 'We couldn\u2019t finish checking your plan just now. Please try again in a moment.',
+        message: 'We couldn’t check your itinerary right now. Your input is still here. Try again in a moment.',
       });
     }
   };
@@ -3295,14 +3206,18 @@ function CheckerPage({
   if (view === 'results') {
     return (
       <ResultsView
+        key={analysis?.run_id}
+        submittedText={submittedText ?? ''}
+        rechecking={isAnalyzing}
+        recheckError={analysisError}
+        onRecheck={(text) => handleAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: false, already_booked: analysis?.stage === 'booking' })}
         rootRef={motionRootRef}
         onReset={() => dispatch({ type: 'resetToUpload' })}
+        onEdit={() => dispatch({ type: 'resetToUpload', edit: true })}
         onEmitEvent={emitProductBEvent}
         tracking={tracking}
         analysis={analysis}
-        submittedText={submittedText}
         lastRetentionConsent={lastRetentionConsent}
-        errorMessage={analysisError}
         agencyContext={agencyContext}
       />
     );
@@ -3314,6 +3229,8 @@ function CheckerPage({
       onAnalyze={handleAnalyze}
       onAnalyzeFile={handleAnalyzeFile}
       isBusy={isAnalyzing}
+      analysisError={analysisError}
+      initialDraft={editDraft}
       agencyContext={agencyContext}
     />
   );

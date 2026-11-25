@@ -14,6 +14,8 @@ from typing import Any, Dict, Optional
 from src.intake.packet_models import CanonicalPacket
 
 
+# Advances when the visa rule's stored output contract changes.
+_VISA_TIMELINE_CACHE_REVISION = 3
 
 def generate_cache_key(
     decision_type: str,
@@ -36,6 +38,15 @@ def generate_cache_key(
     """
     # Normalize packet to decision-relevant fields
     relevant_fields = _get_relevant_fields(decision_type, packet)
+    if decision_type == "visa_timeline_risk":
+        # Exact decision reuse also depends on these fields. Operator feedback
+        # uses the broader context signature and keeps its existing semantics.
+        visa = _extract_value(packet.facts, "visa_status")
+        relevant_fields.update(
+            output_revision=_VISA_TIMELINE_CACHE_REVISION,
+            resolved_destination=_extract_value(packet, "resolved_destination"),
+            visa_application_status=visa.get("status") if isinstance(visa, dict) else None,
+        )
 
     # Sort and serialize for stable hashing
     normalized = json.dumps(relevant_fields, sort_keys=True, default=str)

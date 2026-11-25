@@ -1,5 +1,7 @@
 'use client';
 
+import { handleHorizontalScrollKey } from '@/lib/horizontal-scroll';
+
 /**
  * Bookings — the traveler booking dossier for the selected trip (E1 honest
  * rebuild, 2026-10-25). The former sample surface (fabricated flight/hotel
@@ -277,7 +279,7 @@ export default function BookingsPageClient() {
             data-testid='bookings-trip-select'
             value={effectiveSelectedTripId}
             onChange={(e) => handleTripChange(e.target.value)}
-            className='w-full md:w-[520px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#3fb950] outline-none'
+            className='w-full max-w-[520px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#3fb950] outline-none'
             disabled={isLoading || tripOptions.length === 0}
           >
             {tripOptions.length === 0 ? (
@@ -318,12 +320,12 @@ export default function BookingsPageClient() {
       )}
 
       {effectiveSelectedTripId ? (
-        <div className='grid gap-6 lg:grid-cols-3'>
+        <div className='grid grid-cols-1 gap-6 lg:grid-cols-3'>
           {/* Booking dossier */}
-          <div className='lg:col-span-2 space-y-4'>
+          <div className='min-w-0 space-y-4 lg:col-span-2'>
             {/* Customer collection link */}
             <div className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-3'>
-              <div className='flex items-center justify-between border-b border-[#30363d] pb-3'>
+              <div className='flex flex-wrap items-center justify-between gap-2 border-b border-[#30363d] pb-3'>
                 <div className='font-semibold text-sm text-[#e6edf3] flex items-center gap-2'>
                   <Link2 className='size-4 text-[#58a6ff]' />
                   <span>Customer Collection Link</span>
@@ -336,7 +338,7 @@ export default function BookingsPageClient() {
                 <div className='flex flex-wrap items-center gap-2'>
                   <code
                     data-testid='collection-url'
-                    className='text-xs font-mono text-[#58a6ff] bg-[#161b22] border border-[#30363d] rounded px-2 py-1 truncate max-w-md'
+                    className='text-xs font-mono text-[#58a6ff] bg-[#161b22] border border-[#30363d] max-w-full rounded px-2 py-1 [overflow-wrap:anywhere]'
                   >
                     {collectionUrl || '(link active — URL hidden until reopened)'}
                   </code>
@@ -437,7 +439,13 @@ export default function BookingsPageClient() {
                   to the customer.
                 </p>
               ) : (
-                <div className='overflow-x-auto'>
+                <div
+                  role='region'
+                  aria-label='Traveler details table'
+                  onKeyDown={handleHorizontalScrollKey}
+                  tabIndex={0}
+                  className='overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#58a6ff]'
+                >
                   <table className='w-full text-left text-sm'>
                     <thead>
                       <tr className='border-b border-[#30363d] bg-[#0d1117] text-xs font-semibold text-[#8b949e] uppercase tracking-wider'>

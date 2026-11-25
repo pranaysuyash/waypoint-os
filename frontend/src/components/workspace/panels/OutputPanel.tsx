@@ -136,7 +136,7 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
       {/* Internal vs Traveler-safe Split View */}
       <div className="border border-highlight rounded-lg p-4">
         <h3 className="text-ui-sm font-semibold text-text-primary mb-4">Agent View vs Customer View</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [overflow-wrap:anywhere]">
           <div className="p-4 rounded-lg bg-sidebar border border-highlight">
 	            <h4 className="text-ui-xs font-semibold text-accent-blue uppercase tracking-wider mb-3">For You (Agent)</h4>
             {internalBundle ? (

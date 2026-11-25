@@ -1,0 +1,130 @@
+[
+  {
+    "surface": "public",
+    "display": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "question_visible": true,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "standalone_access_question_on_page": false,
+    "standalone_train_question_on_page": false,
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/public-checker/run",
+        "status": 200
+      }
+    ],
+    "screenshot": "compound-desktop-public.png",
+    "recording": "compound-desktop-public.mp4"
+  },
+  {
+    "display": "desktop",
+    "surface": "workbench",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "question_visible": true,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "standalone_access_question_on_page": false,
+    "standalone_train_question_on_page": false,
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/spine/run",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/1cd60422-17e9-4e54-aefb-9d79e4dafd66",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/1cd60422-17e9-4e54-aefb-9d79e4dafd66",
+        "status": 200
+      }
+    ],
+    "screenshot": "compound-desktop-workbench.png",
+    "recording": "compound-desktop-workbench-retry-ef1f.mp4"
+  },
+  {
+    "display": "mobile-emulation",
+    "surface": "public",
+    "viewport": {
+      "width": 412,
+      "height": 839
+    },
+    "question_visible": true,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "standalone_access_question_on_page": false,
+    "standalone_train_question_on_page": false,
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/public-checker/run",
+        "status": 200
+      }
+    ],
+    "screenshot": "compound-mobile-emulation-public.png",
+    "recording": "compound-mobile-emulation-public.mp4"
+  },
+  {
+    "display": "mobile-emulation",
+    "surface": "workbench",
+    "viewport": {
+      "width": 412,
+      "height": 839
+    },
+    "question_visible": true,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "standalone_access_question_on_page": false,
+    "standalone_train_question_on_page": false,
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/spine/run",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/36144e5c-3417-41a5-87da-b99dcaf7c5fd",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/36144e5c-3417-41a5-87da-b99dcaf7c5fd",
+        "status": 200
+      }
+    ],
+    "screenshot": "compound-mobile-emulation-workbench.png",
+    "recording": "compound-mobile-emulation-workbench.mp4"
+  }
+]

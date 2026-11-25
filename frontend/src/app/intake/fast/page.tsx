@@ -10,7 +10,7 @@ export default function FastIntakePage() {
   const [clientName, setClientName] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle');
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,6 +18,7 @@ export default function FastIntakePage() {
 
     setLoading(true);
     setResult(null);
+    setCopyStatus('idle');
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
@@ -52,12 +53,15 @@ export default function FastIntakePage() {
     }
   };
 
-  const copyToClipboard = () => {
-    if (!result?.teaser_url) return;
-    const fullUrl = `${window.location.origin}${result.teaser_url}`;
-    navigator.clipboard.writeText(fullUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const copyToClipboard = async () => {
+    if (!result?.teaser_url || copyStatus === 'copying') return;
+    setCopyStatus('copying');
+    try {
+      await navigator.clipboard.writeText(new URL(result.teaser_url, window.location.origin).href);
+      setCopyStatus('copied');
+    } catch {
+      setCopyStatus('failed');
+    }
   };
 
   return (
@@ -110,10 +114,11 @@ export default function FastIntakePage() {
           <form onSubmit={handleGenerate} className="space-y-4">
             {mode === 'follower_input' && (
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label htmlFor="fast-intake-name" className="block text-xs font-semibold text-slate-300 mb-1">
                   Your Name (Optional)
                 </label>
                 <input
+                  id="fast-intake-name"
                   type="text"
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
@@ -124,10 +129,11 @@ export default function FastIntakePage() {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label htmlFor="fast-intake-note" className="block text-xs font-semibold text-slate-300 mb-1">
                 {mode === 'creator_paste' ? 'Paste Follower DM / Inquiry Text' : 'Describe Your Ideal Trip'}
               </label>
               <textarea
+                id="fast-intake-note"
                 rows={4}
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
@@ -142,7 +148,7 @@ export default function FastIntakePage() {
 
             <button
               type="submit"
-              disabled={loading || !rawText.trim()}
+              disabled={loading || copyStatus === 'copying' || !rawText.trim()}
               className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white font-semibold text-sm shadow-lg hover:shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -163,7 +169,7 @@ export default function FastIntakePage() {
             </div>
           ) : result ? (
             <div className="mt-6 pt-6 border-t border-slate-800/80 space-y-4 animate-in fade-in duration-300">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-400 text-xs font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5" /> Stage 1 Teaser Live (IP Protected)
                 </span>
@@ -172,19 +178,25 @@ export default function FastIntakePage() {
                 </span>
               </div>
 
-              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-4 flex items-center justify-between gap-3">
-                <div className="truncate text-xs font-mono text-cyan-300">
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere] text-xs font-mono text-cyan-300">
                   {result.teaser_url}
                 </div>
                 <button
                   type="button"
                   onClick={copyToClipboard}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-950 border border-cyan-700 text-cyan-300 text-xs font-medium hover:bg-cyan-900 transition flex items-center gap-1.5"
+                  disabled={copyStatus === 'copying'}
+                  className="px-3 py-1.5 rounded-lg bg-cyan-950 border border-cyan-700 text-cyan-300 text-xs font-medium hover:bg-cyan-900 transition flex shrink-0 items-center gap-1.5"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? 'Copied!' : 'Copy Link'}
+                  {copyStatus === 'copied' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copyStatus === 'copied' ? 'Copied!' : 'Copy Link'}
                 </button>
               </div>
+
+              {copyStatus === 'failed' && (
+                <p role="alert" className="text-xs text-rose-300">Could not copy the link. Select the URL above to copy it manually.</p>
+              )}
+              <span className="sr-only" role="status">{copyStatus === 'copied' ? 'Teaser link copied.' : ''}</span>
 
               <div className="flex gap-3 pt-2">
                 <Link

@@ -190,17 +190,17 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
 
   return (
     <div data-testid="ops-documents" className="border border-[#30363d] rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h4 className="text-sm font-medium text-[#e6edf3]">Documents</h4>
         {canUpload && canManageDocuments && (
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <select
               id="ops-document-type"
               name="document_type"
               aria-label="Document type"
               value={uploadDocType}
               onChange={(e) => setUploadDocType(e.target.value)}
-              className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+              className="max-w-full bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
             >
               <option value="passport">Passport</option>
               <option value="visa">Visa</option>
@@ -239,9 +239,9 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
             <div
               key={doc.id}
               data-testid={`ops-document-${doc.id}`}
-              className="flex items-center justify-between py-2 px-3 rounded border border-[#30363d]"
+              className="flex flex-wrap items-start justify-between gap-2 py-2 px-3 rounded border border-[#30363d]"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="text-xs font-medium text-[#e6edf3]">
                   {doc.document_type.replace('_', ' ')}
                 </span>
@@ -270,7 +270,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
                 {canManageDocuments && doc.status === 'pending_review' && (
                   <>
                     <button
@@ -334,8 +334,8 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
               </div>
               {/* Extraction results */}
               {extractions[doc.id] && (
-                <div data-testid={`ops-extraction-${doc.id}`} className="mt-2 border-t border-[#30363d] pt-2 space-y-2">
-                  <div className="flex items-center gap-2 text-xs">
+                <div data-testid={`ops-extraction-${doc.id}`} className="min-w-0 basis-full break-words border-t border-[#30363d] pt-2 space-y-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
                     <span className="text-[#8b949e]">Extraction:</span>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                       extractions[doc.id].status === 'applied' ? 'bg-emerald-900/50 text-emerald-300' :
@@ -352,7 +352,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                   </div>
                   <div data-testid={`ops-extraction-fields-${doc.id}`} className="space-y-1">
                         {extractions[doc.id].fields.flatMap((f) => f.present ? [(
-                      <div key={f.field_name} className="flex items-center gap-2 text-xs">
+                      <div key={f.field_name} className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
                         {canManageDocuments && extractions[doc.id].status === 'pending_review' && (
                           <input
                             type="checkbox"
@@ -370,7 +370,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                             className="accent-purple-400"
                           />
                         )}
-                        <span className="text-[#8b949e] w-32">{f.field_name.replace(/_/g, ' ')}:</span>
+                        <span className="text-[#8b949e]">{f.field_name.replace(/_/g, ' ')}:</span>
                         <span className="text-[#e6edf3]">{f.value ?? '-'}</span>
                         <span className={`text-[10px] px-1 rounded ${
                           f.confidence >= 0.9 ? 'text-emerald-400' :
@@ -384,7 +384,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                   </div>
                       {canManageDocuments && extractions[doc.id].status === 'pending_review' && (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
                         <span className="text-[#8b949e]">Apply to:</span>
                         <select
                           data-testid={`ops-extraction-traveler-select-${doc.id}`}
@@ -395,7 +395,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                               return { ...prev, [doc.id]: { ...cur, travelerId: e.target.value } };
                             });
                           }}
-                          className="bg-[#0d1117] border border-[#30363d] rounded text-[#e6edf3] px-2 py-1 text-xs"
+                          className="max-w-full bg-[#0d1117] border border-[#30363d] rounded text-[#e6edf3] px-2 py-1 text-xs"
                         >
                           <option value="">Select traveler</option>
                           {travelers.map((t) => (
@@ -428,7 +428,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                           </button>
                         </div>
                       )}
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {canManageDocuments && (
                           <button
                             data-testid={`ops-extraction-apply-btn-${doc.id}`}

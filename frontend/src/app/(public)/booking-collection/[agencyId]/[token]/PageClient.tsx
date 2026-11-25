@@ -173,7 +173,7 @@ function TravelersSection({
       {travelers.map((traveler, index) => (
         <div key={travelerKeys[index]} data-testid={`collection-traveler-${index}`} className="border border-[#30363d] rounded-lg p-4 space-y-3">
           <div className="text-sm font-medium text-[#e6edf3]">Traveler {index + 1}</div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor={travelerIdBase + '-' + index + '-tid'} className="block text-xs text-[#8b949e] mb-1">Traveler name or reference *</label>
               <input
@@ -258,7 +258,7 @@ function PayerSection({
           onChange={(event) => dispatch({ type: 'SET_PAYER_FIELD', field: 'payerName', value: event.target.value })}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor={payerEmailId} className="block text-xs text-[#8b949e] mb-1">Email</label>
           <input
@@ -452,7 +452,7 @@ function ActiveCollectionForm({
 export default function BookingCollectionPage({
   params,
 }: {
-  params: Promise<{ agencyId: string; token: string }>;
+  params: { agencyId: string; token: string } | Promise<{ agencyId: string; token: string }>;
 }) {
   const [state, dispatchCollection] = useReducer(collectionReducer, initialCollectionState);
   const {
@@ -484,7 +484,7 @@ export default function BookingCollectionPage({
   useEffect(() => {
     let cancelled = false;
 
-    params.then((p) => {
+    void Promise.resolve(params).then((p) => {
       if (!cancelled) {
         dispatchCollection({ type: 'PARAMS_LOADED', agencyId: p.agencyId, token: p.token });
       }

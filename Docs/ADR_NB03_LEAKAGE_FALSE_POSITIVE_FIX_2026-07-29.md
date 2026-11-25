@@ -92,3 +92,23 @@ markers is never exempted by an allowed phrase.
 - `src/intake/safety.py` — implementation
 - `tests/test_safety_false_positives.py` — 29-test regression suite
 - Month 6 retention audit blocked-export analysis
+
+## November 25, 2026 amendment for repeated terms
+
+The original guard stopped after the first occurrence of each term in a field. An exempt “unknown beaches of Goa” could hide “the final status is unknown” several sentences later. Within the old 120-character window, an allowed phrase could also suppress an unrelated term such as “hypothesis.” Both examples reproduced before the change.
+
+Policy revision 2 walks occurrences until it finds the first violation for each term in each field. An exemption must contain the occurrence being examined. Plural travel phrasing such as “unknown islands” and the existing internal-marker override remain covered. The diagnostic excerpt now includes the occurrence that triggered it.
+
+The Workbench persists the policy revision with the digest of the draft it checked. Revision 1 was introduced earlier in this local implementation and can exist in replay data. Reopening a trip or replaying a saved inbound response with an earlier revision withholds the scoped result. Processing the inquiry again produces fresh evidence. Historical aggregate diagnostics remain available.
+
+The two previously missed examples, an all-allowed control, and old-receipt invalidation pass in the scanner and draft-check regression suites. The broader local run covering those suites, NB03, the frozen end-to-end cases, privacy, the pipeline, inbound and state contracts completed with 282 passes.
+
+### Editing and reopening a checked inquiry
+
+An edit invalidates the earlier draft check immediately. An agency with automatic reassessment enabled can subsequently receive another pass even when the generated traveler wording is identical. The new run must have checked a draft for the edited source. Comparing the two wording digests alone cannot establish that.
+
+The authenticated trip PATCH saves the edit and the accepted run ID in one conditional write before dispatch. The run ledger records the accepted trip revision. A superseded worker stops before assessment, and an edit during computation is protected by the existing conditional result write. The trip GET resolves the pending ID through the same tenant’s run ledger. Workbench subscribes to that run through its existing bounded monitor, then fetches the saved trip once on completion. A successful run has to supply a current receipt to light the green control. Failed or interrupted runs, and edits with reassessment switched off, leave the control unverified. Separately edited notes, itinerary text, structured inputs or run settings invalidate the editor’s displayed check.
+
+The regression suites covered the PATCH aliases, reopening during a queued run, supersession, terminal failure, interrupted polling, the draft autosave race and separately edited inputs. The local authenticated SQL browser replay recorded a new run ID, the retained edited text and a pass that appeared without manual reload on desktop and in a mobile viewport. The mobile recording used browser emulation. [Desktop replay receipt](evidence/itinerary-diversity-2026-11-24/language-saved-auto-desktop-9230.json) and [mobile emulation replay receipt](evidence/itinerary-diversity-2026-11-24/language-saved-auto-mobile-emulation-143b.json).
+
+The same run selection controls itinerary findings in the header, Risk Review, Trip Details and Decision. Removing the hotel from a mixed itinerary reduced the count from three to two and removed the hotel cutoff question. The rail transfer and step-free boarding questions remained. The operator saved the change in Workbench and saw the count and detail update without reloading. [Desktop edit replay](evidence/itinerary-diversity-2026-11-24/supplier-edit-desktop-94a8.json) and [mobile emulation edit replay](evidence/itinerary-diversity-2026-11-24/supplier-edit-mobile-emulation-2d08.json).

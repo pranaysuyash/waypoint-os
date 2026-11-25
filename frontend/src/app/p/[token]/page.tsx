@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Check, CheckCircle, Sparkles, ShieldCheck, ShieldAlert, AlertTriangle, MapPin, Calendar, ArrowRight, UserCheck } from 'lucide-react';
-import { formatMoney } from '@/lib/currency';
+import { CURRENCY_CONFIG, type SupportedCurrency } from '@/lib/currency';
 
 interface ProposalOption {
   id: string;
@@ -41,6 +41,16 @@ interface ProposalData {
   stated_requirements?: string[];
   why_this_fits?: string | null;
   open_questions?: Array<{ field_name: string; question: string; priority: string }>;
+  booking_changes?: Array<{
+    change_id: string;
+    change_kind: string;
+    supplier: string;
+    supplier_ref?: string | null;
+    reported_at?: string;
+    notes?: string;
+    affected_travelers?: string[];
+    source_label?: string;
+  }>;
   // AT-20 renewed consent: the backend sends these when a new revision needs
   // the traveler to re-accept (accepted_agreement = the superseded terms).
   revision_id?: string | null;
@@ -81,21 +91,31 @@ export default function PublicProposalPage({ params }: { params: { token: string
   const [signerEmail, setSignerEmail] = useState('');
   const [eSignConsent, setESignConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
   // AT-20: recoverable acceptance failure (e.g. revision conflict 409) and
   // renewed-consent state surface honestly — never silent, never fake success.
   const [acceptanceError, setAcceptanceError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [requiresRevisionReview, setRequiresRevisionReview] = useState(false);
+  const [isReviewingRevision, setIsReviewingRevision] = useState(false);
+  const signingBlocked = isCalculating || isSubmitting || requiresRevisionReview || isReviewingRevision;
 
-  const loadProposal = useCallback(async () => {
+  const loadProposal = useCallback(async (reviewing = false) => {
+      const showLoadError = reviewing ? setAcceptanceError : setLoadError;
       try {
         const res = await fetch(`/api/public/proposals/${token}`);
         if (res.ok) {
           const parsed = asProposal(await res.json());
           if (!parsed) {
-            setLoadError('This proposal exists but its details are incomplete. Please ask your travel advisor for assistance.');
+            showLoadError('This proposal exists but its details are incomplete. Please ask your travel advisor for assistance.');
             return;
           }
           setProposal(parsed);
+          if (reviewing) {
+            setAcceptanceError(null);
+            setRequiresRevisionReview(false);
+          }
           setSelectedOptionIds(
             parsed.available_options.filter((o) => o.selected).map((o) => o.id),
           );
@@ -107,14 +127,16 @@ export default function PublicProposalPage({ params }: { params: { token: string
         // AT-20: an invalid/expired/revoked link must abstain — never render
         // placeholder itinerary content the backend did not send.
         if (res.status === 410) {
-          setLoadError('This proposal link has expired or was revoked.');
+          showLoadError('This proposal link has expired or was revoked.');
         } else if (res.status === 404) {
-          setLoadError('We could not find a proposal for this link.');
+          showLoadError('We could not find a proposal for this link.');
+        } else if (res.status >= 500) {
+          showLoadError('This proposal could not be loaded right now.');
         } else {
-          setLoadError('This proposal link is not valid.');
+          showLoadError('This proposal link is not valid.');
         }
       } catch {
-        setLoadError('This proposal could not be loaded right now.');
+        showLoadError('This proposal could not be loaded right now.');
     } finally {
       setLoading(false);
     }
@@ -125,11 +147,15 @@ export default function PublicProposalPage({ params }: { params: { token: string
   }, [token, loadProposal]);
 
   const toggleOption = async (optionId: string) => {
+    if (signingBlocked || isSuccess) return;
     const nextSelected = selectedOptionIds.includes(optionId)
       ? selectedOptionIds.filter((id) => id !== optionId)
       : [...selectedOptionIds, optionId];
 
     setSelectedOptionIds(nextSelected);
+    setESignConsent(false);
+    setPricingError(null);
+    setIsCalculating(true);
 
     try {
       const res = await fetch(`/api/public/proposals/${token}/calculate`, {
@@ -137,22 +163,20 @@ export default function PublicProposalPage({ params }: { params: { token: string
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ selected_option_ids: nextSelected }),
       });
-      if (res.ok) {
-        // Part-J #8: follow-up responses get the same runtime validation as
-        // the initial GET — a malformed recalculation must not corrupt state.
-        const parsed = asProposal(await res.json());
-        if (parsed) {
-          setProposal(parsed);
-        }
-      }
+      const parsed = res.ok ? asProposal(await res.json()) : null;
+      if (!parsed) throw new Error('Price could not be confirmed.');
+      setProposal(parsed);
     } catch {
-      // Ignore network errors on local recalculation
+      setSelectedOptionIds(selectedOptionIds);
+      setPricingError('We could not update the price. Your previous options are still selected. Try again.');
+    } finally {
+      setIsCalculating(false);
     }
   };
 
   const handleAccept = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signerName || !signerEmail || !eSignConsent) return;
+    if (signingBlocked || !signerName || !signerEmail || !eSignConsent) return;
 
     setIsSubmitting(true);
     try {
@@ -189,6 +213,10 @@ export default function PublicProposalPage({ params }: { params: { token: string
           if (errBody?.detail) detail = String(errBody.detail);
         } catch {
           // keep the default message
+        }
+        if (res.status === 409) {
+          setESignConsent(false);
+          setRequiresRevisionReview(true);
         }
         setAcceptanceError(detail);
       }
@@ -232,41 +260,42 @@ export default function PublicProposalPage({ params }: { params: { token: string
     );
   }
 
-  const currentTotal = proposal.selected_total_price_usd;
+  const currency = proposal.currency || 'USD';
+  const locale = CURRENCY_CONFIG[currency as SupportedCurrency]?.locale ?? 'en-US';
+  const currentTotal = proposal.selected_total_price;
+  const total = typeof currentTotal === 'number' && Number.isFinite(currentTotal) && currentTotal > 0
+    ? currentTotal
+    : proposal.selected_total_price_usd;
+  const formatPrice = (amount: number) => {
+    if (!/^[A-Za-z]{3}$/.test(currency)) return `${amount.toLocaleString(locale)} ${currency}`;
+    return amount.toLocaleString(locale, {
+      style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2,
+    });
+  };
+  const selectedTotalLabel = formatPrice(total);
 
   return (
     <div className="min-h-screen bg-[#080a0c] text-[#e6edf3] font-sans antialiased pb-24">
       {/* Hero Banner */}
       <header className="border-b border-[#21262d] bg-[#0d1117]/80 backdrop-blur-md sticky top-0 z-30 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center size-8 rounded-lg bg-[#58a6ff]/10 text-[#58a6ff] font-bold text-sm">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 grow basis-60 items-center gap-3">
+            <span className="inline-flex items-center justify-center size-8 shrink-0 rounded-lg bg-[#58a6ff]/10 text-[#58a6ff] font-bold text-sm">
               W
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-[#8b949e] font-medium tracking-wide uppercase">Waypoint Curated Proposal</p>
-              <h1 className="text-sm font-semibold text-white truncate max-w-sm sm:max-w-md">
+              <h1 className="text-sm font-semibold text-white [overflow-wrap:anywhere]">
                 {proposal.title}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-3">
             <div className="text-right">
               <p className="text-xs text-[#8b949e]">Total Package</p>
               <p className="text-lg font-bold text-[#3fb950] tracking-tight">
-                {/* AT-20: format by the proposal's own currency — a hardcoded
-                    '$' mislabels native-currency totals. */}
-                {(() => {
-                  const currency = (proposal.currency || 'USD') as 'USD' | 'INR' | 'EUR' | 'GBP' | 'AED' | 'SGD' | 'KES';
-                  const nativeTotal = proposal.selected_total_price ?? undefined;
-                  const amount = typeof nativeTotal === 'number' && nativeTotal > 0 ? nativeTotal : currentTotal;
-                  try {
-                    return formatMoney(amount, currency);
-                  } catch {
-                    return `${currentTotal.toLocaleString()} ${proposal.currency}`;
-                  }
-                })()}
+                {selectedTotalLabel}
               </p>
             </div>
             {!isSuccess && (
@@ -365,6 +394,35 @@ export default function PublicProposalPage({ params }: { params: { token: string
           </section>
         )}
 
+        {/* Booking changes (FND-0410): supplier-side changes to confirmed
+            bookings with honest provenance — advisor-reported until a
+            provider feed supersedes. Never renders as provider-confirmed. */}
+        {(proposal.booking_changes?.length ?? 0) > 0 && (
+          <section data-testid="proposal-booking-changes" className="rounded-xl border border-[#f85149]/30 bg-[#f85149]/5 p-6">
+            <h3 className="text-lg font-bold text-white tracking-tight mb-2 flex items-center gap-2">
+              <AlertTriangle className="size-5 text-[#f85149]" /> Changes To Your Bookings
+            </h3>
+            <ul className="space-y-2">
+              {proposal.booking_changes!.map((change) => (
+                <li key={change.change_id} className="rounded border border-[#30363d] bg-[#0d1117] px-3 py-2.5">
+                  <p className="text-sm font-semibold text-[#e6edf3]">
+                    {change.supplier} · {change.change_kind.replace(/_/g, ' ')}
+                    {change.supplier_ref ? ` · ${change.supplier_ref}` : ''}
+                  </p>
+                  {change.notes && <p className="text-xs text-[#c9d1d9] mt-1">{change.notes}</p>}
+                  <p className="text-[10px] text-[#d29922] mt-1">
+                    {change.source_label ?? 'Reported by your travel advisor'}
+                    {change.reported_at ? ` · ${new Date(change.reported_at).toLocaleString()}` : ''}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-[#484f58] mt-3">
+              Your travel advisor is acting on these and will contact you with next steps.
+            </p>
+          </section>
+        )}
+
         {/* Day by Day Itinerary */}
         <section className="space-y-6">
           <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
@@ -403,7 +461,7 @@ export default function PublicProposalPage({ params }: { params: { token: string
 
         {/* Co-Creation Option Customizer */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h3 className="text-lg font-bold text-white tracking-tight">
               Customize Your Experience
             </h3>
@@ -414,39 +472,43 @@ export default function PublicProposalPage({ params }: { params: { token: string
             {(proposal?.available_options ?? []).map((opt) => {
               const isSelected = selectedOptionIds.includes(opt.id);
               return (
-                <div
+                <button
                   key={opt.id}
-                  onClick={() => !isSuccess && toggleOption(opt.id)}
-                  className={`rounded-xl border p-5 cursor-pointer transition-all flex flex-col justify-between ${
+                  type="button"
+                  aria-pressed={isSelected}
+                  disabled={isSuccess || signingBlocked}
+                  onClick={() => void toggleOption(opt.id)}
+                  className={`flex min-w-0 flex-col justify-between rounded-xl border p-5 text-left transition-colors [overflow-wrap:anywhere] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#58a6ff] ${
                     isSelected
                       ? 'border-[#58a6ff] bg-[#58a6ff]/5 shadow-lg shadow-[#58a6ff]/5'
                       : 'border-[#30363d] bg-[#161b22] hover:border-[#8b949e]/40'
-                  } ${isSuccess ? 'pointer-events-none' : ''}`}
+                  }`}
                 >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                  <span className="block space-y-2">
+                    <span className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-[#8b949e]">
                         {opt.category}
                       </span>
-                      <div
-                        className={`size-5 rounded-md flex items-center justify-center border ${
+                      <span
+                        aria-hidden="true"
+                        className={`size-5 shrink-0 rounded-md flex items-center justify-center border ${
                           isSelected
                             ? 'bg-[#58a6ff] border-[#58a6ff] text-[#080a0c]'
                             : 'border-[#484f58] bg-[#0d1117]'
                         }`}
                       >
                         {isSelected && <Check className="size-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-                    <h4 className="text-sm font-semibold text-white">{opt.name}</h4>
-                    <p className="text-xs text-[#8b949e] leading-relaxed">{opt.description}</p>
-                  </div>
+                      </span>
+                    </span>
+                    <span className="block text-sm font-semibold text-white">{opt.name}</span>
+                    <span className="block text-xs leading-relaxed text-[#8b949e]">{opt.description}</span>
+                  </span>
 
-                  <div className="mt-4 pt-3 border-t border-[#21262d] flex items-center justify-between text-xs">
+                  <span className="mt-4 pt-3 border-t border-[#21262d] flex flex-wrap items-center justify-between gap-2 text-xs">
                     <span className="text-[#8b949e]">Add-on price</span>
-                    <span className="font-bold text-[#3fb950]">+${opt.price_delta_usd.toFixed(0)}</span>
-                  </div>
-                </div>
+                    <span className="font-bold text-[#3fb950]">+{formatPrice(opt.price_delta_usd)}</span>
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -503,6 +565,8 @@ export default function PublicProposalPage({ params }: { params: { token: string
                 </div>
               )}
 
+              {isCalculating && <p role="status" className="text-xs text-[#8b949e]">Updating proposal price…</p>}
+              {pricingError && <p role="alert" className="text-xs text-[#ff7b72]">{pricingError}</p>}
               {acceptanceError && (
                 <div
                   role="alert"
@@ -514,13 +578,19 @@ export default function PublicProposalPage({ params }: { params: { token: string
                       traveler reviews the CURRENT revision before re-signing. */}
                   <button
                     type="button"
-                    onClick={() => {
-                      setAcceptanceError(null);
-                      void loadProposal();
+                    disabled={isReviewingRevision}
+                    onClick={async () => {
+                      setESignConsent(false);
+                      setIsReviewingRevision(true);
+                      try {
+                        await loadProposal(true);
+                      } finally {
+                        setIsReviewingRevision(false);
+                      }
                     }}
                     className="mt-2 px-3 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10 text-xs font-semibold text-red-300 hover:bg-red-500/20 transition-colors"
                   >
-                    Review latest proposal
+                    {isReviewingRevision ? 'Loading latest proposal…' : 'Review latest proposal'}
                   </button>
                 </div>
               )}
@@ -528,10 +598,11 @@ export default function PublicProposalPage({ params }: { params: { token: string
               <form onSubmit={handleAccept} className="space-y-4 max-w-xl">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[#8b949e]">Full Legal Name</label>
+                    <label htmlFor="proposal-signer-name" className="text-xs font-semibold text-[#8b949e]">Full Legal Name</label>
                     <input
                       type="text"
                       required
+                      id="proposal-signer-name"
                       value={signerName}
                       onChange={(e) => setSignerName(e.target.value)}
                       placeholder="e.g. Priya Sharma"
@@ -539,10 +610,11 @@ export default function PublicProposalPage({ params }: { params: { token: string
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[#8b949e]">Email Address</label>
+                    <label htmlFor="proposal-signer-email" className="text-xs font-semibold text-[#8b949e]">Email Address</label>
                     <input
                       type="email"
                       required
+                      id="proposal-signer-email"
                       value={signerEmail}
                       onChange={(e) => setSignerEmail(e.target.value)}
                       placeholder="priya@example.com"
@@ -557,20 +629,21 @@ export default function PublicProposalPage({ params }: { params: { token: string
                     id="consent-check"
                     required
                     checked={eSignConsent}
+                    disabled={signingBlocked}
                     onChange={(e) => setESignConsent(e.target.checked)}
                     className="mt-1 size-4 rounded border-[#30363d] bg-[#0d1117] text-[#58a6ff]"
                   />
                   <label htmlFor="consent-check" className="text-xs text-[#8b949e] leading-relaxed cursor-pointer">
                     I agree to the terms of this itinerary and authorize Waypoint OS to
                     record my acceptance of this proposal at the selected total of{' '}
-                    <strong className="text-white">${currentTotal.toLocaleString()} USD</strong>. A
+                    <strong className="text-white">{selectedTotalLabel}</strong>. A
                     travel advisor will then secure the reservations.
                   </label>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isSubmitting || !signerName || !signerEmail || !eSignConsent}
+                  disabled={signingBlocked || !signerName || !signerEmail || !eSignConsent}
                   className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-lg"
                 >
                   {isSubmitting ? 'Recording acceptance…' : 'Confirm & E-Sign Proposal'}

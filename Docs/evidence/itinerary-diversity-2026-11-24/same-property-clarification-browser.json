@@ -1,0 +1,20 @@
+{
+  "input": "Hotel Alpha requires a deposit and says cancellation is free for the first reservation. Hotel Alpha requires another deposit and says cancellation is free for the second reservation. Correction from the traveler or operator: Hotel Alpha confirms its deposit is nonrefundable.",
+  "public_browser_sent_duplicate_text": true,
+  "observations": [
+    {
+      "surface": "public",
+      "questions": [
+        "Which deposit and cancellation cutoff apply to each reservation at Hotel Alpha?"
+      ],
+      "screenshot": "same-property-clarification-public.png"
+    },
+    {
+      "surface": "workbench",
+      "questions": [
+        "Which deposit and cancellation cutoff apply to each reservation at Hotel Alpha?"
+      ],
+      "screenshot": "same-property-clarification-workbench.png"
+    }
+  ]
+}

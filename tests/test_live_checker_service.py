@@ -148,6 +148,135 @@ def _identity(value):
     return value
 
 
+def test_rail_follow_up_respects_fresh_and_undated_confirmation():
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    note = "An overnight train is waitlisted. There is a separately booked morning transfer."
+    correction = " Correction from the traveler or operator: "
+    for update, context, expected in (
+        ("", "Waitlist reported", "cancel the morning transfer"),
+        (correction + "The traveler supplies a fresh confirmation for that exact train and date.",
+         "Originally waitlisted", "station will the transfer operator use"),
+        (correction + "The traveler supplies a fresh confirmation.",
+         "Confirmation needs matching", "confirmation match the train and date"),
+        (correction + "There is no fresh confirmation for that exact train and date.",
+         "Confirmation needs matching", "confirmation match the train and date"),
+        (correction + "The traveler supplies a fresh confirmation for that exact train and date, but the screenshot has no date.",
+         "Confirmation needs matching", "confirmation match the train and date"),
+        (correction + "The traveler supplies a fresh confirmation for a different train and date.",
+         "Confirmation needs matching", "confirmation match the train and date"),
+        (" The earlier note is incomplete or unreliable. Update: The screenshot has no date.",
+         "Confirmation needs matching", "confirmation match the train and date"),
+    ):
+        result = _FakeResult(
+            packet={"facts": {"destination_candidates": {"value": ["Train"]}}},
+            validation={},
+            decision={"hard_blockers": []},
+        )
+        finalize_result_with_live_checker(
+            result=result, raw_text=note + update,
+            build_live_checker_signals_fn=lambda *_: None, to_dict=_identity,
+        )
+        assert context in result.packet["itinerary_feasibility_context"]
+        assert expected in result.packet["itinerary_feasibility_question"]
+        assert "destination_candidates" not in result.packet["facts"]
+        assert result.decision["hard_blockers"] == []
+
+
+def test_prose_goa_pacing_preserves_calendar_day_and_respects_correction():
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    note = "We propose Baga, Dudhsagar and Old Goa on 19 December."
+    for update, expected in (
+        ("", True),
+        (" Correction from the traveler or operator: Move Old Goa to the next day.", False),
+        (" The earlier note is incomplete or unreliable. Update: No dates.", False),
+    ):
+        result = _FakeResult(
+            packet={"facts": {"destination_candidates": {"value": ["Old Goa"]}}},
+            validation={},
+            decision={},
+        )
+        finalize_result_with_live_checker(
+            result=result, raw_text=note + update,
+            build_live_checker_signals_fn=lambda *_: None, to_dict=_identity,
+        )
+        assert result.packet["facts"]["destination_candidates"]["value"] == ["Goa"]
+        assert bool(result.packet.get("itinerary_feasibility_findings")) is expected
+        assert result.packet["itinerary_feasibility_question"]
+
+
+def test_goa_pacing_changes_only_for_a_confirmed_different_day():
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    for correction, expected in (
+        ("Actually we will do Old Goa on 20 December instead.", "before visiting Baga"),
+        ("Actually we will do Old Goa on 19 Dec instead.", "Dudhsagar entry slot"),
+        ("Maybe we will do Old Goa on 20 December instead.", "Dudhsagar entry slot"),
+        ("Actually we will do Old Goa on 32 December instead.", "Dudhsagar entry slot"),
+    ):
+        result = _FakeResult(packet={"facts": {}}, validation={}, decision={})
+        finalize_result_with_live_checker(
+            result=result,
+            raw_text=f"We propose Baga, Dudhsagar and Old Goa on 19 December. {correction}",
+            build_live_checker_signals_fn=lambda *_: None,
+            to_dict=_identity,
+        )
+        assert expected in result.packet["itinerary_feasibility_question"]
+
+
+def test_prose_overnight_preserves_partial_date_without_inventing_year():
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    note = "A Delhi to Goa flight leaves at 23:55 on 18 December and lands at 02:25 the next day. The 18 December hotel night is on the draft."
+    for update, expected in (
+        ("", True),
+        (" Correction from the traveler or operator: The hotel booking begins on 19 December.", False),
+        (" The earlier note is incomplete or unreliable. Update: The arrival has no day or date.", False),
+    ):
+        result = _FakeResult(packet={"facts": {}}, validation={}, decision={})
+        finalize_result_with_live_checker(
+            result=result, raw_text=note + update,
+            build_live_checker_signals_fn=lambda *_: None, to_dict=_identity,
+        )
+        assert "Outbound 18 December" in result.packet["itinerary_feasibility_context"]
+        assert "date_start" not in result.packet["facts"]
+        assert bool(result.packet.get("itinerary_feasibility_findings")) is expected
+        assert result.packet["itinerary_feasibility_question"]
+
+
+def test_finalize_overnight_and_pacing_as_shared_advisories() -> None:
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    result = _FakeResult(
+        packet={"facts": {
+            "origin_city": {"value": "Delhi"},
+            "destination_candidates": {"value": ["Goa"]},
+            "date_start": {"value": "2026-12-18"},
+        }},
+        validation={},
+        decision={"hard_blockers": [], "soft_blockers": []},
+    )
+    finalize_result_with_live_checker(
+        result=result,
+        raw_text=(
+            "Delhi 23:55 to Goa 02:25 next day. Hotel check-in 18 Dec. "
+            "Baga + Dudhsagar + Old Goa ek hi din?"
+        ),
+        build_live_checker_signals_fn=lambda *_: None,
+        to_dict=_identity,
+    )
+
+    hotel, pacing = result.packet["itinerary_feasibility_findings"]
+    assert hotel["flag"] == "overnight_hotel_arrival"
+    assert hotel["message"] == result.packet["public_checker_overnight_hotel_finding"]
+    assert "02:25 on 19 December" in hotel["message"]
+    assert pacing["flag"] == "goa_day_pacing"
+    assert pacing["message"] == result.packet["public_checker_day_pacing_finding"]
+    assert all(finding["details"]["authority"] == "advisory" for finding in (hotel, pacing))
+    assert result.decision == {"hard_blockers": [], "soft_blockers": []}
+
+
 def test_finalize_attaches_entity_checks_without_live_signals() -> None:
     from spine_api.services.live_checker_service import finalize_result_with_live_checker
 
@@ -229,3 +358,218 @@ def test_finalize_entity_checks_run_after_live_adjustments() -> None:
     # Advisory: score and blockers untouched by entity layer.
     assert result.validation["overall_score"] == 83
     assert result.decision["hard_blockers"] == []
+
+
+def test_compound_itinerary_retains_each_supplier_concern() -> None:
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    hotel = "The hotel needs an advance today. When do I lose it if I cancel?"
+    rail = "The overnight train is waitlisted. Our morning transfer is booked separately."
+    access = "One guest needs step-free boarding. The van and station transfer are unconfirmed."
+    for notes in ((hotel, rail, access), (rail, access, hotel), (rail, access)):
+        result = _FakeResult(packet={}, validation={}, decision={})
+        finalize_result_with_live_checker(
+            result=result,
+            raw_text=" ".join(notes),
+            build_live_checker_signals_fn=lambda packet, text: None,
+            to_dict=_identity,
+        )
+        expected_flags = ["overnight_rail_transfer", "step_free_transfer"] if hotel in notes else ["step_free_transfer"]
+        assert result.packet["itinerary_feasibility_question"].startswith(
+            "What is the cancellation cutoff" if hotel in notes else "When can you change or cancel"
+        )
+        findings = result.packet["itinerary_feasibility_findings"]
+        assert [finding["flag"] for finding in findings] == expected_flags
+        assert all(finding["details"]["authority"] == "advisory" for finding in findings)
+        assert result.decision == {}
+
+
+def test_eurostar_disruption_asks_about_the_affected_onward_booking():
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    delay = "Our Eurostar to Paris is delayed today. We expect to miss the separately booked "
+    operator_source = "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+    for onward, identifier, expected, sourced in (
+        ("TGV INOUI from Gare de Lyon.", "eurostar_tgv_connection", "proof of delay", True),
+        ("RER B from Gare du Nord.", "eurostar_rer_connection", "RER ticket", True),
+        ("driver pickup at Gare du Nord.", "eurostar_driver_pickup", "pickup", False),
+        ("onward train, and I do not have the operator or station.",
+         "eurostar_onward_details", "operator and departure station", False),
+        ("TGV INOUI, station unknown.", "eurostar_onward_details", "departure station", False),
+        ("onward train from Gare de Lyon.", "eurostar_onward_details", "operator", False),
+    ):
+        result = _FakeResult(packet={}, validation={}, decision={})
+        finalize_result_with_live_checker(
+            result=result, raw_text=delay + onward,
+            build_live_checker_signals_fn=lambda *_: None, to_dict=_identity,
+        )
+        assert result.packet["itinerary_feasibility_id"] == identifier
+        assert expected in result.packet["itinerary_feasibility_question"]
+        assert result.packet.get("itinerary_feasibility_source_url") == (operator_source if sourced else None)
+        assert not result.packet.get("itinerary_feasibility_findings")
+        assert result.decision == {}
+
+
+def test_eurostar_rejects_hypothetical_unrelated_negated_and_resolved_connections():
+    from spine_api.services.feasibility_follow_up import supplier_follow_ups
+
+    for note, update in (
+        ("If our Eurostar to Paris is delayed, we will miss our TGV INOUI.", ""),
+        ("Our Eurostar to Paris is on time. Our TGV INOUI is delayed.", ""),
+        ("Our Eurostar is not delayed. We expect to miss our TGV INOUI.", ""),
+        ("Our Eurostar is delayed. We will not miss our TGV INOUI.", ""),
+        ("Our Eurostar is delayed. We missed our flight. Tomorrow we take the TGV INOUI.", ""),
+        ("Our Eurostar is delayed. We expect to miss our RER B from Gare du Nord.",
+         "We caught the RER after all."),
+    ):
+        assert not any(key.startswith("eurostar_") for key in supplier_follow_ups(note, update))
+
+
+def test_eurostar_supplement_retains_its_distinct_source_and_onward_leg():
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    result = _FakeResult(packet={}, validation={}, decision={})
+    note = (
+        "The hotel needs a deposit. When can I cancel? "
+        "Our Eurostar is running late, so we'll miss our separately booked TGV INOUI from Gare de Lyon."
+    )
+    finalize_result_with_live_checker(
+        result=result, raw_text=note, build_live_checker_signals_fn=lambda *_: None, to_dict=_identity,
+    )
+    assert result.packet["itinerary_feasibility_id"] == "hotel_terms"
+    assert "itinerary_feasibility_source_url" not in result.packet
+    rail, = result.packet["itinerary_feasibility_findings"]
+    assert rail["flag"] == "eurostar_tgv_connection"
+    assert rail["details"]["source_url"] == "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+    assert rail["details"]["authority"] == "advisory"
+
+
+def test_disruption_resolution_is_scoped_to_the_named_onward_leg():
+    from spine_api.services.feasibility_follow_up import supplier_follow_ups
+
+    note = "Our Eurostar to Paris was cancelled. We missed our TGV INOUI from Gare de Lyon."
+    findings = supplier_follow_ups(note, "")
+    assert "proof of cancellation" in findings["eurostar_tgv_connection"][1]
+    changed = supplier_follow_ups(note, "Our onward train was replaced by a driver pickup.")
+    assert set(changed) == {"eurostar_onward_details"}
+    mixed = supplier_follow_ups(note.replace("TGV INOUI from Gare de Lyon", "driver pickup"), "We caught the RER.")
+    assert set(mixed) == {"eurostar_driver_pickup"}
+    assert not supplier_follow_ups("Our Eurostar to Paris and bus is delayed. We missed our TGV INOUI.", "")
+
+
+def test_compound_rule_evaluation_preserves_hinglish_attachment_check():
+    from spine_api.services.feasibility_follow_up import supplier_follow_ups
+
+    findings = supplier_follow_ups("Delhi se Goa 18 Dec. Attached page shows 19/12.", "")
+    assert "19/12" in findings["attachment_date"][1]
+
+
+def test_supplier_updates_preserve_unrelated_hotel_and_rail_findings():
+    from spine_api.services.feasibility_follow_up import supplier_follow_ups
+
+    note = (
+        "Hotel Alpha requires a deposit and says cancellation is free. "
+        "The overnight train is waitlisted. Our morning transfer is booked separately."
+    )
+    original = supplier_follow_ups(note, "")
+    hotel_update = supplier_follow_ups(note, "Hotel Alpha confirms its deposit is nonrefundable.")
+    transfer_update = supplier_follow_ups(note, "The morning transfer deposit is nonrefundable.")
+    rail_update = supplier_follow_ups(note, "The train confirmation screenshot has no date.")
+    assert hotel_update["overnight_rail_transfer"] == original["overnight_rail_transfer"]
+    assert "Nonrefundable deposit reported" in hotel_update["hotel_terms"][0]
+    assert transfer_update == original
+    assert rail_update["hotel_terms"] == original["hotel_terms"]
+    assert "Confirmation needs matching" in rail_update["overnight_rail_transfer"][0]
+
+
+def test_collect_raw_text_sources_joins_unique_text_in_original_order():
+    note = "The train is waitlisted. Correction: Hotel Alpha confirmed the deposit."
+    assert collect_raw_text_sources(note, "Advisor note", note, {
+        "source_payload": {"uploaded_file": {"extracted_text": "Distinct attachment"}},
+    }) == f"{note}\nAdvisor note\nDistinct attachment"
+
+
+def test_distinct_named_hotels_keep_their_own_questions_in_shared_packet():
+    from spine_api.services.live_checker_service import finalize_result_with_live_checker
+
+    result = _FakeResult(packet={"facts": {}}, validation={}, decision={})
+    finalize_result_with_live_checker(
+        result=result,
+        raw_text=(
+            "Hotel Alpha requires a deposit and says cancellation is free. "
+            "Hotel Beta requires a deposit and says cancellation is free. "
+            "The overnight train is waitlisted. Our morning transfer is booked separately. "
+            "Correction from the traveler or operator: Hotel Alpha confirms its deposit is nonrefundable."
+        ),
+        build_live_checker_signals_fn=lambda *_: None,
+        to_dict=_identity,
+    )
+    assert "Hotel Alpha" in result.packet["itinerary_feasibility_context"]
+    assert "nonrefundable" in result.packet["itinerary_feasibility_question"]
+    findings = result.packet["itinerary_feasibility_findings"]
+    assert any("Hotel Beta" in finding["details"]["title"] and "cutoff" in finding["message"] for finding in findings)
+    assert any("remains waitlisted" in finding["message"] for finding in findings)
+
+
+
+def test_same_hotel_reservations_require_update_attribution():
+    from spine_api.services.feasibility_follow_up import supplier_follow_ups
+
+    first = "Hotel Alpha requires a deposit and says cancellation is free for the first reservation."
+    second = "Hotel Alpha requires another deposit and says cancellation is free for the second reservation."
+    update = "Hotel Alpha confirms its deposit is nonrefundable."
+    for note in (f"{first} {second}", f"{second} {first}"):
+        findings = supplier_follow_ups(note, update)
+        assert len(findings) == 1
+        context, question, _ = next(iter(findings.values()))
+        assert context == "Hotel Alpha · Multiple reservations"
+        assert "each reservation" in question
+    repeated = supplier_follow_ups(f"{first} {first}", update)
+    assert "Nonrefundable" in repeated["hotel_terms"][0]
+
+
+
+def test_vehicle_ferry_compares_arrival_with_ticketed_cutoff():
+    from spine_api.services.feasibility_follow_up import supplier_follow_ups
+
+    base = "Our rental car will reach Cairnryan port at 03:00 local time. Our 03:30 Stena Line ferry to Belfast"
+    ticket = " shows vehicle check-in closes at 02:45 on the e-ticket."
+    lead = supplier_follow_ups(base + ticket, "")["vehicle_ferry_cutoff"]
+    assert "15 minutes after" in lead[0]
+    assert "earlier port arrival" in lead[1]
+
+    early = supplier_follow_ups(base.replace("03:00", "02:20") + ticket, "")
+    assert "vehicle_ferry_cutoff" not in early
+
+    missing = supplier_follow_ups(base + " is booked.", "")["vehicle_ferry_cutoff"]
+    assert "e-ticket" in missing[1]
+
+    rollover = supplier_follow_ups(base.replace("03:30", "00:30") + ticket.replace("02:45", "23:45"), "")
+    assert "local date" in rollover["vehicle_ferry_cutoff"][1]
+
+    conflict = supplier_follow_ups(base + ticket + " Vehicle check-in closes at 03:10 on the timetable.", "")
+    assert "different check-in times" in conflict["vehicle_ferry_cutoff"][0]
+
+    cruise = supplier_follow_ups("The independent cruise excursion returns at 16:45. Ship all-aboard is at 17:00.", "")
+    assert "vehicle_ferry_cutoff" not in cruise
+
+
+def test_vehicle_ferry_uses_all_explicit_local_dates_across_midnight():
+    from spine_api.services.feasibility_follow_up import supplier_follow_ups
+
+    note = (
+        "Our rental car will reach Cairnryan port at 23:50 local time on 2026-12-18. "
+        "Our 2026-12-19 00:30 Stena Line ferry to Belfast shows "
+        "vehicle check-in closes at 23:45 on 2026-12-18 on the e-ticket."
+    )
+    context, question, _ = supplier_follow_ups(note, "")["vehicle_ferry_cutoff"]
+    assert "5 minutes after" in context
+    assert "2026-12-18" in context
+    assert "earlier port arrival" in question
+    assert "vehicle_ferry_cutoff" not in supplier_follow_ups(note.replace("23:50", "23:25"), "")
+    for uncertain in (
+        note.replace("local time on 2026-12-18", "local time"),
+        note.replace("23:45 on 2026-12-18", "23:45 on 2026-12-19"),
+        note.replace("2026-12-18", "2026-12-32"),
+    ):
+        assert "local date" in supplier_follow_ups(uncertain, "")["vehicle_ferry_cutoff"][1]

@@ -323,6 +323,8 @@ export { AUTH_UNAUTHORIZED_EVENT };
 
 export interface Trip {
   id: string;
+  runId?: string;
+  pendingReassessmentRunId?: string;
   destination: string;
   type: string;
   state: "green" | "amber" | "red" | "blue";

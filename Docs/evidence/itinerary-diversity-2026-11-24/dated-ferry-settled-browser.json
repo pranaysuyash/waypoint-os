@@ -1,0 +1,22 @@
+{
+  "input": "Our rental car will reach Cairnryan port at 23:50 local time on 2026-12-18. Our 2026-12-19 00:30 Stena Line ferry to Belfast shows vehicle check-in closes at 23:45 on 2026-12-18 on the e-ticket.",
+  "public_browser_sent_duplicate_text": true,
+  "observations": [
+    {
+      "surface": "public",
+      "questions": [
+        "Can you arrange an earlier port arrival or confirm a later sailing with the ferry operator?"
+      ],
+      "context": "Vehicle ferry \u00b7 Planned port arrival 23:50 on 2026-12-18 is 5 minutes after the stated 23:45 on 2026-12-18 cutoff",
+      "screenshot": "dated-ferry-settled-public.png"
+    },
+    {
+      "surface": "workbench",
+      "questions": [
+        "Can you arrange an earlier port arrival or confirm a later sailing with the ferry operator?"
+      ],
+      "context": "Vehicle ferry \u00b7 Planned port arrival 23:50 on 2026-12-18 is 5 minutes after the stated 23:45 on 2026-12-18 cutoff",
+      "screenshot": "dated-ferry-settled-workbench.png"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "case": "delayed-eurostar-tgv",
+    "surface": "public",
+    "time": "2026-11-25T05:32:19.313315+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "primary_question": "Can Eurostar staff give you proof of delay for the ticket office to check onward TGV availability?",
+    "source_urls": [
+      "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+    ],
+    "question_in_advisory": null,
+    "destination": "Paris",
+    "booking_displayed": true,
+    "origin_shown": false,
+    "screenshot": "eurostar-tgv-public-final.png",
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/public-checker/run",
+        200
+      ]
+    ]
+  }
+]

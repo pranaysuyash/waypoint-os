@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTripContext } from '@/contexts/TripContext';
 import OpsPanel from '@/app/(agency)/workbench/OpsPanel';
 import IrropsReportSection from './IrropsReportSection';
+import BookingChangeReportSection from './BookingChangeReportSection';
 import { canAccessOpsWorkspace, getPlanningBriefStatus } from '@/lib/planning-status';
 import { getTripRoute } from '@/lib/routes';
 
@@ -86,6 +87,7 @@ export default function OpsPageClient() {
       <div className="space-y-4">
         <OpsPanel trip={trip} mode="full" />
         <IrropsReportSection tripId={tripId} />
+        <BookingChangeReportSection tripId={tripId} />
       </div>
     </div>
   );

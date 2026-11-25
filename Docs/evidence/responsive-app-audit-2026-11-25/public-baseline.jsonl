@@ -1,0 +1,11 @@
+{"route":"/","path":"/","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/pricing","path":"/pricing","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/itinerary-checker","path":"/itinerary-checker","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/companion","path":"/companion","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/corporate/offsites","path":"/corporate/offsites","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/login","path":"/login","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/signup","path":"/signup","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/forgot-password","path":"/forgot-password","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/reset-password","path":"/reset-password","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/privacy","path":"/privacy","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}
+{"route":"/terms","path":"/terms","status":500,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}

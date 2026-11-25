@@ -23,16 +23,32 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.intake.constants import DecisionState, TRIP_STAGE_VALUES, TRIP_STAGE_VALUES_FROZENSET
+from src.intake.safety import TRAVELER_DRAFT_CHECK_VERSION
 
 
 # =============================================================================
 # Shared sub-models
 # =============================================================================
 
+class TravelerDraftCheck(BaseModel):
+    version: Literal[2]
+    status: Literal["passed", "failed"]
+    digest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class SafetyResult(BaseModel):
     strict_leakage: bool = False
-    leakage_passed: bool = True
+    leakage_passed: Optional[bool] = None
     leakage_errors: List[str] = Field(default_factory=list)
+    draft_check: Optional[TravelerDraftCheck] = None
+
+    @field_validator("draft_check", mode="before")
+    @classmethod
+    def _current_check_only(cls, value: Any) -> Any:
+        # Idempotent inbound responses can replay an older persisted envelope.
+        if isinstance(value, dict) and value.get("version") != TRAVELER_DRAFT_CHECK_VERSION:
+            return None
+        return value
 
 
 class AssertionResult(BaseModel):
@@ -1158,6 +1174,7 @@ class TripResponse(BaseModel):
     Frontend consumers should use the resolved canonical fields above.
     """
     id: str
+    run_id: Optional[str] = None
     status: str
     stage: Optional[str] = None
     dateWindow: Optional[str] = None
@@ -1176,6 +1193,7 @@ class TripResponse(BaseModel):
     strategy: Optional[Dict[str, Any]] = None
     frontier_result: Optional[FrontierOrchestrationResult] = None
     safety: Optional[Dict[str, Any]] = None
+    traveler_bundle: Optional[Dict[str, Any]] = None
     # Phase 2 structured intake fields — stored as DB columns, returned verbatim.
     # These are set by direct PATCH or extracted from call/intake pipeline.
     party_composition: Optional[str] = None
@@ -1221,7 +1239,16 @@ class TripResponse(BaseModel):
         from spine_api.services.inbox_projection import (
             resolve_trip_field, _derive_customer_name, _get_nested,
         )
+        from spine_api.services.trip_draft_check import trip_safety
+        from src.intake.strategy import PromptBundle
+
         trip_id = trip.get("id", "")
+        bundle = trip.get("traveler_bundle")
+        traveler_bundle = (
+            PromptBundle.traveler_projection(bundle)
+            if isinstance(bundle, dict) and bundle.get("audience", "traveler") == "traveler"
+            else None
+        )
 
         # Budget: prefer numeric value; surface raw text for display when numeric unavailable.
         # This matches the frontend's existing rawText ?? budgetVal ?? budgetValue() chain.
@@ -1264,6 +1291,7 @@ class TripResponse(BaseModel):
 
         return cls(
             id=trip_id,
+            run_id=trip.get("run_id"),
             status=trip.get("status", "new"),
             stage=trip.get("stage") or None,
             dateWindow=_clean_str(resolve_trip_field(trip, "date_window")),
@@ -1289,7 +1317,8 @@ class TripResponse(BaseModel):
             validation=trip.get("validation") or None,
             strategy=trip.get("strategy") or None,
             frontier_result=trip.get("frontier_result") or None,
-            safety=trip.get("safety") or None,
+            safety=trip_safety(trip),
+            traveler_bundle=traveler_bundle,
             passenger_claim=trip.get("passenger_claim") or None,
             ghost_concierge=trip.get("ghost_concierge") or None,
             # FND-0307: answers live at top level on column-backed stores and
@@ -1513,7 +1542,7 @@ _INBOUND_ATTACHMENT_MAGIC: Dict[str, set] = {
 
 
 class InboundInquiryRequest(BaseModel):
-    channel: Literal["whatsapp_web", "email", "voice_note", "manual_paste", "chrome_extension"] = "chrome_extension"
+    channel: Literal["whatsapp", "whatsapp_web", "email", "voice_note", "manual_paste", "chrome_extension"] = "chrome_extension"
     raw_text: str = Field(..., min_length=3, description="Unstructured inbound chat or email text")
     customer_name: Optional[str] = None
     customer_contact: Optional[str] = None

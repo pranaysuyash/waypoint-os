@@ -69,7 +69,7 @@ def rule_visa_international_default(packet: CanonicalPacket) -> Optional[Dict[st
     # No visa info for international trip - return medium risk
     return {
         "risk_level": "medium",
-        "reasoning": "International trip - visa requirement unknown. Verify visa needs for destination.",
+        "reasoning": "Check the destination’s entry and visa requirements for each traveler’s passport before travel.",
         "visa_lead_time_days": 30,
         "recommendations": [
             "Check visa requirements for your destination",

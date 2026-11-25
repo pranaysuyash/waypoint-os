@@ -48,6 +48,15 @@ class ProductBEventStore:
     NORMALIZED_FILE = DATA_DIR / "events_normalized.jsonl"
     NORMALIZED_DATA_SOURCE_LABEL = "data/product_b_events/events_normalized.jsonl"
 
+    FUNNEL_STEP_EVENTS = {
+        "checker_page_viewed",
+        "input_tab_selected",
+        "sample_plan_selected",
+        "showcase_tab_selected",
+        "matches_requested",
+        "report_exported",
+    }
+
     ALLOWED_EVENT_NAMES = {
         "intake_started",
         "first_credible_finding_shown",
@@ -60,6 +69,7 @@ class ProductBEventStore:
         # Server-sealed completion marker (WOBS P1 Gate 0): emitted only by
         # public_checker_service after the trip row is persisted. Never client-fed.
         "check_completed",
+        *FUNNEL_STEP_EVENTS,
     }
 
     REQUIRED_ENVELOPE_FIELDS = {
@@ -136,6 +146,12 @@ class ProductBEventStore:
             "finding_count",
             "execution_ms",
         },
+        "checker_page_viewed": set(),
+        "input_tab_selected": {"tab"},
+        "sample_plan_selected": {"scenario_key"},
+        "showcase_tab_selected": {"tab_key"},
+        "matches_requested": set(),
+        "report_exported": set(),
     }
 
     @classmethod
@@ -509,7 +525,17 @@ class ProductBEventStore:
             raise ValueError("workspace_id must be non-empty when provided")
 
         events = cls.list_events(window_days=window_days, workspace_id=workspace_id)
-        grouped = cls._group_by_inquiry(events)
+        core_events = [
+            evt for evt in events
+            if evt.get("event_name") not in cls.FUNNEL_STEP_EVENTS
+            and str(evt.get("inquiry_id") or "") != "pre_intake"
+        ]
+        grouped = cls._group_by_inquiry(core_events)
+        funnel_counts: Dict[str, int] = {name: 0 for name in sorted(cls.FUNNEL_STEP_EVENTS)}
+        for evt in events:
+            name = str(evt.get("event_name") or "")
+            if name in funnel_counts:
+                funnel_counts[name] += 1
 
         ttf_values: List[int] = []
         shared_total = 0
@@ -608,6 +634,7 @@ class ProductBEventStore:
                 "inquiries_total": len(grouped),
                 "qualified_inquiries": qualified_inquiries,
                 "excluded_inquiries": excluded_inquiries,
+                "funnel": funnel_counts,
             },
             "kpis": {
                 "time_to_first_credible_finding_ms": {

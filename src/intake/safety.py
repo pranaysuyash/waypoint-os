@@ -9,6 +9,8 @@ Contract: notebooks/NB03_V02_SPEC.md
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import re
 from contextvars import ContextVar
@@ -57,11 +59,13 @@ FORBIDDEN_TRAVELER_CONCEPTS = {
     "ambiguities",
 }
 
+# Version 2 checks all occurrences and exempts only the matching travel phrase.
+TRAVELER_DRAFT_CHECK_VERSION = 2
+
 # ---------------------------------------------------------------------------
 # ALLOWED_TRAVEL_PHRASES — legitimate travel language that contains forbidden
 # base words. Checked BEFORE the forbidden scan. If a phrase from this set is
-# found in the text, any contained forbidden base term is exempted for that
-# sentence. This prevents false positives on real traveller-facing copy.
+# found in the text, only the forbidden term inside that phrase is exempted.
 #
 # Decision rationale: bare word-boundary matching on "unknown" / "ambiguity"
 # was blocking legitimate export of proposals containing copy like "unknown
@@ -100,6 +104,12 @@ ALLOWED_TRAVEL_PHRASES: set[str] = {
     "not a blocker",
 }
 
+_ALLOWED_PHRASE_PATTERN = re.compile(
+    r"\b(?:" + "|".join(re.escape(phrase) for phrase in sorted(ALLOWED_TRAVEL_PHRASES, key=len, reverse=True))
+    + r")s?\b", re.IGNORECASE,
+)
+_LONGEST_ALLOWED_PHRASE = max(map(len, ALLOWED_TRAVEL_PHRASES)) + 1  # Includes an optional plural s.
+
 # ---------------------------------------------------------------------------
 # INTERNAL_CONCEPT_FIELD_MARKERS — patterns that unmistakably signal internal
 # pipeline context. When a forbidden term co-occurs within 80 characters of
@@ -116,21 +126,13 @@ _INTERNAL_FIELD_MARKER_PATTERN = re.compile(
 
 
 def _is_allowed_phrase_context(text: str, forbidden: str, match_start: int) -> bool:
-    """
-    Check if the forbidden term at match_start is covered by an ALLOWED_TRAVEL_PHRASE.
-
-    Extracts a 120-char window around the match and checks for allowed phrase overlap.
-    Returns True if the match is inside an allowed phrase (should NOT be flagged).
-    """
-    # Window: 60 chars before match, 60 chars after (capped to string bounds)
-    window_start = max(0, match_start - 60)
-    window_end = min(len(text), match_start + 60)
-    window = text[window_start:window_end].lower()
-
-    for phrase in ALLOWED_TRAVEL_PHRASES:
-        if phrase.lower() in window:
-            return True
-    return False
+    """An exception must contain this occurrence, including both ends of the term."""
+    start = max(0, match_start - _LONGEST_ALLOWED_PHRASE)
+    end = match_start + _LONGEST_ALLOWED_PHRASE + 1
+    return any(
+        phrase.start() <= match_start and match_start + len(forbidden) <= phrase.end()
+        for phrase in _ALLOWED_PHRASE_PATTERN.finditer(text, start, end)
+    )
 
 
 def _has_internal_field_marker_nearby(text: str, match_start: int) -> bool:
@@ -335,6 +337,23 @@ def _is_strict_mode() -> bool:
     return os.environ.get("TRAVELER_SAFE_STRICT", "").strip() in ("1", "true", "yes")
 
 
+def traveler_draft_digest(bundle: dict, decision_state: str | None, operating_mode: str | None) -> str | None:
+    """Identify the exact two fields scanned by check_no_leakage for traveler decisions."""
+    if decision_state not in ("ASK_FOLLOWUP", "BRANCH_OPTIONS", "PROCEED_TRAVELER_SAFE"):
+        return None
+    if not operating_mode or operating_mode == "owner_review":
+        return None
+    if operating_mode == "emergency" and decision_state == "PROCEED_TRAVELER_SAFE":
+        return None  # The emergency builder produces a placeholder for this state.
+    if bundle.get("audience") != "traveler":
+        return None
+    message, context = bundle.get("user_message"), bundle.get("system_context")
+    if not isinstance(message, str) or not message.strip() or not isinstance(context, str):
+        return None
+    payload = json.dumps([decision_state, operating_mode, message, context], ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def check_no_leakage(bundle_or_dict: Any) -> List[str]:
     """
     Verify that traveler-facing content contains no internal concepts.
@@ -342,8 +361,8 @@ def check_no_leakage(bundle_or_dict: Any) -> List[str]:
     Uses context-aware matching to eliminate false positives on legitimate travel copy.
     A forbidden term is only flagged when:
       1. It appears in the text (word-boundary match), AND
-      2. It is NOT covered by an ALLOWED_TRAVEL_PHRASE in the surrounding 120-char window
-         (e.g. "unknown beaches" exempts "unknown"), OR
+      2. This occurrence is not contained in an allowed travel phrase
+         (e.g. "unknown beaches" exempts only its own "unknown"), OR
       3. An INTERNAL_CONCEPT_FIELD_MARKER is present within 80 chars (always a hard flag,
          overriding the allowed-phrase exemption — this catches real leakage).
 
@@ -374,34 +393,20 @@ def check_no_leakage(bundle_or_dict: Any) -> List[str]:
         if not text:
             continue
 
-        text_lower = text.lower()
-
         for forbidden in FORBIDDEN_TRAVELER_CONCEPTS:
-            # Gate 1: word-boundary match (not substring — avoids "knowing"/"unknown")
             pattern = r'\b' + re.escape(forbidden) + r'\b'
-            match = re.search(pattern, text_lower)
-            if not match:
-                continue
-
-            match_start = match.start()
-
-            # Gate 2: internal field marker override — always flag regardless of phrase context
-            # e.g. "decision_state: unknown" → hard block even if "unknown" appears nearby
-            if _has_internal_field_marker_nearby(text, match_start):
-                excerpt = text[:120] + "..." if len(text) > 120 else text
-                leaks.append(
-                    f"Leakage detected: '{forbidden}' in {field_name} "
-                    f"[internal marker context] (excerpt: {excerpt})"
-                )
-                continue
-
-            # Gate 3: allowed phrase exemption — "unknown beaches of Goa" → not flagged
-            if _is_allowed_phrase_context(text, forbidden, match_start):
-                continue
-
-            # Not exempted and not marked internal — flag it
-            excerpt = text[:120] + "..." if len(text) > 120 else text
-            leaks.append(f"Leakage detected: '{forbidden}' in {field_name} (excerpt: {excerpt})")
+            for match in re.finditer(pattern, text, re.IGNORECASE):
+                marker = _has_internal_field_marker_nearby(text, match.start())
+                if not marker and _is_allowed_phrase_context(text, forbidden, match.start()):
+                    continue
+                # Point to the first offending occurrence while preserving the
+                # single diagnostic per term per field used by analytics.
+                start = max(0, match.start() - 50)
+                end = start + 120
+                excerpt = ("..." if start else "") + text[start:end] + ("..." if end < len(text) else "")
+                marker_context = "[internal marker context] " if marker else ""
+                leaks.append(f"Leakage detected: '{forbidden}' in {field_name} {marker_context}(excerpt: {excerpt})")
+                break
 
     return leaks
 

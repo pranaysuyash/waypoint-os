@@ -1,8 +1,7 @@
 {
-  "captured": "2026-10-23",
+  "captured": "2026-11-25",
   "finding": "FND-0340",
   "routes": [
-    "GET /api/public/booking-collection/{agency_id}/{token}",
     "GET /api/v1/boundaries/authority-approvals",
     "GET /api/v1/boundaries/authority-approvals/{approval_id}",
     "GET /api/v1/boundaries/authority-matrix",
@@ -33,7 +32,6 @@
     "GET /api/v1/orchestration/leases/{trip_id}",
     "GET /api/v1/passenger-rights/{trip_id}/claims/{claim_id}/disposition",
     "GET /api/v1/price-lock/opportunities",
-    "GET /api/v1/price-lock/{trip_id}/fare-drop/disposition",
     "GET /api/v1/proposals/{trip_id}/trust-scorecard",
     "GET /api/v1/rag/nodes",
     "GET /api/v1/resilience/circuits",
@@ -44,7 +42,6 @@
     "GET /api/v1/trips/{trip_id}/accounting-export",
     "GET /api/v1/trips/{trip_id}/data-export",
     "GET /api/v1/trips/{trip_id}/history",
-    "GET /api/v1/trips/{trip_id}/quotes",
     "GET /api/v1/visa-radar/{trip_id}/requirements",
     "GET /api/v1/yield-arbitrage/benchmark/simulate",
     "GET /api/v1/yield/opportunities"

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import { handleActivation } from '@/lib/accessibility';
+import { useElementSize } from '@/components/visual/useElementSize';
 
 export interface DayPacingData {
   dayNumber: number;
@@ -65,15 +67,23 @@ const DEFAULT_DAYS: DayPacingData[] = [
   },
 ];
 
+function loadChartY(score: number): number {
+  return 140 - (score / 100) * 120;
+}
+
 export function PacingExhaustionCurve({
   days = DEFAULT_DAYS,
   hasElderlyOrKids = true,
 }: PacingExhaustionCurveProps) {
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(3); // Day 4 selected by default
+  const { ref: chartRef, size } = useElementSize<HTMLDivElement>();
+  const chartWidth = size.width || 500;
 
-  const selectedDay = days[selectedDayIndex] || days[0];
-  const maxScore = 100;
+  const activeDayIndex = days[selectedDayIndex] ? selectedDayIndex : 0;
+  const selectedDay = days[activeDayIndex];
   const burnoutThreshold = hasElderlyOrKids ? 70 : 85;
+  const thresholdY = loadChartY(burnoutThreshold);
+  if (!selectedDay) return <p>No daily activities are available for this comparison.</p>;
 
   return (
     <div
@@ -122,10 +132,10 @@ export function PacingExhaustionCurve({
             ) : null}
           </div>
           <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#f0f6fc', letterSpacing: '-0.02em' }}>
-            Day-by-Day Pacing & Exhaustion Curve
+            Day-by-day pacing comparison
           </h3>
           <p style={{ fontSize: 13, color: '#8b949e', margin: '4px 0 0 0' }}>
-            Generic AI packs calendars without considering biological stamina. Plots physical load vs. human recovery limits.
+            These sample scores compare a packed schedule with a lighter one. Select a day to see its planned walking, standing time and activities.
           </p>
         </div>
       </div>
@@ -141,10 +151,9 @@ export function PacingExhaustionCurve({
         }}
       >
         {/* SVG Curve */}
-        <div style={{ width: '100%', height: '170px', position: 'relative' }}>
+        <div ref={chartRef} style={{ width: '100%', height: '170px', position: 'relative' }}>
           <svg
-            viewBox="0 0 500 150"
-            preserveAspectRatio="none"
+            viewBox={`0 0 ${chartWidth} 170`}
             style={{ width: '100%', height: '100%', overflow: 'visible' }}
           >
             <defs>
@@ -156,39 +165,24 @@ export function PacingExhaustionCurve({
             </defs>
 
             {/* Burnout Danger Threshold Zone Line */}
-            {(() => {
-              const thresholdY = 150 - (burnoutThreshold / maxScore) * 130;
-              return (
-                <g>
-                  <line
-                    x1="20"
-                    y1={thresholdY}
-                    x2="480"
-                    y2={thresholdY}
-                    stroke="#f85149"
-                    strokeWidth="1.5"
-                    strokeDasharray="4, 4"
-                    opacity="0.6"
-                  />
-                  <text
-                    x="485"
-                    y={thresholdY + 3}
-                    fill="#f85149"
-                    fontSize="9.5"
-                    fontWeight="600"
-                    textAnchor="start"
-                  >
-                    Burnout Ceiling ({burnoutThreshold}%)
-                  </text>
-                </g>
-              );
-            })()}
+            <line
+              x1="20"
+              y1={thresholdY}
+              x2={chartWidth - 20}
+              y2={thresholdY}
+              stroke="#f85149"
+              strokeWidth="1.5"
+              strokeDasharray="4, 4"
+              opacity="0.6"
+            >
+              <title>High-load threshold</title>
+            </line>
 
             {/* Coordinates for days */}
             {(() => {
               const points = days.map((d, i) => {
-                const x = 40 + i * (420 / Math.max(1, days.length - 1));
-                const y = 140 - (d.exhaustionScore / maxScore) * 120;
+                const x = 24 + i * ((chartWidth - 48) / Math.max(1, days.length - 1));
+                const y = loadChartY(d.exhaustionScore);
                 return { x, y, data: d };
               });
 
@@ -203,10 +197,9 @@ export function PacingExhaustionCurve({
               const areaD = `${pathD} L ${points[points.length - 1].x} 145 L ${points[0].x} 145 Z`;
 
               // Waypoint Optimized Pace Line (Green dashed line that tops out at safe ~60%)
-              const optimizedPoints = days.map((d, i) => {
-                const x = 40 + i * (420 / Math.max(1, days.length - 1));
-                const optScore = Math.min(60, d.exhaustionScore * 0.65);
-                const y = 140 - (optScore / maxScore) * 120;
+              const optimizedPoints = points.map(({ x, data }) => {
+                const optScore = Math.min(60, data.exhaustionScore * 0.65);
+                const y = loadChartY(optScore);
                 return { x, y };
               });
 
@@ -235,13 +228,18 @@ export function PacingExhaustionCurve({
 
                   {/* Data points */}
                   {points.map((p, i) => {
-                    const isSelected = selectedDayIndex === i;
+                    const isSelected = activeDayIndex === i;
                     const isDanger = p.data.exhaustionScore >= burnoutThreshold;
                     const dotColor = isDanger ? '#f85149' : p.data.exhaustionScore > 65 ? '#d29922' : '#3fb950';
 
                     return (
                       <g
                         key={p.data.dayNumber}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Day ${p.data.dayNumber}: ${p.data.label}`}
+                        aria-pressed={isSelected}
+                        onKeyDown={(event) => handleActivation(event, () => setSelectedDayIndex(i))}
                         onClick={() => setSelectedDayIndex(i)}
                         style={{ cursor: 'pointer' }}
                       >
@@ -302,15 +300,15 @@ export function PacingExhaustionCurve({
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 14, height: 3, background: '#f85149', borderRadius: 2 }} />
-            Your Raw Plan (Peak Fatigue)
+            Example itinerary
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 14, height: 3, borderTop: '2px dashed #3fb950' }} />
-            Waypoint Human-Paced Rhythm
+            Lighter schedule
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f85149' }} />
-            Burnout Zone ({burnoutThreshold}%+ load)
+            High-load threshold ({burnoutThreshold}%)
           </span>
         </div>
       </div>
@@ -354,7 +352,7 @@ export function PacingExhaustionCurve({
                 fontFamily: "'JetBrains Mono', monospace",
               }}
             >
-              Physical Load: {selectedDay.exhaustionScore}%
+              Example load: {selectedDay.exhaustionScore}%
             </span>
           </div>
 
@@ -388,7 +386,7 @@ export function PacingExhaustionCurve({
             </div>
             <div>
               <span style={{ color: '#8b949e' }}>Attractions:</span>{' '}
-              <strong style={{ color: '#f0f6fc' }}>{selectedDay.activitiesCount} booked</strong>
+              <strong style={{ color: '#f0f6fc' }}>{selectedDay.activitiesCount} planned</strong>
             </div>
           </div>
         </div>

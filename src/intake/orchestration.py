@@ -53,6 +53,8 @@ from .plan_candidate import PlanCandidate, build_plan_candidate
 from .safety import (
     sanitize_for_traveler,
     check_no_leakage,
+    traveler_draft_digest,
+    TRAVELER_DRAFT_CHECK_VERSION,
     SanitizedPacketView,
 )
 from .config.agency_settings import AgencySettings, tier_allows_feature, AgencyTier
@@ -403,6 +405,12 @@ def run_spine_once(
         # Intake minimum is met but quote-ready fields are incomplete.
         # Save the trip for later enrichment — don't block, don't generate a quote.
         from .decision import DecisionResult
+        _FOLLOWUP_FIELD_LABELS = {
+            "origin_city": "departure city",
+            "budget_raw_text": "target budget",
+            "trip_purpose": "trip style",
+            "party_size": "number of travelers",
+        }
         empty_decision = DecisionResult(
             packet_id=packet.packet_id,
             current_stage=stage,
@@ -412,7 +420,11 @@ def run_spine_once(
             soft_blockers=["incomplete_intake"],
             rationale={"gate_degrade": GateIdentifier.INTAKE_COMPLETION.value, "reasons": nb01_result.reasons},
             follow_up_questions=[
-                {"field_name": f, "priority": "medium", "question": f"Please provide {f.replace('_', ' ')} to generate a quote."}
+                {
+                    "field_name": f,
+                    "priority": "medium",
+                    "question": f"Please provide {_FOLLOWUP_FIELD_LABELS.get(f, f.replace('_', ' '))} to generate a quote.",
+                }
                 for f in ("origin_city", "budget_raw_text", "trip_purpose", "party_size")
                 if f not in packet.facts
             ],
@@ -683,9 +695,17 @@ def run_spine_once(
             leakage_result = {
                 "leaks": all_leaks,
                 "is_safe": len(all_leaks) == 0,
+                "leakage_passed": not all_leaks,
+                "leakage_errors": all_leaks,
                 "traveler_bundle_leaks": traveler_leaks,
                 "sanitized_view_leaks": sanitized_leaks,
             }
+            digest = traveler_draft_digest(traveler_bundle.to_dict(), decision.decision_state, decision.operating_mode)
+            if digest is not None:
+                leakage_result["draft_check"] = {
+                    "version": TRAVELER_DRAFT_CHECK_VERSION, "digest_sha256": digest,
+                    "status": "failed" if traveler_leaks else "passed",
+                }
             span.set_attribute("is_safe", str(leakage_result["is_safe"]))
             span.set_attribute("leak_count", len(all_leaks))
 

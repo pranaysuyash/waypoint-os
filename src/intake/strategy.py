@@ -152,14 +152,13 @@ class PromptBundle:
         Omits internal_notes and other internal-only fields so the object
         is intrinsically safe — even if accidentally logged or rendered.
         """
-        return {
-            "system_context": self.system_context,
-            "user_message": self.user_message,
-            "follow_up_sequence": self.follow_up_sequence,
-            "branch_prompts": self.branch_prompts,
-            "constraints": self.constraints,
-            "audience": "traveler",
-        }
+        return self.traveler_projection(self.to_dict())
+
+    @staticmethod
+    def traveler_projection(bundle: dict) -> dict:
+        """Allowlist traveler fields in current and historical stored bundles."""
+        fields = ("system_context", "user_message", "follow_up_sequence", "branch_prompts", "constraints")
+        return {**{key: bundle[key] for key in fields if key in bundle}, "audience": "traveler"}
 
 
 # =============================================================================

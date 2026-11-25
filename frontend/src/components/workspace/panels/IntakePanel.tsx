@@ -54,6 +54,7 @@ import { useFieldAuditLog } from '@/hooks/useFieldAuditLog';
 import { safeWriteClipboardText } from '@/lib/clipboard';
 import { getTravelerPromptForPlanningDetail } from '@/lib/traveler-prompts';
 import CaptureCallPanel from './CaptureCallPanel';
+import { Drawer } from '@/components/ui/drawer';
 import { EditableField, BudgetField, PlanningDetailSection } from './IntakeFieldComponents';
 
 const stages: { value: SpineStage; label: string }[] = [
@@ -806,7 +807,9 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         recipient,
         channel: recipient.includes('@') ? 'email' : 'whatsapp',
       });
-      setSendAskStatus(`Ask link dispatched (${res.dispatch_status}): ${res.ask_path}`);
+      setSendAskStatus(res.dispatch_status === 'SENT'
+        ? `Ask link accepted by the provider. ${res.ask_path}`
+        : `Ask link ready to share manually. ${res.ask_path}`);
       if (typeof window !== 'undefined') {
         void safeWriteClipboardText(window.location.origin + res.ask_path);
       }
@@ -1510,14 +1513,14 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
           </div>
 
           <div className='bg-[var(--bg-elevated)] border border-[rgba(57,208,216,0.25)] rounded-xl p-4 xl:col-span-5'>
-            <div className='flex items-center justify-between gap-3 mb-3'>
+            <div className='mb-3 flex flex-wrap items-start justify-between gap-3'>
               <div>
                 <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>Suggested Follow-up</h3>
                 <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
                   This draft only asks for the fields still unresolved.
                 </p>
               </div>
-              <div className='flex items-center gap-2'>
+              <div className='flex flex-wrap items-center gap-2'>
                 <Button
                   type='button'
                   onClick={() => {
@@ -2069,7 +2072,10 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
           <div className='flex items-center'>
             <Button
               type='button'
-              onClick={() => setShowCapturePanel(true)}
+              onClick={(event) => {
+                event.currentTarget.focus();
+                setShowCapturePanel(true);
+              }}
               variant='outline'
               size='sm'
               className='text-text-tertiary'
@@ -2090,7 +2096,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 Required fields are complete. You can continue now, or tighten the recommended details first for better options.
               </p>
             )}
-            <div className='flex items-center gap-2'>
+            <div className='flex flex-wrap items-center gap-2'>
               <Button
                 type='button'
                 onClick={handleSave}
@@ -2203,13 +2209,20 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
 
       {/* CaptureCallPanel Sidebar */}
       {showCapturePanel && (
-        <div className='fixed right-0 top-0 h-full w-96 shadow-lg z-50'>
+        <Drawer
+          isOpen
+          onClose={handleCaptureCallCancel}
+          ariaLabel='Capture call notes'
+          width='w-full max-w-96'
+          showCloseButton={false}
+          closeOnOverlay={false}
+        >
           <CaptureCallPanel
             onSave={handleCaptureCallSave}
             onSaveAndProcess={handleCaptureCallSaveAndProcess}
             onCancel={handleCaptureCallCancel}
           />
-        </div>
+        </Drawer>
       )}
     </div>
   );

@@ -128,7 +128,10 @@ def rule_visa_timeline_risk(packet: CanonicalPacket) -> Optional[Dict[str, Any]]
     if requirement == "not_required" or status == "approved":
         return {
             "risk_level": "low",
-            "reasoning": f"Visa {requirement or 'already approved'} — no timeline risk",
+            "reasoning": (
+                "The itinerary reports an approved visa."
+                if status == "approved" else "The itinerary says a visa is unnecessary."
+            ),
             "visa_lead_time_days": 0,
         }
 
@@ -138,7 +141,7 @@ def rule_visa_timeline_risk(packet: CanonicalPacket) -> Optional[Dict[str, Any]]
         if not destination:
             return {
                 "risk_level": "medium",
-                "reasoning": "Visa required for international trip — destination unknown for lead time estimate",
+                "reasoning": "The itinerary lists a visa requirement. Confirm the destination before checking processing times.",
                 "visa_lead_time_days": 30,  # Conservative default
             }
 

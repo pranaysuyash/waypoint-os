@@ -6,7 +6,8 @@ import type { ReactNode } from 'react';
 // characterize PageClient behavior and mount it directly.
 import WorkbenchPage from '../PageClient';
 import { extractCompletedTripIdFromDraft } from '../PageClient';
-import { normalizeSafetyResult } from '@/lib/bff-trip-adapters';
+import { transformSpineTripToTrip, normalizeSafetyResult } from '@/lib/bff-trip-adapters';
+import { useWorkbenchStore } from '@/stores/workbench';
 
 const mockReplace = vi.fn();
 const mockExecuteSpineRun = vi.fn();
@@ -26,10 +27,15 @@ const mockGetDraft = vi.hoisted(() => vi.fn().mockResolvedValue({
   scenario_id: null,
   strict_leakage: false,
 }));
+const mockRefetchTrip = vi.fn();
+const mockApiGet = vi.hoisted(() => vi.fn());
+const mockRenderedPacket = vi.fn();
+let mockInteractiveRun: { run_id: string; state: string; packet: unknown } | null = null;
 const mockUseTrip = vi.fn((id: string | null) => ({
   data: id && mockTripData && mockTripData.id === id ? mockTripData : null,
   isLoading: false,
   error: null,
+  refetch: mockRefetchTrip,
 }));
 let mockTabsProps: {
   tabs: readonly { readonly id: string; readonly label: string; count?: number }[];
@@ -53,7 +59,8 @@ vi.mock('next/link', () => ({
 
 vi.mock('next/dynamic', () => ({
   default: () => {
-    return function DynamicStub() {
+    return function DynamicStub(props: { reviewPacket?: unknown }) {
+      if ('reviewPacket' in props) mockRenderedPacket(props.reviewPacket);
       return <div data-testid='dynamic-stub' />;
     };
   },
@@ -73,7 +80,8 @@ vi.mock('./PipelineFlow', () => ({
   PipelineFlow: () => <div data-testid='pipeline-flow' />,
 }));
 
-vi.mock('@/components/ui/tabs', () => ({
+vi.mock('@/components/ui/tabs', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/components/ui/tabs')>(),
   Tabs: (props: {
     tabs: readonly { readonly id: string; readonly label: string; count?: number }[];
     activeTab: string;
@@ -98,16 +106,19 @@ vi.mock('@/hooks/useSpineRun', () => ({
     isLoading: false,
     error: null,
     reset: vi.fn(),
-    runId: null,
-    state: null,
+    runId: mockInteractiveRun?.run_id ?? null,
+    state: mockInteractiveRun,
   }),
 }));
 
 vi.mock('@/stores/workbench', () => ({
   // FND-0283: PageClient now subscribes via per-field selectors — the mock
   // must apply the selector to the mock state.
-  useWorkbenchStore: (sel?: (s: typeof mockWorkbenchStore) => unknown) =>
-    (sel ? sel(mockWorkbenchStore) : mockWorkbenchStore),
+  useWorkbenchStore: Object.assign(
+    (sel?: (s: typeof mockWorkbenchStore) => unknown) =>
+      (sel ? sel(mockWorkbenchStore) : mockWorkbenchStore),
+    { setState: vi.fn() },
+  ),
 }));
 
 vi.mock('@/stores/auth', () => ({
@@ -153,6 +164,7 @@ mockWorkbenchStore = {
 };
 
 vi.mock('@/lib/api-client', () => ({
+  api: { get: mockApiGet },
   submitTripReviewAction: vi.fn(),
   createDraft: mockCreateDraft,
   getDraft: mockGetDraft,
@@ -185,6 +197,7 @@ describe('WorkbenchPage', () => {
       strict_leakage: false,
     });
     mockUseTrip.mockClear();
+    mockInteractiveRun = null;
     mockTripData = null;
     mockAuthState = {
       isLoading: false,
@@ -205,6 +218,66 @@ describe('WorkbenchPage', () => {
     render(<WorkbenchPage />);
 
     expect(screen.queryByRole('link', { name: /back to overview/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps a labelled panel for each visible workspace tab and mounts only the selected content', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+    render(<WorkbenchPage />);
+
+    for (const tab of mockTabsProps!.tabs) {
+      const panel = document.getElementById(`wt-panel-${tab.id}`);
+      expect(panel).toHaveAttribute('aria-labelledby', `wt-tab-${tab.id}`);
+      if (tab.id !== mockTabsProps!.activeTab) {
+        expect(panel).toHaveAttribute('hidden');
+        expect(panel).toBeEmptyDOMElement();
+      }
+    }
+    expect(screen.getAllByRole('tabpanel')).toHaveLength(1);
+  });
+
+  it('counts the displayed details and preserves the name of a compound inquiry', () => {
+    const originalStore = mockWorkbenchStore;
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+    mockWorkbenchStore = {
+      ...originalStore,
+      draft_name: 'Rail group enquiry',
+      result_validation: { is_valid: false },
+      result_packet: {
+        itinerary_feasibility_context: 'Hotel package · Cutoff unknown',
+        itinerary_feasibility_question: 'When does the rate become nonrefundable?',
+        itinerary_feasibility_findings: ['Rail pickup', 'Step-free access'].map(title => ({
+          flag: title, message: title, details: { title, authority: 'advisory' },
+        })),
+      },
+    };
+    try {
+      render(<WorkbenchPage />);
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Rail group enquiry');
+      expect(screen.getByRole('button', { name: 'Review 3 itinerary details' })).toBeVisible();
+    } finally {
+      mockWorkbenchStore = originalStore;
+    }
+  });
+
+  it.each(['safety', 'decision', 'packet'])('shows the new saved details in the header and %s after an older explicit run', (tab) => {
+    const id = 'trip-reassessed-rail';
+    const findings = ['Rail pickup', 'Hotel cutoff', 'Step-free boarding'].map(title => ({
+      flag: title, message: title, details: { title, authority: 'advisory' },
+    }));
+    const oldPacket = { itinerary_feasibility_findings: findings };
+    const editedPacket = { itinerary_feasibility_findings: findings.slice(1) };
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams(`trip=${id}&tab=${tab}`) as never);
+    mockTripData = transformSpineTripToTrip({ id, stage: 'discovery', run_id: 'interactive', extracted: oldPacket }) as typeof mockTripData;
+    mockInteractiveRun = { run_id: 'interactive', state: 'completed', packet: oldPacket };
+    mockWorkbenchStore.result_packet = oldPacket;
+    const page = render(<WorkbenchPage />);
+    expect(screen.getByRole('button', { name: 'Review 3 itinerary details' })).toBeVisible();
+    mockTripData = transformSpineTripToTrip({ id, stage: 'discovery', run_id: 'automatic', extracted: editedPacket }) as typeof mockTripData;
+    page.rerender(<WorkbenchPage />);
+    expect(screen.getByRole('button', { name: 'Review 2 itinerary details' })).toBeVisible();
+    expect(mockRenderedPacket).toHaveBeenLastCalledWith(editedPacket);
+    expect(screen.queryByRole('button', { name: 'Review 3 itinerary details' })).toBeNull();
+    mockWorkbenchStore.result_packet = null;
   });
 
   it('falls back to intake when Frontier tab is requested without frontier visibility', () => {
@@ -314,12 +387,8 @@ describe('WorkbenchPage', () => {
 
     render(<WorkbenchPage />);
 
-    expect(screen.getByRole('link', { name: /open trip details/i })).toHaveAttribute(
-      'href',
-      '/trips/trip_bali_blocked/intake',
-    );
-    // IMP-05 (DEMO-06): with a persisted trip, the banner CTA navigates to the
-    // editable repair surface instead of re-setting the identical ?tab=packet URL.
+    // IMP-05 (DEMO-06): the single banner CTA opens the persisted trip editor.
+    expect(screen.queryByRole('link', { name: /open trip details/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /review missing fields/i })).toHaveAttribute(
       'href',
       '/trips/trip_bali_blocked/intake',
@@ -476,8 +545,69 @@ describe('WorkbenchPage', () => {
     expect(mockWorkbenchStore.setResultSafety).toHaveBeenCalledWith(normalizeSafetyResult(safety));
     expect(mockWorkbenchStore.setResultFees).toHaveBeenCalledWith(fees);
     expect(mockWorkbenchStore.setResultFrontier).toHaveBeenCalledWith(frontier);
-    expect(mockWorkbenchStore.setInputRawNote).toHaveBeenCalledWith('Traveler wants Bali');
-    expect(mockWorkbenchStore.setInputOwnerNote).toHaveBeenCalledWith('Keep margin >=18%');
+    expect(useWorkbenchStore.setState).toHaveBeenCalledWith({
+      input_raw_note: 'Traveler wants Bali',
+      input_owner_note: 'Keep margin >=18%',
+      save_state: 'clean',
+    });
+  });
+
+  it.each(['completed', 'failed', 'interrupted'])('refreshes a reopened trip after its queued reassessment is %s', async (state) => {
+    const id = 'trip-reopened';
+    const runId = 'run-edit';
+    const backendTrip = {
+      id, stage: 'discovery', run_id: 'run-original', customerMessage: 'Our travel dates have changed.',
+      safety: { leakage_passed: true }, decision: { decision_state: 'ASK_FOLLOWUP' },
+      traveler_bundle: { user_message: 'When would you like to depart?' },
+    };
+    mockTripData = transformSpineTripToTrip({
+      ...backendTrip, reassess: { queued: true, run_id: runId },
+    }) as typeof mockTripData;
+    mockWorkbenchStore.input_raw_note = backendTrip.customerMessage;
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams(`trip=${id}`) as never);
+    mockApiGet.mockResolvedValue({ run_id: runId, state });
+    const page = render(<WorkbenchPage />);
+    expect(screen.getByRole('button', { name: 'Reassessing inquiry' })).toBeVisible();
+    await waitFor(() => expect(mockRefetchTrip).toHaveBeenCalledTimes(1));
+    expect(mockApiGet).toHaveBeenCalledWith(`/api/runs/${runId}`);
+    mockTripData = transformSpineTripToTrip(state === 'completed' ? {
+      ...backendTrip, run_id: runId, safety: {
+        leakage_passed: true, draft_check: { version: 2, status: 'passed', digest_sha256: 'a'.repeat(64) },
+      },
+    } : backendTrip) as typeof mockTripData;
+    page.rerender(<WorkbenchPage />);
+    const label = state === 'completed' ? 'Draft language checked' : 'Draft check unavailable';
+    expect(screen.getByRole('button', { name: label })).toBeVisible();
+  });
+
+  it('recognizes a rechecked note while preserving unrelated unsaved draft edits', () => {
+    const id = 'trip-racing-autosave';
+    const pass = { leakage_passed: true, draft_check: { version: 2, status: 'passed', digest_sha256: 'a'.repeat(64) } };
+    const original = { id, stage: 'discovery', run_id: 'old', customerMessage: 'Original inquiry',
+      safety: pass, traveler_bundle: { user_message: 'Please confirm the arrival date.' } };
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams(`trip=${id}`) as never);
+    mockTripData = transformSpineTripToTrip(original) as typeof mockTripData;
+    mockWorkbenchStore.input_raw_note = original.customerMessage;
+    const page = render(<WorkbenchPage />);
+    expect(screen.getByRole('button', { name: 'Draft language checked' })).toBeVisible();
+    const edited = { ...original, customerMessage: 'Changed travel dates.' };
+    mockWorkbenchStore.input_raw_note = edited.customerMessage;
+    mockWorkbenchStore.save_state = 'dirty';
+    mockTripData = transformSpineTripToTrip({
+      ...edited, safety: { leakage_passed: true }, reassess: { queued: true, run_id: 'new' },
+    }) as typeof mockTripData;
+    page.rerender(<WorkbenchPage />);
+    expect(screen.getByRole('button', { name: 'Reassessing inquiry' })).toBeVisible();
+    mockTripData = transformSpineTripToTrip({ ...edited, run_id: 'new' }) as typeof mockTripData;
+    page.rerender(<WorkbenchPage />);
+    expect(screen.getByRole('button', { name: 'Draft language checked' })).toBeVisible();
+    mockWorkbenchStore.input_itinerary_text = 'A new overnight transfer was just added.';
+    page.rerender(<WorkbenchPage />);
+    expect(screen.getByRole('button', { name: 'Draft check unavailable' })).toBeVisible();
+    mockWorkbenchStore.input_itinerary_text = '';
+    mockWorkbenchStore.input_raw_note = 'An even newer departure.';
+    page.rerender(<WorkbenchPage />);
+    expect(screen.getByRole('button', { name: 'Draft check unavailable' })).toBeVisible();
   });
 
   it('normalizes raw safety leaks from the hydrated trip into the workbench store', () => {

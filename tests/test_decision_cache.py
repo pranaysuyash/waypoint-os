@@ -246,6 +246,41 @@ class TestDecisionCacheStorage:
 class TestCacheKeyGeneration:
     """Tests for cache key generation."""
 
+    def test_visa_rule_upgrade_and_application_changes_under_a_warm_cache(self, tmp_path):
+        import hashlib
+        import json
+
+        from src.decision.hybrid_engine import HybridDecisionEngine
+        from src.intake.packet_models import CanonicalPacket, Slot
+
+        kind = "visa_timeline_risk"
+        packet = CanonicalPacket(
+            packet_id="visa-test",
+            derived_signals={
+                "domestic_or_international": Slot(value="international"),
+                "urgency": Slot(value="high"),
+            },
+        )
+        old_inputs = {"destination": None, "domestic_or_intl": "international", "urgency": "high", "visa_required": None}
+        old_key = hashlib.sha256(json.dumps(old_inputs, sort_keys=True).encode()).hexdigest()[:32]
+        storage = DecisionCacheStorage(cache_dir=tmp_path)
+        legacy = CachedDecision(old_key, kind, {"reasoning": "International trip - visa requirement unknown."}, 1.0, "rule_engine")
+        storage.set(old_key, kind, legacy)
+        engine = HybridDecisionEngine(cache_storage=storage, enable_llm=False)
+
+        first = engine.decide(kind, packet)
+        assert first.source == "rule" and "passport" in first.decision["reasoning"]
+        assert engine.decide(kind, packet).source == "cache"
+        assert storage.get(old_key, kind).decision == legacy.decision
+
+        packet.facts["visa_status"] = Slot(value={"requirement": "required", "status": "not_applied"})
+        packet.facts["resolved_destination"] = Slot(value="China")
+        assert engine.decide(kind, packet).decision["risk_level"] == "high"
+        packet.facts["resolved_destination"] = Slot(value="Japan")
+        assert engine.decide(kind, packet).decision["risk_level"] == "medium"
+        packet.facts["visa_status"] = Slot(value={"requirement": "required", "status": "approved"})
+        assert engine.decide(kind, packet).decision["risk_level"] == "low"
+
     def test_make_test_key(self):
         """Test creating a test cache key."""
         key1 = make_test_key("test_type", {"a": 1, "b": 2})

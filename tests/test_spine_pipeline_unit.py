@@ -198,6 +198,22 @@ class TestHappyPath:
         assert _call_kwargs["agency_id"] == "agency-001"
         assert _call_kwargs["user_id"] == "user-001"
 
+    def test_processed_trip_receives_actual_safety_stage(self, pipeline_mocks) -> None:
+        from spine_api.server import save_processed_trip
+
+        scan = {
+            "is_safe": False,
+            "leakage_passed": False,
+            "leaks": ["internal word"],
+            "leakage_errors": ["internal word"],
+            "traveler_bundle_leaks": ["internal word"],
+            "sanitized_view_leaks": [],
+        }
+        pipeline_mocks["run"].return_value = MockSpineResult(leakage_result=scan)
+        _run_pipeline()
+
+        assert save_processed_trip.call_args.args[0]["safety"] == {**scan, "strict_leakage": False}
+
 
 # =========================================================================
 # Tests — Pathological code paths

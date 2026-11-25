@@ -1,0 +1,357 @@
+[
+  {
+    "case": "delayed-eurostar-tgv",
+    "surface": "public",
+    "time": "2026-11-25T05:30:18.986427+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "primary_question": "Can Eurostar staff give you proof of delay for the ticket office to check onward TGV availability?",
+    "source_urls": [
+      "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+    ],
+    "question_in_advisory": null,
+    "destination": "Paris",
+    "booking_displayed": true,
+    "origin_shown": false,
+    "screenshot": "eurostar-tgv-public-booking-reviewed.png",
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/public-checker/run",
+        200
+      ]
+    ]
+  },
+  {
+    "case": "delayed-eurostar-tgv",
+    "surface": "workbench",
+    "time": "2026-11-25T05:30:22.686589+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "primary_question": "Can Eurostar staff give you proof of delay for the ticket office to check onward TGV availability?",
+    "source_urls": [
+      "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+    ],
+    "question_in_advisory": null,
+    "risk_screenshot": "eurostar-tgv-workbench-booking-reviewed-risk.png",
+    "destination": "Paris",
+    "booking_row": "Traveler Plan\tAt least one booking reported\t85%\texplicit_user",
+    "origin": "-",
+    "screenshot": "eurostar-tgv-workbench-booking-reviewed.png",
+    "edit_restores_original_note": true,
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/spine/run",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/ec02c207-6f48-4b42-a9fa-a711f29fea64",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/ec02c207-6f48-4b42-a9fa-a711f29fea64",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/ec02c207-6f48-4b42-a9fa-a711f29fea64",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/ec02c207-6f48-4b42-a9fa-a711f29fea64",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/ec02c207-6f48-4b42-a9fa-a711f29fea64",
+        200
+      ]
+    ]
+  },
+  {
+    "case": "hotel-and-tgv",
+    "surface": "public",
+    "time": "2026-11-25T05:30:28.250780+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "The hotel needs an advance today. What do I lose if I cancel? Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "primary_question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "source_urls": [
+      "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+    ],
+    "question_in_advisory": "Can Eurostar staff give you proof of delay for the ticket office to check onward TGV availability?",
+    "destination": "Paris",
+    "booking_displayed": true,
+    "origin_shown": false,
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/public-checker/run",
+        200
+      ]
+    ]
+  },
+  {
+    "case": "hotel-and-tgv",
+    "surface": "workbench",
+    "time": "2026-11-25T05:30:31.754637+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "The hotel needs an advance today. What do I lose if I cancel? Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "primary_question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "source_urls": [
+      "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+    ],
+    "question_in_advisory": "Can Eurostar staff give you proof of delay for the ticket office to check onward TGV availability?",
+    "destination": "Paris",
+    "booking_row": "Traveler Plan\tAt least one booking reported\t85%\texplicit_user",
+    "origin": "-",
+    "edit_restores_original_note": true,
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/spine/run",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/28e4e41f-6796-43ed-ab8c-6b47df399732",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/28e4e41f-6796-43ed-ab8c-6b47df399732",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/28e4e41f-6796-43ed-ab8c-6b47df399732",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/28e4e41f-6796-43ed-ab8c-6b47df399732",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/28e4e41f-6796-43ed-ab8c-6b47df399732",
+        200
+      ]
+    ]
+  },
+  {
+    "case": "delayed-eurostar-unknown",
+    "surface": "public",
+    "time": "2026-11-25T05:30:37.056929+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked onward train, and I do not have the operator or station.",
+    "primary_question": "Which operator and departure station does the onward ticket show?",
+    "source_urls": [],
+    "question_in_advisory": null,
+    "destination": "Paris",
+    "booking_displayed": true,
+    "origin_shown": false,
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/public-checker/run",
+        200
+      ]
+    ]
+  },
+  {
+    "case": "delayed-eurostar-unknown",
+    "surface": "workbench",
+    "time": "2026-11-25T05:30:40.598512+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked onward train, and I do not have the operator or station.",
+    "primary_question": "Which operator and departure station does the onward ticket show?",
+    "source_urls": [],
+    "question_in_advisory": null,
+    "destination": "Paris",
+    "booking_row": "Traveler Plan\tAt least one booking reported\t85%\texplicit_user",
+    "origin": "-",
+    "edit_restores_original_note": true,
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/spine/run",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/1d8f4fdc-95a5-4b02-985c-cab51a419ea2",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/1d8f4fdc-95a5-4b02-985c-cab51a419ea2",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/1d8f4fdc-95a5-4b02-985c-cab51a419ea2",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/1d8f4fdc-95a5-4b02-985c-cab51a419ea2",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/1d8f4fdc-95a5-4b02-985c-cab51a419ea2",
+        200
+      ]
+    ]
+  },
+  {
+    "case": "delayed-eurostar-rer",
+    "surface": "public",
+    "time": "2026-11-25T05:30:45.835901+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked RER B from Gare du Nord.",
+    "primary_question": "Can station staff confirm which later service your RER ticket covers?",
+    "source_urls": [
+      "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+    ],
+    "question_in_advisory": null,
+    "destination": "Paris",
+    "booking_displayed": true,
+    "origin_shown": false,
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/public-checker/run",
+        200
+      ]
+    ]
+  },
+  {
+    "case": "delayed-eurostar-rer",
+    "surface": "workbench",
+    "time": "2026-11-25T05:30:49.333399+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked RER B from Gare du Nord.",
+    "primary_question": "Can station staff confirm which later service your RER ticket covers?",
+    "source_urls": [
+      "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+    ],
+    "question_in_advisory": null,
+    "destination": "Paris",
+    "booking_row": "Traveler Plan\tAt least one booking reported\t85%\texplicit_user",
+    "origin": "-",
+    "edit_restores_original_note": true,
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/spine/run",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/9d876a29-5380-47f3-a448-3c05b055e26b",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/9d876a29-5380-47f3-a448-3c05b055e26b",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/9d876a29-5380-47f3-a448-3c05b055e26b",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/9d876a29-5380-47f3-a448-3c05b055e26b",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/9d876a29-5380-47f3-a448-3c05b055e26b",
+        200
+      ]
+    ]
+  },
+  {
+    "case": "delayed-eurostar-driver",
+    "surface": "public",
+    "time": "2026-11-25T05:30:54.567775+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked driver pickup at Gare du Nord.",
+    "primary_question": "Can the transfer operator move the pickup to your revised arrival time, and what would it cost?",
+    "source_urls": [],
+    "question_in_advisory": null,
+    "destination": "Paris",
+    "booking_displayed": true,
+    "origin_shown": false,
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/public-checker/run",
+        200
+      ]
+    ]
+  },
+  {
+    "case": "delayed-eurostar-driver",
+    "surface": "workbench",
+    "time": "2026-11-25T05:30:58.054882+00:00",
+    "browser": "Desktop Chrome, 1440 × 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked driver pickup at Gare du Nord.",
+    "primary_question": "Can the transfer operator move the pickup to your revised arrival time, and what would it cost?",
+    "source_urls": [],
+    "question_in_advisory": null,
+    "destination": "Paris",
+    "booking_row": "Traveler Plan\tAt least one booking reported\t85%\texplicit_user",
+    "origin": "-",
+    "edit_restores_original_note": true,
+    "passed": true,
+    "requests": [
+      [
+        "POST",
+        "/api/spine/run",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/c28a76c8-8c6c-44dd-b4a8-9b09fd492162",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/c28a76c8-8c6c-44dd-b4a8-9b09fd492162",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/c28a76c8-8c6c-44dd-b4a8-9b09fd492162",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/c28a76c8-8c6c-44dd-b4a8-9b09fd492162",
+        200
+      ],
+      [
+        "GET",
+        "/api/runs/c28a76c8-8c6c-44dd-b4a8-9b09fd492162",
+        200
+      ]
+    ]
+  }
+]

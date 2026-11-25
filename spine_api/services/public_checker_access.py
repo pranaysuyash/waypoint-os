@@ -28,6 +28,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from spine_api.persistence import file_lock
+
 _TOKEN_BYTES = 32
 _TOKEN_FILE = Path("data") / "public_checker" / "access_tokens.json"
 
@@ -60,14 +62,15 @@ def issue_access_token(trip_id: str) -> str:
     }
     path = _token_file()
     path.parent.mkdir(parents=True, exist_ok=True)
-    store: Dict[str, Any] = {}
-    if path.exists():
-        try:
-            store = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            store = {}
-    store[_hash_token(token)] = entry
-    path.write_text(json.dumps(store, indent=0, ensure_ascii=False), encoding="utf-8")
+    with file_lock(path):
+        store: Dict[str, Any] = {}
+        if path.exists():
+            try:
+                store = json.loads(path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                store = {}
+        store[_hash_token(token)] = entry
+        path.write_text(json.dumps(store, indent=0, ensure_ascii=False), encoding="utf-8")
     return token
 
 
@@ -107,17 +110,18 @@ def revoke_tokens_for_trip(trip_id: str) -> int:
     path = _token_file()
     if not path.exists():
         return 0
-    try:
-        store = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return 0
-    revoked = 0
-    for key, entry in list(store.items()):
-        if isinstance(entry, dict) and entry.get("trip_id") == trip_id and not entry.get("revoked"):
-            store.pop(key)
-            revoked += 1
-    if revoked:
-        path.write_text(json.dumps(store), encoding="utf-8")
+    with file_lock(path):
+        try:
+            store = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return 0
+        revoked = 0
+        for key, entry in list(store.items()):
+            if isinstance(entry, dict) and entry.get("trip_id") == trip_id and not entry.get("revoked"):
+                store.pop(key)
+                revoked += 1
+        if revoked:
+            path.write_text(json.dumps(store), encoding="utf-8")
     return revoked
 
 

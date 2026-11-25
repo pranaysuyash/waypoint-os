@@ -1,0 +1,74 @@
+[
+  {
+    "case": "earlier",
+    "surface": "public",
+    "input": "Our rental car will reach Cairnryan port at 02:20 local time. Our 03:30 Stena Line ferry to Belfast shows vehicle check-in closes at 02:45 on the e-ticket.",
+    "http": 200,
+    "state": "blocked",
+    "context": null,
+    "question": null
+  },
+  {
+    "case": "earlier",
+    "surface": "authenticated",
+    "input": "Our rental car will reach Cairnryan port at 02:20 local time. Our 03:30 Stena Line ferry to Belfast shows vehicle check-in closes at 02:45 on the e-ticket.",
+    "http": 200,
+    "state": "blocked",
+    "context": null,
+    "question": null
+  },
+  {
+    "case": "missing",
+    "surface": "public",
+    "input": "Our rental car will reach Cairnryan port at 03:00 local time. Our 03:30 Stena Line ferry to Belfast is booked.",
+    "http": 200,
+    "state": "blocked",
+    "context": "Vehicle ferry \u00b7 Check-in cutoff unknown",
+    "question": "What vehicle check-in cutoff is printed on the e-ticket for this sailing?"
+  },
+  {
+    "case": "missing",
+    "surface": "authenticated",
+    "input": "Our rental car will reach Cairnryan port at 03:00 local time. Our 03:30 Stena Line ferry to Belfast is booked.",
+    "http": 200,
+    "state": "blocked",
+    "context": "Vehicle ferry \u00b7 Check-in cutoff unknown",
+    "question": "What vehicle check-in cutoff is printed on the e-ticket for this sailing?"
+  },
+  {
+    "case": "conflict",
+    "surface": "public",
+    "input": "Our rental car will reach Cairnryan port at 03:00 local time. Our 03:30 Stena Line ferry to Belfast shows vehicle check-in closes at 02:45 on the e-ticket. Vehicle check-in closes at 03:10 on the timetable.",
+    "http": 200,
+    "state": "blocked",
+    "context": "Vehicle ferry \u00b7 Sources give different check-in times",
+    "question": "Which vehicle check-in cutoff applies to the exact sailing on your e-ticket?"
+  },
+  {
+    "case": "conflict",
+    "surface": "authenticated",
+    "input": "Our rental car will reach Cairnryan port at 03:00 local time. Our 03:30 Stena Line ferry to Belfast shows vehicle check-in closes at 02:45 on the e-ticket. Vehicle check-in closes at 03:10 on the timetable.",
+    "http": 200,
+    "state": "blocked",
+    "context": "Vehicle ferry \u00b7 Sources give different check-in times",
+    "question": "Which vehicle check-in cutoff applies to the exact sailing on your e-ticket?"
+  },
+  {
+    "case": "midnight",
+    "surface": "public",
+    "input": "Our rental car will reach Cairnryan port at 23:50 local time. Our 00:30 Stena Line ferry to Belfast shows vehicle check-in closes at 23:45 on the e-ticket.",
+    "http": 200,
+    "state": "blocked",
+    "context": "Vehicle ferry \u00b7 Check-in date needs matching",
+    "question": "What local date applies to port arrival and the vehicle check-in cutoff on the ticket?"
+  },
+  {
+    "case": "midnight",
+    "surface": "authenticated",
+    "input": "Our rental car will reach Cairnryan port at 23:50 local time. Our 00:30 Stena Line ferry to Belfast shows vehicle check-in closes at 23:45 on the e-ticket.",
+    "http": 200,
+    "state": "blocked",
+    "context": "Vehicle ferry \u00b7 Check-in date needs matching",
+    "question": "What local date applies to port arrival and the vehicle check-in cutoff on the ticket?"
+  }
+]

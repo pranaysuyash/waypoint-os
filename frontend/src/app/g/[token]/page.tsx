@@ -31,6 +31,12 @@ interface PassengerShareData {
     room_preference?: string;
     passport_country?: string;
   };
+  // FND-0409 additive: money truth + schedule milestones (tracking-only).
+  share_note?: string | null;
+  paid_cents?: number;
+  outstanding_cents?: number;
+  settlement?: string;
+  schedule?: { label: string; due_at?: string | null; amount_cents?: number | null; status: string }[];
 }
 
 export default function PublicGroupSharePage() {
@@ -150,7 +156,7 @@ export default function PublicGroupSharePage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500/30">
       {/* Header Bar */}
       <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="mx-auto flex min-h-16 max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
               <Users className="w-4 h-4" />
@@ -167,7 +173,7 @@ export default function PublicGroupSharePage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+      <main className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-10">
         {/* Banner Section */}
         <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-8 shadow-2xl">
           <div className="relative z-10 space-y-4">
@@ -196,7 +202,45 @@ export default function PublicGroupSharePage() {
               <div className="text-4xl font-extrabold text-emerald-400 font-mono">
                 {depositAmount}
               </div>
+              {typeof data.outstanding_cents === 'number' && data.outstanding_cents !== data.deposit_share_cents && (
+                <p className="text-xs text-slate-300 mt-2">
+                  Outstanding:{' '}
+                  <span className="font-mono text-amber-300">
+                    {(data.outstanding_cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                  </span>
+                </p>
+              )}
+              {data.share_note && (
+                <p className="text-[11px] text-slate-400 mt-1 italic">{data.share_note}</p>
+              )}
             </div>
+            {data.schedule && data.schedule.length > 0 && (
+              <ul className="mt-4 space-y-1.5 border-t border-slate-800 pt-3">
+                {data.schedule.map((m, i) => (
+                  <li key={i} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs">
+                    <span className="text-slate-300">
+                      {m.label}
+                      {m.due_at ? (
+                        <span className="text-slate-500"> · due {new Date(m.due_at).toLocaleDateString()}</span>
+                      ) : null}
+                    </span>
+                    <span
+                      className={
+                        m.status === 'paid'
+                          ? 'text-emerald-300'
+                          : m.status === 'overdue'
+                            ? 'text-red-300'
+                            : m.status === 'due_soon'
+                              ? 'text-amber-300'
+                              : 'text-slate-400'
+                      }
+                    >
+                      {m.status.replace('_', ' ')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <p className="text-xs text-slate-400 mt-4">
               Calculated for individual attendee contribution. External agency payment links or bank transfer instructions provided by your advisor are supported.
             </p>
@@ -232,14 +276,14 @@ export default function PublicGroupSharePage() {
         </div>
 
         {/* Agency Payment Options */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 space-y-6">
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-8 space-y-6">
           <div className="flex items-center space-x-3">
             <Building2 className="w-5 h-5 text-emerald-400" />
             <h2 className="text-lg font-semibold text-white">Agency Payment Instructions</h2>
           </div>
 
           {data.agency_payment_url && (
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-3">
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 sm:p-6 space-y-3">
               <div className="text-xs font-mono text-slate-400 uppercase tracking-wider">
                 Direct Agency Payment Link
               </div>
@@ -250,20 +294,20 @@ export default function PublicGroupSharePage() {
                 href={data.agency_payment_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition-colors"
+                className="inline-flex max-w-full items-center gap-2 px-3 py-2.5 sm:px-5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition-colors"
               >
                 <span>Pay Deposit Share via External Link</span>
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
               </a>
             </div>
           )}
 
           {data.payment_instructions && (
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-2">
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 sm:p-6 space-y-2">
               <div className="text-xs font-mono text-slate-400 uppercase tracking-wider">
                 Bank / Offline Instructions
               </div>
-              <p className="text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+              <p className="text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed [overflow-wrap:anywhere]">
                 {data.payment_instructions}
               </p>
             </div>
@@ -271,7 +315,7 @@ export default function PublicGroupSharePage() {
         </div>
 
         {/* Preferences & Completion Form */}
-        <form onSubmit={handleSubmitNotification} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 space-y-6">
+        <form onSubmit={handleSubmitNotification} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-8 space-y-6">
           <div className="border-b border-slate-800 pb-4">
             <h2 className="text-lg font-semibold text-white">Passenger Details & Notification</h2>
             <p className="text-xs text-slate-400">
@@ -281,12 +325,13 @@ export default function PublicGroupSharePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-300 flex items-center space-x-2">
+              <label htmlFor="group-dietary" className="text-xs font-medium text-slate-300 flex items-center space-x-2">
                 <Utensils className="w-3.5 h-3.5 text-slate-400" />
                 <span>Dietary Requirements</span>
               </label>
               <input
                 type="text"
+                id="group-dietary"
                 value={dietary}
                 onChange={(e) => setDietary(e.target.value)}
                 placeholder="e.g. Vegetarian, Gluten-free, Nut allergy"
@@ -295,12 +340,13 @@ export default function PublicGroupSharePage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-300 flex items-center space-x-2">
+              <label htmlFor="group-room" className="text-xs font-medium text-slate-300 flex items-center space-x-2">
                 <Bed className="w-3.5 h-3.5 text-slate-400" />
                 <span>Room & Bedding Preferences</span>
               </label>
               <input
                 type="text"
+                id="group-room"
                 value={roomPref}
                 onChange={(e) => setRoomPref(e.target.value)}
                 placeholder="e.g. King Bed, Quiet room, Ocean view"
@@ -309,12 +355,13 @@ export default function PublicGroupSharePage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-300 flex items-center space-x-2">
+              <label htmlFor="group-passport-country" className="text-xs font-medium text-slate-300 flex items-center space-x-2">
                 <Globe className="w-3.5 h-3.5 text-slate-400" />
                 <span>Passport Issuing Country</span>
               </label>
               <input
                 type="text"
+                id="group-passport-country"
                 value={passportCountry}
                 onChange={(e) => setPassportCountry(e.target.value)}
                 placeholder="e.g. United States, United Kingdom"
@@ -323,12 +370,13 @@ export default function PublicGroupSharePage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-300 flex items-center space-x-2">
+              <label htmlFor="group-payment-reference" className="text-xs font-medium text-slate-300 flex items-center space-x-2">
                 <CreditCard className="w-3.5 h-3.5 text-slate-400" />
                 <span>Payment Reference / Notes (Optional)</span>
               </label>
               <input
                 type="text"
+                id="group-payment-reference"
                 value={paymentRef}
                 onChange={(e) => setPaymentRef(e.target.value)}
                 placeholder="e.g. Stripe Receipt #1234 or Wire Ref"

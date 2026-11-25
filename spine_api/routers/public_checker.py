@@ -96,8 +96,15 @@ def _bearer_token(request: Request) -> str:
     return ""
 
 
+def _require_public_checker_agency_id() -> str:
+    agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID).strip()
+    if not agency_id or agency_id == DEFAULT_PUBLIC_CHECKER_AGENCY_ID:
+        raise HTTPException(status_code=503, detail="Public checker agency not configured")
+    return agency_id
+
+
 def _load_public_checker_package_or_404(trip_id: str) -> dict[str, Any]:
-    public_checker_agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+    public_checker_agency_id = _require_public_checker_agency_id()
     trip = persistence.TripStore.get_trip_for_agency(trip_id, public_checker_agency_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Public checker record not found")
@@ -186,7 +193,7 @@ def post_public_checker_matches(
     _load_public_checker_package_or_404(trip_id)
 
     trip = persistence.TripStore.get_trip_for_agency(
-        trip_id, os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+        trip_id, _require_public_checker_agency_id()
     ) or {}
     packet = trip.get("packet") if isinstance(trip.get("packet"), dict) else {}
     decision = trip.get("decision") if isinstance(trip.get("decision"), dict) else {}
@@ -230,7 +237,7 @@ def post_public_checker_route_request(
 
     _load_public_checker_package_or_404(trip_id)
     trip = persistence.TripStore.get_trip_for_agency(
-        trip_id, os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+        trip_id, _require_public_checker_agency_id()
     ) or {}
     packet = trip.get("packet") if isinstance(trip.get("packet"), dict) else {}
     decision = trip.get("decision") if isinstance(trip.get("decision"), dict) else {}
@@ -241,6 +248,32 @@ def post_public_checker_route_request(
     record = AgencyMarketplaceStore.capture_route_lead(
         trip_id=trip_id, contact=contact, agency_id=agency_id, needs=needs
     )
+    public_checker_agency_id = _require_public_checker_agency_id()
+    meta = trip.get("meta") if isinstance(trip.get("meta"), dict) else {}
+    session_id = str(meta.get("session_id") or f"sess_{trip_id}")
+    inquiry_id = str(meta.get("inquiry_id") or trip_id)
+    try:
+        signal_event = ProductBEventStore.build_event(
+            event_name="product_a_interest_signal",
+            session_id=session_id,
+            inquiry_id=inquiry_id,
+            trip_id=trip_id,
+            actor_type="system",
+            actor_id=None,
+            workspace_id=agency_id or public_checker_agency_id,
+            channel="api",
+            locale=None,
+            currency=None,
+            properties={
+                "signal_type": "contact_request",
+                "attribution_mode": "explicit_ref",
+                "source_inquiry_id": inquiry_id,
+                "lead_status": record["status"],
+            },
+        )
+        ProductBEventStore.log_event(signal_event)
+    except Exception as exc:
+        logger.warning("public_checker_product_a_signal_failed error=%s", exc)
     # Work-intake classification (map §11 checker_route_request door): the
     # consent moment is the highest-intent anonymous action (WOBS P2). A
     # ROUTED lead (matched agency) is real operator work on that agency's
@@ -251,8 +284,7 @@ def post_public_checker_route_request(
 
         classify_and_record(
             "checker_route_request",
-            agency_id=agency_id
-            or os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID),
+            agency_id=agency_id or public_checker_agency_id,
             text=None,
             contact=contact,
             trip_id=trip_id,
@@ -285,7 +317,7 @@ def post_public_checker_re_verify(
     _load_public_checker_package_or_404(trip_id)
 
     trip = persistence.TripStore.get_trip_for_agency(
-        trip_id, os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+        trip_id, _require_public_checker_agency_id()
     ) or {}
     packet = trip.get("packet") if isinstance(trip.get("packet"), dict) else {}
     validation = trip.get("validation") if isinstance(trip.get("validation"), dict) else {}
@@ -293,8 +325,16 @@ def post_public_checker_re_verify(
 
     fresh_score = validation.get("overall_score")
     live_checks_payload = None
+    facts = packet.get("facts") if isinstance(packet.get("facts"), dict) else {}
+    date_hint_parts = []
+    for key in ("date_window", "date_start"):
+        fact = facts.get(key)
+        val = fact.get("value") if isinstance(fact, dict) else fact
+        if isinstance(val, str) and val.strip():
+            date_hint_parts.append(val.strip())
+    date_hint = " ".join(date_hint_parts)
     try:
-        live = build_live_checker_signals(packet, "")
+        live = build_live_checker_signals(packet, date_hint)
         if live:
             _, fresh_validation, _ = apply_live_checker_adjustments(
                 packet_payload=dict(packet),
@@ -307,9 +347,20 @@ def post_public_checker_re_verify(
     except Exception:
         live_checks_payload = None
 
+    stored_entities = packet.get("public_checker_entity_checks")
+    entity_hint = ""
+    if isinstance(stored_entities, list):
+        names = [
+            str(item.get("name") or "").strip()
+            for item in stored_entities
+            if isinstance(item, dict) and str(item.get("name") or "").strip()
+        ]
+        if names:
+            entity_hint = "Staying at " + " and ".join(names[:3])
+
     try:
         entity_results = run_entity_checks(
-            "", city=extract_destination(packet, ""), max_entities=3
+            entity_hint, city=extract_destination(packet, ""), max_entities=3
         )
         entity_checks_payload = [item.as_dict() for item in entity_results]
     except Exception:
@@ -370,7 +421,7 @@ def delete_public_checker_trip_by_token(
     _require_public_checker_enabled()
     _verify_trip_token_or_403(request, trip_id)
     _package = _load_public_checker_package_or_404(trip_id)
-    public_checker_agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+    public_checker_agency_id = _require_public_checker_agency_id()
     deleted_artifacts = persistence.PublicCheckerArtifactStore.delete_trip_artifacts(trip_id)
     deleted_trip = persistence.TripStore.delete_trip_for_agency(trip_id, public_checker_agency_id)
     if not deleted_artifacts and not deleted_trip:
@@ -436,7 +487,7 @@ def delete_public_checker_package(
 ):
     _require_public_checker_enabled()
     _package = _load_public_checker_package_or_404(trip_id)
-    public_checker_agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+    public_checker_agency_id = _require_public_checker_agency_id()
     deleted_artifacts = persistence.PublicCheckerArtifactStore.delete_trip_artifacts(trip_id)
     deleted_trip = persistence.TripStore.delete_trip_for_agency(trip_id, public_checker_agency_id)
     if not deleted_artifacts and not deleted_trip:
@@ -453,6 +504,7 @@ def delete_public_checker_package(
 @limiter.limit("30/minute")
 def get_public_checker_agency(
     request: Request,
+    response: Response,
     slug_or_id: str,
 ):
     """Retrieve public agency branding profile for white-label client diagnostics."""
@@ -460,7 +512,7 @@ def get_public_checker_agency(
     profile = AgencyMarketplaceStore.get_profile_by_slug_or_id(slug_or_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Agency profile not found")
-    _ = request
+    _ = (request, response)
     return {
         "ok": True,
         "agency": {

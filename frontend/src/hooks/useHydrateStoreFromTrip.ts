@@ -23,16 +23,14 @@ export function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     setResultSafety,
     setResultFees,
     setResultFrontier,
-    setInputRawNote,
-    setInputOwnerNote,
   } = useWorkbenchStore();
-  const hydratedRef = useRef<string | null>(null);
+  const hydratedRef = useRef<{ tripId: string; runId?: string } | null>(null);
 
   useEffect(() => {
     if (!trip?.id) return;
-    if (hydratedRef.current === trip.id) return;
-
-    hydratedRef.current = trip.id;
+    const sameTrip = hydratedRef.current?.tripId === trip.id;
+    if (sameTrip && hydratedRef.current?.runId === trip.runId) return;
+    hydratedRef.current = { tripId: trip.id, runId: trip.runId };
 
     // Always overwrite from current trip (prevent stale cross-trip data)
     setResultPacket(trip.packet ?? null);
@@ -44,12 +42,15 @@ export function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     setResultSafety(normalizeSafetyResult(trip.safety));
     setResultFees(trip.fees ?? null);
     setResultFrontier(trip.frontier_result ?? null);
-    setInputRawNote(trip.customerMessage ?? '');
-    setInputOwnerNote(trip.agentNotes ?? '');
+    // Refresh outputs for a new run without replacing an open editor.
+    if (sameTrip) return;
+    useWorkbenchStore.setState({
+      input_raw_note: trip.customerMessage ?? '',
+      input_owner_note: trip.agentNotes ?? '',
+      save_state: 'clean',
+    });
   }, [
     trip,
-    setInputRawNote,
-    setInputOwnerNote,
     setResultPacket,
     setResultValidation,
     setResultDecision,

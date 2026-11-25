@@ -368,6 +368,7 @@ try:
     from spine_api.routers import corporate as corporate_router
     from spine_api.routers import supplier as supplier_router
     from spine_api.routers import group_booking as group_booking_router
+    from spine_api.routers import booking_changes as booking_changes_router
     from spine_api.routers import rag as rag_router
     from spine_api.routers import price_lock as price_lock_router
     from spine_api.routers import customer_memory as customer_memory_router
@@ -1625,6 +1626,9 @@ app.include_router(social_inbound_router.router)
 app.include_router(corporate_router.router)
 app.include_router(supplier_router.router)
 app.include_router(group_booking_router.router)
+# Booking-change ledger (FND-0410): operator-reported supplier changes with
+# traveler-visible exposure; per-route get_current_agency_id lives inside.
+app.include_router(booking_changes_router.router)
 app.include_router(price_lock_router.router)
 app.include_router(customer_memory_router.router)
 app.include_router(multimodal_router.router)
@@ -2483,6 +2487,24 @@ def get_trip(
         trip["assigned_to"] = assignment["agent_id"]
         trip["assigned_to_name"] = assignment["agent_name"]
 
+    queued = trip.get("reassess")
+    if isinstance(queued, dict) and queued.get("trigger") == "auto_edit":
+        # The marker locates the run. Its tenant-scoped ledger owns lifecycle.
+        try:
+            queued_id = str(uuid.UUID(str(queued.get("run_id"))))
+        except ValueError:
+            queued_id = None
+        meta = RunLedger.get_meta(queued_id) if queued_id else None
+        if not meta or meta.get("trip_id") != trip_id or meta.get("agency_id") != agency.id or meta.get("state") not in {"queued", "running"}:
+            # Completion can race the first trip read. Re-read authoritative
+            # output once if the worker may have written a newer revision.
+            if meta and meta.get("trip_id") == trip_id and meta.get("agency_id") == agency.id and meta.get("state") in {"completed", "blocked"}:
+                refreshed = TripStore.get_trip_for_agency(trip_id, agency.id)
+                if refreshed:
+                    trip.update(refreshed)
+            if trip.get("reassess") == queued:
+                trip["reassess"] = None
+
     return TripResponse.from_dict(trip)
 
 
@@ -3073,9 +3095,43 @@ def patch_trip(
 
     edited_fields = set(updates.keys())
 
-    # Perform update (tenant-scoped)
-    updated_trip = TripStore.update_trip_for_agency(trip_id, agency.id, updates)
-    
+    policy = AgencySettingsStore.load(agency.id).autonomy
+    current_stage = str(updates.get("stage") or trip.get("stage") or "discovery")
+    trigger_fields = edited_fields & trip_lifecycle_service.REASSESS_EDIT_TRIGGER_FIELDS
+    auto_edit = bool(trigger_fields and policy.auto_reprocess_on_edit and policy.auto_reprocess_stages.get(current_stage, False))
+
+    if auto_edit:
+        updated_trip = None
+
+        def persist_queued_edit(run_id: str) -> str:
+            # Atomically attach the accepted run to the exact edited revision,
+            # before the worker starts. A later edit cannot inherit this receipt.
+            nonlocal updated_trip
+            updated_trip = TripStore.update_trip_if_version_for_agency(
+                trip_id, agency.id,
+                {**updates, "reassess": {"queued": True, "run_id": run_id, "trigger": "auto_edit"}},
+                expected_updated_at=str(trip["updated_at"]),
+            )
+            if updated_trip is None:
+                raise HTTPException(status_code=409, detail="Trip changed before save. Refresh the inquiry and retry.")
+            return str(updated_trip["updated_at"])
+
+        proposed_trip = {**trip, **updates}
+        run_id = trip_lifecycle_service.queue_trip_reassessment(
+            proposed_trip,
+            agency_id=agency.id,
+            user_id=user.id,
+            request_dict=trip_lifecycle_service.build_reassessment_request_from_trip(proposed_trip),
+            trigger="auto_edit",
+            reason=f"fields_changed:{','.join(sorted(trigger_fields))}",
+            execute_pipeline_fn=_execute_spine_pipeline,
+            persist_queued_edit=persist_queued_edit,
+        )
+    else:
+        if trigger_fields and trip.get("reassess"):
+            updates["reassess"] = None
+        updated_trip = TripStore.update_trip_for_agency(trip_id, agency.id, updates)
+
     # Handle status-specific side effects
     if new_status and new_status != old_status:
         # Log status change
@@ -3090,32 +3146,7 @@ def patch_trip(
         if new_status == "new":
             AssignmentStore.unassign_trip(trip_id, "operator")
 
-    # Auto reassessment on meaningful edits when policy + stage allow.
-    settings = AgencySettingsStore.load(agency.id)
-    policy = settings.autonomy
-    current_stage = str((updated_trip or {}).get("stage") or "discovery")
-    should_auto_reassess = (
-        bool(updated_trip)
-        and policy.auto_reprocess_on_edit
-        and policy.auto_reprocess_stages.get(current_stage, False)
-        and bool(edited_fields & trip_lifecycle_service.REASSESS_EDIT_TRIGGER_FIELDS)
-    )
-    if should_auto_reassess and updated_trip:
-        request_dict = trip_lifecycle_service.build_reassessment_request_from_trip(updated_trip)
-        run_id = trip_lifecycle_service.queue_trip_reassessment(
-            updated_trip,
-            agency_id=agency.id,
-            user_id=user.id,
-            request_dict=request_dict,
-            trigger="auto_edit",
-            reason=f"fields_changed:{','.join(sorted(edited_fields & trip_lifecycle_service.REASSESS_EDIT_TRIGGER_FIELDS))}",
-            execute_pipeline_fn=_execute_spine_pipeline,
-        )
-        updated_trip["reassess"] = {
-            "queued": True,
-            "run_id": run_id,
-            "trigger": "auto_edit",
-        }
+    if auto_edit:
         # Work-intake classification (map §2.3 operator_action door): an
         # operator edit that triggers reassessment is operator-originated work
         # on the agency queue. Best-effort.

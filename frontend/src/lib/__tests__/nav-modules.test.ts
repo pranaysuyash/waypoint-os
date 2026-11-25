@@ -14,6 +14,13 @@ describe('NAV_SECTIONS', () => {
     expect(planning?.items.map((item) => item.label)).not.toContain('Trips');
   });
 
+  it('places Communications directly below Lead Inbox in Command', () => {
+    const command = NAV_SECTIONS.find((section) => section.label === 'COMMAND');
+    const inboxIndex = command?.items.findIndex((item) => item.href === '/inbox') ?? -1;
+    expect(inboxIndex).toBeGreaterThanOrEqual(0);
+    expect(command?.items[inboxIndex + 1]).toMatchObject({ href: '/communications', label: 'Communications', enabled: true });
+  });
+
   it('enables Documents, Quotes, Bookings, Suppliers, and Knowledge modules when all rollout gates are complete', () => {
     expect(isDocumentsModuleEnabled()).toBe(true);
     expect(DOCUMENTS_MODULE_ROLLOUT_GATES.every((gate) => gate.complete === true)).toBe(true);

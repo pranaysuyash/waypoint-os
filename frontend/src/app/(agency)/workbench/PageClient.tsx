@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Suspense, useState, useCallback, useEffect, useRef, useReducer, useMemo } from 'react';
 import { ClientDateTime, ClientTime } from '@/hooks/useClientDate';
-import { Tabs } from '@/components/ui/tabs';
+import { Tabs, getTabButtonId, getTabPanelId } from '@/components/ui/tabs';
 import { PipelineFlow, type PipelineStageId } from './PipelineFlow';
 import {
   Play,
@@ -19,11 +19,14 @@ import {
 import { InlineLoading } from '@/components/ui/loading';
 import { useTrip } from '@/hooks/useTrips';
 import { useWorkbenchStore } from '@/stores/workbench';
+import { DRAFT_CHECK_LABELS, getDraftCheckStatus } from '@/lib/safety-review-copy';
+import { normalizeSafetyResult } from '@/lib/bff-trip-adapters';
+import { getItineraryFeasibilityEvidence, getItineraryFeasibilityFindings } from '@/lib/itinerary-feasibility';
 import { useSpineRun } from '@/hooks/useSpineRun';
 import { useSSEStream } from '@/hooks/useSSEStream';
 
 import { useUpdateTrip } from '@/hooks/useTrips';
-import { getWorkbenchBlockCopy, formatWorkbenchBlockReasonList, formatWorkbenchMissingFields } from '@/lib/workbench-blocking-copy';
+import { getWorkbenchBlockCopy, formatWorkbenchMissingFields } from '@/lib/workbench-blocking-copy';
 import type {
   SpineRunRequest,
   SpineStage,
@@ -138,6 +141,7 @@ function WorkbenchContent() {
     data: trip,
     isLoading: tripLoading,
     error: tripError,
+    refetch: refetchTrip,
   } = useTrip(resolvedTripId);
   useHydrateStoreFromTrip(trip);
 
@@ -154,35 +158,97 @@ function WorkbenchContent() {
     isLoading: isSpineRunning,
     error: spineError,
     reset: resetSpine,
-    runId: spineRunId,
-    state: spineRunState,
+    runId: explicitRunId,
+    state: explicitRunState,
   } = useSpineRun();
 
   // SSE / adaptive-polling live state subscription.
   // Connects when a run starts; merges live events into spineRunState so
   // RunProgressPanel reflects real-time progress without a page reload.
   // Falls back to polling when SSE is not available (NEXT_PUBLIC_SSE_ENABLED != 'true').
+  const pendingRunId = trip?.pendingReassessmentRunId;
+  const [observedRuns, setObservedRuns] = useState<{ automatic?: string; explicit?: string }>({});
+  const automatic = pendingRunId ?? observedRuns.automatic;
+  const explicit = explicitRunId && explicitRunId === trip?.runId ? explicitRunId : observedRuns.explicit;
+  if (automatic !== observedRuns.automatic || explicit !== observedRuns.explicit) {
+    setObservedRuns({ automatic, explicit });
+  }
+  const supersededRun = Boolean(!isSpineRunning && explicitRunId && trip?.runId && explicitRunId !== trip.runId
+    && (trip.runId === automatic || explicitRunId === explicit));
+  const spineRunState = supersededRun ? null : explicitRunState;
+  const spineRunId = supersededRun ? null : explicitRunId;
+  const preferTripAssessment = Boolean(trip?.runId && (supersededRun || (!isSpineRunning && !spineRunId && save_state !== 'dirty')));
+  const refreshAfterReassessment = useCallback((status: { run_id: string }) => {
+    if (pendingRunId && status.run_id === pendingRunId) void refetchTrip();
+  }, [pendingRunId, refetchTrip]);
   const {
     connect: connectSSE,
     disconnect: disconnectSSE,
     isConnected: isSSEConnected,
     connectionMode: sseConnectionMode,
-  } = useSSEStream();
+  } = useSSEStream({ onTerminal: refreshAfterReassessment });
+  const monitoredRunId = pendingRunId ?? (isSpineRunning ? spineRunId : null);
 
   // Subscribe when a new run begins; disconnect on unmount or run change.
   useEffect(() => {
-    if (!spineRunId) {
+    if (!monitoredRunId) {
       disconnectSSE();
       return;
     }
-    connectSSE(spineRunId);
+    connectSSE(monitoredRunId);
     return () => { disconnectSSE(); };
-  }, [spineRunId, connectSSE, disconnectSSE]);
+  }, [monitoredRunId, connectSSE, disconnectSSE]);
 
 
   const runFrontier = spineRunState?.frontier_result;
   const showFrontier = Boolean(trip?.frontier_result) || Boolean(result_frontier) || Boolean(runFrontier);
-  const blockCopy = getWorkbenchBlockCopy({ validation: result_validation, packet: result_packet ?? trip?.packet ?? null });
+  const reviewPacket = preferTripAssessment ? trip?.packet ?? null : spineRunState?.packet ?? result_packet ?? trip?.packet ?? null;
+  const reviewValidation = preferTripAssessment ? trip?.validation : spineRunState?.validation ?? result_validation;
+  const blockCopy = getWorkbenchBlockCopy({ validation: reviewValidation ?? null, packet: reviewPacket });
+  const intakeNeedsRepair = reviewValidation?.is_valid === false
+    || reviewValidation?.status === 'ESCALATED'
+    || reviewValidation?.status === 'BLOCKED';
+  const feasibilityEvidence = getItineraryFeasibilityEvidence(reviewPacket);
+  const findingCount = getItineraryFeasibilityFindings(reviewPacket).length;
+  const detailCount = findingCount + (feasibilityEvidence.question ? 1 : 0);
+  const travelerDraft = useWorkbenchStore((s) => s.result_traveler_bundle);
+  // Keep the checked text and its evidence from the same server projection.
+  const currentSafety = normalizeSafetyResult(trip ? trip.safety : result_safety);
+  const currentBundle = trip ? trip.traveler_bundle : travelerDraft;
+  const decisionState = trip ? trip.decision?.decision_state : result_decision?.decision_state;
+  const checkSource = trip ? (trip.runId ?? trip.safety) : result_safety;
+  // Save Trip submits the notes only. A working draft may still contain
+  // other edits that a successful automatic reassessment never received.
+  const otherInputs = useMemo(() => JSON.stringify([
+    input_structured_json, input_itinerary_text, spineStage, currentMode, currentScenario, strict_leakage,
+  ]), [input_structured_json, input_itinerary_text, spineStage, currentMode, currentScenario, strict_leakage]);
+  const [editorHistory, setEditorHistory] = useState<{ dirtySource?: unknown; checkedSource?: unknown; tripId?: string; otherInputs?: string }>({});
+  const dirtySource = save_state === 'dirty' ? checkSource : editorHistory.dirtySource;
+  const checkedTrip = Boolean(trip && editorHistory.tripId === trip.id);
+  const newAutomaticSource = Boolean(trip?.runId && trip.runId === automatic && checkedTrip);
+  const auxiliaryEdits = checkedTrip && (editorHistory.checkedSource === checkSource || newAutomaticSource)
+    && editorHistory.otherInputs !== otherInputs;
+  const freshAutomaticCheck = newAutomaticSource && !auxiliaryEdits;
+  const notesChanged = Boolean(trip && ((trip.customerMessage ?? '') !== input_raw_note || (trip.agentNotes ?? '') !== input_owner_note));
+  const draftChanged = notesChanged || auxiliaryEdits || (!freshAutomaticCheck && (save_state === 'dirty' || (checkSource != null && dirtySource === checkSource)));
+  const messageStatus = pendingRunId ? 'pending' : getDraftCheckStatus(currentSafety, currentBundle, decisionState, draftChanged
+    || isSpineRunning || Boolean(spineRunId && spineRunId !== trip?.runId));
+  const newCheck = trip && messageStatus === 'passed';
+  const checkedTripId = newCheck ? trip.id : editorHistory.tripId;
+  const checkedSource = newCheck ? checkSource : editorHistory.checkedSource;
+  const checkedInputs = newCheck ? otherInputs : editorHistory.otherInputs;
+  if (dirtySource !== editorHistory.dirtySource || checkedSource !== editorHistory.checkedSource || checkedTripId !== editorHistory.tripId || checkedInputs !== editorHistory.otherInputs) {
+    setEditorHistory({ dirtySource, checkedSource, tripId: checkedTripId, otherInputs: checkedInputs });
+  }
+
+  const [reviewFocus, setReviewFocus] = useState<{ id: string } | null>(null);
+  const scopedReview = Boolean(feasibilityEvidence.question)
+    && (spineRunState?.state === 'blocked' || (!spineRunId && intakeNeedsRepair));
+  const scopedTitle = scopedReview && detailCount === 1 ? feasibilityEvidence.context?.split(' · ', 1)[0] : null;
+  const destinationTitle = trip?.destination?.trim();
+  const workbenchTitle = destinationTitle && destinationTitle.toLowerCase() !== 'unknown'
+    ? destinationTitle
+    : scopedTitle || draft_name?.trim() || (detailCount > 0 ? 'Itinerary review' : 'New Inquiry');
   const missingFieldsLabel = formatWorkbenchMissingFields(blockCopy.missingFields);
   // D-09: deep-link the first repairable missing field straight into its
   // intake editor (?repair=<field>), falling back to the plain intake route.
@@ -359,6 +425,11 @@ function WorkbenchContent() {
   // Run-state -> store merge, draft lifecycle status, and terminal-tab
   // auto-switch. Effects live in one hook, in their original declaration
   // order, called at the same position the first effect previously occupied.
+  function openReviewSection(id: string) {
+    setReviewFocus({ id });
+    handleTabChange('safety');
+  }
+
   useWorkbenchRunSync({ spineRunState, activeTab, handleTabChange });
 
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
@@ -417,6 +488,7 @@ function WorkbenchContent() {
 
       if (result?.trip_id) {
         setCompletedTripId(result.trip_id);
+        if (result.trip_id === resolvedTripId) await refetchTrip();
         setRunSuccess(true);
         return;
       }
@@ -434,7 +506,7 @@ function WorkbenchContent() {
       inFlightRef.current = false;
       setIsRunning(false);
     }
-  }, [draftStore, executeSpineRun, spineStage, currentMode, currentScenario, ensureDraftSaved, setIsRunning, setRunError, setRunSuccess, setCompletedTripId, later]);
+  }, [executeSpineRun, resolvedTripId, refetchTrip, input_raw_note, input_owner_note, input_itinerary_text, input_structured_json, strict_leakage, spineStage, currentMode, currentScenario, ensureDraftSaved, setIsRunning, setRunError, setRunSuccess, setCompletedTripId, later]);
 
   const handleSave = useCallback(async () => {
     if (!resolvedTripId) return;
@@ -511,16 +583,12 @@ function WorkbenchContent() {
       </div>
 
       {/* Persistent blocked-state banner */}
-      {result_validation && (
-        result_validation.is_valid === false ||
-        result_validation.status === "ESCALATED" ||
-        result_validation.status === "BLOCKED"
-      ) && !spineRunId && (
+      {intakeNeedsRepair && !spineRunId && !scopedReview && (
         <div className="mx-6 mt-4 rounded-xl border border-[#f85149]/40 bg-[#2b1011] px-5 py-3">
           <div className="flex items-start gap-3">
             <AlertTriangle className="size-5 text-[#f85149] shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
                   <>
                     <h3 className="text-ui-sm font-semibold text-[#f85149]">
@@ -573,14 +641,6 @@ function WorkbenchContent() {
                       Review Missing Fields
                     </button>
                   )}
-                  {tripRepairHref && (
-                    <Link
-                      href={tripRepairHref}
-                      className="px-3 py-1.5 bg-[#161b22] border border-[#30363d] text-[#e6edf3] text-ui-xs font-medium rounded-md hover:bg-[#21262d] transition-colors"
-                    >
-                      {blockCopy.actionLabel}
-                    </Link>
-                  )}
                 </div>
               </div>
             </div>
@@ -589,18 +649,17 @@ function WorkbenchContent() {
       )}
 
       <div className='p-4 sm:p-6'>
-        <header className='mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between'>
+        <header className='mb-4 flex flex-col gap-4'>
           <div className='min-w-0 flex-1'>
-            <h1 className='text-ui-2xl font-semibold text-[#e6edf3] mb-1'>
-              {trip ? trip.destination : (draft_name || 'New Inquiry')}
+            <h1 className='mb-1 break-words text-ui-2xl font-semibold text-[#e6edf3]'>
+              {workbenchTitle}
             </h1>
             <p className='flex flex-wrap items-center gap-x-3 gap-y-1 text-ui-base text-[#a8b3c1]'>
               {trip
                 ? `${trip.id} · ${trip.type} · ${trip.age}`
-                : 'Capture a customer request and send it into the workflow.'}
+                : draft_id ? null : 'Capture a customer request and send it into the workflow.'}
               {draft_id && !trip && (
                 <>
-                  <span className='text-[#30363d]'>·</span>
                   <span className='font-mono text-ui-xs text-[#8b949e]'>{draft_id}</span>
                 </>
               )}
@@ -658,60 +717,28 @@ function WorkbenchContent() {
                 Last processed: <ClientDateTime value={trip.updatedAt} />
               </p>
             )}
+            {(reviewPacket || currentSafety) && (
+              <div className='mt-3 flex flex-wrap gap-2' aria-label='Trip review status'>
+                {detailCount > 0 && (
+                  <button type='button' onClick={() => openReviewSection('workbench-feasibility')}
+                    className='min-h-11 rounded-lg border border-[#d29922]/40 px-3 text-ui-sm text-[#e3b341]'>
+                    {detailCount === 1 ? 'Review itinerary detail' : `Review ${detailCount} itinerary details`}
+                  </button>
+                )}
+                <button type='button' onClick={() => openReviewSection('workbench-message-check')}
+                  className={`min-h-11 rounded-lg border border-current px-3 text-ui-sm ${messageStatus === 'passed' ? 'text-[#7ee2a8]' : messageStatus === 'failed' ? 'text-[#ff9492]' : 'text-[#b1bbc7]'}`}>
+                  {DRAFT_CHECK_LABELS[messageStatus]}
+                </button>
+              </div>
+            )}
           </div>
           <form
-            className='flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center xl:w-auto xl:justify-end'
+            className='flex min-w-0 flex-wrap items-center gap-3'
             onSubmit={(e) => {
               e.preventDefault();
               void handleProcessTrip();
             }}
           >
-            {runError && (
-              <div className='flex w-full items-center gap-2 rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 px-3 py-2 text-ui-sm text-[#f85149] sm:max-w-[32rem] xl:w-auto'>
-                <AlertTriangle className='size-4' />
-                {spineRunState?.validation && (
-                  spineRunState.validation.is_valid === false ||
-                  spineRunState.validation.status === "ESCALATED" ||
-                  spineRunState.validation.status === "BLOCKED"
-                ) ? (
-                  <div className='flex flex-col'>
-                    {(() => {
-                      const blockCopy = getWorkbenchBlockCopy({ validation: spineRunState.validation });
-                      return (
-                        <>
-                          <span className='font-medium'>{blockCopy.title}</span>
-                          <span className='text-ui-xs text-[#ffa198]'>
-                            {blockCopy.summary}
-                            {blockCopy.details.length > 1 ? ` ${formatWorkbenchBlockReasonList(blockCopy.details.slice(1))}.` : ''}
-                            {" "}Check the Trip Details tab.
-                          </span>
-                        </>
-                      );
-                    })()}
-                  </div>
-                ) : (
-                  <span className='max-w-xs truncate'>{runError}</span>
-                )}
-              </div>
-            )}
-            {runSuccess && (
-              <div className='flex w-full items-center gap-2 rounded-lg border border-[#3fb950]/30 bg-[#3fb950]/10 px-3 py-2 text-ui-sm text-[#3fb950] sm:w-auto'>
-                <CheckCircle className='size-4' />
-                Processed successfully
-              </div>
-            )}
-            {saveSuccess && (
-              <div className='flex w-full items-center gap-2 rounded-lg border border-[#3fb950]/30 bg-[#3fb950]/10 px-3 py-2 text-ui-sm text-[#3fb950] sm:w-auto'>
-                <CheckCircle className='size-4' />
-                Saved
-              </div>
-            )}
-            {saveError && (
-              <div className='flex w-full items-center gap-2 rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 px-3 py-2 text-ui-sm text-[#f85149] sm:max-w-[24rem] xl:w-auto'>
-                <AlertTriangle className='size-4' />
-                <span className='max-w-xs truncate'>{saveError}</span>
-              </div>
-            )}
             <button
               type='submit'
               disabled={
@@ -719,7 +746,7 @@ function WorkbenchContent() {
                 isSpineRunning ||
                 (!input_raw_note && !input_owner_note)
               }
-              className='flex w-full items-center justify-center gap-2 rounded-lg bg-[#58a6ff] px-4 py-2 font-medium text-[#0d1117] transition-colors hover:bg-[#6eb5ff] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
+              className='flex items-center justify-center gap-2 rounded-lg bg-[#58a6ff] px-4 py-2 font-medium text-[#0d1117] transition-colors hover:bg-[#6eb5ff] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
               aria-label={isRunning ? 'Processing inquiry' : 'Process inquiry'}
             >
               {isRunning ? (
@@ -759,7 +786,7 @@ function WorkbenchContent() {
                         validationStatus: spineRunState?.validation?.status,
                       }));
                     }}
-                    className='flex w-full items-center justify-center gap-2 rounded-lg bg-[#58a6ff] px-4 py-2 font-medium text-[#0d1117] transition-colors hover:bg-[#6eb5ff] sm:w-auto sm:justify-start'
+                    className='flex items-center justify-center gap-2 rounded-lg bg-[#58a6ff] px-4 py-2 font-medium text-[#0d1117] transition-colors hover:bg-[#6eb5ff] sm:w-auto sm:justify-start'
                   >
                     <CheckCircle className='size-4' />
                     Promote Draft
@@ -767,33 +794,16 @@ function WorkbenchContent() {
                 )}
               </>
             )}
-            {spineRunId && spineRunState && (
-              <RunProgressPanel
-                runId={spineRunId}
-                runState={spineRunState}
-                error={spineError}
-                onRetry={() => {
-                  setRunError(null);
-                  resetSpine();
-                  setCompletedTripId(null);
-                }}
-                onViewFrontier={showFrontier ? () => handleTabChange('frontier') : undefined}
-                onFixDetails={() => {
-                  resetSpine();
-                  handleTabChange(showPacket ? 'packet' : 'intake');
-                }}
-                onViewTrip={completedTripId ? () => push(getPostRunTripRoute({
-                  tripId: completedTripId,
-                  tripStage: spineRunState?.stage ?? trip?.stage,
-                  validationStatus: spineRunState?.validation?.status,
-                })) : undefined}
-              />
+            {scopedReview && !spineRunId && tripRepairHref && (
+              <Link href={tripRepairHref} className='rounded-lg border border-[#30363d] px-3 py-2 text-ui-sm text-[#e6edf3]'>
+                Review missing intake fields
+              </Link>
             )}
             <button
               type='button'
               onClick={handleSaveDraft}
               disabled={save_state === 'saving' || draft_status === 'promoted'}
-              className='flex w-full items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
+              className='flex items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
               aria-label='Save draft'
             >
               {save_state === 'saving' ? (
@@ -816,7 +826,7 @@ function WorkbenchContent() {
                 type='button'
                 onClick={handleSave}
                 disabled={isSaving}
-              className='flex w-full items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
+              className='flex items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:justify-start'
               aria-label='Save trip changes'
             >
                 {isSaving ? (
@@ -839,7 +849,7 @@ function WorkbenchContent() {
             <button
               type='button'
               onClick={() => setIsResetDialogOpen(true)}
-              className='flex w-full items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] sm:w-auto sm:justify-start'
+              className='flex items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] sm:w-auto sm:justify-start'
               aria-label='Reset pipeline'
             >
               <RotateCcw className='size-4' aria-hidden='true' />
@@ -848,13 +858,48 @@ function WorkbenchContent() {
             <button
               type='button'
               onClick={() => setPanelOpen('settings', true)}
-              className='flex w-full items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] sm:w-auto sm:justify-start'
+              className='flex items-center justify-center gap-2 rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 font-medium text-[#e6edf3] transition-colors hover:bg-[#21262d] sm:w-auto sm:justify-start'
               aria-label='Open settings'
             >
               <Settings className='size-4' aria-hidden='true' />
             </button>
           </form>
         </header>
+
+        <div className='mb-4 space-y-3 empty:hidden'>
+          {runError && !(spineRunId && spineRunState?.state === 'blocked' && runError === spineError?.message) && (
+            <p role='alert' className='break-words text-ui-sm text-[#ff7b72]'>{runError}</p>
+          )}
+          {(saveSuccess || (runSuccess && spineRunState?.state !== 'completed')) && (
+            <div role='status' className='space-y-1 text-ui-sm text-[#3fb950]'>
+              {runSuccess && spineRunState?.state !== 'completed' && <p>Processed successfully</p>}
+              {saveSuccess && <p>Saved</p>}
+            </div>
+          )}
+          {saveError && <p role='alert' className='break-words text-ui-sm text-[#ff7b72]'>{saveError}</p>}
+          {spineRunId && spineRunState && !scopedReview && (
+            <RunProgressPanel
+              runId={spineRunId}
+              runState={spineRunState}
+              error={spineError}
+              onRetry={() => {
+                setRunError(null);
+                resetSpine();
+                setCompletedTripId(null);
+              }}
+              onViewFrontier={showFrontier ? () => handleTabChange('frontier') : undefined}
+              onFixDetails={() => {
+                resetSpine();
+                handleTabChange(showPacket ? 'packet' : 'intake');
+              }}
+              onViewTrip={completedTripId ? () => push(getPostRunTripRoute({
+                tripId: completedTripId,
+                tripStage: spineRunState?.stage ?? trip?.stage,
+                validationStatus: spineRunState?.validation?.status,
+              })) : undefined}
+            />
+          )}
+        </div>
 
         {process.env.NEXT_PUBLIC_ENABLE_SCENARIO_LAB === '1' && (
         <details className='mb-4'>
@@ -883,33 +928,39 @@ function WorkbenchContent() {
           />
         </div>
 
-        <div
-          className='bg-[#0f1115] border-x border-b border-[#30363d] rounded-b-xl'
-          role='tabpanel'
-          id={`tabpanel-${effectiveTab}`}
-          aria-labelledby={`tab-${effectiveTab}`}
-          tabIndex={0}
-        >
-          <div className='p-6'>
-            <Suspense fallback={<InlineLoading message='Loading…' />}>
-              {effectiveTab === 'safety' ? (
-                <SafetyTab trip={trip} />
-              ) : effectiveTab === 'council' ? (
-                <PersonaCouncilPanel tripId={resolvedTripId} />
-              ) : effectiveTab === 'frontier' ? (
-                <FrontierDashboard />
-              ) : effectiveTab === 'packet' ? (
-                <PacketTab trip={trip} />
-              ) : effectiveTab === 'decision' ? (
-                <DecisionPanel trip={trip} tripId={resolvedTripId ?? undefined} />
-              ) : effectiveTab === 'knowledge' ? (
-                <KnowledgePanel />
-              ) : (
-                <IntakeTab trip={trip} />
-              )}
-            </Suspense>
+        {visibleTabs.map(({ id }) => (
+          <div
+            key={id}
+            hidden={id !== effectiveTab}
+            className='bg-[#0f1115] border-x border-b border-[#30363d] rounded-b-xl'
+            role='tabpanel'
+            id={getTabPanelId(id)}
+            aria-labelledby={getTabButtonId(id)}
+            tabIndex={0}
+          >
+            {id === effectiveTab && (
+              <div className='p-6'>
+                <Suspense fallback={<InlineLoading message='Loading…' />}>
+                  {effectiveTab === 'safety' ? (
+                    <SafetyTab trip={trip} focusRequest={reviewFocus} messageStatus={messageStatus} reviewPacket={reviewPacket} preferTripAssessment={preferTripAssessment} />
+                  ) : effectiveTab === 'council' ? (
+                    <PersonaCouncilPanel tripId={resolvedTripId} />
+                  ) : effectiveTab === 'frontier' ? (
+                    <FrontierDashboard />
+                  ) : effectiveTab === 'packet' ? (
+                    <PacketTab trip={trip} reviewPacket={reviewPacket} onEditInquiry={() => handleTabChange('intake')} />
+                  ) : effectiveTab === 'decision' ? (
+                    <DecisionPanel trip={trip} tripId={resolvedTripId ?? undefined} reviewPacket={reviewPacket} preferTripAssessment={preferTripAssessment} />
+                  ) : effectiveTab === 'knowledge' ? (
+                    <KnowledgePanel />
+                  ) : (
+                    <IntakeTab trip={trip} />
+                  )}
+                </Suspense>
+              </div>
+            )}
           </div>
-        </div>
+        ))}
       </div>
 
       <Suspense fallback={null}>

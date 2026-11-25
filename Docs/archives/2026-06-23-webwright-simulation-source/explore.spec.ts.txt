@@ -1,0 +1,38 @@
+import { test } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const outDir = '/Users/pranay/Projects/travel_agency_agent/scratch/webwright_agent_sim/screenshots';
+
+test('explore main app flow', async ({ page }) => {
+  fs.mkdirSync(outDir, { recursive: true });
+
+  await page.setViewportSize({ width: 1280, height: 1800 });
+  await page.goto('http://localhost:3101/login', { waitUntil: 'domcontentloaded' });
+  await page.screenshot({ path: path.join(outDir, '01-login.png') });
+  console.log('URL:', page.url());
+  console.log('TITLE:', await page.title());
+  console.log('BODY:', (await page.locator('body').innerText()).slice(0, 2000));
+
+  const email = page.locator('input').first();
+  const password = page.locator('input').nth(1);
+  if (!process.env.TRAVEL_QA_EMAIL || !process.env.TRAVEL_QA_PASSWORD) throw new Error('Set local test credentials first');
+  await email.fill(process.env.TRAVEL_QA_EMAIL!);
+  await password.fill(process.env.TRAVEL_QA_PASSWORD!);
+  await page.screenshot({ path: path.join(outDir, '02-login-filled.png') });
+
+  const submit = page.getByRole('button').filter({ hasText: /sign in|log in|login/i }).first();
+  await submit.click();
+  await page.waitForLoadState('networkidle');
+  await page.screenshot({ path: path.join(outDir, '03-post-login.png') });
+  console.log('POST_URL:', page.url());
+  console.log('POST_TITLE:', await page.title());
+  console.log('POST_BODY:', (await page.locator('body').innerText()).slice(0, 3000));
+
+  await page.goto('http://localhost:3101/workbench?draft=new&tab=intake&capture_mode=call&entry=new', { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle');
+  await page.screenshot({ path: path.join(outDir, '04-workbench.png') });
+  console.log('WORKBENCH_URL:', page.url());
+  console.log('WORKBENCH_TITLE:', await page.title());
+  console.log('WORKBENCH_BODY:', (await page.locator('body').innerText()).slice(0, 4000));
+});

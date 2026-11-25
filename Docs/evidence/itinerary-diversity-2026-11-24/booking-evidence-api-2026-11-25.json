@@ -1,0 +1,53 @@
+[
+  {
+    "case": "original TGV",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "state": "blocked",
+    "http": 200,
+    "traveler_plan": "has_existing_booking",
+    "evidence_excerpts": [
+      "separately booked TGV INOUI"
+    ],
+    "passed": true
+  },
+  {
+    "case": "no booking evidence",
+    "note": "Trip to Paris for 3 adults in June.",
+    "state": "completed",
+    "http": 200,
+    "traveler_plan": null,
+    "evidence_excerpts": [],
+    "passed": true
+  },
+  {
+    "case": "explicitly empty",
+    "note": "Trip to Paris. We have nothing booked yet.",
+    "state": "blocked",
+    "http": 200,
+    "traveler_plan": "nothing_booked",
+    "evidence_excerpts": [
+      "nothing booked"
+    ],
+    "passed": true
+  },
+  {
+    "case": "requested future booking",
+    "note": "Trip to Paris. We want the flights booked tomorrow.",
+    "state": "blocked",
+    "http": 200,
+    "traveler_plan": null,
+    "evidence_excerpts": [],
+    "passed": true
+  },
+  {
+    "case": "flight reported booked",
+    "note": "Trip to Paris. We already booked our flights.",
+    "state": "blocked",
+    "http": 200,
+    "traveler_plan": "has_flights_booked",
+    "evidence_excerpts": [
+      "We already booked our flights"
+    ],
+    "passed": true
+  }
+]

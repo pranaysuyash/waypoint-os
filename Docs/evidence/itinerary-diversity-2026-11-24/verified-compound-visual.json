@@ -1,0 +1,81 @@
+[
+  {
+    "surface": "public",
+    "device": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "title": "Your check needs more details",
+    "observed_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "verified-compound-desktop-public.png",
+    "recording": "verified-compound-desktop-public.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/public-checker/run",
+        "http": 200
+      }
+    ]
+  },
+  {
+    "surface": "workbench",
+    "device": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "title": "The overnight train is waitlisted. Our morning transfer i...",
+    "observed_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "verified-compound-desktop-workbench.png",
+    "recording": "verified-compound-desktop-workbench.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/spine/run",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/948f2cd5-de35-4184-b5d1-fd8ee6c6bb84",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/948f2cd5-de35-4184-b5d1-fd8ee6c6bb84",
+        "http": 200
+      }
+    ]
+  },
+  {
+    "surface": "public",
+    "device": "mobile-emulation",
+    "viewport": {
+      "width": 412,
+      "height": 839
+    },
+    "title": "Your check needs more details",
+    "observed_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "verified-compound-mobile-emulation-public.png",
+    "recording": "verified-compound-mobile-emulation-public.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/public-checker/run",
+        "http": 200
+      }
+    ]
+  }
+]

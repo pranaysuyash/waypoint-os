@@ -1,0 +1,696 @@
+[
+  {
+    "case": "goa",
+    "note": "Delhi se Goa jana hai bhai, 2 adults + ek 5 yr ka kid. 18 Dec 2026 ki flight Delhi 23:55 to Goa 02:25 next day. Hotel check-in 18 Dec likha hai, North Goa side, hotel abhi final nahi. 19th ko Baga + Dudhsagar + Old Goa ek hi din kar lenge? 35k max total sabka, flights included. Return ka date abhi decide nahi. Veg food chahiye.",
+    "surface": "public",
+    "state": "completed",
+    "http": 200,
+    "party_size": 3,
+    "expected_party_size": 3,
+    "destinations": [
+      "Goa"
+    ],
+    "outbound": "2026-12-18",
+    "return_pending": true,
+    "question": null,
+    "id": null,
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_hotel_arrival",
+        "severity": "medium",
+        "category": "timing",
+        "message": "Your plan says you land at 02:25 on 19 December, after your proposed 18 December hotel check-in date. If you book the previous night so the room is ready on arrival, tell the hotel you'll arrive after midnight and confirm it will hold the room.",
+        "details": {
+          "title": "Confirm late hotel arrival",
+          "context": "Overnight flight and proposed hotel check-in",
+          "source_url": null,
+          "authority": "advisory"
+        },
+        "detected_at": "2026-11-25T05:16:02.252679+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "goa_day_pacing",
+        "severity": "medium",
+        "category": "activity",
+        "message": "Baga, Dudhsagar and Old Goa could make for a packed day. Dudhsagar includes a separate access leg from Collem. Confirm the falls entry arrangements and when you expect to return to Collem, then check whether the transfers and time at Baga and Old Goa still fit. Your plan does not give enough timing detail to confirm all three will fit.",
+        "details": {
+          "title": "Check whether all three stops fit",
+          "context": "Baga, Dudhsagar and Old Goa day plan",
+          "source_url": "https://www.goa.gov.in/places/dudhsagar-waterfalls/",
+          "authority": "advisory"
+        },
+        "detected_at": "2026-11-25T05:16:02.252681+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "goa",
+    "note": "Delhi se Goa jana hai bhai, 2 adults + ek 5 yr ka kid. 18 Dec 2026 ki flight Delhi 23:55 to Goa 02:25 next day. Hotel check-in 18 Dec likha hai, North Goa side, hotel abhi final nahi. 19th ko Baga + Dudhsagar + Old Goa ek hi din kar lenge? 35k max total sabka, flights included. Return ka date abhi decide nahi. Veg food chahiye.",
+    "surface": "workbench",
+    "state": "completed",
+    "http": 200,
+    "party_size": 3,
+    "expected_party_size": 3,
+    "destinations": [
+      "Goa"
+    ],
+    "outbound": "2026-12-18",
+    "return_pending": true,
+    "question": null,
+    "id": null,
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_hotel_arrival",
+        "severity": "medium",
+        "category": "timing",
+        "message": "Your plan says you land at 02:25 on 19 December, after your proposed 18 December hotel check-in date. If you book the previous night so the room is ready on arrival, tell the hotel you'll arrive after midnight and confirm it will hold the room.",
+        "details": {
+          "title": "Confirm late hotel arrival",
+          "context": "Overnight flight and proposed hotel check-in",
+          "source_url": null,
+          "authority": "advisory"
+        },
+        "detected_at": "2026-11-25T05:16:02.587788+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "goa_day_pacing",
+        "severity": "medium",
+        "category": "activity",
+        "message": "Baga, Dudhsagar and Old Goa could make for a packed day. Dudhsagar includes a separate access leg from Collem. Confirm the falls entry arrangements and when you expect to return to Collem, then check whether the transfers and time at Baga and Old Goa still fit. Your plan does not give enough timing detail to confirm all three will fit.",
+        "details": {
+          "title": "Check whether all three stops fit",
+          "context": "Baga, Dudhsagar and Old Goa day plan",
+          "source_url": "https://www.goa.gov.in/places/dudhsagar-waterfalls/",
+          "authority": "advisory"
+        },
+        "detected_at": "2026-11-25T05:16:02.587790+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "one-affected",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "public",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Advance"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:04.380568+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "step_free_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:04.380578+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "one-affected",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "workbench",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Advance"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:06.122192+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "step_free_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:06.122207+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "numeric-subgroup",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. 2 guests need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "public",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Advance"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:08.223981+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "step_free_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:08.223993+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "numeric-subgroup",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. 2 guests need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "workbench",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Advance"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:09.951003+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "step_free_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:09.951011+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "explicit-group",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. Two of the six travelers need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "public",
+    "state": "blocked",
+    "http": 200,
+    "party_size": 6,
+    "expected_party_size": 6,
+    "destinations": [
+      "Six",
+      "Advance"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:10.433722+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "step_free_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:10.433725+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "explicit-group",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. Two of the six travelers need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "workbench",
+    "state": "blocked",
+    "http": 200,
+    "party_size": 6,
+    "expected_party_size": 6,
+    "destinations": [
+      "Six",
+      "Advance"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:10.519350+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "step_free_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:10.519353+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "solo",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. I am the only traveler. I need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "public",
+    "state": "blocked",
+    "http": 200,
+    "party_size": 1,
+    "expected_party_size": 1,
+    "destinations": [
+      "Advance"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:12.556345+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "step_free_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:12.556356+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "solo",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. I am the only traveler. I need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "workbench",
+    "state": "blocked",
+    "http": 200,
+    "party_size": 1,
+    "expected_party_size": 1,
+    "destinations": [
+      "Advance"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:14.223225+00:00",
+        "detected_by": "itinerary_feasibility"
+      },
+      {
+        "flag": "step_free_transfer",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        },
+        "detected_at": "2026-11-25T05:16:14.223245+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "delayed-eurostar-tgv",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "surface": "public",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris",
+      "Lyon"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "Can Eurostar staff give you proof of delay for the ticket office to check onward TGV availability?",
+    "id": "eurostar_tgv_connection",
+    "source": "https://www.eurostar.com/uk-en/travel-info/connecting-train",
+    "additional": [],
+    "matched": true
+  },
+  {
+    "case": "delayed-eurostar-tgv",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "surface": "workbench",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris",
+      "Lyon"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "Can Eurostar staff give you proof of delay for the ticket office to check onward TGV availability?",
+    "id": "eurostar_tgv_connection",
+    "source": "https://www.eurostar.com/uk-en/travel-info/connecting-train",
+    "additional": [],
+    "matched": true
+  },
+  {
+    "case": "delayed-eurostar-rer",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked RER B from Gare du Nord.",
+    "surface": "public",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris",
+      "Nord"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "Can station staff confirm which later service your RER ticket covers?",
+    "id": "eurostar_rer_connection",
+    "source": "https://www.eurostar.com/uk-en/travel-info/connecting-train",
+    "additional": [],
+    "matched": true
+  },
+  {
+    "case": "delayed-eurostar-rer",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked RER B from Gare du Nord.",
+    "surface": "workbench",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris",
+      "Nord"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "Can station staff confirm which later service your RER ticket covers?",
+    "id": "eurostar_rer_connection",
+    "source": "https://www.eurostar.com/uk-en/travel-info/connecting-train",
+    "additional": [],
+    "matched": true
+  },
+  {
+    "case": "delayed-eurostar-driver",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked driver pickup at Gare du Nord.",
+    "surface": "public",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris",
+      "Gare",
+      "Nord"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "Can the transfer operator move the pickup to your revised arrival time, and what would it cost?",
+    "id": "eurostar_driver_pickup",
+    "source": null,
+    "additional": [],
+    "matched": true
+  },
+  {
+    "case": "delayed-eurostar-driver",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked driver pickup at Gare du Nord.",
+    "surface": "workbench",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris",
+      "Gare",
+      "Nord"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "Can the transfer operator move the pickup to your revised arrival time, and what would it cost?",
+    "id": "eurostar_driver_pickup",
+    "source": null,
+    "additional": [],
+    "matched": true
+  },
+  {
+    "case": "delayed-eurostar-unknown",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked onward train, and I do not have the operator or station.",
+    "surface": "public",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "Which operator and departure station does the onward ticket show?",
+    "id": "eurostar_onward_details",
+    "source": null,
+    "additional": [],
+    "matched": true
+  },
+  {
+    "case": "delayed-eurostar-unknown",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked onward train, and I do not have the operator or station.",
+    "surface": "workbench",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "Which operator and departure station does the onward ticket show?",
+    "id": "eurostar_onward_details",
+    "source": null,
+    "additional": [],
+    "matched": true
+  },
+  {
+    "case": "hotel-and-tgv",
+    "note": "The hotel needs an advance today. What do I lose if I cancel? Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "surface": "public",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris",
+      "Lyon"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "eurostar_tgv_connection",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can Eurostar staff give you proof of delay for the ticket office to check onward TGV availability?",
+        "details": {
+          "title": "Eurostar disruption reported · Onward TGV INOUI",
+          "authority": "advisory",
+          "source_url": "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+        },
+        "detected_at": "2026-11-25T05:16:19.307274+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  },
+  {
+    "case": "hotel-and-tgv",
+    "note": "The hotel needs an advance today. What do I lose if I cancel? Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "surface": "workbench",
+    "state": "blocked",
+    "http": 200,
+    "party_size": null,
+    "expected_party_size": null,
+    "destinations": [
+      "Paris",
+      "Lyon"
+    ],
+    "outbound": null,
+    "return_pending": false,
+    "question": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "eurostar_tgv_connection",
+        "severity": "medium",
+        "category": "routing",
+        "message": "Can Eurostar staff give you proof of delay for the ticket office to check onward TGV availability?",
+        "details": {
+          "title": "Eurostar disruption reported · Onward TGV INOUI",
+          "authority": "advisory",
+          "source_url": "https://www.eurostar.com/uk-en/travel-info/connecting-train"
+        },
+        "detected_at": "2026-11-25T05:16:19.458046+00:00",
+        "detected_by": "itinerary_feasibility"
+      }
+    ],
+    "matched": true
+  }
+]

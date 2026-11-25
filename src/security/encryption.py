@@ -2,6 +2,8 @@
 Encryption utilities for Waypoint OS.
 """
 
+import hashlib
+import hmac
 import os
 from functools import lru_cache
 from cryptography.fernet import Fernet, InvalidToken
@@ -53,8 +55,6 @@ def _active_key_bytes() -> bytes:
 
 @lru_cache(maxsize=1)
 def _active_key_fingerprint() -> str:
-    import hashlib
-
     return hashlib.sha256(_active_key_bytes()).hexdigest()[:16]
 
 
@@ -65,6 +65,12 @@ def key_fingerprint() -> str:
     say *which* key it needs instead of crashing or returning garbage.
     """
     return _active_key_fingerprint()
+
+
+def blind_index(domain: str, value: str) -> str:
+    """Keyed equality lookup for encrypted values, scoped to the caller's domain."""
+    scope_key = hmac.digest(_active_key_bytes(), domain.encode(), "sha256")
+    return hmac.new(scope_key, value.encode(), hashlib.sha256).hexdigest()
 
 
 def looks_like_fernet_token(value: str) -> bool:

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ChannelMessagesPanel from '../ChannelMessagesPanel';
+import CommunicationsPage from '@/app/(agency)/communications/page';
+import { useAuthStore } from '@/stores/auth';
 import { useWorkbenchStore } from '@/stores/workbench';
 
 // T6 (FND-0305): the inbox channel-messages panel renders the real webhook-
@@ -51,6 +53,7 @@ describe('ChannelMessagesPanel (T6)', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    useAuthStore.setState({ user: null });
     useWorkbenchStore.setState({ pending_intake_prefill: null });
   });
 
@@ -146,5 +149,59 @@ describe('ChannelMessagesPanel (T6)', () => {
 
     await screen.findByTestId('channel-message-row');
     expect(screen.queryByTestId('channel-message-use-for-intake')).not.toBeInTheDocument();
+  });
+
+  it('keeps WhatsApp conversations out of the Lead Inbox feed while preserving SMS', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ messages: [{ ...MESSAGES[0], conversation_id: 'wa_local' }, MESSAGES[1]] }),
+    })));
+    render(<ChannelMessagesPanel defaultCollapsed scope='other' />);
+
+    expect(await screen.findByText(/SMS · inbound/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Mid December works for us/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open conversation' })).not.toBeInTheDocument();
+  });
+
+  it('opens an official conversation and exposes staff takeover in the WhatsApp workspace', async () => {
+    useAuthStore.setState({ user: { id: 'staff-1', email: 'advisor@example.test' } });
+    const conversationPath = '/api/v1/messaging/whatsapp/wa_local';
+    let owner: string | null = null;
+    let state = 'QUEUED';
+    let feedUnavailable = false;
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === `${conversationPath}/ownership`) {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(String(init?.body))).toEqual({ action: 'takeover' });
+        owner = 'staff-1';
+        state = 'SUPPRESSED';
+      }
+      if (feedUnavailable && !url.startsWith(conversationPath)) throw new Error('offline');
+      const body = url.startsWith(conversationPath)
+        ? { traveler: '15550100123', staff_id: owner, replies: [{ id: 'reply-1', body: 'Thanks for your enquiry.', state }] }
+        : { messages: [
+          { ...MESSAGES[0], conversation_id: 'wa_local', processing_state: 'processed' },
+          { ...MESSAGES[0], message_id: 'msg_follow_up', conversation_id: 'wa_local', body: 'Can we add a transfer?' },
+        ] };
+      return { ok: true, json: async () => body };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<CommunicationsPage />);
+
+    expect(screen.getByRole('heading', { name: 'Communications' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'WhatsApp' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /Open conversation with/ }));
+    expect(screen.getAllByRole('button', { name: /Open conversation with/ })).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/messages?limit=50&channel=whatsapp', expect.anything());
+    expect(await screen.findByRole('button', { name: 'Approve and send draft' })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Recent conversation messages' })).toHaveTextContent(MESSAGES[0].body);
+    fireEvent.click(screen.getByRole('button', { name: 'Take over replies' }));
+    expect(await screen.findByText('Suppressed by staff takeover')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve and send draft' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Staff reply' }), { target: { value: 'Checking the charter.' } });
+    feedUnavailable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    expect(await screen.findByText('Refresh failed. Showing the last loaded messages.')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Staff reply' })).toHaveValue('Checking the charter.');
   });
 });

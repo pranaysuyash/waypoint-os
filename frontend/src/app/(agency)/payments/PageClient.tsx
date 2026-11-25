@@ -1,5 +1,7 @@
 'use client';
 
+import { handleHorizontalScrollKey } from '@/lib/horizontal-scroll';
+
 import { Suspense, useCallback, useEffect, useId, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -14,6 +16,7 @@ import {
   Search,
 } from 'lucide-react';
 import { usePaymentsQueue } from '@/hooks/usePayments';
+import GroupCollectionPanel from './GroupCollectionPanel';
 import type {
   PaymentQueueItem,
   PaymentQueueParams,
@@ -305,6 +308,8 @@ function PaymentsQueueContent() {
 
   return (
     <div className='p-6 space-y-6'>
+      {/* Group collection (FND-0409): per-traveler shares, schedules, reminders */}
+      <GroupCollectionPanel />
       {/* Header */}
       <div className='flex flex-col md:flex-row md:items-center justify-between gap-4'>
         <div>
@@ -524,6 +529,11 @@ function PaymentsQueueContent() {
 
       {/* Queue Table */}
       <div className='rounded-xl border border-[#30363d] bg-[#161b22] overflow-hidden'>
+        {!error && !isLoading && items.length > 0 && (
+            <p id={`${baseId}-table-scroll`} className='border-b border-[#30363d] px-4 py-2 text-xs text-[#8b949e] xl:sr-only'>
+              Scroll the table to see balances and trip actions.
+            </p>
+        )}
         {error ? (
           <div className='p-8 text-center space-y-3'>
             <p className='text-sm text-[#ff7b72]'>Failed to load payment queue.</p>
@@ -555,7 +565,14 @@ function PaymentsQueueContent() {
             )}
           </div>
         ) : (
-          <div className='overflow-x-auto'>
+          <div
+            role='region'
+            aria-label='Payment queue table'
+            aria-describedby={`${baseId}-table-scroll`}
+            onKeyDown={handleHorizontalScrollKey}
+            tabIndex={0}
+            className='overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#58a6ff]'
+          >
             <table className='w-full text-left border-collapse text-sm'>
               <thead>
                 <tr className='border-b border-[#30363d] bg-[#0d1117] text-xs uppercase tracking-wider text-[#8b949e]'>

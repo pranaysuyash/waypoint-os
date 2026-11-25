@@ -83,7 +83,8 @@ vi.mock('./PipelineFlow', () => ({
   PipelineFlow: () => <div data-testid='pipeline-flow' />,
 }));
 
-vi.mock('@/components/ui/tabs', () => ({
+vi.mock('@/components/ui/tabs', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/components/ui/tabs')>(),
   Tabs: (props: {
     tabs: readonly { readonly id: string }[];
     activeTab: string;
@@ -117,8 +118,11 @@ vi.mock('@/hooks/useSpineRun', () => ({
 vi.mock('@/stores/workbench', () => ({
   // FND-0283: PageClient now subscribes via per-field selectors — the mock
   // must apply the selector to the mock state.
-  useWorkbenchStore: (sel?: (s: typeof mockWorkbenchStore) => unknown) =>
-    (sel ? sel(mockWorkbenchStore) : mockWorkbenchStore),
+  useWorkbenchStore: Object.assign(
+    (sel?: (s: typeof mockWorkbenchStore) => unknown) =>
+      (sel ? sel(mockWorkbenchStore) : mockWorkbenchStore),
+    { setState: vi.fn() },
+  ),
 }));
 
 vi.mock('@/stores/auth', () => ({

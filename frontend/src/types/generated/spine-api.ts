@@ -450,7 +450,7 @@ export interface InboundAttachment {
   data_b64: string;
 }
 export interface InboundInquiryRequest {
-  channel?: "whatsapp_web" | "email" | "voice_note" | "manual_paste" | "chrome_extension";
+  channel?: "whatsapp" | "whatsapp_web" | "email" | "voice_note" | "manual_paste" | "chrome_extension";
   /**
    * Unstructured inbound chat or email text
    */
@@ -495,8 +495,14 @@ export interface InboundInquiryResponse {
 }
 export interface SafetyResult {
   strict_leakage?: boolean;
-  leakage_passed?: boolean;
+  leakage_passed?: boolean | null;
   leakage_errors?: string[];
+  draft_check?: TravelerDraftCheck | null;
+}
+export interface TravelerDraftCheck {
+  version: 2;
+  status: "passed" | "failed";
+  digest_sha256: string;
 }
 /**
  * Canonical inbox payload — service-level projected and filtered.
@@ -1527,6 +1533,7 @@ export interface TripQuotesResponse {
  */
 export interface TripResponse {
   id: string;
+  run_id?: string | null;
   status: string;
   stage?: string | null;
   dateWindow?: string | null;
@@ -1551,6 +1558,9 @@ export interface TripResponse {
   } | null;
   frontier_result?: FrontierOrchestrationResult | null;
   safety?: {
+    [k: string]: unknown;
+  } | null;
+  traveler_bundle?: {
     [k: string]: unknown;
   } | null;
   party_composition?: string | null;

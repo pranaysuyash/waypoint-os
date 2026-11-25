@@ -1,0 +1,283 @@
+{
+  "captured_utc": "2026-11-25T06:01:22.742778+00:00",
+  "purpose": "Full backend regression selection used by the PostgreSQL CI job, plus independent controls. Local, synthetic, provider-blocked.",
+  "evidence": {
+    "runtime": "Tier 3 for local authenticated API and SQL assertions. Tier 2 for rule and model-mock tests.",
+    "sensitivity": "Booking fixture S2: the previous implementation produced 20 setup errors. The repaired fixture passes under the same block on shared port 5432. The payments boundary now uses positive and negative trip IDs for two real test JWTs. No physical-device or hosted release evidence."
+  },
+  "environment": {
+    "python": "3.13.3",
+    "postgres": "17.4; CI specifies 16",
+    "postgres_role": "Non-superuser, NOBYPASSRLS, owns only synthetic test databases. Same tests use a newly cloned and migrated ephemeral database per pytest session.",
+    "storage": "Isolated checkout snapshot, SQL and file test writes outside the working tree. macOS Seatbelt permitted writes only inside the temporary test root and permitted network connections only to its private PostgreSQL listener. Shared API 8000 and PostgreSQL 5432 were denied.",
+    "environment_keys": "Credentials stripped. Synthetic CI signing keys and agency ID. Hybrid decision engine enabled. Zero spending cap on broad tests; additional mock-only controls remove that cap while OS network restrictions remain. No provider or account mutations.",
+    "runner_selection": "The latest full sweep partitions the same CI-selected test names into two non-overlapping pytest invocations. The main shard deselects exactly three mock-only hybrid tests; the second runs those exact three with their own environment. Test names are retained in the raw receipts."
+  },
+  "selection": [
+    "python -m pytest -q tests/ --ignore=tests/test_vision_extraction.py --ignore=tests/test_extraction_fallback.py",
+    "ruff check --no-cache tests/{conftest,test_booking_data,test_payments_queue_api,test_holiday_registry,test_legacy_ops_router_behavior,test_audit_trail,test_bff_parity_gate}.py (passed)",
+    "git diff --check -- tests/ (passed)"
+  ],
+  "baseline_before_repairs": {
+    "summary": "16 failed, 5912 passed, 58 skipped, 3 xfailed, 14 warnings, 20 errors in 77.19s (0:01:17)",
+    "failures_and_errors": [
+      "FAILED tests/test_feature_gates.py::TestFrontierCheckerAgentGate::test_checker_agent_disabled_skips_audit",
+      "FAILED tests/test_holiday_registry.py::test_extraction_during_diwali_closes_loop",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_decide_with_llm_fallback",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_abstention_gate_escalates_with_destination",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_metrics_tracking",
+      "FAILED tests/test_legacy_ops_router_behavior.py::test_get_audit_events_supports_event_type_filter",
+      "FAILED tests/test_legacy_ops_router_behavior.py::test_get_audit_events_supports_trip_status_filter",
+      "FAILED tests/test_refresh_after_commit.py::test_raw_refresh_after_commit_fails_when_connection_rechecked_out",
+      "FAILED tests/test_refresh_after_commit.py::test_refresh_or_reselect_recovers_profile_after_commit_recheckout",
+      "FAILED tests/test_safety_false_positives.py::TestLeakageEdgeCases::test_exempt_first_occurrence_cannot_hide_later_nonexempt_occurrences",
+      "FAILED tests/test_safety_false_positives.py::TestLeakageEdgeCases::test_nearby_allowed_phrase_covers_only_its_own_word",
+      "FAILED tests/test_traveler_draft_check.py::test_phase8_check_roundtrips_with_its_exact_draft[When will you arrive?-passed]",
+      "FAILED tests/test_traveler_draft_check.py::test_phase8_check_roundtrips_with_its_exact_draft[The blocker is still open.-failed]",
+      "FAILED tests/test_traveler_draft_check.py::test_sanitized_view_failure_is_scoped_separately_from_draft",
+      "FAILED tests/test_traveler_draft_check.py::test_unbound_and_contradictory_historical_evidence_abstains",
+      "FAILED tests/test_traveler_draft_check.py::test_workbench_edit_then_reassessment_replaces_the_check_on_the_same_trip",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_get_existing_trip_returns_envelope",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_patch_creates_booking_data",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_patch_updates_existing_booking_data",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_patch_preserves_existing_payment_tracking",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_patch_discovery_stage_returns_403",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_patch_optimistic_lock_conflict",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_generic_patch_rejects_booking_data",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_patch_does_not_mutate_stage",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_patch_does_not_mutate_packet",
+      "ERROR tests/test_booking_data.py::TestBookingDataEndpoints::test_generic_get_excludes_booking_data",
+      "ERROR tests/test_booking_data.py::TestBookingDataAudit::test_audit_event_written_without_raw_pii",
+      "ERROR tests/test_booking_data.py::TestBookingDataAudit::test_payment_tracking_audit_uses_metadata_only",
+      "ERROR tests/test_booking_data.py::TestPaymentTrackingEndpoint::test_patch_payment_stores_and_computes_balance",
+      "ERROR tests/test_booking_data.py::TestPaymentTrackingEndpoint::test_patch_payment_recomputes_client_supplied_balance",
+      "ERROR tests/test_booking_data.py::TestPaymentTrackingEndpoint::test_patch_payment_rejects_negative_amounts",
+      "ERROR tests/test_booking_data.py::TestPaymentTrackingEndpoint::test_patch_payment_accepts_final_payment_due",
+      "ERROR tests/test_booking_data.py::TestPaymentTrackingEndpoint::test_patch_payment_rejects_invalid_final_payment_due",
+      "ERROR tests/test_booking_data.py::TestPaymentTrackingEndpoint::test_patch_payment_preserves_travelers",
+      "ERROR tests/test_booking_data.py::TestPaymentTrackingEndpoint::test_patch_payment_stage_gate",
+      "ERROR tests/test_booking_data.py::TestPaymentTrackingEndpoint::test_patch_payment_optimistic_lock_conflict"
+    ]
+  },
+  "after_booking_fixture_before_pool_headroom": {
+    "summary": "13 failed, 5936 passed, 58 skipped, 14 warnings, 2 errors in 71.98s (0:01:11)",
+    "failures_and_errors": [
+      "FAILED tests/test_bff_parity_gate.py::test_parity_gap_set_never_grows",
+      "FAILED tests/test_holiday_registry.py::test_extraction_during_diwali_closes_loop",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_decide_with_llm_fallback",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_abstention_gate_escalates_with_destination",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_metrics_tracking",
+      "FAILED tests/test_legacy_ops_router_behavior.py::test_get_audit_events_supports_event_type_filter",
+      "FAILED tests/test_legacy_ops_router_behavior.py::test_get_audit_events_supports_trip_status_filter",
+      "FAILED tests/test_server_openapi_path_parity.py::test_server_openapi_paths_parity_snapshot_matches_fixture",
+      "FAILED tests/test_server_route_parity.py::test_server_route_parity_snapshot_matches_fixture",
+      "FAILED tests/test_traveler_draft_check.py::test_phase8_check_roundtrips_with_its_exact_draft[When will you arrive?-passed]",
+      "FAILED tests/test_traveler_draft_check.py::test_sanitized_view_failure_is_scoped_separately_from_draft",
+      "FAILED tests/test_traveler_draft_check.py::test_unbound_and_contradictory_historical_evidence_abstains",
+      "FAILED tests/test_traveler_draft_check.py::test_workbench_edit_then_reassessment_replaces_the_check_on_the_same_trip",
+      "ERROR tests/test_refresh_after_commit.py::test_refresh_or_reselect_restores_row_for_confirmation_path",
+      "ERROR tests/test_refresh_after_commit.py::test_remember_endpoint_roundtrip"
+    ]
+  },
+  "after_two_tenant_fixture_before_visa_rule_update": {
+    "summary": "13 failed, 5939 passed, 57 skipped, 17 warnings in 75.55s (0:01:15)",
+    "failures_and_errors": [
+      "FAILED tests/test_bff_parity_gate.py::test_parity_gap_set_never_grows",
+      "FAILED tests/test_holiday_registry.py::test_extraction_during_diwali_closes_loop",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_decide_with_llm_fallback",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_abstention_gate_escalates_with_destination",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_metrics_tracking",
+      "FAILED tests/test_legacy_ops_router_behavior.py::test_get_audit_events_supports_event_type_filter",
+      "FAILED tests/test_legacy_ops_router_behavior.py::test_get_audit_events_supports_trip_status_filter",
+      "FAILED tests/test_server_openapi_path_parity.py::test_server_openapi_paths_parity_snapshot_matches_fixture",
+      "FAILED tests/test_server_route_parity.py::test_server_route_parity_snapshot_matches_fixture",
+      "FAILED tests/test_traveler_draft_check.py::test_phase8_check_roundtrips_with_its_exact_draft[When will you arrive?-passed]",
+      "FAILED tests/test_traveler_draft_check.py::test_sanitized_view_failure_is_scoped_separately_from_draft",
+      "FAILED tests/test_traveler_draft_check.py::test_unbound_and_contradictory_historical_evidence_abstains",
+      "FAILED tests/test_traveler_draft_check.py::test_workbench_edit_then_reassessment_replaces_the_check_on_the_same_trip"
+    ]
+  },
+  "warm_cache_after_visa_wording_only": {
+    "summary": "16 failed, 5942 passed, 57 skipped, 15 warnings in 77.81s (0:01:17)",
+    "failures_and_errors": [
+      "FAILED tests/test_bff_parity_gate.py::test_parity_gap_set_never_grows",
+      "FAILED tests/test_holiday_registry.py::test_extraction_during_diwali_closes_loop",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_decide_with_llm_fallback",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_abstention_gate_escalates_with_destination",
+      "FAILED tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_metrics_tracking",
+      "FAILED tests/test_legacy_ops_router_behavior.py::test_get_audit_events_supports_event_type_filter",
+      "FAILED tests/test_legacy_ops_router_behavior.py::test_get_audit_events_supports_trip_status_filter",
+      "FAILED tests/test_server_openapi_path_parity.py::test_server_openapi_paths_parity_snapshot_matches_fixture",
+      "FAILED tests/test_server_route_parity.py::test_server_route_parity_snapshot_matches_fixture",
+      "FAILED tests/test_traveler_draft_check.py::test_phase8_check_roundtrips_with_its_exact_draft[When will you arrive?-passed]",
+      "FAILED tests/test_traveler_draft_check.py::test_sanitized_view_failure_is_scoped_separately_from_draft",
+      "FAILED tests/test_traveler_draft_check.py::test_unbound_and_contradictory_historical_evidence_abstains",
+      "FAILED tests/test_traveler_draft_check.py::test_workbench_edit_then_reassessment_replaces_the_check_on_the_same_trip",
+      "FAILED tests/test_waypoint_whatsapp_supplier_workflow.py::test_signed_duplicate_claim_precedes_real_inquiry_and_inbox_projection",
+      "FAILED tests/test_waypoint_whatsapp_supplier_workflow.py::test_takeover_persists_suppression_release_and_staff_reply",
+      "FAILED tests/test_waypoint_whatsapp_supplier_workflow.py::test_timeout_is_not_retried_and_only_matching_inbox_receipt_can_reconcile"
+    ]
+  },
+  "cold_cache_after_visa_wording_only": {
+    "summary": "34 passed in 2.53s",
+    "failures_and_errors": []
+  },
+  "focused_controls": {
+    "modules": [
+      "tests/test_hybrid_engine.py",
+      "tests/test_refresh_after_commit.py",
+      "tests/test_booking_data.py",
+      "tests/test_payments_queue_api.py"
+    ],
+    "no_application_cap": {
+      "summary": "93 passed, 1 warning in 3.37s",
+      "failures_and_errors": []
+    }
+  },
+  "timing_note": "Concurrent work changed the collected test set and route count during this audit. Compare named failures and controls across phases. An earlier uncapped broad attempt was stopped after 13 tests in 256.56s because model SDK retry backoff ran against OS-denied sockets.",
+  "known_failure_diagnoses": {
+    "three_model_mock_tests": "The spending cap blocks even an injected mock before its synthetic response is returned. All three pass in the no-cap control with network still blocked.",
+    "two_db_refresh_errors": "The original 40-connection cap on the isolated PostgreSQL server was exhausted in the broad concurrent-connection test mix. Increasing to 130 in that disposable cluster made both tests pass in full; the independent control also passed.",
+    "historical_audit_filters": "Two older audit-filter tests stub TripStore.list_trips where the router uses list_trip_summaries. Earlier repository evidence: Docs/research/AGENTIC_EVAL_ROUTING_HEALTH_OPERATOR_CONTRACT_2026-07-01.md. Fixed in the two corresponding tests. Positive trip and negative foreign-trip assertions are covered.",
+    "holiday_clock": "A 2026-11-08 assertion ran against the date 2026-11-25; the extraction selected the next Diwali date 2027-10-29 from its registry. Fixed by controlling the reference date and independently asserting both same-year and following-year results.",
+    "messaging_routes": "Route/OpenAPI snapshots had 437/397 versus 442/402 after concurrently added messaging/supplier routes. The BFF gap detector compared the literal strings {id} and {conversation_id}. The route owner refreshed both snapshots. The BFF regression test now compares the precise backend template rather than a subset of text.",
+    "draft_warm_cache": "Hybrid visa reasoning from prior runs was persisted to data/decision_cache/visa_timeline_risk.json. Updated rule wording alone left four fixture failures on warm identical inputs. The old cache was preserved; the same tests passed cold. The final cache-key/rule implementation passes on that same seeded legacy cache, including applied/waived/absent-destination controls and queued reassessment.",
+    "messaging_inbound_fixtures": "Three newly written messaging tests failed the real dogfood plaintext privacy guard when their initial fixture forced file storage. The next fixture revision requests SQL/beta. See later verification. The revised inbound-to-inbox contract and the full local flow are green in the final sweep.",
+    "migration_glob": "On HFS+ the first matching audit migration was add_audit_chain_hash; selecting it did not test creation. Fixed stable revision lookup and verified the create-table operation."
+  },
+  "supersession": [
+    {
+      "old": "tests/test_booking_data.py::_resolve_agency_id / _CACHED_AGENCY_ID",
+      "original_intent": "Seed and clean the booking trip under the agency that authenticates API operations. One consumer, the created_trip_id fixture.",
+      "canonical": "tests/conftest.py::session_agency_id, /api/auth/me and TripStore.delete_trip_for_agency. The tests no longer query a specific host/database out of process."
+    },
+    {
+      "old": "tests/test_payments_queue_api.py::_resolve_agency_ids / agency_ids / override_payments_agency_dependency",
+      "original_intent": "Test paginated queue behavior under agency A and exclude its trip under another agency. The old subprocess silently returned no second customer and skipped the boundary on an isolated DB.",
+      "canonical": "The shared session agency plus boundary_principal_factory and boundary_token_factory seed a genuine second JWT/agency in the same database. Distinct trip IDs exercise both visibility directions. CI can run the tenant test even when the developer DB is unreachable."
+    },
+    {
+      "old": "tests/test_legacy_ops_router_behavior.py, two audit list_trips stubs",
+      "original_intent": "Verify event-type and status filters under an agency boundary. The older read method is still exercised by the assignments/triage tests that consume it.",
+      "canonical": "Only the two /audit stubs were moved to the actual list_trip_summaries projection. Mixed event types, statuses and a foreign trip are in the fixture. Positive counts and identity exclusions are asserted."
+    },
+    {
+      "old": "tests/test_holiday_registry.py unfrozen November 2026 Diwali assertion",
+      "original_intent": "Prove real input parsing plus calendar lookup yields a precise window in the right year.",
+      "canonical": "Pin the resolver reference date via its existing today argument: on 8 November 2026 expect the current occurrence; after all November festival observances, on 25 November expect 29 October 2027. Both use actual registry data and full ExtractionPipeline."
+    },
+    {
+      "old": "tests/test_audit_trail.py, first filesystem entry matching *audit*",
+      "original_intent": "Prove original Alembic upgrade creates audit_logs, including agency, action and JSONB content. Distinct audit chain and sequence migrations are still needed and remain intact.",
+      "canonical": "Resolve the revision by stable Alembic ID add_audit_logs, execute its actual upgrade against captured operations, then inspect the exact created table, column names and PostgreSQL JSONB type. Works under arbitrary filesystem enumeration."
+    },
+    {
+      "old": "tests/test_bff_parity_gate.py substring comparisons against public frontend aliases",
+      "original_intent": "Detect product-facing GETs with no BFF target while tolerating the documented backlog. Calling a mapped dynamic URL with a concrete ID must be recognized even if FastAPI uses a different parameter name.",
+      "canonical": "Compare whole normalized backend destination paths extracted from the existing registry. Only complete dynamic segments change to a common placeholder. A regression covers extra, missing and different literal segments, and preserves the GET-only contract. HTTP method availability remains in frontend/src/app/api/[...path]/route.ts."
+    },
+    {
+      "old": "Three obsolete exceptions in the 46-entry FND-0340 GET snapshot",
+      "original_intent": "Keep existing missing BFF routes from blocking unrelated changes; each mapped route should leave the exemption set.",
+      "canonical": "Verified concrete booking collection, fare-drop disposition and per-trip quotes URLs using resolveBackendPath, and found their exact backend targets. Removed only those three historical exceptions. The other 43 remain tracked."
+    }
+  ],
+  "preserved_cache_receipts": [
+    {
+      "phase": "pre-visa-rule-decision-cache",
+      "file_sha256": "7201b0b078eae6570e6699390bca7955b4750915a79ae9650311a7065c861799",
+      "entries": 11,
+      "obsolete_reasoning_records": 4,
+      "updated_reasoning_records": 0,
+      "representative_rule_output": "International trip - visa requirement unknown. Verify visa needs for destination.",
+      "file": "synthetic-legacy-visa-cache-2026-11-25.json"
+    },
+    {
+      "phase": "cold-visa-rule-decision-cache",
+      "file_sha256": "18a1bea610b8cbf8adb9b5a5df0e5b8dc2521334774d0614d30d117a44832e32",
+      "entries": 3,
+      "obsolete_reasoning_records": 0,
+      "updated_reasoning_records": 1,
+      "representative_rule_output": "Check the destination’s entry and visa requirements for each traveler’s passport before travel."
+    }
+  ],
+  "historical_test_repairs": {
+    "modules": [
+      "tests/test_holiday_registry.py",
+      "tests/test_legacy_ops_router_behavior.py"
+    ],
+    "result": "24 passed under isolated SQL/hybrid configuration. Previously three of these assertions failed in the full sweep. Each audit request returned zero visible events. The festival returned the next-year date versus the static assertion."
+  },
+  "warm_cache_after_key_revision": {
+    "summary": "4 failed, 5954 passed, 57 skipped, 3 deselected, 15 warnings in 77.02s (0:01:17)",
+    "failures_and_errors": [
+      "FAILED tests/test_bff_parity_gate.py::test_parity_gap_set_never_grows",
+      "FAILED tests/test_server_openapi_path_parity.py::test_server_openapi_paths_parity_snapshot_matches_fixture",
+      "FAILED tests/test_server_route_parity.py::test_server_route_parity_snapshot_matches_fixture",
+      "FAILED tests/test_traveler_draft_check.py::test_queued_edit_reopens_tracks_newest_revision_and_drops_failed_check"
+    ]
+  },
+  "injected_mock_shard": {
+    "summary": "3 passed in 0.41s",
+    "failures_and_errors": []
+  },
+  "storage_recovery": {
+    "impact": "A later retry on primary APFS exhausted allocatable storage. PostgreSQL reported ENOSPC while creating or extending its disposable test database, then reported an invalid test template. This attempt is excluded from the product failure counts.",
+    "recovery": "Moved only the task-owned test repository, cache and database to a new local RAM volume. Preserved the pre-fix cache and initialized a fresh disposable PostgreSQL database with the same restricted test role. Rechecked sandbox permissions for 55673 (permitted), 5432, 8000 and 443 (denied).",
+    "final": "Local suite completed on the RAM filesystem with no ENOSPC. The disposable PostgreSQL process was shut down after verification."
+  },
+  "before_migration_and_parity_repairs": {
+    "summary": "2 failed, 5962 passed, 57 skipped, 3 deselected, 14 warnings in 71.91s (0:01:11)",
+    "failures_and_errors": [
+      "FAILED tests/test_audit_trail.py::TestAlembicMigration::test_migration_creates_audit_logs_table",
+      "FAILED tests/test_bff_parity_gate.py::test_parity_gap_set_never_grows"
+    ]
+  },
+  "migration_and_parity_control": {
+    "summary": "27 passed in 1.68s",
+    "failures_and_errors": []
+  },
+  "bff_runtime_probe": {
+    "runtime": "Node 24.13.0 imported the actual frontend/src/lib/route-map.ts and called resolveBackendPath(paths.split(\"/\")).",
+    "paths": {
+      "v1/messaging/whatsapp/synthetic-test": "api/v1/messaging/whatsapp/synthetic-test",
+      "v1/messaging/whatsapp/synthetic-test/ownership": "api/v1/messaging/whatsapp/synthetic-test/ownership",
+      "v1/messaging/whatsapp/synthetic-test/extra": null,
+      "v1/messaging/whatsapp": null,
+      "v1/messaging/whatsapp-other/synthetic-test": null,
+      "public/booking-collection/agency-a/test-token": "api/public/booking-collection/agency-a/test-token",
+      "v1/price-lock/trip-1/fare-drop/disposition": "api/v1/price-lock/trip-1/fare-drop/disposition",
+      "v1/trips/trip-1/quotes": "api/v1/trips/trip-1/quotes"
+    }
+  },
+  "final_warm_verification": {
+    "main": {
+      "summary": "5965 passed, 57 skipped, 3 deselected, 18 warnings in 70.75s (0:01:10)",
+      "sha256_of_pytest_stdout_stderr": "b3a9d3f9765269d1fd48aa5e9caff22cc938f20bafa4ca2a4e95153bdf606711",
+      "failures_and_errors": []
+    },
+    "mock_only": {
+      "summary": "3 passed in 0.39s",
+      "sha256_of_pytest_stdout_stderr": "fc99c56adf2cb5702a4564ceead9e104cf6db01c3cd1a15756b5c9630e644ce6",
+      "failures_and_errors": []
+    },
+    "passed": 5968,
+    "skipped": 57,
+    "failed": 0,
+    "errors": 0,
+    "main_max_model_calls_per_hour": 0,
+    "duplicate_tests": 0,
+    "mock_only_ids": [
+      "tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_decide_with_llm_fallback",
+      "tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_abstention_gate_escalates_with_destination",
+      "tests/test_hybrid_engine.py::TestHybridDecisionEngine::test_metrics_tracking"
+    ],
+    "scope": "Both invocation lists cover the intended CI pytest selection. The three synthetic-only tests use the existing MockLLMClient under OS-denied egress. The main shard deliberately started with the archived original visa cache bytes before pytest. The local PostgreSQL version, synthetic environment and 57 skipped cases limit release claims."
+  },
+  "verification_limits": [
+    "Intended PostgreSQL CI selection. CI names two provider-dependent vision/extraction suites as exclusions. No hosted deployment, physical device, real supplier, provider delivery or customer data was exercised.",
+    "PostgreSQL 17.4 locally, 16 specified in CI. Final run uses an isolated migrated test database and an application owner role subject to RLS.",
+    "57 tests skipped by the suite in this local configuration; skipped tests are not counted as passes.",
+    "Main shard emitted 18 warnings, including pytest coroutine and process-fork warnings. The gate reports zero test failures."
+  ]
+}

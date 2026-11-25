@@ -267,6 +267,16 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["v1/logistics/assess-route", { backendPath: "api/v1/logistics/assess-route" }],
   ["v1/group/token/{token}", { backendPath: "api/v1/group/token/{token}" }],
   ["v1/group/token/{token}/pay-share", { backendPath: "api/v1/group/token/{token}/pay-share" }],
+  // FND-0409 group collection (agency-side): summary, schedule, payments, reminders
+  ["v1/group/{trip_id}", { backendPath: "api/v1/group/{trip_id}" }],
+  ["v1/group/{trip_id}/schedule", { backendPath: "api/v1/group/{trip_id}/schedule" }],
+  ["v1/group/{trip_id}/record-payment", { backendPath: "api/v1/group/{trip_id}/record-payment" }],
+  ["v1/group/{trip_id}/reminder-drafts", { backendPath: "api/v1/group/{trip_id}/reminder-drafts" }],
+  ["v1/group/{trip_id}/log-reminder", { backendPath: "api/v1/group/{trip_id}/log-reminder" }],
+  // FND-0410 booking-change ledger (agency-side): list, traveler-view, resolve
+  ["v1/trips/{trip_id}/booking-changes", { backendPath: "api/v1/trips/{trip_id}/booking-changes" }],
+  ["v1/trips/{trip_id}/booking-changes/traveler-view", { backendPath: "api/v1/trips/{trip_id}/booking-changes/traveler-view" }],
+  ["v1/trips/{trip_id}/booking-changes/{change_id}/resolve", { backendPath: "api/v1/trips/{trip_id}/booking-changes/{change_id}/resolve" }],
   ["public/journey-graph/{trip_id}", { backendPath: "api/public/journey-graph/{trip_id}" }],
   ["public/proposals/{token}", { backendPath: "api/public/proposals/{token}" }],
   ["public/proposals/{token}/calculate", { backendPath: "api/public/proposals/{token}/calculate" }],
@@ -293,6 +303,10 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   // B1 WhatsApp channel-status flip-check (commit 418f42ae landed the backend
   // route; this mapping closes the FND-0340 parity gap the gate caught).
   ["v1/messaging/channel-status", { backendPath: "api/v1/messaging/channel-status" }],
+  ["v1/messaging/whatsapp/{id}", { backendPath: "api/v1/messaging/whatsapp/{id}" }],
+  ["v1/messaging/whatsapp/{id}/ownership", { backendPath: "api/v1/messaging/whatsapp/{id}/ownership" }],
+  ["v1/messaging/whatsapp/{id}/replies", { backendPath: "api/v1/messaging/whatsapp/{id}/replies" }],
+  ["v1/messaging/whatsapp/{id}/replies/{reply_id}/dispatch", { backendPath: "api/v1/messaging/whatsapp/{id}/replies/{reply_id}/dispatch" }],
   // B2 vendor quote inbox (map §18): operator GET over ingested vendor quotes.
   ["v1/vendor-inbox", { backendPath: "api/v1/vendor-inbox" }],
   ["v1/work-items/{id}", { backendPath: "api/v1/work-items/{id}" }],
@@ -320,6 +334,7 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["v1/supplier/contracts", { backendPath: "api/v1/supplier/contracts" }],
   ["v1/supplier/contracts/upload", { backendPath: "api/v1/supplier/contracts/upload" }],
   ["v1/supplier/inventory/holds", { backendPath: "api/v1/supplier/inventory/holds" }],
+  ["v1/supplier/availability/evidence", { backendPath: "api/v1/supplier/availability/evidence" }],
   ["v1/supplier/inventory/soft-hold", { backendPath: "api/v1/supplier/inventory/soft-hold" }],
 ];
 

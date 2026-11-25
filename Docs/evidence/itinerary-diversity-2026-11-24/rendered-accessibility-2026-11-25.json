@@ -1,0 +1,362 @@
+[
+  {
+    "surface": "public",
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "count": 12,
+        "nodes": [
+          {
+            "selector": [
+              "a[href=\"/\"] > .itinerary-reveal > div:nth-child(2)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.24 (foreground color: #6e7681, background color: #0a0d10, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Travel plan checker"
+          },
+          {
+            "selector": [
+              "span"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.24 (foreground color: #6e7681, background color: #0a0d10, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Free \u00b7 No account required"
+          },
+          {
+            "selector": [
+              "div:nth-child(3) > div > div:nth-child(1) > div:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "text": "Trip Summary (Extracted)"
+          },
+          {
+            "selector": [
+              ".itinerary-stagger > div:nth-child(1) > div:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Signal"
+          },
+          {
+            "selector": [
+              ".itinerary-stagger > div:nth-child(2) > div:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Signal"
+          },
+          {
+            "selector": [
+              ".itinerary-stagger > div:nth-child(3) > div:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Destination candidates"
+          },
+          {
+            "selector": [
+              ".itinerary-stagger > div:nth-child(4) > div:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Travel window"
+          },
+          {
+            "selector": [
+              "div:nth-child(5) > div:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Travelers"
+          },
+          {
+            "selector": [
+              "div:nth-child(6) > div:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Budget"
+          },
+          {
+            "selector": [
+              "div:nth-child(7) > div:nth-child(1)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Destination status"
+          },
+          {
+            "selector": [
+              "div:nth-child(3) > div > div:nth-child(2) > div:nth-child(4)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #6e7681, background color: #091113, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Did your advisor revise after seeing this report?"
+          },
+          {
+            "selector": [
+              "div:nth-child(3) > div > div:nth-child(2) > div:nth-child(6)"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #6e7681, background color: #091113, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Reference: trip_a9a7a5f4ae1f"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "surface": "workbench",
+    "violations": [
+      {
+        "id": "aria-required-children",
+        "impact": "critical",
+        "count": 1,
+        "nodes": [
+          {
+            "selector": [
+              "div[role=\"tablist\"]"
+            ],
+            "summary": "Fix any of the following:\n  Element has children which are not allowed: [role=status]",
+            "text": "New InquiryTrip DetailsDecisionRisk ReviewKnowledgeSim ConsoleFrontier OSRisk Review tab selected"
+          }
+        ]
+      },
+      {
+        "id": "aria-valid-attr-value",
+        "impact": "critical",
+        "count": 1,
+        "nodes": [
+          {
+            "selector": [
+              "#wt-tab-safety"
+            ],
+            "summary": "Fix all of the following:\n  Invalid ARIA attribute value: aria-controls=\"wt-panel-safety\"",
+            "text": "Risk Review"
+          }
+        ]
+      },
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "count": 32,
+        "nodes": [
+          {
+            "selector": [
+              ".truncate.font-mono.text-xs"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Waypoint HQ"
+          },
+          {
+            "selector": [
+              ".min-w-max.md\\:min-w-0:nth-child(1) > .pb-1\\.5.uppercase.tracking-wider"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "COMMAND"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Overview\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Overview"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Lead Inbox\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Lead Inbox"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Quote Review\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Quote Review"
+          },
+          {
+            "selector": [
+              ".min-w-max.md\\:min-w-0:nth-child(2) > .pb-1\\.5.uppercase.tracking-wider"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "PLANNING"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Trips in Planning\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Trips in Planning"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Quotes\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Quotes"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Bookings\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Bookings"
+          },
+          {
+            "selector": [
+              ".min-w-max.md\\:min-w-0:nth-child(3) > .pb-1\\.5.uppercase.tracking-wider"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "OPERATIONS"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Documents\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Documents"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Payments\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Payments"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Suppliers\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Suppliers"
+          },
+          {
+            "selector": [
+              ".min-w-max.md\\:min-w-0:nth-child(4) > .pb-1\\.5.uppercase.tracking-wider"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "INTELLIGENCE"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Insights\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Insights"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Destination Intel\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Destination Intel"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Audit\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Audit"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Knowledge Base\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Knowledge Base"
+          },
+          {
+            "selector": [
+              ".min-w-max.md\\:min-w-0:nth-child(5) > .pb-1\\.5.uppercase.tracking-wider"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "ADMIN"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Settings\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Settings"
+          },
+          {
+            "selector": [
+              "a[aria-label=\"Seasonal Campaigns\"] > .md\\:inline.hidden"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Seasonal Campaigns"
+          },
+          {
+            "selector": [
+              ".gap-2.items-center > .font-mono.text-xs[aria-live=\"polite\"]"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.76 (foreground color: #6e7681, background color: #161b22, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Operations live"
+          },
+          {
+            "selector": [
+              "nav[aria-label=\"Breadcrumb navigation\"] > a[href$=\"overview\"]"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.28 (foreground color: #484f58, background color: #0d1117, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Waypoint OS"
+          },
+          {
+            "selector": [
+              ".font-mono.gap-1\\.5[role=\"status\"] > span"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0d1117, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "System ready"
+          },
+          {
+            "selector": [
+              ".leading-relaxed"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.31 (foreground color: #6e7681, background color: #080a0c, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "After processing: incomplete leads appear in Lead Inbox \u00b7 planning continues in Trips in Planning \u00b7 "
+          },
+          {
+            "selector": [
+              ".inline-flex"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.52 (foreground color: #6e7681, background color: #1c2128, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Draft"
+          },
+          {
+            "selector": [
+              "#wt-tab-intake > .gap-2.items-center"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0f1115, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "New Inquiry"
+          },
+          {
+            "selector": [
+              "#wt-tab-packet > .gap-2.items-center"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0f1115, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Trip Details"
+          },
+          {
+            "selector": [
+              "#wt-tab-decision > .gap-2.items-center"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0f1115, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Decision"
+          },
+          {
+            "selector": [
+              "#wt-tab-knowledge > .gap-2.items-center"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0f1115, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Knowledge"
+          },
+          {
+            "selector": [
+              "#wt-tab-council > .gap-2.items-center"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.11 (foreground color: #6e7681, background color: #0f1115, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Sim Console"
+          },
+          {
+            "selector": [
+              "#wt-tab-frontier > .gap-2.items-center"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.17 (foreground color: #6f7782, background color: #0f1115, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "text": "Frontier OS"
+          }
+        ]
+      }
+    ]
+  }
+]

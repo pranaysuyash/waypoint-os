@@ -1,5 +1,6 @@
 "use client";
 
+import { ItineraryFeasibilityFindings } from './ItineraryFeasibilityFindings';
 import { useCallback, useState, useEffect } from "react";
 import { acknowledgeSuitabilityFlags, transitionTripStage, triageMessage, type LiveMessageTriageResponse } from "@/lib/api-client";
 import { useWorkbenchStore } from "@/stores/workbench";
@@ -12,23 +13,16 @@ import { StageAdvanceButton } from "./StageAdvanceButton";
 import { STATE_COLORS } from "@/lib/tokens";
 import Link from "next/link";
 import { isDebugJsonAllowed } from "@/lib/privacy-controls";
-import { titleCase } from "@/lib/label-maps";
+import { DECISION_STATE_LABELS, titleCase } from "@/lib/label-maps";
 import { getTripRepairRoute } from "@/lib/routes";
 import { Zap, AlertTriangle, ShieldAlert } from "lucide-react";
 
 interface DecisionPanelProps {
   trip?: Trip | null;
   tripId?: string;
+  reviewPacket?: unknown;
+  preferTripAssessment?: boolean;
 }
-
-const STATE_LABELS: Record<string, string> = {
-  PROCEED_TRAVELER_SAFE: "Ready to Book",
-  PROCEED_INTERNAL_DRAFT: "Draft Quote",
-  BRANCH_OPTIONS: "Needs Options",
-  STOP_NEEDS_REVIEW: "Needs Attention",
-  STOP_REVIEW: "Needs Attention",
-  ASK_FOLLOWUP: "Waiting on Customer",
-};
 
 const BUCKET_DISPLAY: Record<string, string> = {
   flights: "Flights",
@@ -41,16 +35,16 @@ const BUCKET_DISPLAY: Record<string, string> = {
   buffer: "Buffer",
 };
 
-export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPanelProps) {
+export function DecisionPanel({ trip: propTrip, tripId: propTripId, reviewPacket, preferTripAssessment }: DecisionPanelProps) {
   const context = useTripContext({ optional: true });
 
   const trip = propTrip || context?.trip || null;
   const tripId = propTripId || trip?.id || context?.tripId || "";
 
-  const { result_decision, result_validation, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag, input_raw_note } = useWorkbenchStore();
+  const { result_packet, result_decision, result_validation, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag, input_raw_note } = useWorkbenchStore();
   const debugJsonAllowed = isDebugJsonAllowed();
-  const decision: DecisionOutput | null = result_decision || trip?.decision || null;
-  const validation = result_validation || trip?.validation || null;
+  const decision: DecisionOutput | null = preferTripAssessment ? trip?.decision ?? null : result_decision || trip?.decision || null;
+  const validation = preferTripAssessment ? trip?.validation ?? null : result_validation || trip?.validation || null;
 
   const [triageResult, setTriageResult] = useState<LiveMessageTriageResponse | null>(null);
 
@@ -143,6 +137,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
   return (
     <div className="space-y-5">
+      <ItineraryFeasibilityFindings packet={reviewPacket === undefined ? result_packet ?? trip?.packet : reviewPacket} />
 
       {/* Live Triage Advisory Banner (Expedition Lane A4) */}
       {triageResult && (
@@ -188,7 +183,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
               Quote Assessment
             </div>
             <div className="text-ui-lg font-semibold text-text-primary" style={{ fontFamily: "'Outfit', sans-serif" }}>
-              {STATE_LABELS[decision.decision_state] || "Review Required"}
+              {DECISION_STATE_LABELS[decision.decision_state] || "Review Required"}
             </div>
           </div>
           <div className="text-right shrink-0">

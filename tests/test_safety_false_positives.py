@@ -180,6 +180,22 @@ class TestRealLeakageDetection:
 class TestLeakageEdgeCases:
     """Edge cases for the context-aware matching logic."""
 
+    def test_exempt_first_occurrence_cannot_hide_later_nonexempt_occurrences(self):
+        text = "Visit the unknown beaches of Goa. " + "Enjoy the coast. " * 9 + "The final status is unknown. Status is unknown."
+        leaks = check_no_leakage(_make_bundle(text))
+        assert len(leaks) == 1
+        assert "'unknown' in user_message" in leaks[0] and "final status is unknown" in leaks[0]
+
+    def test_nearby_allowed_phrase_covers_only_its_own_word(self):
+        text = "The unknown beaches are open. Flight status is unknown. No blockers here. Hypothesis pending."
+        leaks = check_no_leakage(_make_bundle("", text))
+        assert len(leaks) == 2
+        assert any("'unknown' in system_context" in leak for leak in leaks)
+        assert any("'hypothesis' in system_context" in leak for leak in leaks)
+
+    def test_multiple_legitimate_occurrences_remain_exempt(self):
+        assert _no_leakage("Discover unknown islands and UNKNOWN BEACHES. There are no blockers on this route.")
+
     def test_unknown_at_sentence_start(self):
         # "Unknown" at the start of a sentence could be legitimate travel copy
         # Only blocked if internal marker nearby

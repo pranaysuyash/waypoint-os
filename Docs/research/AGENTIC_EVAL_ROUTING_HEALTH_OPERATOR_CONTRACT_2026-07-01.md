@@ -127,3 +127,9 @@ The endpoint returns:
 - Can / Should: automated evidence export for warning/critical trips into operator bundles.
   - Implemented: `GET /legacy_ops/audit/routing-health/export` for JSON and CSV exports with optional paging inclusion.
 - Done (2026-07-01): add scheduled paging/notification guard when repeated warning/critical `routing_health_alert` states persist for the same `trip_id` and context.
+
+## 2026-11-20 session reconciliation
+
+The July 1 rollout `019f1ca7-1ddd-7c01-a426-f1fb6fbd89ef` survives in the separate Codex profile. The pending deduplication, sustained-warning paging events, and audit export in that rollout are now represented in current code. External notification delivery has yet to be verified.
+
+A current focused run across the D6 snapshot, feedback aggregator, agentic eval endpoint and legacy operations router returned 107 passing and two failing tests. Keep verification of the audit filters open. `test_get_audit_events_supports_event_type_filter` and `test_get_audit_events_supports_trip_status_filter` stub `TripStore.list_trips`, while the route now prefers `TripStore.list_trip_summaries`. Both requests returned zero visible events. Reconcile the fixtures with the current lookup and rerun with both owned and unrelated trip events. The failures currently establish a test coverage gap; deployed route behavior remains unverified.

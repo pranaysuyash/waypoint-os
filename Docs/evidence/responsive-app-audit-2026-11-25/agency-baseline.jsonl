@@ -1,0 +1,20 @@
+{"route":"/overview","path":"/overview","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Operations Overview"]}
+{"route":"/inbox","path":"/inbox","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[{"width":320,"overflow":36,"clipped":[{"tag":"INPUT","label":"Search customer, destination, ref"},{"tag":"BUTTON","label":"Fulfillment"}]}],"headings":["Lead Inbox"]}
+{"route":"/communications","path":"/communications","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Communications"]}
+{"route":"/whatsapp","error":"Error: page.evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')"}
+{"route":"/reviews","path":"/reviews","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Quote Review"]}
+{"route":"/trips","path":"/trips","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Trips in Planning"]}
+{"route":"/quotes","path":"/quotes","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[{"width":768,"overflow":13,"clipped":[{"tag":"SELECT","label":"No trips with persisted quote models yet"}]}],"headings":["Quotes & Commercial Proposals"]}
+{"route":"/bookings","path":"/bookings","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Bookings"]}
+{"route":"/documents","path":"/documents","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Documents"]}
+{"route":"/payments","path":"/payments","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Payments"]}
+{"route":"/suppliers","path":"/suppliers","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Suppliers & DMC Directory"]}
+{"route":"/insights","path":"/insights","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[{"width":320,"overflow":11,"clipped":[{"tag":"BUTTON","label":"Export"}]}],"headings":["Insights & Analytics"]}
+{"route":"/destination-intelligence","path":"/destination-intelligence","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Destination Intelligence"]}
+{"route":"/audit","path":"/audit","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Trip Fit & Compliance Audit"]}
+{"route":"/knowledge-base","error":"Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"}
+{"route":"/knowledge","path":"/knowledge","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Knowledge Base & Agency Memory"]}
+{"route":"/settings","path":"/settings","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Agency Settings"]}
+{"route":"/seasons","path":"/seasons","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["Seasonal Campaigns"]}
+{"route":"/inquiries/new?draft=new&tab=intake","path":"/inquiries/new","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":["New Inquiry"]}
+{"route":"/trips/new/intake","path":"/trips/new/intake","status":200,"widths":[320,360,390,430,639,640,767,768,820,854,1024,1280,1366,1440,1920],"observations":[],"headings":[]}

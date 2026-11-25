@@ -110,13 +110,16 @@ def _extract_destination(packet: dict[str, Any], text: str) -> Optional[str]:
             return candidate.strip()
 
     facts = packet.get("facts")
-    for candidate in _flatten_strings(facts):
-        if candidate.strip():
-            return candidate.strip()
+    if isinstance(facts, dict):
+        for field in ("destination", "destination_candidates"):
+            fact = facts.get(field)
+            values = _flatten_strings(fact.get("value") if isinstance(fact, dict) else None)
+            if values:
+                return values[0].strip() if len(values) == 1 else None
 
     candidates = _flatten_strings(packet.get("destination_candidates"))
     if candidates:
-        return candidates[0].strip()
+        return candidates[0].strip() if len(candidates) == 1 else None
 
     text_match = re.search(r"\bto\s+([A-Z][A-Za-z0-9&.'-]+(?:\s+[A-Z][A-Za-z0-9&.'-]+){0,3})", text)
     if text_match:
@@ -161,6 +164,10 @@ def _month_window(month: int, year: int) -> tuple[str, str]:
 
 
 def _geocode_destination(destination: str) -> Optional[ClimateLocation]:
+    # Goa is a state. The place search returns settlements with the same name,
+    # so avoid attaching one settlement's conditions to the whole state.
+    if destination.casefold() == "goa":
+        return None
     try:
         response = requests.get(
             "https://geocoding-api.open-meteo.com/v1/search",
@@ -170,7 +177,7 @@ def _geocode_destination(destination: str) -> Optional[ClimateLocation]:
         response.raise_for_status()
         payload = response.json()
         result = (payload.get("results") or [None])[0]
-        if not result:
+        if not result or str(result.get("name", "")).casefold() != destination.casefold():
             return None
         return ClimateLocation(
             name=str(result.get("name") or destination),

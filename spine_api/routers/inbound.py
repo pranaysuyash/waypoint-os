@@ -195,6 +195,12 @@ def parse_inbound_inquiry(
     body: InboundInquiryRequest,
     agency_id: str = Depends(get_current_agency_id),
 ) -> InboundInquiryResponse:
+    return ingest_inquiry(body, agency_id)
+
+
+def ingest_inquiry(
+    body: InboundInquiryRequest, agency_id: str, *, journal_event_id: str | None = None
+) -> InboundInquiryResponse:
     """
     Parse unstructured multi-channel text (WhatsApp Web, Email, Chrome Extension) into a structured trip.
 
@@ -219,6 +225,8 @@ def parse_inbound_inquiry(
             hashlib.sha256(att.decoded_bytes).hexdigest() for att in body.attachments
         ],
     }
+    if journal_event_id:
+        idem_payload["journal_event_id"] = journal_event_id
     idem_key = IdempotencyRegistry.generate_key(
         f"agency:{agency_id}", "inbound_parse", idem_payload
     )
@@ -249,11 +257,11 @@ def parse_inbound_inquiry(
         )
 
     try:
-        source_name = f"channel_{body.channel}"
+        source_name = "chat_history" if journal_event_id else f"channel_{body.channel}"
         envelope = SourceEnvelope.from_freeform(
             text=body.raw_text,
             source=source_name,
-            actor="agent",
+            actor="traveler" if journal_event_id else "agent",
         )
 
         spine_result = run_spine_once(
@@ -263,7 +271,7 @@ def parse_inbound_inquiry(
 
         # FND-0334: attach to the traveler's existing lead when one matches —
         # the message follows the lead instead of minting a duplicate.
-        existing_lead_id = _resolve_existing_lead(agency_id, body)
+        existing_lead_id = None if journal_event_id else _resolve_existing_lead(agency_id, body)
         trip_id = existing_lead_id or f"trip_{uuid.uuid4().hex[:12]}"
         now_str = datetime.now(timezone.utc).isoformat()
 
@@ -272,16 +280,17 @@ def parse_inbound_inquiry(
         try:
             from spine_api.services.message_store import append_message
 
-            append_message(
-                agency_id=agency_id,
-                channel=str(body.channel),
-                direction="inbound",
-                from_party=body.customer_name or body.customer_contact or "traveler",
-                to_party="agency",
-                body=body.raw_text,
-                trip_id=trip_id,
-                received_at=now_str,
-            )
+            if not journal_event_id:
+                append_message(
+                    agency_id=agency_id,
+                    channel=str(body.channel),
+                    direction="inbound",
+                    from_party=body.customer_name or body.customer_contact or "traveler",
+                    to_party="agency",
+                    body=body.raw_text,
+                    trip_id=trip_id,
+                    received_at=now_str,
+                )
         except Exception as store_err:
             logger.warning("Inbound message store write skipped for %s: %s", trip_id, store_err)
 
@@ -327,21 +336,20 @@ def parse_inbound_inquiry(
             "contact_email": body.customer_contact if (body.customer_contact and "@" in body.customer_contact) else None,
             "contact_phone": body.customer_contact if (body.customer_contact and "@" not in body.customer_contact) else None,
             "customer_contact": body.customer_contact,
-            "status": "new" if missing_fields else "active",
+            "status": "new" if missing_fields or journal_event_id else "active",
             "decision_state": decision_state,
-            "packet": packet_dict,
             "missing_fields": missing_fields,
             "agent_notes": body.agent_notes,
             "created_at": now_str,
             "updated_at": now_str,
         }
+        if journal_event_id:
+            trip_record.update(source="whatsapp", extracted=packet_dict)
+        else:
+            trip_record["packet"] = packet_dict
 
         leakage_dict = getattr(spine_result, "leakage_result", {}) or {}
-        safety_res = SafetyResult(
-            strict_leakage=body.strict_leakage,
-            leakage_passed=leakage_dict.get("is_safe", True),
-            leakage_errors=leakage_dict.get("leaks", []),
-        )
+        safety_res = SafetyResult.model_validate({**leakage_dict, "strict_leakage": body.strict_leakage})
 
         response = InboundInquiryResponse(
             ok=True,
@@ -411,7 +419,9 @@ def parse_inbound_inquiry(
                     "stage": "inbound",
                     "status": "success",
                     "state_snapshot": decision_state,
-                    "actor": "chrome_extension" if body.channel == "chrome_extension" else "agency_agent",
+                    "actor": "whatsapp_cloud_api" if journal_event_id else (
+                        "chrome_extension" if body.channel == "chrome_extension" else "agency_agent"
+                    ),
                     "reason": f"Multi-channel ingestion via {body.channel}",
                 },
             )

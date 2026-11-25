@@ -24,3 +24,19 @@ Performs a clean frontend runtime reset:
 Run:
 - `npm run dev:reset`
 - `npm run dev` (after reset)
+
+### Authenticated responsive route scan
+
+Run `node frontend/tools/audit-responsive-routes.cjs` from the project root
+with the isolated demo running on port 3017 and Chrome installed. Pass route
+paths to limit the scan. It emits JSON Lines with viewport widths, top-level
+overflows and out-of-bounds controls. Set `RESPONSIVE_AUDIT_CAPTURE` to an
+evidence directory for flagged viewport captures, and
+`RESPONSIVE_AUDIT_CAPTURE_WIDTHS` to comma-separated widths to capture even
+when the scan reports no issue. The scan is triage. Manually verify flagged
+geometry and exercise representative loaded states and interactions.
+
+Set `RESPONSIVE_AUDIT_PUBLIC=1` to scan static public routes without creating a
+demo session. Set `RESPONSIVE_AUDIT_BASE` when using a different local preview.
+A non-success HTTP response is reported as an unavailable route and has no
+viewport observations.

@@ -254,7 +254,7 @@ def _party_size_value(source: Dict[str, Any]) -> int:
         val = _as_int(cand, 0)
         if val > 0:
             return val
-    return 1
+    return 0 if source.get("source") == "whatsapp" else 1
 
 
 def _budget_value(source: Dict[str, Any]) -> int:

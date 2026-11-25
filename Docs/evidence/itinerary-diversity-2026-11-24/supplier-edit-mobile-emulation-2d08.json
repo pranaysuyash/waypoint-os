@@ -1,0 +1,21 @@
+{
+  "case": "Removed the hotel from a mixed rail and access itinerary",
+  "trip": "trip_a2e423bf4260",
+  "run_after": "79bf6e67-f291-4e25-abb0-0036b84330c8",
+  "initial_count": 3,
+  "updated_count": 2,
+  "before": [
+    "What is the cancellation cutoff for the exact rate you\u2019re booking?",
+    "When can you change or cancel the morning transfer if the train remains waitlisted?",
+    "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+  ],
+  "after": [
+    "When can you change or cancel the morning transfer if the train remains waitlisted?",
+    "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+  ],
+  "hotel_question_removed": true,
+  "without_reload": true,
+  "saved_through_workbench": true,
+  "recording": "supplier-edit-mobile-emulation-2d08.mp4",
+  "screenshot": "supplier-edit-mobile-emulation-2d08.png"
+}

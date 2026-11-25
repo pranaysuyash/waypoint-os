@@ -1,0 +1,110 @@
+[
+  {
+    "surface": "public",
+    "device": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "title": "Your check needs more details",
+    "observed_questions": [
+      "Your plan says you land at 02:25 on 19 December, after your proposed 18 December hotel check-in date. If you book the previous night so the room is ready on arrival, tell the hotel you'll arrive after midnight and confirm it will hold the room.",
+      "Baga, Dudhsagar and Old Goa could make for a packed day. Dudhsagar includes a separate access leg from Collem. Confirm the falls entry arrangements and when you expect to return to Collem, then check whether the transfers and time at Baga and Old Goa still fit. Your plan does not give enough timing detail to confirm all three will fit."
+    ],
+    "screenshot": "goa-confirmed-desktop-public.png",
+    "recording": "goa-confirmed-desktop-public.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/public-checker/run",
+        "http": 200
+      }
+    ]
+  },
+  {
+    "surface": "workbench",
+    "device": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "title": "Goa",
+    "observed_questions": [
+      "Your plan says you land at 02:25 on 19 December, after your proposed 18 December hotel check-in date. If you book the previous night so the room is ready on arrival, tell the hotel you'll arrive after midnight and confirm it will hold the room.",
+      "Baga, Dudhsagar and Old Goa could make for a packed day. Dudhsagar includes a separate access leg from Collem. Confirm the falls entry arrangements and when you expect to return to Collem, then check whether the transfers and time at Baga and Old Goa still fit. Your plan does not give enough timing detail to confirm all three will fit."
+    ],
+    "screenshot": "goa-confirmed-desktop-workbench.png",
+    "recording": "goa-confirmed-desktop-workbench.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/spine/run",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/1fd15645-d04d-48e4-bd4a-0737ffe81afd",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/1fd15645-d04d-48e4-bd4a-0737ffe81afd",
+        "http": 200
+      }
+    ]
+  },
+  {
+    "surface": "public",
+    "device": "mobile-emulation",
+    "viewport": {
+      "width": 412,
+      "height": 839
+    },
+    "title": "Your check needs more details",
+    "observed_questions": [
+      "Your plan says you land at 02:25 on 19 December, after your proposed 18 December hotel check-in date. If you book the previous night so the room is ready on arrival, tell the hotel you'll arrive after midnight and confirm it will hold the room.",
+      "Baga, Dudhsagar and Old Goa could make for a packed day. Dudhsagar includes a separate access leg from Collem. Confirm the falls entry arrangements and when you expect to return to Collem, then check whether the transfers and time at Baga and Old Goa still fit. Your plan does not give enough timing detail to confirm all three will fit."
+    ],
+    "screenshot": "goa-confirmed-mobile-emulation-public.png",
+    "recording": "goa-confirmed-mobile-emulation-public.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/public-checker/run",
+        "http": 200
+      }
+    ]
+  },
+  {
+    "surface": "workbench",
+    "device": "mobile-emulation",
+    "viewport": {
+      "width": 412,
+      "height": 839
+    },
+    "title": "Goa",
+    "observed_questions": [
+      "Your plan says you land at 02:25 on 19 December, after your proposed 18 December hotel check-in date. If you book the previous night so the room is ready on arrival, tell the hotel you'll arrive after midnight and confirm it will hold the room.",
+      "Baga, Dudhsagar and Old Goa could make for a packed day. Dudhsagar includes a separate access leg from Collem. Confirm the falls entry arrangements and when you expect to return to Collem, then check whether the transfers and time at Baga and Old Goa still fit. Your plan does not give enough timing detail to confirm all three will fit."
+    ],
+    "screenshot": "goa-confirmed-mobile-emulation-workbench.png",
+    "recording": "goa-confirmed-mobile-emulation-workbench.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/spine/run",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/32f3eabe-6698-4911-994a-70cb8bcd1dce",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/32f3eabe-6698-4911-994a-70cb8bcd1dce",
+        "http": 200
+      }
+    ]
+  }
+]

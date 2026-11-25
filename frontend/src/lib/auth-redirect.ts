@@ -7,6 +7,8 @@ const ROUTE_LABELS: Record<string, string> = {
   "/reviews": "Quote Review",
   "/settings": "Settings",
   "/trips": "Trips in Planning",
+  "/whatsapp": "WhatsApp",
+  "/communications": "Communications",
   "/workbench": "New Inquiry",
 };
 

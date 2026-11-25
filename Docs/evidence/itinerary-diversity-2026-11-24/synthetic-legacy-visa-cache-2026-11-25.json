@@ -1,0 +1,207 @@
+{
+  "173d0135f731093d5aabd8670aed44c4": {
+    "cache_key": "173d0135f731093d5aabd8670aed44c4",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "medium",
+      "reasoning": "International trip - visa requirement unknown. Verify visa needs for destination.",
+      "visa_lead_time_days": 30,
+      "recommendations": [
+        "Check visa requirements for your destination",
+        "Start visa application at least 30 days before travel"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:07:33.141873",
+    "last_used_at": "2026-11-25T05:46:32.429216+00:00",
+    "use_count": 8,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "d654dd372f6115276f9bedb086d2e8cf": {
+    "cache_key": "d654dd372f6115276f9bedb086d2e8cf",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "medium",
+      "reasoning": "Visa required for international trip \u2014 destination unknown for lead time estimate",
+      "visa_lead_time_days": 30
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:07:36.950335",
+    "last_used_at": "2026-11-25T05:46:35.379022+00:00",
+    "use_count": 12,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "4c6f913e30fb11013a0a97b0f41472d2": {
+    "cache_key": "4c6f913e30fb11013a0a97b0f41472d2",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "medium",
+      "reasoning": "International trip - visa requirement unknown. Verify visa needs for destination.",
+      "visa_lead_time_days": 30,
+      "recommendations": [
+        "Check visa requirements for your destination",
+        "Start visa application at least 30 days before travel"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:07:37.455175",
+    "last_used_at": "2026-11-25T05:46:49.669575+00:00",
+    "use_count": 68,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "23a410c7926c19e9b38618b171ce9ac0": {
+    "cache_key": "23a410c7926c19e9b38618b171ce9ac0",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "Domestic travel - visa not required for Indian citizens",
+      "visa_lead_time_days": 0
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:07:42.915841",
+    "last_used_at": "2026-11-25T05:46:41.215378+00:00",
+    "use_count": 8,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "07d0977dc1ff4268c1f875c619d6afa8": {
+    "cache_key": "07d0977dc1ff4268c1f875c619d6afa8",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "Domestic travel - visa not required for Indian citizens",
+      "visa_lead_time_days": 0
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:07:52.539568",
+    "last_used_at": "2026-11-25T05:46:59.694340+00:00",
+    "use_count": 20,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "84c280ecadd263e2fe86befbe180bcfb": {
+    "cache_key": "84c280ecadd263e2fe86befbe180bcfb",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "Domestic travel - visa not required for Indian citizens",
+      "visa_lead_time_days": 0
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:07:52.543291",
+    "last_used_at": "2026-11-25T05:46:49.364485+00:00",
+    "use_count": 4,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "15e21db9a78fcac8337327d85d663972": {
+    "cache_key": "15e21db9a78fcac8337327d85d663972",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "medium",
+      "reasoning": "International trip - visa requirement unknown. Verify visa needs for destination.",
+      "visa_lead_time_days": 30,
+      "recommendations": [
+        "Check visa requirements for your destination",
+        "Start visa application at least 30 days before travel"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:07:52.545827",
+    "last_used_at": "2026-11-25T05:46:49.784214+00:00",
+    "use_count": 24,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "1ea7a533e21e20c25f16dd2387e5eb59": {
+    "cache_key": "1ea7a533e21e20c25f16dd2387e5eb59",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "Visa not_required \u2014 no timeline risk",
+      "visa_lead_time_days": 0
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:07:52.587275",
+    "last_used_at": "2026-11-25T05:46:49.440460+00:00",
+    "use_count": 4,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "2583de86628afff6c75cc7c00c9015d9": {
+    "cache_key": "2583de86628afff6c75cc7c00c9015d9",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "medium",
+      "reasoning": "International trip - visa requirement unknown. Verify visa needs for destination.",
+      "visa_lead_time_days": 30,
+      "recommendations": [
+        "Check visa requirements for your destination",
+        "Start visa application at least 30 days before travel"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:08:11.058249",
+    "last_used_at": "2026-11-25T05:47:08.180584+00:00",
+    "use_count": 62,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "ab635d63c440212652d409557683a417": {
+    "cache_key": "ab635d63c440212652d409557683a417",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "Trip to Japan \u2014 visa requires ~14 days processing. Low urgency trip with sufficient time for standard processing.",
+      "visa_lead_time_days": 14,
+      "visa_notes": "e-Visa available"
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:08:14.013285",
+    "last_used_at": "2026-11-25T05:47:11.039135+00:00",
+    "use_count": 15,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "a98168d1f524ad4950b6f95407d053ae": {
+    "cache_key": "a98168d1f524ad4950b6f95407d053ae",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "Trip to Portugal \u2014 visa requires ~30 days processing. Low urgency trip with sufficient time for standard processing.",
+      "visa_lead_time_days": 30,
+      "visa_notes": "International visa"
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-11-25T11:08:14.027059",
+    "last_used_at": "2026-11-25T05:47:11.051833+00:00",
+    "use_count": 10,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  }
+}

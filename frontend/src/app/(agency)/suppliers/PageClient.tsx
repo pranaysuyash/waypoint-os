@@ -1,5 +1,7 @@
 'use client';
 
+import { handleHorizontalScrollKey } from '@/lib/horizontal-scroll';
+
 import { Suspense, useCallback, useId, useMemo, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -19,6 +21,7 @@ import {
 } from 'lucide-react';
 import { SimulatedBadge } from '@/components/ui/SimulatedBadge';
 import { ScopedTripPickerBar } from '@/components/workspace/ScopedTripPickerBar';
+import SupplierEvidenceLookup from '@/components/workspace/SupplierEvidenceLookup';
 import { useSupplierLedger } from '@/hooks/useSuppliers';
 import { useTrip } from '@/hooks/useTrips';
 import type {
@@ -513,6 +516,8 @@ function SuppliersContent() {
         )}
       </div>
 
+      <SupplierEvidenceLookup />
+
       {/* Section 1: Operator-Recorded Contracts & 48h Soft-Holds */}
       <section
         data-testid='recorded-contracts-section'
@@ -585,8 +590,8 @@ function SuppliersContent() {
                 key={contract.contract_id}
                 className='rounded-lg border border-[#30363d] bg-[#0d1117] p-4 space-y-3'
               >
-                <div className='flex items-start justify-between gap-2'>
-                  <div>
+                <div className='flex flex-wrap items-start justify-between gap-2'>
+                  <div className='min-w-0 flex-1 basis-44 break-words'>
                     <div className='flex items-center gap-2 flex-wrap'>
                       <span className='text-sm font-semibold text-[#e6edf3]'>
                         {contract.supplier_name}
@@ -643,11 +648,18 @@ function SuppliersContent() {
         {/* Recorded 48h Holds Table */}
         {holds.length > 0 && (
           <div className='space-y-2 pt-2'>
-            <h3 className='text-xs font-semibold uppercase tracking-wider text-[#8b949e] flex items-center gap-1.5'>
+            <h3 id='supplier-holds-heading' className='text-xs font-semibold uppercase tracking-wider text-[#8b949e] flex items-center gap-1.5'>
               <CalendarClock className='size-3.5 text-[#58a6ff]' aria-hidden='true' />
               Active 48h Soft-Holds ({holds.length})
             </h3>
-            <div className='overflow-x-auto rounded-lg border border-[#30363d]'>
+            <p className='text-xs text-[#8b949e] sm:hidden'>Scroll sideways to see all hold details.</p>
+            <div
+              role='region'
+              aria-labelledby='supplier-holds-heading'
+              onKeyDown={handleHorizontalScrollKey}
+              tabIndex={0}
+              className='overflow-x-auto rounded-lg border border-[#30363d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#58a6ff]'
+            >
               <table className='w-full text-left border-collapse text-xs'>
                 <thead>
                   <tr className='bg-[#0d1117] border-b border-[#30363d] text-[#8b949e] uppercase tracking-wider'>
@@ -905,55 +917,64 @@ function SuppliersContent() {
                 {rateRows.map((row, idx) => (
                   <div
                     key={idx}
-                    className='grid grid-cols-12 gap-2 items-center bg-[#0d1117] p-2 rounded-md border border-[#30363d]'
+                    className='grid grid-cols-4 sm:grid-cols-12 gap-2 items-end bg-[#0d1117] p-2 rounded-md border border-[#30363d]'
                   >
-                    <input
-                      aria-label={`Room tier ${idx + 1}`}
-                      value={row.room_type}
-                      onChange={(e) =>
-                        setRateRows((prev) =>
-                          prev.map((item, i) => (i === idx ? { ...item, room_type: e.target.value } : item))
-                        )
-                      }
-                      placeholder='Room type'
-                      className='col-span-5 bg-[#161b22] border border-[#30363d] rounded px-2 py-1.5 text-xs text-[#e6edf3]'
-                    />
-                    <input
-                      aria-label={`Net rate ${idx + 1}`}
-                      type='number'
-                      min='1'
-                      value={row.net_rate_per_night}
-                      onChange={(e) =>
-                        setRateRows((prev) =>
-                          prev.map((item, i) =>
-                            i === idx ? { ...item, net_rate_per_night: Number(e.target.value) || 0 } : item
+                    <label className='col-span-3 sm:col-span-5 min-w-0 text-xs text-[#8b949e]'>
+                      <span className='mb-1 block'>Room type</span>
+                      <input
+                        aria-label={`Room tier ${idx + 1}`}
+                        value={row.room_type}
+                        onChange={(e) =>
+                          setRateRows((prev) =>
+                            prev.map((item, i) => (i === idx ? { ...item, room_type: e.target.value } : item))
                           )
-                        )
-                      }
-                      placeholder='Net / nt'
-                      className='col-span-3 bg-[#161b22] border border-[#30363d] rounded px-2 py-1.5 text-xs text-[#e6edf3]'
-                    />
-                    <input
-                      aria-label={`Rack rate ${idx + 1}`}
-                      type='number'
-                      min='1'
-                      value={row.rack_rate_per_night}
-                      onChange={(e) =>
-                        setRateRows((prev) =>
-                          prev.map((item, i) =>
-                            i === idx ? { ...item, rack_rate_per_night: Number(e.target.value) || 0 } : item
+                        }
+                        placeholder='Room type'
+                        className='w-full min-w-0 bg-[#161b22] border border-[#30363d] rounded px-2 py-1.5 text-xs text-[#e6edf3]'
+                      />
+                    </label>
+                    <label className='col-span-2 sm:col-span-3 min-w-0 text-xs text-[#8b949e]'>
+                      <span className='mb-1 block'>Net / night</span>
+                      <input
+                        aria-label={`Net rate ${idx + 1}`}
+                        type='number'
+                        min='1'
+                        value={row.net_rate_per_night}
+                        onChange={(e) =>
+                          setRateRows((prev) =>
+                            prev.map((item, i) =>
+                              i === idx ? { ...item, net_rate_per_night: Number(e.target.value) || 0 } : item
+                            )
                           )
-                        )
-                      }
-                      placeholder='Rack / nt'
-                      className='col-span-3 bg-[#161b22] border border-[#30363d] rounded px-2 py-1.5 text-xs text-[#e6edf3]'
-                    />
+                        }
+                        placeholder='Net / nt'
+                        className='w-full min-w-0 bg-[#161b22] border border-[#30363d] rounded px-2 py-1.5 text-xs text-[#e6edf3]'
+                      />
+                    </label>
+                    <label className='col-span-2 sm:col-span-3 min-w-0 text-xs text-[#8b949e]'>
+                      <span className='mb-1 block'>Rack / night</span>
+                      <input
+                        aria-label={`Rack rate ${idx + 1}`}
+                        type='number'
+                        min='1'
+                        value={row.rack_rate_per_night}
+                        onChange={(e) =>
+                          setRateRows((prev) =>
+                            prev.map((item, i) =>
+                              i === idx ? { ...item, rack_rate_per_night: Number(e.target.value) || 0 } : item
+                            )
+                          )
+                        }
+                        placeholder='Rack / nt'
+                        className='w-full min-w-0 bg-[#161b22] border border-[#30363d] rounded px-2 py-1.5 text-xs text-[#e6edf3]'
+                      />
+                    </label>
                     <button
                       type='button'
                       disabled={rateRows.length <= 1}
                       onClick={() => setRateRows((prev) => prev.filter((_, i) => i !== idx))}
                       aria-label={`Remove tier ${idx + 1}`}
-                      className='col-span-1 flex justify-center text-[#8b949e] hover:text-[#ff7b72] disabled:opacity-30'
+                      className='col-start-4 row-start-1 sm:col-start-auto sm:row-start-auto flex min-h-8 items-center justify-center text-[#8b949e] hover:text-[#ff7b72] disabled:opacity-30'
                     >
                       <Trash2 className='size-3.5' />
                     </button>
@@ -1007,7 +1028,7 @@ function SuppliersContent() {
           aria-labelledby={`${baseId}-hold-title`}
           className='fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4'
         >
-          <div className='w-full max-w-md rounded-xl border border-[#30363d] bg-[#161b22] p-5 space-y-4'>
+          <div className='w-full max-w-md max-h-full overflow-y-auto rounded-xl border border-[#30363d] bg-[#161b22] p-5 space-y-4'>
             <div className='flex items-center justify-between'>
               <h2 id={`${baseId}-hold-title`} className='text-base font-semibold text-[#e6edf3]'>
                 Reserve 48h Soft-Hold · {holdContract.supplier_name}
@@ -1057,7 +1078,7 @@ function SuppliersContent() {
                 />
               </div>
 
-              <div className='grid grid-cols-2 gap-3'>
+              <div className='grid grid-cols-1 min-[420px]:grid-cols-2 gap-3'>
                 <div>
                   <label htmlFor={`${baseId}-hold-in`} className='block text-xs text-[#8b949e] mb-1'>
                     Check-in
@@ -1090,7 +1111,7 @@ function SuppliersContent() {
 
               {holdError && <p className='text-xs text-[#ff7b72]'>{holdError}</p>}
 
-              <div className='flex items-center justify-end gap-2 pt-2'>
+              <div className='flex flex-wrap items-center justify-end gap-2 pt-2'>
                 <button
                   type='button'
                   onClick={() => setHoldContract(null)}

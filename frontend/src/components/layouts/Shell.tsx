@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useHotkey } from '@/hooks/useHotkey';
@@ -27,6 +27,7 @@ import {
   BookOpen,
   Globe,
   Send,
+  MessageSquare,
   CalendarDays,
   MoreHorizontal,
   type LucideProps,
@@ -56,6 +57,7 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   BookOpen,
   Globe,
   Send,
+  MessageSquare,
   Settings,
 };
 
@@ -149,25 +151,66 @@ function parseTripIdFromPathname(pathname: string): string | null {
 
 // A9: mobile bottom bar — Overview (the product home) is present, and the
 // long-tail modules live in a "More" sheet instead of being dropped.
+const CALL_CAPTURE_HREF = '/inquiries/new?draft=new&tab=intake&capture_mode=call&entry=new';
+const MOBILE_PRIMARY_ITEMS = [
+  { href: '/overview', label: 'Home', icon: Home },
+  { href: '/inbox', label: 'Inbox', icon: Inbox },
+  { href: '/trips', label: 'Trips', icon: Layers },
+  { href: '/inquiries/new?draft=new&tab=intake', label: 'New', icon: Send },
+];
+const MOBILE_PRIMARY_HREFS = new Set(MOBILE_PRIMARY_ITEMS.map(item => item.href));
 const MOBILE_MORE_ITEMS = [
-  { href: '/quotes', label: 'Quotes', icon: FileText },
-  { href: '/reviews', label: 'Quote Review', icon: ClipboardCheck },
-  { href: '/insights', label: 'Insights', icon: Activity },
-  { href: '/documents', label: 'Docs', icon: FileText },
-  { href: '/knowledge', label: 'Knowledge', icon: BookOpen },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: CALL_CAPTURE_HREF, label: 'Capture call', icon: 'Send' },
+  ...NAV_SECTIONS.flatMap(section => section.items)
+    .filter(item => item.enabled && !MOBILE_PRIMARY_HREFS.has(item.href)),
 ];
 
 function MobileMoreSheet({ pathname }: { pathname: string }) {
   const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const listId = useId();
+  const disclosure = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const desktop = window.matchMedia('(min-width: 768px)');
+    let focusWasInside = disclosure.current?.contains(document.activeElement) ?? false;
+    const trackFocus = (event: FocusEvent) => {
+      focusWasInside = event.target instanceof Node && Boolean(disclosure.current?.contains(event.target));
+    };
+    const closeOnDesktop = () => {
+      if (!desktop.matches) return;
+      setOpen(false);
+      if (focusWasInside) document.getElementById('main-content')?.focus({ preventScroll: true });
+    };
+    document.addEventListener('focusin', trackFocus);
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => {
+      document.removeEventListener('focusin', trackFocus);
+      desktop.removeEventListener('change', closeOnDesktop);
+    };
+  }, [open]);
+
   const anyActive = MOBILE_MORE_ITEMS.some(
     (item) => pathname === item.href || pathname.startsWith(item.href + '/'),
   );
   return (
-    <div className='relative flex flex-col items-center justify-center min-w-[56px] py-1'>
+    <div
+      ref={disclosure}
+      className='relative flex flex-col items-center justify-center min-w-[56px] py-1'
+      onKeyDown={(e) => {
+        if (open && e.key === 'Escape') {
+          e.preventDefault();
+          setOpen(false);
+          trigger.current?.focus();
+        }
+      }}
+    >
       <button
         type='button'
         onClick={() => setOpen((v) => !v)}
+        ref={trigger}
+        aria-controls={open ? listId : undefined}
         aria-expanded={open}
         aria-label='More modules'
         className={cn(
@@ -180,19 +223,20 @@ function MobileMoreSheet({ pathname }: { pathname: string }) {
       </button>
       {open && (
         <div
-          className='absolute bottom-14 right-0 z-50 w-48 rounded-xl border p-1.5 shadow-2xl'
+          className='absolute bottom-14 right-0 z-50 w-48 max-h-[calc(100dvh-4.5rem)] overflow-y-auto rounded-xl border p-1.5 shadow-2xl'
           style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
-          role='menu'
+          id={listId}
+          role='region'
           aria-label='More modules'
         >
           {MOBILE_MORE_ITEMS.map((item) => {
-            const Icon = item.icon;
+            const Icon = ICON_MAP[item.icon] ?? Activity;
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                role='menuitem'
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => setOpen(false)}
                 className={cn(
                   'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors',
@@ -251,7 +295,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar - distinct surface, visible edge */}
       <aside
-        className='flex w-full shrink-0 flex-col border-b md:w-[220px] md:border-b-0 md:border-r'
+        className='hidden w-[220px] shrink-0 flex-col border-r md:flex'
         style={{
           borderColor: 'var(--border-default)',
           background: 'var(--bg-surface)',
@@ -287,7 +331,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {/* New Inquiry CTA - action, not a place. Icon-only on collapsed sidebar. */}
         <div className='px-2 md:px-4 pt-3 pb-1'>
           <Link
-            href='/inquiries/new?draft=new&tab=intake&capture_mode=call&entry=new'
+            href={CALL_CAPTURE_HREF}
             aria-label='New Inquiry'
             className='flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border'
             style={{
@@ -427,14 +471,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
         {/* Command bar */}
         <header
-          className='flex items-center justify-between h-11 px-5 shrink-0'
+          className='flex min-h-11 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-1.5 sm:px-5'
           style={{
             borderBottom: '1px solid var(--border-default)',
             background: 'var(--bg-canvas)',
           }}
         >
-          <nav className='flex items-center gap-2 text-sm' aria-label='Breadcrumb navigation'>
-            <Link href='/overview' className='transition-colors' style={{ color: 'var(--text-placeholder)' }}>
+          <nav className='flex min-w-0 flex-wrap items-center gap-x-2 text-sm' aria-label='Breadcrumb navigation'>
+            <Link href='/overview' className='whitespace-nowrap transition-colors' style={{ color: 'var(--text-muted)' }}>
               Waypoint OS
             </Link>
             {pathname !== '/overview' && (
@@ -446,8 +490,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </>
             )}
           </nav>
-          <div className='flex items-center gap-3'>
-            <div className='flex items-center gap-1.5 text-xs font-mono' style={{ color: 'var(--text-muted)' }} role='status' aria-live='polite'>
+          <div className='ml-auto flex shrink-0 items-center gap-3'>
+            <div className='flex items-center gap-1.5 whitespace-nowrap font-mono text-xs' style={{ color: 'var(--text-muted)' }} role='status' aria-live='polite'>
               <Zap className='size-3' style={{ color: 'var(--accent-amber)' }} aria-hidden='true' />
               <span>System ready</span>
             </div>
@@ -472,19 +516,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
           }}
           aria-label='Mobile bottom navigation'
         >
-          {[
-            { href: '/overview', label: 'Home', icon: Home },
-            { href: '/inbox', label: 'Inbox', icon: Inbox },
-            { href: '/trips', label: 'Trips', icon: Layers },
-            { href: '/inquiries/new?draft=new&tab=intake', label: 'New', icon: Send },
-          ].map((item) => {
+          {MOBILE_PRIMARY_ITEMS.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || (item.href !== '/inquiries/new' && pathname.startsWith(item.href));
+            const hrefPath = item.href.split('?')[0];
+            const isActive = pathname === hrefPath || pathname.startsWith(hrefPath + '/');
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'flex flex-col items-center justify-center min-w-[56px] py-1 text-[11px] font-medium transition-colors',
                   isActive ? 'text-[var(--accent-blue)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'

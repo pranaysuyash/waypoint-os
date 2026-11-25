@@ -1,0 +1,9 @@
+{
+  "test": "tests/test_traveler_draft_check.py::test_phase8_check_roundtrips_with_its_exact_draft[When will you arrive?-passed]",
+  "mutation": "Return a constant source fingerprint for all saved inquiries",
+  "scope": "Process-local monkeypatch only",
+  "expected": "The saved trip must lose its passing wording check when raw_input changes",
+  "mutated_result": "failed",
+  "failure_field": "raw_input",
+  "pytest_status": 1
+}

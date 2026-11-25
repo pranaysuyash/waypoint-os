@@ -227,3 +227,225 @@ def test_invite_creation_stores_hash_only_never_raw_token(session_client):
 
         matching_raw = next(t for t in raw_tokens if hashlib.sha256(t.encode()).hexdigest() == inv["token_hash"])
         assert matching_raw
+
+
+# ---------------------------------------------------------------------------
+# FND-0409 — group payment collection: schedules, observed payments, reminders
+# ---------------------------------------------------------------------------
+
+
+def _mk_group_trip(session_client, agency_id="agency_group_test"):
+    inbound_res = session_client.post(
+        "/api/v1/inbound/parse",
+        json={
+            "channel": "email",
+            "raw_text": "Amalfi coast group trip for 3 guests, spring.",
+            "customer_name": "Chloe Bennett",
+        },
+        headers={"X-Agency-ID": agency_id},
+    ).json()
+    return inbound_res["trip_id"]
+
+
+def test_equal_split_preserves_total_no_lost_cents(session_client):
+    """FND-0409: the old total//count split silently dropped remainder cents
+    (10001/3 lost a cent). Shares must always sum to the deposit total."""
+    trip_id = _mk_group_trip(session_client)
+    res = session_client.post(
+        f"/api/v1/group/{trip_id}/invites",
+        json={
+            "trip_id": trip_id,
+            "total_deposit_cents": 10001,
+            "passengers": [{"name": "A"}, {"name": "B"}, {"name": "C"}],
+        },
+        headers={"X-Agency-ID": "agency_group_test"},
+    )
+    assert res.status_code == 200
+    shares = [p["deposit_share_cents"] for p in res.json()["passenger_invites"]]
+    assert sum(shares) == 10001
+    assert shares == [3334, 3334, 3333]  # remainder spread, never lost
+
+
+def test_custom_share_sum_mismatch_rejected(session_client):
+    """FND-0409: itemized custom shares that do not balance to the deposit
+    total are a money-truth fault — 422, never a silently unbalanced ledger."""
+    trip_id = _mk_group_trip(session_client)
+    res = session_client.post(
+        f"/api/v1/group/{trip_id}/invites",
+        json={
+            "trip_id": trip_id,
+            "total_deposit_cents": 100000,
+            "passengers": [
+                {"name": "Suite", "custom_share_cents": 60000, "share_note": "Master suite supplement"},
+                {"name": "Budget", "custom_share_cents": 20000},
+            ],
+        },
+        headers={"X-Agency-ID": "agency_group_test"},
+    )
+    assert res.status_code == 422
+
+
+def test_custom_itemized_shares_with_note_flow_to_portal(session_client):
+    """FND-0409 (Chloe JTBD): itemized shares + supplement note reach the
+    traveler portal without exposing email (Clara constraint)."""
+    trip_id = _mk_group_trip(session_client)
+    res = session_client.post(
+        f"/api/v1/group/{trip_id}/invites",
+        json={
+            "trip_id": trip_id,
+            "total_deposit_cents": 100000,
+            "passengers": [
+                {"name": "Suite Guest", "custom_share_cents": 60000, "share_note": "Master suite supplement"},
+                {"name": "Budget Guest", "custom_share_cents": 40000},
+            ],
+        },
+        headers={"X-Agency-ID": "agency_group_test"},
+    )
+    assert res.status_code == 200
+    raw_token = res.json()["passenger_invites"][0]["token"]
+    portal = session_client.get(f"/api/v1/group/token/{raw_token}").json()
+    assert portal["deposit_share_cents"] == 60000
+    assert portal["share_note"] == "Master suite supplement"
+    assert portal["outstanding_cents"] == 60000
+    assert "email" not in portal  # minimal traveler PII
+
+
+def test_schedule_set_and_derived_statuses(session_client):
+    """FND-0409: group schedule set post-invite derives overdue/due_soon/
+    upcoming per milestone — computed, never fabricated."""
+    from datetime import datetime, timedelta, timezone
+
+    trip_id = _mk_group_trip(session_client)
+    invite_res = session_client.post(
+        f"/api/v1/group/{trip_id}/invites",
+        json={"trip_id": trip_id, "total_deposit_cents": 90000, "passengers": [{"name": "A"}, {"name": "B"}, {"name": "C"}]},
+        headers={"X-Agency-ID": "agency_group_test"},
+    )
+    p1 = invite_res.json()["passenger_invites"][0]
+    now = datetime.now(timezone.utc)
+    sched_res = session_client.post(
+        f"/api/v1/group/{trip_id}/schedule",
+        json={
+            "milestones": [
+                {"label": "Deposit", "due_at": (now - timedelta(days=2)).isoformat()},
+                {"label": "Final", "due_at": (now + timedelta(days=3)).isoformat()},
+                {"label": "Extras", "due_at": (now + timedelta(days=40)).isoformat()},
+            ]
+        },
+        headers={"X-Agency-ID": "agency_group_test"},
+    )
+    assert sched_res.status_code == 200
+
+    summary = session_client.get(
+        f"/api/v1/group/{trip_id}", headers={"X-Agency-ID": "agency_group_test"}
+    ).json()
+    view = next(p for p in summary["passengers"] if p["passenger_id"] == p1["passenger_id"])
+    statuses = [m["status"] for m in view["schedule"]]
+    assert statuses == ["overdue", "due_soon", "upcoming"]
+    assert view["settlement"] == "unpaid"
+    assert view["outstanding_cents"] == 30000
+
+
+def test_record_payment_partial_then_settled(session_client):
+    """FND-0409: observed payments track partial then full settlement;
+    outstanding math is exact and money truth flows to the portal payload."""
+    trip_id = _mk_group_trip(session_client)
+    invite_res = session_client.post(
+        f"/api/v1/group/{trip_id}/invites",
+        json={"trip_id": trip_id, "total_deposit_cents": 50000, "passengers": [{"name": "A"}, {"name": "B"}]},
+        headers={"X-Agency-ID": "agency_group_test"},
+    )
+    p1 = invite_res.json()["passenger_invites"][0]
+    headers = {"X-Agency-ID": "agency_group_test"}
+
+    rec1 = session_client.post(
+        f"/api/v1/group/{trip_id}/record-payment",
+        json={"passenger_id": p1["passenger_id"], "amount_cents": 10000, "method": "UPI", "reference": "UPI-1"},
+        headers=headers,
+    )
+    assert rec1.status_code == 200
+    assert rec1.json()["paid_cents"] == 10000
+    assert rec1.json()["outstanding_cents"] == 15000  # 25000 share − 10000
+
+    rec2 = session_client.post(
+        f"/api/v1/group/{trip_id}/record-payment",
+        json={"passenger_id": p1["passenger_id"], "amount_cents": 15000, "method": "BANK_TRANSFER"},
+        headers=headers,
+    )
+    assert rec2.json()["paid_cents"] == 25000
+    assert rec2.json()["outstanding_cents"] == 0
+
+    summary = session_client.get(f"/api/v1/group/{trip_id}", headers=headers).json()
+    view = next(p for p in summary["passengers"] if p["passenger_id"] == p1["passenger_id"])
+    assert view["settlement"] == "paid"
+    assert len(view["recorded_payments"]) == 2
+
+    portal = session_client.get(f"/api/v1/group/token/{p1['token']}").json()
+    assert portal["paid_cents"] == 25000
+    assert portal["outstanding_cents"] == 0
+    assert portal["settlement"] == "paid"
+
+
+def test_reminder_drafts_overdue_only_and_log_send(session_client):
+    """FND-0409: drafts derive only for outstanding shares with a real trigger;
+    dispatch_channel is honestly operator_manual (DP-04b gate); logged sends
+    append to the passenger's reminder history; settled passengers get none."""
+    from datetime import datetime, timedelta, timezone
+
+    trip_id = _mk_group_trip(session_client)
+    invite_res = session_client.post(
+        f"/api/v1/group/{trip_id}/invites",
+        json={
+            "trip_id": trip_id,
+            "total_deposit_cents": 50000,
+            "payment_instructions": "Wire to AC# 12345",
+            "passengers": [{"name": "A"}, {"name": "B"}],
+        },
+        headers={"X-Agency-ID": "agency_group_test"},
+    )
+    p1, p2 = invite_res.json()["passenger_invites"]
+    headers = {"X-Agency-ID": "agency_group_test"}
+    now = datetime.now(timezone.utc)
+
+    # No schedule yet → no fabricated urgency
+    empty = session_client.get(f"/api/v1/group/{trip_id}/reminder-drafts", headers=headers).json()
+    assert empty["drafts"] == []
+
+    session_client.post(
+        f"/api/v1/group/{trip_id}/schedule",
+        json={"milestones": [{"label": "Deposit", "due_at": (now - timedelta(days=1)).isoformat()}]},
+        headers=headers,
+    )
+
+    drafts = session_client.get(f"/api/v1/group/{trip_id}/reminder-drafts", headers=headers).json()["drafts"]
+    assert len(drafts) == 2
+    d1 = next(d for d in drafts if d["passenger_id"] == p1["passenger_id"])
+    assert d1["trigger"] == "overdue"
+    assert d1["dispatch_channel"] == "operator_manual"
+    assert "Wire to AC# 12345" in d1["draft_text"]
+
+    # Settle p1 — drafts must exclude settled passengers
+    session_client.post(
+        f"/api/v1/group/{trip_id}/record-payment",
+        json={"passenger_id": p1["passenger_id"], "amount_cents": 25000, "method": "CASH"},
+        headers=headers,
+    )
+    session_client.post(
+        f"/api/v1/group/{trip_id}/manual-override",
+        json={"trip_id": trip_id, "passenger_id": p1["passenger_id"], "status": "CONFIRMED"},
+        headers=headers,
+    )
+    drafts_after = session_client.get(f"/api/v1/group/{trip_id}/reminder-drafts", headers=headers).json()["drafts"]
+    assert [d["passenger_id"] for d in drafts_after] == [p2["passenger_id"]]
+
+    # Operator logs a real send over their own channel
+    logged = session_client.post(
+        f"/api/v1/group/{trip_id}/log-reminder",
+        json={"passenger_id": p2["passenger_id"], "channel": "whatsapp_manual", "note": "Sent via WA Web"},
+        headers=headers,
+    )
+    assert logged.status_code == 200
+    summary = session_client.get(f"/api/v1/group/{trip_id}", headers=headers).json()
+    p2_view = next(p for p in summary["passengers"] if p["passenger_id"] == p2["passenger_id"])
+    assert len(p2_view["reminders"]) == 1
+    assert p2_view["reminders"][0]["channel"] == "whatsapp_manual"

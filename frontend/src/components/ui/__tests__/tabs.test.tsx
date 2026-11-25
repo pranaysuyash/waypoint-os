@@ -21,6 +21,7 @@ describe('Tabs Component', () => {
     render(<Tabs tabs={mockTabs} activeTab='intake' onTabChange={vi.fn()} />);
 
     expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getByRole('tablist')).not.toContainElement(screen.getByRole('status'));
     const tabs = screen.getAllByRole('tab');
     expect(tabs).toHaveLength(3);
   });

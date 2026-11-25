@@ -1,0 +1,21 @@
+{
+  "input": "Hotel Alpha requires a deposit and says cancellation is free. Hotel Beta requires a deposit and says cancellation is free. The overnight train is waitlisted. Our morning transfer is booked separately. Correction from the traveler or operator: Hotel Alpha confirms its deposit is nonrefundable.",
+  "http": 200,
+  "primary": {
+    "itinerary_feasibility_id": "hotel_terms_61ae8fcb32968be3",
+    "itinerary_feasibility_context": "Hotel Alpha \u00b7 Nonrefundable deposit reported",
+    "itinerary_feasibility_question": "What amount becomes nonrefundable, in which currency, and when?"
+  },
+  "additional": [
+    {
+      "title": "Hotel Beta \u00b7 Cancellation terms unconfirmed",
+      "question": "What is the cancellation cutoff for the exact rate you\u2019re booking?",
+      "id": "hotel_terms_99f2984bcdcb1b09"
+    },
+    {
+      "title": "Overnight train \u00b7 Waitlist reported \u00b7 Separate morning transfer",
+      "question": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "id": "overnight_rail_transfer"
+    }
+  ]
+}

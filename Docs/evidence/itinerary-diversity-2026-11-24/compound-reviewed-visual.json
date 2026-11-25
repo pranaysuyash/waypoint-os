@@ -1,0 +1,144 @@
+[
+  {
+    "surface": "public",
+    "device": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "title": "Your check needs more details",
+    "observed_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "compound-reviewed-desktop-public.png",
+    "recording": "compound-reviewed-desktop-public.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/public-checker/run",
+        "http": 200
+      }
+    ]
+  },
+  {
+    "surface": "workbench",
+    "device": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "title": "The overnight train is waitlisted. Our morning transfer i...",
+    "observed_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "compound-reviewed-desktop-workbench.png",
+    "recording": "compound-reviewed-desktop-workbench.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/spine/run",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/cd10d487-407f-4819-8713-a3c204ab284d",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/cd10d487-407f-4819-8713-a3c204ab284d",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/cd10d487-407f-4819-8713-a3c204ab284d",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/cd10d487-407f-4819-8713-a3c204ab284d",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/cd10d487-407f-4819-8713-a3c204ab284d",
+        "http": 200
+      }
+    ]
+  },
+  {
+    "surface": "public",
+    "device": "mobile-emulation",
+    "viewport": {
+      "width": 412,
+      "height": 839
+    },
+    "title": "Your check needs more details",
+    "observed_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "compound-reviewed-mobile-emulation-public.png",
+    "recording": "compound-reviewed-mobile-emulation-public.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/public-checker/run",
+        "http": 200
+      }
+    ]
+  },
+  {
+    "surface": "workbench",
+    "device": "mobile-emulation",
+    "viewport": {
+      "width": 412,
+      "height": 839
+    },
+    "title": "The overnight train is waitlisted. Our morning transfer i...",
+    "observed_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "compound-reviewed-mobile-emulation-workbench.png",
+    "recording": "compound-reviewed-mobile-emulation-workbench.mp4",
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/spine/run",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/f5dccbd8-168d-44c0-9e7d-13a6b13c30f5",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/f5dccbd8-168d-44c0-9e7d-13a6b13c30f5",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/f5dccbd8-168d-44c0-9e7d-13a6b13c30f5",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/f5dccbd8-168d-44c0-9e7d-13a6b13c30f5",
+        "http": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/runs/f5dccbd8-168d-44c0-9e7d-13a6b13c30f5",
+        "http": 200
+      }
+    ]
+  }
+]

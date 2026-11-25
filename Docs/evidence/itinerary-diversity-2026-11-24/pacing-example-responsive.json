@@ -1,0 +1,34 @@
+[
+  {
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "browser": "Chrome desktop, resized viewport",
+    "threshold": "High-load threshold (85%)",
+    "keyboard_day": "Day 2: Tokyo Tsukiji & Ginza",
+    "threshold_visible": true,
+    "day_marker_pixel_scale": [
+      1,
+      1
+    ],
+    "horizontal_overflow": false,
+    "screenshot": "pacing-example-responsive-1440.png"
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "browser": "Chrome desktop, resized viewport",
+    "threshold": "High-load threshold (85%)",
+    "keyboard_day": "Day 2: Tokyo Tsukiji & Ginza",
+    "threshold_visible": true,
+    "day_marker_pixel_scale": [
+      1,
+      1
+    ],
+    "horizontal_overflow": false,
+    "screenshot": "pacing-example-responsive-390.png"
+  }
+]

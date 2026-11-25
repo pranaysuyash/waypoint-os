@@ -33,7 +33,7 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 [overflow-wrap:anywhere]">
       <section>
         <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Session Goal</h3>
         <div className="bg-sidebar rounded-lg border border-highlight p-4 text-ui-sm text-text-secondary">

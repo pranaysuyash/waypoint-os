@@ -1,0 +1,20 @@
+{
+  "input": "We propose Baga, Dudhsagar and Old Goa on 19 December. Maybe we will do Old Goa on 20 December instead.",
+  "public_browser_sent_duplicate_text": true,
+  "observations": [
+    {
+      "surface": "public",
+      "questions": [
+        "What Dudhsagar entry slot do you have, and when will you be back in Collem?"
+      ],
+      "screenshot": "f01-tentative-public.png"
+    },
+    {
+      "surface": "workbench",
+      "questions": [
+        "What Dudhsagar entry slot do you have, and when will you be back in Collem?"
+      ],
+      "screenshot": "f01-tentative-workbench.png"
+    }
+  ]
+}

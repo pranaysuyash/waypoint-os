@@ -3366,7 +3366,11 @@ def _build_processed_trip(
         logger.warning(f"Analytics calculation failed: {e}")
         trip["analytics"] = None
 
-    return _make_json_serializable(trip)
+    from spine_api.services.trip_draft_check import trip_safety
+
+    serialized = _make_json_serializable(trip)
+    serialized["safety"] = trip_safety(serialized, bind_source=True) or {}
+    return serialized
 
 
 class AssignmentStore:

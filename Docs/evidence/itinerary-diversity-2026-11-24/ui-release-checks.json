@@ -1,0 +1,163 @@
+{
+  "frontend_tests": {
+    "command": [
+      "npm",
+      "test",
+      "--",
+      "--run",
+      "--maxWorkers=2"
+    ],
+    "passed": 1557,
+    "files_passed": 213
+  },
+  "types": {
+    "command": "tsc -p tsconfig.json --noEmit --incremental false",
+    "exit_code": 0
+  },
+  "accessibility": {
+    "tool": "axe-core 4.11.4",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21aa"
+    ],
+    "motion": "reduced",
+    "before": {
+      "public": {
+        "color-contrast": 12
+      },
+      "workbench": {
+        "aria-required-children": 1,
+        "aria-valid-attr-value": 1,
+        "color-contrast": 32
+      }
+    },
+    "after": {
+      "desktop": "rendered-accessibility-accepted-2026-11-25.json",
+      "mobile_emulation": "rendered-accessibility-mobile-2026-11-25.json"
+    },
+    "scope": "Rendered Goa public result and Singapore authenticated Risk Review in Chrome. Pixel 7 emulation for mobile."
+  },
+  "recordings_verified": [
+    {
+      "file": "goa-report-first-desktop-public.mp4",
+      "duration_seconds": 6.25,
+      "codec_name": "h264",
+      "width": 1440,
+      "height": 960,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "goa-report-first-mobile-emulation-public.mp4",
+      "duration_seconds": 6.5,
+      "codec_name": "h264",
+      "width": 412,
+      "height": 840,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "goa-confirmed-desktop-workbench.mp4",
+      "duration_seconds": 9.25,
+      "codec_name": "h264",
+      "width": 1440,
+      "height": 960,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "goa-confirmed-mobile-emulation-workbench.mp4",
+      "duration_seconds": 9.25,
+      "codec_name": "h264",
+      "width": 412,
+      "height": 840,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "language-saved-auto-desktop-9230.mp4",
+      "duration_seconds": 12.5,
+      "codec_name": "h264",
+      "width": 1440,
+      "height": 960,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "language-saved-auto-mobile-emulation-143b.mp4",
+      "duration_seconds": 12.5,
+      "codec_name": "h264",
+      "width": 412,
+      "height": 840,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "language-manual-desktop-86fc.mp4",
+      "duration_seconds": 10.75,
+      "codec_name": "h264",
+      "width": 1440,
+      "height": 960,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "language-immediate-reopen-auto-desktop-b8c4.mp4",
+      "duration_seconds": 13.0,
+      "codec_name": "h264",
+      "width": 1440,
+      "height": 960,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "supplier-edit-desktop-94a8.mp4",
+      "duration_seconds": 7.75,
+      "codec_name": "h264",
+      "width": 1440,
+      "height": 960,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "supplier-edit-mobile-emulation-2d08.mp4",
+      "duration_seconds": 9.25,
+      "codec_name": "h264",
+      "width": 412,
+      "height": 840,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "failed-check-retry-desktop-c9b9.mp4",
+      "duration_seconds": 3.25,
+      "codec_name": "h264",
+      "width": 1440,
+      "height": 960,
+      "side_data_list": [
+        {}
+      ]
+    },
+    {
+      "file": "failed-check-retry-mobile-emulation-ea5b.mp4",
+      "duration_seconds": 3.25,
+      "codec_name": "h264",
+      "width": 412,
+      "height": 840,
+      "side_data_list": [
+        {}
+      ]
+    }
+  ]
+}

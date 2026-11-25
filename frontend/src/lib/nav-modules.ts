@@ -102,6 +102,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/overview', label: 'Overview', icon: 'LayoutDashboard', description: 'Command center and trip health', enabled: true },
       { href: '/inbox', label: 'Lead Inbox', icon: 'Inbox', description: 'Sort and prioritize new inquiries', enabled: true },
+      { href: '/communications', label: 'Communications', icon: 'MessageSquare', description: 'Handle conversations and staff replies', enabled: true },
       { href: '/reviews', label: 'Quote Review', icon: 'ClipboardCheck', description: 'Review high-risk quotes, changes, and exceptions', enabled: true },
     ],
   },

@@ -14,15 +14,19 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
+from starlette.responses import PlainTextResponse
 
 from spine_api.contract import OutboundMessageRequest, OutboundMessageResponse
-from spine_api.core.auth import get_current_agency_id
+from spine_api.core.auth import get_current_agency_id, require_permission
 from spine_api.persistence import AuditStore, TripStore
 from spine_api.services.message_dispatch import dispatch_outbound_message
+from spine_api.services import whatsapp_cloud, whatsapp_journal
 
 import hmac
 import hashlib
@@ -31,11 +35,13 @@ import os
 logger = logging.getLogger("spine_api.messaging")
 
 router = APIRouter(prefix="/api/v1/messaging", tags=["messaging"])
+META_PROVIDERS = {"whatsapp", "whatsapp_cloud_api"}
+MAX_WEBHOOK_BYTES = 1024 * 1024
 
 
 def _verify_meta_signature(body_bytes: bytes, signature_header: str | None, app_secret: str) -> bool:
     """Verify Meta X-Hub-Signature-256 header using SHA-256 HMAC."""
-    if not signature_header or not signature_header.startswith("sha256="):
+    if not signature_header or not signature_header.isascii() or not signature_header.startswith("sha256="):
         return False
     expected_sig = signature_header[7:]
     computed_sig = hmac.new(
@@ -106,9 +112,11 @@ async def messaging_channel_status(agency_id: str = Depends(get_current_agency_i
     ready BEFORE and AFTER the credentials arrive — no live send required."""
     wa_missing = [
         name
-        for name in ("WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID")
+        for name in ("WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "MESSAGING_WEBHOOK_AGENCY_ID", "ENCRYPTION_KEY")
         if not os.getenv(name, "").strip()
     ]
+    if os.getenv("WAYPOINT_WHATSAPP_MANAGED_ENABLED") != "1":
+        wa_missing.append("WAYPOINT_WHATSAPP_MANAGED_ENABLED")
     sg_missing = ["SENDGRID_API_KEY"] if not os.getenv("SENDGRID_API_KEY", "").strip() else []
     return {
         "ok": True,
@@ -116,7 +124,7 @@ async def messaging_channel_status(agency_id: str = Depends(get_current_agency_i
             {
                 "channel": "whatsapp",
                 "provider": "whatsapp_cloud_api",
-                "status": "NOT_CONFIGURED" if wa_missing else "CONFIGURED",
+                "status": "CONFIGURED" if not wa_missing and whatsapp_journal.bound_inbox(agency_id) else "NOT_CONFIGURED",
                 "missing_env": wa_missing,
             },
             {
@@ -130,8 +138,8 @@ async def messaging_channel_status(agency_id: str = Depends(get_current_agency_i
             "provider": "whatsapp_cloud_api",
             "verify_token_set": bool(os.getenv("WHATSAPP_VERIFY_TOKEN", "").strip()),
             "app_secret_set": bool(os.getenv("WHATSAPP_APP_SECRET", "").strip()),
-            "agency_binding": os.getenv("MESSAGING_WEBHOOK_AGENCY_ID", "").strip() or None,
-            "agency_binding_note": "MESSAGING_WEBHOOK_AGENCY_ID names the agency that owns this WhatsApp number; unset webhooks record under 'webhook-unattributed'",
+            "agency_binding": agency_id if whatsapp_journal.bound_inbox(agency_id) else None,
+            "agency_binding_note": "Official callbacks require a WhatsApp phone number ID bound to this agency",
         },
         "checked_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -155,15 +163,15 @@ async def verify_messaging_webhook(
 
     # Refuse the handshake if the verify token is unset — do not fall back to a
     # hardcoded secret that would authenticate a forged verification request.
-    if provider.lower() in ("whatsapp", "whatsapp_cloud_api") and not verify_token:
+    if provider.lower() in META_PROVIDERS and not verify_token:
         raise HTTPException(
             status_code=401,
             detail="WHATSAPP_VERIFY_TOKEN is not configured; refusing webhook verification handshake",
         )
 
-    if mode == "subscribe" and token == verify_token:
+    if provider.lower() in META_PROVIDERS and mode == "subscribe" and token and verify_token and challenge and hmac.compare_digest(token.encode(), verify_token.encode()):
         logger.info(f"WhatsApp webhook verified successfully for provider {provider}")
-        return int(challenge) if challenge and challenge.isdigit() else challenge
+        return PlainTextResponse(challenge)
 
     if mode or token:
         raise HTTPException(status_code=403, detail="Verification token mismatch")
@@ -180,26 +188,46 @@ async def process_messaging_webhook(
     Receive and process inbound webhooks from WhatsApp or SendGrid (delivery statuses, incoming replies).
     Includes HMAC SHA-256 signature verification when app secrets are configured.
     """
-    raw_body = await request.body()
+    raw_body = bytearray()
+    async for chunk in request.stream():
+        if len(raw_body) + len(chunk) > MAX_WEBHOOK_BYTES:
+            raise HTTPException(status_code=413, detail="Webhook body exceeds the supported size")
+        raw_body.extend(chunk)
     sig_header = request.headers.get("X-Hub-Signature-256")
     app_secret = os.environ.get("WHATSAPP_APP_SECRET")
 
     # Default-deny: a webhook that mutates or records state must not accept
     # unauthenticated payloads. If the provider secret is unset, refuse rather
     # than silently processing a body that may be forged.
-    if provider.lower() in ("whatsapp", "whatsapp_cloud_api"):
+    is_meta = provider.lower() in META_PROVIDERS
+    if is_meta:
         if not app_secret:
             raise HTTPException(
                 status_code=401,
                 detail="WHATSAPP_APP_SECRET is not configured; refusing unauthenticated webhook payload",
             )
-        if not _verify_meta_signature(raw_body, sig_header, app_secret):
+        if not _verify_meta_signature(bytes(raw_body), sig_header, app_secret):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     try:
         payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
-    except Exception:
-        payload = {}
+    except (ValueError, UnicodeError) as exc:
+        raise HTTPException(status_code=400, detail="Malformed webhook JSON") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Webhook payload must be an object")
+
+    webhook_agency = os.getenv("MESSAGING_WEBHOOK_AGENCY_ID", "").strip()
+    if is_meta and (payload.get("object") == "whatsapp_business_account" or os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()):
+        inbox_id = whatsapp_journal.bound_inbox(webhook_agency)
+        if not inbox_id:
+            raise HTTPException(status_code=503, detail="WhatsApp inbox binding is unavailable")
+        if payload.get("object") != "whatsapp_business_account":
+            raise HTTPException(status_code=400, detail="Expected a Meta WhatsApp webhook envelope")
+        counts = await run_in_threadpool(whatsapp_cloud.receive, webhook_agency, inbox_id, payload)
+        return {"ok": True, "provider": provider, "signature_verified": True, **counts}
+    if not is_meta and (webhook_agency or payload.get("object") == "whatsapp_business_account"):
+        # An unsigned legacy adapter cannot inject activity into a bound agency.
+        raise HTTPException(status_code=403, detail="Provider is not authorized for the managed channel")
 
     event_type = payload.get("event", "status_update")
     message_id = payload.get("message_id") or payload.get("id") or "unknown"
@@ -389,6 +417,52 @@ async def process_messaging_webhook(
         "statuses_applied": statuses_applied,
         "processed_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+class OwnershipRequest(BaseModel):
+    action: Literal["takeover", "release"]
+
+
+class StaffReplyRequest(BaseModel):
+    request_id: str = Field(min_length=8, max_length=96)
+    content: str = Field(min_length=1, max_length=4096)
+
+
+@router.get("/whatsapp/{conversation_id}")
+def get_whatsapp_conversation(conversation_id: str, agency_id: str = Depends(get_current_agency_id)):
+    try:
+        return whatsapp_journal.conversation_view(agency_id, conversation_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Conversation not found") from exc
+
+
+@router.post("/whatsapp/{conversation_id}/ownership")
+def set_whatsapp_ownership(conversation_id: str, body: OwnershipRequest, staff=require_permission("trips:write")):
+    try:
+        return whatsapp_journal.set_ownership(staff.agency_id, conversation_id, staff.user_id, takeover=body.action == "takeover")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Conversation not found") from exc
+
+
+@router.post("/whatsapp/{conversation_id}/replies/{reply_id}/dispatch")
+def dispatch_whatsapp_draft(conversation_id: str, reply_id: str, staff=require_permission("trips:write")):
+    return _dispatch_whatsapp(staff, conversation_id, reply_id=reply_id)
+
+
+@router.post("/whatsapp/{conversation_id}/replies")
+def send_whatsapp_staff_reply(conversation_id: str, body: StaffReplyRequest, staff=require_permission("trips:write")):
+    if not body.content.strip():
+        raise HTTPException(status_code=422, detail="Reply cannot be empty")
+    return _dispatch_whatsapp(staff, conversation_id, staff_request_id=body.request_id, body=body.content.strip())
+
+
+def _dispatch_whatsapp(staff, conversation_id: str, **kwargs):
+    try:
+        return whatsapp_cloud.dispatch(staff.agency_id, conversation_id, staff.user_id, **kwargs)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Conversation or reply not found") from exc
+    except whatsapp_journal.JournalConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 def _extract_meta_message_values(payload: Dict[str, Any]) -> List[Dict[str, Any]]:

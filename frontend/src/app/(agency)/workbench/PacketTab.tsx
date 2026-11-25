@@ -1,10 +1,11 @@
+import { ItineraryFeasibilityFindings } from '@/components/workspace/panels/ItineraryFeasibilityFindings';
 import Link from 'next/link';
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, PacketAssumption, ValidationReport } from "@/types/spine";
 import { validationLabelFor } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import { resolveTripAssumptions, type TripAssumptionAction } from "@/lib/api-client";
-import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
+import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, formatPacketValue, isLegacyBookingDefault, labelOrTitle } from "@/lib/label-maps";
 import { getTravelerPromptForUnknownField } from "@/lib/traveler-prompts";
 import { getTripRepairRoute } from "@/lib/routes";
 import { AlertTriangle, CheckCircle, XCircle, Info, ChevronDown, ChevronUp } from "lucide-react";
@@ -12,6 +13,8 @@ import { useState } from "react";
 
 interface PacketTabProps {
   trip?: Trip | null;
+  onEditInquiry?: () => void;
+  reviewPacket?: unknown;
 }
 
 function normalizeTripDisplayValue(value?: string | number | null): string | null {
@@ -32,7 +35,7 @@ function makeCanonicalSlot(value: unknown): SlotValue {
   } as SlotValue;
 }
 
-export default function PacketTab({ trip }: PacketTabProps) {
+export default function PacketTab({ trip, onEditInquiry, reviewPacket }: PacketTabProps) {
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson, setResultPacket } = useWorkbenchStore();
   const [showRawJson, setShowRawJson] = useState(false);
   const [showValidationDetails, setShowValidationDetails] = useState(false);
@@ -51,7 +54,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
       <div className="rounded-xl border border-[rgba(210,153,34,0.25)] bg-[rgba(210,153,34,0.05)] p-4 text-center text-[#8b949e]">
         <p>
           {tripRepairHref
-            ? 'No booking request data yet. Open Trip Details to repair the missing fields.'
+            ? 'No booking request data yet. Add the missing details to this trip.'
             : 'No booking request data yet.'}
         </p>
         {tripRepairHref && (
@@ -59,7 +62,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
             href={tripRepairHref}
             className="mt-3 inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]"
           >
-            Open Trip Details
+            Edit missing trip details
           </Link>
         )}
       </div>
@@ -164,6 +167,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
 
   return (
     <div className="space-y-6">
+      <ItineraryFeasibilityFindings packet={reviewPacket === undefined ? activePacket : reviewPacket} />
       {/* Validation Alert Banner */}
       {isBlocked && (
         <div className="rounded-xl border border-[#f85149]/40 bg-[#2b1011] p-4">
@@ -193,7 +197,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
                   </p>
                 )}
                 <p className="text-ui-xs text-[#a8b3c1]">
-                  Open the <span className="text-[#58a6ff] font-medium">Trip Details</span> repair surface, add the missing fields, and try again.
+                  {tripRepairHref ? 'Update the trip with the missing details, then process it again.' : 'Add the missing details to the inquiry, then process it again.'}
                 </p>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -207,14 +211,18 @@ export default function PacketTab({ trip }: PacketTabProps) {
                     {showValidationDetails ? 'Hide details' : 'View details'}
                   </button>
                 )}
-                {tripRepairHref && (
+                {tripRepairHref ? (
                   <Link
                     href={tripRepairHref}
                     className="inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-1.5 text-ui-xs font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]"
                   >
-                    Open Trip Details
+                    Edit missing trip details
                   </Link>
-                )}
+                ) : onEditInquiry ? (
+                  <button type="button" onClick={onEditInquiry} className="rounded-lg border border-[#30363d] px-3 py-1.5 text-ui-xs font-medium text-text-primary hover:bg-[#30363d]">
+                    Edit inquiry
+                  </button>
+                ) : null}
               </div>
               {showValidationDetails && (
                 <div className="mt-3 space-y-3">
@@ -345,10 +353,11 @@ export default function PacketTab({ trip }: PacketTabProps) {
             <tbody>
               {Object.entries(facts).map((entry) => {
                 const [field, slot] = entry;
+                if (field === 'traveler_plan' && isLegacyBookingDefault(slot)) return null;
                 return (
                 <tr key={`fact-${field}`} className="border-b border-[#30363d] last:border-0">
                   <td className="px-3 py-2 text-ui-sm text-[#e6edf3]">{labelOrTitle(FIELD_LABELS, field)}</td>
-                  <td className="px-3 py-2 text-ui-sm text-[#e6edf3]">{_formatValue(slot.value)}</td>
+                  <td className="px-3 py-2 text-ui-sm text-[#e6edf3]">{field === 'traveler_plan' ? formatPacketValue(slot.value) : _formatValue(slot.value)}</td>
                   <td className="px-3 py-2 text-ui-sm text-[#8b949e]">{_formatConfidence(slot.confidence)}</td>
                   <td className="px-3 py-2 text-ui-sm text-[#8b949e]">{slot.authority_level || "-"}</td>
                 </tr>
@@ -557,15 +566,13 @@ export default function PacketTab({ trip }: PacketTabProps) {
                 <p className="text-ui-xs text-[#8b949e] font-medium">
                   {unknowns.length} missing field{unknowns.length > 1 ? 's' : ''} still need attention.
                 </p>
-                <p className="text-ui-xs text-[#8b949e]">
-                  Open the details above to see which traveler prompts are still needed.
-                </p>
-                {trip?.id ? (
+                {!isBlocked && <button type="button" onClick={() => setShowValidationDetails(true)} className="text-ui-xs text-[#58a6ff] underline">View missing fields</button>}
+                {!isBlocked && tripRepairHref ? (
                   <Link
-                    href={`/trips/${trip.id}/intake`}
+                    href={tripRepairHref}
                     className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-xs font-medium text-text-primary transition-colors hover:bg-elevated"
                   >
-                    Open trip details
+                    Edit missing trip details
                   </Link>
                 ) : null}
               </div>

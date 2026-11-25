@@ -27,7 +27,7 @@ describe('Itinerary Checker Agency Branding (Stream 1)', () => {
     expect(screen.getByText('Aurora Luxury Travel')).toBeDefined();
     expect(screen.getByText('Client Travel Plan Diagnostic · Powered by Waypoint')).toBeDefined();
     expect(screen.getByText('Complimentary Client Audit')).toBeDefined();
-    expect(screen.getByText('Responds within 12h')).toBeDefined();
+    expect(screen.getByText('Listed response time: 12h')).toBeDefined();
     // Default public link should NOT be shown
     expect(screen.queryByText('For agencies →')).toBeNull();
   });

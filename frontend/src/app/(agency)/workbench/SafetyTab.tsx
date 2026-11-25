@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import Link from "next/link";
+import { ItineraryFeasibilityFindings } from "@/components/workspace/panels/ItineraryFeasibilityFindings";
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SafetyResult, PromptBundle, DecisionOutput, FollowUpQuestion } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
@@ -6,6 +8,8 @@ import { normalizeSafetyResult } from "@/lib/bff-trip-adapters";
 import { DECISION_STATE_LABELS, FIELD_LABELS, labelOrTitle, titleCase } from "@/lib/label-maps";
 import { getTripRepairRoute } from "@/lib/routes";
 import {
+  type DraftCheckStatus,
+  getDraftCheckStatus,
   getSafetyCleanupChecklist,
   getSafetyCleanupSummary,
   getSafetyReviewStatusCopy,
@@ -23,6 +27,7 @@ interface SpecialtyHit {
 
 interface SafetyTabProps {
   trip?: Trip | null;
+  preferTripAssessment?: boolean;
 }
 
 const URGENCY_STYLES: Record<string, string> = {
@@ -46,20 +51,31 @@ function humanizeBlocker(raw: string): string {
   return labelOrTitle(FIELD_LABELS, normalized, titleCase(normalized));
 }
 
-export default function SafetyTab({ trip }: SafetyTabProps) {
+export default function SafetyTab({ trip, focusRequest, messageStatus, reviewPacket, preferTripAssessment }: SafetyTabProps & {
+  reviewPacket?: unknown;
+  focusRequest?: { id: string } | null;
+  messageStatus?: DraftCheckStatus;
+}) {
+  useEffect(() => {
+    if (!focusRequest) return;
+    const heading = document.getElementById(focusRequest.id);
+    heading?.focus({ preventScroll: true });
+    heading?.scrollIntoView?.({ block: 'nearest' });
+  }, [focusRequest]);
   const {
     result_safety,
     result_traveler_bundle,
     result_internal_bundle,
     result_decision,
+    result_packet,
     debug_raw_json,
     setDebugRawJson,
   } = useWorkbenchStore();
 
-  const activeSafety = result_safety || normalizeSafetyResult(trip?.safety);
-  const activeTravelerBundle = (result_traveler_bundle as PromptBundle | null) ?? (trip?.traveler_bundle as PromptBundle | null);
+  const activeSafety = normalizeSafetyResult(trip ? trip.safety : result_safety);
+  const activeTravelerBundle = (trip ? trip.traveler_bundle : result_traveler_bundle) as PromptBundle | null;
   const activeInternalBundle = (result_internal_bundle as PromptBundle | null) ?? (trip?.internal_bundle as PromptBundle | null);
-  const activeDecision = result_decision ?? (trip?.decision as DecisionOutput | null) ?? null;
+  const activeDecision = preferTripAssessment ? trip?.decision : result_decision ?? (trip?.decision as DecisionOutput | null) ?? null;
 
   const specialtyHits: SpecialtyHit[] = (() => {
     const rationale = activeDecision?.rationale as unknown as Record<string, unknown> | null;
@@ -69,12 +85,14 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
     return Array.isArray(sk) ? sk : [];
   })();
 
+  const auditStatus = messageStatus ?? getDraftCheckStatus(activeSafety, activeTravelerBundle, activeDecision?.decision_state);
+  const hasVerdict = auditStatus === 'failed' || auditStatus === 'passed';
   const safety = activeSafety as SafetyResult;
-  const travelerBundle = activeTravelerBundle;
+  const travelerBundle = auditStatus === 'pending' ? null : activeTravelerBundle;
   const internalBundle = activeInternalBundle;
   const strippedFields = safety?.leakage_errors || [];
   const isStrictFail = Boolean(safety?.strict_leakage && !safety?.leakage_passed);
-  const safetyStatusCopy = getSafetyReviewStatusCopy(safety);
+  const safetyStatusCopy = getSafetyReviewStatusCopy(auditStatus, safety);
   const cleanupChecklist = getSafetyCleanupChecklist();
   const decisionState = activeDecision?.decision_state ?? null;
   const hasDerivedSafetyContext = !activeSafety && Boolean(activeDecision);
@@ -82,14 +100,17 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
   const softBlockers = (activeDecision as any)?.soft_blockers ?? [];
   const followUpQuestions: FollowUpQuestion[] = (activeDecision as any)?.follow_up_questions ?? [];
   const overallConfidence = activeDecision?.confidence?.overall;
+  const hasComputedScorecard = typeof activeDecision?.rationale?.confidence_scorecard?.data === "number";
   const tripRepairHref = trip?.id ? getTripRepairRoute(trip.id) : null;
   const confidenceLabel =
     typeof overallConfidence === "number" && Number.isFinite(overallConfidence)
-      ? `${Math.round(overallConfidence * 100)}%`
+      && (overallConfidence !== 0 || hasComputedScorecard)
+      ? `Overall confidence: ${Math.round(overallConfidence * 100)}%`
       : "Confidence unavailable";
 
   return (
     <div>
+      <ItineraryFeasibilityFindings packet={reviewPacket === undefined ? result_packet ?? trip?.packet : reviewPacket} headingId="workbench-feasibility" />
       {activeDecision && (
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>Trip readiness</h3>
@@ -98,7 +119,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
               {DECISION_STATE_LABELS[decisionState ?? ""] || "Review Required"}
             </span>
             <div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-muted)" }}>
-              Overall Confidence: {confidenceLabel}
+              {confidenceLabel}
             </div>
             {hardBlockers.length > 0 && (
               <div style={{ marginTop: "12px" }}>
@@ -118,7 +139,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
             )}
             {followUpQuestions.length > 0 && (
               <div style={{ marginTop: "12px" }}>
-                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Questions to ask the traveler</strong>
+                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Additional intake questions</strong>
                 <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
                   {followUpQuestions.map((question, index) => (
                     <li key={`fu-${question.field_name || index}`} style={{ marginBottom: "4px" }}>
@@ -150,24 +171,21 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
         </div>
       )}
 
-      {!activeSafety && activeDecision && (
+      {!hasVerdict && (
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Customer Message QA</h3>
+          <h3 id="workbench-message-check" tabIndex={-1} className={styles.sectionTitle}>Customer message check</h3>
           <div className={styles.card}>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: 0 }}>
-              The message audit is not available for this run yet, so this view is showing the readiness summary instead.
-            </p>
-            <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
-              You can still review the traveler-facing draft below before sending.
+              {safetyStatusCopy.body}
             </p>
           </div>
-          {travelerBundle && hasDerivedSafetyContext && (
+          {auditStatus !== 'no-draft' && travelerBundle?.user_message && hasDerivedSafetyContext && (
             <div className={styles.card} style={{ marginTop: "12px" }}>
               <div style={{ fontSize: "12px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 Customer Message Preview
               </div>
               <p style={{ fontSize: "13px", margin: "6px 0 0 0", whiteSpace: "pre-wrap" }}>
-                {travelerBundle.user_message || "-"}
+                {travelerBundle.user_message}
               </p>
             </div>
           )}
@@ -176,12 +194,12 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
 
       {activeSafety && (
         <>
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Customer message check</h3>
+      {hasVerdict && <div className={styles.section}>
+        <h3 id="workbench-message-check" tabIndex={-1} className={styles.sectionTitle}>Customer message check</h3>
         <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "0 0 10px 0" }}>
           We review the traveler-facing draft here before anything leaves the workspace.
         </p>
-      {safety.leakage_passed ? (
+      {auditStatus === 'passed' ? (
           <div className={styles.leakagePass}>
             <div className={styles.leakageTitle}>
               <span className={`${styles.listIcon} ${styles.iconSuccess}`} style={{ marginRight: "8px" }}>✓</span>
@@ -202,7 +220,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
             </p>
           </div>
         )}
-      </div>
+      </div>}
 
       {safety.strict_leakage && !safety.leakage_passed && (
         <div className={styles.leakageFail} style={{ border: "2px solid rgba(239, 68, 68, 0.5)", marginBottom: "16px" }}>
@@ -279,7 +297,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Customer Message QA</h3>
         <div className={styles.card}>
-          {travelerBundle && !isStrictFail ? (
+          {auditStatus !== 'no-draft' && travelerBundle && !isStrictFail ? (
             <div>
               <div style={{ marginBottom: "12px" }}>
                 <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Generation Context</strong>
@@ -318,7 +336,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
             </div>
           ) : (
             <p style={{ color: "var(--color-text-muted)" }}>
-              {isStrictFail ? "Blocked until the draft is cleaned up" : "No customer message available"}
+              {auditStatus === "pending" ? "Waiting for the reassessed draft." : isStrictFail ? "Blocked until the draft is cleaned up" : "No customer message available"}
             </p>
           )}
         </div>

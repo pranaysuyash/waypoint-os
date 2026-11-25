@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function Page({
   params,
 }: {
-  params: Promise<{ agencyId: string; token: string }>;
+  params: { agencyId: string; token: string } | Promise<{ agencyId: string; token: string }>;
 }) {
   return <PageClient params={params} />;
 }

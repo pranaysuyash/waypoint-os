@@ -179,14 +179,14 @@ export function RunProgressPanel({
     );
   }
 
-  // Blocked: compact result - details are shown in the inline banner
+  // Blocked runs own their summary and repair action.
   if (isBlocked) {
     const blockCopy = getWorkbenchBlockCopy({ runState });
     return (
-      <div className="rounded-xl border border-[var(--accent-amber)]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
+      <div className="rounded-xl border border-[#30363d] bg-[#0d1117] break-words">
         <div className="px-4 py-3 space-y-2.5">
-          <div className="flex items-center gap-2 text-[var(--accent-amber)] text-ui-sm font-medium">
-            <AlertTriangle className="size-4" />
+          <div role="status" className="flex items-center gap-2 text-[var(--accent-amber)] text-ui-sm font-medium">
+            <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
             {blockCopy.title}
           </div>
           <p className="text-ui-xs text-[var(--text-muted)] leading-relaxed">
@@ -196,14 +196,15 @@ export function RunProgressPanel({
           <button
             type="button"
             onClick={onFixDetails || onRetry}
-            className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30 text-[var(--accent-amber)] text-ui-xs font-medium rounded-md hover:bg-[var(--accent-amber)]/20 transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[var(--accent-amber)]/10 border border-[#684d1b] text-[var(--accent-amber)] text-ui-xs font-medium rounded-md hover:bg-[var(--accent-amber)]/20 transition-colors"
           >
             {blockCopy.actionLabel}
           </button>
           <button
             type="button"
             onClick={() => setShowDetails(v => !v)}
-            className="block w-full text-center text-[10px] text-[var(--text-tertiary)] hover:text-[var(--text-muted)] transition-colors"
+            aria-expanded={showDetails}
+            className="block py-1 text-ui-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
           >
             {showDetails ? 'Hide' : 'Show'} run details
           </button>

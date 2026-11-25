@@ -34,6 +34,20 @@ describe('PacketTab', () => {
     });
   });
 
+  it.each([
+    ['nothing_booked', false],
+    ['We have nothing booked yet.', true],
+  ])('uses traveler wording for the booking display (%s)', (excerpt, visible) => {
+    mockStore.mockReturnValue({
+      result_packet: { facts: { traveler_plan: {
+        value: 'nothing_booked', confidence: 0.85, authority_level: 'explicit_user', extraction_mode: 'direct_extract',
+        evidence_refs: [{ evidence_type: 'text_span', excerpt, field_path: null }],
+      } } },
+    });
+    render(<PacketTab />);
+    expect(screen.queryAllByText('Nothing booked yet')).toHaveLength(visible ? 1 : 0);
+  });
+
   it('renders structured packet values without leaking object coercion text', () => {
     mockStore.mockReturnValue({
       result_packet: {
@@ -93,8 +107,12 @@ describe('PacketTab', () => {
       setDebugRawJson: vi.fn(),
     });
 
-    render(<PacketTab />);
+    const edit = vi.fn();
+    render(<PacketTab onEditInquiry={edit} />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'Edit inquiry' }));
+    expect(edit).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/Open the .* repair surface/)).not.toBeInTheDocument();
     expect(screen.getByText(/Missing fields: Origin City/)).toBeInTheDocument();
     expect(screen.queryByText(/Prompt: Which city will the travelers depart from\?/)).not.toBeInTheDocument();
 
@@ -137,7 +155,7 @@ describe('PacketTab', () => {
       />
     );
 
-    expect(screen.getByRole('link', { name: /open trip details/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /edit missing trip details/i })).toHaveAttribute(
       'href',
       '/trips/trip-workbench-cta/intake',
     );
@@ -163,7 +181,7 @@ describe('PacketTab', () => {
     );
 
     expect(screen.getByText(/No booking request data yet/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /open trip details/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /edit missing trip details/i })).toHaveAttribute(
       'href',
       '/trips/trip-missing-packet/intake',
     );

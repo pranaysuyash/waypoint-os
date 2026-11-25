@@ -170,8 +170,8 @@ export function ActionRequiredList({
                   borderColor: 'var(--border-default)',
                 }}
               >
-                <div className='grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start'>
-                  <div className='min-w-0 space-y-2'>
+                <div className='flex flex-wrap items-start gap-3'>
+                  <div className='min-w-0 grow basis-80 space-y-2 [overflow-wrap:anywhere]'>
                     {/* Badge Row */}
                     <div className='flex flex-wrap items-center gap-2'>
                       {!item.hidePriorityBadge ? (
@@ -228,7 +228,7 @@ export function ActionRequiredList({
 
                     {/* Title & Diagnostic Context */}
                     <div>
-                      <p className='truncate text-[15px] font-semibold tracking-tight' style={{ color: 'var(--text-primary)' }}>
+                      <p className='text-[15px] font-semibold tracking-tight' style={{ color: 'var(--text-primary)' }}>
                         {item.title}
                       </p>
                       <p className='text-[12px] mt-0.5' style={{ color: 'var(--text-secondary)' }}>
@@ -276,82 +276,10 @@ export function ActionRequiredList({
                         <span>{item.nextAction}</span>
                       </p>
                     ) : null}
-
-                    {/* Actionable Ticket Dispatch Drawer */}
-                    {item.examples?.length ? (
-                      <div className='mt-3 space-y-1.5 pt-2 border-t' style={{ borderColor: 'var(--border-default)' }}>
-                        <p className='text-[10px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
-                          Actionable Queue Items
-                        </p>
-                        <div className='grid gap-1.5 sm:grid-cols-2'>
-                          {item.examples.map((example, index) => {
-                            const detailTags = parseExampleDetail(example.detail);
-                            return (
-                              <Link
-                                key={toExampleKey(itemKey, example, index)}
-                                href={example.href}
-                                className='group flex items-center justify-between gap-2.5 rounded-lg border p-2.5 transition-all hover:border-blue-500/40'
-                                style={{
-                                  background: 'var(--bg-subtle, #0d1117)',
-                                  borderColor: 'var(--border-default)',
-                                }}
-                              >
-                                <div className='min-w-0 flex-1 space-y-1'>
-                                  <div className='flex items-center gap-1.5 flex-wrap'>
-                                    <span
-                                      className='inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-mono font-medium'
-                                      style={{
-                                        background: 'var(--bg-elevated)',
-                                        color: 'var(--text-tertiary)',
-                                        borderColor: 'var(--border-default)',
-                                      }}
-                                    >
-                                      #{index + 1}
-                                    </span>
-                                    <span
-                                      className='truncate text-[12px] font-semibold transition-colors group-hover:text-blue-400'
-                                      style={{ color: 'var(--text-primary)' }}
-                                    >
-                                      {example.title}
-                                    </span>
-                                  </div>
-                                  {detailTags.length > 0 ? (
-                                    <div className='flex items-center gap-1 flex-wrap'>
-                                      {detailTags.map((tag, tagIdx) => {
-                                        const isRef = tag.startsWith('Ref ');
-                                        const isRed = tag.toLowerCase().includes('red');
-                                        const isWaiting = tag.toLowerCase().includes('waiting');
-                                        return (
-                                          <span
-                                            key={tagIdx}
-                                            className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] border ${
-                                              isRef
-                                                ? 'font-mono bg-blue-500/10 text-blue-300 border-blue-500/20'
-                                                : isRed
-                                                  ? 'bg-red-500/10 text-red-400 border-red-500/20 font-semibold'
-                                                  : isWaiting
-                                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                                    : 'bg-white/5 text-slate-400 border-[#30363d]'
-                                            }`}
-                                          >
-                                            {tag}
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : null}
-                                </div>
-                                <ArrowRight className='size-3.5 shrink-0 text-slate-500 group-hover:text-blue-400 transition-transform group-hover:translate-x-0.5' />
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
 
                   {/* Dispatch Action CTAs */}
-                  <div className='flex shrink-0 flex-wrap items-center gap-2 sm:justify-self-end'>
+                  <div className='flex min-w-0 max-w-full flex-wrap items-center gap-2'>
                     <Link
                       href={item.href}
                       className='inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-all hover:brightness-110'
@@ -361,7 +289,7 @@ export function ActionRequiredList({
                         background: PRIORITY_STYLES[item.priority].background,
                       }}
                     >
-                      {item.ctaLabel} <ArrowRight className='size-3.5' aria-hidden='true' />
+                      {item.ctaLabel} <ArrowRight className='size-3.5 shrink-0' aria-hidden='true' />
                     </Link>
                     {item.secondaryHref && item.secondaryCtaLabel ? (
                       <Link
@@ -369,11 +297,82 @@ export function ActionRequiredList({
                         className='inline-flex items-center gap-1 rounded-lg border border-transparent px-2.5 py-1.5 text-[12px] font-medium transition-all hover:bg-white/5'
                         style={{ color: 'var(--text-secondary)' }}
                       >
-                        {item.secondaryCtaLabel} <ArrowRight className='size-3' aria-hidden='true' />
+                        {item.secondaryCtaLabel} <ArrowRight className='size-3 shrink-0' aria-hidden='true' />
                       </Link>
                     ) : null}
                   </div>
                 </div>
+                {/* Queue examples use the entire card width. */}
+                {item.examples?.length ? (
+                  <div className='mt-3 space-y-2 border-t pt-3' style={{ borderColor: 'var(--border-default)' }}>
+                    <p className='text-[10px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
+                      Actionable Queue Items
+                    </p>
+                    <div className='grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-2'>
+                      {item.examples.map((example, index) => {
+                        const detailTags = parseExampleDetail(example.detail);
+                        return (
+                          <Link
+                            key={toExampleKey(itemKey, example, index)}
+                            href={example.href}
+                            className='group flex min-w-0 items-center justify-between gap-2.5 rounded-lg border p-2.5 transition-colors hover:border-blue-500/40'
+                            style={{
+                              background: 'var(--bg-subtle, #0d1117)',
+                              borderColor: 'var(--border-default)',
+                            }}
+                          >
+                            <div className='min-w-0 flex-1 space-y-1 [overflow-wrap:anywhere]'>
+                              <div className='flex items-center gap-1.5 flex-wrap'>
+                                <span
+                                  className='inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-mono font-medium'
+                                  style={{
+                                    background: 'var(--bg-elevated)',
+                                    color: 'var(--text-tertiary)',
+                                    borderColor: 'var(--border-default)',
+                                  }}
+                                >
+                                  #{index + 1}
+                                </span>
+                                <span
+                                  className='min-w-0 text-[12px] font-semibold transition-colors group-hover:text-blue-400'
+                                  style={{ color: 'var(--text-primary)' }}
+                                >
+                                  {example.title}
+                                </span>
+                              </div>
+                              {detailTags.length > 0 ? (
+                                <div className='flex items-center gap-1 flex-wrap'>
+                                  {detailTags.map((tag, tagIdx) => {
+                                    const isRef = tag.startsWith('Ref ');
+                                    const isRed = tag.toLowerCase().includes('red');
+                                    const isWaiting = tag.toLowerCase().includes('waiting');
+                                    return (
+                                      <span
+                                        key={tagIdx}
+                                        className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] border ${
+                                          isRef
+                                            ? 'font-mono bg-blue-500/10 text-blue-300 border-blue-500/20'
+                                            : isRed
+                                              ? 'bg-red-500/10 text-red-400 border-red-500/20 font-semibold'
+                                              : isWaiting
+                                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                                : 'bg-white/5 text-slate-400 border-[#30363d]'
+                                        }`}
+                                      >
+                                        {tag}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : null}
+                            </div>
+                            <ArrowRight aria-hidden='true' className='size-3.5 shrink-0 text-slate-500 group-hover:text-blue-400 transition-transform group-hover:translate-x-0.5' />
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </li>
             );
           })}

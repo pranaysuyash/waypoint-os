@@ -42,10 +42,17 @@ function handler(method: string) {
       );
     }
 
+    // Only the checker report endpoints use a report-scoped bearer capability.
+    const isCheckerReport = segments[0] === 'public-checker'
+      && segments[1] === 'trip'
+      && ((segments.length === 3 && (method === 'GET' || method === 'DELETE'))
+        || (segments.length === 4 && segments[3] === 'export' && method === 'GET'));
+    const authorization = isCheckerReport ? request.headers.get('authorization') : null;
     return proxyRequest(request, {
       backendPath: backendRoute.backendPath,
       method,
       timeoutMs: backendRoute.timeoutMs,
+      extraHeaders: authorization ? { authorization } : undefined,
     });
   };
 }

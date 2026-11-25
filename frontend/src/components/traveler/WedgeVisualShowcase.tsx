@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useId, useState, useMemo } from 'react';
+import { handleListNavigation, tabPanelProps, tabProps } from '@/lib/accessibility';
 import {
   Activity,
   BedDouble,
@@ -1715,6 +1716,8 @@ export function WedgeVisualShowcase({
   onAdvisorHelp,
 }: WedgeVisualShowcaseProps) {
   const [activeTab, setActiveTab] = useState<TabType>('stress');
+  const showcaseId = useId();
+  const panelId = `${showcaseId}-panel`;
 
   const resolved = useMemo(
     () => resolveDynamicWedgeScenario(analysis, rawPlanText, scenarioKey),
@@ -1755,16 +1758,22 @@ export function WedgeVisualShowcase({
           marginBottom: 16,
         }}
       >
-        {SHOWCASE_TABS.map((tab) => {
+        {SHOWCASE_TABS.map((tab, index) => {
           const isActive = activeTab === tab.key;
           const Icon = tab.icon;
           return (
             <button
               key={tab.key}
               type="button"
-              role="tab"
-              aria-selected={isActive}
+              {...tabProps(`${showcaseId}-${tab.key}`, isActive, panelId)}
               onClick={() => setActiveTab(tab.key)}
+              onKeyDown={(event) => {
+                const next = handleListNavigation(event, index, SHOWCASE_TABS.length);
+                if (next === null) return;
+                const nextTab = SHOWCASE_TABS[next].key;
+                setActiveTab(nextTab);
+                event.currentTarget.ownerDocument.getElementById(`${showcaseId}-${nextTab}`)?.focus();
+              }}
               style={{
                 padding: '10px 12px',
                 borderRadius: 10,
@@ -1825,7 +1834,7 @@ export function WedgeVisualShowcase({
       </div>
 
       {/* Render Active Visual Moment with locked minHeight to prevent tab-switch CLS */}
-      <div style={{ minHeight: 780 }}>
+      <div {...tabPanelProps(panelId, `${showcaseId}-${activeTab}`)} style={{ minHeight: 780 }}>
       {activeTab === 'stress' ? (
         <LayoverStressGauge segment={resolved.layoverSegment} onAdvisorHelp={onAdvisorHelp} />
       ) : null}

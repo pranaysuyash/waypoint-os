@@ -1,0 +1,10 @@
+{
+  "freshLogin": 200,
+  "trip": "trip_a39a81ecf406",
+  "run": "03cd1454-04fa-4d80-91ad-aa6a292cf305",
+  "ownerTrip": 200,
+  "ownerRun": 200,
+  "otherTrip": 404,
+  "otherRun": 404,
+  "reopenedQuestion": "What time and station will the transfer operator use for pickup?"
+}

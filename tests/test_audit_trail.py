@@ -286,24 +286,33 @@ class TestAuditRouterRegistration:
 
 
 class TestAlembicMigration:
-    def test_audit_logs_migration_exists(self):
+    @pytest.fixture(scope="class")
+    def audit_logs_revision(self):
         from pathlib import Path
-        migration_dir = Path(__file__).parent.parent / "alembic" / "versions"
-        migration_files = list(migration_dir.glob("*audit*"))
-        assert len(migration_files) >= 1, (
-            f"No audit_logs migration found in {migration_dir}"
-        )
 
-    def test_migration_creates_audit_logs_table(self):
-        from pathlib import Path
-        migration_dir = Path(__file__).parent.parent / "alembic" / "versions"
-        migration_files = list(migration_dir.glob("*audit*"))
-        content = migration_files[0].read_text()
-        assert "audit_logs" in content
-        assert "create_table" in content
-        assert "agency_id" in content
-        assert "action" in content
-        assert "JSONB" in content.upper() or "jsonb" in content
+        from alembic.script import ScriptDirectory
+
+        scripts = ScriptDirectory(str(Path(__file__).resolve().parents[1] / "alembic"))
+        return scripts.get_revision("add_audit_logs")
+
+    def test_audit_logs_migration_exists(self, audit_logs_revision):
+        assert audit_logs_revision.revision == "add_audit_logs"
+
+    def test_migration_creates_audit_logs_table(self, audit_logs_revision):
+        from unittest.mock import patch
+
+        from sqlalchemy import Column
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        migration = audit_logs_revision.module
+        with patch.object(migration, "op") as operations:
+            migration.upgrade()
+        operations.create_table.assert_called_once()
+        name, *definitions = operations.create_table.call_args.args
+        assert name == "audit_logs"
+        columns = {item.name: item.type for item in definitions if isinstance(item, Column)}
+        assert {"agency_id", "action"} <= columns.keys()
+        assert isinstance(columns["changes"], JSONB)
 
 
 class TestAuditLoggerDependency:

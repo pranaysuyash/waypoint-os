@@ -12,6 +12,9 @@ signal + date_window hypothesis via the P-3 seam).
 from __future__ import annotations
 
 from datetime import date
+from functools import partial
+
+import pytest
 
 from src.intake.holiday_registry import (
     HOLIDAY_REGISTRY,
@@ -96,13 +99,20 @@ def _packet_for(text: str):
     return ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
 
 
-def test_extraction_during_diwali_closes_loop():
+@pytest.mark.parametrize(("reference_date", "expected_date"), [
+    (date(2026, 11, 8), "2026-11-08"),
+    (date(2026, 11, 25), "2027-10-29"),
+])
+def test_extraction_during_diwali_closes_loop(monkeypatch, reference_date, expected_date):
+    from src.intake import holiday_registry
+
+    monkeypatch.setattr(holiday_registry, "resolve_holiday_window", partial(resolve_holiday_window, today=reference_date))
     packet = _packet_for("Planning a Goa trip during Diwali")
     signal = packet.derived_signals.get("holiday_reference")
     assert signal is not None and signal.value == "Diwali"
     hyp = packet.hypotheses.get("date_window")
     assert hyp is not None
-    assert "2026-11-08" in str(hyp.value["value"]) or "2026-11-08" in str(hyp.value)
+    assert hyp.value["value"] == f"window covering {expected_date} (Diwali)"
 
 
 def test_extraction_multiple_festivals_records_all():

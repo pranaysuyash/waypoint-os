@@ -19,7 +19,7 @@ import unicodedata
 import uuid
 from copy import deepcopy
 from dataclasses import asdict, replace
-from datetime import datetime
+from datetime import date, datetime
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -269,6 +269,46 @@ _SOMEWHERE_DEST_RE = re.compile(
 _OR_DESTINATION_RE = re.compile(
     r"\b([A-Z][a-z]+(?:-[A-Z][a-z]+)*(?:\s+[A-Z][a-z]+(?:-[A-Z][a-z]+)*)*)(?:\s+(?:or|and)\s+([A-Z][a-z]+(?:-[A-Z][a-z]+)*(?:\s+[A-Z][a-z]+)*).*?)\b",
 )
+
+# Advance and Deposit are also real towns. Suppress only the financial reading
+# in the place extractor and preserve the original wording for supplier checks.
+_PAYMENT_PHRASE_RE = re.compile(
+    r"\b(?:(?:an?|its|their|our|your|the)\s+(?:refundable\s+|non[- ]refundable\s+)?(?:advance|deposit)"
+    r"|(?:advance|deposit)\s+(?:payment|amount|required|due)"
+    r"|(?:pay|paid|payable|payment|book|booked|booking)\s+in\s+advance)"
+    r"(?:\s+(?:is\s+)?(?:due|required))?\b",
+    re.IGNORECASE,
+)
+# These complete station names occur in rail and pickup instructions. Their
+# component words can independently validate as cities (Gare, Nord, Lyon).
+# Match the occurrence, so a separately stated trip to Lyon still counts.
+_RAIL_STATION_NAME_RE = re.compile(
+    r"\b(?:paris[ \t-]+)?gare[ \t]+(?:de[ \t]+lyon|du[ \t]+nord)\b",
+    re.IGNORECASE,
+)
+# Mask property names when the clause uses them as a supplier subject.
+_HOTEL_SUPPLIER_NAME_RE = re.compile(
+    r"\bhotel(?:[\t ]+[\w’'-]+){1,4}?"
+    r"(?=[\t ]+(?:requires?|needs?|asks?|confirms?|says?|reports?|states?)\b)",
+    re.IGNORECASE,
+)
+# Separate a timed ferry leg's departure port and operator from trip places.
+_FERRY_PORT_ARRIVAL_RE = re.compile(
+    r"\b(?:reach|arrive at) [^.!?;\n]{1,65}?\bport(?= at \d{2}:\d{2}\b)",
+    re.IGNORECASE,
+)
+_TIMED_FERRY_OPERATOR_RE = re.compile(
+    r"\b\d{2}:\d{2}(?:[ \t]+[\w&’'-]+){1,5}?(?=[ \t]+ferry[ \t]+to\b)",
+    re.IGNORECASE,
+)
+
+
+def _trip_place_text(text: str) -> str:
+    text = _RAIL_STATION_NAME_RE.sub(".", text)
+    text = _HOTEL_SUPPLIER_NAME_RE.sub(".", text)
+    text = _FERRY_PORT_ARRIVAL_RE.sub(".", text)
+    return _TIMED_FERRY_OPERATOR_RE.sub("", text)
+
 
 # Destination metadata labels to exclude (caller, referral, etc.)
 _DESTINATION_METADATA_LABELS_RE = re.compile(
@@ -640,6 +680,28 @@ _PEOPLE_RE = re.compile(
     # keeps those clean. _GUEST_PROSE_SUFFIXES below is the shared source.
     r"(?:people|persons?|pax|passengers?|travelers?|travellers?|ppl|log|loga|jan|bande|bando"
     r"|guests?(?!\s*(?:lists?|houses?|rooms?|books?|bed(?:room)?s?|bath(?:room)?s?)\b))",
+    re.IGNORECASE,
+)
+
+# A count qualifying a support request describes its recipients. Mask that
+# noun phrase only in the text used for counting the party. Keep explicit
+# whole-group wording ("all four guests", "two of our four guests") intact.
+_ACCESS_RECIPIENT_COUNT_RE = re.compile(
+    rf"\b(?P<whole>all\s+|(?:{_COUNT_TOKEN_RE}|some|each|several)\s+"
+    rf"(?:out\s+)?of\s+(?:(?:our|the)\s+)?)?{_COUNT_TOKEN_RE}\s+"
+    r"(?:guests?|passengers?|travell?ers?|people|persons?|adults?|children|kids?|pax|ppl)\b"
+    r"(?=\s+(?:needs?|requires?|requests?|uses?)\s+(?:(?:a|an|the)\s+)?"
+    r"(?:step[- ]free|level boarding|ramp|wheelchair|mobility|boarding assistance|accessible)\b)",
+    re.IGNORECASE,
+)
+# The broad gazetteer contains number words such as Six. Match the count in
+# its party-noun context so an explicitly named place can still be found.
+_DESTINATION_PARTY_COUNT_RE = re.compile(
+    rf"\b(?:{_PEOPLE_RE.pattern}|{_ADULTS_RE.pattern}|{_INFANTS_RE.pattern})\b", re.IGNORECASE,
+)
+_ONLY_TRAVELER_RE = re.compile(
+    r"\bi(?:\s+am|['’]m)\s+the only (?:travell?er|passenger|guest)"
+    r"(?:\s+(?:on|for)\s+(?:the|this)\s+trip)?(?=\s*(?:[.!?;]|$))",
     re.IGNORECASE,
 )
 
@@ -1084,6 +1146,16 @@ def _extract_past_trip_places(sentence: str) -> List[Dict[str, Any]]:
     return places
 
 
+# A leg written as “Doha 23:55 to Istanbul 01:10” names a departure
+# even when the note has no “from” marker.
+_TIMED_DEPARTURE_RE = re.compile(
+    r"^\s+(?:[01]?\d|2[0-3]):[0-5]\d\s+to\s+"
+    r"(?P<arrival>[a-z][a-z'’-]*(?:[ \t]+[a-z][a-z'’-]*){0,2})"
+    r"[ \t]+(?:[01]?\d|2[0-3]):[0-5]\d\b",
+    re.IGNORECASE,
+)
+
+
 def _is_likely_origin(text: str, dest_match: str) -> bool:
     """Check if a destination mention is actually the origin city.
 
@@ -1125,7 +1197,11 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
     # candidate. This is exclusion only: whether an origin FACT exists is
     # decided by the origin writer's marker semantics (Option 3: bare
     # "side" yields a hypothesis, "side se"/"se"/"ru" yield facts).
-    context_after = lowered[match_idx + len(dest_match):match_idx + len(dest_match) + 15]
+    tail = lowered[match_idx + len(dest_match):]
+    timed_departure = _TIMED_DEPARTURE_RE.match(tail)
+    if timed_departure and is_known_destination(timed_departure.group("arrival")):
+        return True
+    context_after = tail[:15]
     side_postposition = _SE_RU_SIDE_RE.search(context_after)
     if side_postposition:
         if not (side_postposition.group(1).lower() == "side"
@@ -1162,6 +1238,14 @@ def _extract_leading_origin_city(text: str) -> Optional[str]:
     stripped = text.lstrip()
     if not stripped:
         return None
+
+    departure = re.match(r"[a-z][a-z'’-]*(?:[ \t]+[a-z][a-z'’-]*){0,2}", stripped, re.IGNORECASE)
+    if departure:
+        timed_leg = _TIMED_DEPARTURE_RE.match(stripped[departure.end():])
+        if timed_leg and is_known_destination(timed_leg.group("arrival")):
+            city, _ = Normalizer.normalize_city(departure.group(0))
+            if is_known_city(city):
+                return city
 
     tokens = re.findall(r"[A-Za-z][A-Za-z'.-]*", stripped)
     if len(tokens) < 2:
@@ -1433,6 +1517,14 @@ def _has_bare_side_direction_intent(text_lower: str) -> bool:
     return False
 
 
+def _declared_hinglish_destination(text_lower: str) -> Optional[str]:
+    for clause in re.split(r"[.!?;\n]", text_lower):
+        declared = _ORIGIN_DEST_RE.search(clause)
+        if declared and is_known_destination(declared.group(1).strip()):
+            return declared.group(1).strip()
+    return None
+
+
 def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional[str]]:
     """Public extraction entry: applies the direction-reference guard
     ("<place> side" never fabricates a destination) on top of the raw
@@ -1445,7 +1537,8 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
             return [], "open", None
         return candidates, status, raw
     text_lower = text.lower()
-    kept = [c for c in candidates if not _is_direction_side_reference(c, text_lower)]
+    declared = _declared_hinglish_destination(text_lower)
+    kept = [c for c in candidates if c.lower() == declared or not _is_direction_side_reference(c, text_lower)]
     if len(kept) == len(candidates):
         return candidates, status, raw
     if kept:
@@ -1471,6 +1564,9 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
     # This is idempotent, so direct helper callers and the pipeline share the
     # same safety boundary.
     text, _ = _prepare_extraction_text(text)
+    # A clause boundary prevents a dangling "from" or "to" before a station
+    # from attaching to the next place. Other extractors still see the note.
+    text = _trip_place_text(text)
 
     # Remove call-log metadata lines that frequently contain capitalized labels
     # (Caller, Referral, Pace, Budget, etc.) and pollute destination extraction.
@@ -1482,6 +1578,8 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
     destination_text = _SALUTATION_RE.sub("", destination_text)
     if not destination_text.strip():
         destination_text = text
+    destination_text = _PAYMENT_PHRASE_RE.sub(" ", destination_text)
+    destination_text = _DESTINATION_PARTY_COUNT_RE.sub(" ", destination_text)
 
     text_lower = destination_text.lower()
     candidates: List[str] = []
@@ -1494,6 +1592,11 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
         explicit_candidates, explicit_status, explicit_raw = _extract_destination_candidates(explicit_line)
         if explicit_candidates:
             return explicit_candidates, explicit_status, explicit_raw
+
+    # An explicit Hinglish trip clause outranks lists of stops in later sentences.
+    declared = _declared_hinglish_destination(text_lower)
+    if declared:
+        return [declared.title()], "definite", declared
 
     # City-set separator pass: "tokyo + kyoto + osaka", "tokyo, kyoto and
     # osaka", "covering tokyo and kyoto". Every element must resolve to a
@@ -1567,7 +1670,35 @@ def _extract_destination_candidates_unfiltered(text: str) -> Tuple[List[str], st
     _DESTINATION_STOP_WORDS = {"we", "i", "my", "our", "the", "this", "that", "it", "they", "he", "she", "us", "me", "him", "her"}
 
     raw_matches: List[str] = []
-    matches = [m.group(0) for m in _DESTINATION_RE.finditer(destination_text)]
+    # Mask hospitality/landmark spans and transit mentions before destination scanning
+    # so hotel names ("Atlantis The Royal", "Al Maha"), markets ("Gold Souk"), and
+    # layover hubs ("via Istanbul") do not pollute destination_candidates.
+    masked_dest_text = destination_text
+    try:
+        from src.public_checker.entity_checks import extract_lodging_names
+
+        for lodging_name in extract_lodging_names(destination_text):
+            if lodging_name and len(lodging_name) >= 3:
+                masked_dest_text = re.sub(
+                    r"\b" + re.escape(lodging_name) + r"\b",
+                    " ",
+                    masked_dest_text,
+                    flags=re.IGNORECASE,
+                )
+    except Exception:
+        pass
+    masked_dest_text = re.sub(
+        r"\b(?:staying at|check-?in at|checking in at|booked at|visiting)\s+[A-Z][A-Za-z'’&-]+(?:\s+(?:[A-Z][A-Za-z'’&-]+|the|and|at|of)){0,4}(?:\s+(?:Souk|Mall|Tower|Museum|Palace|Resort|Hotel|Gardens|Park|Bay))?",
+        " ",
+        masked_dest_text,
+    )
+    masked_dest_text = re.sub(
+        r"\b(?:via|layover in|connecting in|transit through|stopover in)\s+[A-Z][A-Za-z'’&-]+(?:\s+[A-Z][A-Za-z'’&-]+){0,2}",
+        " ",
+        masked_dest_text,
+        flags=re.IGNORECASE,
+    )
+    matches = [m.group(0) for m in _DESTINATION_RE.finditer(masked_dest_text)]
     if matches:
         seen = set()
         for m in matches:
@@ -1878,6 +2009,13 @@ def _resolve_destination_country(destination_text: str, candidates: List[str]) -
 # SECTION 2: DATE EXTRACTION
 # =============================================================================
 
+_OUTBOUND_FLIGHT_DATE_RE = re.compile(
+    r"\b(?P<day>\d{1,2})[ \t]+(?P<month>[a-z]+)[ \t]+(?P<year>20\d{2})"
+    r"(?=[ \t]+(?:ki[ \t]+flight|outbound[ \t]+flight)\b)",
+    re.IGNORECASE,
+)
+
+
 def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str], str]]:
     """
     Returns (window, start, end, confidence) or None.
@@ -1982,6 +2120,16 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
             start_iso = f"{year}-{month_num:02d}-{int(after_month_day.group(2)):02d}"
             return raw, start_iso, None, "flexible_after"
         return raw, None, None, "flexible_after"
+
+    outbound = _OUTBOUND_FLIGHT_DATE_RE.search(text)
+    if outbound:
+        month = _month_to_num(outbound["month"])
+        if month:
+            try:
+                start = date(int(outbound["year"]), month, int(outbound["day"]))
+            except ValueError:
+                return None
+            return outbound.group(0), start.isoformat(), None, "outbound_only"
 
     # Single month: "March 2026"
     single_month = _SINGLE_MONTH_RE.search(text_lower)
@@ -2619,7 +2767,9 @@ def _extract_party(text: str) -> Dict[str, Any]:
     composition: Dict[str, int] = {}
     child_ages: List[float] = []
     group_signals: List[str] = []
-    text_lower = text.lower()
+    text_lower = _ACCESS_RECIPIENT_COUNT_RE.sub(
+        lambda match: match[0] if match["whole"] else "", text.lower()
+    )
     family_group_size = 0
 
     for signal_match in _PARTY_GROUP_SIGNAL_RE.finditer(text_lower):
@@ -2694,7 +2844,8 @@ def _extract_party(text: str) -> Dict[str, Any]:
         or re.search(rf"\b(?:family|group|party)\s+(?:of\s+)?{_COUNT_TOKEN_RE}", text_lower)
         or re.search(rf"\b(?:the\s+)?(?:{_COUNT_TOKEN_RE})\s+of\s+us\b", text_lower)
     )
-    if not named_senior_hits and _PARENTS_SAATH_RE.search(text_lower) and not explicit_total_stated:
+    speaker_with_parents = bool(_PARENTS_SAATH_RE.search(text_lower)) and not explicit_total_stated
+    if not named_senior_hits and speaker_with_parents:
         # Speaker + both parents. A pure "my parents" mention without
         # accompaniment stays at +2 (the speaker may be arranging, not going).
         composition["adults"] = max(composition.get("adults", 0), 3)
@@ -2854,12 +3005,14 @@ def _extract_party(text: str) -> Dict[str, Any]:
     # mother kamala sen, 68 … i manage everything" — is the booking agent,
     # not a traveler). A note with no party signal at all leaves party_size
     # absent (the unknowns list carries it) instead of a fabricated 1.
-    if not named_senior_hits and re.search(r"\b(?:i|i'm|im|i am)\b", text_lower):
+    if not named_senior_hits and not speaker_with_parents and re.search(r"\b(?:i|i'm|im|i am)\b", text_lower):
         if composition or family_group_size or group_signals:
             composition["adults"] = composition.get("adults", 0) + 1
 
     # Total party size
     party_size = sum(composition.values())
+    if not party_size and _ONLY_TRAVELER_RE.search(text_lower):
+        party_size = 1
 
     if family_group_size > party_size:
         party_size = family_group_size
@@ -2887,6 +3040,11 @@ def _extract_party(text: str) -> Dict[str, Any]:
         "child_ages": child_ages,
         "group_signals": group_signals,
     }
+
+
+def extract_party_size(text: str) -> int | None:
+    """Return the canonical headcount when the inquiry supplies party evidence."""
+    return _extract_party(text)["party_size"] or None
 
 
 # =============================================================================
@@ -3379,32 +3537,75 @@ def _extract_passport_visa_gated(text: str, stage: str) -> Dict[str, Any]:
 # SECTION 10: EXISTING ITINERARY / TRAVELER PLAN
 # =============================================================================
 
-def _extract_traveler_plan(text: str) -> Dict[str, Any]:
-    results: Dict[str, Any] = {}
-    text_lower = text.lower()
+_BOOKING_ITEM = r"(?:flights?|airfare|hotels?|rooms?|trains?|rail(?:\s+tickets?)?|tgv(?:\s+inoui)?|rer(?:\s+[a-e])?|onward\s+train|drivers?|pickups?|transfers?|tours?|tickets?|ferr(?:y|ies))"
+_BOOKING_STATEMENT_RE = re.compile(
+    rf"\b(?:(?:already[ -]booked|separately[ -]booked|(?:we|i)(?:['’]ve|\s+have)?\s+(?:already\s+)?booked)"
+    rf"\s+(?:(?:the|our|my|a|an|only)\s+)*(?P<booked_item>{_BOOKING_ITEM})"
+    rf"|(?P<item_booked>{_BOOKING_ITEM})\s+(?:(?:is|are|was|were|already|separately)\s+)*booked"
+    r"|(?:we|i)(?:['’]ve|\s+have)?\s+already\s+booked|^already\s+booked(?=[.!;]?$))\b",
+    re.IGNORECASE,
+)
+_NO_BOOKINGS_RE = re.compile(
+    r"\b(?:nothing\s+(?:(?:is|was|has been)\s+)?booked"
+    r"|(?:haven['’]t|have\s+not)\s+(?:yet\s+)?booked\s+anything|no\s+bookings\s+yet)\b",
+    re.IGNORECASE,
+)
+_UNCERTAIN_BOOKING_RE = re.compile(
+    r"\b(?:if|whether|unless|maybe|unsure|uncertain|not\s+sure|not|never|no|"
+    r"haven['’]t|hasn['’]t|don['’]t|didn['’]t|isn['’]t|aren['’]t|might|could|yet\s+to\s+be)\b",
+    re.IGNORECASE,
+)
+_EXISTING_ITINERARY_RE = re.compile(
+    r"\b(?:have\s+an|existing|current)\s+itinerary\b[^.!?;\n]*", re.IGNORECASE
+)
 
-    if "already booked" in text_lower:
-        if "hotel" in text_lower and "flight" not in text_lower:
-            results["traveler_plan"] = "has_hotel_only"
-        elif "flight" in text_lower:
-            results["traveler_plan"] = "has_flights_booked"
-        else:
-            results["traveler_plan"] = "has_existing_booking"
-    elif "flights booked" in text_lower:
-        results["traveler_plan"] = "has_flights_booked"
-    elif "hotel booked" in text_lower or "hotel booked" in text_lower:
-        results["traveler_plan"] = "has_hotel_only"
-    elif "have an itinerary" in text_lower or "existing itinerary" in text_lower:
-        itin_match = re.search(r"((?:have|existing|current)\s+(?:an\s+)?itinerary[^.]*\.)", text_lower)
-        if itin_match:
-            results["existing_itinerary"] = itin_match.group(1).strip()
-            results["traveler_plan"] = "has_existing_itinerary"
-        else:
-            results["traveler_plan"] = "nothing_booked"
-    else:
-        results["traveler_plan"] = "nothing_booked"
 
-    return results
+def _extract_traveler_plan(text: str) -> Dict[str, Tuple[str, str]]:
+    """Return booking or itinerary facts with their original supporting wording."""
+    plan: Dict[str, Tuple[str, str]] = {}
+    lowered = text.lower()
+    if "book" not in lowered and "itinerary" not in lowered:
+        return plan
+    booking = None
+    no_bookings = None
+    for clause_match in re.finditer(r"[^.!?;\n]+[.!?;]?", text):
+        clause = clause_match.group().strip()
+        if clause.endswith("?") or _is_past_trip_mention(clause, clause):
+            continue
+        itinerary = _EXISTING_ITINERARY_RE.search(clause)
+        if itinerary and not _UNCERTAIN_BOOKING_RE.search(clause[:itinerary.start()]):
+            excerpt = itinerary.group().strip()
+            plan["existing_itinerary"] = (excerpt, excerpt)
+            plan["traveler_plan"] = ("has_existing_itinerary", excerpt)
+        negative = _NO_BOOKINGS_RE.search(clause)
+        if negative and not _UNCERTAIN_BOOKING_RE.search(clause[:negative.start()]):
+            if not re.search(r"\b(?:except|apart from|other than)\b", clause[negative.end():], re.I):
+                no_bookings = negative.group()
+        for match in _BOOKING_STATEMENT_RE.finditer(clause):
+            # Check the local assertion. A later missing operator, or a hotel
+            # mentioned in another clause, says nothing about this booking.
+            prefix = re.split(r"[,;]|\bbut\b", clause[:match.start()], flags=re.I)[-1]
+            if _UNCERTAIN_BOOKING_RE.search(prefix):
+                continue
+            if match["item_booked"] and re.search(r"\b(?:want|like|need|get)\s+(?:(?:a|the|our|my)\s+)?$", prefix, re.I):
+                continue
+            item = (match["booked_item"] or match["item_booked"] or "").lower()
+            value = "has_existing_booking"
+            excerpt = match.group()
+            if item.startswith("flight") or item == "airfare":
+                value = "has_flights_booked"
+            elif item.startswith("hotel") and re.search(r"\bonly\s+(?:the\s+)?hotel", clause, re.I):
+                value = "has_hotel_only"
+                excerpt = clause
+            if booking and booking[0] != value:
+                # Mixed evidence certifies a booking without an exclusivity claim.
+                value = "has_existing_booking"
+            booking = (value, excerpt)
+    if booking and not no_bookings:
+        plan["traveler_plan"] = booking
+    elif no_bookings and not booking:
+        plan["traveler_plan"] = ("nothing_booked", no_bookings)
+    return plan
 
 
 def extract_flight_inclusiveness(text: str) -> str:
@@ -4171,9 +4372,10 @@ class ExtractionPipeline:
             ))
 
         # --- ORIGIN ---
+        origin_text = _trip_place_text(text)
         label_origin_match = re.search(
             r"\b(?:origin city|origin|departure city)\b\s*[:\-]\s*([A-Za-z][A-Za-z\s]{0,40}?)(?=,|\.|\n|\||$)",
-            text,
+            origin_text,
             re.IGNORECASE,
         )
         if label_origin_match:
@@ -4189,7 +4391,7 @@ class ExtractionPipeline:
         # Bounded extraction: limit to ~3 words after "from/starting/departing"
         # to prevent conversational spillover into unrelated sentence parts.
         if not packet.facts.get("origin_city"):
-            leading_origin = _extract_leading_origin_city(text)
+            leading_origin = _extract_leading_origin_city(origin_text)
             if leading_origin:
                 packet.set_fact("origin_city", self._make_slot(
                     leading_origin, 0.88, AuthorityLevel.EXPLICIT_USER,
@@ -4197,7 +4399,7 @@ class ExtractionPipeline:
                 ))
 
         if not packet.facts.get("origin_city"):
-            airport_match = re.search(r"\b(from|starting|departing)\s+([A-Z]{3})\b", text)
+            airport_match = re.search(r"\b(from|starting|departing)\s+([A-Z]{3})\b", origin_text)
             if airport_match:
                 city, was_normalized = Normalizer.normalize_city(airport_match.group(2))
                 mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
@@ -4212,7 +4414,7 @@ class ExtractionPipeline:
             # plus punctuation/newline, to avoid spillover into the rest of the sentence.
             origin_match = re.search(
                 r"\b(from|starting|departing)\s+((?:[A-Za-z]+\s*){1,3}?)(?:\bto\b|\bfor\b|\bbudget\b|\bneed\b|\bplanning\b|\bgoing\b|\btravel(?:ing|ling)?\b|\blooking\b|\bseeking\b|\bstaying\b|\bwith\b|,|\.|\$|\n)",
-                text,
+                origin_text,
                 re.IGNORECASE,
             )
             if origin_match:
@@ -4240,7 +4442,7 @@ class ExtractionPipeline:
         if not packet.facts.get("origin_city"):
             out_of_match = re.search(
                 r"\b(?:flying\s+(?:out\s+of|from)|departing\s+(?:out\s+of|from)|leaving\s+(?:from|out\s+of)|out\s+of)\s+([A-Za-z]{3,})\b",
-                text,
+                origin_text,
                 re.IGNORECASE,
             )
             if out_of_match:
@@ -4260,11 +4462,11 @@ class ExtractionPipeline:
                 "hai", "tha", "thi", "the", "hoga", "hogi", "hoge", "is", "are", "was", "were", "be", "been",
                 "airport", "station", "hotel", "resort", "terminal", "harbor", "port", "beach",
                 "sightseeing", "dikkat", "plane", "flight", "flights", "transfer", "cab", "taxi", "car",
-                "bus", "train", "ticket", "tickets", "booking", "bookings", "room", "rooms", "villa", "villas",
+                "bus", "train", "ferry", "ticket", "tickets", "booking", "bookings", "room", "rooms", "villa", "villas",
             }
             route_match = re.search(
                 r"\b([A-Za-z]{3,})\s+(?:to|->|-->)\s+([A-Za-z]{3,})\b",
-                text,
+                origin_text,
                 re.IGNORECASE,
             )
             if route_match:
@@ -4306,12 +4508,12 @@ class ExtractionPipeline:
         if not packet.facts.get("origin_city"):
             for postposition_match in re.finditer(
                 r"\b([A-Za-z]+)\s+(se|ru|side)\b",
-                text,
+                origin_text,
                 re.IGNORECASE,
             ):
                 if (
                     postposition_match.group(2).lower() == "side"
-                    and _side_is_trip_compound(text[postposition_match.end():])
+                    and _side_is_trip_compound(origin_text[postposition_match.end():])
                 ):
                     continue
                 city_raw = postposition_match.group(1).strip()
@@ -4331,7 +4533,7 @@ class ExtractionPipeline:
                         postposition == "side"
                         and re.match(
                             r"^\s+(?:se|ru)\b",
-                            text[postposition_match.end():],
+                            origin_text[postposition_match.end():],
                             re.IGNORECASE,
                         )
                     ):
@@ -4592,10 +4794,10 @@ class ExtractionPipeline:
 
         # --- TRAVELER PLAN ---
         plan = _extract_traveler_plan(text)
-        for field_name, value in plan.items():
+        for field_name, (value, excerpt) in plan.items():
             packet.set_fact(field_name, self._make_slot(
                 value, 0.85, AuthorityLevel.EXPLICIT_USER,
-                value, eid,
+                excerpt, eid,
             ))
 
         # --- REVISION COUNT ---

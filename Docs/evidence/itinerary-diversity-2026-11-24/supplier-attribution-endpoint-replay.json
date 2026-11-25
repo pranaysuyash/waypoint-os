@@ -1,0 +1,65 @@
+{
+  "base_note": "Hotel Alpha requires a deposit and says cancellation is free. Hotel Beta requires a deposit and says cancellation is free. The overnight train is waitlisted. Our morning transfer is booked separately.",
+  "observations": [
+    {
+      "update": "Hotel Alpha confirms its deposit is nonrefundable.",
+      "surface": "public",
+      "http": 200,
+      "state": "blocked",
+      "question": "What amount becomes nonrefundable, in which currency, and when?",
+      "other_questions": [
+        "When can you change or cancel the morning transfer if the train remains waitlisted?"
+      ]
+    },
+    {
+      "update": "Hotel Alpha confirms its deposit is nonrefundable.",
+      "surface": "authenticated",
+      "http": 200,
+      "state": "blocked",
+      "question": "What amount becomes nonrefundable, in which currency, and when?",
+      "other_questions": [
+        "When can you change or cancel the morning transfer if the train remains waitlisted?"
+      ]
+    },
+    {
+      "update": "The morning transfer deposit is nonrefundable.",
+      "surface": "public",
+      "http": 200,
+      "state": "blocked",
+      "question": "What is the cancellation cutoff for the exact rate you\u2019re booking?",
+      "other_questions": [
+        "When can you change or cancel the morning transfer if the train remains waitlisted?"
+      ]
+    },
+    {
+      "update": "The morning transfer deposit is nonrefundable.",
+      "surface": "authenticated",
+      "http": 200,
+      "state": "blocked",
+      "question": "What is the cancellation cutoff for the exact rate you\u2019re booking?",
+      "other_questions": [
+        "When can you change or cancel the morning transfer if the train remains waitlisted?"
+      ]
+    },
+    {
+      "update": "The train confirmation screenshot has no date.",
+      "surface": "public",
+      "http": 200,
+      "state": "blocked",
+      "question": "What is the cancellation cutoff for the exact rate you\u2019re booking?",
+      "other_questions": [
+        "Does the latest confirmation match the train and date you\u2019re taking?"
+      ]
+    },
+    {
+      "update": "The train confirmation screenshot has no date.",
+      "surface": "authenticated",
+      "http": 200,
+      "state": "blocked",
+      "question": "What is the cancellation cutoff for the exact rate you\u2019re booking?",
+      "other_questions": [
+        "Does the latest confirmation match the train and date you\u2019re taking?"
+      ]
+    }
+  ]
+}

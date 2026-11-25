@@ -105,10 +105,13 @@ def list_for_agency(
     limit: int = 100,
 ) -> List[Dict[str, Any]]:
     """Most-recent-first message list for an agency, optionally filtered."""
+    from spine_api.services.whatsapp_journal import agency_messages
+
+    limit = max(1, limit)
+    out = agency_messages(agency_id, trip_id, limit) if channel in (None, "whatsapp") else []
     path = _agency_path(agency_id)
     if not path.exists():
-        return []
-    out: List[Dict[str, Any]] = []
+        return sorted(out, key=lambda row: row.get("received_at") or "", reverse=True)[:limit]
     with path.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -124,7 +127,7 @@ def list_for_agency(
                 continue
             out.append(rec)
     out.sort(key=lambda r: r.get("received_at") or "", reverse=True)
-    return out[: max(1, limit)]
+    return out[:limit]
 
 
 def find_by_provider_message_id(agency_id: str, provider_message_id: str) -> Optional[Dict[str, Any]]:
@@ -203,7 +206,7 @@ def apply_provider_status(
     return {"updated": updated}
 
 
-def match_trip_by_phone(agency_id: str, phone: str) -> Optional[str]:
+def match_trip_by_phone(agency_id: str, phone: str, *, unique_active: bool = False) -> Optional[str]:
     """Resolve a trip for an inbound phone via digit-normalized contact match.
 
     One bounded scan (200 rows); covers top-level, packet, extracted facts,
@@ -216,6 +219,21 @@ def match_trip_by_phone(agency_id: str, phone: str) -> Optional[str]:
         wanted = normalize_phone(phone)
         if not wanted:
             return None
+        if unique_active:
+            matches = set()
+            for page in range(5):
+                trips = TripStore.list_trips(limit=500, offset=page * 500, agency_id=agency_id)
+                for trip in trips:
+                    if not trip.get("id") or trip.get("status") in ("completed", "cancelled", "archived", "closed"):
+                        continue
+                    contacts = (trip.get("contact_phone"), trip.get("customer_phone"), trip.get("customer_contact"))
+                    if any(isinstance(val, str) and "@" not in val and normalize_phone(val) == wanted for val in contacts):
+                        matches.add(trip["id"])
+                if len(matches) > 1:
+                    raise LookupError("Multiple active trips match the provider contact")
+                if len(trips) < 500:
+                    return next(iter(matches), None)
+            raise LookupError("Phone lookup exceeded its review limit")
         for trip in TripStore.list_trips(limit=200, agency_id=agency_id):
             packet = trip.get("packet") or {}
             extracted = trip.get("extracted") or {}
@@ -240,5 +258,7 @@ def match_trip_by_phone(agency_id: str, phone: str) -> Optional[str]:
                         if trip_phone and trip_phone == wanted:
                             return trip.get("id")
     except Exception as exc:
+        if unique_active:
+            raise
         logger.warning("message_store trip phone match failed: %s", exc)
     return None

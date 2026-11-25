@@ -18,6 +18,7 @@ from spine_api.services.live_checker_service import (
     finalize_result_with_live_checker,
 )
 from src.intake.config.agency_settings import AgencySettingsStore
+from src.intake.extractors import extract_party_size
 from src.intake.orchestration import run_spine_once
 from src.public_checker.entity_checks import run_entity_checks
 from src.public_checker.live_checks import build_live_checker_signals, extract_destination
@@ -287,11 +288,36 @@ def run_public_checker_submission(
     if declared_plan_source not in allowed_plan_sources:
         declared_plan_source = "unknown"
 
+    structured_dict = request.structured_json if isinstance(request.structured_json, dict) else {}
     trip_context = source_payload.get("trip_context") if isinstance(source_payload.get("trip_context"), dict) else {}
-    has_destination = bool(trip_context.get("destination_candidates") or trip_context.get("destination") or request_dict.get("destination"))
-    has_dates = bool(trip_context.get("date_window") or trip_context.get("travel_window") or request_dict.get("date_window"))
-    has_budget_band = bool(trip_context.get("budget_raw_text") or request_dict.get("budget") or request_dict.get("budget_band"))
-    has_traveler_profile = bool(trip_context.get("party_size") or request_dict.get("party_size") or request_dict.get("traveler_profile"))
+    has_destination = bool(
+        trip_context.get("destination_candidates")
+        or trip_context.get("destination")
+        or structured_dict.get("destination_candidates")
+        or structured_dict.get("destination")
+        or request_dict.get("destination")
+    )
+    has_dates = bool(
+        trip_context.get("date_window")
+        or trip_context.get("travel_window")
+        or structured_dict.get("date_window")
+        or structured_dict.get("travel_window")
+        or request_dict.get("date_window")
+    )
+    has_budget_band = bool(
+        trip_context.get("budget_raw_text")
+        or structured_dict.get("budget_raw_text")
+        or structured_dict.get("budget")
+        or request_dict.get("budget")
+        or request_dict.get("budget_band")
+    )
+    has_traveler_profile = bool(
+        trip_context.get("party_size")
+        or structured_dict.get("party_size")
+        or request_dict.get("party_size")
+        or request_dict.get("traveler_profile")
+        or extract_party_size(request.raw_note or request.itinerary_text or "")
+    )
 
     intake_event = ProductBEventStore.build_event(
         event_name="intake_started",

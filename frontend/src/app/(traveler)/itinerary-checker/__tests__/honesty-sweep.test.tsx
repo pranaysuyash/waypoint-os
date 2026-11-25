@@ -47,12 +47,12 @@ describe('itinerary-checker honesty sweep (FT-01/FT-02/FT-10)', () => {
 
   it('consent copy makes no training claim (truthful storage framing)', () => {
     expect(pageClientSource).not.toContain('future training');
-    expect(pageClientSource).toContain('nothing is kept');
+    expect(pageClientSource).toContain('A derived report can still be saved.');
   });
 
-  it('score is demoted — dial is compact and retitled (Manifest rework)', () => {
+  it('results lead with findings and omit the synthetic score', () => {
     expect(pageClientSource).not.toContain('Itinerary Health Score');
-    expect(pageClientSource).toContain('Health check');
-    expect(pageClientSource).toContain('What your plan is missing');
+    expect(pageClientSource).not.toContain('scoreFromAnalysis');
+    expect(pageClientSource).toContain('Findings to review');
   });
 });

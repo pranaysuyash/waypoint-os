@@ -10,6 +10,7 @@ export interface DrawerProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  ariaLabel?: string;
   description?: string;
   children: React.ReactNode;
   position?: 'left' | 'right';
@@ -22,6 +23,7 @@ export function Drawer({
   isOpen,
   onClose,
   title,
+  ariaLabel,
   description,
   children,
   position = 'right',
@@ -121,7 +123,7 @@ export function Drawer({
         aria-modal='true'
         aria-labelledby={title ? ids.title : undefined}
         aria-describedby={description ? ids.description : undefined}
-        aria-label={title ? undefined : 'Drawer'}
+        aria-label={title ? undefined : (ariaLabel ?? 'Drawer')}
         className={cn(
           'absolute top-0 h-full bg-[#0d1117] border-[#30363d] shadow-lg flex flex-col',
           positionClasses,

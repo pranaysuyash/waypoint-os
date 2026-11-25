@@ -1296,7 +1296,7 @@ export const DepartureBoardFolds: React.FC<DepartureBoardFoldsProps> = ({
             </div>
 
             {/* Interactive Hero Stage Sync Bar */}
-            <div className="inline-flex flex-wrap sm:flex-nowrap items-center gap-2 rounded-xl bg-[#0d1117] border border-[#30363d] p-2 shrink-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-2">
               <span className="px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#8b949e] whitespace-nowrap">
                 Preview on Hero Board:
               </span>

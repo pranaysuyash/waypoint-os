@@ -1,0 +1,8 @@
+{
+  "trip": "trip_25f1a1d2cbd7",
+  "state": "blocked",
+  "title": "Overnight train",
+  "question": "What time and station will the transfer operator use for pickup?",
+  "repairHref": "/trips/trip_25f1a1d2cbd7/intake?repair=origin",
+  "repairNavigation": true
+}

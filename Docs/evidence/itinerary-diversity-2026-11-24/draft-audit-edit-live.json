@@ -1,0 +1,13 @@
+[
+  {
+    "case": "singapore-with-preferences",
+    "state": "completed",
+    "trip_id": "trip_83067ceeb037",
+    "decision": "PROCEED_TRAVELER_SAFE",
+    "matched_run": true,
+    "check": "passed",
+    "has_text": true,
+    "pass_header_and_keyboard_target": true,
+    "edit_and_reload": "Draft check unavailable"
+  }
+]

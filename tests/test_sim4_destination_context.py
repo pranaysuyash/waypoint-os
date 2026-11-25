@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.intake.extractors import _extract_destination_candidates
+from src.intake.extractors import ExtractionPipeline, _extract_destination_candidates
+from src.intake.packet_models import SourceEnvelope
 
 
 @pytest.mark.parametrize(
@@ -37,6 +38,7 @@ from src.intake.extractors import _extract_destination_candidates
             "scrap coorg, the kids are too young for that drive. just kerala please.",
             (["Kerala", "Coorg"], "semi_open"),
         ),
+        ("Doha 23:55 to Istanbul 01:10 next day. Separate tickets; staying in Istanbul.", (["Istanbul"], "definite")),
         # Established voices keep their results (regression gates).
         (
             "need a quick bachelor trip to goa for 6 guys, 2 nights next weekend, budget 60k total.",
@@ -69,3 +71,10 @@ def test_young_is_never_a_destination_candidate():
         "scrap coorg, the kids are too young for that drive. just kerala please."
     )
     assert "Young" not in candidates
+
+
+def test_timed_departure_supplies_origin_fact():
+    text = "Doha 23:55 to Istanbul 01:10 next day. Separate tickets; staying in Istanbul."
+    packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+    assert packet.facts["origin_city"].value == "Doha"
+    assert packet.facts["destination_candidates"].value == ["Istanbul"]

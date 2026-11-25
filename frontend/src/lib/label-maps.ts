@@ -66,7 +66,7 @@ export const STAGE_LABELS: Record<string, string> = {
 };
 
 export const DECISION_STATE_LABELS: Record<string, string> = {
-  PROCEED_TRAVELER_SAFE: "Ready to Book",
+  PROCEED_TRAVELER_SAFE: "Prepare traveler proposal",
   PROCEED_INTERNAL_DRAFT: "Draft Quote",
   BRANCH_OPTIONS: "Needs Options",
   STOP_NEEDS_REVIEW: "Needs Attention",
@@ -153,10 +153,26 @@ export function formatPacketAuthority(authority?: string | null): string {
   return AUTHORITY_LABELS[authority] || titleCase(authority);
 }
 
+/** The former freeform extractor cited its own enum as the traveler's words. */
+export function isLegacyBookingDefault(slot: unknown): boolean {
+  if (!slot || typeof slot !== 'object') return false;
+  const fact = slot as Record<string, unknown>;
+  if (fact.value !== 'nothing_booked' || fact.extraction_mode !== 'direct_extract'
+    || fact.confidence !== 0.85 || fact.authority_level !== 'explicit_user') return false;
+  const refs = fact.evidence_refs;
+  if (!Array.isArray(refs) || refs.length !== 1) return false;
+  const ref = refs[0];
+  return ref?.evidence_type === 'text_span' && ref.excerpt === 'nothing_booked' && ref.field_path == null;
+}
+
 const PACKET_ENUM_LABELS: Record<string, string> = {
   semi_open: "Semi-open",
   open_market: "Open market",
   nothing_booked: "Nothing booked yet",
+  has_existing_booking: "At least one booking reported",
+  has_flights_booked: "Flights reported as booked",
+  has_hotel_only: "Only the hotel reported as booked",
+  has_existing_itinerary: "Existing itinerary reported",
   partially_booked: "Partially booked",
   fully_booked: "Fully booked",
   flexible: "Flexible",

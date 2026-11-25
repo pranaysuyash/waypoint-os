@@ -267,7 +267,7 @@ describe("PacketPanel trip details fallback", () => {
 
     expect(screen.getByText("Assumptions (System Defaults)")).toBeInTheDocument();
     expect(screen.getAllByText(/Assumed: USD/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Assumed: soft/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Assumed: Flexible")).toBeInTheDocument();
     expect(screen.getByText("critical")).toBeInTheDocument();
     expect(screen.getByText("advisory")).toBeInTheDocument();
   });

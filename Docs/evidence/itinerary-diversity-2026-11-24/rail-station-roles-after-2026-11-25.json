@@ -1,0 +1,57 @@
+[
+  {
+    "case": "original station",
+    "synthetic_note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon.",
+    "run_state": "blocked",
+    "http": 200,
+    "origin_city": null,
+    "destination_candidates": [
+      "Paris"
+    ],
+    "destination_status": "definite"
+  },
+  {
+    "case": "remove station",
+    "synthetic_note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI.",
+    "run_state": "blocked",
+    "http": 200,
+    "origin_city": null,
+    "destination_candidates": [
+      "Paris"
+    ],
+    "destination_status": "definite"
+  },
+  {
+    "case": "station with actual city destination",
+    "synthetic_note": "Origin city: London. Our Eurostar to Paris is delayed today. We expect to miss the separately booked TGV INOUI from Gare de Lyon. Final destination: Lyon.",
+    "run_state": "blocked",
+    "http": 200,
+    "origin_city": "London",
+    "destination_candidates": [
+      "Lyon"
+    ],
+    "destination_status": "definite"
+  },
+  {
+    "case": "du Nord",
+    "synthetic_note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked RER B from Gare du Nord.",
+    "run_state": "blocked",
+    "http": 200,
+    "origin_city": null,
+    "destination_candidates": [
+      "Paris"
+    ],
+    "destination_status": "definite"
+  },
+  {
+    "case": "city only",
+    "synthetic_note": "Origin city: London. Final destination: Lyon.",
+    "run_state": "blocked",
+    "http": 200,
+    "origin_city": "London",
+    "destination_candidates": [
+      "Lyon"
+    ],
+    "destination_status": "definite"
+  }
+]

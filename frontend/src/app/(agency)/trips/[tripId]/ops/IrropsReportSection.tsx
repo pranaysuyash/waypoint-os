@@ -194,7 +194,8 @@ export default function IrropsReportSection({ tripId }: { tripId: string }) {
         )}
         <label className='block text-ui-xs text-[#8b949e]'>
           Notes
-          <input
+          <textarea
+            rows={4}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder='Carrier notification, rebooking status…'

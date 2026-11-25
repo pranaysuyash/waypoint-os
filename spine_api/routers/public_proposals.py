@@ -54,6 +54,7 @@ except ImportError:  # pragma: no cover - Windows has no fcntl; DB is required t
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
+from spine_api.routers.booking_changes import traveler_visible_changes
 from spine_api.services.commercial_agreement import (
     agreement_snapshot,
     finite_money,
@@ -161,6 +162,11 @@ class PublicProposalView(BaseModel):
     party_size: Optional[int] = None
     summary: Optional[str] = None
     highlights: List[str] = Field(default_factory=list)
+    # FND-0410: active booking changes with honest provenance labels
+    # ("Reported by your travel advisor" while source=operator_reported).
+    # EXCLUDED from the acceptance snapshot — a booking change informs the
+    # traveler without invalidating accepted proposal terms.
+    booking_changes: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class UpdateOptionsRequest(BaseModel):
@@ -1005,6 +1011,7 @@ def _build_persisted_proposal(token: str, trip_id: str, agency_id: str) -> Publi
         highlights=[str(item) for item in recommendation.get("highlights") or [] if isinstance(item, (str, int, float))],
         accepted_agreement=accepted,
         acceptance_revision_id=(accepted or {}).get("revision_id"),
+        booking_changes=traveler_visible_changes(safe_trip),
     )
     proposal.revision_id = _proposal_snapshot(proposal)["revision_id"]
     saved = verified_accepted_agreement(trip)
@@ -1019,7 +1026,7 @@ def _build_persisted_proposal(token: str, trip_id: str, agency_id: str) -> Publi
 
 
 def _proposal_snapshot(proposal: PublicProposalView) -> dict:
-    content = proposal.model_dump()
+    content = proposal.model_dump(exclude={"booking_changes"})
     content["base_price"] = proposal.base_price if proposal.base_price is not None else proposal.base_price_usd
     content["selected_total_price"] = proposal.selected_total_price if proposal.selected_total_price is not None else proposal.selected_total_price_usd
     content["selected_option_ids"] = sorted(option.id for option in proposal.available_options if option.selected)

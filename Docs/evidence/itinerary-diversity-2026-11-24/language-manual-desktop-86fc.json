@@ -1,0 +1,22 @@
+{
+  "case": "Singapore with stated preferences",
+  "device": "desktop",
+  "auto_reprocess_on_edit": false,
+  "trip": "trip_7030079097e2",
+  "current_rule_version": 2,
+  "before_edit": "Draft language checked",
+  "focused_heading": "Customer message check",
+  "while_editing": "Draft check unavailable",
+  "after_save_and_reopen": "Draft check unavailable",
+  "saved_via_ui": true,
+  "patch_status": 200,
+  "reopened_status": 200,
+  "run_before": "405c9b21-700f-471d-9c35-8a4097d3189d",
+  "run_after": "405c9b21-700f-471d-9c35-8a4097d3189d",
+  "saved_text_matches_edit": true,
+  "recording": "language-manual-desktop-86fc.mp4",
+  "screens": [
+    "language-manual-desktop-86fc-checked.png",
+    "language-manual-desktop-86fc-reopened.png"
+  ]
+}

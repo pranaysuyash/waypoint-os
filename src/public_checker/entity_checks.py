@@ -24,6 +24,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from src.intake.geography import is_known_destination
+
 _DEFAULT_BASE_URL = "https://nominatim.openstreetmap.org"
 _USER_AGENT = "waypoint-os-itinerary-checker/1.0 (entity-existence advisory check)"
 _MIN_INTERVAL_SECONDS = 1.0
@@ -47,6 +49,7 @@ class EntityCheckResult:
     confidence: float  # 0..1 — weak by design; consumers must not hard-block
     message: str
     source: str = "openstreetmap-nominatim"
+    reason: str | None = None
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -56,6 +59,7 @@ class EntityCheckResult:
             "confidence": self.confidence,
             "message": self.message,
             "source": self.source,
+            **({"reason": self.reason} if self.reason else {}),
         }
 
 
@@ -72,8 +76,8 @@ def entity_checks_enabled() -> bool:
 # Keyword parts are case-insensitive; NAME parts are case-sensitive so a
 # lowercase fragment ("at", "the") can never be captured as the entity name.
 _AT_FORM = re.compile(
-    r"(?:check-?in(?:g)?|check\s?in|staying?|stay|overnight)\s+(?:at|in)\s+"
-    r"((?:The\s+|Hotel\s+|Resort\s+)?[A-Z][A-Za-z0-9&'\-]+(?:\s+[A-Z][A-Za-z0-9&'\-]+){0,3})",
+    r"(?:check-?in(?:g)?|check\s?in|staying?|stay|overnight)\s+(?P<preposition>at|in)\s+"
+    r"(?P<name>(?:The\s+|Hotel\s+|Resort\s+)?[A-Z][A-Za-z0-9&'\-]+(?:\s+[A-Z][A-Za-z0-9&'\-]+){0,3})",
     re.IGNORECASE,
 )
 _PREFIX_FORM = re.compile(
@@ -123,8 +127,11 @@ def extract_lodging_names(text: str) -> List[str]:
     found: List[str] = []
     for pattern in _LODGING_PATTERNS:
         for match in pattern.finditer(text):
-            raw = re.sub(r"\s+", " ", match.group(1)).strip(" .,-")
+            captured = match.group("name") if pattern is _AT_FORM else match.group(1)
+            raw = re.sub(r"\s+", " ", captured).strip(" .,-")
             if not raw:
+                continue
+            if pattern is _AT_FORM and match.group("preposition").lower() == "in" and is_known_destination(raw):
                 continue
             found.append(raw)
     return _dedupe_names(found)
@@ -181,12 +188,14 @@ def verify_entity(
             status="unverified",
             confidence=0.0,
             message="Could not check this place against public records right now.",
+            reason="source_unavailable",
         )
 
     if not isinstance(results, list):
         return EntityCheckResult(
             name=name, place_query=place_query, status="unverified", confidence=0.0,
             message="Could not check this place against public records right now.",
+            reason="source_unavailable",
         )
 
     lodging_hits = [r for r in results if isinstance(r, dict) and _looks_like_lodging(r)]
@@ -207,6 +216,7 @@ def verify_entity(
             place_query=place_query,
             status="unverified",
             confidence=0.2,
+            reason="lodging_match_uncertain",
             message=f"“{name}” matched a public place record, but not as lodging — verify your booking details.",
         )
     return EntityCheckResult(
@@ -242,6 +252,7 @@ def run_entity_checks(
             results.append(cached[1])
             continue
         result = verify_entity(name, city, transport=transport)
-        _cache[cache_key] = (now, result)
+        if result.reason != "source_unavailable":
+            _cache[cache_key] = (now, result)
         results.append(result)
     return results

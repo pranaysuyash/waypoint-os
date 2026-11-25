@@ -1,0 +1,46 @@
+[
+  {
+    "surface": "public",
+    "width": 1440,
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "visible_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "compound-retained-public-1440.png"
+  },
+  {
+    "surface": "workbench",
+    "width": 1440,
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "visible_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "compound-retained-workbench-1440.png"
+  },
+  {
+    "surface": "public",
+    "width": 390,
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "visible_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "compound-retained-public-390.png"
+  },
+  {
+    "surface": "workbench",
+    "width": 390,
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "visible_questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "screenshot": "compound-retained-workbench-390.png"
+  }
+]

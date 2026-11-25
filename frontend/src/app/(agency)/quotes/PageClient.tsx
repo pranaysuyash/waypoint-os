@@ -295,7 +295,7 @@ export default function QuotesPageClient() {
           data-testid='quotes-trip-select'
           value={effectiveSelectedTripId}
           onChange={(e) => handleTripChange(e.target.value)}
-          className='w-full md:w-[520px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#58a6ff] outline-none'
+          className='w-full max-w-[520px] bg-[#161b22] border border-[#30363d] rounded-md p-2 text-sm text-[#e6edf3] focus:border-[#58a6ff] outline-none'
           disabled={isLoading || tripOptions.length === 0}
         >
           {tripOptions.length === 0 ? (

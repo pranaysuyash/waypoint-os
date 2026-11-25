@@ -167,7 +167,7 @@ describe("isTripEscalated", () => {
 describe("decisionStateLabel", () => {
   it("maps known states and passes unknowns through", () => {
     expect(decisionStateLabel("ASK_FOLLOWUP")).toBe("Waiting on Customer");
-    expect(decisionStateLabel("PROCEED_TRAVELER_SAFE")).toBe("Ready to Book");
+    expect(decisionStateLabel("PROCEED_TRAVELER_SAFE")).toBe("Prepare traveler proposal");
     expect(decisionStateLabel("SOME_NEW_STATE")).toBe("SOME_NEW_STATE");
     expect(decisionStateLabel(undefined)).toBe("");
   });

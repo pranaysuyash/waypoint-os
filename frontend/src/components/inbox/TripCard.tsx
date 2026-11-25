@@ -66,7 +66,7 @@ const ASSIGNED_BG: Record<string, { bg: string; text: string; border: string }> 
 // ──────────────────────────────────────────────────────────────────────────────
 
 const METRIC_FORMATTERS: Record<MetricField, (trip: InboxTrip) => string> = {
-  partySize: (t) => `${t.partySize} pax`,
+  partySize: (t) => t.partySize > 0 ? `${t.partySize} pax` : 'Party size to confirm',
   dateWindow: (t) => formatDateWindowDisplay(t.dateWindow),
   value: (t) => {
     if (!t.value || t.value <= 0) return 'Value to confirm';

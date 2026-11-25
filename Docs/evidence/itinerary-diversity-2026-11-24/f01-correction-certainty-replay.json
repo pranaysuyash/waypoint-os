@@ -1,0 +1,30 @@
+[
+  {
+    "surface": "public",
+    "input": "We propose Baga, Dudhsagar and Old Goa on 19 December. Maybe we will do Old Goa on 20 December instead.",
+    "http": 200,
+    "context": "Goa sightseeing \u00b7 Proposed visit date 19 December",
+    "question": "What Dudhsagar entry slot do you have, and when will you be back in Collem?"
+  },
+  {
+    "surface": "authenticated",
+    "input": "We propose Baga, Dudhsagar and Old Goa on 19 December. Maybe we will do Old Goa on 20 December instead.",
+    "http": 200,
+    "context": "Goa sightseeing \u00b7 Proposed visit date 19 December",
+    "question": "What Dudhsagar entry slot do you have, and when will you be back in Collem?"
+  },
+  {
+    "surface": "public",
+    "input": "We propose Baga, Dudhsagar and Old Goa on 19 December. Actually we will do Old Goa on 20 December instead.",
+    "http": 200,
+    "context": "Goa sightseeing \u00b7 Baga and Dudhsagar on 19 December \u00b7 Old Goa on 20 December",
+    "question": "What time do you expect to return from Dudhsagar before visiting Baga?"
+  },
+  {
+    "surface": "authenticated",
+    "input": "We propose Baga, Dudhsagar and Old Goa on 19 December. Actually we will do Old Goa on 20 December instead.",
+    "http": 200,
+    "context": "Goa sightseeing \u00b7 Baga and Dudhsagar on 19 December \u00b7 Old Goa on 20 December",
+    "question": "What time do you expect to return from Dudhsagar before visiting Baga?"
+  }
+]

@@ -27,6 +27,7 @@ from src.intake.extractors import (
     _infer_year_from_context,
     _normalize_constraint,
     _extract_party,
+    extract_party_size,
     _extract_budget,
     _extract_budget_scope,
     _extract_destination_candidates,
@@ -1941,6 +1942,27 @@ class TestColloquialParty:
         assert result["party_size"] == 0, result
         assert result["group_signals"] == ["one of us"], result
 
+    @pytest.mark.parametrize(("note", "expected"), [
+        ("One guest needs step-free boarding. At what point do I lose the hotel advance?", None),
+        ("2 guests require wheelchair assistance. I need to confirm the transfer.", None),
+        ("One guest needs step-free boarding. There are 4 travelers in total.", 4),
+        ("There are 4 travelers in total. One guest needs step-free boarding.", 4),
+        ("All three passengers require step-free boarding.", 3),
+        ("One of our 4 travelers needs step-free boarding.", 4),
+        ("One of our four guests needs step-free boarding.", 4),
+        ("Two of the six travellers require wheelchair assistance.", 6),
+        ("One of our guests needs step-free boarding.", None),
+        ("One guest needs step-free boarding. I am traveling with my parents.", 3),
+        ("I am the only traveler. I need step-free boarding.", 1),
+        ("I'm the only traveller who needs the ramp.", None),
+        ("Book for one guest. I need step-free boarding.", 1),
+    ])
+    def test_headcount_respects_the_scope_of_an_access_request(self, note, expected):
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(note)])
+        slot = packet.facts.get("party_size")
+        assert (slot.value if slot else None) == expected
+        assert extract_party_size(note) == expected
+
     def test_signals_always_collected(self):
         result = _extract_party("me and 4 friends are craving a mountain break")
         assert result["group_signals"] == ["4 friends"], result
@@ -2808,3 +2830,23 @@ class TestOriginCityHinglishAndRoutePatterns:
         assert p2.facts["budget_currency"].value == "USD"
         assert p2.facts["budget_currency"].epistemic_status == "FACT"
 
+@pytest.mark.parametrize("text", [
+    "The hotel needs an advance today.",
+    "We pay a refundable deposit today.",
+    "Advance payment is due today.",
+    "The hotel wants payment in advance.",
+])
+def test_supplier_payment_terms_are_not_destinations(text):
+    assert _extract_destination_candidates(text)[0] == []
+
+
+@pytest.mark.parametrize("place", ["Advance", "Deposit"])
+def test_explicit_destination_with_financial_homonym(place):
+    assert _extract_destination_candidates(f"We will visit {place}. The hotel needs an advance.")[0] == [place]
+
+
+def test_group_count_with_gazetteer_name_keeps_its_role():
+    note = "Two of the six travelers need step-free boarding."
+    assert not _extract_destination_candidates(note)[0]
+    assert extract_party_size(note) == 6
+    assert _extract_destination_candidates(f"We will visit Six. {note}")[0] == ["Six"]

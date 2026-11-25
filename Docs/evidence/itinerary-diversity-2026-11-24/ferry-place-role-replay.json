@@ -1,0 +1,24 @@
+[
+  {
+    "surface": "public",
+    "input": "Our rental car will reach Cairnryan port at 03:00 local time. Our 03:30 Stena Line ferry to Belfast shows vehicle check-in closes at 02:45 on the e-ticket.",
+    "http": 200,
+    "destination_candidates": [
+      "Belfast"
+    ],
+    "findings": [
+      "Vehicle ferry \u00b7 Planned port arrival 03:00 is 15 minutes after the stated 02:45 cutoff"
+    ]
+  },
+  {
+    "surface": "authenticated",
+    "input": "Our rental car will reach Cairnryan port at 03:00 local time. Our 03:30 Stena Line ferry to Belfast shows vehicle check-in closes at 02:45 on the e-ticket.",
+    "http": 200,
+    "destination_candidates": [
+      "Belfast"
+    ],
+    "findings": [
+      "Vehicle ferry \u00b7 Planned port arrival 03:00 is 15 minutes after the stated 02:45 cutoff"
+    ]
+  }
+]

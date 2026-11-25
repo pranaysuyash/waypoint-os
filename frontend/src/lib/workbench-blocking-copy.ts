@@ -55,8 +55,11 @@ function collectReasons(validation?: ValidationReport | null, runState?: RunStat
   }
 
   if (runState?.block_reason) {
-    const text = humanizeReason(runState.block_reason);
-    if (text) reasons.push(text);
+    // Intake joins its validation reasons into one fallback message.
+    // Keep a distinct run-level explanation when it adds information.
+    const fallback = runState.block_reason.replace(/\. Please add the missing information and try again\.$/i, '');
+    const text = humanizeReason(fallback);
+    if (text && text !== reasons.join(' ')) reasons.push(text);
   }
 
   if (runState?.error_message) {

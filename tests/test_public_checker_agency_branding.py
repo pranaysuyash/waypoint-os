@@ -1,11 +1,12 @@
-import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from spine_api.core.rate_limiter import SlowAPIMiddleware, limiter
 from spine_api.services.agency_marketplace import (
     AgencyMarketplaceProfile,
     AgencyMarketplaceStore,
     slugify,
 )
-from spine_api.routers.public_checker import get_public_checker_agency
+from spine_api.routers.public_checker import router
 
 
 def test_slugify():
@@ -74,18 +75,19 @@ def test_get_public_checker_agency_endpoint(monkeypatch):
         classmethod(lambda cls, identifier: mock_profile if identifier == "solstice" else None),
     )
 
-    from starlette.requests import Request
+    monkeypatch.setenv("PUBLIC_CHECKER_ENABLED", "1")
+    app = FastAPI()
+    app.state.limiter = limiter
+    app.add_middleware(SlowAPIMiddleware)
+    app.include_router(router)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get("/api/public-checker/agency/solstice")
+        assert response.status_code == 200
+        assert response.headers["X-RateLimit-Limit"] == "30"
+        data = response.json()
+        assert data["ok"] is True
+        assert data["agency"]["agency_id"] == "agency-999"
+        assert data["agency"]["display_name"] == "Solstice Private Journeys"
+        assert data["agency"]["response_sla_hours"] == 12
 
-    req = Request({"type": "http", "path": "/api/public-checker/agency/solstice", "client": ("127.0.0.1", 12345), "headers": []})
-
-    # Success
-    data = get_public_checker_agency.__wrapped__(request=req, slug_or_id="solstice")
-    assert data["ok"] is True
-    assert data["agency"]["agency_id"] == "agency-999"
-    assert data["agency"]["display_name"] == "Solstice Private Journeys"
-    assert data["agency"]["response_sla_hours"] == 12
-
-    # 404 on not found
-    with pytest.raises(HTTPException) as exc_info:
-        get_public_checker_agency.__wrapped__(request=req, slug_or_id="nonexistent")
-    assert exc_info.value.status_code == 404
+        assert client.get("/api/public-checker/agency/nonexistent").status_code == 404

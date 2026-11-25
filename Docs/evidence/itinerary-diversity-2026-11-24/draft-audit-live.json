@@ -1,0 +1,29 @@
+[
+  {
+    "case": "original-goa",
+    "state": "completed",
+    "trip_id": "trip_01f71fd5cd40",
+    "decision": "ASK_FOLLOWUP",
+    "matched_run": true,
+    "check": null,
+    "has_text": false
+  },
+  {
+    "case": "singapore",
+    "state": "completed",
+    "trip_id": "trip_37cf8de23d57",
+    "decision": "PROCEED_INTERNAL_DRAFT",
+    "matched_run": true,
+    "check": null,
+    "has_text": true
+  },
+  {
+    "case": "shortlist-goa",
+    "state": "completed",
+    "trip_id": "trip_65f1125d5145",
+    "decision": "ASK_FOLLOWUP",
+    "matched_run": true,
+    "check": null,
+    "has_text": false
+  }
+]

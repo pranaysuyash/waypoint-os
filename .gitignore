@@ -221,3 +221,7 @@ output/
 # Agent session debris and temporary tool scripts
 Docs/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
 tools/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
+
+# Throwaway test-agency stores from misnamed first test runs (matches agency_cl_/opact_ class, 2026-11-22)
+data/messages/agency_bkchg_test.jsonl
+data/work_items/agency_bkchg_test.jsonl

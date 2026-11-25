@@ -1,0 +1,50 @@
+[
+  {
+    "surface": "public",
+    "input": "Hotel Alpha requires a deposit and says cancellation is free. Hotel Beta requires a deposit and says cancellation is free. The overnight train is waitlisted. Our morning transfer is booked separately. Correction from the traveler or operator: Hotel Alpha confirms its deposit is nonrefundable.",
+    "http": 200,
+    "destination_candidates": [],
+    "findings": [
+      "Hotel Alpha \u00b7 Nonrefundable deposit reported",
+      "Hotel Beta \u00b7 Cancellation terms unconfirmed",
+      "Overnight train \u00b7 Waitlist reported \u00b7 Separate morning transfer"
+    ]
+  },
+  {
+    "surface": "authenticated",
+    "input": "Hotel Alpha requires a deposit and says cancellation is free. Hotel Beta requires a deposit and says cancellation is free. The overnight train is waitlisted. Our morning transfer is booked separately. Correction from the traveler or operator: Hotel Alpha confirms its deposit is nonrefundable.",
+    "http": 200,
+    "destination_candidates": [],
+    "findings": [
+      "Hotel Alpha \u00b7 Nonrefundable deposit reported",
+      "Hotel Beta \u00b7 Cancellation terms unconfirmed",
+      "Overnight train \u00b7 Waitlist reported \u00b7 Separate morning transfer"
+    ]
+  },
+  {
+    "surface": "public",
+    "input": "Hotel Alpha requires a deposit and says cancellation is free. Hotel Beta requires a deposit and says cancellation is free. The overnight train is waitlisted. Our morning transfer is booked separately. Correction from the traveler or operator: Hotel Alpha confirms its deposit is nonrefundable. We are traveling to Alpha.",
+    "http": 200,
+    "destination_candidates": [
+      "Alpha"
+    ],
+    "findings": [
+      "Hotel Alpha \u00b7 Nonrefundable deposit reported",
+      "Hotel Beta \u00b7 Cancellation terms unconfirmed",
+      "Overnight train \u00b7 Waitlist reported \u00b7 Separate morning transfer"
+    ]
+  },
+  {
+    "surface": "authenticated",
+    "input": "Hotel Alpha requires a deposit and says cancellation is free. Hotel Beta requires a deposit and says cancellation is free. The overnight train is waitlisted. Our morning transfer is booked separately. Correction from the traveler or operator: Hotel Alpha confirms its deposit is nonrefundable. We are traveling to Alpha.",
+    "http": 200,
+    "destination_candidates": [
+      "Alpha"
+    ],
+    "findings": [
+      "Hotel Alpha \u00b7 Nonrefundable deposit reported",
+      "Hotel Beta \u00b7 Cancellation terms unconfirmed",
+      "Overnight train \u00b7 Waitlist reported \u00b7 Separate morning transfer"
+    ]
+  }
+]

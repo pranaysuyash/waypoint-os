@@ -1,0 +1,27 @@
+{
+  "browser": "Chrome desktop",
+  "viewport": "1440x960",
+  "preview": "local Next BFF + real local FastAPI",
+  "example": {
+    "End": "Hotel Perks Check",
+    "ArrowRight from last": "Connection Stress",
+    "labelled_panel": true,
+    "keyboard_selected_day": "Day 2: Tokyo Tsukiji & Ginza"
+  },
+  "upload": {
+    "filename": "supplier-itinerary.txt",
+    "extraction": "direct_text",
+    "http": 200,
+    "consented": false,
+    "base64_original_sent": false,
+    "same_input_as": "compound-retained-browser-2026-11-25.json",
+    "report": "Your check needs more details",
+    "questions": [
+      "What is the cancellation cutoff for the exact rate you’re booking?",
+      "When can you change or cancel the morning transfer if the train remains waitlisted?",
+      "Can the operator confirm step-free boarding for the booked vehicle and transfer route?"
+    ],
+    "demonstration_present_in_report": false
+  },
+  "uncaught_page_errors": []
+}

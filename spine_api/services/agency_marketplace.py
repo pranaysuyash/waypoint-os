@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from spine_api.persistence import file_lock
+
 _MATCH_LIMIT = 3
 
 _CUSTOMER_TYPE_KEYWORDS = {
@@ -209,12 +211,13 @@ class AgencyMarketplaceStore:
     @classmethod
     def upsert_profile(cls, profile: AgencyMarketplaceProfile) -> None:
         cls._ensure_dirs()
-        profiles = [p for p in cls.list_profiles() if p.agency_id != profile.agency_id]
-        profiles.append(profile)
-        cls.PROFILES_FILE.write_text(
-            json.dumps([p.as_dict() for p in profiles], indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        with file_lock(cls.PROFILES_FILE):
+            profiles = [p for p in cls.list_profiles() if p.agency_id != profile.agency_id]
+            profiles.append(profile)
+            cls.PROFILES_FILE.write_text(
+                json.dumps([p.as_dict() for p in profiles], indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
 
     @classmethod
     def capture_route_lead(
@@ -240,8 +243,9 @@ class AgencyMarketplaceStore:
             "needs": needs,
             "captured_at": datetime.now(timezone.utc).isoformat(),
         }
-        with open(cls.LEADS_FILE, "a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+        with file_lock(cls.LEADS_FILE):
+            with open(cls.LEADS_FILE, "a", encoding="utf-8") as handle:
+                handle.write(json.dumps(record, ensure_ascii=False) + "\n")
         return record
 
     @classmethod

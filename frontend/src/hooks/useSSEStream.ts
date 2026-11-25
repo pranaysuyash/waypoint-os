@@ -70,7 +70,7 @@ export interface UseSSEStreamReturn {
 // Constants
 // ---------------------------------------------------------------------------
 
-const TERMINAL_STATES = new Set(['completed', 'failed', 'blocked']);
+const TERMINAL_STATES = new Set(['completed', 'failed', 'blocked', 'interrupted']);
 const POLL_INITIAL_MS = 500;
 const POLL_STEADY_MS = 2_000;
 const POLL_INITIAL_ROUNDS = 4; // first 4 polls at 500ms, then settle to 2s
@@ -138,6 +138,7 @@ export function useSSEStream(opts: UseSSEStreamOptions = {}): UseSSEStreamReturn
 
         try {
           const status = await api.get<RunStatusResponse>(`/api/runs/${runId}`);
+          if (abortedRef.current || runIdRef.current !== runId) return;
           const isTerminal = handleStatusUpdate(runId, status);
           if (isTerminal) {
             setConnectionMode('idle');
@@ -179,7 +180,7 @@ export function useSSEStream(opts: UseSSEStreamOptions = {}): UseSSEStreamReturn
         esRef.current = es;
 
         es.onmessage = (ev) => {
-          if (abortedRef.current) return;
+          if (abortedRef.current || runIdRef.current !== runId) return;
           try {
             const data = JSON.parse(ev.data) as RunStatusResponse;
             const isTerminal = handleStatusUpdate(runId, data);
@@ -194,7 +195,7 @@ export function useSSEStream(opts: UseSSEStreamOptions = {}): UseSSEStreamReturn
 
         es.onerror = () => {
           es.close();
-          if (abortedRef.current) return;
+          if (abortedRef.current || runIdRef.current !== runId) return;
 
           if (retryCountRef.current < SSE_MAX_RETRIES) {
             const delay = SSE_RETRY_BASE_MS * 2 ** retryCountRef.current;

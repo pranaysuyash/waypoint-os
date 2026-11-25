@@ -362,14 +362,14 @@ function InboxPageWithSearchParams() {
         </div>
       )}
 
-      <header className='flex items-center justify-between pt-1'>
-        <div>
+      <header className='flex flex-wrap items-start justify-between gap-3 pt-1'>
+        <div className='min-w-0'>
           <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Lead Inbox</h1>
           <p className='text-ui-sm text-[#8b949e] mt-0.5'>New customer inquiries sorted by urgency.</p>
         </div>
         
-        <div className='flex items-center gap-3 flex-wrap'>
-          <div className='relative flex-1 min-w-[220px] sm:w-72'>
+        <div className='flex min-w-0 max-w-full flex-wrap items-center gap-3'>
+          <div className='relative w-full min-w-0 sm:w-72'>
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]' />
             <input
               type='text'
@@ -398,7 +398,7 @@ function InboxPageWithSearchParams() {
             </button>
 
             {showSortDropdown && (
-              <div className='absolute top-full right-0 mt-1 w-56 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-10'>
+              <div className='absolute left-0 top-full mt-1 w-56 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-10'>
                 <div className='p-2 border-b border-[#30363d]'>
                   <div className='flex items-center justify-between px-2 py-1'>
                     <span className='text-ui-xs text-[#8b949e] font-medium'>Direction</span>
@@ -510,8 +510,7 @@ function InboxPageWithSearchParams() {
         </div>
       )}
 
-      {/* T6 (FND-0305): real inbound channel messages — collapsed by default on /inbox so leads stay above the fold */}
-      <ChannelMessagesPanel defaultCollapsed />
+      <ChannelMessagesPanel defaultCollapsed scope='other' />
 
       {/* Trip Grid */}
       {isLoading && inboxTrips.length === 0 ? (

@@ -122,6 +122,17 @@ describe("resolveBackendPath", () => {
     );
   });
 
+  it("maps managed WhatsApp actions and the read-only supplier lookup", () => {
+    const conversation = ["v1", "messaging", "whatsapp", "wa_local"];
+    expect(resolveBackendPath(conversation)).toBe("api/v1/messaging/whatsapp/wa_local");
+    expect(resolveBackendPath([...conversation, "ownership"])).toBe("api/v1/messaging/whatsapp/wa_local/ownership");
+    expect(resolveBackendPath([...conversation, "replies"])).toBe("api/v1/messaging/whatsapp/wa_local/replies");
+    expect(resolveBackendPath([...conversation, "replies", "msg_1", "dispatch"])).toBe(
+      "api/v1/messaging/whatsapp/wa_local/replies/msg_1/dispatch"
+    );
+    expect(resolveBackendPath(["v1", "supplier", "availability", "evidence"])).toBe("api/v1/supplier/availability/evidence");
+  });
+
   it("maps booking-task ops panel paths through the proxy", () => {
     expect(resolveBackendPath(["booking-tasks", "trip_abc"])).toBe(
       "api/booking-tasks/trip_abc"

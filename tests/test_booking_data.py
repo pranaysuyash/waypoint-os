@@ -12,7 +12,6 @@ import json
 import pytest
 from unittest.mock import MagicMock
 
-from spine_api.persistence import TEST_AGENCY_ID
 from intake.readiness import _check_booking_ready
 
 
@@ -80,68 +79,12 @@ BOOKING_DATA_NO_PAYER = {
 TEST_AUTH_USER_ID = "323468de-ba3d-437b-aa10-35b281a0c6a6"
 
 
-def _resolve_agency_id():
-    """Resolve the session_client user's actual agency_id via a subprocess query.
-
-    Uses subprocess + asyncpg in an isolated process to avoid event-loop
-    conflicts with pytest-asyncio's STRICT mode. Cached globally.
-    """
-    global _RESOLVED_AGENCY_ID
-    if _RESOLVED_AGENCY_ID is not None:
-        return _RESOLVED_AGENCY_ID
-
-    import subprocess
-    import sys
-    import json
-
-    code = (
-        "import asyncio, asyncpg; import json\n"
-        "async def run():\n"
-        "  conn = await asyncpg.connect(host='localhost', port=5432, "
-        "user='waypoint', password='waypoint_dev_password', database='waypoint_os')\n"
-        "  row = await conn.fetchrow(\n"
-        "    \"SELECT agency_id FROM memberships WHERE user_id = $1 AND is_primary = TRUE\",\n"
-        "    '323468de-ba3d-437b-aa10-35b281a0c6a6')\n"
-        "  if row:\n"
-        "    print(json.dumps({'agency_id': row['agency_id']}))\n"
-        "  else:\n"
-        "    row2 = await conn.fetchrow(\n"
-        "      \"SELECT agency_id FROM memberships WHERE user_id = $1\",\n"
-        "      '323468de-ba3d-437b-aa10-35b281a0c6a6')\n"
-        "    if row2:\n"
-        "      print(json.dumps({'agency_id': row2['agency_id']}))\n"
-        "    else:\n"
-        "      print(json.dumps({'agency_id': None}))\n"
-        "  await conn.close()\n"
-        "asyncio.run(run())\n"
-    )
-
-    result = subprocess.run(
-        [sys.executable, "-c", code],
-        capture_output=True, text=True, timeout=15,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"Agency resolution failed: {result.stderr.strip()}"
-        )
-    data = json.loads(result.stdout.strip())
-    _RESOLVED_AGENCY_ID = data["agency_id"] or TEST_AGENCY_ID
-    return _RESOLVED_AGENCY_ID
-
-
-_RESOLVED_AGENCY_ID: str | None = None
-
-
 @pytest.fixture()
-def created_trip_id(session_client):
-    """Create a trip directly via TripStore and return its ID.
-
-    Uses the dynamically resolved agency_id that matches the session_client's
-    actual auth context, not the literal TEST_AGENCY_ID constant.
-    """
+def created_trip_id(session_agency_id):
+    """Create a proposal-stage trip in the same agency that exercises its endpoints."""
     from spine_api.persistence import TripStore
 
-    agency_id = _resolve_agency_id()
+    agency_id = session_agency_id
     trip_data = {
         "source": "test_booking_fixture",
         "agency_id": agency_id,
@@ -155,7 +98,7 @@ def created_trip_id(session_client):
     trip_id = TripStore.save_trip(trip_data, agency_id=agency_id)
     yield trip_id
     try:
-        TripStore.delete_trip(trip_id)
+        TripStore.delete_trip_for_agency(trip_id, agency_id)
     except Exception:
         pass
 

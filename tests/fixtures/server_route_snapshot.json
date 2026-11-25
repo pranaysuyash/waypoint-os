@@ -1,5 +1,5 @@
 {
-  "route_count": 425,
+  "route_count": 442,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1850,6 +1850,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/group/{trip_id}",
+      "name": "get_group_collection_summary",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/group/{trip_id}/invites",
       "name": "generate_group_invites",
       "methods": [
@@ -1858,8 +1866,40 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/group/{trip_id}/log-reminder",
+      "name": "log_group_reminder",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/group/{trip_id}/manual-override",
       "name": "manual_advisor_override_share",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/group/{trip_id}/record-payment",
+      "name": "record_group_payment",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/group/{trip_id}/reminder-drafts",
+      "name": "get_group_reminder_drafts",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/group/{trip_id}/schedule",
+      "name": "set_group_schedule",
       "methods": [
         "POST"
       ],
@@ -2162,6 +2202,38 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/messaging/whatsapp/{conversation_id}",
+      "name": "get_whatsapp_conversation",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/messaging/whatsapp/{conversation_id}/ownership",
+      "name": "set_whatsapp_ownership",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/messaging/whatsapp/{conversation_id}/replies",
+      "name": "send_whatsapp_staff_reply",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/messaging/whatsapp/{conversation_id}/replies/{reply_id}/dispatch",
+      "name": "dispatch_whatsapp_draft",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/multimodal/image-ocr",
       "name": "parse_image_ocr",
       "methods": [
@@ -2378,6 +2450,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/rag/documents/{document_id}",
+      "name": "delete_document",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/rag/edges",
       "name": "add_knowledge_edge",
       "methods": [
@@ -2538,10 +2618,34 @@
       "operation_id": null
     },
     {
+      "path": "/api/v1/supplier/availability/evidence",
+      "name": "get_supplier_availability_evidence",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/supplier/contracts",
+      "name": "list_supplier_contracts",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/v1/supplier/contracts/upload",
       "name": "upload_supplier_contract",
       "methods": [
         "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/supplier/inventory/holds",
+      "name": "list_inventory_soft_holds",
+      "methods": [
+        "GET"
       ],
       "operation_id": null
     },
@@ -2606,6 +2710,38 @@
       "name": "export_trip_accounting",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/booking-changes",
+      "name": "list_booking_changes",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/booking-changes",
+      "name": "report_booking_change",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/booking-changes/traveler-view",
+      "name": "traveler_view_booking_changes",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/v1/trips/{trip_id}/booking-changes/{change_id}/resolve",
+      "name": "resolve_booking_change",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },

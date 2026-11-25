@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waypoint Workbench · Status navigation study</title>
+<style>
+  :root {color-scheme:dark; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0d1117; color:#e6edf3; line-height:1.55}
+  * {box-sizing:border-box}
+  body {margin:0}
+  main,aside {max-width:55rem; margin:auto; padding:1.5rem clamp(1rem,4vw,3rem)}
+  aside {display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; border-bottom:1px solid #30363d; color:#b9c5d1; font-size:.8125rem}
+  label {display:inline-flex; align-items:center; gap:.5rem}
+  select {font:inherit; color:#e6edf3; background:#161b22; border:1px solid #566170; padding:.35rem .5rem; border-radius:.35rem}
+  h1,h2,h3,p {margin:0}
+  h1 {font-size:clamp(1.55rem,4vw,2.2rem); letter-spacing:-.035em; line-height:1.15; margin:.5rem 0 1.1rem}
+  h2 {font-size:1.12rem; line-height:1.4}
+  h3 {font-size:1rem}
+  .crumb,.owner {color:#a6b2bf; font-size:.8125rem}
+  .crumb {margin:1rem 0 .8rem}
+  nav {display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; margin-bottom:1.6rem}
+  nav a {min-height:44px; display:inline-flex; align-items:center; gap:.55rem; border:1px solid; border-radius:.4rem; padding:.4rem .72rem; font-size:.9rem; font-weight:600; text-decoration:none}
+  nav a:hover {text-decoration:underline}
+  .open {color:#ffcf6f; background:#2a2111; border-color:#705626}
+  .audit {color:#b6c2ce; background:#161b22; border-color:#46515d}
+  .audit.pass {color:#93ddb1; border-color:#365f46; background:#12281c}
+  .tabs {display:flex; gap:1.5rem; border-bottom:1px solid #39424d; margin:0 0 1.6rem}
+  button {cursor:pointer; font:inherit}
+  .tabs button {color:#aab7c4; padding:.6rem .1rem; background:transparent; border:none; border-bottom:2px solid transparent}
+  .tabs button[aria-pressed="true"] {color:#eff5fa; border-bottom-color:#58a6ff}
+  section {background:#161b22; border:1px solid #303943; border-radius:.55rem; padding:1.2rem clamp(1rem,3vw,1.65rem); margin:0 0 1rem}
+  :focus-visible,h2:focus {outline:2px solid #79b7ff; outline-offset:4px; border-radius:.15rem}
+  h2 {scroll-margin-top:1rem}
+  section p {max-width:65ch; margin:.4rem 0; color:#c5cfda}
+  ul {list-style:none; padding:0; margin:1rem 0 0}
+  li {border-top:1px solid #353f4b; padding:.8rem 0}
+  li:last-child {padding-bottom:0}
+  .owner {margin:.25rem 0 0}
+  blockquote {margin:.8rem 0; border-left:2px solid #637485; padding:0 0 0 .85rem; color:#dbe4ee}
+  [hidden] {display:none!important}
+  @media(max-width:35rem) {aside {padding-top:.75rem; padding-bottom:.75rem; gap:.35rem} nav {align-items:stretch; gap:.4rem} nav a {font-size:.84rem}}
+</style>
+<aside aria-label="Design study controls">
+  <strong>Interactive design study</strong>
+  <label>Example draft audit <select id="scenario">
+    <option value="pending">Awaiting check</option>
+    <option value="passed">Current draft passed</option>
+    <option value="edited">Draft edited after check</option>
+  </select></label>
+</aside>
+<main>
+  <p class="crumb">Waypoint OS &nbsp;/&nbsp; Workbench</p>
+  <h1>Overnight train and morning transfer</h1>
+  <nav aria-label="Trip and message status">
+    <a class="open" href="#feasibility"><span aria-hidden="true">!</span> 3 details to confirm <span aria-hidden="true">↘</span></a>
+    <a class="audit" href="#message"><span id="audit-icon" aria-hidden="true">○</span><span id="audit-label">Message check pending</span><span aria-hidden="true">↘</span></a>
+  </nav>
+  <div class="tabs" role="group" aria-label="Workbench view">
+    <button type="button" aria-pressed="true" aria-controls="intake">Trip details</button>
+    <button type="button" aria-pressed="false" aria-controls="review">Risk Review</button>
+  </div>
+  <div id="intake">
+    <section><h2>Traveler’s inquiry</h2>
+      <blockquote>The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?</blockquote>
+      <p class="owner">Party size unknown · One guest requests step-free boarding</p>
+    </section>
+  </div>
+  <div id="review" hidden>
+    <section><h2 id="feasibility" tabindex="-1">Itinerary feasibility</h2>
+      <ul>
+        <li><h3>Hotel advance due today</h3><p>Before paying, confirm how much of the advance is refundable and the cancellation cutoff for this rate.</p><p class="owner">Confirm with the hotel or seller</p></li>
+        <li><h3>Pickup after the waitlisted train</h3><p>When can the morning pickup be changed or cancelled if the train stays waitlisted?</p><p class="owner">Confirm with the transfer operator</p></li>
+        <li><h3>Step-free boarding</h3><p>Can the guest board this van and reach the pickup point using a step-free route?</p><p class="owner">Confirm the vehicle with the transfer operator and the route with the station</p></li>
+      </ul>
+    </section>
+    <section><h2 id="message" tabindex="-1">Customer message check</h2>
+      <p id="audit-detail">The current draft is awaiting its message safety check.</p>
+    </section>
+  </div>
+</main>
+<script>
+  const views = document.querySelectorAll('.tabs button');
+  function selectView(id) {
+    for (const button of views) {
+      const target = button.getAttribute('aria-controls');
+      document.getElementById(target).hidden = target !== id;
+      button.setAttribute('aria-pressed', String(target === id));
+    }
+  }
+  for (const button of views) {
+    button.addEventListener('click', () => selectView(button.getAttribute('aria-controls')));
+  }
+  for (const link of document.querySelectorAll('nav a')) {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      selectView('review');
+      const target = document.querySelector(link.hash);
+      target.focus({preventScroll:true});
+      target.scrollIntoView({block:'nearest'});
+    });
+  }
+  const scenarios = {
+    pending: ['○', 'Message check pending', 'The current draft is awaiting its message safety check.'],
+    passed: ['✓', 'Message check passed', 'The check found no internal notes or system-only language in the current draft.'],
+    edited: ['○', 'Recheck edited message', 'The last check covered an earlier draft. The edited message still needs a check.']
+  };
+  document.getElementById('scenario').addEventListener('change', event => {
+    const state = event.target.value;
+    const [icon, label, detail] = scenarios[state];
+    document.querySelector('.audit').classList.toggle('pass', state === 'passed');
+    document.getElementById('audit-icon').textContent = icon;
+    document.getElementById('audit-label').textContent = label;
+    document.getElementById('audit-detail').textContent = detail;
+  });
+</script>
+</html>

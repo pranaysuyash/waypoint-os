@@ -1,0 +1,8 @@
+{
+  "note": "An overnight train is waitlisted in the traveler\u2019s note. There is a separately booked morning transfer after scheduled arrival.",
+  "update": "The traveler supplies a fresh confirmation for that exact train and date.",
+  "packet": {
+    "itinerary_feasibility_context": "Overnight train \u00b7 Originally waitlisted \u00b7 Update reports confirmation for the same train and date",
+    "itinerary_feasibility_question": "What time and station will the transfer operator use for pickup?"
+  }
+}

@@ -1,0 +1,266 @@
+[
+  {
+    "case": "one-needs-access",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "public",
+    "http": 200,
+    "state": "blocked",
+    "lead": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "primary_id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        }
+      },
+      {
+        "flag": "step_free_transfer",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        }
+      }
+    ],
+    "party_size": null,
+    "destinations": null,
+    "return_pending": null
+  },
+  {
+    "case": "one-needs-access",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. One guest needs step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "workbench",
+    "http": 200,
+    "state": "blocked",
+    "lead": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "primary_id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        }
+      },
+      {
+        "flag": "step_free_transfer",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        }
+      }
+    ],
+    "party_size": null,
+    "destinations": null,
+    "return_pending": null
+  },
+  {
+    "case": "numeric-subgroup",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. 2 guests need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "public",
+    "http": 200,
+    "state": "blocked",
+    "lead": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "primary_id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        }
+      },
+      {
+        "flag": "step_free_transfer",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        }
+      }
+    ],
+    "party_size": null,
+    "destinations": null,
+    "return_pending": null
+  },
+  {
+    "case": "numeric-subgroup",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. 2 guests need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "workbench",
+    "http": 200,
+    "state": "blocked",
+    "lead": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "primary_id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        }
+      },
+      {
+        "flag": "step_free_transfer",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        }
+      }
+    ],
+    "party_size": null,
+    "destinations": null,
+    "return_pending": null
+  },
+  {
+    "case": "group-of-six",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. Two of the six travelers need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "public",
+    "http": 200,
+    "state": "blocked",
+    "lead": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "primary_id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        }
+      },
+      {
+        "flag": "step_free_transfer",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        }
+      }
+    ],
+    "party_size": 6,
+    "destinations": null,
+    "return_pending": null
+  },
+  {
+    "case": "group-of-six",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. Two of the six travelers need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "workbench",
+    "http": 200,
+    "state": "blocked",
+    "lead": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "primary_id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        }
+      },
+      {
+        "flag": "step_free_transfer",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        }
+      }
+    ],
+    "party_size": 6,
+    "destinations": null,
+    "return_pending": null
+  },
+  {
+    "case": "solo",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. I am the only traveler. I need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "public",
+    "http": 200,
+    "state": "blocked",
+    "lead": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "primary_id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        }
+      },
+      {
+        "flag": "step_free_transfer",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        }
+      }
+    ],
+    "party_size": 1,
+    "destinations": null,
+    "return_pending": null
+  },
+  {
+    "case": "solo",
+    "note": "The overnight train is waitlisted. Our morning transfer is booked separately. I am the only traveler. I need step-free boarding. The van and station transfer are unconfirmed. The hotel needs an advance today. At what point do I lose that money if I cancel?",
+    "surface": "workbench",
+    "http": 200,
+    "state": "blocked",
+    "lead": "What is the cancellation cutoff for the exact rate you’re booking?",
+    "primary_id": "hotel_terms",
+    "source": null,
+    "additional": [
+      {
+        "flag": "overnight_rail_transfer",
+        "message": "When can you change or cancel the morning transfer if the train remains waitlisted?",
+        "details": {
+          "title": "Overnight train · Waitlist reported · Separate morning transfer",
+          "authority": "advisory",
+          "source_url": null
+        }
+      },
+      {
+        "flag": "step_free_transfer",
+        "message": "Can the operator confirm step-free boarding for the booked vehicle and transfer route?",
+        "details": {
+          "title": "Step-free travel · Vehicle and station transfer need confirmation",
+          "authority": "advisory",
+          "source_url": null
+        }
+      }
+    ],
+    "party_size": 1,
+    "destinations": null,
+    "return_pending": null
+  }
+]

@@ -208,7 +208,7 @@ export function ScopedTripPickerBar({
             onSelectTrip(nextId, nextTrip);
           }}
           disabled={isLoading || tripOptions.length === 0}
-          className='w-full md:w-[540px] bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm text-[#e6edf3] focus:border-[#3fb950] outline-none disabled:opacity-60'
+          className='w-full min-w-0 max-w-full truncate md:w-[540px] bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm text-[#e6edf3] focus:border-[#3fb950] outline-none disabled:opacity-60'
         >
           {tripOptions.length === 0 ? (
             <option value=''>

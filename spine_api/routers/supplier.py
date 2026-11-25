@@ -23,18 +23,19 @@ import logging
 import os
 import sqlite3
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from spine_api.core.auth import get_current_agency_id
+from spine_api.core.auth import get_current_agency_id, require_permission
 from spine_api.core.feature_gates import get_feature_tier
 from spine_api.core.reality_tier import TierMetadata
 from spine_api.persistence import AuditStore
+from spine_api.services import supplier_evidence
 
 logger = logging.getLogger("spine_api.supplier")
 
@@ -205,6 +206,21 @@ class SupplierHoldsListResponse(BaseModel):
     items: List[Dict[str, Any]]
     total: int
     _meta: Optional[Dict[str, Any]] = None
+
+
+@router.get("/availability/evidence")
+def get_supplier_availability_evidence(
+    service_date: date,
+    supplier_id: str = Query(min_length=1, max_length=96),
+    service_id: str = Query(min_length=1, max_length=96),
+    guests: int = Query(ge=1, le=10_000),
+    staff=require_permission("trips:write"),
+) -> dict:
+    """Return source-linked rate and availability observations for staff review."""
+    return supplier_evidence.lookup(
+        os.getenv("WAYPOINT_SUPPLIER_EVIDENCE_FILE", "").strip(),
+        staff.agency_id, supplier_id, service_id, service_date, guests,
+    )
 
 
 @router.get("/contracts")

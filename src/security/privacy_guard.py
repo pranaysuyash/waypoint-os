@@ -238,6 +238,28 @@ def _has_email(data: Dict[str, Any]) -> Optional[str]:
 
 def _has_phone(data: Dict[str, Any]) -> Optional[str]:
     """Return offending string if a phone-like number is found, else None."""
+    # Only the server can write the receipt in the safety compartment. A SHA
+    # digest can contain ten consecutive digits. Leave every user-facing
+    # field, leaked excerpt and malformed metadata value in the ordinary scan.
+    safety = data.get("safety") if isinstance(data, dict) else None
+    if isinstance(safety, dict):
+        check = safety.get("draft_check")
+        scan_safety = dict(safety)
+        source_digest = safety.get("draft_check_source_sha256")
+        if isinstance(source_digest, str) and re.fullmatch(r"[0-9a-f]{64}", source_digest):
+            scan_safety.pop("draft_check_source_sha256")
+        if isinstance(check, dict):
+            digest = check.get("digest_sha256")
+            if isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest):
+                scan_safety["draft_check"] = {key: val for key, val in check.items() if key != "digest_sha256"}
+        data = {**data, "safety": scan_safety}
+    reassess = data.get("reassess")
+    if isinstance(reassess, dict) and reassess.get("queued") is True and reassess.get("trigger") == "auto_edit":
+        run_id = reassess.get("run_id")
+        if isinstance(run_id, str) and re.fullmatch(
+            r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", run_id,
+        ):
+            data = {**data, "reassess": {key: value for key, value in reassess.items() if key != "run_id"}}
     for s in _extract_strings(data):
         cleaned = s.strip()
         if _GENERATED_ID_PATTERN.match(cleaned):

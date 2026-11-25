@@ -170,7 +170,7 @@ describe('SafetyTab - Special Handling Controls', () => {
     expect(screen.getByText('Confirm the final destination')).toBeDefined();
     expect(screen.getByText('Clarify how flexible the travel dates are')).toBeDefined();
     expect(screen.getByText('Which island or region are you leaning toward?')).toBeDefined();
-    expect(screen.getByText('The message audit is not available for this run yet, so this view is showing the readiness summary instead.')).toBeDefined();
+    expect(screen.getByText('Use Process Inquiry to generate and check a draft for the current inquiry.')).toBeDefined();
     expect(screen.getByText('Customer Message Preview')).toBeDefined();
     expect(screen.getByText('Here’s the options plan for Zanzibar.')).toBeDefined();
   });
@@ -265,5 +265,15 @@ describe('SafetyTab - Special Handling Controls', () => {
     expect(screen.getByText('Keep operator notes and planning rationale in internal comments only.')).toBeDefined();
     expect(screen.queryByText('internal_jargon')).toBeNull();
     expect(screen.queryByText('MVB')).toBeNull();
+  });
+});
+
+describe('Workbench review status navigation', () => {
+  it('focuses the pending message audit without claiming that a legacy empty audit passed', () => {
+    mockStore.result_safety = {};
+    render(<SafetyTab focusRequest={{ id: 'workbench-message-check' }} />);
+    const heading = screen.getByRole('heading', { name: 'Customer message check' });
+    expect(document.activeElement).toBe(heading);
+    expect(screen.queryByText('Draft passed the internal-language check')).toBeNull();
   });
 });

@@ -1,0 +1,11 @@
+{
+  "http": 200,
+  "decision": "ASK_FOLLOWUP",
+  "destination": [
+    "Goa"
+  ],
+  "outbound": "2026-12-18",
+  "returnPending": true,
+  "weather": null,
+  "finding": "Your plan says you land at 02:25 on 19 December, after your proposed 18 December hotel check-in date. If you book the previous night so the room is ready on arrival, tell the hotel you'll arrive after midnight and confirm it will hold the room."
+}

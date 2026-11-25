@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import HomePage from '@/app/page';
 import ItineraryCheckerPage from '@/app/(traveler)/itinerary-checker/page';
@@ -360,7 +360,7 @@ describe('public marketing pages', () => {
 
     // Hero heading
     expect(
-      screen.getByRole('heading', { name: /Turn your itinerary or travel plan into a clearer trip map/i }),
+      screen.getByRole('heading', { name: /Check your itinerary before you book/i }),
     ).toBeInTheDocument();
 
     // Mode tabs present — labels follow the unslop rewrite of PageClient
@@ -413,10 +413,10 @@ describe('public marketing pages', () => {
     // Switch to paste mode (tab label from the 17684bee unslop rewrite)
     fireEvent.click(screen.getByRole('button', { name: /Paste plan \/ ChatGPT/i }));
 
-    const textarea = screen.getByPlaceholderText(/Paste your day-by-day plan here/i);
+    const textarea = screen.getByRole('textbox', { name: 'Your itinerary' });
     expect(textarea).toBeInTheDocument();
 
-    const analyzeBtn = screen.getByRole('button', { name: /Score My Itinerary/i });
+    const analyzeBtn = screen.getByRole('button', { name: /^Check my itinerary$/i });
     expect(analyzeBtn).toBeDisabled();
 
     fireEvent.change(textarea, {
@@ -428,7 +428,7 @@ describe('public marketing pages', () => {
     expect(analyzeBtn).not.toBeDisabled();
   });
 
-  it('accepts a text upload and runs the scoring flow', async () => {
+  it('accepts a text upload and reports the destination evidence returned for it', async () => {
     render(<ItineraryCheckerPage />);
 
     // The card opens on the paste tab; switch to the file tab to mount the
@@ -436,15 +436,93 @@ describe('public marketing pages', () => {
     fireEvent.click(screen.getByRole('button', { name: /Upload PDF \/ file/i }));
     const fileInput = screen.getByLabelText('Upload itinerary file');
 
-    const file = new File(['Hong Kong in August for 2 elders and 1 child.'], 'trip.txt', {
+    const note = 'Hong Kong in August for 2 elders and 1 child.';
+    const file = new File([note], 'trip.txt', {
       type: 'text/plain',
     });
 
+    // jsdom's File omits Blob.text(), which browsers provide for text uploads.
+    Object.defineProperty(file, 'text', { value: () => Promise.resolve(note) });
     await userEvent.upload(fileInput, file);
 
-    expect(await screen.findByText(/Live review/i, {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(screen.getByText(/Your plan looks broadly workable/i)).toBeInTheDocument();
-    expect(screen.getByText(/Current weather:/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Your itinerary check' })).toBeInTheDocument();
+    expect(screen.getByText('Destination evidence')).toBeInTheDocument();
+    expect(screen.getByText(/Current weather is warm and humid/i)).toBeInTheDocument();
+    expect(screen.queryByText(/No issues were flagged/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Critical')).not.toBeInTheDocument();
+    expect(screen.getByText(/Current weather: 31.2°C now/i)).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledWith('/api/public-checker/run', expect.objectContaining({
+      itinerary_text: note,
+      retention_consent: false,
+    }), { retry: 0 });
+  });
+
+  it('shows the evidence status of each attempted public place lookup', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      run_id: 'run_place', state: 'completed', trip_id: 'trip_place', decision_state: 'PROCEED_TRAVELER_SAFE',
+      packet: {
+        facts: { destination_candidates: { value: ['Goa'] } },
+        public_checker_entity_checks: [
+          { name: 'Hotel A', status: 'unverified', reason: 'source_unavailable', message: 'Lookup could not run.' },
+          { name: 'Hotel B', status: 'unverified', reason: 'lodging_match_uncertain', message: 'Record is not listed as lodging.' },
+          { name: 'Hotel C', status: 'not_found', message: 'The lookup returned no matches.' },
+        ],
+      },
+    });
+    render(<ItineraryCheckerPage />);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your itinerary' }), {
+      target: { value: 'We are planning a Goa trip and comparing three hotels.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Check my itinerary$/i }));
+    expect(await screen.findByText('Source unavailable')).toBeVisible();
+    expect(screen.getByText('Lodging match uncertain')).toBeVisible();
+    expect(screen.getByText('No public record')).toBeVisible();
+    expect(screen.queryByText(/No issues were flagged/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps the submitted text available when the run has no usable packet', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({ run_id: 'run_empty', state: 'blocked', packet: {} });
+    render(<ItineraryCheckerPage />);
+    const note = 'Singapore and Marina Bay this October for five travelers.';
+    const input = screen.getByRole('textbox', { name: 'Your itinerary' });
+    fireEvent.change(input, { target: { value: note } });
+    fireEvent.click(screen.getByRole('button', { name: /^Check my itinerary$/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Itinerary check unavailable');
+    expect(input).toHaveValue(note);
+    expect(screen.getByRole('button', { name: /^Check my itinerary$/i })).toBeEnabled();
+    expect(screen.queryByText('Itinerary report')).not.toBeInTheDocument();
+  });
+
+  it('leads with actionable findings and asks for the return date once', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      run_id: 'run_goa', state: 'completed', trip_id: 'trip_goa', decision_state: 'ASK_FOLLOWUP',
+      packet: {
+        public_checker_return_date_pending: true,
+        itinerary_feasibility_findings: [
+          { flag: 'overnight_hotel_arrival', message: 'Confirm the room will be held.', details: { authority: 'advisory', title: 'Confirm late hotel arrival' } },
+          { flag: 'goa_day_pacing', message: 'Check the transfer from Collem.', details: { authority: 'advisory', title: 'Check whether all three stops fit' } },
+        ],
+      },
+    });
+    render(<ItineraryCheckerPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Paste plan \/ ChatGPT/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your itinerary' }), {
+      target: { value: 'Our Goa flight arrives after midnight and the return date is open.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Check my itinerary$/i }));
+    expect(await screen.findByRole('heading', { name: '2 itinerary details to confirm' })).toBeVisible();
+    const returnDate = screen.getByText('Add your return date when you know it.');
+    const pacing = screen.getByRole('heading', { name: 'Check whether all three stops fit' });
+    expect(pacing.compareDocumentPosition(returnDate) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const summary = screen.getByText('Share findings summary', { selector: 'summary' }).parentElement!;
+    expect(summary).toHaveTextContent('Confirm late hotel arrival');
+    expect(summary).toHaveTextContent('Confirm the room will be held.');
+    expect(summary).toHaveTextContent('Check the transfer from Collem.');
+    expect(summary).toHaveTextContent('Ask the hotel reservations team');
+    expect(summary).toHaveTextContent('Ask your travel agent or local tour operator');
+    expect(summary).not.toHaveTextContent('Our Goa flight arrives after midnight');
+
   });
 
   it('shows traveler-safe wording for thin extraction results', async () => {
@@ -468,26 +546,29 @@ describe('public marketing pages', () => {
       follow_up_questions: [],
       hard_blockers: ['extraction_quality'],
       soft_blockers: [],
-      packet: {},
+      packet: { facts: {}, unknowns: [] },
     });
 
     render(<ItineraryCheckerPage />);
 
     fireEvent.click(screen.getByRole('button', { name: /Paste plan \/ ChatGPT/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Paste your day-by-day plan here/i), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your itinerary' }), {
       target: {
         value: 'Fly to Singapore for 5 days with family in October. Need help checking the trip.',
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Score My Itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Check my itinerary$/i }));
 
-    expect(await screen.findByText(/We found important gaps that need a closer look/i, {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(screen.getByText(/We scored the plan, but we could not confidently pull out the key trip details yet/i)).toBeInTheDocument();
-    expect(screen.getByText(/We could not confidently read the key trip details from this plan yet/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Your check needs more details' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Correct or add trip details' })).toBeInTheDocument();
+    expect(screen.getByText(/^We could not confidently read the key trip details from this plan yet/i)).toBeInTheDocument();
     expect(screen.queryByText(/^extraction_quality$/i)).not.toBeInTheDocument();
   });
 
-  it('shows packet-derived trip understanding and clarifications in the app results', async () => {
+  it.each([
+    ['nothing_booked', false],
+    ['We have nothing booked yet.', true],
+  ])('shows packet-derived understanding and respects booking evidence (%s)', async (excerpt, visible) => {
     vi.mocked(api.post).mockResolvedValueOnce({
       run_id: 'run_packet',
       state: 'blocked',
@@ -525,7 +606,10 @@ describe('public marketing pages', () => {
           party_size: { value: 5 },
           party_composition: { value: { adults: 2, elderly: 2, children: 1 } },
           trip_purpose: { value: 'family leisure' },
-          traveler_plan: { value: 'nothing_booked' },
+          traveler_plan: {
+            value: 'nothing_booked', confidence: 0.85, authority_level: 'explicit_user', extraction_mode: 'direct_extract',
+            evidence_refs: [{ evidence_type: 'text_span', excerpt, field_path: null }],
+          },
           soft_preferences: { value: ['minimal long walks', 'one free afternoon for rest'] },
         },
         unknowns: [
@@ -538,20 +622,22 @@ describe('public marketing pages', () => {
     render(<ItineraryCheckerPage />);
 
     fireEvent.click(screen.getByRole('button', { name: /Paste plan \/ ChatGPT/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Paste your day-by-day plan here/i), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your itinerary' }), {
       target: {
         value: 'Singapore family trip with grandparents and a toddler. Comfortable pace please.',
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Score My Itinerary/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Check my itinerary$/i }));
 
     expect(await screen.findByText(/Trip Summary \(Extracted\)/i, {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(screen.getByText(/Singapore, Marina Bay/i)).toBeInTheDocument();
-    expect(screen.getByText(/^5$/i)).toBeInTheDocument();
+    const readFacts = within(screen.getByLabelText('What we read from your itinerary'));
+    expect(readFacts.getByText('Singapore, Marina Bay')).toBeInTheDocument();
+    expect(screen.queryAllByText('Nothing booked yet')).toHaveLength(visible ? 1 : 0);
+    expect(readFacts.getByText('5')).toBeInTheDocument();
     expect(screen.getByText(/family leisure/i)).toBeInTheDocument();
     expect(screen.getByText(/minimal long walks, one free afternoon for rest/i)).toBeInTheDocument();
     expect(screen.getByText(/What to clarify next/i)).toBeInTheDocument();
-    expect(screen.getByText(/Add travel dates\./i)).toBeInTheDocument();
+    expect(screen.getByText(/• Add travel dates\./i)).toBeInTheDocument();
     expect(screen.getByText(/Add departure city\./i)).toBeInTheDocument();
     expect(screen.getByText(/Clarify destination \(Singapore or Marina Bay\)\./i)).toBeInTheDocument();
   });

@@ -12,7 +12,7 @@ describe('Wedge Visual Aha Moments Components', () => {
   it('renders LayoverStressGauge with friction breakdown and simulator', () => {
     render(<LayoverStressGauge />);
     expect(screen.getByText(/Connection Stress & Minimum Buffer Gauge/i)).toBeInTheDocument();
-    expect(screen.getByText(/London Heathrow \(LHR\)/i)).toBeInTheDocument();
+    expect(screen.getByText('London Heathrow (LHR)')).toBeInTheDocument();
     expect(screen.getByText(/Taxi & Deplane/i)).toBeInTheDocument();
 
     const slider = screen.getByLabelText(/Simulate inbound flight delay/i);
@@ -37,14 +37,28 @@ describe('Wedge Visual Aha Moments Components', () => {
 
   it('renders PacingExhaustionCurve with burnout ceiling and day points', () => {
     render(<PacingExhaustionCurve hasElderlyOrKids={true} />);
-    expect(screen.getByText(/Day-by-Day Pacing & Exhaustion Curve/i)).toBeInTheDocument();
-    expect(screen.getByText(/Elderly \/ Multi-Gen Pace Threshold/i)).toBeInTheDocument();
-    expect(screen.getByText(/Burnout Ceiling/i)).toBeInTheDocument();
+    expect(screen.getByText(/Day-by-day pacing comparison/i)).toBeInTheDocument();
+    expect(screen.getByText(/Multi-gen pace threshold/i)).toBeInTheDocument();
+    expect(screen.getByText(/High-load threshold \(70%\)/i)).toBeInTheDocument();
 
-    // Click on Day 2 point
-    const day2 = screen.getByText('Day 2');
-    fireEvent.click(day2);
+    // Keyboard activation should expose the same day breakdown as a click.
+    const day2 = screen.getByRole('button', { name: /Day 2: Paris Highlights/ });
+    fireEvent.keyDown(day2, { key: 'Enter' });
+    expect(day2).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText(/Paris Highlights/i)).toBeInTheDocument();
+  });
+
+  it('draws a day at the threshold on the threshold line and handles an empty schedule', () => {
+    const { rerender } = render(<PacingExhaustionCurve days={[{
+      dayNumber: 1, label: 'City walk', activitiesCount: 3, estimatedSteps: 8000,
+      standingHours: 3, exhaustionScore: 70, notes: 'Leave time for lunch.',
+    }]} />);
+    const day = screen.getByRole('button', { name: 'Day 1: City walk', pressed: true });
+    const threshold = screen.getByText('High-load threshold', { selector: 'title' }).parentElement;
+    expect(day.querySelector('circle')).toHaveAttribute('cy', threshold?.getAttribute('y1'));
+
+    rerender(<PacingExhaustionCurve days={[]} />);
+    expect(screen.getByText('No daily activities are available for this comparison.')).toBeInTheDocument();
   });
 
   it('renders BeforeAfterComparison with toggle between views', () => {
@@ -83,23 +97,33 @@ describe('Wedge Visual Aha Moments Components', () => {
     // Default tab is Connection Stress
     expect(screen.getByText(/Connection Stress & Minimum Buffer Gauge/i)).toBeInTheDocument();
 
-    // Switch to Route Arc Ribbon
-    const routeTab = screen.getByRole('button', { name: /Route Arc Ribbon/i });
+    const currentTab = screen.getByRole('tab', { selected: true });
+    expect(currentTab).toHaveAccessibleName(/Connection Stress/);
+    fireEvent.keyDown(currentTab, { key: 'End' });
+    const lastTab = screen.getByRole('tab', { selected: true });
+    expect(lastTab).toHaveAccessibleName(/Hotel Perks Check/);
+    expect(lastTab).toHaveFocus();
+    expect(screen.getByRole('tabpanel', { name: /Hotel Perks Check/ })).toHaveAttribute('id', lastTab.getAttribute('aria-controls'));
+    fireEvent.keyDown(lastTab, { key: 'ArrowRight' });
+    expect(currentTab).toHaveFocus();
+    expect(currentTab).toHaveAttribute('aria-selected', 'true');
+
+    const routeTab = screen.getByRole('tab', { name: /Stop Sequence/i });
     fireEvent.click(routeTab);
     expect(screen.getByText(/Multi-Destination Route Flow & Transfer Arcs/i)).toBeInTheDocument();
 
     // Switch to Pacing Curve
-    const pacingTab = screen.getByRole('button', { name: /Pacing Curve/i });
+    const pacingTab = screen.getByRole('tab', { name: /Daily Pacing/i });
     fireEvent.click(pacingTab);
-    expect(screen.getByText(/Day-by-Day Pacing & Exhaustion Curve/i)).toBeInTheDocument();
+    expect(screen.getByText(/Day-by-day pacing comparison/i)).toBeInTheDocument();
 
     // Switch to Before vs After
-    const comparisonTab = screen.getByRole('button', { name: /Before vs. After/i });
+    const comparisonTab = screen.getByRole('tab', { name: /Before vs. After/i });
     fireEvent.click(comparisonTab);
     expect(screen.getByText(/Before vs. After: What Professional Advisory Changes/i)).toBeInTheDocument();
 
     // Switch to Perks Radar
-    const perksTab = screen.getByRole('button', { name: /Perks Radar/i });
+    const perksTab = screen.getByRole('tab', { name: /Hotel Perks Check/i });
     fireEvent.click(perksTab);
     expect(screen.getByText(/Unclaimed Luxury Perks & Amenities Value/i)).toBeInTheDocument();
   });

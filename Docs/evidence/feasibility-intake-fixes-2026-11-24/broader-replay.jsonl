@@ -1,0 +1,54 @@
+{"case":"F03","variant":"base","surface":"workbench","flags":[],"http":405}
+{"case":"F03","variant":"changed","surface":"workbench","flags":[],"http":405}
+{"case":"F03","variant":"uncertain","surface":"workbench","flags":[],"http":405}
+{"case":"F04","variant":"base","surface":"workbench","flags":[],"http":405}
+{"case":"F04","variant":"changed","surface":"workbench","flags":[],"http":405}
+{"case":"F04","variant":"uncertain","surface":"workbench","flags":[],"http":405}
+{"case":"F07","variant":"base","surface":"workbench","flags":[],"http":405}
+{"case":"F07","variant":"changed","surface":"workbench","flags":[],"http":405}
+{"case":"F07","variant":"uncertain","surface":"workbench","flags":[],"http":405}
+{"case":"F08","variant":"base","surface":"workbench","flags":[],"http":405}
+{"case":"F08","variant":"changed","surface":"workbench","flags":[],"http":405}
+{"case":"F08","variant":"uncertain","surface":"workbench","flags":[],"http":405}
+{"case":"F09","variant":"base","surface":"workbench","flags":[],"http":405}
+{"case":"F09","variant":"changed","surface":"workbench","flags":[],"http":405}
+{"case":"F09","variant":"uncertain","surface":"workbench","flags":[],"http":405}
+{"case":"F10","variant":"base","surface":"workbench","flags":[],"http":405}
+{"case":"F10","variant":"changed","surface":"workbench","flags":[],"http":405}
+{"case":"F10","variant":"uncertain","surface":"workbench","flags":[],"http":405}
+{"case":"F11","variant":"base","surface":"workbench","flags":[],"http":405}
+{"case":"F11","variant":"changed","surface":"workbench","flags":[],"http":405}
+{"case":"F11","variant":"uncertain","surface":"workbench","flags":[],"http":405}
+{"case":"F12","variant":"base","surface":"workbench","flags":[],"http":405}
+{"case":"F12","variant":"changed","surface":"workbench","flags":[],"http":405}
+{"case":"F12","variant":"uncertain","surface":"workbench","flags":[],"http":405}
+{"case":"F13","variant":"base","surface":"workbench","flags":[],"http":405}
+{"case":"F13","variant":"changed","surface":"workbench","flags":[],"http":405}
+{"case":"F13","variant":"uncertain","surface":"workbench","flags":[],"http":405}
+{"case":"F03","variant":"base","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Deposit"],"flags":[],"http":200}
+{"case":"F03","variant":"changed","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Deposit"],"flags":[],"http":200}
+{"case":"F03","variant":"uncertain","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Deposit","Give"],"flags":[],"http":200}
+{"case":"F04","variant":"base","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Helsinki"],"flags":[],"http":200}
+{"case":"F04","variant":"changed","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Helsinki"],"flags":[],"http":200}
+{"case":"F04","variant":"uncertain","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Helsinki"],"flags":[],"http":200}
+{"case":"F07","variant":"base","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Train"],"flags":[],"http":200}
+{"case":"F07","variant":"changed","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Train","Date"],"flags":[],"http":200}
+{"case":"F07","variant":"uncertain","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Train"],"flags":[],"http":200}
+{"case":"F08","variant":"base","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Rome"],"flags":[],"http":200}
+{"case":"F08","variant":"changed","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Rome"],"flags":[],"http":200}
+{"case":"F08","variant":"uncertain","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Rome"],"flags":[],"http":200}
+{"case":"F09","variant":"base","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Guide"],"flags":[],"http":200}
+{"case":"F09","variant":"changed","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Guide"],"flags":[],"http":200}
+{"case":"F09","variant":"uncertain","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Guide"],"flags":[],"http":200}
+{"case":"F10","variant":"base","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Van"],"flags":[],"http":200}
+{"case":"F10","variant":"changed","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Van"],"flags":[],"http":200}
+{"case":"F10","variant":"uncertain","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Van"],"flags":[],"http":200}
+{"case":"F11","variant":"base","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Mexico City"],"flags":[],"http":200}
+{"case":"F11","variant":"changed","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Mexico City"],"flags":[],"http":200}
+{"case":"F11","variant":"uncertain","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Mexico City"],"flags":[],"http":200}
+{"case":"F12","variant":"base","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Car"],"flags":[],"http":200}
+{"case":"F12","variant":"changed","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Car"],"flags":[],"http":200}
+{"case":"F12","variant":"uncertain","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Car"],"flags":[],"http":200}
+{"case":"F13","variant":"base","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Goa","North Goa"],"flags":[],"http":200}
+{"case":"F13","variant":"changed","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Goa","North Goa"],"flags":[],"http":200}
+{"case":"F13","variant":"uncertain","surface":"public","decision":"STOP_NEEDS_REVIEW","destinations":["Goa","North Goa"],"flags":[],"http":200}

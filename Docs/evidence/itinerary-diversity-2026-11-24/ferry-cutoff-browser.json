@@ -1,0 +1,29 @@
+{
+  "input": "Our rental car will reach Cairnryan port at 03:00 local time. Our 03:30 Stena Line ferry to Belfast shows vehicle check-in closes at 02:45 on the e-ticket.",
+  "public_browser_sent_duplicate_text": true,
+  "observations": [
+    {
+      "surface": "public",
+      "questions": [
+        "Can you arrange an earlier port arrival or confirm a later sailing with the ferry operator?"
+      ],
+      "screenshot": "ferry-cutoff-public.png"
+    },
+    {
+      "surface": "workbench",
+      "questions": [
+        "Can you arrange an earlier port arrival or confirm a later sailing with the ferry operator?"
+      ],
+      "screenshot": "ferry-cutoff-workbench.png"
+    }
+  ],
+  "public_bff_facts": {
+    "destination_candidates": [
+      "Cairnryan",
+      "Stena",
+      "Belfast"
+    ],
+    "destination_status": "semi_open",
+    "origin_city": "Ferry"
+  }
+}

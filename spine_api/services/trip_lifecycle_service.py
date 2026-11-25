@@ -143,6 +143,9 @@ def persist_reassessment_result(
         "traveler_bundle", "internal_bundle", "safety", "frontier_result", "fees", "raw_input",
     )
     updates = {field: built.get(field) for field in assessment_fields}
+    queued = trip.get("reassess")
+    if isinstance(queued, dict) and queued.get("run_id") == output.get("run_id"):
+        updates["reassess"] = None
     # Preserve operational extras (including commercial records) in analytics.
     # The persistence CAS merges extras, but replacing the complete analytics
     # document from a freshly computed draft would broaden this writer's scope.
@@ -298,6 +301,7 @@ def queue_trip_reassessment(
     trigger: str,
     execute_pipeline_fn: Callable[..., None],
     reason: Optional[str] = None,
+    persist_queued_edit: Optional[Callable[[str], str]] = None,
 ) -> str:
     """Queue a background reassessment run for an existing trip.
 
@@ -320,13 +324,20 @@ def queue_trip_reassessment(
         agency_id=agency_id,
         draft_id=None,
     )
-    thread = threading.Thread(
-        target=execute_pipeline_fn,
-        args=(run_id, request_dict, agency_id, user_id, trip.get("id"), "trip_reassessed", trip.get("status")),
-        daemon=True,
-        name=f"reassess-{run_id[:8]}",
-    )
-    thread.start()
+    try:
+        if persist_queued_edit is not None:
+            source_revision = persist_queued_edit(run_id)
+            RunLedger.update_meta(run_id, auto_edit_source_revision=source_revision)
+        thread = threading.Thread(
+            target=execute_pipeline_fn,
+            args=(run_id, request_dict, agency_id, user_id, trip.get("id"), "trip_reassessed", trip.get("status")),
+            daemon=True,
+            name=f"reassess-{run_id[:8]}",
+        )
+        thread.start()
+    except Exception:
+        RunLedger.fail(run_id, "reassessment_dispatch", "Reassessment could not be dispatched for this revision.")
+        raise
 
     AuditStore.log_event(
         "trip_reassess_queued",

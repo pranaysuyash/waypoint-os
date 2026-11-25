@@ -18,6 +18,7 @@
  * with the raw signal surfaced as a blocker, never silently dropped.
  */
 
+import { DECISION_STATE_LABELS } from "@/lib/label-maps";
 import type { Trip } from "@/lib/api-client";
 
 export type TripLifecycleState =
@@ -54,15 +55,6 @@ const INTAKE_BLOCKED_STATUSES = new Set([
   "needs_clarification",
   "awaiting_customer_details",
 ]);
-
-const DECISION_STATE_LABELS: Record<string, string> = {
-  PROCEED_TRAVELER_SAFE: "Ready to Book",
-  PROCEED_INTERNAL_DRAFT: "Draft Quote",
-  BRANCH_OPTIONS: "Needs Options",
-  STOP_NEEDS_REVIEW: "Needs Attention",
-  STOP_REVIEW: "Needs Attention",
-  ASK_FOLLOWUP: "Waiting on Customer",
-};
 
 export function decisionStateLabel(decisionState?: string): string {
   if (!decisionState) return "";

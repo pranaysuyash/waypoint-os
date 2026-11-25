@@ -1,0 +1,22 @@
+{
+  "input": "We propose Baga, Dudhsagar and Old Goa on 19 December. Actually we will do Old Goa on 20 December instead.",
+  "environment": "isolated local API, synthetic agency",
+  "observations": [
+    {
+      "surface": "public",
+      "http": 200,
+      "state": "blocked",
+      "context": "Goa sightseeing \u00b7 Baga and Dudhsagar on 19 December \u00b7 Old Goa on 20 December",
+      "question": "What time do you expect to return from Dudhsagar before visiting Baga?",
+      "findings": []
+    },
+    {
+      "surface": "authenticated",
+      "http": 200,
+      "state": "blocked",
+      "context": "Goa sightseeing \u00b7 Baga and Dudhsagar on 19 December \u00b7 Old Goa on 20 December",
+      "question": "What time do you expect to return from Dudhsagar before visiting Baga?",
+      "findings": []
+    }
+  ]
+}

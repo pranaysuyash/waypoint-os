@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
 import { useTripContext } from "@/contexts/TripContext";
-import type { SafetyResult, PromptBundle } from "@/types/spine";
+import type { PromptBundle } from "@/types/spine";
 import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { normalizeSafetyResult } from "@/lib/bff-trip-adapters";
 import { isDebugJsonAllowed } from "@/lib/privacy-controls";
 import {
+  getDraftCheckStatus,
   getSafetyCleanupChecklist,
   getSafetyCleanupSummary,
   getSafetyReviewStatusCopy,
@@ -21,6 +23,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
   const context = useTripContext({ optional: true });
   const {
     result_safety,
+    result_decision,
     result_traveler_bundle,
     result_internal_bundle,
     debug_raw_json,
@@ -29,8 +32,8 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
   const debugJsonAllowed = isDebugJsonAllowed();
   const effectiveShowRaw = debugJsonAllowed && (debug_raw_json || showRaw);
 
-  const effectiveSafety = (result_safety || context?.trip?.safety || null) as SafetyResult | null;
-  const travelerBundle = (result_traveler_bundle || context?.trip?.traveler_bundle || null) as PromptBundle | null;
+  const effectiveSafety = normalizeSafetyResult(context?.trip ? context.trip.safety : result_safety);
+  const travelerBundle = (context?.trip ? context.trip.traveler_bundle : result_traveler_bundle) as PromptBundle | null;
   const internalBundle = (result_internal_bundle || context?.trip?.internal_bundle || null) as PromptBundle | null;
 
   if (!effectiveSafety) {
@@ -52,7 +55,9 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
   const safety = effectiveSafety;
   const isStrictFail = safety.strict_leakage && !safety.leakage_passed;
-  const safetyStatusCopy = getSafetyReviewStatusCopy(safety);
+  const decision = context?.trip ? context.trip.decision : result_decision;
+  const status = getDraftCheckStatus(safety, travelerBundle, decision?.decision_state);
+  const safetyStatusCopy = getSafetyReviewStatusCopy(status, safety);
   const cleanupChecklist = getSafetyCleanupChecklist();
 
   return (
@@ -60,9 +65,14 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
       <section>
         <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Message review</h3>
         <p className="text-ui-xs text-text-muted mb-3">
-          Final send-readiness check for customer-safe language before anything leaves the workspace.
+          Review the generated draft for internal-only language.
         </p>
-        {safety.leakage_passed ? (
+        {status === 'unchecked' || status === 'no-draft' ? (
+          <div className="rounded-lg border border-default p-4">
+            <strong>{safetyStatusCopy.heading}</strong>
+            <p className="mt-1 text-ui-sm text-text-muted">{safetyStatusCopy.body}</p>
+          </div>
+        ) : status === 'passed' ? (
           <div className="border border-[#1c2128] rounded-lg p-4 bg-sidebar">
             <div className="flex items-center text-accent-green font-semibold mb-1">
               <CheckCircle className="size-4 mr-2" />
@@ -119,7 +129,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
       <section>
         <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Customer Message QA</h3>
         <div className="bg-sidebar rounded-lg border border-[#1c2128] p-4 space-y-4">
-          {travelerBundle && !isStrictFail ? (
+          {status !== 'no-draft' && travelerBundle && !isStrictFail ? (
             <>
               <div>
                 <div className="text-[var(--ui-text-xs)] font-bold text-text-muted uppercase tracking-wider">Background Notes</div>

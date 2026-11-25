@@ -199,7 +199,7 @@ export default function CaptureCallPanel({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-canvas border-l border-border-default dark:border-border-default">
+    <div className="flex h-full min-h-0 flex-col bg-surface border-l border-border-default dark:border-border-default">
       {/* Header */}
       <div className="px-6 py-4 border-b border-border-default dark:border-border-default">
         <h2 className="text-ui-lg font-semibold text-text-primary dark:text-text-primary">
@@ -250,7 +250,7 @@ export default function CaptureCallPanel({
             }}
             placeholder="e.g., Family of 4 wants to explore Japan, late November…"
             rows={4}
-            className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors ${
+            className={`w-full px-3 py-2 border rounded-lg bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors ${
               errors.rawNote
                 ? "border-[rgba(var(--accent-red-rgb)/0.3)] dark:border-[rgba(var(--accent-red-rgb)/0.35)]"
                 : "border-border-default dark:border-border-default"
@@ -275,7 +275,7 @@ export default function CaptureCallPanel({
             onChange={(e) => dispatch({ type: "SET_FIELD", field: "ownerNote", value: e.target.value })}
             placeholder="e.g., Mentioned budget concerns, needs early morning flights…"
             rows={3}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
         </div>
 
@@ -292,7 +292,7 @@ export default function CaptureCallPanel({
             type="datetime-local"
             value={followUpDueDate}
             onChange={(e) => dispatch({ type: "SET_FIELD", field: "followUpDueDate", value: e.target.value })}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
           <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Leave blank if no promise was made
@@ -313,7 +313,7 @@ export default function CaptureCallPanel({
             onChange={(e) => dispatch({ type: "SET_FIELD", field: "partyComposition", value: e.target.value })}
             placeholder="e.g., 2 adults, 1 toddler (age 3), 1 infant"
             rows={2}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
           <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Helps us plan family-friendly itineraries
@@ -332,7 +332,7 @@ export default function CaptureCallPanel({
             id="pacePreference"
             value={pacePreference}
             onChange={(e) => dispatch({ type: "SET_FIELD", field: "pacePreference", value: e.target.value })}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           >
             <option value="">Select pace preference…</option>
             <option value="rushed">Rushed</option>
@@ -356,7 +356,7 @@ export default function CaptureCallPanel({
             id="dateYearConfidence"
             value={dateYearConfidence}
             onChange={(e) => dispatch({ type: "SET_FIELD", field: "dateYearConfidence", value: e.target.value })}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           >
             <option value="">Select confidence level…</option>
             <option value="certain">Certain</option>
@@ -380,7 +380,7 @@ export default function CaptureCallPanel({
             id="leadSource"
             value={leadSource}
             onChange={(e) => dispatch({ type: "SET_FIELD", field: "leadSource", value: e.target.value })}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           >
             <option value="">Select lead source…</option>
             <option value="referral">Referral</option>
@@ -407,7 +407,7 @@ export default function CaptureCallPanel({
             onChange={(e) => dispatch({ type: "SET_FIELD", field: "activityProvenance", value: e.target.value })}
             placeholder="e.g., hiking, museums, fine dining, adventure sports"
             rows={2}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
           <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Guide interests, not limitations
@@ -416,11 +416,11 @@ export default function CaptureCallPanel({
       </form>
 
       {/* Footer with Buttons */}
-      <div className="px-6 py-4 border-t border-border-default dark:border-border-default flex gap-3">
+      <div className="flex shrink-0 flex-wrap gap-2 border-t border-border-default px-4 py-4 sm:px-6 dark:border-border-default">
           <button
             onClick={handleCancel}
             disabled={isSubmitting}
-          className="flex-1 px-4 py-2 text-ui-sm font-medium text-text-secondary dark:text-text-secondary bg-elevated dark:bg-surface hover:bg-elevated dark:hover:bg-elevated rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="grow basis-24 px-3 py-2 text-ui-sm font-medium text-text-secondary dark:text-text-secondary bg-elevated dark:bg-surface hover:bg-elevated dark:hover:bg-elevated rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
@@ -429,7 +429,7 @@ export default function CaptureCallPanel({
             onClick={() => void handleSubmit("save")}
             aria-label={isSubmitting ? "Saving" : "Save Draft"}
             disabled={isSubmitting || !rawNote.trim()}
-            className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-[rgba(var(--accent-blue-rgb)/0.30)] hover:bg-[rgba(var(--accent-blue-rgb)/0.26)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="grow basis-24 px-3 py-2 text-ui-sm font-medium text-text-primary bg-[rgba(var(--accent-blue-rgb)/0.30)] hover:bg-[rgba(var(--accent-blue-rgb)/0.26)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting && <Loader2 className="size-4 animate-spin" />}
             {isSubmitting ? "Saving…" : "Save Draft"}
@@ -438,7 +438,7 @@ export default function CaptureCallPanel({
             type="submit"
             aria-label={isSubmitting ? "Saving" : "Save and Process"}
             disabled={isSubmitting || !rawNote.trim()}
-            className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-[rgba(var(--accent-blue-rgb)/0.42)] hover:bg-[rgba(var(--accent-blue-rgb)/0.34)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="grow basis-24 px-3 py-2 text-ui-sm font-medium text-text-primary bg-[rgba(var(--accent-blue-rgb)/0.42)] hover:bg-[rgba(var(--accent-blue-rgb)/0.34)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting && <Loader2 className="size-4 animate-spin" />}
             {isSubmitting ? "Saving…" : "Save and Process"}

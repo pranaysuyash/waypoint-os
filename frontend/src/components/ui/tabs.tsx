@@ -73,13 +73,8 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation
   const activeTabLabel = tabs.find(t => t.id === activeTab)?.label || activeTab;
 
   return (
-    <div
-      role='tablist'
-      style={{ borderBottom: '1px solid var(--border-default)' }}
-      aria-label={ariaLabel}
-      onKeyDown={handleKeyDown}
-    >
-      <div className='flex overflow-x-auto'>
+    <div style={{ borderBottom: '1px solid var(--border-default)' }}>
+      <div className='flex flex-wrap' role='tablist' aria-label={ariaLabel} onKeyDown={handleKeyDown}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const href = getTabHref?.(tab.id);
@@ -90,7 +85,7 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation
             tabIndex: isActive ? 0 : -1,
             id: getTabButtonId(tab.id),
             className: cn(
-              'relative px-4 py-2.5 text-sm font-medium transition-colors outline-none shrink-0',
+              'relative max-w-full break-words px-3 py-2.5 sm:px-4 text-sm font-medium transition-colors outline-none shrink-0',
               isActive && 'text-text-primary bg-[var(--bg-elevated)]',
               !isActive && 'text-text-muted',
             ),
@@ -115,7 +110,7 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation
                     className='ml-1 px-1.5 py-0.5 text-xs rounded-sm font-mono'
                     style={{
                       background: 'var(--bg-count-badge)',
-                      color: 'var(--text-muted)',
+                      color: 'var(--text-secondary)',
                     }}
                   >
                     {tab.count}

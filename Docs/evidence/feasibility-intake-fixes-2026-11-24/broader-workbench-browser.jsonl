@@ -1,0 +1,27 @@
+{"case":"F03","variant":"uncertain","surface":"workbench","http":200,"run":"98cf841c-f4bf-44d0-911d-6f848eccac86","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Deposit","Give"],"flags":[]}
+{"case":"F03","variant":"changed","surface":"workbench","http":200,"run":"b3f401a7-614e-4597-83ac-0666da1bf78f","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Deposit"],"flags":[]}
+{"case":"F03","variant":"base","surface":"workbench","http":200,"run":"99fc539c-eb34-4a00-b1fb-b40ca1d83b67","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Deposit"],"flags":[]}
+{"case":"F04","variant":"uncertain","surface":"workbench","http":200,"run":"ee44279c-df27-44c4-8375-00a8e23f3fe0","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Helsinki"],"flags":[]}
+{"case":"F04","variant":"changed","surface":"workbench","http":200,"run":"430808e8-5577-4fa8-8e71-4150ac480d10","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Helsinki"],"flags":[]}
+{"case":"F04","variant":"base","surface":"workbench","http":200,"run":"c0bbec60-c6ff-4960-a4e1-a32651b64475","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Helsinki"],"flags":[]}
+{"case":"F07","variant":"changed","surface":"workbench","http":200,"run":"d9910580-4408-4527-8c4a-e7ac64c2c20d","state":"failed","decision":"STOP_NEEDS_REVIEW","destinations":["Train","Date"],"flags":[]}
+{"case":"F07","variant":"uncertain","surface":"workbench","http":200,"run":"e779769e-1a55-463f-833d-94eba0e711d0","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Train"],"flags":[]}
+{"case":"F07","variant":"base","surface":"workbench","http":200,"run":"3a9d9390-1abd-4119-9e6b-f340e8035a20","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Train"],"flags":[]}
+{"case":"F08","variant":"changed","surface":"workbench","http":200,"run":"d5da3b1f-b23d-417d-bfd4-95f2d64e0d3f","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Rome"],"flags":[]}
+{"case":"F08","variant":"uncertain","surface":"workbench","http":200,"run":"34998f41-848b-4254-ab21-ce5d5a7a9836","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Rome"],"flags":[]}
+{"case":"F09","variant":"changed","surface":"workbench","http":200,"run":"b32acc6a-5e33-47a7-9a17-fae92dcbe5f4","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Guide"],"flags":[]}
+{"case":"F08","variant":"base","surface":"workbench","http":200,"run":"caa48b68-5209-4a89-b3fc-ce4085acfeec","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Rome"],"flags":[]}
+{"case":"F09","variant":"uncertain","surface":"workbench","http":200,"run":"8194bb9e-1166-44fe-9dcb-684570feeed6","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Guide"],"flags":[]}
+{"case":"F09","variant":"base","surface":"workbench","http":200,"run":"f90143de-e2f7-456e-ab4c-fdd6ad9b5512","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Guide"],"flags":[]}
+{"case":"F10","variant":"changed","surface":"workbench","http":200,"run":"d4825a8f-30fe-44bb-8ea2-14c016eda4f7","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Van"],"flags":[]}
+{"case":"F10","variant":"uncertain","surface":"workbench","http":200,"run":"0d3c2e14-7a75-49ec-a550-263ba54cdb90","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Van"],"flags":[]}
+{"case":"F10","variant":"base","surface":"workbench","http":200,"run":"f73b57f0-4a74-4027-80ba-e0321b8d7810","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Van"],"flags":[]}
+{"case":"F11","variant":"changed","surface":"workbench","http":200,"run":"f91c2a59-2ea5-4ed1-b586-5a482c8e2566","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Mexico City"],"flags":[]}
+{"case":"F11","variant":"uncertain","surface":"workbench","http":200,"run":"a6025043-b1ec-4f6b-a24e-8cfc6053eb32","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Mexico City"],"flags":[]}
+{"case":"F12","variant":"changed","surface":"workbench","http":200,"run":"3b1e6eb7-d098-4732-94a2-1e12132aa98c","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Car"],"flags":[]}
+{"case":"F12","variant":"uncertain","surface":"workbench","http":200,"run":"99bc3418-e42a-4e15-97d2-8206331a1bac","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Car"],"flags":[]}
+{"case":"F13","variant":"changed","surface":"workbench","http":200,"run":"96adc561-5ec0-4431-bc5c-e5a54e806987","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Goa","North Goa"],"flags":[]}
+{"case":"F11","variant":"base","surface":"workbench","http":200,"run":"dcbaa389-4821-4453-adb4-b9186817dbb7","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Mexico City"],"flags":[]}
+{"case":"F13","variant":"uncertain","surface":"workbench","http":200,"run":"e2a609b0-d359-40db-be4e-17e9f3c01848","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Goa","North Goa"],"flags":[]}
+{"case":"F12","variant":"base","surface":"workbench","http":200,"run":"ed74bb2f-cd05-4c9d-837d-5f1194ece8c1","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Car"],"flags":[]}
+{"case":"F13","variant":"base","surface":"workbench","http":200,"run":"748a1bdc-bbd8-4020-b7c5-17d00fbbd87e","state":"blocked","decision":"STOP_NEEDS_REVIEW","destinations":["Goa","North Goa"],"flags":[]}

@@ -65,6 +65,9 @@ class TestExtraction:
         assert any("orchid" in n for n in names)
         assert any("blue bay" in n for n in names)
 
+    def test_staying_in_a_city_is_not_a_property(self):
+        assert extract_lodging_names("Staying in Istanbul. Staying at The Orchid Resort.") == ["The Orchid Resort"]
+
     def test_ignores_non_lodging_sentences(self):
         assert extract_lodging_names("Visit the museum and Try the street food at night.") == []
 
@@ -95,6 +98,7 @@ class TestVerifyEntity:
         transport = _fake_transport({"/search": [{"class": "amenity", "type": "restaurant", "display_name": "X"}]})
         result = verify_entity("The Orchid", "Paris", transport=transport)
         assert result.status == "unverified"
+        assert result.as_dict()["reason"] == "lodging_match_uncertain"
         assert "verify your booking" in result.message
 
     def test_network_error_fails_open(self):
@@ -103,6 +107,7 @@ class TestVerifyEntity:
 
         result = verify_entity("Hotel X", "Rome", transport=boom)
         assert result.status == "unverified"
+        assert result.as_dict()["reason"] == "source_unavailable"
         assert result.confidence == 0.0
 
     def test_user_agent_and_query_shape(self):
@@ -171,3 +176,19 @@ class TestRunEntityChecks:
             name="X", place_query="X Y", status="verified", confidence=0.7, message="ok"
         )
         assert result.as_dict()["status"] == "verified"
+
+
+def test_temporary_provider_failure_can_recover_on_recheck(monkeypatch):
+    monkeypatch.setattr(ec, "_MIN_INTERVAL_SECONDS", 0)
+    note = "Stay at Hotel Alpha in Goa."
+
+    def timeout(_url):
+        raise TimeoutError("Synthetic source timeout")
+
+    failed, = ec.run_entity_checks(note, city="Goa", transport=timeout)
+    assert failed.reason == "source_unavailable"
+
+    recovered, = ec.run_entity_checks(
+        note, city="Goa", transport=lambda _url: [_hotel_hit("Hotel Alpha")],
+    )
+    assert recovered.status == "verified"

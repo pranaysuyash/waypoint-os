@@ -475,7 +475,7 @@ export default function OwnerInsightsPage() {
   return (
     <div className='p-5 pb-4 max-w-[1400px] mx-auto space-y-5'>
       {/* Header */}
-      <header className='flex items-center justify-between pt-1'>
+      <header className='flex flex-wrap items-start justify-between gap-3 pt-1'>
         <div>
           <h1 className='text-ui-2xl font-semibold text-[#e6edf3]'>Insights & Analytics</h1>
           <p className='text-ui-base text-[#8b949e] mt-0.5'>
@@ -483,7 +483,7 @@ export default function OwnerInsightsPage() {
           </p>
         </div>
         
-        <div className='flex items-center gap-3'>
+        <div className='flex min-w-0 flex-wrap items-center gap-3'>
           <div className='relative'>
             <label htmlFor='insights-time-range' className='sr-only'>
               Time range

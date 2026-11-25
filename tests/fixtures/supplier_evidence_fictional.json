@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+  "provenance": "fictional_fixture",
+  "rates": [
+    {"supplier_id":"fictional-andaman-charters","service_id":"catamaran-morning","source_record_id":"rate-2027-01","source_url":"https://charters.example.invalid/rates#2027-01","observed_at":"2026-01-01T00:00:00Z","expires_at":"2099-01-01T00:00:00Z","effective_from":"2027-04-01","effective_through":"2027-04-30","minimum_guests":1,"maximum_guests":20,"amount":"35000.00","currency":"THB","basis":"per_service"},
+    {"supplier_id":"fictional-andaman-charters","service_id":"catamaran-conflict","source_record_id":"rate-a","source_url":"https://charters.example.invalid/rates#a","observed_at":"2026-01-01T00:00:00Z","expires_at":"2099-01-01T00:00:00Z","effective_from":"2027-04-01","effective_through":"2027-04-30","minimum_guests":1,"maximum_guests":20,"amount":"35000.00","currency":"THB","basis":"per_service"},
+    {"supplier_id":"fictional-andaman-charters","service_id":"catamaran-conflict","source_record_id":"rate-b","source_url":"https://charters.example.invalid/rates#b","observed_at":"2026-01-01T00:00:00Z","expires_at":"2099-01-01T00:00:00Z","effective_from":"2027-04-01","effective_through":"2027-04-30","minimum_guests":1,"maximum_guests":20,"amount":"39000.00","currency":"THB","basis":"per_service"},
+    {"supplier_id":"fictional-andaman-charters","service_id":"catamaran-expired","source_record_id":"rate-expired","source_url":"https://charters.example.invalid/rates#expired","observed_at":"2020-01-01T00:00:00Z","expires_at":"2020-02-01T00:00:00Z","effective_from":"2027-04-01","effective_through":"2027-04-30","minimum_guests":1,"maximum_guests":20,"amount":"29000.00","currency":"THB","basis":"per_service"}
+  ],
+  "calendar": [
+    {"supplier_id":"fictional-andaman-charters","service_id":"catamaran-morning","source_record_id":"calendar-17","source_url":"https://charters.example.invalid/calendar#2027-04-17","observed_at":"2026-01-01T00:00:00Z","expires_at":"2099-01-01T00:00:00Z","service_date":"2027-04-17","available_guests":20},
+    {"supplier_id":"fictional-andaman-charters","service_id":"catamaran-morning","source_record_id":"calendar-18","source_url":"https://charters.example.invalid/calendar#2027-04-18","observed_at":"2026-01-01T00:00:00Z","expires_at":"2099-01-01T00:00:00Z","service_date":"2027-04-18","available_guests":0},
+    {"supplier_id":"fictional-andaman-charters","service_id":"catamaran-morning","source_record_id":"calendar-stale","source_url":"https://charters.example.invalid/calendar#2027-04-19","observed_at":"2020-01-01T00:00:00Z","expires_at":"2020-02-01T00:00:00Z","service_date":"2027-04-19","available_guests":20},
+    {"supplier_id":"fictional-andaman-charters","service_id":"catamaran-conflict","source_record_id":"inventory-a","source_url":"https://charters.example.invalid/calendar#a","observed_at":"2026-01-01T00:00:00Z","expires_at":"2099-01-01T00:00:00Z","service_date":"2027-04-17","available_guests":20},
+    {"supplier_id":"fictional-andaman-charters","service_id":"catamaran-conflict","source_record_id":"inventory-b","source_url":"https://charters.example.invalid/calendar#b","observed_at":"2026-01-01T00:00:00Z","expires_at":"2099-01-01T00:00:00Z","service_date":"2027-04-17","available_guests":0}
+  ]
+}

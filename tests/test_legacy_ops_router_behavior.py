@@ -97,7 +97,7 @@ def test_override_conflict_when_original_severity_is_stale(session_client, monke
 def test_get_audit_events_supports_event_type_filter(session_client, monkeypatch):
     monkeypatch.setattr(
         legacy_ops.TripStore,
-        "list_trips",
+        "list_trip_summaries",
         lambda agency_id, limit=10000: [{"id": "trip_alpha"}, {"id": "trip_beta"}] if agency_id == "agency_test" else [],
     )
     monkeypatch.setattr(
@@ -106,6 +106,7 @@ def test_get_audit_events_supports_event_type_filter(session_client, monkeypatch
         lambda limit=100: [
             {"type": "routing_health_alert", "details": {"trip_id": "trip_alpha", "status": "warning"}},
             {"type": "override_created", "details": {"trip_id": "trip_alpha"}},
+            {"type": "routing_health_alert", "details": {"trip_id": "trip_other_agency", "status": "critical"}},
             {"type": "routing_health_alert", "details": {"trip_id": "trip_beta", "status": "critical"}},
             {"type": "routing_health_alert", "details": {"trip_id": "trip_alpha", "status": "critical"}},
         ][:limit],
@@ -116,12 +117,13 @@ def test_get_audit_events_supports_event_type_filter(session_client, monkeypatch
     data = resp.json()
     assert data["total"] == 3
     assert {item["type"] for item in data["items"]} == {"routing_health_alert"}
+    assert {item["details"]["trip_id"] for item in data["items"]} == {"trip_alpha", "trip_beta"}
 
 
 def test_get_audit_events_supports_trip_status_filter(session_client, monkeypatch):
     monkeypatch.setattr(
         legacy_ops.TripStore,
-        "list_trips",
+        "list_trip_summaries",
         lambda agency_id, limit=10000: [{"id": "trip_alpha"}] if agency_id == "agency_test" else [],
     )
     monkeypatch.setattr(

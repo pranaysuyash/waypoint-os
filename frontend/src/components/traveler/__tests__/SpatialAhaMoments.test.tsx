@@ -13,12 +13,13 @@ import { IsometricHotelSanctuary } from '../IsometricHotelSanctuary';
 
 describe('Spatial & Visual Aha Moments Suite', () => {
   it('renders IsometricAirportCutaway with 2.5D axonometric projection and particle tracking', () => {
-    render(<IsometricAirportCutaway />);
+    render(<IsometricAirportCutaway scheduledMinutes={90} />);
     expect(screen.getByText(/Axonometric Hub Cutaway & Particle Flow Simulation/i)).toBeInTheDocument();
-    expect(screen.getByText(/T5A Inbound/i)).toBeInTheDocument();
-    expect(screen.getByText(/T3 Connecting Gate/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Inbound Terminal$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Connecting Gate$/i)).toBeInTheDocument();
     expect(screen.getByText(/Airside APM & Security/i)).toBeInTheDocument();
 
+    expect(screen.queryByText(/GATE CLOSED/i)).not.toBeInTheDocument();
     const slider = screen.getByLabelText(/Simulate runway delay on inbound flight/i);
     expect(slider).toBeInTheDocument();
     fireEvent.change(slider, { target: { value: '30' } });
@@ -29,7 +30,7 @@ describe('Spatial & Visual Aha Moments Suite', () => {
   it('renders Interactive3DGlobeFlightArc with Great-Circle canvas and waypoints', () => {
     render(<Interactive3DGlobeFlightArc />);
     expect(screen.getByText(/Interactive Orthographic 3D Journey Telemetry/i)).toBeInTheDocument();
-    expect(screen.getByText(/GEO: Transatlantic Great-Circle WGS84/i)).toBeInTheDocument();
+    expect(screen.getByText(/PROJECTION: 3D Orthographic Sphere/i)).toBeInTheDocument();
     expect(screen.getAllByText(/JFK/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/LHR/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/CDG/i).length).toBeGreaterThan(0);
@@ -41,7 +42,7 @@ describe('Spatial & Visual Aha Moments Suite', () => {
     render(<IsometricHotelSanctuary onClaim={onClaimMock} />);
     expect(screen.getByText(/Isometric Suite Cutaway: Unlocked VIP Amenities/i)).toBeInTheDocument();
     expect(screen.getByText(/Standard Room \(35m²\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Deluxe Suite \(68m²\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Partner Suite \(68m²\)/i)).toBeInTheDocument();
 
     // Toggle view
     const suiteBtn = screen.getByText(/Waypoint Suite Only/i);
@@ -60,17 +61,17 @@ describe('Spatial & Visual Aha Moments Suite', () => {
     expect(screen.getByText(/Connection Stress & Minimum Buffer Gauge/i)).toBeInTheDocument();
 
     // 2.5D Airport Cutaway tab
-    const airportTab = screen.getByRole('button', { name: /2.5D Airport Cutaway/i });
+    const airportTab = screen.getByRole('tab', { name: /Terminal Transfer/i });
     fireEvent.click(airportTab);
     expect(screen.getByText(/Axonometric Hub Cutaway & Particle Flow Simulation/i)).toBeInTheDocument();
 
     // 3D Globe Flight Arc tab
-    const globeTab = screen.getByRole('button', { name: /3D Globe Flight Arc/i });
+    const globeTab = screen.getByRole('tab', { name: /3D Route Arc/i });
     fireEvent.click(globeTab);
     expect(screen.getByText(/Interactive Orthographic 3D Journey Telemetry/i)).toBeInTheDocument();
 
     // 2.5D Suite Cutaway tab
-    const hotelTab = screen.getByRole('button', { name: /2.5D Suite Cutaway/i });
+    const hotelTab = screen.getByRole('tab', { name: /Room vs. Partner Tier/i });
     fireEvent.click(hotelTab);
     expect(screen.getByText(/Isometric Suite Cutaway: Unlocked VIP Amenities/i)).toBeInTheDocument();
   });

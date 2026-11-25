@@ -1,0 +1,22 @@
+{
+  "input": "Hotel Alpha requires a deposit and says cancellation is free. Hotel Beta requires a deposit and says cancellation is free. The overnight train is waitlisted. Our morning transfer is booked separately. Correction from the traveler or operator: Hotel Alpha confirms its deposit is nonrefundable.",
+  "public_browser_sent_duplicate_text": true,
+  "observations": [
+    {
+      "surface": "public",
+      "questions": [
+        "What amount becomes nonrefundable, in which currency, and when?",
+        "When can you change or cancel the morning transfer if the train remains waitlisted?"
+      ],
+      "screenshot": "supplier-attribution-verified-public.png"
+    },
+    {
+      "surface": "workbench",
+      "questions": [
+        "What amount becomes nonrefundable, in which currency, and when?",
+        "When can you change or cancel the morning transfer if the train remains waitlisted?"
+      ],
+      "screenshot": "supplier-attribution-verified-workbench.png"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+[
+  {
+    "case": "delayed-eurostar-unknown",
+    "surface": "public",
+    "time": "2026-11-25T05:24:35.098265+00:00",
+    "browser": "Desktop Chrome, 1440 \u00d7 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked onward train, and I do not have the operator or station.",
+    "passed": false,
+    "failure": "Locator.wait_for: Timeout 24000ms exceeded.\nCall log:\n  - waiting for get_by_text(\"Which operator and departure station does the onward ticket show?\", exact=True).first to be visible\n",
+    "requests": []
+  },
+  {
+    "case": "delayed-eurostar-rer",
+    "surface": "public",
+    "time": "2026-11-25T05:25:06.791865+00:00",
+    "browser": "Desktop Chrome, 1440 \u00d7 960, isolated development backend, synthetic traveler and agency",
+    "note": "Our Eurostar to Paris is delayed today. We expect to miss the separately booked RER B from Gare du Nord.",
+    "passed": false,
+    "failure": "Locator.wait_for: Timeout 24000ms exceeded.\nCall log:\n  - waiting for get_by_text(\"Can station staff confirm which later service your RER ticket covers?\", exact=True).first to be visible\n",
+    "requests": [
+      [
+        "POST",
+        "/api/public-checker/run",
+        429
+      ]
+    ]
+  }
+]

@@ -258,6 +258,24 @@ class TestHeuristicDetails:
         data = {"raw_note": "call me at trip_9876543210 please"}
         assert _has_phone(data) is not None
 
+    def test_draft_check_digests_are_scoped_system_metadata(self):
+        # Structurally valid SHA-256 with a ten-digit run. Identical content
+        # in traveler text must still go through the ordinary phone check.
+        digest = "a" * 27 + "9876543210" + "b" * 27
+        safety = {"draft_check_source_sha256": digest, "draft_check": {"digest_sha256": digest}}
+        assert _has_phone({"safety": safety}) is None
+        assert _has_phone({"safety": safety, "raw_input": {"raw_note": digest}}) is not None
+        assert _has_phone({"safety": {**safety, "leaks": ["Call +91 98765 43210"]}}) is not None
+        assert _has_phone({"safety": {"draft_check": {"digest_sha256": "9876543210"}}}) is not None
+
+    def test_queued_reassessment_uuid_is_scoped_system_metadata(self):
+        run_id = "aaaaaaaa-bbbb-4ccc-8ddd-123456789012"
+        reassess = {"queued": True, "trigger": "auto_edit", "run_id": run_id}
+        assert _has_phone({"reassess": reassess}) is None
+        assert _has_phone({"raw_input": {"raw_note": run_id}}) is not None
+        assert _has_phone({"reassess": {**reassess, "run_id": "9876543210"}}) is not None
+        assert _has_phone({"reassess": {**reassess, "notes": "Call 9876543210"}}) is not None
+
     def test_email_detection_none(self):
         data = {"text": "Just a normal message without any contact info"}
         assert _has_email(data) is None

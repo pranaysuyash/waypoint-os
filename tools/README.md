@@ -1050,3 +1050,7 @@ Live E2E walk of the departure-board → auth → workbench handoff lifecycle (9
 **Usage:** `node tools/verify_departure_board_handoff.mjs --base http://127.0.0.1:3006 [--headed] [--email you@example.com]`
 
 **Exit:** non-zero on any failed test point. Each signup run creates a fresh agency (additive test data by design).
+
+### Checker extraction probe
+
+Run `python -m tools.verification.checker_extraction_probe` from the project root for the local destination baseline. Add `--openai` for a maximum of four requests to a pinned OpenAI model using only the built-in fictional cases. The provider lane checks destination and connection roles, verifies supporting text spans, and prints token use and latency. Authentication errors stop further provider calls.

@@ -1,0 +1,20 @@
+[
+  {
+    "device": "desktop",
+    "injected_http": 503,
+    "copied_draft_preserved": true,
+    "retry_http": 200,
+    "real_retry_result": "2 itinerary details to confirm",
+    "recording": "failed-check-retry-desktop-c9b9.mp4",
+    "failure_screen": "failed-check-retry-desktop-c9b9.png"
+  },
+  {
+    "device": "mobile-emulation",
+    "injected_http": 503,
+    "copied_draft_preserved": true,
+    "retry_http": 200,
+    "real_retry_result": "2 itinerary details to confirm",
+    "recording": "failed-check-retry-mobile-emulation-ea5b.mp4",
+    "failure_screen": "failed-check-retry-mobile-emulation-ea5b.png"
+  }
+]
